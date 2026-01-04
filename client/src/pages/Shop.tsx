@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, ShoppingBag } from "lucide-react";
 
 export default function Shop() {
-  const springStoreUrl = "https://realist-ca.creator-spring.com";
+  const springStoreUrl = "https://my-store-108d526.creator-spring.com";
 
   return (
     <div className="min-h-screen bg-background">
