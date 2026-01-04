@@ -24,14 +24,14 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
               className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight"
               data-testid="text-hero-headline"
             >
-              Build Real Wealth With{" "}
-              <span className="text-gradient">Multiplex Real Estate</span>
+              Canada's Most Researched{" "}
+              <span className="text-gradient">Real Estate Program</span>
             </h1>
             <p 
               className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
               data-testid="text-hero-subhead"
             >
-              Underwrite any deal. Compare strategies. Export investor-ready sheets in seconds.
+              A data-driven curriculum brought to you by Canada's #1 real estate podcast
             </p>
           </div>
 
