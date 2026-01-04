@@ -30,7 +30,7 @@ const defaultInputs: BuyHoldInputs = {
   insurance: 2000,
   utilities: 0,
   maintenancePercent: 5,
-  managementPercent: 0,
+  managementPercent: 5,
   capexReservePercent: 5,
   otherExpenses: 0,
   rentGrowthPercent: 0,
