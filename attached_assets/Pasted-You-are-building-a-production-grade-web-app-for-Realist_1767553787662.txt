@@ -1,0 +1,279 @@
+You are building a production-grade web app for Realist.ca: a high-converting site with the BEST REAL ESTATE DEAL ANALYZER TOOL IN THE WORLD as the main page. The app must be modern, fast, mobile-friendly, and visually “premium.” It must include lead capture (name/email/phone required) and CRM-ready integrations (GoHighLevel/HighLevel via webhook).
+
+TECH STACK (REQUIRED)
+- Next.js (App Router) + TypeScript
+- Tailwind CSS + shadcn/ui for components
+- PostgreSQL (Neon/Supabase) with Prisma ORM
+- Auth: optional, but at minimum support “anonymous lead + saved analyses linked to lead”
+- Charts: Recharts
+- Form validation: Zod + React Hook Form
+- State: React Query (TanStack Query)
+- PDF/Export: html-to-image for screenshots + jsPDF for PDF export
+- Maps: Google Maps Places API (autocomplete + address validation + geocoding)
+
+PAGES / ROUTES (REQUIRED)
+1) "/" = Deal Analyzer Tool (main product)
+2) "/about" = About page with bios for Daniel Foch and Nick Hill + links to businesses:
+   - Valery (Dan): https://valery.ca
+   - BLD Financial (Nick): https://bldfinancial.com (if exact domain differs, make it configurable in env)
+3) "/privacy" and "/terms" minimal
+4) "/admin" (simple protected route) to view leads and exports, and to manage data source refresh status
+
+LANDING PAGE STRUCTURE (MAIN PAGE)
+Top section must follow high-converting layout:
+- Headline: “Build Real Wealth With Multiplex Real Estate”
+- Subhead: “Underwrite any deal. Compare strategies. Export investor-ready sheets in seconds.”
+- Primary CTA: “Analyze a Deal”
+- Secondary CTA: “Book a Call” (link placeholder)
+- Social proof stats: “11,000+ members • 26 cities • Canada’s #1 real estate podcast”
+Then directly into the Deal Analyzer interface.
+
+LEAD CAPTURE (HARD REQUIREMENT)
+Before the user can see results / export / save, require:
+- full name
+- email
+- phone number
+Store in DB and create a Lead record.
+Also collect:
+- lead_source = “Deal Analyzer”
+- timestamp
+- UTM parameters (utm_source, utm_medium, utm_campaign, utm_content, utm_term)
+- consent checkbox for marketing (optional but include)
+
+CRM INTEGRATION (HARD REQUIREMENT)
+Must make it possible to automatically add leads to GoHighLevel/HighLevel (GHL).
+Implement:
+- An ENV-configured webhook URL (GHL_WEBHOOK_URL)
+- On lead creation, POST JSON payload with lead fields + analysis metadata
+- Retry logic with exponential backoff
+- Store webhook delivery logs in DB (success/fail/response)
+- Provide admin screen showing recent deliveries
+NOTE: Do NOT hardcode GHL endpoints; use a generic webhook pattern compatible with HighLevel workflows.
+
+DEAL LOCATION (HARD REQUIREMENT)
+Require exact deal address using Google Places Autocomplete.
+- User types address -> choose suggestion
+- Store: formatted_address, place_id, lat/lng, city, region/state, country, postal/zip
+- Use country to determine logic: Canada vs USA
+
+COUNTRY LOGIC
+If country = USA:
+- Provide a “US Mode” deal calculator similar to BiggerPockets rental calculator, but “better and sexier”
+- Include rental assumptions, financing, rehab, operating expenses, projections, IRR
+If country = Canada:
+- Provide strategy options:
+  1) Buy & Hold (must include CMHC MLI Select support + points for retrofits)
+  2) Flip
+  3) BRRR
+  4) Airbnb (short-term rental)
+  5) Land Assembly
+  6) Multiplex
+For Multiplex:
+- Ask unit count
+- If units <= 4: conventional financing path
+- If units >= 5: CMHC MLI Select financing path
+- Support construction financing:
+  - Conventional construction financing
+  - CMHC MLI construction financing
+  - Conventional construction with CMHC MLI takeout
+- Must compute equity-out in BRRR and CMHC takeout scenarios
+
+DEFAULT CONSERVATIVE ASSUMPTIONS (CANADA)
+- Vacancy default: 5%
+- Rent growth default: 0%
+- Allow user to adjust, but conservative defaults are preset
+
+DATA SOURCES (IMPLEMENT WITH SAFE FALLBACKS)
+We need:
+- Debt rates (approx) pulled regularly from public sources (WOWA, Ratehub, etc.)
+- CMHC MLI Select: compute rate using Canada 5-year bond yield + spread
+- CMHC market vacancy and rent growth (by region) – start with fallback if API not available
+
+Implement an internal “Rates & Market Data” service with:
+- Daily cache table: interest_rate_cache, bond_yield_cache, cmhc_market_cache
+- Admin button: “Refresh data now”
+- Scheduled refresh (cron-like) is optional if Replit supports; otherwise do refresh on first request each day
+- Use safe fallback values if fetch fails (clearly label as “estimates”)
+IMPORTANT: Do not rely on scraping that violates terms. Prefer APIs, RSS, or manually-maintained JSON endpoints. If real-time sources are not accessible, implement the architecture and use placeholder endpoints with instructions.
+
+CALCULATIONS (CORE)
+Compute headline metrics for all strategies:
+- Cap Rate (NOI / purchase price)
+- Cash-on-Cash Return (annual pre-tax cash flow / cash invested)
+- DSCR (NOI / debt service)
+- IRR (levered, multi-year horizon; default 10 years, adjustable)
+Also compute:
+- Monthly cash flow
+- NOI
+- Total cash invested
+- Equity growth over time
+- Principal paydown
+- Refinance proceeds where applicable (BRRR/takeout)
+
+MODEL REQUIREMENTS
+- Build a robust financial engine with clear separation:
+  - inputs schema (Zod)
+  - strategy calculators (per strategy)
+  - shared utilities (amortization, IRR, NPV)
+- IRR implementation must be reliable and tested (use iterative method with bounds, handle non-convergence gracefully)
+- Use monthly projection model:
+  - revenues (rent/airbnb)
+  - expenses (fixed + variable)
+  - financing
+  - capex/rehab schedule
+  - refi/takeout event timing (BRRR)
+  - sale event at end (with selling costs)
+- Add unit tests for amortization + IRR + DSCR
+
+STRATEGY INPUTS (DETAILS)
+Common inputs:
+- Purchase price
+- Closing costs
+- Down payment %
+- Financing type + rate + amortization + term
+- Gross rents (unit-level optional for multiplex)
+- Vacancy %
+- Operating expenses:
+  - property tax
+  - insurance
+  - utilities (water/hydro/gas)
+  - maintenance %
+  - management %
+  - repairs/capex reserve %
+  - snow/landscaping (Canada-friendly)
+- Rent growth %
+- Expense inflation %
+- Sale assumptions: exit cap (or appreciation %), selling costs %
+
+Flip:
+- Purchase, rehab budget, holding costs, ARV, timeline months
+- Lending: private/hard money option + fees
+- Output: projected profit, ROI, annualized ROI, sensitivity to ARV and time
+
+BRRR:
+- Rehab budget and schedule
+- After-repair value (ARV)
+- Refi LTV, refi rate/term
+- Cash-out amount
+- Output: “Infinite return?” flag + cash left in deal + stabilized metrics
+
+Airbnb:
+- ADR, occupancy %, seasonality toggle (simple)
+- Cleaning fees and platform fees
+- Furnishing upfront costs
+- STR management option
+- Output: monthly revenue, net cash flow, sensitivity
+
+Land Assembly:
+- Multiple parcels (simple list)
+- Carrying costs
+- Time-to-entitlement
+- Probability-weighted outcomes (base case)
+- Output: expected value + risk notes (keep simple v1)
+
+Buy & Hold + CMHC MLI Select (Canada):
+- MLI Select points estimator for retrofits:
+  - Provide a points input UI (checkboxes for energy efficiency retrofits)
+  - Store total points; reflect in premium reductions or better rates (approx modeling)
+- Use bond yield + spread for rate; allow user override
+
+Multiplex + Construction + MLI Takeout:
+- Construction budget, draw schedule
+- Interest-only during construction
+- Takeout date and takeout LTV
+- Equity extracted at takeout
+- Output: total project cost, stabilized value, refi proceeds, remaining equity
+
+COMPARISON (HARD REQUIREMENT)
+- Allow user to compare two strategies side-by-side for the same deal
+- UI:
+  - left panel = strategy A
+  - right panel = strategy B
+- Compare headline metrics + charts side-by-side
+- Provide “Shareable Summary” export for each and for the comparison
+
+VISUALS (HARD REQUIREMENT)
+1) Headline metric cards: Cap Rate, CoC, DSCR, IRR
+2) Monthly expense pie chart (breakdown)
+3) Timeline chart:
+   - stacked bars (cash in/out) monthly
+   - line overlay for equity growth over time
+4) Add at least 1 more excellent visual:
+   - Sensitivity heatmap (e.g., rent +/- and rate +/- impacts on CoC)
+   OR
+   - Waterfall chart for sources/uses (cash invested, debt, rehab, refi proceeds)
+
+EXPORT / SHARING (HARD REQUIREMENT)
+- Export a clean “Investor Sheet” (PDF) with:
+  - property header (address, image placeholder, map mini)
+  - key metrics
+  - assumptions table
+  - charts
+- Also support “Copy share link” that creates a public, view-only link:
+  - Must not expose phone/email publicly
+  - Public link shows analysis results with “Run your own analysis” CTA
+- Add “Screenshot-friendly” mode (white background, compact layout)
+
+DESIGN REQUIREMENTS
+- Minimal, premium, dark mode by default
+- Responsive: mobile-first
+- Animation: subtle transitions
+- Use clean typography and spacing
+- Make the analyzer feel like a modern fintech app
+
+DATABASE SCHEMA (REQUIRED)
+- Lead: id, name, email, phone, consent, utms, created_at
+- Property: id, lead_id, address fields, place_id, lat, lng, country, created_at
+- Analysis: id, lead_id, property_id, country_mode, strategy_type, inputs_json, results_json, created_at
+- Comparison: id, lead_id, property_id, analysis_a_id, analysis_b_id, created_at
+- WebhookLog: id, lead_id, endpoint, payload_json, status, response, attempts, created_at
+- DataCache: id, key, value_json, fetched_at, source
+
+SECURITY / PRIVACY
+- Validate and sanitize inputs
+- Rate limit public endpoints
+- Do not expose lead PII in public share links
+- Add basic bot protection on lead form (hCaptcha optional)
+
+ENV VARS (REQUIRED)
+- DATABASE_URL
+- GOOGLE_MAPS_API_KEY
+- GHL_WEBHOOK_URL (optional but supported)
+- APP_URL
+- OPTIONAL: DATA_SOURCE_ENDPOINTS as JSON string
+
+IMPLEMENTATION STEPS (WHAT YOU SHOULD DO)
+1) Scaffold Next.js app with Tailwind + shadcn
+2) Implement DB schema with Prisma + migrations
+3) Build /about page with bios:
+   - Daniel Foch: real estate broker/analyst, Chief Real Estate Officer at Valery.ca, host of Canada’s #1 real estate podcast
+   - Nick Hill: co-host, mortgage/finance expertise, BLD Financial
+   Include headshots placeholders and outbound links to Valery and BLD
+4) Build / analyzer:
+   - Address input (Places)
+   - Strategy selector (Canada/US logic)
+   - Inputs form (strategy-specific)
+   - Require lead capture before computing results
+5) Build finance engine:
+   - Shared calculations
+   - Strategy modules
+   - Tests
+6) Build charts + comparison mode
+7) Build export (PDF + image)
+8) Build CRM webhook integration + admin dashboard
+
+DELIVERABLES
+- Working app with clean UI
+- Clear README with setup steps
+- Seed data examples
+- Inline comments where needed
+- A “V1 limitations” section describing which data sources are placeholders vs live
+
+QUALITY BAR
+This must feel like:
+- Better UX than BiggerPockets
+- Cleaner visuals than typical spreadsheets
+- Fast enough to feel instant
+- Investor-ready exports that people WANT to screenshot/share
+
+Now implement it.
