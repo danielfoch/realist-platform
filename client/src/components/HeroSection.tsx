@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, Users, MapPin, TrendingUp } from "lucide-react";
 import reutersLogo from "@assets/image_1767559636706.png";
-import wsjLogo from "@assets/image_1767558970172.png";
+import wsjLogo from "@assets/image_1767563210169.png";
 import bloombergLogo from "@assets/image_1767559733359.png";
 import investingLogo from "@assets/image_1767559017226.png";
 import cbcLogo from "@assets/image_1767559058457.png";
