@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play, Users, MapPin, Podcast } from "lucide-react";
+import { ArrowRight, Play, Users, MapPin, TrendingUp } from "lucide-react";
 
 interface HeroSectionProps {
   onAnalyzeClick: () => void;
@@ -9,7 +9,7 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
   const stats = [
     { icon: Users, value: "11,000+", label: "members" },
     { icon: MapPin, value: "26", label: "cities" },
-    { icon: Podcast, value: "#1", label: "real estate podcast" },
+    { icon: TrendingUp, value: "$2.6B", label: "in deals analyzed" },
   ];
 
   return (
@@ -85,9 +85,6 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
                 </div>
               ))}
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Canada's #1 real estate podcast community
-            </p>
           </div>
         </div>
       </div>
