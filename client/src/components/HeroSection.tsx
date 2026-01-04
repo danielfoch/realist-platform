@@ -6,7 +6,7 @@ import bloombergLogo from "@assets/image_1767558987658.png";
 import investingLogo from "@assets/image_1767559017226.png";
 import cbcLogo from "@assets/image_1767559058457.png";
 import hgtvLogo from "@assets/image_1767559257023.png";
-import torontoStarLogo from "@assets/image_1767559344785.png";
+import torontoStarLogo from "@assets/image_1767559616553.png";
 import ctvLogo from "@assets/image_1767559371656.png";
 import cp24Logo from "@assets/image_1767559398760.png";
 import financialPostLogo from "@assets/image_1767559424338.png";
