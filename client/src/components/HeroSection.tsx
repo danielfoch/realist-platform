@@ -12,6 +12,7 @@ import cp24Logo from "@assets/image_1767559398760.png";
 import financialPostLogo from "@assets/image_1767559424338.png";
 import bnnBloombergLogo from "@assets/image_1767559654950.png";
 import globeMailLogo from "@assets/image_1767559703750.png";
+import nationalPostLogo from "@assets/image_1767559826327.png";
 
 interface HeroSectionProps {
   onAnalyzeClick: () => void;
@@ -39,6 +40,7 @@ const mediaLogos: MediaLogo[] = [
   { name: "CTV", image: ctvLogo, url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-", height: "h-6", noInvert: true },
   { name: "HGTV", image: hgtvLogo, url: null, height: "h-6" },
   { name: "CP24", image: cp24Logo, url: null, height: "h-6" },
+  { name: "National Post", image: nationalPostLogo, url: null, height: "h-6" },
 ];
 
 export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
