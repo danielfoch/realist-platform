@@ -132,7 +132,6 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
           </div>
 
           <div className="pt-8 space-y-4">
-            <p className="text-sm text-muted-foreground">Realist in the media</p>
             <h3 className="text-2xl font-bold text-gradient" data-testid="text-as-seen-on">As seen on:</h3>
             <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-7 gap-2 md:gap-4 pt-4 max-w-4xl mx-auto">
               {mediaLogos.map((media) => {
