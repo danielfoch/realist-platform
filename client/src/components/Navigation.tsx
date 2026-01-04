@@ -62,9 +62,11 @@ export function Navigation() {
             </Button>
 
             <div className="hidden md:block">
-              <Button size="sm" data-testid="button-book-call">
-                Book a Free Consult Call
-              </Button>
+              <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer">
+                <Button size="sm" data-testid="button-book-call">
+                  Book a Free Consult Call
+                </Button>
+              </a>
             </div>
 
             <Button
@@ -99,9 +101,11 @@ export function Navigation() {
                 </Button>
               </Link>
             ))}
-            <Button className="w-full" data-testid="button-mobile-book-call">
-              Book a Free Consult Call
-            </Button>
+            <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer" className="block">
+              <Button className="w-full" data-testid="button-mobile-book-call">
+                Book a Free Consult Call
+              </Button>
+            </a>
           </div>
         </div>
       )}

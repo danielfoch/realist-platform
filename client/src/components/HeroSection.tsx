@@ -96,15 +96,17 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
                 Join the Community
               </Button>
             </a>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="gap-2 px-8 py-6 text-lg"
-              data-testid="button-hero-book-call"
-            >
-              <Play className="h-5 w-5" />
-              Book a Free Consult Call
-            </Button>
+            <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer">
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="gap-2 px-8 py-6 text-lg"
+                data-testid="button-hero-book-call"
+              >
+                <Play className="h-5 w-5" />
+                Book a Free Consult Call
+              </Button>
+            </a>
           </div>
 
           <div className="pt-8 border-t border-border/50">
