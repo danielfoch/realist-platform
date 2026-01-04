@@ -85,15 +85,17 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
               Analyze a Deal
               <ArrowRight className="h-5 w-5" />
             </Button>
-            <Button 
-              variant="secondary" 
-              size="lg" 
-              className="gap-2 px-8 py-6 text-lg"
-              data-testid="button-join-community"
-            >
-              <Users className="h-5 w-5" />
-              Join the Community
-            </Button>
+            <a href="https://www.skool.com/realistgroup" target="_blank" rel="noopener noreferrer">
+              <Button 
+                variant="secondary" 
+                size="lg" 
+                className="gap-2 px-8 py-6 text-lg"
+                data-testid="button-join-community"
+              >
+                <Users className="h-5 w-5" />
+                Join the Community
+              </Button>
+            </a>
             <Button 
               variant="outline" 
               size="lg" 
