@@ -128,17 +128,17 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
           <div className="pt-8 space-y-4">
             <p className="text-sm text-muted-foreground">Realist in the media</p>
             <h3 className="text-2xl font-bold text-gradient" data-testid="text-as-seen-on">As seen on:</h3>
-            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 pt-4">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2 md:gap-4 pt-4 max-w-4xl mx-auto">
               {mediaLogos.map((media) => {
                 const content = media.image ? (
                   <img 
                     src={media.image} 
                     alt={media.name}
-                    className={`${media.height} w-auto object-contain grayscale opacity-60 transition-all ${media.url ? 'group-hover:grayscale-0 group-hover:opacity-100' : ''}`}
+                    className="h-4 md:h-5 w-auto max-w-full object-contain grayscale opacity-60 transition-all group-hover:grayscale-0 group-hover:opacity-100"
                   />
                 ) : media.Logo ? (
                   <media.Logo 
-                    className={`${media.height} text-muted-foreground transition-colors ${media.url ? 'group-hover:text-foreground' : ''}`}
+                    className="text-xs text-muted-foreground transition-colors group-hover:text-foreground"
                   />
                 ) : null;
                 
@@ -148,7 +148,7 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
                     href={media.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group hover-elevate px-3 py-2 rounded-md flex items-center"
+                    className="group hover-elevate px-2 py-2 rounded-md flex items-center justify-center"
                     data-testid={`link-media-${media.name.toLowerCase().replace(/\s+/g, "-")}`}
                     title={media.name}
                   >
@@ -157,7 +157,7 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
                 ) : (
                   <span 
                     key={media.name} 
-                    className="px-3 py-2 flex items-center"
+                    className="px-2 py-2 flex items-center justify-center"
                     data-testid={`link-media-${media.name.toLowerCase().replace(/\s+/g, "-")}`}
                     title={media.name}
                   >
