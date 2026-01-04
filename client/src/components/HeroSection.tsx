@@ -11,17 +11,10 @@ import ctvLogo from "@assets/image_1767559371656.png";
 import cp24Logo from "@assets/image_1767559398760.png";
 import financialPostLogo from "@assets/image_1767559424338.png";
 import bnnBloombergLogo from "@assets/image_1767559654950.png";
+import globeMailLogo from "@assets/image_1767559703750.png";
 
 interface HeroSectionProps {
   onAnalyzeClick: () => void;
-}
-
-function GlobeMailLogo({ className }: { className?: string }) {
-  return (
-    <span className={`font-bold ${className}`} style={{ fontFamily: "'Times New Roman', serif" }}>
-      THE GLOBE AND MAIL
-    </span>
-  );
 }
 
 type MediaLogo = {
@@ -38,7 +31,7 @@ const mediaLogos: MediaLogo[] = [
   { name: "WSJ", image: wsjLogo, url: "https://www.wsj.com/economy/housing/canadas-real-estate-market-stumbles-as-rate-hikes-bite-24a8a2da", height: "h-8" },
   { name: "Investing.com", image: investingLogo, url: "https://ca.investing.com/members/contributors/245556786", height: "h-5" },
   { name: "Bloomberg", image: bloombergLogo, url: null, height: "h-5" },
-  { name: "Globe and Mail", Logo: GlobeMailLogo, url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/", height: "text-xs" },
+  { name: "Globe and Mail", image: globeMailLogo, url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/", height: "h-6" },
   { name: "CBC", image: cbcLogo, url: "https://www.cbc.ca/news/business/housing-prices-april-1.6454728", height: "h-8" },
   { name: "Financial Post", image: financialPostLogo, url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market", height: "h-6", noInvert: true },
   { name: "Toronto Star", image: torontoStarLogo, url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html", height: "h-6" },
