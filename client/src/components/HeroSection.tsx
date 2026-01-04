@@ -32,17 +32,17 @@ const mediaLogos: MediaLogo[] = [
   { name: "Reuters", image: reutersLogo, url: "https://www.reuters.com/markets/supply-canadas-property-market-surges-mortgage-renewals-loom-2024-07-17/", height: "h-5" },
   { name: "WSJ", image: wsjLogo, url: "https://www.wsj.com/economy/housing/canadas-real-estate-market-stumbles-as-rate-hikes-bite-24a8a2da", height: "h-8" },
   { name: "Investing.com", image: investingLogo, url: "https://ca.investing.com/members/contributors/245556786", height: "h-5" },
-  { name: "Bloomberg", image: bloombergLogo, url: null, height: "h-5" },
+  { name: "Bloomberg", image: bloombergLogo, url: "https://www.bloomberg.com", height: "h-5" },
   { name: "Globe and Mail", image: globeMailLogo, url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/", height: "h-6" },
   { name: "CBC", image: cbcLogo, url: "https://www.cbc.ca/news/business/housing-prices-april-1.6454728", height: "h-8" },
   { name: "Financial Post", image: financialPostLogo, url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market", height: "h-6", noInvert: true },
   { name: "Toronto Star", image: torontoStarLogo, url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html", height: "h-6" },
   { name: "BNN Bloomberg", image: bnnBloombergLogo, url: "https://www.bnnbloomberg.ca/video/shows/taking-stock/2024/09/06/taking-stock-what-the-bank-of-canadas-cut-might-do-to-the-housing-market/", height: "h-6" },
   { name: "CTV", image: ctvLogo, url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-", height: "h-6", noInvert: true },
-  { name: "HGTV", image: hgtvLogo, url: null, height: "h-6" },
-  { name: "CP24", image: cp24Logo, url: null, height: "h-6" },
-  { name: "National Post", image: nationalPostLogo, url: null, height: "h-6" },
-  { name: "Storeys", image: storeysLogo, url: null, height: "h-6" },
+  { name: "HGTV", image: hgtvLogo, url: "https://www.hgtv.ca", height: "h-6" },
+  { name: "CP24", image: cp24Logo, url: "https://www.cp24.com", height: "h-6" },
+  { name: "National Post", image: nationalPostLogo, url: "https://nationalpost.com", height: "h-6" },
+  { name: "Storeys", image: storeysLogo, url: "https://storeys.com", height: "h-6" },
 ];
 
 export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
