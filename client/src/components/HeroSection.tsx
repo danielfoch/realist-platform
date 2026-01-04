@@ -146,7 +146,7 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
                   <img 
                     src={media.image} 
                     alt={media.name}
-                    className={`${media.height} w-auto object-contain opacity-70 transition-opacity ${media.url ? 'group-hover:opacity-100' : ''} ${media.noInvert ? '' : 'invert dark:invert-0'}`}
+                    className={`${media.height} w-auto object-contain grayscale opacity-60 transition-all ${media.url ? 'group-hover:grayscale-0 group-hover:opacity-100' : ''}`}
                   />
                 ) : media.Logo ? (
                   <media.Logo 
