@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Sun, Moon, Menu, X } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useState } from "react";
-import logoImage from "@assets/ChatGPT_Image_Jan_4,_2026,_02_45_57_PM_1767555963167.png";
+import logoImage from "@assets/Screenshot_2026-01-04_at_3.46.09_PM_1767559573207.png";
 
 export function Navigation() {
   const { theme, toggleTheme } = useTheme();
@@ -24,7 +24,7 @@ export function Navigation() {
             <img 
               src={logoImage} 
               alt="Realist Logo" 
-              className="h-10 w-10 object-contain"
+              className="h-10 w-10 object-contain dark:invert"
               data-testid="img-logo"
             />
             <span className="font-bold text-xl tracking-tight" data-testid="text-logo">
