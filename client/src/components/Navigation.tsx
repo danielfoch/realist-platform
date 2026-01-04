@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Sun, Moon, Menu, X } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useState } from "react";
-import logoImage from "@assets/Screenshot_2026-01-04_at_2.42.23_PM_1767555747207.png";
+import logoImage from "@assets/ChatGPT_Image_Jan_4,_2026,_02_45_57_PM_1767555963167.png";
 
 export function Navigation() {
   const { theme, toggleTheme } = useTheme();
