@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Sun, Moon, Menu, X } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useState } from "react";
+import logoImage from "@assets/Screenshot_2026-01-04_at_2.42.23_PM_1767555747207.png";
 
 export function Navigation() {
   const { theme, toggleTheme } = useTheme();
@@ -20,9 +21,12 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex h-16 items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">R</span>
-            </div>
+            <img 
+              src={logoImage} 
+              alt="Realist Logo" 
+              className="h-10 w-10 object-contain"
+              data-testid="img-logo"
+            />
             <span className="font-bold text-xl tracking-tight" data-testid="text-logo">
               Realist
             </span>
