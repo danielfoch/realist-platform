@@ -5,17 +5,98 @@ interface HeroSectionProps {
   onAnalyzeClick: () => void;
 }
 
+function ReutersLogo({ className }: { className?: string }) {
+  return (
+    <div className={`flex items-center gap-1.5 ${className}`}>
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+        <circle cx="8" cy="12" r="2"/>
+        <circle cx="16" cy="12" r="2"/>
+        <circle cx="12" cy="8" r="2"/>
+        <circle cx="12" cy="16" r="2"/>
+      </svg>
+      <span className="font-bold tracking-wide">REUTERS</span>
+    </div>
+  );
+}
+
+function WSJLogo({ className }: { className?: string }) {
+  return (
+    <span className={`font-serif font-bold tracking-tight ${className}`} style={{ fontFamily: "'Times New Roman', serif" }}>
+      THE WALL STREET JOURNAL.
+    </span>
+  );
+}
+
+function InvestingLogo({ className }: { className?: string }) {
+  return <span className={`font-bold ${className}`}>Investing.com</span>;
+}
+
+function BloombergLogo({ className }: { className?: string }) {
+  return <span className={`font-bold ${className}`}>Bloomberg</span>;
+}
+
+function GlobeMailLogo({ className }: { className?: string }) {
+  return (
+    <span className={`font-bold ${className}`} style={{ fontFamily: "'Times New Roman', serif" }}>
+      THE GLOBE AND MAIL
+    </span>
+  );
+}
+
+function CBCLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className={className} fill="currentColor">
+      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="4"/>
+      <circle cx="50" cy="50" r="15"/>
+      <path d="M50 5 L50 35 M50 65 L50 95 M5 50 L35 50 M65 50 L95 50" stroke="currentColor" strokeWidth="8"/>
+    </svg>
+  );
+}
+
+function FinancialPostLogo({ className }: { className?: string }) {
+  return (
+    <span className={`font-bold uppercase tracking-wide ${className}`}>
+      FINANCIAL POST
+    </span>
+  );
+}
+
+function TorontoStarLogo({ className }: { className?: string }) {
+  return (
+    <span className={`font-bold uppercase tracking-widest ${className}`}>
+      TORONTO STAR
+    </span>
+  );
+}
+
+function BNNBloombergLogo({ className }: { className?: string }) {
+  return (
+    <span className={`font-bold ${className}`}>
+      BNN Bloomberg
+    </span>
+  );
+}
+
+function CTVLogo({ className }: { className?: string }) {
+  return (
+    <span className={`font-bold tracking-wide ${className}`}>
+      CTV
+    </span>
+  );
+}
+
 const mediaLogos = [
-  { name: "Reuters", url: "https://www.reuters.com/markets/supply-canadas-property-market-surges-mortgage-renewals-loom-2024-07-17/" },
-  { name: "The Wall Street Journal", url: "https://www.wsj.com/economy/housing/canadas-real-estate-market-stumbles-as-rate-hikes-bite-24a8a2da" },
-  { name: "Investing.com", url: "https://ca.investing.com/members/contributors/245556786" },
-  { name: "Bloomberg", url: null },
-  { name: "The Globe and Mail", url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/" },
-  { name: "CBC", url: "https://www.cbc.ca/news/business/housing-prices-april-1.6454728" },
-  { name: "Financial Post", url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market" },
-  { name: "Toronto Star", url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html" },
-  { name: "BNN Bloomberg", url: "https://www.bnnbloomberg.ca/video/shows/taking-stock/2024/09/06/taking-stock-what-the-bank-of-canadas-cut-might-do-to-the-housing-market/" },
-  { name: "CTV", url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-" },
+  { name: "Reuters", Logo: ReutersLogo, url: "https://www.reuters.com/markets/supply-canadas-property-market-surges-mortgage-renewals-loom-2024-07-17/", iconSize: "text-xs" },
+  { name: "WSJ", Logo: WSJLogo, url: "https://www.wsj.com/economy/housing/canadas-real-estate-market-stumbles-as-rate-hikes-bite-24a8a2da", iconSize: "text-xs" },
+  { name: "Investing.com", Logo: InvestingLogo, url: "https://ca.investing.com/members/contributors/245556786", iconSize: "text-sm" },
+  { name: "Bloomberg", Logo: BloombergLogo, url: null, iconSize: "text-sm" },
+  { name: "Globe and Mail", Logo: GlobeMailLogo, url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/", iconSize: "text-xs" },
+  { name: "CBC", Logo: CBCLogo, url: "https://www.cbc.ca/news/business/housing-prices-april-1.6454728", iconSize: "h-8 w-8" },
+  { name: "Financial Post", Logo: FinancialPostLogo, url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market", iconSize: "text-xs" },
+  { name: "Toronto Star", Logo: TorontoStarLogo, url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html", iconSize: "text-xs" },
+  { name: "BNN Bloomberg", Logo: BNNBloombergLogo, url: "https://www.bnnbloomberg.ca/video/shows/taking-stock/2024/09/06/taking-stock-what-the-bank-of-canadas-cut-might-do-to-the-housing-market/", iconSize: "text-sm" },
+  { name: "CTV", Logo: CTVLogo, url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-", iconSize: "text-lg" },
 ];
 
 export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
@@ -103,15 +184,12 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
           <div className="pt-8 space-y-4">
             <p className="text-sm text-muted-foreground">Realist in the media</p>
             <h3 className="text-2xl font-bold text-gradient" data-testid="text-as-seen-on">As seen on:</h3>
-            <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 pt-4">
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 pt-4">
               {mediaLogos.map((media) => {
                 const content = (
-                  <span 
-                    className={`text-sm md:text-base font-semibold text-muted-foreground transition-colors ${media.url ? 'hover:text-foreground' : ''}`}
-                    data-testid={`link-media-${media.name.toLowerCase().replace(/\s+/g, "-")}`}
-                  >
-                    {media.name}
-                  </span>
+                  <media.Logo 
+                    className={`${media.iconSize} text-muted-foreground transition-colors ${media.url ? 'group-hover:text-foreground' : ''}`}
+                  />
                 );
                 
                 return media.url ? (
@@ -120,12 +198,19 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
                     href={media.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover-elevate px-3 py-2 rounded-md"
+                    className="group hover-elevate px-3 py-2 rounded-md flex items-center"
+                    data-testid={`link-media-${media.name.toLowerCase().replace(/\s+/g, "-")}`}
+                    title={media.name}
                   >
                     {content}
                   </a>
                 ) : (
-                  <span key={media.name} className="px-3 py-2">
+                  <span 
+                    key={media.name} 
+                    className="px-3 py-2 flex items-center"
+                    data-testid={`link-media-${media.name.toLowerCase().replace(/\s+/g, "-")}`}
+                    title={media.name}
+                  >
                     {content}
                   </span>
                 );
