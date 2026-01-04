@@ -9,6 +9,7 @@ import hgtvLogo from "@assets/image_1767559257023.png";
 import torontoStarLogo from "@assets/image_1767559344785.png";
 import ctvLogo from "@assets/image_1767559371656.png";
 import cp24Logo from "@assets/image_1767559398760.png";
+import financialPostLogo from "@assets/image_1767559424338.png";
 
 interface HeroSectionProps {
   onAnalyzeClick: () => void;
@@ -18,14 +19,6 @@ function GlobeMailLogo({ className }: { className?: string }) {
   return (
     <span className={`font-bold ${className}`} style={{ fontFamily: "'Times New Roman', serif" }}>
       THE GLOBE AND MAIL
-    </span>
-  );
-}
-
-function FinancialPostLogo({ className }: { className?: string }) {
-  return (
-    <span className={`font-bold uppercase tracking-wide ${className}`}>
-      FINANCIAL POST
     </span>
   );
 }
@@ -54,7 +47,7 @@ const mediaLogos: MediaLogo[] = [
   { name: "Bloomberg", image: bloombergLogo, url: null, height: "h-5" },
   { name: "Globe and Mail", Logo: GlobeMailLogo, url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/", height: "text-xs" },
   { name: "CBC", image: cbcLogo, url: "https://www.cbc.ca/news/business/housing-prices-april-1.6454728", height: "h-8" },
-  { name: "Financial Post", Logo: FinancialPostLogo, url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market", height: "text-xs" },
+  { name: "Financial Post", image: financialPostLogo, url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market", height: "h-6", noInvert: true },
   { name: "Toronto Star", image: torontoStarLogo, url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html", height: "h-6" },
   { name: "BNN Bloomberg", Logo: BNNBloombergLogo, url: "https://www.bnnbloomberg.ca/video/shows/taking-stock/2024/09/06/taking-stock-what-the-bank-of-canadas-cut-might-do-to-the-housing-market/", height: "text-sm" },
   { name: "CTV", image: ctvLogo, url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-", height: "h-6", noInvert: true },
