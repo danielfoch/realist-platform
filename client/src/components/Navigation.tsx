@@ -11,10 +11,10 @@ export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: "/", label: "Analyzer" },
-    { href: "/events", label: "Events" },
-    { href: "/shop", label: "Shop" },
-    { href: "/about", label: "About" },
+    { href: "/", label: "Analyzer", external: false },
+    { href: "/events", label: "Events", external: false },
+    { href: "https://my-store-108d526.creator-spring.com", label: "Shop", external: true },
+    { href: "/about", label: "About", external: false },
   ];
 
   return (
@@ -34,17 +34,29 @@ export function Navigation() {
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href}>
-                <Button
-                  variant={location === link.href ? "secondary" : "ghost"}
-                  size="sm"
-                  data-testid={`link-nav-${link.label.toLowerCase()}`}
-                >
-                  {link.label}
-                </Button>
-              </Link>
-            ))}
+            {navLinks.map((link) => 
+              link.external ? (
+                <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    data-testid={`link-nav-${link.label.toLowerCase()}`}
+                  >
+                    {link.label}
+                  </Button>
+                </a>
+              ) : (
+                <Link key={link.href} href={link.href}>
+                  <Button
+                    variant={location === link.href ? "secondary" : "ghost"}
+                    size="sm"
+                    data-testid={`link-nav-${link.label.toLowerCase()}`}
+                  >
+                    {link.label}
+                  </Button>
+                </Link>
+              )
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -87,21 +99,40 @@ export function Navigation() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border/50 glass">
           <div className="px-4 py-4 space-y-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Button
-                  variant={location === link.href ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  data-testid={`link-mobile-${link.label.toLowerCase()}`}
+            {navLinks.map((link) => 
+              link.external ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block"
                 >
-                  {link.label}
-                </Button>
-              </Link>
-            ))}
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    data-testid={`link-mobile-${link.label.toLowerCase()}`}
+                  >
+                    {link.label}
+                  </Button>
+                </a>
+              ) : (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Button
+                    variant={location === link.href ? "secondary" : "ghost"}
+                    className="w-full justify-start"
+                    data-testid={`link-mobile-${link.label.toLowerCase()}`}
+                  >
+                    {link.label}
+                  </Button>
+                </Link>
+              )
+            )}
             <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer" className="block">
               <Button className="w-full" data-testid="button-mobile-book-call">
                 Book a Free Consult Call
