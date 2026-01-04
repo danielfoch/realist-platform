@@ -238,6 +238,6 @@
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-primary via-accent to-chart-4 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-red-500 via-rose-400 to-orange-400 bg-clip-text text-transparent;
   }
 }
