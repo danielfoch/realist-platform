@@ -1,39 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, Users, MapPin, TrendingUp } from "lucide-react";
+import reutersLogo from "@assets/image_1767558938723.png";
+import wsjLogo from "@assets/image_1767558970172.png";
+import bloombergLogo from "@assets/image_1767558987658.png";
+import investingLogo from "@assets/image_1767559017226.png";
+import cbcLogo from "@assets/image_1767559058457.png";
 
 interface HeroSectionProps {
   onAnalyzeClick: () => void;
-}
-
-function ReutersLogo({ className }: { className?: string }) {
-  return (
-    <div className={`flex items-center gap-1.5 ${className}`}>
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
-        <circle cx="8" cy="12" r="2"/>
-        <circle cx="16" cy="12" r="2"/>
-        <circle cx="12" cy="8" r="2"/>
-        <circle cx="12" cy="16" r="2"/>
-      </svg>
-      <span className="font-bold tracking-wide">REUTERS</span>
-    </div>
-  );
-}
-
-function WSJLogo({ className }: { className?: string }) {
-  return (
-    <span className={`font-serif font-bold tracking-tight ${className}`} style={{ fontFamily: "'Times New Roman', serif" }}>
-      THE WALL STREET JOURNAL.
-    </span>
-  );
-}
-
-function InvestingLogo({ className }: { className?: string }) {
-  return <span className={`font-bold ${className}`}>Investing.com</span>;
-}
-
-function BloombergLogo({ className }: { className?: string }) {
-  return <span className={`font-bold ${className}`}>Bloomberg</span>;
 }
 
 function GlobeMailLogo({ className }: { className?: string }) {
@@ -41,16 +15,6 @@ function GlobeMailLogo({ className }: { className?: string }) {
     <span className={`font-bold ${className}`} style={{ fontFamily: "'Times New Roman', serif" }}>
       THE GLOBE AND MAIL
     </span>
-  );
-}
-
-function CBCLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 100" className={className} fill="currentColor">
-      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="4"/>
-      <circle cx="50" cy="50" r="15"/>
-      <path d="M50 5 L50 35 M50 65 L50 95 M5 50 L35 50 M65 50 L95 50" stroke="currentColor" strokeWidth="8"/>
-    </svg>
   );
 }
 
@@ -86,17 +50,25 @@ function CTVLogo({ className }: { className?: string }) {
   );
 }
 
-const mediaLogos = [
-  { name: "Reuters", Logo: ReutersLogo, url: "https://www.reuters.com/markets/supply-canadas-property-market-surges-mortgage-renewals-loom-2024-07-17/", iconSize: "text-xs" },
-  { name: "WSJ", Logo: WSJLogo, url: "https://www.wsj.com/economy/housing/canadas-real-estate-market-stumbles-as-rate-hikes-bite-24a8a2da", iconSize: "text-xs" },
-  { name: "Investing.com", Logo: InvestingLogo, url: "https://ca.investing.com/members/contributors/245556786", iconSize: "text-sm" },
-  { name: "Bloomberg", Logo: BloombergLogo, url: null, iconSize: "text-sm" },
-  { name: "Globe and Mail", Logo: GlobeMailLogo, url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/", iconSize: "text-xs" },
-  { name: "CBC", Logo: CBCLogo, url: "https://www.cbc.ca/news/business/housing-prices-april-1.6454728", iconSize: "h-8 w-8" },
-  { name: "Financial Post", Logo: FinancialPostLogo, url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market", iconSize: "text-xs" },
-  { name: "Toronto Star", Logo: TorontoStarLogo, url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html", iconSize: "text-xs" },
-  { name: "BNN Bloomberg", Logo: BNNBloombergLogo, url: "https://www.bnnbloomberg.ca/video/shows/taking-stock/2024/09/06/taking-stock-what-the-bank-of-canadas-cut-might-do-to-the-housing-market/", iconSize: "text-sm" },
-  { name: "CTV", Logo: CTVLogo, url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-", iconSize: "text-lg" },
+type MediaLogo = {
+  name: string;
+  url: string | null;
+  image?: string;
+  Logo?: ({ className }: { className?: string }) => JSX.Element;
+  height: string;
+};
+
+const mediaLogos: MediaLogo[] = [
+  { name: "Reuters", image: reutersLogo, url: "https://www.reuters.com/markets/supply-canadas-property-market-surges-mortgage-renewals-loom-2024-07-17/", height: "h-5" },
+  { name: "WSJ", image: wsjLogo, url: "https://www.wsj.com/economy/housing/canadas-real-estate-market-stumbles-as-rate-hikes-bite-24a8a2da", height: "h-8" },
+  { name: "Investing.com", image: investingLogo, url: "https://ca.investing.com/members/contributors/245556786", height: "h-5" },
+  { name: "Bloomberg", image: bloombergLogo, url: null, height: "h-5" },
+  { name: "Globe and Mail", Logo: GlobeMailLogo, url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/", height: "text-xs" },
+  { name: "CBC", image: cbcLogo, url: "https://www.cbc.ca/news/business/housing-prices-april-1.6454728", height: "h-8" },
+  { name: "Financial Post", Logo: FinancialPostLogo, url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market", height: "text-xs" },
+  { name: "Toronto Star", Logo: TorontoStarLogo, url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html", height: "text-xs" },
+  { name: "BNN Bloomberg", Logo: BNNBloombergLogo, url: "https://www.bnnbloomberg.ca/video/shows/taking-stock/2024/09/06/taking-stock-what-the-bank-of-canadas-cut-might-do-to-the-housing-market/", height: "text-sm" },
+  { name: "CTV", Logo: CTVLogo, url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-", height: "text-lg" },
 ];
 
 export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
@@ -186,11 +158,17 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
             <h3 className="text-2xl font-bold text-gradient" data-testid="text-as-seen-on">As seen on:</h3>
             <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 pt-4">
               {mediaLogos.map((media) => {
-                const content = (
-                  <media.Logo 
-                    className={`${media.iconSize} text-muted-foreground transition-colors ${media.url ? 'group-hover:text-foreground' : ''}`}
+                const content = media.image ? (
+                  <img 
+                    src={media.image} 
+                    alt={media.name}
+                    className={`${media.height} w-auto object-contain opacity-70 transition-opacity ${media.url ? 'group-hover:opacity-100' : ''} invert dark:invert-0`}
                   />
-                );
+                ) : media.Logo ? (
+                  <media.Logo 
+                    className={`${media.height} text-muted-foreground transition-colors ${media.url ? 'group-hover:text-foreground' : ''}`}
+                  />
+                ) : null;
                 
                 return media.url ? (
                   <a 
