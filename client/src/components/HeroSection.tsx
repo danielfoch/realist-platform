@@ -5,6 +5,10 @@ import wsjLogo from "@assets/image_1767558970172.png";
 import bloombergLogo from "@assets/image_1767558987658.png";
 import investingLogo from "@assets/image_1767559017226.png";
 import cbcLogo from "@assets/image_1767559058457.png";
+import hgtvLogo from "@assets/image_1767559257023.png";
+import torontoStarLogo from "@assets/image_1767559344785.png";
+import ctvLogo from "@assets/image_1767559371656.png";
+import cp24Logo from "@assets/image_1767559398760.png";
 
 interface HeroSectionProps {
   onAnalyzeClick: () => void;
@@ -26,26 +30,10 @@ function FinancialPostLogo({ className }: { className?: string }) {
   );
 }
 
-function TorontoStarLogo({ className }: { className?: string }) {
-  return (
-    <span className={`font-bold uppercase tracking-widest ${className}`}>
-      TORONTO STAR
-    </span>
-  );
-}
-
 function BNNBloombergLogo({ className }: { className?: string }) {
   return (
     <span className={`font-bold ${className}`}>
       BNN Bloomberg
-    </span>
-  );
-}
-
-function CTVLogo({ className }: { className?: string }) {
-  return (
-    <span className={`font-bold tracking-wide ${className}`}>
-      CTV
     </span>
   );
 }
@@ -56,6 +44,7 @@ type MediaLogo = {
   image?: string;
   Logo?: ({ className }: { className?: string }) => JSX.Element;
   height: string;
+  noInvert?: boolean;
 };
 
 const mediaLogos: MediaLogo[] = [
@@ -66,9 +55,11 @@ const mediaLogos: MediaLogo[] = [
   { name: "Globe and Mail", Logo: GlobeMailLogo, url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/", height: "text-xs" },
   { name: "CBC", image: cbcLogo, url: "https://www.cbc.ca/news/business/housing-prices-april-1.6454728", height: "h-8" },
   { name: "Financial Post", Logo: FinancialPostLogo, url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market", height: "text-xs" },
-  { name: "Toronto Star", Logo: TorontoStarLogo, url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html", height: "text-xs" },
+  { name: "Toronto Star", image: torontoStarLogo, url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html", height: "h-6" },
   { name: "BNN Bloomberg", Logo: BNNBloombergLogo, url: "https://www.bnnbloomberg.ca/video/shows/taking-stock/2024/09/06/taking-stock-what-the-bank-of-canadas-cut-might-do-to-the-housing-market/", height: "text-sm" },
-  { name: "CTV", Logo: CTVLogo, url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-", height: "text-lg" },
+  { name: "CTV", image: ctvLogo, url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-", height: "h-6", noInvert: true },
+  { name: "HGTV", image: hgtvLogo, url: null, height: "h-6" },
+  { name: "CP24", image: cp24Logo, url: null, height: "h-6" },
 ];
 
 export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
@@ -162,7 +153,7 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
                   <img 
                     src={media.image} 
                     alt={media.name}
-                    className={`${media.height} w-auto object-contain opacity-70 transition-opacity ${media.url ? 'group-hover:opacity-100' : ''} invert dark:invert-0`}
+                    className={`${media.height} w-auto object-contain opacity-70 transition-opacity ${media.url ? 'group-hover:opacity-100' : ''} ${media.noInvert ? '' : 'invert dark:invert-0'}`}
                   />
                 ) : media.Logo ? (
                   <media.Logo 
