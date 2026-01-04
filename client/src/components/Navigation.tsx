@@ -61,12 +61,7 @@ export function Navigation() {
               )}
             </Button>
 
-            <div className="hidden md:flex items-center gap-2">
-              <Link href="/">
-                <Button variant="outline" size="sm" data-testid="button-analyze-deal">
-                  Analyze a Deal
-                </Button>
-              </Link>
+            <div className="hidden md:block">
               <Button size="sm" data-testid="button-book-call">
                 Book a Free Consult Call
               </Button>
@@ -104,11 +99,6 @@ export function Navigation() {
                 </Button>
               </Link>
             ))}
-            <Link href="/" onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="outline" className="w-full" data-testid="button-mobile-analyze-deal">
-                Analyze a Deal
-              </Button>
-            </Link>
             <Button className="w-full" data-testid="button-mobile-book-call">
               Book a Free Consult Call
             </Button>

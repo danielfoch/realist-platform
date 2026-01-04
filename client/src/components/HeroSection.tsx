@@ -52,7 +52,7 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
               data-testid="button-hero-book-call"
             >
               <Play className="h-5 w-5" />
-              Book a Call
+              Book a Free Consult Call
             </Button>
           </div>
 
