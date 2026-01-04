@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertLeadSchema, insertPropertySchema, insertAnalysisSchema } from "@shared/schema";
 import { z } from "zod";
+import { getEvents, forceRefreshEvents } from "./eventbrite";
 
 const createLeadRequestSchema = z.object({
   lead: insertLeadSchema,
@@ -265,6 +266,26 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error refreshing rates:", error);
       res.status(500).json({ error: "Failed to refresh rates" });
+    }
+  });
+
+  app.get("/api/events", async (req, res) => {
+    try {
+      const result = await getEvents();
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      res.status(500).json({ error: "Failed to fetch events" });
+    }
+  });
+
+  app.post("/api/admin/refresh-events", async (req, res) => {
+    try {
+      const result = await forceRefreshEvents();
+      res.json({ success: true, ...result });
+    } catch (error) {
+      console.error("Error refreshing events:", error);
+      res.status(500).json({ error: "Failed to refresh events" });
     }
   });
 
