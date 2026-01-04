@@ -35,7 +35,7 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 flex-wrap">
             <Button 
               size="lg" 
               className="gap-2 px-8 py-6 text-lg"
@@ -44,6 +44,15 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
             >
               Analyze a Deal
               <ArrowRight className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="lg" 
+              className="gap-2 px-8 py-6 text-lg"
+              data-testid="button-join-community"
+            >
+              <Users className="h-5 w-5" />
+              Join the Community
             </Button>
             <Button 
               variant="outline" 
