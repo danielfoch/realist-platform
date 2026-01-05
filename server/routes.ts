@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertLeadSchema, insertPropertySchema, insertAnalysisSchema } from "@shared/schema";
 import { z } from "zod";
-import { getEvents, forceRefreshEvents } from "./eventbrite";
+import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 
 const createLeadRequestSchema = z.object({
   lead: insertLeadSchema,
@@ -307,10 +307,20 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/clear-event-cache", async (req, res) => {
+    try {
+      clearEventCache();
+      res.json({ success: true, message: "Event cache cleared" });
+    } catch (error) {
+      console.error("Error clearing event cache:", error);
+      res.status(500).json({ error: "Failed to clear cache" });
+    }
+  });
+
   app.post("/api/admin/refresh-events", async (req, res) => {
     try {
       const result = await forceRefreshEvents();
-      res.json({ success: true, ...result });
+      res.json({ success: true, ...result, eventCount: result.events?.length || 0 });
     } catch (error) {
       console.error("Error refreshing events:", error);
       res.status(500).json({ error: "Failed to refresh events" });

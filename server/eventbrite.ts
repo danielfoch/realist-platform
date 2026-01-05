@@ -120,7 +120,8 @@ function getPlaceholderEvents(): EventbriteEvent[] {
 export async function getEvents(): Promise<{ events: EventbriteEvent[]; cached: boolean; lastFetched: Date | null; source: string }> {
   try {
     // Check in-memory cache first (most reliable, works in production)
-    if (memoryCache) {
+    // BUT: Don't use cached placeholder events - always try to fetch real events
+    if (memoryCache && !memoryCache.source.includes("placeholder") && !memoryCache.source.includes("fallback")) {
       const cacheAge = Date.now() - memoryCache.fetchedAt.getTime();
       const isStale = cacheAge > CACHE_DURATION_MS;
       
@@ -141,6 +142,11 @@ export async function getEvents(): Promise<{ events: EventbriteEvent[]; cached: 
         lastFetched: memoryCache.fetchedAt,
         source: memoryCache.source + "_memory_stale",
       };
+    }
+    
+    // If we have placeholder cache, try to fetch fresh first
+    if (memoryCache && (memoryCache.source.includes("placeholder") || memoryCache.source.includes("fallback"))) {
+      console.log("Have placeholder cache, attempting fresh fetch from Eventbrite...");
     }
     
     // No memory cache, try database cache as fallback
@@ -265,8 +271,16 @@ async function refreshEventsAsync() {
   }
 }
 
+export function clearEventCache(): void {
+  console.log("Clearing event memory cache...");
+  memoryCache = null;
+}
+
 export async function forceRefreshEvents(): Promise<{ events: EventbriteEvent[]; source: string }> {
   console.log("Force refreshing Eventbrite events...");
+  
+  // Clear memory cache first to ensure fresh fetch
+  memoryCache = null;
   
   const apiEvents = await fetchEventsFromAPI();
   
