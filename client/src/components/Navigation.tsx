@@ -1,12 +1,10 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, Menu, X } from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import logoImage from "@assets/Screenshot_2026-01-04_at_3.46.09_PM_1767559573207.png";
 
 export function Navigation() {
-  const { theme, toggleTheme } = useTheme();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -60,20 +58,6 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              data-testid="button-theme-toggle"
-              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            >
-              {theme === "dark" ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </Button>
-
             <div className="hidden md:block">
               <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer">
                 <Button size="sm" data-testid="button-book-call">
