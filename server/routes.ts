@@ -271,11 +271,28 @@ export async function registerRoutes(
 
   app.get("/api/events", async (req, res) => {
     try {
+      const hasToken = !!process.env.EVENTBRITE_TOKEN;
+      console.log(`Events API called. Token available: ${hasToken}, NODE_ENV: ${process.env.NODE_ENV}`);
+      
       const result = await getEvents();
-      res.json(result);
+      
+      res.json({
+        ...result,
+        debug: {
+          tokenAvailable: hasToken,
+          nodeEnv: process.env.NODE_ENV,
+          eventCount: result.events?.length || 0,
+        }
+      });
     } catch (error) {
       console.error("Error fetching events:", error);
-      res.status(500).json({ error: "Failed to fetch events" });
+      res.status(500).json({ 
+        error: "Failed to fetch events",
+        debug: {
+          tokenAvailable: !!process.env.EVENTBRITE_TOKEN,
+          errorMessage: error instanceof Error ? error.message : "Unknown error",
+        }
+      });
     }
   });
 
