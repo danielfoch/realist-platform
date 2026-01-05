@@ -317,6 +317,18 @@ export async function registerRoutes(
     }
   });
 
+  // GET version for easy browser access
+  app.get("/api/admin/refresh-events", async (req, res) => {
+    try {
+      console.log("Force refresh events triggered via GET");
+      const result = await forceRefreshEvents();
+      res.json({ success: true, ...result, eventCount: result.events?.length || 0 });
+    } catch (error) {
+      console.error("Error refreshing events:", error);
+      res.status(500).json({ error: "Failed to refresh events" });
+    }
+  });
+
   app.post("/api/admin/refresh-events", async (req, res) => {
     try {
       const result = await forceRefreshEvents();
