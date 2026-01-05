@@ -29,10 +29,11 @@ async function fetchEventsFromAPI(): Promise<EventbriteEvent[]> {
   const token = process.env.EVENTBRITE_TOKEN;
   if (!token) {
     console.log("No EVENTBRITE_TOKEN configured, will use placeholder events");
+    console.log("Available env vars:", Object.keys(process.env).filter(k => !k.includes('PASSWORD') && !k.includes('SECRET') && !k.includes('TOKEN')).join(', '));
     return [];
   }
 
-  console.log("Fetching events from Eventbrite API...");
+  console.log("Fetching events from Eventbrite API with token present...");
 
   try {
     const response = await fetch(
