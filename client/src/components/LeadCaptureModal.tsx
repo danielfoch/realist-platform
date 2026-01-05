@@ -171,7 +171,7 @@ export function LeadCaptureModal({
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel className="text-sm font-normal text-muted-foreground cursor-pointer">
-                          I agree to receive marketing communications from Realist.ca
+                          I agree to receive marketing communications from Realist.ca via e-mail and text message
                         </FormLabel>
                       </div>
                     </FormItem>
