@@ -21,9 +21,11 @@ const CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 async function fetchEventsFromAPI(): Promise<EventbriteEvent[]> {
   const token = process.env.EVENTBRITE_TOKEN;
   if (!token) {
-    console.log("No EVENTBRITE_TOKEN configured, using fallback data");
+    console.log("No EVENTBRITE_TOKEN configured, will use placeholder events");
     return [];
   }
+
+  console.log("Fetching events from Eventbrite API...");
 
   try {
     const response = await fetch(
@@ -36,11 +38,13 @@ async function fetchEventsFromAPI(): Promise<EventbriteEvent[]> {
     );
 
     if (!response.ok) {
-      console.error(`Eventbrite API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Eventbrite API error: ${response.status}`, errorText);
       return [];
     }
 
     const data = await response.json();
+    console.log(`Fetched ${data.events?.length || 0} events from Eventbrite`);
     
     return (data.events || []).map((e: any) => ({
       id: e.id,
@@ -107,7 +111,13 @@ function getPlaceholderEvents(): EventbriteEvent[] {
 
 export async function getEvents(): Promise<{ events: EventbriteEvent[]; cached: boolean; lastFetched: Date | null; source: string }> {
   try {
-    const cached = await storage.getDataCache(CACHE_KEY);
+    // Try to get cached events first
+    let cached;
+    try {
+      cached = await storage.getDataCache(CACHE_KEY);
+    } catch (cacheError) {
+      console.log("Cache read failed, will fetch from API:", cacheError);
+    }
     
     if (cached) {
       const cacheAge = Date.now() - new Date(cached.fetchedAt).getTime();
@@ -125,14 +135,20 @@ export async function getEvents(): Promise<{ events: EventbriteEvent[]; cached: 
       };
     }
     
+    // No cache, fetch from API
     const apiEvents = await fetchEventsFromAPI();
     
     if (apiEvents.length > 0) {
-      await storage.setDataCache({
-        key: CACHE_KEY,
-        valueJson: apiEvents,
-        source: "eventbrite_api",
-      });
+      // Try to cache, but don't fail if caching fails
+      try {
+        await storage.setDataCache({
+          key: CACHE_KEY,
+          valueJson: apiEvents,
+          source: "eventbrite_api",
+        });
+      } catch (cacheError) {
+        console.log("Cache write failed, returning API data without caching:", cacheError);
+      }
       
       return {
         events: apiEvents,
@@ -142,12 +158,17 @@ export async function getEvents(): Promise<{ events: EventbriteEvent[]; cached: 
       };
     }
     
+    // API returned no events, use placeholders
     const placeholderEvents = getPlaceholderEvents();
-    await storage.setDataCache({
-      key: CACHE_KEY,
-      valueJson: placeholderEvents,
-      source: "placeholder",
-    });
+    try {
+      await storage.setDataCache({
+        key: CACHE_KEY,
+        valueJson: placeholderEvents,
+        source: "placeholder",
+      });
+    } catch (cacheError) {
+      console.log("Cache write for placeholders failed:", cacheError);
+    }
     
     return {
       events: placeholderEvents,
