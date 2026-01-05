@@ -24,13 +24,13 @@ interface AnalysisChartsProps {
 }
 
 const COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "hsl(var(--muted))",
-  "hsl(var(--accent))",
+  "#E53935",
+  "#1E88E5",
+  "#43A047",
+  "#FB8C00",
+  "#8E24AA",
+  "#00ACC1",
+  "#FDD835",
 ];
 
 export function AnalysisCharts({ results }: AnalysisChartsProps) {
