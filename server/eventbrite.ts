@@ -18,6 +18,13 @@ const ORGANIZER_ID = "87580319633";
 const CACHE_KEY = "eventbrite:events";
 const CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
+// In-memory cache as primary cache (works in production without database)
+let memoryCache: {
+  events: EventbriteEvent[];
+  fetchedAt: Date;
+  source: string;
+} | null = null;
+
 async function fetchEventsFromAPI(): Promise<EventbriteEvent[]> {
   const token = process.env.EVENTBRITE_TOKEN;
   if (!token) {
@@ -111,35 +118,71 @@ function getPlaceholderEvents(): EventbriteEvent[] {
 
 export async function getEvents(): Promise<{ events: EventbriteEvent[]; cached: boolean; lastFetched: Date | null; source: string }> {
   try {
-    // Try to get cached events first
-    let cached;
-    try {
-      cached = await storage.getDataCache(CACHE_KEY);
-    } catch (cacheError) {
-      console.log("Cache read failed, will fetch from API:", cacheError);
-    }
-    
-    if (cached) {
-      const cacheAge = Date.now() - new Date(cached.fetchedAt).getTime();
+    // Check in-memory cache first (most reliable, works in production)
+    if (memoryCache) {
+      const cacheAge = Date.now() - memoryCache.fetchedAt.getTime();
       const isStale = cacheAge > CACHE_DURATION_MS;
       
-      if (isStale) {
-        refreshEventsAsync();
+      if (!isStale) {
+        console.log("Returning events from in-memory cache");
+        return {
+          events: memoryCache.events,
+          cached: true,
+          lastFetched: memoryCache.fetchedAt,
+          source: memoryCache.source + "_memory",
+        };
       }
-      
+      // Cache is stale, refresh in background but return stale data
+      refreshEventsAsync();
       return {
-        events: cached.valueJson as EventbriteEvent[],
+        events: memoryCache.events,
         cached: true,
-        lastFetched: cached.fetchedAt,
-        source: cached.source || "cache",
+        lastFetched: memoryCache.fetchedAt,
+        source: memoryCache.source + "_memory_stale",
       };
     }
     
-    // No cache, fetch from API
+    // No memory cache, try database cache as fallback
+    let dbCached;
+    try {
+      dbCached = await storage.getDataCache(CACHE_KEY);
+      if (dbCached) {
+        console.log("Loaded events from database cache");
+        // Populate memory cache from database
+        memoryCache = {
+          events: dbCached.valueJson as EventbriteEvent[],
+          fetchedAt: dbCached.fetchedAt,
+          source: dbCached.source || "database",
+        };
+        
+        const cacheAge = Date.now() - new Date(dbCached.fetchedAt).getTime();
+        if (cacheAge > CACHE_DURATION_MS) {
+          refreshEventsAsync();
+        }
+        
+        return {
+          events: memoryCache.events,
+          cached: true,
+          lastFetched: memoryCache.fetchedAt,
+          source: memoryCache.source,
+        };
+      }
+    } catch (cacheError) {
+      console.log("Database cache read failed, will fetch from API:", cacheError);
+    }
+    
+    // No cache available, fetch from API
     const apiEvents = await fetchEventsFromAPI();
     
     if (apiEvents.length > 0) {
-      // Try to cache, but don't fail if caching fails
+      // Store in memory cache (always works)
+      memoryCache = {
+        events: apiEvents,
+        fetchedAt: new Date(),
+        source: "eventbrite_api",
+      };
+      
+      // Try to persist to database cache (may fail in production)
       try {
         await storage.setDataCache({
           key: CACHE_KEY,
@@ -147,7 +190,7 @@ export async function getEvents(): Promise<{ events: EventbriteEvent[]; cached: 
           source: "eventbrite_api",
         });
       } catch (cacheError) {
-        console.log("Cache write failed, returning API data without caching:", cacheError);
+        console.log("Database cache write failed, events stored in memory only:", cacheError);
       }
       
       return {
@@ -160,15 +203,11 @@ export async function getEvents(): Promise<{ events: EventbriteEvent[]; cached: 
     
     // API returned no events, use placeholders
     const placeholderEvents = getPlaceholderEvents();
-    try {
-      await storage.setDataCache({
-        key: CACHE_KEY,
-        valueJson: placeholderEvents,
-        source: "placeholder",
-      });
-    } catch (cacheError) {
-      console.log("Cache write for placeholders failed:", cacheError);
-    }
+    memoryCache = {
+      events: placeholderEvents,
+      fetchedAt: new Date(),
+      source: "placeholder",
+    };
     
     return {
       events: placeholderEvents,
@@ -178,8 +217,15 @@ export async function getEvents(): Promise<{ events: EventbriteEvent[]; cached: 
     };
   } catch (error) {
     console.error("Error in getEvents:", error);
+    // Even on error, return placeholder events
+    const placeholderEvents = getPlaceholderEvents();
+    memoryCache = {
+      events: placeholderEvents,
+      fetchedAt: new Date(),
+      source: "fallback",
+    };
     return {
-      events: getPlaceholderEvents(),
+      events: placeholderEvents,
       cached: false,
       lastFetched: null,
       source: "fallback",
@@ -193,11 +239,24 @@ async function refreshEventsAsync() {
     const events = await fetchEventsFromAPI();
     
     if (events.length > 0) {
-      await storage.setDataCache({
-        key: CACHE_KEY,
-        valueJson: events,
+      // Always update memory cache
+      memoryCache = {
+        events,
+        fetchedAt: new Date(),
         source: "eventbrite_api_refresh",
-      });
+      };
+      
+      // Try database cache but don't fail if it errors
+      try {
+        await storage.setDataCache({
+          key: CACHE_KEY,
+          valueJson: events,
+          source: "eventbrite_api_refresh",
+        });
+      } catch (dbError) {
+        console.log("Database cache update failed during refresh:", dbError);
+      }
+      
       console.log(`Refreshed ${events.length} events from Eventbrite API`);
     }
   } catch (error) {
@@ -211,20 +270,43 @@ export async function forceRefreshEvents(): Promise<{ events: EventbriteEvent[];
   const apiEvents = await fetchEventsFromAPI();
   
   if (apiEvents.length > 0) {
-    await storage.setDataCache({
-      key: CACHE_KEY,
-      valueJson: apiEvents,
+    // Always update memory cache
+    memoryCache = {
+      events: apiEvents,
+      fetchedAt: new Date(),
       source: "eventbrite_api_force",
-    });
+    };
+    
+    // Try database cache
+    try {
+      await storage.setDataCache({
+        key: CACHE_KEY,
+        valueJson: apiEvents,
+        source: "eventbrite_api_force",
+      });
+    } catch (dbError) {
+      console.log("Database cache update failed during force refresh:", dbError);
+    }
+    
     return { events: apiEvents, source: "eventbrite_api" };
   }
   
   const placeholderEvents = getPlaceholderEvents();
-  await storage.setDataCache({
-    key: CACHE_KEY,
-    valueJson: placeholderEvents,
+  memoryCache = {
+    events: placeholderEvents,
+    fetchedAt: new Date(),
     source: "placeholder_force",
-  });
+  };
+  
+  try {
+    await storage.setDataCache({
+      key: CACHE_KEY,
+      valueJson: placeholderEvents,
+      source: "placeholder_force",
+    });
+  } catch (dbError) {
+    console.log("Database cache update failed for placeholders:", dbError);
+  }
   
   return { events: placeholderEvents, source: "placeholder" };
 }
