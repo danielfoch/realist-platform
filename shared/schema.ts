@@ -201,6 +201,7 @@ export const analysisResultsSchema = z.object({
     cumulativeCashFlow: z.number(),
     principalPaidThisYear: z.number(),
     cumulativePrincipalPaid: z.number(),
+    capitalAppreciation: z.number(),
     totalReturn: z.number(),
   })),
   expenseBreakdown: z.object({

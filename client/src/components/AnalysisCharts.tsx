@@ -52,6 +52,7 @@ export function AnalysisCharts({ results }: AnalysisChartsProps) {
     loanBalance: year.loanBalance,
     totalReturn: year.totalReturn,
     cumulativePrincipalPaid: year.cumulativePrincipalPaid,
+    capitalAppreciation: year.capitalAppreciation,
   }));
 
   const cashFlowData = results.yearlyProjections.map((year) => ({
@@ -233,7 +234,7 @@ export function AnalysisCharts({ results }: AnalysisChartsProps) {
         <CardContent>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={equityData}>
+              <AreaChart data={equityData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="year" 
@@ -249,30 +250,32 @@ export function AnalysisCharts({ results }: AnalysisChartsProps) {
                 <Legend />
                 <Area
                   type="monotone"
-                  dataKey="totalReturn"
-                  name="Total ROI"
-                  fill="hsl(var(--chart-1) / 0.3)"
-                  stroke="hsl(var(--chart-1))"
-                  strokeWidth={2}
+                  dataKey="capitalAppreciation"
+                  name="Capital Appreciation"
+                  stackId="1"
+                  fill="#1565C0"
+                  stroke="#0D47A1"
+                  strokeWidth={1}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="cashFlow"
-                  name="Cash Flow"
-                  stroke="hsl(var(--chart-2))"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="cumulativePrincipalPaid"
                   name="Principal Paid"
-                  stroke="hsl(var(--chart-3))"
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={false}
+                  stackId="1"
+                  fill="#1E88E5"
+                  stroke="#1565C0"
+                  strokeWidth={1}
                 />
-              </ComposedChart>
+                <Area
+                  type="monotone"
+                  dataKey="cashFlow"
+                  name="Cash Flow"
+                  stackId="1"
+                  fill="#64B5F6"
+                  stroke="#1E88E5"
+                  strokeWidth={1}
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </CardContent>

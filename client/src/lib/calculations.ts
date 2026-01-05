@@ -163,6 +163,7 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
     previousLoanBalance = loanBalance;
 
     const propertyValue = purchasePrice * propertyMultiplier;
+    const capitalAppreciation = propertyValue - purchasePrice;
     const equity = propertyValue - loanBalance;
 
     yearlyProjections.push({
@@ -174,7 +175,8 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
       cumulativeCashFlow,
       principalPaidThisYear,
       cumulativePrincipalPaid,
-      totalReturn: cumulativeCashFlow + cumulativePrincipalPaid,
+      capitalAppreciation,
+      totalReturn: cumulativeCashFlow + cumulativePrincipalPaid + capitalAppreciation,
     });
 
     if (year === holdingPeriodYears) {
