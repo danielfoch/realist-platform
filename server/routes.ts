@@ -93,26 +93,39 @@ export async function registerRoutes(
         propertyId: property.id,
       });
 
+      // Format phone to E.164 format for GHL
+      const formatPhoneE164 = (phone: string): string => {
+        const cleaned = phone.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Split name into firstName and lastName for GHL
+      const nameParts = lead.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // GHL expects these specific fields in the JSON body
       sendWebhook(lead.id, {
-        lead: {
-          id: lead.id,
-          name: lead.name,
-          email: lead.email,
-          phone: lead.phone,
-          consent: lead.consent,
-          leadSource: lead.leadSource,
-          createdAt: lead.createdAt,
-        },
-        property: {
-          address: property.formattedAddress,
-          city: property.city,
-          region: property.region,
-          country: property.country,
-        },
-        analysis: {
-          strategy: analysis.strategyType,
-          countryMode: analysis.countryMode,
-        },
+        email: lead.email,
+        firstName: firstName,
+        lastName: lastName,
+        phone: formatPhoneE164(lead.phone),
+        fullName: lead.name,
+        consent: lead.consent,
+        leadSource: lead.leadSource,
+        propertyAddress: property.formattedAddress,
+        propertyCity: property.city,
+        propertyRegion: property.region,
+        propertyCountry: property.country,
+        analysisStrategy: analysis.strategyType,
+        analysisCountryMode: analysis.countryMode,
+        createdAt: lead.createdAt,
       }).catch(err => console.error("Webhook error:", err));
 
       res.json({
