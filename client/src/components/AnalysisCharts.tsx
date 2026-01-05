@@ -50,6 +50,8 @@ export function AnalysisCharts({ results }: AnalysisChartsProps) {
     cashFlow: year.cumulativeCashFlow,
     propertyValue: year.propertyValue,
     loanBalance: year.loanBalance,
+    totalReturn: year.totalReturn,
+    cumulativePrincipalPaid: year.cumulativePrincipalPaid,
   }));
 
   const cashFlowData = results.yearlyProjections.map((year) => ({
@@ -224,14 +226,14 @@ export function AnalysisCharts({ results }: AnalysisChartsProps) {
         </CardContent>
       </Card>
 
-      <Card data-testid="chart-cumulative-cash-flow">
+      <Card data-testid="chart-return-on-investment">
         <CardHeader>
-          <CardTitle className="text-lg">Cumulative Cash Flow</CardTitle>
+          <CardTitle className="text-lg">Return on Investment</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={equityData}>
+              <ComposedChart data={equityData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="year" 
@@ -244,15 +246,33 @@ export function AnalysisCharts({ results }: AnalysisChartsProps) {
                   axisLine={{ stroke: "hsl(var(--border))" }}
                 />
                 <Tooltip content={<CustomTooltip />} />
+                <Legend />
                 <Area
                   type="monotone"
-                  dataKey="cashFlow"
-                  name="Cumulative Cash Flow"
-                  fill="hsl(var(--accent) / 0.3)"
-                  stroke="hsl(var(--accent))"
+                  dataKey="totalReturn"
+                  name="Total ROI"
+                  fill="hsl(var(--chart-1) / 0.3)"
+                  stroke="hsl(var(--chart-1))"
                   strokeWidth={2}
                 />
-              </AreaChart>
+                <Line
+                  type="monotone"
+                  dataKey="cashFlow"
+                  name="Cash Flow"
+                  stroke="hsl(var(--chart-2))"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="cumulativePrincipalPaid"
+                  name="Principal Paid"
+                  stroke="hsl(var(--chart-3))"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </CardContent>

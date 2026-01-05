@@ -199,6 +199,9 @@ export const analysisResultsSchema = z.object({
     propertyValue: z.number(),
     loanBalance: z.number(),
     cumulativeCashFlow: z.number(),
+    principalPaidThisYear: z.number(),
+    cumulativePrincipalPaid: z.number(),
+    totalReturn: z.number(),
   })),
   expenseBreakdown: z.object({
     propertyTax: z.number(),

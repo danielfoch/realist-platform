@@ -136,6 +136,9 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
   const cashFlows: number[] = [-totalCashInvested];
   let cumulativeCashFlow = 0;
 
+  let previousLoanBalance = loanAmount;
+  let cumulativePrincipalPaid = 0;
+
   for (let year = 1; year <= holdingPeriodYears; year++) {
     const rentMultiplier = Math.pow(1 + rentGrowthPercent / 100, year - 1);
     const expenseMultiplier = Math.pow(1 + expenseInflationPercent / 100, year - 1);
@@ -145,15 +148,9 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
     const yearlyVacancy = (yearlyRent * vacancyPercent) / 100;
     const yearlyEffectiveIncome = yearlyRent - yearlyVacancy;
 
-    const yearlyExpenses =
-      (propertyTax +
-        insurance +
-        utilities * 12 +
-        (monthlyRent * 12 * maintenancePercent) / 100 +
-        (monthlyRent * 12 * managementPercent) / 100 +
-        (monthlyRent * 12 * capexReservePercent) / 100 +
-        otherExpenses * 12) *
-      expenseMultiplier;
+    const fixedExpenses = (propertyTax + insurance + utilities * 12 + otherExpenses * 12) * expenseMultiplier;
+    const rentBasedExpenses = (yearlyRent * (maintenancePercent + managementPercent + capexReservePercent)) / 100;
+    const yearlyExpenses = fixedExpenses + rentBasedExpenses;
 
     const yearlyNoi = yearlyEffectiveIncome - yearlyExpenses;
     const yearlyCashFlow = yearlyNoi - annualDebtService;
@@ -161,6 +158,10 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
 
     const monthsElapsed = year * 12;
     const loanBalance = calculateLoanBalance(loanAmount, interestRate, amortizationYears, monthsElapsed);
+    const principalPaidThisYear = previousLoanBalance - loanBalance;
+    cumulativePrincipalPaid += principalPaidThisYear;
+    previousLoanBalance = loanBalance;
+
     const propertyValue = purchasePrice * propertyMultiplier;
     const equity = propertyValue - loanBalance;
 
@@ -171,6 +172,9 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
       propertyValue,
       loanBalance,
       cumulativeCashFlow,
+      principalPaidThisYear,
+      cumulativePrincipalPaid,
+      totalReturn: cumulativeCashFlow + cumulativePrincipalPaid,
     });
 
     if (year === holdingPeriodYears) {
