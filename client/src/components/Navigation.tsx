@@ -11,6 +11,7 @@ export function Navigation() {
   const navLinks = [
     { href: "/", label: "Analyzer", external: false },
     { href: "/events", label: "Events", external: false },
+    { href: "/blog", label: "Blog", external: false },
     { href: "https://my-store-108d526.creator-spring.com", label: "Shop", external: true },
     { href: "/about", label: "About", external: false },
   ];

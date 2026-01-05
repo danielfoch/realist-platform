@@ -352,5 +352,24 @@ export async function registerRoutes(
     }
   });
 
+  // Blog posts from Substack RSS feed
+  app.get("/api/blog/posts", async (req, res) => {
+    try {
+      const substackName = "danielfoch";
+      const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=https://${substackName}.substack.com/feed`;
+      
+      const response = await fetch(rss2jsonUrl);
+      if (!response.ok) {
+        throw new Error(`RSS fetch failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching blog posts:", error);
+      res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
   return httpServer;
 }
