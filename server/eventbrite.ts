@@ -16,7 +16,7 @@ export interface EventbriteEvent {
 
 const ORGANIZER_ID = "87580319633";
 const CACHE_KEY = "eventbrite:events";
-const CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 1 day
 
 // In-memory cache as primary cache (works in production without database)
 let memoryCache: {
