@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play, Users, MapPin, TrendingUp } from "lucide-react";
+import { ArrowRight, Play, Users, MapPin, TrendingUp, GraduationCap } from "lucide-react";
 import reutersLogo from "@assets/image_1767559636706.png";
 import wsjLogo from "@assets/image_1767563210169.png";
 import bloombergLogo from "@assets/image_1767559733359.png";
@@ -47,8 +47,9 @@ const mediaLogos: MediaLogo[] = [
 
 export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
   const stats = [
-    { icon: Users, value: "11,000+", label: "members" },
-    { icon: MapPin, value: "26", label: "cities" },
+    { icon: Users, value: "11,000+", label: "meetup members" },
+    { icon: GraduationCap, value: "1,200+", label: "skool members" },
+    { icon: MapPin, value: "26", label: "Canadian cities" },
     { icon: TrendingUp, value: "$2.6B", label: "in deals analyzed" },
   ];
 
