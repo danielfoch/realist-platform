@@ -65,6 +65,11 @@ export default function Shop() {
               "googleFonts": ["Roboto"]
             },
             "productSet": {
+              "contents": {
+                "products": true,
+                "pagination": false
+              },
+              "limit": 50,
               "styles": {
                 "products": {
                   "@media (min-width: 601px)": { "margin-left": "-20px" }
