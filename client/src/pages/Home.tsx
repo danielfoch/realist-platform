@@ -198,8 +198,6 @@ export default function Home() {
       <main>
         <HeroSection onAnalyzeClick={handleAnalyzeClick} />
 
-        <DealOfTheDay onAnalyzeClick={handleAnalyzeClick} />
-
         <section 
           ref={analyzerRef}
           className="py-16 md:py-24 border-t border-border/50"
@@ -366,6 +364,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <DealOfTheDay onAnalyzeClick={handleAnalyzeClick} />
 
         {showResults && leadCaptured && (
           <section 
