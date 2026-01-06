@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertLeadSchema, insertPropertySchema, insertAnalysisSchema } from "@shared/schema";
+import { insertLeadSchema, insertPropertySchema, insertAnalysisSchema, insertSavedDealSchema } from "@shared/schema";
 import { z } from "zod";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 
@@ -368,6 +368,61 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching blog posts:", error);
       res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  // Saved Deals API for Compare Deals feature
+  app.post("/api/saved-deals", async (req, res) => {
+    try {
+      const validatedData = insertSavedDealSchema.parse(req.body);
+      const deal = await storage.createSavedDeal(validatedData);
+      res.json({ success: true, data: deal });
+    } catch (error) {
+      console.error("Error saving deal:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ success: false, error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ success: false, error: "Failed to save deal" });
+      }
+    }
+  });
+
+  app.get("/api/saved-deals", async (req, res) => {
+    try {
+      const sessionId = req.query.sessionId as string;
+      if (!sessionId) {
+        res.status(400).json({ error: "Session ID required" });
+        return;
+      }
+      const deals = await storage.getSavedDealsBySession(sessionId);
+      res.json(deals);
+    } catch (error) {
+      console.error("Error fetching saved deals:", error);
+      res.status(500).json({ error: "Failed to fetch saved deals" });
+    }
+  });
+
+  app.get("/api/saved-deals/:id", async (req, res) => {
+    try {
+      const deal = await storage.getSavedDeal(req.params.id);
+      if (!deal) {
+        res.status(404).json({ error: "Deal not found" });
+        return;
+      }
+      res.json(deal);
+    } catch (error) {
+      console.error("Error fetching deal:", error);
+      res.status(500).json({ error: "Failed to fetch deal" });
+    }
+  });
+
+  app.delete("/api/saved-deals/:id", async (req, res) => {
+    try {
+      await storage.deleteSavedDeal(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting deal:", error);
+      res.status(500).json({ error: "Failed to delete deal" });
     }
   });
 

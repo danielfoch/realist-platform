@@ -4,6 +4,7 @@ import {
   analyses, 
   webhookLogs,
   dataCache,
+  savedDeals,
   type Lead, 
   type InsertLead,
   type Property,
@@ -14,6 +15,8 @@ import {
   type InsertWebhookLog,
   type DataCache,
   type InsertDataCache,
+  type SavedDeal,
+  type InsertSavedDeal,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
@@ -42,6 +45,11 @@ export interface IStorage {
 
   getDataCache(key: string): Promise<DataCache | undefined>;
   setDataCache(data: InsertDataCache): Promise<DataCache>;
+
+  createSavedDeal(deal: InsertSavedDeal): Promise<SavedDeal>;
+  getSavedDeal(id: string): Promise<SavedDeal | undefined>;
+  getSavedDealsBySession(sessionId: string): Promise<SavedDeal[]>;
+  deleteSavedDeal(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -151,6 +159,24 @@ export class DatabaseStorage implements IStorage {
     }
     const [cache] = await db.insert(dataCache).values(insertData).returning();
     return cache;
+  }
+
+  async createSavedDeal(insertDeal: InsertSavedDeal): Promise<SavedDeal> {
+    const [deal] = await db.insert(savedDeals).values(insertDeal).returning();
+    return deal;
+  }
+
+  async getSavedDeal(id: string): Promise<SavedDeal | undefined> {
+    const [deal] = await db.select().from(savedDeals).where(eq(savedDeals.id, id));
+    return deal || undefined;
+  }
+
+  async getSavedDealsBySession(sessionId: string): Promise<SavedDeal[]> {
+    return db.select().from(savedDeals).where(eq(savedDeals.sessionId, sessionId)).orderBy(desc(savedDeals.createdAt));
+  }
+
+  async deleteSavedDeal(id: string): Promise<void> {
+    await db.delete(savedDeals).where(eq(savedDeals.id, id));
   }
 }
 

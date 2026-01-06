@@ -96,6 +96,18 @@ export const dataCache = pgTable("data_cache", {
   fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
 });
 
+export const savedDeals = pgTable("saved_deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  address: text("address"),
+  countryMode: text("country_mode").notNull(),
+  strategyType: text("strategy_type").notNull(),
+  inputsJson: jsonb("inputs_json").notNull(),
+  resultsJson: jsonb("results_json").notNull(),
+  sessionId: varchar("session_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
   createdAt: true,
@@ -124,6 +136,11 @@ export const insertDataCacheSchema = createInsertSchema(dataCache).omit({
   fetchedAt: true,
 });
 
+export const insertSavedDealSchema = createInsertSchema(savedDeals).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
 
@@ -138,6 +155,9 @@ export type WebhookLog = typeof webhookLogs.$inferSelect;
 
 export type InsertDataCache = z.infer<typeof insertDataCacheSchema>;
 export type DataCache = typeof dataCache.$inferSelect;
+
+export type InsertSavedDeal = z.infer<typeof insertSavedDealSchema>;
+export type SavedDeal = typeof savedDeals.$inferSelect;
 
 export const strategyTypes = [
   "buy_hold",
