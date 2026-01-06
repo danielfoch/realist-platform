@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play, Users, MapPin, TrendingUp, GraduationCap } from "lucide-react";
+import { ArrowRight, Users, MapPin, TrendingUp, GraduationCap } from "lucide-react";
 import reutersLogo from "@assets/image_1767559636706.png";
 import wsjLogo from "@assets/image_1767563210169.png";
 import bloombergLogo from "@assets/image_1767559733359.png";
@@ -72,7 +72,7 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
               className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
               data-testid="text-hero-subhead"
             >
-              A data-driven curriculum brought to you by Canada's #1 real estate podcast
+              Data-driven real estate decisions - brought to you by Canada's #1 real estate podcast
             </p>
           </div>
 
@@ -97,15 +97,15 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
                 Join the Community
               </Button>
             </a>
-            <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer">
+            <a href="/events">
               <Button 
                 variant="outline" 
                 size="lg" 
                 className="gap-2 px-8 py-6 text-lg"
-                data-testid="button-hero-book-call"
+                data-testid="button-hero-events"
               >
-                <Play className="h-5 w-5" />
-                Book a Free Consult Call
+                <MapPin className="h-5 w-5" />
+                Attend an Event
               </Button>
             </a>
           </div>
