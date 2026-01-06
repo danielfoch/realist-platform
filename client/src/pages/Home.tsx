@@ -3,7 +3,6 @@ import { useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
-import { DealOfTheDay } from "@/components/DealOfTheDay";
 import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
 import { DealInputs } from "@/components/DealInputs";
@@ -364,8 +363,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        <DealOfTheDay onAnalyzeClick={handleAnalyzeClick} />
 
         {showResults && leadCaptured && (
           <section 
