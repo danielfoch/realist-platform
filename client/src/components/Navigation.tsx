@@ -12,7 +12,7 @@ export function Navigation() {
     { href: "/", label: "Analyzer", external: false },
     { href: "/events", label: "Events", external: false },
     { href: "/blog", label: "Blog", external: false },
-    { href: "https://realist-8907.myshopify.com", label: "Shop", external: true },
+    { href: "/shop", label: "Shop", external: false },
     { href: "/about", label: "About", external: false },
   ];
 
