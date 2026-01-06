@@ -19,6 +19,14 @@ export default function Shop() {
           moneyFormat: '%24%7B%7Bamount%7D%7D',
           options: {
             "product": {
+              "contents": {
+                "img": true,
+                "title": true,
+                "price": true,
+                "description": false,
+                "button": true,
+                "imgWithCarousel": false
+              },
               "styles": {
                 "product": {
                   "@media (min-width: 601px)": {
@@ -32,12 +40,16 @@ export default function Shop() {
                     "position": "absolute",
                     "left": "0",
                     "right": "0",
-                    "top": "0"
+                    "top": "0",
+                    "cursor": "pointer"
                   },
                   "imgWrapper": {
                     "padding-top": "calc(75% + 15px)",
                     "position": "relative",
                     "height": "0"
+                  },
+                  "title": {
+                    "cursor": "pointer"
                   }
                 },
                 "button": {
@@ -46,7 +58,23 @@ export default function Shop() {
                   ":focus": { "background-color": "#b82a2a" }
                 }
               },
-              "text": { "button": "Add to cart" }
+              "text": { "button": "Add to cart" },
+              "events": {
+                "afterRender": function(component: any) {
+                  const img = component.node.querySelector('.shopify-buy__product__variant-img');
+                  const title = component.node.querySelector('.shopify-buy__product__title');
+                  if (img) {
+                    img.addEventListener('click', function() {
+                      component.openModal();
+                    });
+                  }
+                  if (title) {
+                    title.addEventListener('click', function() {
+                      component.openModal();
+                    });
+                  }
+                }
+              }
             },
             "productSet": {
               "styles": {
