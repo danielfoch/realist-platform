@@ -1,5 +1,6 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
 import { AddressInput } from "@/components/AddressInput";
@@ -11,11 +12,22 @@ import { ResultsSummary } from "@/components/ResultsSummary";
 import { LeadCaptureModal } from "@/components/LeadCaptureModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { calculateBuyHoldAnalysis, formatCurrency } from "@/lib/calculations";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
-import { Calculator, FileDown, Share2, BarChart3 } from "lucide-react";
+import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare } from "lucide-react";
+
+function getSessionId(): string {
+  let sessionId = localStorage.getItem("realist_session_id");
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("realist_session_id", sessionId);
+  }
+  return sessionId;
+}
 
 const defaultInputs: BuyHoldInputs = {
   purchasePrice: 500000,
@@ -57,6 +69,8 @@ export default function Home() {
   const [showResults, setShowResults] = useState(false);
   const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
   const [leadCaptured, setLeadCaptured] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [dealName, setDealName] = useState("");
 
   const results = useMemo<AnalysisResults>(() => {
     return calculateBuyHoldAnalysis(inputs);
@@ -131,6 +145,49 @@ export default function Home() {
 
   const handleLeadSubmit = async (data: { name: string; email: string; phone: string; consent: boolean }) => {
     await leadMutation.mutateAsync(data);
+  };
+
+  const saveDealMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const formattedAddress = [address, city, region].filter(Boolean).join(", ") || "Unnamed Property";
+      const response = await apiRequest("POST", "/api/saved-deals", {
+        name,
+        address: formattedAddress,
+        countryMode: country,
+        strategyType: strategy,
+        inputsJson: inputs,
+        resultsJson: results,
+        sessionId: getSessionId(),
+      });
+      return response;
+    },
+    onSuccess: () => {
+      setSaveDialogOpen(false);
+      setDealName("");
+      toast({
+        title: "Deal Saved!",
+        description: "You can now compare this deal with others.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save deal. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveDeal = () => {
+    const defaultName = [address, city].filter(Boolean).join(", ") || `Deal ${new Date().toLocaleDateString()}`;
+    setDealName(defaultName);
+    setSaveDialogOpen(true);
+  };
+
+  const handleConfirmSave = () => {
+    if (dealName.trim()) {
+      saveDealMutation.mutate(dealName.trim());
+    }
   };
 
   return (
@@ -320,7 +377,17 @@ export default function Home() {
                     {[address, city, region].filter(Boolean).join(", ") || "Your Property"}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" className="gap-2" onClick={handleSaveDeal} data-testid="button-save-deal">
+                    <Save className="h-4 w-4" />
+                    Save Deal
+                  </Button>
+                  <Link href="/compare">
+                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-compare">
+                      <GitCompare className="h-4 w-4" />
+                      Compare Deals
+                    </Button>
+                  </Link>
                   <Button variant="outline" size="sm" className="gap-2" data-testid="button-export">
                     <FileDown className="h-4 w-4" />
                     Export PDF
@@ -376,6 +443,35 @@ export default function Home() {
         onSubmit={handleLeadSubmit}
         isSubmitting={leadMutation.isPending}
       />
+
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Deal for Comparison</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="text-sm font-medium mb-2 block">Deal Name</label>
+            <Input
+              value={dealName}
+              onChange={(e) => setDealName(e.target.value)}
+              placeholder="Enter a name for this deal"
+              data-testid="input-deal-name"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmSave} 
+              disabled={!dealName.trim() || saveDealMutation.isPending}
+              data-testid="button-confirm-save"
+            >
+              {saveDealMutation.isPending ? "Saving..." : "Save Deal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import About from "@/pages/About";
 import Events from "@/pages/Events";
 import Blog from "@/pages/Blog";
 import Shop from "@/pages/Shop";
+import Compare from "@/pages/Compare";
 import Admin from "@/pages/Admin";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/events" component={Events} />
       <Route path="/blog" component={Blog} />
       <Route path="/shop" component={Shop} />
+      <Route path="/compare" component={Compare} />
       <Route path="/admin" component={Admin} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/terms" component={Terms} />
