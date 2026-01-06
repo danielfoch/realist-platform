@@ -147,42 +147,39 @@ export default function About() {
       <main>
         {/* Hero Section */}
         <section className="py-16 md:py-24">
-          <div className="max-w-4xl mx-auto px-4 md:px-6 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6" data-testid="text-about-title">
+          <div className="max-w-4xl mx-auto px-4 md:px-6">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-center" data-testid="text-about-title">
               About Realist.ca
             </h1>
-            <p className="text-xl text-muted-foreground leading-relaxed mb-8">
-              We're building the most powerful real estate deal analyzer in the world — and a community 
-              that helps Canadians turn underwriting into real wealth.
+            <p className="text-xl text-muted-foreground leading-relaxed mb-8 text-center">
+              We're building Canada's biggest and most active real estate investor community — 
+              connecting thousands of investors across the country through education, events, and 
+              data-driven tools that help Canadians build real wealth.
             </p>
             
-            {/* Proof Chips */}
-            <div className="flex flex-wrap justify-center gap-3 mb-10">
-              {proofChips.map((chip) => (
-                <Badge 
-                  key={chip.label} 
-                  variant="secondary" 
-                  className="px-4 py-2 text-sm flex items-center gap-2"
-                >
-                  <chip.icon className="h-4 w-4" />
-                  {chip.label}
-                </Badge>
-              ))}
-            </div>
-
-            {/* Hero CTAs */}
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/">
-                <Button size="lg" data-testid="button-hero-analyze">
-                  Start Analyzing
-                </Button>
-              </Link>
-              <a href="https://www.skool.com/realist" target="_blank" rel="noopener noreferrer">
-                <Button size="lg" variant="outline" data-testid="button-hero-community">
-                  Join the Community
-                </Button>
-              </a>
-            </div>
+            {/* Proof Points as Bullets */}
+            <ul className="space-y-3 max-w-xl mx-auto text-muted-foreground">
+              <li className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                <span>Canada's #1 real estate podcast</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                <span>
+                  <Link href="/events" className="text-primary hover:underline">11,000+ in-person community members</Link>
+                </span>
+              </li>
+              <li className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                <span>
+                  <a href="https://www.skool.com/realist" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">1,200+ on Skool</a>
+                </span>
+              </li>
+              <li className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                <span>6,000,000+ advertiser impressions delivered</span>
+              </li>
+            </ul>
           </div>
         </section>
 
