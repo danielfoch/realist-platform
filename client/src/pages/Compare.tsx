@@ -35,18 +35,34 @@ type SortKey = "name" | "capRate" | "cashOnCash" | "dscr" | "monthlyCashFlow";
 type SortDirection = "asc" | "desc";
 
 const CHART_COLORS = [
-  "hsl(var(--accent))",
-  "hsl(var(--primary))",
-  "hsl(210, 70%, 50%)",
-  "hsl(280, 60%, 50%)",
-  "hsl(45, 80%, 50%)",
-  "hsl(160, 60%, 45%)",
+  "#FF5A5F",
+  "#00A699",
+  "#3B82F6",
+  "#8B5CF6",
+  "#F59E0B",
+  "#10B981",
 ];
+
+function safeNumber(value: unknown): number {
+  if (typeof value === "number" && !isNaN(value) && isFinite(value)) {
+    return value;
+  }
+  return 0;
+}
+
+function formatMetric(value: unknown, type: "percent" | "ratio" | "currency"): string {
+  const num = safeNumber(value);
+  if (type === "percent") return `${num.toFixed(1)}%`;
+  if (type === "ratio") return num.toFixed(2);
+  if (type === "currency") return formatCurrency(num);
+  return num.toFixed(2);
+}
 
 function getMetricValue(deal: SavedDeal, key: SortKey): number | string {
   if (key === "name") return deal.name;
   const results = deal.resultsJson as AnalysisResults;
-  return results[key] ?? 0;
+  const value = results?.[key];
+  return safeNumber(value);
 }
 
 function MetricComparison({ 
@@ -188,19 +204,23 @@ export default function Compare() {
   }, [deals, sortKey, sortDirection]);
 
   const chartData = useMemo(() => {
-    return deals.map((deal, index) => {
+    const dealsToChart = selectedDeals.size > 0 
+      ? deals.filter(d => selectedDeals.has(d.id))
+      : deals;
+    
+    return dealsToChart.map((deal, index) => {
       const results = deal.resultsJson as AnalysisResults;
       return {
         name: deal.name.length > 15 ? deal.name.substring(0, 15) + "..." : deal.name,
         fullName: deal.name,
-        capRate: results.capRate ?? 0,
-        cashOnCash: results.cashOnCash ?? 0,
-        dscr: results.dscr ?? 0,
-        monthlyCashFlow: results.monthlyCashFlow ?? 0,
+        capRate: safeNumber(results?.capRate),
+        cashOnCash: safeNumber(results?.cashOnCash),
+        dscr: safeNumber(results?.dscr),
+        monthlyCashFlow: safeNumber(results?.monthlyCashFlow),
         color: CHART_COLORS[index % CHART_COLORS.length],
       };
     });
-  }, [deals]);
+  }, [deals, selectedDeals]);
 
   const toggleDeal = (id: string) => {
     setSelectedDeals((prev) => {
@@ -506,21 +526,21 @@ export default function Compare() {
                         <div className="grid grid-cols-2 gap-3 text-sm">
                           <div>
                             <div className="text-muted-foreground">Cash Flow</div>
-                            <div className={`font-mono font-bold ${results.monthlyCashFlow >= 0 ? "text-accent" : "text-destructive"}`}>
-                              {formatCurrency(results.monthlyCashFlow)}/mo
+                            <div className={`font-mono font-bold ${safeNumber(results?.monthlyCashFlow) >= 0 ? "text-accent" : "text-destructive"}`}>
+                              {formatMetric(results?.monthlyCashFlow, "currency")}/mo
                             </div>
                           </div>
                           <div>
                             <div className="text-muted-foreground">Cap Rate</div>
-                            <div className="font-mono font-bold">{results.capRate.toFixed(1)}%</div>
+                            <div className="font-mono font-bold">{formatMetric(results?.capRate, "percent")}</div>
                           </div>
                           <div>
                             <div className="text-muted-foreground">CoC Return</div>
-                            <div className="font-mono font-bold">{results.cashOnCash.toFixed(1)}%</div>
+                            <div className="font-mono font-bold">{formatMetric(results?.cashOnCash, "percent")}</div>
                           </div>
                           <div>
                             <div className="text-muted-foreground">DSCR</div>
-                            <div className="font-mono font-bold">{results.dscr.toFixed(2)}</div>
+                            <div className="font-mono font-bold">{formatMetric(results?.dscr, "ratio")}</div>
                           </div>
                         </div>
                         <div className="text-xs text-muted-foreground mt-3">
@@ -617,16 +637,16 @@ export default function Compare() {
                                 <div className="text-sm text-muted-foreground truncate max-w-[200px]">{deal.address}</div>
                               </td>
                               <td className="p-4 text-right font-mono">
-                                {results.capRate.toFixed(1)}%
+                                {formatMetric(results?.capRate, "percent")}
                               </td>
                               <td className="p-4 text-right font-mono">
-                                {results.cashOnCash.toFixed(1)}%
+                                {formatMetric(results?.cashOnCash, "percent")}
                               </td>
                               <td className="p-4 text-right font-mono">
-                                {results.dscr.toFixed(2)}
+                                {formatMetric(results?.dscr, "ratio")}
                               </td>
-                              <td className={`p-4 text-right font-mono font-bold ${results.monthlyCashFlow >= 0 ? "text-accent" : "text-destructive"}`}>
-                                {formatCurrency(results.monthlyCashFlow)}/mo
+                              <td className={`p-4 text-right font-mono font-bold ${safeNumber(results?.monthlyCashFlow) >= 0 ? "text-accent" : "text-destructive"}`}>
+                                {formatMetric(results?.monthlyCashFlow, "currency")}/mo
                               </td>
                               <td className="p-4">
                                 <Button 
