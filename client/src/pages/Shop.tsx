@@ -59,20 +59,14 @@ export default function Shop() {
                 }
               },
               "text": { "button": "Add to cart" },
-              "events": {
-                "afterRender": function(component: any) {
-                  const img = component.node.querySelector('.shopify-buy__product__variant-img');
-                  const title = component.node.querySelector('.shopify-buy__product__title');
-                  if (img) {
-                    img.addEventListener('click', function() {
-                      component.openModal();
-                    });
-                  }
-                  if (title) {
-                    title.addEventListener('click', function() {
-                      component.openModal();
-                    });
-                  }
+              "DOMEvents": {
+                'img click': function(evt: any, target: any) {
+                  evt.preventDefault();
+                  target.component.props.product && target.component.openOnlineStore();
+                },
+                'click .shopify-buy__product__title': function(evt: any, target: any) {
+                  evt.preventDefault();
+                  target.component.props.product && target.component.openOnlineStore();
                 }
               }
             },
@@ -88,7 +82,8 @@ export default function Shop() {
                 "img": false,
                 "imgWithCarousel": true,
                 "button": false,
-                "buttonWithQuantity": true
+                "buttonWithQuantity": true,
+                "description": true
               },
               "styles": {
                 "product": {
@@ -105,6 +100,13 @@ export default function Shop() {
                 }
               },
               "text": { "button": "Add to cart" }
+            },
+            "modal": {
+              "styles": {
+                "modal": {
+                  "background-color": "rgba(0, 0, 0, 0.8)"
+                }
+              }
             },
             "option": {},
             "cart": {
