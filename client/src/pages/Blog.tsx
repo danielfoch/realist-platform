@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
+import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,6 +58,12 @@ export default function Blog() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Canadian Real Estate Blog - Market Analysis & Investment Tips"
+        description="Expert insights on Canadian real estate investing from Daniel Foch and the Realist.ca team. Toronto market analysis, BRRR strategies, multiplex investing tips, and wealth-building advice for Canadian investors."
+        keywords="canadian real estate blog, toronto real estate news, real estate investing tips canada, daniel foch blog, housing market analysis canada, BRRR strategy guide, rental property investing"
+        canonicalUrl="/blog"
+      />
       <Navigation />
       
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-12">

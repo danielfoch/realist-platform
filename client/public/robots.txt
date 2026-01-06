@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+
+# Main pages
+Allow: /about
+Allow: /blog
+Allow: /events
+Allow: /shop
+Allow: /compare
+
+# Legal pages
+Allow: /privacy
+Allow: /terms
+
+# Block admin pages
+Disallow: /admin
+
+# Sitemap location
+Sitemap: https://realist.ca/sitemap.xml
+
+# Crawl delay for politeness
+Crawl-delay: 1

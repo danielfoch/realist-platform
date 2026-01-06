@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -419,6 +420,12 @@ export default function Compare() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Compare Real Estate Deals - Side-by-Side Property Analysis"
+        description="Compare multiple Canadian real estate investment properties side-by-side. Analyze cap rates, cash-on-cash returns, and investment metrics across different strategies. Make data-driven decisions with Realist.ca."
+        keywords="compare real estate deals, property comparison tool, investment property analysis, cap rate comparison, real estate ROI calculator canada"
+        canonicalUrl="/compare"
+      />
       <Navigation />
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
 import { AddressInput } from "@/components/AddressInput";
@@ -190,8 +191,20 @@ export default function Home() {
     }
   };
 
+  const combinedSchema = {
+    "@context": "https://schema.org",
+    "@graph": [organizationSchema, websiteSchema, softwareSchema]
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Canadian Real Estate Deal Analyzer - Toronto & Canada Property Investment Calculator"
+        description="Free real estate deal analyzer for Canadian investors. Calculate cap rates, cash-on-cash returns, IRR for properties in Toronto, Vancouver, Calgary. Compare Buy & Hold, BRRR, Flip, Airbnb strategies. Home of the Canadian Real Estate Investor Podcast with Daniel Foch."
+        keywords="canadian real estate, toronto real estate, real estate investing in canada, daniel foch, property investment calculator, cap rate calculator canada, BRRR strategy, multiplex investing, real estate deal analyzer, canadian housing market, rental property analysis, cash on cash return"
+        canonicalUrl="/"
+        structuredData={combinedSchema}
+      />
       <Navigation />
       
       <main>

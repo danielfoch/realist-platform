@@ -1,4 +1,5 @@
 import { Navigation } from "@/components/Navigation";
+import { SEO, personSchema, organizationSchema } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -140,8 +141,20 @@ function LogoPlaceholder({ name }: { name: string }) {
 }
 
 export default function About() {
+  const aboutSchema = {
+    "@context": "https://schema.org",
+    "@graph": [organizationSchema, personSchema]
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="About Realist.ca - Daniel Foch & The Canadian Real Estate Investor Podcast Team"
+        description="Meet the team behind Canada's #1 real estate investor community. Daniel Foch, Nick Hill, and Jonathan Woo lead Realist.ca - home of the Canadian Real Estate Investor Podcast with 120k monthly listeners. Building wealth through real estate education."
+        keywords="daniel foch, canadian real estate investor podcast, nick hill, real estate investing canada, toronto real estate expert, canadian housing market analyst, real estate community canada, multiplex investing expert"
+        canonicalUrl="/about"
+        structuredData={aboutSchema}
+      />
       <Navigation />
 
       <main>

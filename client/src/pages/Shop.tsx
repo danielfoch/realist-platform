@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
+import { SEO } from "@/components/SEO";
 
 export default function Shop() {
   useEffect(() => {
@@ -188,6 +189,12 @@ export default function Shop() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <SEO
+        title="Canadian Real Estate Investor Podcast Merch - Official Shop"
+        description="Shop official merchandise from the Canadian Real Estate Investor Podcast. Rep the Realist.ca community with exclusive apparel and accessories."
+        keywords="canadian real estate investor podcast merch, realist.ca shop, real estate investor apparel, daniel foch merchandise"
+        canonicalUrl="/shop"
+      />
       <Navigation />
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
+import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -158,8 +159,27 @@ export default function Events() {
     return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
   });
 
+  const eventsSchema = {
+    "@context": "https://schema.org",
+    "@type": "EventSeries",
+    "name": "Canadian Real Estate Investor Events",
+    "organizer": {
+      "@type": "Organization",
+      "name": "Realist.ca",
+      "url": "https://realist.ca"
+    },
+    "description": "Real estate investing events, workshops, and networking opportunities for Canadian investors hosted by the Canadian Real Estate Investor Podcast team."
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Real Estate Investor Events - Toronto & Canada Networking"
+        description="Join 11,000+ Canadian real estate investors at our exclusive events. Network with Daniel Foch and the Canadian Real Estate Investor Podcast community. Workshops, meetups, and conferences in Toronto and across Canada."
+        keywords="real estate investor events toronto, canadian real estate meetup, real estate networking canada, daniel foch events, investor conference canada, real estate workshop toronto"
+        canonicalUrl="/events"
+        structuredData={eventsSchema}
+      />
       <Navigation />
 
       <main className="py-16 md:py-24">
