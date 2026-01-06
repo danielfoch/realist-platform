@@ -23,6 +23,7 @@ import { SiX, SiTiktok } from "react-icons/si";
 import { Link } from "wouter";
 import nickImage from "@assets/ChatGPT_Image_Jan_6,_2026,_02_50_25_PM_1767729122931.png";
 import jonathanImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_15_PM_1767729800256.png";
+import danielImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_13_PM_1767729810400.png";
 
 const proofChips = [
   { label: "Canada's #1 real estate podcast", icon: Podcast },
@@ -43,7 +44,7 @@ const teamMembers = [
   {
     name: "Daniel Foch",
     role: "Chief Real Estate Officer",
-    image: null,
+    image: danielImage,
     initials: "DF",
     credentials: [
       "Real estate broker & analyst",
