@@ -140,15 +140,23 @@ export default function Events() {
     queryKey: ["/api/events"],
   });
 
-  const upcomingEvents = data?.events?.filter(e => {
+  const upcomingEvents = (data?.events?.filter(e => {
     if (!e.startDate) return true;
     return isFuture(parseISO(e.startDate));
-  }) || [];
+  }) || []).sort((a, b) => {
+    if (!a.startDate) return 1;
+    if (!b.startDate) return -1;
+    return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+  });
 
-  const pastEvents = data?.events?.filter(e => {
+  const pastEvents = (data?.events?.filter(e => {
     if (!e.startDate) return false;
     return isPast(parseISO(e.startDate));
-  }) || [];
+  }) || []).sort((a, b) => {
+    if (!a.startDate) return 1;
+    if (!b.startDate) return -1;
+    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+  });
 
   return (
     <div className="min-h-screen bg-background">
