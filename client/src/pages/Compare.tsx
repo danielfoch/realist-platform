@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/calculations";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { SavedDeal, AnalysisResults } from "@shared/schema";
-import { Trash2, GitCompare, ArrowLeft, TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
+import { Trash2, GitCompare, ArrowLeft, TrendingUp, BarChart3, Table2, LayoutGrid, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
 
 function getSessionId(): string {
   let sessionId = localStorage.getItem("realist_session_id");
@@ -28,6 +30,24 @@ const strategyLabels: Record<string, string> = {
   airbnb: "Airbnb",
   multiplex: "Multiplex",
 };
+
+type SortKey = "name" | "capRate" | "cashOnCash" | "dscr" | "monthlyCashFlow";
+type SortDirection = "asc" | "desc";
+
+const CHART_COLORS = [
+  "hsl(var(--accent))",
+  "hsl(var(--primary))",
+  "hsl(210, 70%, 50%)",
+  "hsl(280, 60%, 50%)",
+  "hsl(45, 80%, 50%)",
+  "hsl(160, 60%, 45%)",
+];
+
+function getMetricValue(deal: SavedDeal, key: SortKey): number | string {
+  if (key === "name") return deal.name;
+  const results = deal.resultsJson as AnalysisResults;
+  return results[key] ?? 0;
+}
 
 function MetricComparison({ 
   label, 
@@ -78,10 +98,47 @@ function MetricComparison({
   );
 }
 
+function SortableHeader({ 
+  label, 
+  sortKey, 
+  currentSort, 
+  direction, 
+  onSort 
+}: { 
+  label: string; 
+  sortKey: SortKey; 
+  currentSort: SortKey; 
+  direction: SortDirection; 
+  onSort: (key: SortKey) => void;
+}) {
+  const isActive = currentSort === sortKey;
+  
+  return (
+    <button
+      onClick={() => onSort(sortKey)}
+      className="flex items-center gap-1 text-sm font-medium hover:text-foreground transition-colors"
+      data-testid={`sort-${sortKey}`}
+    >
+      {label}
+      {isActive ? (
+        direction === "asc" ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )
+      ) : (
+        <ArrowUpDown className="h-4 w-4 opacity-50" />
+      )}
+    </button>
+  );
+}
+
 export default function Compare() {
   const { toast } = useToast();
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
   const [showComparison, setShowComparison] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("capRate");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const { data: deals = [], isLoading } = useQuery<SavedDeal[]>({
     queryKey: ["/api/saved-deals", getSessionId()],
@@ -112,6 +169,39 @@ export default function Compare() {
     return deals.filter((d) => selectedDeals.has(d.id));
   }, [deals, selectedDeals]);
 
+  const sortedDeals = useMemo(() => {
+    return [...deals].sort((a, b) => {
+      const aVal = getMetricValue(a, sortKey);
+      const bVal = getMetricValue(b, sortKey);
+      
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return sortDirection === "asc" 
+          ? aVal.localeCompare(bVal) 
+          : bVal.localeCompare(aVal);
+      }
+      
+      const aNum = typeof aVal === "number" ? aVal : 0;
+      const bNum = typeof bVal === "number" ? bVal : 0;
+      
+      return sortDirection === "asc" ? aNum - bNum : bNum - aNum;
+    });
+  }, [deals, sortKey, sortDirection]);
+
+  const chartData = useMemo(() => {
+    return deals.map((deal, index) => {
+      const results = deal.resultsJson as AnalysisResults;
+      return {
+        name: deal.name.length > 15 ? deal.name.substring(0, 15) + "..." : deal.name,
+        fullName: deal.name,
+        capRate: results.capRate ?? 0,
+        cashOnCash: results.cashOnCash ?? 0,
+        dscr: results.dscr ?? 0,
+        monthlyCashFlow: results.monthlyCashFlow ?? 0,
+        color: CHART_COLORS[index % CHART_COLORS.length],
+      };
+    });
+  }, [deals]);
+
   const toggleDeal = (id: string) => {
     setSelectedDeals((prev) => {
       const next = new Set(prev);
@@ -122,6 +212,15 @@ export default function Compare() {
       }
       return next;
     });
+  };
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDirection("desc");
+    }
   };
 
   const handleCompare = () => {
@@ -342,79 +441,379 @@ export default function Compare() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {deals.map((deal) => {
-              const results = deal.resultsJson as AnalysisResults;
-              const isSelected = selectedDeals.has(deal.id);
-              
-              return (
-                <Card 
-                  key={deal.id} 
-                  className={`relative cursor-pointer transition-all ${
-                    isSelected ? "ring-2 ring-primary" : ""
-                  }`}
-                  onClick={() => toggleDeal(deal.id)}
-                  data-testid={`card-deal-${deal.id}`}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Checkbox 
-                          checked={isSelected}
-                          onCheckedChange={() => toggleDeal(deal.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <div className="min-w-0">
-                          <CardTitle className="text-base truncate">{deal.name}</CardTitle>
-                          <p className="text-sm text-muted-foreground truncate">{deal.address}</p>
+          <Tabs defaultValue="cards" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="cards" className="gap-2" data-testid="tab-cards">
+                <LayoutGrid className="h-4 w-4" />
+                Cards
+              </TabsTrigger>
+              <TabsTrigger value="table" className="gap-2" data-testid="tab-table">
+                <Table2 className="h-4 w-4" />
+                Table
+              </TabsTrigger>
+              <TabsTrigger value="charts" className="gap-2" data-testid="tab-charts">
+                <BarChart3 className="h-4 w-4" />
+                Charts
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="cards">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {deals.map((deal) => {
+                  const results = deal.resultsJson as AnalysisResults;
+                  const isSelected = selectedDeals.has(deal.id);
+                  
+                  return (
+                    <Card 
+                      key={deal.id} 
+                      className={`relative cursor-pointer transition-all ${
+                        isSelected ? "ring-2 ring-primary" : ""
+                      }`}
+                      onClick={() => toggleDeal(deal.id)}
+                      data-testid={`card-deal-${deal.id}`}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Checkbox 
+                              checked={isSelected}
+                              onCheckedChange={() => toggleDeal(deal.id)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div className="min-w-0">
+                              <CardTitle className="text-base truncate">{deal.name}</CardTitle>
+                              <p className="text-sm text-muted-foreground truncate">{deal.address}</p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteMutation.mutate(deal.id);
+                            }}
+                            data-testid={`button-delete-${deal.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
                         </div>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteMutation.mutate(deal.id);
-                        }}
-                        data-testid={`button-delete-${deal.id}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </div>
-                    <Badge variant="secondary" className="w-fit mt-2">
-                      {strategyLabels[deal.strategyType] || deal.strategyType}
-                    </Badge>
+                        <Badge variant="secondary" className="w-fit mt-2">
+                          {strategyLabels[deal.strategyType] || deal.strategyType}
+                        </Badge>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <div className="text-muted-foreground">Cash Flow</div>
+                            <div className={`font-mono font-bold ${results.monthlyCashFlow >= 0 ? "text-accent" : "text-destructive"}`}>
+                              {formatCurrency(results.monthlyCashFlow)}/mo
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Cap Rate</div>
+                            <div className="font-mono font-bold">{results.capRate.toFixed(1)}%</div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">CoC Return</div>
+                            <div className="font-mono font-bold">{results.cashOnCash.toFixed(1)}%</div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">DSCR</div>
+                            <div className="font-mono font-bold">{results.dscr.toFixed(2)}</div>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-3">
+                          Saved {new Date(deal.createdAt).toLocaleDateString()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="table">
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50 sticky top-0 z-10">
+                        <tr className="border-b">
+                          <th className="text-left p-4 w-10">
+                            <span className="sr-only">Select</span>
+                          </th>
+                          <th className="text-left p-4">
+                            <SortableHeader
+                              label="Deal Name"
+                              sortKey="name"
+                              currentSort={sortKey}
+                              direction={sortDirection}
+                              onSort={handleSort}
+                            />
+                          </th>
+                          <th className="text-right p-4">
+                            <SortableHeader
+                              label="Cap Rate"
+                              sortKey="capRate"
+                              currentSort={sortKey}
+                              direction={sortDirection}
+                              onSort={handleSort}
+                            />
+                          </th>
+                          <th className="text-right p-4">
+                            <SortableHeader
+                              label="Cash on Cash"
+                              sortKey="cashOnCash"
+                              currentSort={sortKey}
+                              direction={sortDirection}
+                              onSort={handleSort}
+                            />
+                          </th>
+                          <th className="text-right p-4">
+                            <SortableHeader
+                              label="DSCR"
+                              sortKey="dscr"
+                              currentSort={sortKey}
+                              direction={sortDirection}
+                              onSort={handleSort}
+                            />
+                          </th>
+                          <th className="text-right p-4">
+                            <SortableHeader
+                              label="Cash Flow"
+                              sortKey="monthlyCashFlow"
+                              currentSort={sortKey}
+                              direction={sortDirection}
+                              onSort={handleSort}
+                            />
+                          </th>
+                          <th className="p-4 w-10">
+                            <span className="sr-only">Actions</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedDeals.map((deal) => {
+                          const results = deal.resultsJson as AnalysisResults;
+                          const isSelected = selectedDeals.has(deal.id);
+                          
+                          return (
+                            <tr 
+                              key={deal.id} 
+                              className={`border-b hover-elevate cursor-pointer ${isSelected ? "bg-primary/5" : ""}`}
+                              onClick={() => toggleDeal(deal.id)}
+                              data-testid={`row-deal-${deal.id}`}
+                            >
+                              <td className="p-4">
+                                <Checkbox 
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleDeal(deal.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </td>
+                              <td className="p-4">
+                                <div className="font-medium">{deal.name}</div>
+                                <div className="text-sm text-muted-foreground truncate max-w-[200px]">{deal.address}</div>
+                              </td>
+                              <td className="p-4 text-right font-mono">
+                                {results.capRate.toFixed(1)}%
+                              </td>
+                              <td className="p-4 text-right font-mono">
+                                {results.cashOnCash.toFixed(1)}%
+                              </td>
+                              <td className="p-4 text-right font-mono">
+                                {results.dscr.toFixed(2)}
+                              </td>
+                              <td className={`p-4 text-right font-mono font-bold ${results.monthlyCashFlow >= 0 ? "text-accent" : "text-destructive"}`}>
+                                {formatCurrency(results.monthlyCashFlow)}/mo
+                              </td>
+                              <td className="p-4">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteMutation.mutate(deal.id);
+                                  }}
+                                  data-testid={`button-table-delete-${deal.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="charts">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Cap Rate Comparison</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <div className="text-muted-foreground">Cash Flow</div>
-                        <div className={`font-mono font-bold ${results.monthlyCashFlow >= 0 ? "text-accent" : "text-destructive"}`}>
-                          {formatCurrency(results.monthlyCashFlow)}/mo
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Cap Rate</div>
-                        <div className="font-mono font-bold">{results.capRate.toFixed(1)}%</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">CoC Return</div>
-                        <div className="font-mono font-bold">{results.cashOnCash.toFixed(1)}%</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">DSCR</div>
-                        <div className="font-mono font-bold">{results.dscr.toFixed(2)}</div>
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-3">
-                      Saved {new Date(deal.createdAt).toLocaleDateString()}
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis 
+                            type="number" 
+                            tickFormatter={(v) => `${v}%`}
+                            className="text-muted-foreground"
+                          />
+                          <YAxis 
+                            type="category" 
+                            dataKey="name" 
+                            width={120}
+                            className="text-muted-foreground"
+                          />
+                          <Tooltip 
+                            formatter={(value: number) => [`${value.toFixed(1)}%`, "Cap Rate"]}
+                            labelFormatter={(label) => chartData.find(d => d.name === label)?.fullName || label}
+                            contentStyle={{ 
+                              backgroundColor: "hsl(var(--card))", 
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "var(--radius)"
+                            }}
+                          />
+                          <Bar dataKey="capRate" radius={[0, 4, 4, 0]}>
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Cash on Cash Return</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis 
+                            type="number" 
+                            tickFormatter={(v) => `${v}%`}
+                            className="text-muted-foreground"
+                          />
+                          <YAxis 
+                            type="category" 
+                            dataKey="name" 
+                            width={120}
+                            className="text-muted-foreground"
+                          />
+                          <Tooltip 
+                            formatter={(value: number) => [`${value.toFixed(1)}%`, "CoC Return"]}
+                            labelFormatter={(label) => chartData.find(d => d.name === label)?.fullName || label}
+                            contentStyle={{ 
+                              backgroundColor: "hsl(var(--card))", 
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "var(--radius)"
+                            }}
+                          />
+                          <Bar dataKey="cashOnCash" radius={[0, 4, 4, 0]}>
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>DSCR (Debt Service Coverage Ratio)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis 
+                            type="number"
+                            className="text-muted-foreground"
+                          />
+                          <YAxis 
+                            type="category" 
+                            dataKey="name" 
+                            width={120}
+                            className="text-muted-foreground"
+                          />
+                          <Tooltip 
+                            formatter={(value: number) => [value.toFixed(2), "DSCR"]}
+                            labelFormatter={(label) => chartData.find(d => d.name === label)?.fullName || label}
+                            contentStyle={{ 
+                              backgroundColor: "hsl(var(--card))", 
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "var(--radius)"
+                            }}
+                          />
+                          <Bar dataKey="dscr" radius={[0, 4, 4, 0]}>
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Cash Flow</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis 
+                            type="number"
+                            tickFormatter={(v) => formatCurrency(v)}
+                            className="text-muted-foreground"
+                          />
+                          <YAxis 
+                            type="category" 
+                            dataKey="name" 
+                            width={120}
+                            className="text-muted-foreground"
+                          />
+                          <Tooltip 
+                            formatter={(value: number) => [formatCurrency(value), "Cash Flow/mo"]}
+                            labelFormatter={(label) => chartData.find(d => d.name === label)?.fullName || label}
+                            contentStyle={{ 
+                              backgroundColor: "hsl(var(--card))", 
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "var(--radius)"
+                            }}
+                          />
+                          <Bar dataKey="monthlyCashFlow" radius={[0, 4, 4, 0]}>
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
       </main>
 
