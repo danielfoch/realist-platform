@@ -48,7 +48,6 @@ function EventCard({ event }: { event: EventbriteEvent }) {
           <Badge
             variant={isUpcoming ? "default" : "secondary"}
             className="absolute top-4 left-4"
-            size="sm"
           >
             {isUpcoming ? "Upcoming" : "Past Event"}
           </Badge>
@@ -60,7 +59,6 @@ function EventCard({ event }: { event: EventbriteEvent }) {
           <Badge
             variant={isUpcoming ? "default" : "secondary"}
             className="absolute top-4 left-4"
-            size="sm"
           >
             {isUpcoming ? "Upcoming" : "Past Event"}
           </Badge>

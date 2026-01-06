@@ -149,9 +149,9 @@ export default function About() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="About Realist.ca - Daniel Foch & The Canadian Real Estate Investor Podcast Team"
-        description="Meet the team behind Canada's #1 real estate investor community. Daniel Foch, Nick Hill, and Jonathan Woo lead Realist.ca - home of the Canadian Real Estate Investor Podcast with 120k monthly listeners. Building wealth through real estate education."
-        keywords="daniel foch, canadian real estate investor podcast, nick hill, real estate investing canada, toronto real estate expert, canadian housing market analyst, real estate community canada, multiplex investing expert"
+        title="About Realist.ca - Daniel Foch & Canadian Real Estate Investor Podcast"
+        description="Meet Daniel Foch and the team behind Canada's #1 real estate podcast. 120k monthly listeners building wealth through real estate education."
+        keywords="daniel foch, canadian real estate investor podcast, nick hill, toronto real estate expert, canadian housing market analyst"
         canonicalUrl="/about"
         structuredData={aboutSchema}
       />

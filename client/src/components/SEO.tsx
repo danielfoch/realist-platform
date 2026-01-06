@@ -58,8 +58,8 @@ export function SEO({
 }
 
 export const organizationSchema = {
-  "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": "https://realist.ca/#organization",
   "name": "Realist.ca",
   "alternateName": "The Canadian Real Estate Investor Podcast",
   "url": "https://realist.ca",
@@ -102,8 +102,8 @@ export const organizationSchema = {
 };
 
 export const websiteSchema = {
-  "@context": "https://schema.org",
   "@type": "WebSite",
+  "@id": "https://realist.ca/#website",
   "name": "Realist.ca",
   "alternateName": "Canadian Real Estate Deal Analyzer",
   "url": "https://realist.ca",
@@ -116,8 +116,8 @@ export const websiteSchema = {
 };
 
 export const softwareSchema = {
-  "@context": "https://schema.org",
   "@type": "SoftwareApplication",
+  "@id": "https://realist.ca/#software",
   "name": "Realist.ca Deal Analyzer",
   "applicationCategory": "FinanceApplication",
   "operatingSystem": "Web",
@@ -140,8 +140,8 @@ export const softwareSchema = {
 };
 
 export const personSchema = {
-  "@context": "https://schema.org",
   "@type": "Person",
+  "@id": "https://realist.ca/#danielfoch",
   "name": "Daniel Foch",
   "alternateName": "Dan Foch",
   "jobTitle": "Chief Real Estate Officer",

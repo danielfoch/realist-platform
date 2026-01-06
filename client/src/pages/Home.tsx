@@ -199,9 +199,9 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Canadian Real Estate Deal Analyzer - Toronto & Canada Property Investment Calculator"
-        description="Free real estate deal analyzer for Canadian investors. Calculate cap rates, cash-on-cash returns, IRR for properties in Toronto, Vancouver, Calgary. Compare Buy & Hold, BRRR, Flip, Airbnb strategies. Home of the Canadian Real Estate Investor Podcast with Daniel Foch."
-        keywords="canadian real estate, toronto real estate, real estate investing in canada, daniel foch, property investment calculator, cap rate calculator canada, BRRR strategy, multiplex investing, real estate deal analyzer, canadian housing market, rental property analysis, cash on cash return"
+        title="Canadian Real Estate Deal Analyzer - Toronto Property Calculator"
+        description="Free real estate analyzer for Canadian investors. Calculate cap rates, IRR, cash-on-cash for Toronto, Vancouver, Calgary. Home of Daniel Foch's podcast."
+        keywords="canadian real estate, toronto real estate, real estate investing in canada, daniel foch, cap rate calculator canada, BRRR strategy, multiplex investing"
         canonicalUrl="/"
         structuredData={combinedSchema}
       />
