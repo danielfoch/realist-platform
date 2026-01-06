@@ -82,7 +82,7 @@ const teamMembers = [
       "CPA Canada (CFE), CFA Level 1, Ivey HBA",
     ],
     link: { label: "LinkedIn", url: "#jonathan-linkedin" },
-    description: "Jonathan leads product, systems, automation, and execution across Realist — turning ideas into shipping software.",
+    description: "",
   },
 ];
 
