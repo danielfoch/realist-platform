@@ -171,7 +171,7 @@ export default function About() {
             </p>
             
             {/* Proof Points as Bullets */}
-            <ul className="space-y-3 max-w-xl mx-auto text-muted-foreground">
+            <ul className="space-y-3 max-w-xl mx-auto text-muted-foreground mb-8">
               <li className="flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
                 <span>
@@ -191,6 +191,25 @@ export default function About() {
                 </span>
               </li>
             </ul>
+            
+            <p className="text-sm text-muted-foreground mb-6 text-center">
+              New? Start with the Deal Analyzer, then come meet the community.
+            </p>
+            
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link href="/events">
+                <Button variant="outline" data-testid="button-community-events">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  See Upcoming Events
+                </Button>
+              </Link>
+              <a href="https://www.skool.com/realist" target="_blank" rel="noopener noreferrer">
+                <Button data-testid="button-community-skool">
+                  <Users className="h-4 w-4 mr-2" />
+                  Join Skool
+                </Button>
+              </a>
+            </div>
           </div>
         </section>
 
