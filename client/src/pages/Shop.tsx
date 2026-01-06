@@ -25,7 +25,8 @@ export default function Shop() {
                 "price": true,
                 "description": false,
                 "button": true,
-                "imgWithCarousel": false
+                "imgWithCarousel": false,
+                "buttonWithQuantity": false
               },
               "styles": {
                 "product": {
@@ -55,20 +56,12 @@ export default function Shop() {
                 "button": {
                   ":hover": { "background-color": "#b82a2a" },
                   "background-color": "#cc2f2f",
-                  ":focus": { "background-color": "#b82a2a" }
+                  ":focus": { "background-color": "#b82a2a" },
+                  "border-radius": "6px"
                 }
               },
               "text": { "button": "Add to cart" },
-              "DOMEvents": {
-                'img click': function(evt: any, target: any) {
-                  evt.preventDefault();
-                  target.component.props.product && target.component.openOnlineStore();
-                },
-                'click .shopify-buy__product__title': function(evt: any, target: any) {
-                  evt.preventDefault();
-                  target.component.props.product && target.component.openOnlineStore();
-                }
-              }
+              "googleFonts": ["Roboto"]
             },
             "productSet": {
               "styles": {
@@ -83,7 +76,9 @@ export default function Shop() {
                 "imgWithCarousel": true,
                 "button": false,
                 "buttonWithQuantity": true,
-                "description": true
+                "description": true,
+                "title": true,
+                "price": true
               },
               "styles": {
                 "product": {
@@ -96,7 +91,8 @@ export default function Shop() {
                 "button": {
                   ":hover": { "background-color": "#b82a2a" },
                   "background-color": "#cc2f2f",
-                  ":focus": { "background-color": "#b82a2a" }
+                  ":focus": { "background-color": "#b82a2a" },
+                  "border-radius": "6px"
                 }
               },
               "text": { "button": "Add to cart" }
@@ -114,10 +110,15 @@ export default function Shop() {
                 "button": {
                   ":hover": { "background-color": "#b82a2a" },
                   "background-color": "#cc2f2f",
-                  ":focus": { "background-color": "#b82a2a" }
+                  ":focus": { "background-color": "#b82a2a" },
+                  "border-radius": "6px"
                 }
               },
-              "text": { "total": "Subtotal", "button": "Checkout" }
+              "text": { 
+                "total": "Subtotal", 
+                "button": "Checkout" 
+              },
+              "popup": false
             },
             "toggle": {
               "styles": {
@@ -130,6 +131,33 @@ export default function Shop() {
             }
           },
         });
+
+        setTimeout(() => {
+          const container = document.getElementById('collection-component-1767716913489');
+          if (container) {
+            const products = container.querySelectorAll('.shopify-buy__product');
+            products.forEach((product: Element) => {
+              const img = product.querySelector('.shopify-buy__product__variant-img');
+              const title = product.querySelector('.shopify-buy__product__title');
+              const button = product.querySelector('.shopify-buy__btn');
+              
+              const clickHandler = () => {
+                if (button) {
+                  (button as HTMLElement).click();
+                }
+              };
+              
+              if (img) {
+                (img as HTMLElement).style.cursor = 'pointer';
+                img.addEventListener('click', clickHandler);
+              }
+              if (title) {
+                (title as HTMLElement).style.cursor = 'pointer';
+                title.addEventListener('click', clickHandler);
+              }
+            });
+          }
+        }, 2000);
       });
     }
 
