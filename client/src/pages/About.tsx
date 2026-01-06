@@ -161,7 +161,9 @@ export default function About() {
             <ul className="space-y-3 max-w-xl mx-auto text-muted-foreground">
               <li className="flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
-                <span>Canada's #1 real estate podcast</span>
+                <span>
+                  <a href="https://thecanadianinvestorpodcast.com/podcast/the-canadian-real-estate-investor" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Canada's #1 real estate podcast</a>
+                </span>
               </li>
               <li className="flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
@@ -175,10 +177,6 @@ export default function About() {
                   <a href="https://www.skool.com/realist" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">1,200+ on Skool</a>
                 </span>
               </li>
-              <li className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
-                <span>6,000,000+ advertiser impressions delivered</span>
-              </li>
             </ul>
           </div>
         </section>
@@ -188,7 +186,8 @@ export default function About() {
           <div className="max-w-6xl mx-auto px-4 md:px-6">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">Reach & Audience</h2>
             <p className="text-center text-muted-foreground mb-10 max-w-2xl mx-auto">
-              We help Canadian investors make smarter decisions — and we help partners reach an engaged audience.
+              We help Canadian investors make smarter decisions — and we help partners reach an engaged audience. 
+              With over 6,000,000 advertiser impressions delivered, we connect brands with Canada's most active investor community.
             </p>
             
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
