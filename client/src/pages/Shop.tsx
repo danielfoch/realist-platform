@@ -90,7 +90,7 @@ export default function Shop() {
     
     async function ShopifyBuyInit() {
       const client = (window as any).ShopifyBuy.buildClient({
-        domain: 'jytqv6-dh.myshopify.com',
+        domain: 'realist-8907.myshopify.com',
         storefrontAccessToken: 'a1b026dcf583784ef7f274d93c5c97e3',
       });
       
