@@ -189,6 +189,7 @@ export default function Home() {
                   inputs={inputs}
                   onChange={setInputs}
                   country={country}
+                  strategy={strategy}
                 />
 
                 <Button
@@ -242,6 +243,64 @@ export default function Home() {
                       )}
                     </CardContent>
                   </Card>
+
+                  {!leadCaptured && (
+                    <Card className="mt-4 overflow-hidden">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Full Breakdown</CardTitle>
+                      </CardHeader>
+                      <CardContent className="relative">
+                        <div className="blur-[6px] pointer-events-none select-none space-y-3">
+                          <div className="h-28 bg-muted/30 rounded-lg p-3">
+                            <div className="text-xs text-muted-foreground mb-2">Equity Growth</div>
+                            <div className="flex items-end gap-0.5 h-16">
+                              {[20, 28, 35, 42, 50, 58, 68, 78, 88, 100].map((h, i) => (
+                                <div 
+                                  key={i} 
+                                  className="flex-1 bg-gradient-to-t from-primary/80 to-primary/40 rounded-t"
+                                  style={{ height: `${h}%` }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <div className="h-24 bg-muted/30 rounded-lg p-3 flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/60 via-accent/40 to-primary/20" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-2 w-3/4 bg-muted rounded" />
+                              <div className="h-2 w-1/2 bg-muted rounded" />
+                              <div className="h-2 w-2/3 bg-muted rounded" />
+                            </div>
+                          </div>
+                          <div className="h-20 bg-muted/30 rounded-lg p-3">
+                            <div className="text-xs text-muted-foreground mb-2">Cash Flow</div>
+                            <div className="h-10 flex items-center">
+                              <svg className="w-full h-full" viewBox="0 0 100 30">
+                                <path 
+                                  d="M0,25 Q10,20 20,22 T40,18 T60,15 T80,10 T100,5" 
+                                  fill="none" 
+                                  stroke="hsl(var(--accent))" 
+                                  strokeWidth="2"
+                                  opacity="0.6"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-[1px]">
+                          <p className="text-sm font-medium text-center mb-3 px-4">
+                            Sign up for the full breakdown
+                          </p>
+                          <Button 
+                            size="sm" 
+                            onClick={() => setLeadCaptureOpen(true)}
+                            data-testid="button-preview-signup"
+                          >
+                            Get Full Analysis
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </div>
             </div>
