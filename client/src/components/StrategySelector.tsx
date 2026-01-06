@@ -4,7 +4,6 @@ import {
   Hammer, 
   RefreshCw, 
   Calendar, 
-  Map, 
   Building2,
   LucideIcon
 } from "lucide-react";
@@ -21,7 +20,6 @@ const canadaStrategies: Strategy[] = [
   { id: "flip", label: "Flip", icon: Hammer, description: "Quick renovation and sale" },
   { id: "brrr", label: "BRRR", icon: RefreshCw, description: "Buy, Rehab, Rent, Refinance, Repeat" },
   { id: "airbnb", label: "Airbnb", icon: Calendar, description: "Short-term rentals" },
-  { id: "land_assembly", label: "Land Assembly", icon: Map, description: "Development plays" },
   { id: "multiplex", label: "Multiplex", icon: Building2, description: "Multi-unit residential" },
 ];
 
