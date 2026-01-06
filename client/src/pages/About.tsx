@@ -308,28 +308,6 @@ export default function About() {
           </div>
         </section>
 
-        {/* Why Realist Section */}
-        <section className="py-16 md:py-20 border-t border-border/50">
-          <div className="max-w-6xl mx-auto px-4 md:px-6">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">Why Realist?</h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              {features.map((feature) => (
-                <Card key={feature.title}>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col items-center text-center space-y-4">
-                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <feature.icon className="h-6 w-6 text-primary" />
-                      </div>
-                      <h3 className="text-xl font-semibold">{feature.title}</h3>
-                      <p className="text-muted-foreground">{feature.description}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Work With Us - Companies & Brands */}
         <section className="py-16 md:py-20 border-t border-border/50 bg-muted/30">
           <div className="max-w-6xl mx-auto px-4 md:px-6">
