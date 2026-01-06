@@ -18,6 +18,7 @@ export default function Shop() {
           id: '297750102129',
           node: document.getElementById('collection-component-1767716913489'),
           moneyFormat: '%24%7B%7Bamount%7D%7D',
+          limit: 50,
           options: {
             "product": {
               "contents": {
@@ -69,7 +70,6 @@ export default function Shop() {
                 "products": true,
                 "pagination": false
               },
-              "limit": 50,
               "styles": {
                 "products": {
                   "@media (min-width: 601px)": { "margin-left": "-20px" }
