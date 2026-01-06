@@ -22,6 +22,7 @@ import {
 import { SiX, SiTiktok } from "react-icons/si";
 import { Link } from "wouter";
 import nickImage from "@assets/ChatGPT_Image_Jan_6,_2026,_02_50_25_PM_1767729122931.png";
+import jonathanImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_15_PM_1767729800256.png";
 
 const proofChips = [
   { label: "Canada's #1 real estate podcast", icon: Podcast },
@@ -70,7 +71,7 @@ const teamMembers = [
   {
     name: "Jonathan Woo",
     role: "CEO",
-    image: null,
+    image: jonathanImage,
     initials: "JW",
     credentials: [
       "Market Strategy & Planning at Instacart",
