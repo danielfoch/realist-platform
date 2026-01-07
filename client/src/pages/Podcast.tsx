@@ -175,7 +175,7 @@ export default function Podcast() {
                 <Send className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Submit a Question</h2>
+                <h2 className="text-xl font-semibold">Submit a Question for the Show</h2>
                 <p className="text-sm text-muted-foreground">
                   Have a question for Daniel and Nick? Submit it for the Q&A segment!
                 </p>
