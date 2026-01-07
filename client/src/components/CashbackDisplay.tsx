@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { getProvinceCode } from "@/lib/provinces";
+import { getProvinceCode, isOntario } from "@/lib/provinces";
 import { DollarSign, Loader2, Gift } from "lucide-react";
 
 const engageFormSchema = z.object({
@@ -54,8 +54,11 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const provinceCode = getProvinceCode(region);
+  const isOntarioDeal = isOntario(region);
 
-  const cashbackAmount = purchasePrice * 0.025 * 0.5;
+  const commissionRate = 0.025;
+  const cashbackPercent = isOntarioDeal ? 0.80 : 0.125;
+  const cashbackAmount = purchasePrice * commissionRate * cashbackPercent;
 
   const form = useForm<EngageFormValues>({
     resolver: zodResolver(engageFormSchema),
@@ -79,6 +82,8 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
           ...dealInfo,
           purchasePrice,
           cashbackAmount,
+          cashbackPercent: cashbackPercent * 100,
+          isOntario: isOntarioDeal,
         },
       });
     },
@@ -108,47 +113,38 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
   return (
     <>
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Estimated Cashback</span>
-            <Badge className="bg-orange-500 hover:bg-orange-600 text-white text-xs py-0 px-1.5">
-              <Gift className="h-3 w-3 mr-1" />
-              Cashback
-            </Badge>
+        <Label htmlFor="cashback">Estimated Cashback</Label>
+        <div className="relative">
+          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+          <div 
+            className="h-12 pl-9 pr-24 font-mono flex items-center rounded-md border border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors"
+            onClick={() => setIsOpen(true)}
+            data-testid="button-cashback-box"
+          >
+            <span className="text-primary font-semibold">
+              {formatCurrency(cashbackAmount)}
+            </span>
           </div>
-        </div>
-        <div 
-          className="relative flex items-center gap-2 p-3 rounded-md border border-orange-500/30 bg-orange-500/5 cursor-pointer hover:bg-orange-500/10 transition-colors"
-          onClick={() => setIsOpen(true)}
-          data-testid="button-cashback-box"
-        >
-          <DollarSign className="h-4 w-4 text-orange-500" />
-          <span className="font-mono text-lg font-semibold text-orange-600 dark:text-orange-400">
-            {formatCurrency(cashbackAmount)}
-          </span>
           <Button 
             size="sm" 
-            variant="outline"
-            className="ml-auto text-xs border-orange-500/50 text-orange-600 hover:bg-orange-500/10"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs h-8"
             onClick={(e) => {
               e.stopPropagation();
               setIsOpen(true);
             }}
             data-testid="button-claim-cashback"
           >
-            Claim Offer
+            <Gift className="h-3 w-3 mr-1" />
+            Claim
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Get cashback when you purchase through our network
-        </p>
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
-              <Gift className="h-5 w-5 text-orange-500" />
+              <Gift className="h-5 w-5 text-primary" />
               Claim Your {formatCurrency(cashbackAmount)} Cashback
             </DialogTitle>
             <DialogDescription>
@@ -157,14 +153,14 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
             </DialogDescription>
           </DialogHeader>
 
-          <div className="bg-orange-500/10 border border-orange-500/20 rounded-md p-3 mb-4">
+          <div className="bg-primary/10 border border-primary/20 rounded-md p-3 mb-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Purchase Price</span>
               <span className="font-mono font-medium">{formatCurrency(purchasePrice)}</span>
             </div>
             <div className="flex items-center justify-between mt-1">
-              <span className="text-sm font-medium text-orange-600 dark:text-orange-400">Your Cashback</span>
-              <span className="font-mono font-bold text-orange-600 dark:text-orange-400">{formatCurrency(cashbackAmount)}</span>
+              <span className="text-sm font-medium text-primary">Your Cashback ({(cashbackPercent * 100).toFixed(1)}% of commission)</span>
+              <span className="font-mono font-bold text-primary">{formatCurrency(cashbackAmount)}</span>
             </div>
           </div>
 
@@ -227,7 +223,7 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
                 )}
               />
 
-              <Button type="submit" className="w-full h-11 bg-orange-500 hover:bg-orange-600" disabled={mutation.isPending} data-testid="button-cashback-submit">
+              <Button type="submit" className="w-full h-11" disabled={mutation.isPending} data-testid="button-cashback-submit">
                 {mutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
