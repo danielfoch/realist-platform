@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, MapPin, Clock, ExternalLink, RefreshCw } from "lucide-react";
+import { Calendar, MapPin, Clock, ExternalLink, RefreshCw, Users, Handshake } from "lucide-react";
 import { format, parseISO, isPast, isFuture } from "date-fns";
 
 interface EventbriteEvent {
