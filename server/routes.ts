@@ -153,6 +153,74 @@ export async function registerRoutes(
     }
   });
 
+  // Lead engagement endpoint with tagging for cashback, mortgage consultation, and local expert
+  app.post("/api/leads/engage", async (req, res) => {
+    try {
+      const { name, email, phone, consent, formType, tags, dealInfo, province, city } = req.body;
+
+      if (!name || !email || !phone) {
+        res.status(400).json({ error: "Name, email, and phone are required" });
+        return;
+      }
+
+      // Create the lead
+      const lead = await storage.createLead({
+        name,
+        email,
+        phone,
+        consent: consent || false,
+        leadSource: formType || "Deal Engagement",
+      });
+
+      // Format phone to E.164 format for GHL
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Split name into firstName and lastName for GHL
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Build tags array
+      const allTags = Array.isArray(tags) ? tags : tags ? [tags] : [];
+      
+      // Add province tag if provided
+      if (province) {
+        allTags.push(`LEAD_${province}`);
+      }
+
+      // Send to webhook with tags
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName,
+        phone: formatPhoneE164(phone),
+        fullName: name,
+        consent: consent || false,
+        leadSource: formType || "Deal Engagement",
+        tags: allTags,
+        formType,
+        province,
+        city,
+        dealInfo: dealInfo || {},
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Webhook error:", err));
+
+      res.json({ success: true, data: { leadId: lead.id } });
+    } catch (error) {
+      console.error("Error creating engagement lead:", error);
+      res.status(500).json({ error: "Failed to submit request" });
+    }
+  });
+
   app.get("/api/admin/leads", async (req, res) => {
     try {
       const leads = await storage.getAllLeads();
