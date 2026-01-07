@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { SEO } from "@/components/SEO";
+import { Navigation } from "@/components/Navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,6 +149,7 @@ export default function Podcast() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Navigation />
       <SEO
         title="The Canadian Real Estate Investor Podcast | Realist.ca"
         description="Listen to Canada's #1 real estate podcast for expert insights on Canadian real estate investing, market analysis, and investment strategies with Daniel and Nick."
