@@ -28,6 +28,7 @@ import { useState } from "react";
 import type { BuyHoldInputs } from "@shared/schema";
 import { CashbackDisplay } from "@/components/CashbackDisplay";
 import { MarketExpertPanel } from "@/components/MarketExpertPanel";
+import { MortgageConsultationButton } from "@/components/MortgageConsultationButton";
 
 interface DealInputsProps {
   inputs: BuyHoldInputs;
@@ -367,7 +368,21 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
         </CardHeader>
         <CardContent className="space-y-4">
           <PercentInput id="downPayment" label="Down Payment" value={inputs.downPaymentPercent} onChange={(v) => updateInput("downPaymentPercent", v)} testId="slider-down-payment" min={5} max={100} step={1} />
-          <PercentInput id="interestRate" label="Interest Rate" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label htmlFor="interestRate">Interest Rate</Label>
+              <MortgageConsultationButton
+                purchasePrice={inputs.purchasePrice}
+                downPaymentPercent={inputs.downPaymentPercent}
+                interestRate={inputs.interestRate}
+                region={region}
+                city={city}
+                address={address}
+                defaultValues={defaultLeadInfo}
+              />
+            </div>
+            <PercentInput id="interestRate" label="" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
@@ -672,7 +687,21 @@ function BRRRInputs({ inputs, onChange, country, region, city, address, defaultL
         </CardHeader>
         <CardContent className="space-y-4">
           <PercentInput id="downPayment" label="Down Payment (at refinance)" value={inputs.downPaymentPercent} onChange={(v) => updateInput("downPaymentPercent", v)} testId="slider-down-payment" min={5} max={100} step={1} />
-          <PercentInput id="interestRate" label="Interest Rate" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label htmlFor="interestRate">Interest Rate</Label>
+              <MortgageConsultationButton
+                purchasePrice={inputs.purchasePrice}
+                downPaymentPercent={inputs.downPaymentPercent}
+                interestRate={inputs.interestRate}
+                region={region}
+                city={city}
+                address={address}
+                defaultValues={defaultLeadInfo}
+              />
+            </div>
+            <PercentInput id="interestRate" label="" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
@@ -762,7 +791,21 @@ function AirbnbInputs({ inputs, onChange, region, city, address, defaultLeadInfo
         </CardHeader>
         <CardContent className="space-y-4">
           <PercentInput id="downPayment" label="Down Payment" value={inputs.downPaymentPercent} onChange={(v) => updateInput("downPaymentPercent", v)} testId="slider-down-payment" min={5} max={100} step={1} />
-          <PercentInput id="interestRate" label="Interest Rate" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label htmlFor="interestRate">Interest Rate</Label>
+              <MortgageConsultationButton
+                purchasePrice={inputs.purchasePrice}
+                downPaymentPercent={inputs.downPaymentPercent}
+                interestRate={inputs.interestRate}
+                region={region}
+                city={city}
+                address={address}
+                defaultValues={defaultLeadInfo}
+              />
+            </div>
+            <PercentInput id="interestRate" label="" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
@@ -922,7 +965,21 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
         </CardHeader>
         <CardContent className="space-y-4">
           <PercentInput id="downPayment" label="Down Payment" value={inputs.downPaymentPercent} onChange={(v) => updateInput("downPaymentPercent", v)} testId="slider-down-payment" min={5} max={100} step={1} />
-          <PercentInput id="interestRate" label="Interest Rate" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label htmlFor="interestRate">Interest Rate</Label>
+              <MortgageConsultationButton
+                purchasePrice={inputs.purchasePrice}
+                downPaymentPercent={inputs.downPaymentPercent}
+                interestRate={inputs.interestRate}
+                region={region}
+                city={city}
+                address={address}
+                defaultValues={defaultLeadInfo}
+              />
+            </div>
+            <PercentInput id="interestRate" label="" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
