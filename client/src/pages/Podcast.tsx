@@ -149,8 +149,8 @@ export default function Podcast() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Podcast | Realist.ca - Canadian Real Estate Investing"
-        description="Listen to the Realist Podcast for expert insights on Canadian real estate investing, market analysis, and investment strategies."
+        title="The Canadian Real Estate Investor Podcast | Realist.ca"
+        description="Listen to Canada's #1 real estate podcast for expert insights on Canadian real estate investing, market analysis, and investment strategies with Daniel and Nick."
         canonicalUrl="https://realist.ca/podcast"
       />
 
@@ -158,10 +158,10 @@ export default function Podcast() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
             <Headphones className="w-4 h-4" />
-            <span className="text-sm font-medium">The Realist Podcast</span>
+            <span className="text-sm font-medium">Canada's #1 Real Estate Podcast</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Real Estate Investing Insights
+            The Canadian Real Estate Investor Podcast
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Expert analysis, market trends, and actionable strategies for Canadian real estate investors.
