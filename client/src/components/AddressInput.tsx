@@ -132,9 +132,9 @@ export function AddressInput({
         </div>
       </div>
 
-      {country === "canada" && region && (
+      {country === "canada" && (
         <MarketExpertPanel
-          region={region}
+          region={region || "Ontario"}
           city={city}
           country="canada"
           dealInfo={{
