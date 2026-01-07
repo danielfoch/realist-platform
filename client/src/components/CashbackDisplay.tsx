@@ -114,20 +114,20 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
     <>
       <div className="space-y-2">
         <Label htmlFor="cashback">Estimated Cashback</Label>
-        <div className="relative">
-          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-          <div 
-            className="h-12 pl-9 pr-24 font-mono flex items-center rounded-md border border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors"
-            onClick={() => setIsOpen(true)}
-            data-testid="button-cashback-box"
-          >
+        <div 
+          className="h-12 pl-3 pr-1.5 font-mono flex items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors"
+          onClick={() => setIsOpen(true)}
+          data-testid="button-cashback-box"
+        >
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-primary" />
             <span className="text-primary font-semibold">
               {formatCurrency(cashbackAmount)}
             </span>
           </div>
           <Button 
             size="sm" 
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs h-8"
+            className="text-xs h-8"
             onClick={(e) => {
               e.stopPropagation();
               setIsOpen(true);
