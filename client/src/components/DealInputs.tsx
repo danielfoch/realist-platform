@@ -27,6 +27,7 @@ import {
 import { useState } from "react";
 import type { BuyHoldInputs } from "@shared/schema";
 import { CashbackDisplay } from "@/components/CashbackDisplay";
+import { MarketExpertPanel } from "@/components/MarketExpertPanel";
 
 interface DealInputsProps {
   inputs: BuyHoldInputs;
@@ -341,6 +342,22 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
         </CardContent>
       </Card>
 
+      {country === "canada" && (
+        <MarketExpertPanel
+          region={region || ""}
+          city={city || ""}
+          country="canada"
+          dealInfo={{
+            address: address || "",
+            purchasePrice: inputs.purchasePrice,
+            monthlyRent: inputs.monthlyRent,
+            cashFlow: 0,
+            capRate: 0,
+          }}
+          defaultValues={defaultLeadInfo}
+        />
+      )}
+
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -480,6 +497,22 @@ function FlipInputs({ inputs, onChange, region, city, address, defaultLeadInfo, 
         </CardContent>
       </Card>
 
+      {country === "canada" && (
+        <MarketExpertPanel
+          region={region || ""}
+          city={city || ""}
+          country="canada"
+          dealInfo={{
+            address: address || "",
+            purchasePrice: inputs.purchasePrice,
+            monthlyRent: 0,
+            cashFlow: 0,
+            capRate: 0,
+          }}
+          defaultValues={defaultLeadInfo}
+        />
+      )}
+
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -564,6 +597,22 @@ function BRRRInputs({ inputs, onChange, country, region, city, address, defaultL
           )}
         </CardContent>
       </Card>
+
+      {country === "canada" && (
+        <MarketExpertPanel
+          region={region || ""}
+          city={city || ""}
+          country="canada"
+          dealInfo={{
+            address: address || "",
+            purchasePrice: inputs.purchasePrice,
+            monthlyRent: inputs.monthlyRent,
+            cashFlow: 0,
+            capRate: 0,
+          }}
+          defaultValues={defaultLeadInfo}
+        />
+      )}
 
       <Card>
         <CardHeader className="pb-4">
@@ -688,6 +737,22 @@ function AirbnbInputs({ inputs, onChange, region, city, address, defaultLeadInfo
         </CardContent>
       </Card>
 
+      {country === "canada" && (
+        <MarketExpertPanel
+          region={region || ""}
+          city={city || ""}
+          country="canada"
+          dealInfo={{
+            address: address || "",
+            purchasePrice: inputs.purchasePrice,
+            monthlyRent: estimatedMonthlyRevenue,
+            cashFlow: 0,
+            capRate: 0,
+          }}
+          defaultValues={defaultLeadInfo}
+        />
+      )}
+
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -785,6 +850,22 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
           )}
         </CardContent>
       </Card>
+
+      {country === "canada" && (
+        <MarketExpertPanel
+          region={region || ""}
+          city={city || ""}
+          country="canada"
+          dealInfo={{
+            address: address || "",
+            purchasePrice: inputs.purchasePrice,
+            monthlyRent: inputs.monthlyRent,
+            cashFlow: 0,
+            capRate: 0,
+          }}
+          defaultValues={defaultLeadInfo}
+        />
+      )}
 
       <Card>
         <CardHeader className="pb-4">

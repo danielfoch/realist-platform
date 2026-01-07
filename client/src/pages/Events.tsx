@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, MapPin, Clock, ExternalLink, RefreshCw, Users, Handshake } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Calendar, MapPin, Clock, ExternalLink, RefreshCw, Users, Handshake, Linkedin, Instagram, UserPlus } from "lucide-react";
 import { format, parseISO, isPast, isFuture } from "date-fns";
+import { marketExperts, type MarketExpert } from "@/lib/marketExperts";
 
 interface EventbriteEvent {
   id: string;
@@ -270,6 +272,82 @@ export default function Events() {
                 </Button>
               </a>
             </Card>
+          </div>
+
+          {/* Meetup Hosts Section */}
+          <div className="mt-24">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4" data-testid="text-hosts-title">
+                Meet Your Local Hosts
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Our trusted market experts across Canada host local meetups and provide investment guidance in their regions.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.values(marketExperts).map((expert: MarketExpert) => (
+                <Card key={expert.provinceCode} className="hover-elevate" data-testid={`card-host-${expert.provinceCode}`}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-4">
+                      <Avatar className="h-16 w-16 border-2 border-primary/20">
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
+                          {expert.name.split(" ").map(n => n[0]).join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-lg" data-testid={`text-host-name-${expert.provinceCode}`}>
+                            {expert.name}
+                          </h3>
+                          {expert.linkedIn && (
+                            <a href={expert.linkedIn} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                              <Linkedin className="h-4 w-4" />
+                            </a>
+                          )}
+                          {expert.instagram && (
+                            <a href={expert.instagram} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                              <Instagram className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{expert.title}</p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <MapPin className="h-3 w-3" />
+                          {expert.city}, {expert.province}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-4">
+                      {expert.bio}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {/* Partner Application Card */}
+              <Card className="border-dashed border-2 hover-elevate" data-testid="card-become-partner">
+                <CardContent className="pt-6 h-full flex flex-col items-center justify-center text-center">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <UserPlus className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">Become a Host</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Are you a trusted realtor or investor looking to host meetups in your area?
+                  </p>
+                  <a
+                    href="https://forms.gle/realist-partner-application"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="outline" className="gap-2" data-testid="button-become-partner">
+                      <Handshake className="h-4 w-4" />
+                      Apply Now
+                    </Button>
+                  </a>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </main>
