@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MapPin } from "lucide-react";
+import { MarketExpertPanel } from "@/components/MarketExpertPanel";
 
 interface AddressInputProps {
   address: string;
@@ -20,6 +21,7 @@ interface AddressInputProps {
   onRegionChange: (value: string) => void;
   onCountryChange: (value: "canada" | "usa") => void;
   onPostalCodeChange: (value: string) => void;
+  defaultLeadInfo?: { name?: string; email?: string; phone?: string };
 }
 
 const canadaProvinces = [
@@ -52,6 +54,7 @@ export function AddressInput({
   onRegionChange,
   onCountryChange,
   onPostalCodeChange,
+  defaultLeadInfo,
 }: AddressInputProps) {
   const regions = country === "canada" ? canadaProvinces : usaStates;
 
@@ -128,6 +131,22 @@ export function AddressInput({
           </div>
         </div>
       </div>
+
+      {country === "canada" && region && (
+        <MarketExpertPanel
+          region={region}
+          city={city}
+          country="canada"
+          dealInfo={{
+            address: address,
+            purchasePrice: 0,
+            monthlyRent: 0,
+            cashFlow: 0,
+            capRate: 0,
+          }}
+          defaultValues={defaultLeadInfo}
+        />
+      )}
     </div>
   );
 }
