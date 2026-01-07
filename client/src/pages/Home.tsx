@@ -69,9 +69,24 @@ export default function Home() {
   const [inputs, setInputs] = useState<BuyHoldInputs>(defaultInputs);
   const [showResults, setShowResults] = useState(false);
   const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
-  const [leadCaptured, setLeadCaptured] = useState(false);
+  const [leadCaptured, setLeadCaptured] = useState(() => {
+    const savedLead = localStorage.getItem("realist_lead_info");
+    return !!savedLead;
+  });
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [dealName, setDealName] = useState("");
+  
+  const getSavedLeadInfo = () => {
+    const saved = localStorage.getItem("realist_lead_info");
+    if (saved) {
+      try {
+        return JSON.parse(saved) as { name: string; email: string; phone: string };
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
 
   const results = useMemo<AnalysisResults>(() => {
     return calculateBuyHoldAnalysis(inputs);
@@ -106,6 +121,13 @@ export default function Home() {
           resultsJson: results,
         },
       });
+      
+      localStorage.setItem("realist_lead_info", JSON.stringify({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+      }));
+      
       return response;
     },
     onSuccess: () => {
@@ -455,6 +477,7 @@ export default function Home() {
         onOpenChange={setLeadCaptureOpen}
         onSubmit={handleLeadSubmit}
         isSubmitting={leadMutation.isPending}
+        defaultValues={getSavedLeadInfo() || undefined}
       />
 
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>

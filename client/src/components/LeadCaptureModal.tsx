@@ -36,6 +36,7 @@ interface LeadCaptureModalProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: LeadFormValues) => Promise<void>;
   isSubmitting: boolean;
+  defaultValues?: { name?: string; email?: string; phone?: string };
 }
 
 export function LeadCaptureModal({
@@ -43,15 +44,16 @@ export function LeadCaptureModal({
   onOpenChange,
   onSubmit,
   isSubmitting,
+  defaultValues,
 }: LeadCaptureModalProps) {
   const [step, setStep] = useState<"form" | "skool">("form");
   
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
+      name: defaultValues?.name || "",
+      email: defaultValues?.email || "",
+      phone: defaultValues?.phone || "",
       consent: false,
     },
   });
