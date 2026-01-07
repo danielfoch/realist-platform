@@ -20,6 +20,7 @@ import { calculateBuyHoldAnalysis, formatCurrency } from "@/lib/calculations";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
 import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare } from "lucide-react";
+import { DealPromotions, MortgageConsultationButton } from "@/components/DealPromotions";
 
 function getSessionId(): string {
   let sessionId = localStorage.getItem("realist_session_id");
@@ -311,6 +312,24 @@ export default function Home() {
                           <span className="text-muted-foreground">Down Payment</span>
                           <span className="font-mono">{formatCurrency(inputs.purchasePrice * inputs.downPaymentPercent / 100)}</span>
                         </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Mortgage Rate</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono">{inputs.interestRate.toFixed(2)}%</span>
+                            <MortgageConsultationButton
+                              region={region}
+                              city={city}
+                              dealInfo={{
+                                address: [address, city, region].filter(Boolean).join(", "),
+                                purchasePrice: inputs.purchasePrice,
+                                monthlyRent: inputs.monthlyRent,
+                                cashFlow: results.monthlyCashFlow,
+                                capRate: results.capRate,
+                              }}
+                              defaultValues={getSavedLeadInfo() || undefined}
+                            />
+                          </div>
+                        </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Monthly Rent</span>
                           <span className="font-mono">{formatCurrency(inputs.monthlyRent)}</span>
@@ -335,6 +354,22 @@ export default function Home() {
                       )}
                     </CardContent>
                   </Card>
+
+                  {country === "canada" && region && (
+                    <DealPromotions
+                      region={region}
+                      city={city}
+                      country={country}
+                      dealInfo={{
+                        address: [address, city, region].filter(Boolean).join(", "),
+                        purchasePrice: inputs.purchasePrice,
+                        monthlyRent: inputs.monthlyRent,
+                        cashFlow: results.monthlyCashFlow,
+                        capRate: results.capRate,
+                      }}
+                      defaultValues={getSavedLeadInfo() || undefined}
+                    />
+                  )}
 
                   {!leadCaptured && (
                     <Card className="mt-4 overflow-hidden">
