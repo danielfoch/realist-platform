@@ -429,27 +429,65 @@ export async function registerRoutes(
   // Podcast episodes from RSS feed
   app.get("/api/podcast/episodes", async (req, res) => {
     try {
-      const rssUrl = "https://www.omnycontent.com/d/playlist/d75d2ff4-a4dd-4a19-bcb1-ad35013dfc83/1d7b066f-9af2-431b-bea7-aecd0152873d/podcast.rss";
-      const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+      const rssUrl = "https://www.omnycontent.com/d/playlist/d75d2ff4-a4dd-4a19-bcb1-ad35013dfc83/1d7b066c-9af2-431a-bea7-aecd01493da3/69cdac4f-3b2e-45b4-ae6f-aecd0152873d/podcast.rss";
       
-      const response = await fetch(rss2jsonUrl);
+      const response = await fetch(rssUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; Realist/1.0)',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        }
+      });
+      
       if (!response.ok) {
         throw new Error(`RSS fetch failed: ${response.status}`);
       }
       
-      const data = await response.json();
+      const xmlText = await response.text();
       
-      const episodes = data.items?.map((item: any) => ({
-        title: item.title,
-        description: item.description,
-        pubDate: item.pubDate,
-        audioUrl: item.enclosure?.link || item.link,
-        duration: item.itunes?.duration || "",
-        link: item.link,
-        imageUrl: item.thumbnail || data.feed?.image,
-      })) || [];
+      // Parse XML manually
+      const episodes: any[] = [];
+      const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+      let match;
       
-      res.json(episodes);
+      // Get feed image
+      const feedImageMatch = xmlText.match(/<image>[\s\S]*?<url>([^<]+)<\/url>[\s\S]*?<\/image>/);
+      const feedImage = feedImageMatch ? feedImageMatch[1] : "";
+      
+      while ((match = itemRegex.exec(xmlText)) !== null) {
+        const itemXml = match[1];
+        
+        const getTagContent = (tag: string) => {
+          const regex = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([^<]*)<\\/${tag}>`);
+          const m = itemXml.match(regex);
+          return m ? (m[1] || m[2] || "").trim() : "";
+        };
+        
+        const getAttr = (tag: string, attr: string) => {
+          const regex = new RegExp(`<${tag}[^>]*${attr}="([^"]*)"[^>]*/?>`);
+          const m = itemXml.match(regex);
+          return m ? m[1] : "";
+        };
+        
+        const title = getTagContent("title");
+        const description = getTagContent("description") || getTagContent("itunes:summary");
+        const pubDate = getTagContent("pubDate");
+        const link = getTagContent("link");
+        const duration = getTagContent("itunes:duration");
+        const audioUrl = getAttr("enclosure", "url") || link;
+        const imageUrl = getAttr("itunes:image", "href") || feedImage;
+        
+        episodes.push({
+          title,
+          description,
+          pubDate,
+          audioUrl,
+          duration,
+          link,
+          imageUrl,
+        });
+      }
+      
+      res.json(episodes.slice(0, 50)); // Limit to 50 episodes
     } catch (error) {
       console.error("Error fetching podcast episodes:", error);
       res.status(500).json({ error: "Failed to fetch podcast episodes" });
