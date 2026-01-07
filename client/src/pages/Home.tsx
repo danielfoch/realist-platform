@@ -20,7 +20,7 @@ import { calculateBuyHoldAnalysis, formatCurrency } from "@/lib/calculations";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
 import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare } from "lucide-react";
-import { DealPromotions, MortgageConsultationButton } from "@/components/DealPromotions";
+import { MortgageConsultationButton } from "@/components/DealPromotions";
 
 function getSessionId(): string {
   let sessionId = localStorage.getItem("realist_session_id");
@@ -283,6 +283,10 @@ export default function Home() {
                   onChange={setInputs}
                   country={country}
                   strategy={strategy}
+                  region={region}
+                  city={city}
+                  address={[address, city, region].filter(Boolean).join(", ")}
+                  defaultLeadInfo={getSavedLeadInfo() || undefined}
                 />
 
                 <Button
@@ -355,21 +359,6 @@ export default function Home() {
                     </CardContent>
                   </Card>
 
-                  {country === "canada" && region && (
-                    <DealPromotions
-                      region={region}
-                      city={city}
-                      country={country}
-                      dealInfo={{
-                        address: [address, city, region].filter(Boolean).join(", "),
-                        purchasePrice: inputs.purchasePrice,
-                        monthlyRent: inputs.monthlyRent,
-                        cashFlow: results.monthlyCashFlow,
-                        capRate: results.capRate,
-                      }}
-                      defaultValues={getSavedLeadInfo() || undefined}
-                    />
-                  )}
 
                   {!leadCaptured && (
                     <Card className="mt-4 overflow-hidden">

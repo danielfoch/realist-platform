@@ -26,12 +26,17 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import type { BuyHoldInputs } from "@shared/schema";
+import { CashbackDisplay } from "@/components/CashbackDisplay";
 
 interface DealInputsProps {
   inputs: BuyHoldInputs;
   onChange: (inputs: BuyHoldInputs) => void;
   country: "canada" | "usa";
   strategy: string;
+  region?: string;
+  city?: string;
+  address?: string;
+  defaultLeadInfo?: { name?: string; email?: string; phone?: string };
 }
 
 function CurrencyInput({
@@ -291,7 +296,15 @@ function ConstructionBudget({
   );
 }
 
-function BuyHoldInputs({ inputs, onChange, country }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void; country: string }) {
+interface CashbackProps {
+  region?: string;
+  city?: string;
+  address?: string;
+  defaultLeadInfo?: { name?: string; email?: string; phone?: string };
+  country: "canada" | "usa";
+}
+
+function BuyHoldInputs({ inputs, onChange, country, region, city, address, defaultLeadInfo }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void; country: string } & CashbackProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const updateInput = <K extends keyof BuyHoldInputs>(key: K, value: BuyHoldInputs[K]) => {
@@ -310,6 +323,21 @@ function BuyHoldInputs({ inputs, onChange, country }: { inputs: BuyHoldInputs; o
         <CardContent className="space-y-4">
           <CurrencyInput id="purchasePrice" label="Purchase Price" value={inputs.purchasePrice} onChange={(v) => updateInput("purchasePrice", v)} testId="input-purchase-price" />
           <CurrencyInput id="closingCosts" label="Closing Costs" value={inputs.closingCosts} onChange={(v) => updateInput("closingCosts", v)} testId="input-closing-costs" />
+          {country === "canada" && inputs.purchasePrice > 0 && (
+            <CashbackDisplay
+              purchasePrice={inputs.purchasePrice}
+              region={region || ""}
+              city={city || ""}
+              country="canada"
+              dealInfo={{
+                address: address || "",
+                monthlyRent: inputs.monthlyRent,
+                cashFlow: 0,
+                capRate: 0,
+              }}
+              defaultValues={defaultLeadInfo}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -408,7 +436,7 @@ function BuyHoldInputs({ inputs, onChange, country }: { inputs: BuyHoldInputs; o
   );
 }
 
-function FlipInputs({ inputs, onChange }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void }) {
+function FlipInputs({ inputs, onChange, region, city, address, defaultLeadInfo, country }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void } & CashbackProps) {
   const [constructionItems, setConstructionItems] = useState<ConstructionLineItem[]>([
     { id: "1", name: "Demo", cost: 5000 },
     { id: "2", name: "Kitchen", cost: 25000 },
@@ -439,6 +467,16 @@ function FlipInputs({ inputs, onChange }: { inputs: BuyHoldInputs; onChange: (in
           <CurrencyInput id="purchasePrice" label="Purchase Price" value={inputs.purchasePrice} onChange={(v) => updateInput("purchasePrice", v)} testId="input-purchase-price" />
           <CurrencyInput id="closingCosts" label="Closing Costs" value={inputs.closingCosts} onChange={(v) => updateInput("closingCosts", v)} testId="input-closing-costs" />
           <CurrencyInput id="arvPrice" label="After Repair Value (ARV)" value={inputs.monthlyRent * 100 || 650000} onChange={(v) => updateInput("monthlyRent", v / 100)} testId="input-arv" />
+          {country === "canada" && inputs.purchasePrice > 0 && (
+            <CashbackDisplay
+              purchasePrice={inputs.purchasePrice}
+              region={region || ""}
+              city={city || ""}
+              country="canada"
+              dealInfo={{ address: address || "", monthlyRent: 0, cashFlow: 0, capRate: 0 }}
+              defaultValues={defaultLeadInfo}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -483,7 +521,7 @@ function FlipInputs({ inputs, onChange }: { inputs: BuyHoldInputs; onChange: (in
   );
 }
 
-function BRRRInputs({ inputs, onChange, country }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void; country: string }) {
+function BRRRInputs({ inputs, onChange, country, region, city, address, defaultLeadInfo }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void; country: string } & Omit<CashbackProps, 'country'>) {
   const [constructionItems, setConstructionItems] = useState<ConstructionLineItem[]>([
     { id: "1", name: "Demo", cost: 3000 },
     { id: "2", name: "Kitchen", cost: 15000 },
@@ -514,6 +552,16 @@ function BRRRInputs({ inputs, onChange, country }: { inputs: BuyHoldInputs; onCh
           <CurrencyInput id="purchasePrice" label="Purchase Price" value={inputs.purchasePrice} onChange={(v) => updateInput("purchasePrice", v)} testId="input-purchase-price" />
           <CurrencyInput id="closingCosts" label="Closing Costs" value={inputs.closingCosts} onChange={(v) => updateInput("closingCosts", v)} testId="input-closing-costs" />
           <CurrencyInput id="arvPrice" label="After Repair Value (ARV)" value={inputs.monthlyRent * 100 || 550000} onChange={(v) => updateInput("monthlyRent", v / 100)} testId="input-arv" />
+          {country === "canada" && inputs.purchasePrice > 0 && (
+            <CashbackDisplay
+              purchasePrice={inputs.purchasePrice}
+              region={region || ""}
+              city={city || ""}
+              country="canada"
+              dealInfo={{ address: address || "", monthlyRent: inputs.monthlyRent, cashFlow: 0, capRate: 0 }}
+              defaultValues={defaultLeadInfo}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -605,7 +653,7 @@ function BRRRInputs({ inputs, onChange, country }: { inputs: BuyHoldInputs; onCh
   );
 }
 
-function AirbnbInputs({ inputs, onChange }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void }) {
+function AirbnbInputs({ inputs, onChange, region, city, address, defaultLeadInfo, country }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void } & CashbackProps) {
   const [adr, setAdr] = useState(250);
   const [occupancyRate, setOccupancyRate] = useState(65);
 
@@ -627,6 +675,16 @@ function AirbnbInputs({ inputs, onChange }: { inputs: BuyHoldInputs; onChange: (
         <CardContent className="space-y-4">
           <CurrencyInput id="purchasePrice" label="Purchase Price" value={inputs.purchasePrice} onChange={(v) => updateInput("purchasePrice", v)} testId="input-purchase-price" />
           <CurrencyInput id="closingCosts" label="Closing Costs" value={inputs.closingCosts} onChange={(v) => updateInput("closingCosts", v)} testId="input-closing-costs" />
+          {country === "canada" && inputs.purchasePrice > 0 && (
+            <CashbackDisplay
+              purchasePrice={inputs.purchasePrice}
+              region={region || ""}
+              city={city || ""}
+              country="canada"
+              dealInfo={{ address: address || "", monthlyRent: estimatedMonthlyRevenue, cashFlow: 0, capRate: 0 }}
+              defaultValues={defaultLeadInfo}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -692,7 +750,7 @@ function AirbnbInputs({ inputs, onChange }: { inputs: BuyHoldInputs; onChange: (
   );
 }
 
-function MultiplexInputs({ inputs, onChange, country }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void; country: string }) {
+function MultiplexInputs({ inputs, onChange, country, region, city, address, defaultLeadInfo }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void; country: string } & Omit<CashbackProps, 'country'>) {
   const [numUnits, setNumUnits] = useState(4);
   const [useConstructionFinancing, setUseConstructionFinancing] = useState(false);
   const [constructionMonths, setConstructionMonths] = useState(12);
@@ -715,6 +773,16 @@ function MultiplexInputs({ inputs, onChange, country }: { inputs: BuyHoldInputs;
           <CurrencyInput id="purchasePrice" label="Purchase Price / Build Cost" value={inputs.purchasePrice} onChange={(v) => updateInput("purchasePrice", v)} testId="input-purchase-price" />
           <CurrencyInput id="closingCosts" label="Closing Costs" value={inputs.closingCosts} onChange={(v) => updateInput("closingCosts", v)} testId="input-closing-costs" />
           <NumberInput id="numUnits" label="Number of Units" value={numUnits} onChange={setNumUnits} testId="input-num-units" suffix="units" />
+          {country === "canada" && inputs.purchasePrice > 0 && (
+            <CashbackDisplay
+              purchasePrice={inputs.purchasePrice}
+              region={region || ""}
+              city={city || ""}
+              country="canada"
+              dealInfo={{ address: address || "", monthlyRent: inputs.monthlyRent, cashFlow: 0, capRate: 0 }}
+              defaultValues={defaultLeadInfo}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -837,18 +905,20 @@ function MultiplexInputs({ inputs, onChange, country }: { inputs: BuyHoldInputs;
   );
 }
 
-export function DealInputs({ inputs, onChange, country, strategy }: DealInputsProps) {
+export function DealInputs({ inputs, onChange, country, strategy, region, city, address, defaultLeadInfo }: DealInputsProps) {
+  const cashbackProps = { region, city, address, defaultLeadInfo, country };
+  
   switch (strategy) {
     case "flip":
-      return <FlipInputs inputs={inputs} onChange={onChange} />;
+      return <FlipInputs inputs={inputs} onChange={onChange} {...cashbackProps} />;
     case "brrr":
-      return <BRRRInputs inputs={inputs} onChange={onChange} country={country} />;
+      return <BRRRInputs inputs={inputs} onChange={onChange} {...cashbackProps} />;
     case "airbnb":
-      return <AirbnbInputs inputs={inputs} onChange={onChange} />;
+      return <AirbnbInputs inputs={inputs} onChange={onChange} {...cashbackProps} />;
     case "multiplex":
-      return <MultiplexInputs inputs={inputs} onChange={onChange} country={country} />;
+      return <MultiplexInputs inputs={inputs} onChange={onChange} {...cashbackProps} />;
     case "buy_hold":
     default:
-      return <BuyHoldInputs inputs={inputs} onChange={onChange} country={country} />;
+      return <BuyHoldInputs inputs={inputs} onChange={onChange} {...cashbackProps} />;
   }
 }
