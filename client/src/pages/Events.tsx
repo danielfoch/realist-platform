@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, MapPin, Clock, ExternalLink, RefreshCw, Users, Handshake, Linkedin, Instagram, UserPlus } from "lucide-react";
 import { format, parseISO, isPast, isFuture } from "date-fns";
-import { marketExperts, type MarketExpert } from "@/lib/marketExperts";
+import { marketExperts, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
 
 interface EventbriteEvent {
   id: string;
@@ -336,7 +336,7 @@ export default function Events() {
                     Are you a trusted realtor or investor looking to host meetups in your area?
                   </p>
                   <a
-                    href="https://forms.gle/realist-partner-application"
+                    href={partnerApplicationUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

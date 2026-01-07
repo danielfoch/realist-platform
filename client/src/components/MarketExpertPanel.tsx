@@ -26,7 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getProvinceCode } from "@/lib/provinces";
-import { getMarketExpert, hasMarketExpert, type MarketExpert } from "@/lib/marketExperts";
+import { getMarketExpert, hasMarketExpert, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
 import { Phone, Loader2, UserPlus, Linkedin, Instagram, MapPin } from "lucide-react";
 
 const consultationFormSchema = z.object({
@@ -117,7 +117,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
               </p>
             </div>
             <a
-              href="https://forms.gle/realist-partner-application"
+              href={partnerApplicationUrl}
               target="_blank"
               rel="noopener noreferrer"
             >
