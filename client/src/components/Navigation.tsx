@@ -11,6 +11,7 @@ export function Navigation() {
   const navLinks = [
     { href: "/", label: "Analyzer", external: false },
     { href: "/events", label: "Events", external: false },
+    { href: "/podcast", label: "Podcast", external: false },
     { href: "/blog", label: "Blog", external: false },
     { href: "/shop", label: "Shop", external: false },
     { href: "/about", label: "About", external: false },

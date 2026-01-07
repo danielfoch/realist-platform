@@ -426,5 +426,86 @@ export async function registerRoutes(
     }
   });
 
+  // Podcast episodes from RSS feed
+  app.get("/api/podcast/episodes", async (req, res) => {
+    try {
+      const rssUrl = "https://www.omnycontent.com/d/playlist/d75d2ff4-a4dd-4a19-bcb1-ad35013dfc83/1d7b066f-9af2-431b-bea7-aecd0152873d/podcast.rss";
+      const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+      
+      const response = await fetch(rss2jsonUrl);
+      if (!response.ok) {
+        throw new Error(`RSS fetch failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      const episodes = data.items?.map((item: any) => ({
+        title: item.title,
+        description: item.description,
+        pubDate: item.pubDate,
+        audioUrl: item.enclosure?.link || item.link,
+        duration: item.itunes?.duration || "",
+        link: item.link,
+        imageUrl: item.thumbnail || data.feed?.image,
+      })) || [];
+      
+      res.json(episodes);
+    } catch (error) {
+      console.error("Error fetching podcast episodes:", error);
+      res.status(500).json({ error: "Failed to fetch podcast episodes" });
+    }
+  });
+
+  // Podcast Q&A question submission
+  app.post("/api/podcast/question", async (req, res) => {
+    try {
+      const { name, email, question } = req.body;
+      
+      if (!name || !email || !question) {
+        res.status(400).json({ error: "Name, email, and question are required" });
+        return;
+      }
+
+      // Store in database
+      const storedQuestion = await storage.createPodcastQuestion({ name, email, question });
+
+      // Send email notification via webhook or direct email
+      const webhookUrl = process.env.GHL_WEBHOOK_URL;
+      if (webhookUrl) {
+        try {
+          await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "podcast_question",
+              name,
+              email,
+              question,
+              submittedAt: new Date().toISOString(),
+            }),
+          });
+        } catch (webhookError) {
+          console.error("Webhook notification failed:", webhookError);
+        }
+      }
+
+      res.json({ success: true, data: storedQuestion });
+    } catch (error) {
+      console.error("Error submitting podcast question:", error);
+      res.status(500).json({ error: "Failed to submit question" });
+    }
+  });
+
+  // Get podcast questions (admin)
+  app.get("/api/podcast/questions", async (req, res) => {
+    try {
+      const questions = await storage.getPodcastQuestions();
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching podcast questions:", error);
+      res.status(500).json({ error: "Failed to fetch questions" });
+    }
+  });
+
   return httpServer;
 }

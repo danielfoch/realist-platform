@@ -108,6 +108,15 @@ export const savedDeals = pgTable("saved_deals", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const podcastQuestions = pgTable("podcast_questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  question: text("question").notNull(),
+  answered: boolean("answered").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
   createdAt: true,
@@ -141,6 +150,12 @@ export const insertSavedDealSchema = createInsertSchema(savedDeals).omit({
   createdAt: true,
 });
 
+export const insertPodcastQuestionSchema = createInsertSchema(podcastQuestions).omit({
+  id: true,
+  createdAt: true,
+  answered: true,
+});
+
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
 
@@ -158,6 +173,9 @@ export type DataCache = typeof dataCache.$inferSelect;
 
 export type InsertSavedDeal = z.infer<typeof insertSavedDealSchema>;
 export type SavedDeal = typeof savedDeals.$inferSelect;
+
+export type InsertPodcastQuestion = z.infer<typeof insertPodcastQuestionSchema>;
+export type PodcastQuestion = typeof podcastQuestions.$inferSelect;
 
 export const strategyTypes = [
   "buy_hold",

@@ -5,6 +5,7 @@ import {
   webhookLogs,
   dataCache,
   savedDeals,
+  podcastQuestions,
   type Lead, 
   type InsertLead,
   type Property,
@@ -17,6 +18,8 @@ import {
   type InsertDataCache,
   type SavedDeal,
   type InsertSavedDeal,
+  type PodcastQuestion,
+  type InsertPodcastQuestion,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
@@ -50,6 +53,9 @@ export interface IStorage {
   getSavedDeal(id: string): Promise<SavedDeal | undefined>;
   getSavedDealsBySession(sessionId: string): Promise<SavedDeal[]>;
   deleteSavedDeal(id: string): Promise<void>;
+
+  createPodcastQuestion(question: InsertPodcastQuestion): Promise<PodcastQuestion>;
+  getPodcastQuestions(): Promise<PodcastQuestion[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -177,6 +183,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSavedDeal(id: string): Promise<void> {
     await db.delete(savedDeals).where(eq(savedDeals.id, id));
+  }
+
+  async createPodcastQuestion(insertQuestion: InsertPodcastQuestion): Promise<PodcastQuestion> {
+    const [question] = await db.insert(podcastQuestions).values(insertQuestion).returning();
+    return question;
+  }
+
+  async getPodcastQuestions(): Promise<PodcastQuestion[]> {
+    return db.select().from(podcastQuestions).orderBy(desc(podcastQuestions.createdAt));
   }
 }
 
