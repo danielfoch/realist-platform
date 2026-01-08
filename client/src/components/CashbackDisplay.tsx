@@ -57,7 +57,9 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
   const isOntarioDeal = isOntario(region);
 
   const commissionRate = 0.025;
-  const cashbackPercent = isOntarioDeal ? 0.80 : 0.125;
+  // Default to high end (Ontario 80%) when no region is selected, otherwise use actual rate
+  const hasRegionSelected = region && region.trim() !== '';
+  const cashbackPercent = (!hasRegionSelected || isOntarioDeal) ? 0.80 : 0.125;
   const cashbackAmount = purchasePrice * commissionRate * cashbackPercent;
 
   const form = useForm<EngageFormValues>({
