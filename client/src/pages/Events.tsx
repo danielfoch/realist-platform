@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, MapPin, Clock, ExternalLink, RefreshCw, Users, Handshake, Linkedin, Instagram, UserPlus } from "lucide-react";
+import { Calendar, MapPin, Clock, ExternalLink, RefreshCw, Users, Handshake, Linkedin, Instagram, UserPlus, ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { format, parseISO, isPast, isFuture, startOfDay, isToday, isTomorrow } from "date-fns";
 import { marketExperts, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
 
@@ -176,17 +182,89 @@ function formatDayHeader(date: Date): string {
   return format(date, "EEEE, MMMM d, yyyy");
 }
 
-function DayHeader({ date, eventCount }: { date: Date; eventCount: number }) {
+function extractCityFromEvent(event: EventbriteEvent): string {
+  if (event.venueName) {
+    const parts = event.venueName.split(",");
+    if (parts.length > 0) {
+      return parts[0].trim();
+    }
+  }
+  if (event.venueAddress) {
+    const parts = event.venueAddress.split(",");
+    if (parts.length >= 2) {
+      return parts[parts.length - 2].trim();
+    }
+  }
+  const nameMatch = event.name.match(/(?:in|at)\s+([A-Z][a-zA-Z\s]+?)(?:\s*[-–]|\s*$)/);
+  if (nameMatch) {
+    return nameMatch[1].trim();
+  }
+  return "Location TBD";
+}
+
+function MeetupDaySection({ group }: { group: GroupedEvents }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const cities = group.events.map(event => ({
+    city: extractCityFromEvent(event),
+    event,
+  }));
+
   return (
-    <div className="flex items-center gap-3 mb-4" data-testid={`header-day-${format(date, "yyyy-MM-dd")}`}>
-      <div className="flex items-center gap-2">
-        <Calendar className="h-5 w-5 text-primary" />
-        <h3 className="text-xl font-semibold">{formatDayHeader(date)}</h3>
-      </div>
-      <Badge variant="secondary" className="text-xs">
-        {eventCount} {eventCount === 1 ? "event" : "events"}
-      </Badge>
-    </div>
+    <Card className="overflow-visible" data-testid={`card-meetup-day-${group.dateKey}`}>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center justify-between p-4 cursor-pointer hover-elevate rounded-md">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
+                <Calendar className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">{formatDayHeader(group.date)}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {cities.length} {cities.length === 1 ? "city" : "cities"} hosting meetups
+                </p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" data-testid={`button-toggle-day-${group.dateKey}`}>
+              {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </Button>
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-4 pb-4 pt-2 border-t">
+            <div className="grid gap-3 mt-3">
+              {cities.map(({ city, event }) => (
+                <a
+                  key={event.id}
+                  href={event.eventUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover-elevate transition-colors"
+                  data-testid={`link-meetup-city-${event.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium">{city}</span>
+                      {event.startDate && (
+                        <span className="text-sm text-muted-foreground ml-2">
+                          {format(parseISO(event.startDate), "h:mm a")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    Register
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                </a>
+              ))}
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 }
 
@@ -288,32 +366,31 @@ export default function Events() {
             </div>
           ) : groupedUpcoming.length > 0 ? (
             <>
-              <div className="space-y-10">
-                {groupedUpcoming.map((group) => (
-                  <div key={group.dateKey}>
-                    <DayHeader date={group.date} eventCount={group.events.length} />
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {group.events.map((event) => (
-                        <EventCard key={event.id} event={event} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <Users className="h-6 w-6 text-primary" />
+                  <h2 className="text-2xl font-bold">Upcoming Meetups</h2>
+                  <Badge variant="outline" className="text-xs">
+                    First Tuesday of every month
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground mb-4">
+                  Join investors across Canada at our monthly meetups. Click on a date to see all cities.
+                </p>
+                
+                <div className="space-y-4">
+                  {groupedUpcoming.map((group) => (
+                    <MeetupDaySection key={group.dateKey} group={group} />
+                  ))}
+                </div>
               </div>
 
               {groupedPast.length > 0 && (
                 <div className="mt-16">
-                  <h2 className="text-2xl font-bold mb-6 text-muted-foreground">Past Events</h2>
-                  <div className="space-y-8 opacity-75">
+                  <h2 className="text-2xl font-bold mb-6 text-muted-foreground">Past Meetups</h2>
+                  <div className="space-y-4 opacity-75">
                     {groupedPast.slice(0, 2).map((group) => (
-                      <div key={group.dateKey}>
-                        <DayHeader date={group.date} eventCount={group.events.length} />
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {group.events.map((event) => (
-                            <EventCard key={event.id} event={event} />
-                          ))}
-                        </div>
-                      </div>
+                      <MeetupDaySection key={group.dateKey} group={group} />
                     ))}
                   </div>
                 </div>
