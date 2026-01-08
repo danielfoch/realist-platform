@@ -7,8 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, MapPin, Clock, ExternalLink, RefreshCw, Users, Handshake, Linkedin, Instagram, UserPlus } from "lucide-react";
-import { format, parseISO, isPast, isFuture } from "date-fns";
+import { format, parseISO, isPast, isFuture, startOfDay, isToday, isTomorrow } from "date-fns";
 import { marketExperts, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
+
+interface GroupedEvents {
+  date: Date;
+  dateKey: string;
+  events: EventbriteEvent[];
+}
 
 interface EventbriteEvent {
   id: string;
@@ -136,6 +142,54 @@ function EventSkeleton() {
   );
 }
 
+function groupEventsByDay(events: EventbriteEvent[]): GroupedEvents[] {
+  const groups: Map<string, GroupedEvents> = new Map();
+  
+  for (const event of events) {
+    if (!event.startDate) continue;
+    const eventDate = parseISO(event.startDate);
+    const dayStart = startOfDay(eventDate);
+    const dateKey = format(dayStart, "yyyy-MM-dd");
+    
+    if (!groups.has(dateKey)) {
+      groups.set(dateKey, {
+        date: dayStart,
+        dateKey,
+        events: [],
+      });
+    }
+    groups.get(dateKey)!.events.push(event);
+  }
+  
+  return Array.from(groups.values()).sort(
+    (a, b) => a.date.getTime() - b.date.getTime()
+  );
+}
+
+function formatDayHeader(date: Date): string {
+  if (isToday(date)) {
+    return `Today - ${format(date, "EEEE, MMMM d")}`;
+  }
+  if (isTomorrow(date)) {
+    return `Tomorrow - ${format(date, "EEEE, MMMM d")}`;
+  }
+  return format(date, "EEEE, MMMM d, yyyy");
+}
+
+function DayHeader({ date, eventCount }: { date: Date; eventCount: number }) {
+  return (
+    <div className="flex items-center gap-3 mb-4" data-testid={`header-day-${format(date, "yyyy-MM-dd")}`}>
+      <div className="flex items-center gap-2">
+        <Calendar className="h-5 w-5 text-primary" />
+        <h3 className="text-xl font-semibold">{formatDayHeader(date)}</h3>
+      </div>
+      <Badge variant="secondary" className="text-xs">
+        {eventCount} {eventCount === 1 ? "event" : "events"}
+      </Badge>
+    </div>
+  );
+}
+
 export default function Events() {
   const { data, isLoading, refetch, isRefetching } = useQuery<EventsResponse>({
     queryKey: ["/api/events"],
@@ -158,6 +212,9 @@ export default function Events() {
     if (!b.startDate) return -1;
     return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
   });
+
+  const groupedUpcoming = groupEventsByDay(upcomingEvents);
+  const groupedPast = groupEventsByDay(pastEvents).reverse();
 
   const eventsSchema = {
     "@context": "https://schema.org",
@@ -211,25 +268,52 @@ export default function Events() {
           </div>
 
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <EventSkeleton key={i} />
-              ))}
+            <div className="space-y-8">
+              <div>
+                <Skeleton className="h-8 w-64 mb-4" />
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(3)].map((_, i) => (
+                    <EventSkeleton key={i} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Skeleton className="h-8 w-48 mb-4" />
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(2)].map((_, i) => (
+                    <EventSkeleton key={i} />
+                  ))}
+                </div>
+              </div>
             </div>
-          ) : upcomingEvents.length > 0 ? (
+          ) : groupedUpcoming.length > 0 ? (
             <>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {upcomingEvents.map((event) => (
-                  <EventCard key={event.id} event={event} />
+              <div className="space-y-10">
+                {groupedUpcoming.map((group) => (
+                  <div key={group.dateKey}>
+                    <DayHeader date={group.date} eventCount={group.events.length} />
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {group.events.map((event) => (
+                        <EventCard key={event.id} event={event} />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
 
-              {pastEvents.length > 0 && (
+              {groupedPast.length > 0 && (
                 <div className="mt-16">
                   <h2 className="text-2xl font-bold mb-6 text-muted-foreground">Past Events</h2>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-75">
-                    {pastEvents.slice(0, 3).map((event) => (
-                      <EventCard key={event.id} event={event} />
+                  <div className="space-y-8 opacity-75">
+                    {groupedPast.slice(0, 2).map((group) => (
+                      <div key={group.dateKey}>
+                        <DayHeader date={group.date} eventCount={group.events.length} />
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {group.events.map((event) => (
+                            <EventCard key={event.id} event={event} />
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
