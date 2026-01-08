@@ -72,7 +72,7 @@ export function HeroSection({ onAnalyzeClick }: HeroSectionProps) {
               className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
               data-testid="text-hero-subhead"
             >
-              Data-driven real estate decisions - brought to you by Canada's #1 real estate podcast
+              Data-driven real estate investment intelligence - brought to you by Canada's #1 real estate podcast
             </p>
           </div>
 
