@@ -28,12 +28,14 @@ interface EventbriteEvent {
   id: string;
   name: string;
   description: string;
+  summary?: string;
   startDate: string;
   endDate: string;
   timezone: string;
   venueName: string;
   venueAddress: string;
   imageUrl: string;
+  logoUrl?: string;
   eventUrl: string;
   status: string;
 }
@@ -291,7 +293,17 @@ export default function Events() {
     queryKey: ["/api/events"],
   });
 
-  const upcomingEvents = (data?.events?.filter(e => {
+  // Check if an event is a "featured" special event (not a regular meetup)
+  const isFeaturedEvent = (event: EventbriteEvent): boolean => {
+    const nameLower = event.name.toLowerCase();
+    return nameLower.includes("multiplex") || 
+           nameLower.includes("unpacking") ||
+           nameLower.includes("workshop") ||
+           nameLower.includes("conference") ||
+           nameLower.includes("summit");
+  };
+
+  const allUpcoming = (data?.events?.filter(e => {
     if (!e.startDate) return true;
     return isFuture(parseISO(e.startDate));
   }) || []).sort((a, b) => {
@@ -299,6 +311,10 @@ export default function Events() {
     if (!b.startDate) return -1;
     return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
   });
+
+  // Separate featured events from regular meetups
+  const featuredEvents = allUpcoming.filter(isFeaturedEvent);
+  const upcomingMeetups = allUpcoming.filter(e => !isFeaturedEvent(e));
 
   const pastEvents = (data?.events?.filter(e => {
     if (!e.startDate) return false;
@@ -309,7 +325,7 @@ export default function Events() {
     return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
   });
 
-  const groupedUpcoming = groupEventsByDay(upcomingEvents);
+  const groupedUpcoming = groupEventsByDay(upcomingMeetups);
   const groupedPast = groupEventsByDay(pastEvents).reverse();
 
   const eventsSchema = {
@@ -382,26 +398,93 @@ export default function Events() {
                 </div>
               </div>
             </div>
-          ) : groupedUpcoming.length > 0 ? (
+          ) : (featuredEvents.length > 0 || groupedUpcoming.length > 0) ? (
             <>
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <Users className="h-6 w-6 text-primary" />
-                  <h2 className="text-2xl font-bold">Upcoming Meetups</h2>
-                  <Badge variant="outline" className="text-xs">
-                    First Tuesday of every month
-                  </Badge>
+              {/* Featured Events Section */}
+              {featuredEvents.length > 0 && (
+                <div className="mb-12">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Calendar className="h-6 w-6 text-primary" />
+                    <h2 className="text-2xl font-bold">Featured Event</h2>
+                    <Badge className="bg-primary text-primary-foreground">Special</Badge>
+                  </div>
+                  <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
+                    {featuredEvents.map((event) => (
+                      <Card key={event.id} className="overflow-hidden border-primary/20" data-testid={`card-featured-event-${event.id}`}>
+                        <div className="md:flex">
+                          {(event.logoUrl || event.imageUrl) && (
+                            <div className="md:w-1/3 shrink-0">
+                              <img
+                                src={event.logoUrl || event.imageUrl}
+                                alt={event.name}
+                                className="w-full h-48 md:h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <CardContent className={`p-6 flex flex-col justify-between ${(event.logoUrl || event.imageUrl) ? 'md:w-2/3' : 'w-full'}`}>
+                            <div>
+                              <h3 className="text-xl font-bold mb-2" data-testid={`text-featured-title-${event.id}`}>
+                                {event.name}
+                              </h3>
+                              {event.summary && (
+                                <p className="text-muted-foreground mb-4 line-clamp-3">{event.summary}</p>
+                              )}
+                              <div className="space-y-2 mb-4">
+                                {event.startDate && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Clock className="h-4 w-4 text-primary" />
+                                    <span className="font-medium">
+                                      {format(parseISO(event.startDate), "EEEE, MMMM d, yyyy 'at' h:mm a")}
+                                    </span>
+                                  </div>
+                                )}
+                                {event.venueName && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <MapPin className="h-4 w-4" />
+                                    <span>{event.venueName}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <a
+                              href={event.eventUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button className="w-full gap-2" data-testid={`button-featured-register-${event.id}`}>
+                                Register Now
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </a>
+                          </CardContent>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-muted-foreground mb-4">
-                  Join investors across Canada at our monthly meetups. Click on a date to see all cities.
-                </p>
-                
-                <div className="space-y-4">
-                  {groupedUpcoming.map((group) => (
-                    <MeetupDaySection key={group.dateKey} group={group} />
-                  ))}
+              )}
+
+              {/* Regular Meetups Section */}
+              {groupedUpcoming.length > 0 && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Users className="h-6 w-6 text-primary" />
+                    <h2 className="text-2xl font-bold">Upcoming Meetups</h2>
+                    <Badge variant="outline" className="text-xs">
+                      First Tuesday of every month
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground mb-4">
+                    Join investors across Canada at our monthly meetups. Click on a date to see all cities.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    {groupedUpcoming.map((group) => (
+                      <MeetupDaySection key={group.dateKey} group={group} />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {groupedPast.length > 0 && (
                 <div className="mt-16">
