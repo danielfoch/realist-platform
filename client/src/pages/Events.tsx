@@ -244,17 +244,18 @@ function MeetupDaySection({ group }: { group: GroupedEvents }) {
                   data-testid={`link-meetup-city-${event.id}`}
                 >
                   <div className="flex items-center gap-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                     <div>
-                      <span className="font-medium">{city}</span>
-                      {event.startDate && (
-                        <span className="text-sm text-muted-foreground ml-2">
-                          {format(parseISO(event.startDate), "h:mm a")}
-                        </span>
-                      )}
+                      <span className="font-medium">{event.name}</span>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{city}</span>
+                        {event.startDate && (
+                          <span>at {format(parseISO(event.startDate), "h:mm a")}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="outline" className="gap-1">
+                  <Button size="sm" variant="outline" className="gap-1 shrink-0">
                     Register
                     <ExternalLink className="h-3 w-3" />
                   </Button>
