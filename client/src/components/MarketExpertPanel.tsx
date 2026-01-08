@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getProvinceCode } from "@/lib/provinces";
 import { getMarketExpert, hasMarketExpert, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
-import { Phone, Loader2, UserPlus, Linkedin, Instagram, MapPin } from "lucide-react";
+import { Phone, Loader2, UserPlus, MapPin } from "lucide-react";
 
 const consultationFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -143,19 +143,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="font-semibold" data-testid="text-expert-name">{expert!.name}</h4>
-                {expert!.linkedIn && (
-                  <a href={expert!.linkedIn} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                    <Linkedin className="h-4 w-4" />
-                  </a>
-                )}
-                {expert!.instagram && (
-                  <a href={expert!.instagram} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                    <Instagram className="h-4 w-4" />
-                  </a>
-                )}
-              </div>
+              <h4 className="font-semibold" data-testid="text-expert-name">{expert!.name}</h4>
               <p className="text-sm text-muted-foreground">{expert!.title}</p>
               <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                 <MapPin className="h-3 w-3" />
