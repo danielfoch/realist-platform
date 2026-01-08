@@ -10,6 +10,7 @@ import { DealInputs } from "@/components/DealInputs";
 import { MetricCards } from "@/components/MetricCards";
 import { AnalysisCharts } from "@/components/AnalysisCharts";
 import { ResultsSummary } from "@/components/ResultsSummary";
+import { DealTimeline } from "@/components/DealTimeline";
 import { LeadCaptureModal } from "@/components/LeadCaptureModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -473,6 +474,8 @@ export default function Home() {
                 results={results}
                 address={[address, city, region].filter(Boolean).join(", ")}
               />
+
+              <DealTimeline />
             </div>
           </section>
         )}
