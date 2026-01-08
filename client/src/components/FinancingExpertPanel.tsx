@@ -25,9 +25,15 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { getProvinceCode } from "@/lib/provinces";
-import { getMarketExpert, hasMarketExpert, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
-import { Phone, Mail, Loader2, UserPlus, MapPin } from "lucide-react";
+import { Phone, Mail, Loader2 } from "lucide-react";
+
+const financingExpert = {
+  name: "Nick Hill",
+  title: "Financing Expert",
+  company: "Mortgage Broker",
+  calendlyUrl: "https://calendly.com",
+  email: "nick@example.com",
+};
 
 const consultationFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -38,26 +44,27 @@ const consultationFormSchema = z.object({
 
 type ConsultationFormValues = z.infer<typeof consultationFormSchema>;
 
-interface MarketExpertPanelProps {
-  region: string;
-  city: string;
-  country: "canada" | "usa";
-  dealInfo: {
-    address: string;
-    purchasePrice: number;
-    monthlyRent: number;
-    cashFlow: number;
-    capRate: number;
-  };
+interface FinancingExpertPanelProps {
+  purchasePrice: number;
+  downPaymentPercent: number;
+  interestRate: number;
+  region?: string;
+  city?: string;
+  address?: string;
   defaultValues?: { name?: string; email?: string; phone?: string };
 }
 
-export function MarketExpertPanel({ region, city, country, dealInfo, defaultValues }: MarketExpertPanelProps) {
+export function FinancingExpertPanel({ 
+  purchasePrice, 
+  downPaymentPercent, 
+  interestRate, 
+  region, 
+  city, 
+  address, 
+  defaultValues 
+}: FinancingExpertPanelProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const provinceCode = getProvinceCode(region);
-  const expert = getMarketExpert(provinceCode);
-  const hasExpert = hasMarketExpert(provinceCode);
 
   const form = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationFormSchema),
@@ -69,22 +76,30 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
     },
   });
 
+  const loanAmount = purchasePrice * (1 - downPaymentPercent / 100);
+
   const mutation = useMutation({
     mutationFn: async (data: ConsultationFormValues) => {
       return apiRequest("POST", "/api/leads/engage", {
         ...data,
-        formType: "Expert Consultation",
-        tags: [`LEAD_${provinceCode}`, "expert_consultation"],
-        province: provinceCode,
+        formType: "Financing Consultation",
+        tags: ["financing_consultation", "mortgage_request"],
+        province: region,
         city,
-        expertName: expert?.name,
-        dealInfo,
+        expertName: financingExpert.name,
+        dealInfo: {
+          address: address || "Not specified",
+          purchasePrice,
+          downPaymentPercent,
+          loanAmount,
+          currentRate: interestRate,
+        },
       });
     },
     onSuccess: () => {
       toast({ 
         title: "Consultation Request Sent!", 
-        description: expert ? `${expert.name} will be in touch shortly.` : "We'll connect you with a local expert." 
+        description: `${financingExpert.name} will be in touch shortly.`
       });
       setIsOpen(false);
       form.reset();
@@ -94,63 +109,29 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
     },
   });
 
-  if (country !== "canada") {
-    return null;
-  }
-
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
 
-  if (!hasExpert) {
-    return (
-      <Card className="border-dashed border-2" data-testid="card-no-expert">
-        <CardContent className="pt-6">
-          <div className="text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto">
-              <UserPlus className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div>
-              <h4 className="font-medium">No Market Expert Yet</h4>
-              <p className="text-sm text-muted-foreground mt-1">
-                We're looking for a trusted expert in {region || "this province"}
-              </p>
-            </div>
-            <a
-              href={partnerApplicationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline" className="gap-2 mt-2" data-testid="button-apply-expert">
-                <UserPlus className="h-4 w-4" />
-                Apply to be Market Expert
-              </Button>
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <>
-      <Card data-testid="card-market-expert">
+      <Card data-testid="card-financing-expert">
         <CardContent className="py-3 px-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                  {getInitials(expert!.name)}
+                  {getInitials(financingExpert.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <h4 className="font-semibold text-sm" data-testid="text-expert-name">{expert!.name}</h4>
-                <p className="text-xs text-muted-foreground truncate">{expert!.title} - {expert!.city}, {expert!.province}</p>
+                <h4 className="font-semibold text-sm" data-testid="text-financing-expert-name">{financingExpert.name}</h4>
+                <p className="text-xs text-muted-foreground truncate">{financingExpert.title}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer">
-                <Button size="sm" variant="outline" className="gap-1" data-testid="button-book-call">
+              <a href={financingExpert.calendlyUrl} target="_blank" rel="noopener noreferrer">
+                <Button size="sm" variant="outline" className="gap-1" data-testid="button-financing-book-call">
                   <Phone className="h-3 w-3" />
                   Book a Call
                 </Button>
@@ -159,7 +140,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
                 size="sm"
                 className="gap-1" 
                 onClick={() => setIsOpen(true)}
-                data-testid="button-send-email"
+                data-testid="button-financing-send-email"
               >
                 <Mail className="h-3 w-3" />
                 Send Email
@@ -173,10 +154,10 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
-              Connect with {expert!.name}
+              Connect with {financingExpert.name}
             </DialogTitle>
             <DialogDescription>
-              Request a free consultation to discuss this deal and get expert insights on the {expert!.province} market.
+              Request a free consultation to discuss financing options for your deal.
             </DialogDescription>
           </DialogHeader>
 
@@ -184,12 +165,12 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
                 <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                  {getInitials(expert!.name)}
+                  {getInitials(financingExpert.name)}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium text-sm">{expert!.name}</p>
-                <p className="text-xs text-muted-foreground">{expert!.title}</p>
+                <p className="font-medium text-sm">{financingExpert.name}</p>
+                <p className="text-xs text-muted-foreground">{financingExpert.title}</p>
               </div>
             </div>
           </div>
@@ -203,7 +184,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
                   <FormItem>
                     <FormLabel>Full Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Smith" className="h-11" data-testid="input-consult-name" {...field} />
+                      <Input placeholder="John Smith" className="h-11" data-testid="input-financing-name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -217,7 +198,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
                   <FormItem>
                     <FormLabel>Email *</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@example.com" className="h-11" data-testid="input-consult-email" {...field} />
+                      <Input type="email" placeholder="john@example.com" className="h-11" data-testid="input-financing-email" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -231,7 +212,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
                   <FormItem>
                     <FormLabel>Phone Number *</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="(416) 555-0123" className="h-11" data-testid="input-consult-phone" {...field} />
+                      <Input type="tel" placeholder="(416) 555-0123" className="h-11" data-testid="input-financing-phone" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -244,7 +225,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-consult-consent" />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-financing-consent" />
                     </FormControl>
                     <FormLabel className="text-sm font-normal text-muted-foreground cursor-pointer">
                       I agree to receive communications about this consultation
@@ -253,7 +234,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
                 )}
               />
 
-              <Button type="submit" className="w-full h-11" disabled={mutation.isPending} data-testid="button-consult-submit">
+              <Button type="submit" className="w-full h-11" disabled={mutation.isPending} data-testid="button-financing-submit">
                 {mutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -261,8 +242,8 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
                   </>
                 ) : (
                   <>
-                    <Phone className="mr-2 h-4 w-4" />
-                    Request Consultation
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Email
                   </>
                 )}
               </Button>

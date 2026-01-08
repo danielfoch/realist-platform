@@ -28,6 +28,7 @@ import { useState } from "react";
 import type { BuyHoldInputs } from "@shared/schema";
 import { CashbackDisplay } from "@/components/CashbackDisplay";
 import { MortgageConsultationButton } from "@/components/MortgageConsultationButton";
+import { FinancingExpertPanel } from "@/components/FinancingExpertPanel";
 
 interface DealInputsProps {
   inputs: BuyHoldInputs;
@@ -390,6 +391,17 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
               )}
             </div>
           )}
+          <div className="pt-4 border-t border-border">
+            <FinancingExpertPanel
+              purchasePrice={inputs.purchasePrice}
+              downPaymentPercent={inputs.downPaymentPercent}
+              interestRate={inputs.interestRate}
+              region={region}
+              city={city}
+              address={address}
+              defaultValues={defaultLeadInfo}
+            />
+          </div>
         </CardContent>
       </Card>
 
