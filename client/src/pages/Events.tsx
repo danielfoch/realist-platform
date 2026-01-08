@@ -517,25 +517,6 @@ export default function Events() {
             </div>
           )}
 
-          <div className="mt-16 text-center">
-            <Card className="inline-block p-8 bg-gradient-to-br from-primary/10 to-accent/10">
-              <h3 className="text-xl font-semibold mb-2">Don't miss an event</h3>
-              <p className="text-muted-foreground mb-4">
-                Follow us on Eventbrite to get notified about new events.
-              </p>
-              <a
-                href="https://www.eventbrite.ca/o/the-canadian-real-estate-investor-podcast-87580319633"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button className="gap-2" data-testid="button-follow-eventbrite">
-                  Follow on Eventbrite
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </a>
-            </Card>
-          </div>
-
           {/* Meetup Hosts Section */}
           <div className="mt-24">
             <div className="text-center mb-12">
@@ -610,6 +591,25 @@ export default function Events() {
                 </CardContent>
               </Card>
             </div>
+          </div>
+
+          <div className="mt-16 text-center">
+            <Card className="inline-block p-8 bg-gradient-to-br from-primary/10 to-accent/10">
+              <h3 className="text-xl font-semibold mb-2">Don't miss an event</h3>
+              <p className="text-muted-foreground mb-4">
+                Follow us on Eventbrite to get notified about new events.
+              </p>
+              <a
+                href="https://www.eventbrite.ca/o/the-canadian-real-estate-investor-podcast-87580319633"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button className="gap-2" data-testid="button-follow-eventbrite">
+                  Follow on Eventbrite
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </a>
+            </Card>
           </div>
         </div>
       </main>
