@@ -1,12 +1,16 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Menu, X, User, LogOut, Briefcase, Building } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/Screenshot_2026-01-04_at_3.46.09_PM_1767559573207.png";
 
 export function Navigation() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, isAuthenticated, logout, isLoading } = useAuth();
 
   const navLinks = [
     { href: "/", label: "Analyzer", external: false },
@@ -68,6 +72,62 @@ export function Navigation() {
               </a>
             </div>
 
+            {!isLoading && (
+              <div className="hidden md:block">
+                {isAuthenticated ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user?.profileImageUrl || undefined} />
+                          <AvatarFallback>
+                            {user?.firstName?.[0] || user?.email?.[0] || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuLabel>
+                        {user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : user?.email}
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <Link href="/investor">
+                        <DropdownMenuItem className="cursor-pointer" data-testid="link-investor-portal">
+                          <Building className="mr-2 h-4 w-4" />
+                          Investor Portal
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/partner">
+                        <DropdownMenuItem className="cursor-pointer" data-testid="link-partner-portal">
+                          <Briefcase className="mr-2 h-4 w-4" />
+                          Partner Portal
+                        </DropdownMenuItem>
+                      </Link>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="cursor-pointer text-destructive" 
+                        onClick={() => logout()}
+                        data-testid="button-logout"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sign Out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => window.location.href = "/api/login"}
+                    data-testid="button-sign-in"
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Sign In
+                  </Button>
+                )}
+              </div>
+            )}
+
             <Button
               variant="ghost"
               size="icon"
@@ -124,6 +184,43 @@ export function Navigation() {
                 Book a Free Consult Call
               </Button>
             </a>
+            <div className="border-t border-border/50 pt-2 mt-2">
+              {isAuthenticated ? (
+                <>
+                  <Link href="/investor" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start" data-testid="link-mobile-investor">
+                      <Building className="mr-2 h-4 w-4" />
+                      Investor Portal
+                    </Button>
+                  </Link>
+                  <Link href="/partner" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start" data-testid="link-mobile-partner">
+                      <Briefcase className="mr-2 h-4 w-4" />
+                      Partner Portal
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-destructive" 
+                    onClick={() => { logout(); setMobileMenuOpen(false); }}
+                    data-testid="button-mobile-logout"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={() => window.location.href = "/api/login"}
+                  data-testid="button-mobile-sign-in"
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  Sign In
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}

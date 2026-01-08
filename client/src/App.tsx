@@ -14,6 +14,8 @@ import Podcast from "@/pages/Podcast";
 import Admin from "@/pages/Admin";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
+import InvestorPortal from "@/pages/InvestorPortal";
+import PartnerPortal from "@/pages/PartnerPortal";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -29,6 +31,8 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/terms" component={Terms} />
+      <Route path="/investor" component={InvestorPortal} />
+      <Route path="/partner" component={PartnerPortal} />
       <Route component={NotFound} />
     </Switch>
   );
