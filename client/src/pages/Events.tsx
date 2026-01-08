@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, MapPin, Clock, ExternalLink, RefreshCw, Users, Handshake, Linkedin, Instagram, UserPlus, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, MapPin, Clock, ExternalLink, RefreshCw, Users, Handshake, Linkedin, Instagram, UserPlus, ChevronDown, ChevronUp, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import {
   Collapsible,
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/collapsible";
 import { format, parseISO, isPast, isFuture, startOfDay, isToday, isTomorrow } from "date-fns";
 import { marketExperts, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
+import { getHostByEventName } from "@/lib/meetupHosts";
+import { ContactHostDialog } from "@/components/ContactHostDialog";
 
 interface GroupedEvents {
   date: Date;
@@ -234,33 +236,48 @@ function MeetupDaySection({ group }: { group: GroupedEvents }) {
         <CollapsibleContent>
           <div className="px-4 pb-4 pt-2 border-t">
             <div className="grid gap-3 mt-3">
-              {cities.map(({ city, event }) => (
-                <a
-                  key={event.id}
-                  href={event.eventUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover-elevate transition-colors"
-                  data-testid={`link-meetup-city-${event.id}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div>
-                      <span className="font-medium">{event.name}</span>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{city}</span>
-                        {event.startDate && (
-                          <span>at {format(parseISO(event.startDate), "h:mm a")}</span>
-                        )}
+              {cities.map(({ city, event }) => {
+                const host = getHostByEventName(event.name);
+                return (
+                  <div
+                    key={event.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                    data-testid={`card-meetup-city-${event.id}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div>
+                        <span className="font-medium">{event.name}</span>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span>{city}</span>
+                          {event.startDate && (
+                            <span>at {format(parseISO(event.startDate), "h:mm a")}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <ContactHostDialog host={host} eventName={event.name} eventId={event.id}>
+                        <Button size="sm" variant="ghost" className="gap-1" data-testid={`button-contact-host-${event.id}`}>
+                          <MessageCircle className="h-3 w-3" />
+                          Contact Host
+                        </Button>
+                      </ContactHostDialog>
+                      <a
+                        href={event.eventUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid={`link-register-${event.id}`}
+                      >
+                        <Button size="sm" variant="outline" className="gap-1">
+                          Register
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </a>
+                    </div>
                   </div>
-                  <Button size="sm" variant="outline" className="gap-1 shrink-0">
-                    Register
-                    <ExternalLink className="h-3 w-3" />
-                  </Button>
-                </a>
-              ))}
+                );
+              })}
             </div>
           </div>
         </CollapsibleContent>

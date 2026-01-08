@@ -388,6 +388,83 @@ export async function registerRoutes(
     }
   });
 
+  // Contact meetup host endpoint
+  const contactHostSchema = z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    phone: z.string().min(10),
+    message: z.string().min(10),
+    hostId: z.string(),
+    hostEmail: z.string().email(),
+    hostName: z.string(),
+    eventName: z.string(),
+    eventId: z.string(),
+    city: z.string(),
+  });
+
+  app.post("/api/events/contact-host", async (req, res) => {
+    try {
+      const data = contactHostSchema.parse(req.body);
+      
+      // Create a lead record for tracking
+      const lead = await storage.createLead({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        consent: true,
+        leadSource: `meetup_contact_${data.city.toLowerCase().replace(/\s+/g, '_')}`,
+      });
+
+      // Format phone to E.164 format
+      const formatPhoneE164 = (phone: string): string => {
+        const cleaned = phone.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Split name for CRM
+      const nameParts = data.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Send to GHL with meetup contact tags
+      await sendWebhook(lead.id, {
+        email: data.email,
+        firstName,
+        lastName,
+        phone: formatPhoneE164(data.phone),
+        fullName: data.name,
+        consent: true,
+        leadSource: "meetup_contact",
+        tags: ["meetup_contact", `MEETUP_${data.city.toUpperCase().replace(/\s+/g, '_')}`],
+        customField: {
+          meetup_message: data.message,
+          meetup_event: data.eventName,
+          meetup_host: data.hostName,
+          meetup_host_email: data.hostEmail,
+        },
+      });
+
+      // TODO: When email service is configured, send email directly to host
+      // For now, the webhook will handle routing to the host via GHL workflows
+      console.log(`Meetup contact request: ${data.name} wants to contact ${data.hostName} (${data.hostEmail}) about ${data.eventName}`);
+
+      res.json({ success: true, message: "Message sent to host" });
+    } catch (error) {
+      console.error("Error processing contact host request:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to send message" });
+      }
+    }
+  });
+
   app.post("/api/admin/clear-event-cache", async (req, res) => {
     try {
       clearEventCache();
