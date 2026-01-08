@@ -17,7 +17,7 @@ export function Navigation() {
     { href: "/events", label: "Events", external: false },
     { href: "/podcast", label: "Podcast", external: false },
     { href: "/blog", label: "Blog", external: false },
-    { href: "/shop", label: "Shop", external: false },
+    { href: "https://shop.realist.ca/", label: "Shop", external: true },
     { href: "/about", label: "About", external: false },
   ];
 
