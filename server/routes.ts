@@ -1,9 +1,19 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertLeadSchema, insertPropertySchema, insertAnalysisSchema, insertSavedDealSchema } from "@shared/schema";
+import { 
+  insertLeadSchema, 
+  insertPropertySchema, 
+  insertAnalysisSchema, 
+  insertSavedDealSchema,
+  insertInvestorProfileSchema,
+  insertInvestorKycSchema,
+  insertPortfolioPropertySchema,
+  insertIndustryPartnerSchema,
+} from "@shared/schema";
 import { z } from "zod";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 
 const createLeadRequestSchema = z.object({
   lead: insertLeadSchema,
@@ -75,6 +85,10 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // Set up Replit Auth (BEFORE other routes)
+  await setupAuth(app);
+  registerAuthRoutes(app);
   
   app.post("/api/leads", async (req, res) => {
     try {
@@ -687,6 +701,220 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching podcast questions:", error);
       res.status(500).json({ error: "Failed to fetch questions" });
+    }
+  });
+
+  // ============================================
+  // INVESTOR PORTAL API ROUTES
+  // ============================================
+
+  // Get investor profile
+  app.get("/api/investor/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getInvestorProfile(userId);
+      res.json(profile || null);
+    } catch (error) {
+      console.error("Error fetching investor profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // Update investor profile
+  app.put("/api/investor/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertInvestorProfileSchema.parse({ ...req.body, userId });
+      const profile = await storage.upsertInvestorProfile(validatedData);
+      res.json(profile);
+    } catch (error) {
+      console.error("Error updating investor profile:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update profile" });
+      }
+    }
+  });
+
+  // Get investor KYC
+  app.get("/api/investor/kyc", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const kyc = await storage.getInvestorKyc(userId);
+      res.json(kyc || null);
+    } catch (error) {
+      console.error("Error fetching investor KYC:", error);
+      res.status(500).json({ error: "Failed to fetch KYC" });
+    }
+  });
+
+  // Update investor KYC
+  app.put("/api/investor/kyc", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertInvestorKycSchema.parse({ ...req.body, userId });
+      const kyc = await storage.upsertInvestorKyc(validatedData);
+      res.json(kyc);
+    } catch (error) {
+      console.error("Error updating investor KYC:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update KYC" });
+      }
+    }
+  });
+
+  // Get portfolio properties
+  app.get("/api/investor/portfolio", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const properties = await storage.getPortfolioProperties(userId);
+      res.json(properties);
+    } catch (error) {
+      console.error("Error fetching portfolio:", error);
+      res.status(500).json({ error: "Failed to fetch portfolio" });
+    }
+  });
+
+  // Add portfolio property
+  app.post("/api/investor/portfolio", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertPortfolioPropertySchema.parse({ ...req.body, userId });
+      const property = await storage.createPortfolioProperty(validatedData);
+      res.json(property);
+    } catch (error) {
+      console.error("Error adding portfolio property:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to add property" });
+      }
+    }
+  });
+
+  // Update portfolio property
+  app.put("/api/investor/portfolio/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const property = await storage.getPortfolioProperty(req.params.id);
+      if (!property || property.userId !== userId) {
+        res.status(404).json({ error: "Property not found" });
+        return;
+      }
+      const updated = await storage.updatePortfolioProperty(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating portfolio property:", error);
+      res.status(500).json({ error: "Failed to update property" });
+    }
+  });
+
+  // Delete portfolio property
+  app.delete("/api/investor/portfolio/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const property = await storage.getPortfolioProperty(req.params.id);
+      if (!property || property.userId !== userId) {
+        res.status(404).json({ error: "Property not found" });
+        return;
+      }
+      await storage.deletePortfolioProperty(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting portfolio property:", error);
+      res.status(500).json({ error: "Failed to delete property" });
+    }
+  });
+
+  // ============================================
+  // INDUSTRY PARTNER PORTAL API ROUTES
+  // ============================================
+
+  // Get partner profile
+  app.get("/api/partner/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const partner = await storage.getIndustryPartner(userId);
+      res.json(partner || null);
+    } catch (error) {
+      console.error("Error fetching partner profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // Update partner profile
+  app.put("/api/partner/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertIndustryPartnerSchema.parse({ ...req.body, userId });
+      const partner = await storage.upsertIndustryPartner(validatedData);
+      res.json(partner);
+    } catch (error) {
+      console.error("Error updating partner profile:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update profile" });
+      }
+    }
+  });
+
+  // Get partner leads
+  app.get("/api/partner/leads", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const partner = await storage.getIndustryPartner(userId);
+      if (!partner) {
+        res.status(404).json({ error: "Partner profile not found" });
+        return;
+      }
+      const leads = await storage.getPartnerLeads(partner.id);
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching partner leads:", error);
+      res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  // Update partner lead status
+  app.put("/api/partner/leads/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const partner = await storage.getIndustryPartner(userId);
+      if (!partner) {
+        res.status(404).json({ error: "Partner profile not found" });
+        return;
+      }
+      const updated = await storage.updatePartnerLead(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating partner lead:", error);
+      res.status(500).json({ error: "Failed to update lead" });
+    }
+  });
+
+  // Public endpoint to get approved partners by area (for display on site)
+  app.get("/api/partners/public", async (req, res) => {
+    try {
+      const area = (req.query.area as string) || "";
+      const partners = await storage.getApprovedPartnersByArea(area);
+      // Return only public info
+      res.json(partners.map(p => ({
+        id: p.id,
+        partnerType: p.partnerType,
+        companyName: p.companyName,
+        bio: p.bio,
+        headshotUrl: p.headshotUrl,
+        serviceAreas: p.serviceAreas,
+        socialLinks: p.socialLinks,
+        publicEmail: p.publicEmail,
+      })));
+    } catch (error) {
+      console.error("Error fetching public partners:", error);
+      res.status(500).json({ error: "Failed to fetch partners" });
     }
   });
 

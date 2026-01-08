@@ -6,6 +6,11 @@ import {
   dataCache,
   savedDeals,
   podcastQuestions,
+  investorProfiles,
+  investorKyc,
+  portfolioProperties,
+  industryPartners,
+  partnerLeads,
   type Lead, 
   type InsertLead,
   type Property,
@@ -20,6 +25,16 @@ import {
   type InsertSavedDeal,
   type PodcastQuestion,
   type InsertPodcastQuestion,
+  type InvestorProfile,
+  type InsertInvestorProfile,
+  type InvestorKyc,
+  type InsertInvestorKyc,
+  type PortfolioProperty,
+  type InsertPortfolioProperty,
+  type IndustryPartner,
+  type InsertIndustryPartner,
+  type PartnerLead,
+  type InsertPartnerLead,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
@@ -56,6 +71,33 @@ export interface IStorage {
 
   createPodcastQuestion(question: InsertPodcastQuestion): Promise<PodcastQuestion>;
   getPodcastQuestions(): Promise<PodcastQuestion[]>;
+
+  // Investor Profile
+  getInvestorProfile(userId: string): Promise<InvestorProfile | undefined>;
+  upsertInvestorProfile(profile: InsertInvestorProfile): Promise<InvestorProfile>;
+
+  // Investor KYC
+  getInvestorKyc(userId: string): Promise<InvestorKyc | undefined>;
+  upsertInvestorKyc(kyc: InsertInvestorKyc): Promise<InvestorKyc>;
+
+  // Portfolio Properties
+  getPortfolioProperties(userId: string): Promise<PortfolioProperty[]>;
+  getPortfolioProperty(id: string): Promise<PortfolioProperty | undefined>;
+  createPortfolioProperty(property: InsertPortfolioProperty): Promise<PortfolioProperty>;
+  updatePortfolioProperty(id: string, updates: Partial<PortfolioProperty>): Promise<PortfolioProperty | undefined>;
+  deletePortfolioProperty(id: string): Promise<void>;
+
+  // Industry Partners
+  getIndustryPartner(userId: string): Promise<IndustryPartner | undefined>;
+  getIndustryPartnerById(id: string): Promise<IndustryPartner | undefined>;
+  getApprovedPartnersByArea(area: string): Promise<IndustryPartner[]>;
+  upsertIndustryPartner(partner: InsertIndustryPartner): Promise<IndustryPartner>;
+  updateIndustryPartner(id: string, updates: Partial<IndustryPartner>): Promise<IndustryPartner | undefined>;
+
+  // Partner Leads
+  getPartnerLeads(partnerId: string): Promise<(PartnerLead & { lead: Lead })[]>;
+  createPartnerLead(partnerLead: InsertPartnerLead): Promise<PartnerLead>;
+  updatePartnerLead(id: string, updates: Partial<PartnerLead>): Promise<PartnerLead | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -192,6 +234,145 @@ export class DatabaseStorage implements IStorage {
 
   async getPodcastQuestions(): Promise<PodcastQuestion[]> {
     return db.select().from(podcastQuestions).orderBy(desc(podcastQuestions.createdAt));
+  }
+
+  // Investor Profile
+  async getInvestorProfile(userId: string): Promise<InvestorProfile | undefined> {
+    const [profile] = await db.select().from(investorProfiles).where(eq(investorProfiles.userId, userId));
+    return profile || undefined;
+  }
+
+  async upsertInvestorProfile(profile: InsertInvestorProfile): Promise<InvestorProfile> {
+    const existing = await this.getInvestorProfile(profile.userId);
+    if (existing) {
+      const [updated] = await db
+        .update(investorProfiles)
+        .set({ ...profile, updatedAt: new Date() })
+        .where(eq(investorProfiles.userId, profile.userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(investorProfiles).values(profile).returning();
+    return created;
+  }
+
+  // Investor KYC
+  async getInvestorKyc(userId: string): Promise<InvestorKyc | undefined> {
+    const [kyc] = await db.select().from(investorKyc).where(eq(investorKyc.userId, userId));
+    return kyc || undefined;
+  }
+
+  async upsertInvestorKyc(kyc: InsertInvestorKyc): Promise<InvestorKyc> {
+    const existing = await this.getInvestorKyc(kyc.userId);
+    if (existing) {
+      const [updated] = await db
+        .update(investorKyc)
+        .set({ ...kyc, updatedAt: new Date() })
+        .where(eq(investorKyc.userId, kyc.userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(investorKyc).values(kyc).returning();
+    return created;
+  }
+
+  // Portfolio Properties
+  async getPortfolioProperties(userId: string): Promise<PortfolioProperty[]> {
+    return db.select().from(portfolioProperties).where(eq(portfolioProperties.userId, userId)).orderBy(desc(portfolioProperties.createdAt));
+  }
+
+  async getPortfolioProperty(id: string): Promise<PortfolioProperty | undefined> {
+    const [property] = await db.select().from(portfolioProperties).where(eq(portfolioProperties.id, id));
+    return property || undefined;
+  }
+
+  async createPortfolioProperty(property: InsertPortfolioProperty): Promise<PortfolioProperty> {
+    const [created] = await db.insert(portfolioProperties).values(property).returning();
+    return created;
+  }
+
+  async updatePortfolioProperty(id: string, updates: Partial<PortfolioProperty>): Promise<PortfolioProperty | undefined> {
+    const [updated] = await db
+      .update(portfolioProperties)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(portfolioProperties.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deletePortfolioProperty(id: string): Promise<void> {
+    await db.delete(portfolioProperties).where(eq(portfolioProperties.id, id));
+  }
+
+  // Industry Partners
+  async getIndustryPartner(userId: string): Promise<IndustryPartner | undefined> {
+    const [partner] = await db.select().from(industryPartners).where(eq(industryPartners.userId, userId));
+    return partner || undefined;
+  }
+
+  async getIndustryPartnerById(id: string): Promise<IndustryPartner | undefined> {
+    const [partner] = await db.select().from(industryPartners).where(eq(industryPartners.id, id));
+    return partner || undefined;
+  }
+
+  async getApprovedPartnersByArea(area: string): Promise<IndustryPartner[]> {
+    return db.select().from(industryPartners)
+      .where(and(
+        eq(industryPartners.isApproved, true),
+        eq(industryPartners.isPublic, true)
+      ));
+  }
+
+  async upsertIndustryPartner(partner: InsertIndustryPartner): Promise<IndustryPartner> {
+    const existing = await this.getIndustryPartner(partner.userId);
+    if (existing) {
+      const [updated] = await db
+        .update(industryPartners)
+        .set({ ...partner, updatedAt: new Date() })
+        .where(eq(industryPartners.userId, partner.userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(industryPartners).values(partner).returning();
+    return created;
+  }
+
+  async updateIndustryPartner(id: string, updates: Partial<IndustryPartner>): Promise<IndustryPartner | undefined> {
+    const [updated] = await db
+      .update(industryPartners)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(industryPartners.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Partner Leads
+  async getPartnerLeads(partnerId: string): Promise<(PartnerLead & { lead: Lead })[]> {
+    const results = await db
+      .select()
+      .from(partnerLeads)
+      .innerJoin(leads, eq(partnerLeads.leadId, leads.id))
+      .where(eq(partnerLeads.partnerId, partnerId))
+      .orderBy(desc(partnerLeads.assignedAt));
+    
+    return results.map(r => ({
+      ...r.partner_leads,
+      lead: r.leads,
+    }));
+  }
+
+  async createPartnerLead(partnerLead: InsertPartnerLead): Promise<PartnerLead> {
+    const [created] = await db.insert(partnerLeads).values(partnerLead).returning();
+    return created;
+  }
+
+  async updatePartnerLead(id: string, updates: Partial<PartnerLead>): Promise<PartnerLead | undefined> {
+    const [updated] = await db
+      .update(partnerLeads)
+      .set(updates)
+      .where(eq(partnerLeads.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 

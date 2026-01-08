@@ -3,6 +3,9 @@ import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real } from
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Re-export auth models (required for Replit Auth)
+export * from "./models/auth";
+
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -254,3 +257,183 @@ export const analysisResultsSchema = z.object({
 });
 
 export type AnalysisResults = z.infer<typeof analysisResultsSchema>;
+
+// ============================================
+// INVESTOR PORTAL SCHEMAS
+// ============================================
+
+import { users } from "./models/auth";
+
+export const investorProfiles = pgTable("investor_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  phone: text("phone"),
+  city: text("city"),
+  province: text("province"),
+  country: text("country").default("canada"),
+  bio: text("bio"),
+  investmentGoals: text("investment_goals"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const investorKyc = pgTable("investor_kyc", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  isAccreditedInvestor: boolean("is_accredited_investor").default(false),
+  estimatedNetWorth: text("estimated_net_worth"),
+  annualIncome: text("annual_income"),
+  investmentExperience: text("investment_experience"),
+  riskTolerance: text("risk_tolerance"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const portfolioProperties = pgTable("portfolio_properties", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  address: text("address"),
+  city: text("city"),
+  province: text("province"),
+  country: text("country").default("canada"),
+  purchasePrice: real("purchase_price"),
+  purchaseDate: timestamp("purchase_date"),
+  currentValue: real("current_value"),
+  monthlyRent: real("monthly_rent"),
+  monthlyExpenses: real("monthly_expenses"),
+  strategyType: text("strategy_type"),
+  inputsJson: jsonb("inputs_json"),
+  resultsJson: jsonb("results_json"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ============================================
+// INDUSTRY PARTNER PORTAL SCHEMAS
+// ============================================
+
+export const partnerTypes = ["realtor", "mortgage_broker", "lawyer", "accountant", "property_manager", "contractor", "appraiser", "inspector", "other"] as const;
+export type PartnerType = (typeof partnerTypes)[number];
+
+export const industryPartners = pgTable("industry_partners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  partnerType: text("partner_type").notNull(),
+  companyName: text("company_name"),
+  licenseNumber: text("license_number"),
+  phone: text("phone"),
+  publicEmail: text("public_email"),
+  bio: text("bio"),
+  headshotUrl: text("headshot_url"),
+  serviceAreas: text("service_areas").array(),
+  socialLinks: jsonb("social_links"),
+  isApproved: boolean("is_approved").default(false),
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const partnerLeads = pgTable("partner_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnerId: varchar("partner_id").references(() => industryPartners.id).notNull(),
+  leadId: varchar("lead_id").references(() => leads.id).notNull(),
+  status: text("status").default("new"),
+  notes: text("notes"),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+  contactedAt: timestamp("contacted_at"),
+  closedAt: timestamp("closed_at"),
+});
+
+// Relations
+export const investorProfilesRelations = relations(investorProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [investorProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export const investorKycRelations = relations(investorKyc, ({ one }) => ({
+  user: one(users, {
+    fields: [investorKyc.userId],
+    references: [users.id],
+  }),
+}));
+
+export const portfolioPropertiesRelations = relations(portfolioProperties, ({ one }) => ({
+  user: one(users, {
+    fields: [portfolioProperties.userId],
+    references: [users.id],
+  }),
+}));
+
+export const industryPartnersRelations = relations(industryPartners, ({ one, many }) => ({
+  user: one(users, {
+    fields: [industryPartners.userId],
+    references: [users.id],
+  }),
+  partnerLeads: many(partnerLeads),
+}));
+
+export const partnerLeadsRelations = relations(partnerLeads, ({ one }) => ({
+  partner: one(industryPartners, {
+    fields: [partnerLeads.partnerId],
+    references: [industryPartners.id],
+  }),
+  lead: one(leads, {
+    fields: [partnerLeads.leadId],
+    references: [leads.id],
+  }),
+}));
+
+// Insert schemas
+export const insertInvestorProfileSchema = createInsertSchema(investorProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvestorKycSchema = createInsertSchema(investorKyc).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPortfolioPropertySchema = createInsertSchema(portfolioProperties).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertIndustryPartnerSchema = createInsertSchema(industryPartners).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isApproved: true,
+});
+
+export const insertPartnerLeadSchema = createInsertSchema(partnerLeads).omit({
+  id: true,
+  assignedAt: true,
+});
+
+// Types
+export type InsertInvestorProfile = z.infer<typeof insertInvestorProfileSchema>;
+export type InvestorProfile = typeof investorProfiles.$inferSelect;
+
+export type InsertInvestorKyc = z.infer<typeof insertInvestorKycSchema>;
+export type InvestorKyc = typeof investorKyc.$inferSelect;
+
+export type InsertPortfolioProperty = z.infer<typeof insertPortfolioPropertySchema>;
+export type PortfolioProperty = typeof portfolioProperties.$inferSelect;
+
+export type InsertIndustryPartner = z.infer<typeof insertIndustryPartnerSchema>;
+export type IndustryPartner = typeof industryPartners.$inferSelect;
+
+export type InsertPartnerLead = z.infer<typeof insertPartnerLeadSchema>;
+export type PartnerLead = typeof partnerLeads.$inferSelect;
+
+// User role type for the extended user
+export type UserRole = "investor" | "partner" | "admin";
