@@ -6,6 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
 import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
+import { MarketExpertPanel } from "@/components/MarketExpertPanel";
 import { DealInputs } from "@/components/DealInputs";
 import { MetricCards } from "@/components/MetricCards";
 import { AnalysisCharts } from "@/components/AnalysisCharts";
@@ -276,6 +277,22 @@ export default function Home() {
                       selectedStrategy={strategy}
                       onStrategyChange={setStrategy}
                     />
+
+                    {country === "canada" && (
+                      <MarketExpertPanel
+                        region={region || "Ontario"}
+                        city={city}
+                        country="canada"
+                        dealInfo={{
+                          address: address,
+                          purchasePrice: 0,
+                          monthlyRent: 0,
+                          cashFlow: 0,
+                          capRate: 0,
+                        }}
+                        defaultValues={getSavedLeadInfo() || undefined}
+                      />
+                    )}
                   </CardContent>
                 </Card>
 
