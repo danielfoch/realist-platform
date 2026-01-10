@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,6 +29,16 @@ import { getProvinceCode } from "@/lib/provinces";
 import { getMarketExpertByCity, hasMarketExpertByCity, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
 import { Phone, Mail, Loader2, UserPlus, MapPin } from "lucide-react";
 
+interface ApprovedExpert {
+  userId: string;
+  name: string;
+  marketRegion: string;
+  marketCity: string | null;
+  brokerageName: string | null;
+  brokerageCity: string | null;
+  brokerageProvince: string | null;
+}
+
 const consultationFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
@@ -56,8 +66,63 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const provinceCode = getProvinceCode(region);
-  const expert = getMarketExpertByCity(city, provinceCode);
-  const hasExpert = hasMarketExpertByCity(city, provinceCode);
+  
+  // Fetch approved experts from database
+  const { data: approvedExperts = [] } = useQuery<ApprovedExpert[]>({
+    queryKey: ["/api/market-experts"],
+  });
+  
+  // Check if there's an approved expert for this region/city
+  const dynamicExpert = approvedExperts.find(e => {
+    const expertProvince = getProvinceCode(e.marketRegion);
+    if (e.marketCity && city) {
+      return e.marketCity.toLowerCase() === city.toLowerCase() && expertProvince === provinceCode;
+    }
+    return expertProvince === provinceCode;
+  });
+  
+  // Use static expert as base, but merge in brokerage info from database
+  const staticExpert = getMarketExpertByCity(city, provinceCode);
+  const hasExpert = Boolean(dynamicExpert || staticExpert);
+  
+  // Build display expert with dynamic brokerage info taking priority
+  // All branches populate: name, displayTitle, displayCity, province
+  const displayExpert = (() => {
+    if (dynamicExpert && staticExpert) {
+      // Both exist: use static as base, but override with dynamic brokerage info
+      return {
+        ...staticExpert,
+        name: dynamicExpert.name || staticExpert.name,
+        displayTitle: dynamicExpert.brokerageName || staticExpert.brokerageName || staticExpert.title,
+        displayCity: dynamicExpert.brokerageCity || staticExpert.city || "",
+        province: dynamicExpert.brokerageProvince || staticExpert.province,
+      };
+    }
+    if (dynamicExpert) {
+      // Only dynamic: create display object from database record
+      const provinceName = dynamicExpert.brokerageProvince || dynamicExpert.marketRegion || region;
+      return {
+        name: dynamicExpert.name,
+        title: dynamicExpert.brokerageName || "Market Expert",
+        province: provinceName,
+        provinceCode: getProvinceCode(provinceName),
+        city: dynamicExpert.marketCity || dynamicExpert.brokerageCity || city || "",
+        bio: "",
+        displayTitle: dynamicExpert.brokerageName || "Market Expert",
+        displayCity: dynamicExpert.brokerageCity || dynamicExpert.marketCity || city || "",
+      };
+    }
+    if (staticExpert) {
+      // Only static: use as-is with fallback displayTitle
+      return {
+        ...staticExpert,
+        displayTitle: staticExpert.brokerageName || staticExpert.title,
+        displayCity: staticExpert.city || "",
+        province: staticExpert.province,
+      };
+    }
+    return null;
+  })();
 
   const form = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationFormSchema),
@@ -77,14 +142,14 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
         tags: [`LEAD_${provinceCode}`, "expert_consultation"],
         province: provinceCode,
         city,
-        expertName: expert?.name,
+        expertName: displayExpert?.name,
         dealInfo,
       });
     },
     onSuccess: () => {
       toast({ 
         title: "Consultation Request Sent!", 
-        description: expert ? `${expert.name} will be in touch shortly.` : "We'll connect you with a local expert." 
+        description: displayExpert ? `${displayExpert.name} will be in touch shortly.` : "We'll connect you with a local expert." 
       });
       setIsOpen(false);
       form.reset();
@@ -140,12 +205,12 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
             <div className="flex items-center gap-3 min-w-0">
               <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                  {getInitials(expert!.name)}
+                  {getInitials(displayExpert!.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <h4 className="font-semibold text-sm" data-testid="text-expert-name">{expert!.name}</h4>
-                <p className="text-xs text-muted-foreground truncate">{expert!.title} - {expert!.city}, {expert!.province}</p>
+                <h4 className="font-semibold text-sm" data-testid="text-expert-name">{displayExpert!.name}</h4>
+                <p className="text-xs text-muted-foreground truncate">{displayExpert!.displayTitle} - {displayExpert!.displayCity}, {displayExpert!.province}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -173,10 +238,10 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
-              Connect with {expert!.name}
+              Connect with {displayExpert!.name}
             </DialogTitle>
             <DialogDescription>
-              Request a free consultation to discuss this deal and get expert insights on the {expert!.province} market.
+              Request a free consultation to discuss this deal and get expert insights on the {displayExpert!.province} market.
             </DialogDescription>
           </DialogHeader>
 
@@ -184,12 +249,12 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
                 <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                  {getInitials(expert!.name)}
+                  {getInitials(displayExpert!.name)}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium text-sm">{expert!.name}</p>
-                <p className="text-xs text-muted-foreground">{expert!.title}</p>
+                <p className="font-medium text-sm">{displayExpert!.name}</p>
+                <p className="text-xs text-muted-foreground">{displayExpert!.displayTitle}</p>
               </div>
             </div>
           </div>

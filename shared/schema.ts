@@ -471,6 +471,9 @@ export const professionalSubscriptions = pgTable("professional_subscriptions", {
   periodStart: timestamp("period_start").defaultNow(),
   periodEnd: timestamp("period_end"),
   status: text("status").default("active"),
+  brokerageName: text("brokerage_name"),
+  brokerageCity: text("brokerage_city"),
+  brokerageProvince: text("brokerage_province"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

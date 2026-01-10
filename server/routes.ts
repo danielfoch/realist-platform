@@ -989,6 +989,49 @@ export async function registerRoutes(
     }
   });
 
+  // Create new professional subscription with brokerage info
+  app.post("/api/subscription/create", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { brokerageName, brokerageCity, brokerageProvince } = req.body;
+      
+      const subscription = await storage.upsertProfessionalSubscription({
+        userId,
+        tier: 'free',
+        monthlyPullLimit: 5,
+        pullsUsedThisMonth: 0,
+        brokerageName: brokerageName || null,
+        brokerageCity: brokerageCity || null,
+        brokerageProvince: brokerageProvince || null,
+      });
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ error: "Failed to create subscription" });
+    }
+  });
+
+  // Update brokerage information
+  app.patch("/api/subscription/brokerage", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { brokerageName, brokerageCity, brokerageProvince } = req.body;
+      
+      const subscription = await storage.upsertProfessionalSubscription({
+        userId,
+        brokerageName,
+        brokerageCity,
+        brokerageProvince,
+      });
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error updating brokerage:", error);
+      res.status(500).json({ error: "Failed to update brokerage" });
+    }
+  });
+
   // Check and increment pull usage
   app.post("/api/subscription/use-pull", isAuthenticated, async (req: any, res) => {
     try {
@@ -1133,6 +1176,17 @@ export async function registerRoutes(
   // ============================================
   // MARKET EXPERT ROUTES
   // ============================================
+
+  // Get all approved market experts (public)
+  app.get("/api/market-experts", async (_req, res) => {
+    try {
+      const experts = await storage.getApprovedMarketExperts();
+      res.json(experts);
+    } catch (error) {
+      console.error("Error fetching market experts:", error);
+      res.status(500).json({ error: "Failed to fetch market experts" });
+    }
+  });
 
   app.post("/api/market-expert/apply", isAuthenticated, async (req: any, res) => {
     try {

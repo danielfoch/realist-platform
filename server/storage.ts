@@ -50,6 +50,7 @@ import {
   type InsertVerificationToken,
   type PlatformAnalytics,
 } from "@shared/schema";
+import { users } from "@shared/models/auth";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -127,6 +128,15 @@ export interface IStorage {
   // Market Expert Applications
   getMarketExpertApplication(userId: string): Promise<MarketExpertApplication | undefined>;
   getMarketExpertApplicationBySubscription(subscriptionId: string): Promise<MarketExpertApplication | undefined>;
+  getApprovedMarketExperts(): Promise<Array<{
+    userId: string;
+    name: string;
+    marketRegion: string;
+    marketCity: string | null;
+    brokerageName: string | null;
+    brokerageCity: string | null;
+    brokerageProvince: string | null;
+  }>>;
   createMarketExpertApplication(application: InsertMarketExpertApplication): Promise<MarketExpertApplication>;
   updateMarketExpertApplication(id: string, updates: Partial<MarketExpertApplication>): Promise<MarketExpertApplication | undefined>;
 
@@ -513,6 +523,42 @@ export class DatabaseStorage implements IStorage {
   async getMarketExpertApplicationBySubscription(subscriptionId: string): Promise<MarketExpertApplication | undefined> {
     const [application] = await db.select().from(marketExpertApplications).where(eq(marketExpertApplications.stripeSubscriptionId, subscriptionId));
     return application || undefined;
+  }
+
+  async getApprovedMarketExperts(): Promise<Array<{
+    userId: string;
+    name: string;
+    marketRegion: string;
+    marketCity: string | null;
+    brokerageName: string | null;
+    brokerageCity: string | null;
+    brokerageProvince: string | null;
+  }>> {
+    const results = await db
+      .select({
+        userId: marketExpertApplications.userId,
+        marketRegion: marketExpertApplications.marketRegion,
+        marketCity: marketExpertApplications.marketCity,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        brokerageName: professionalSubscriptions.brokerageName,
+        brokerageCity: professionalSubscriptions.brokerageCity,
+        brokerageProvince: professionalSubscriptions.brokerageProvince,
+      })
+      .from(marketExpertApplications)
+      .innerJoin(users, eq(marketExpertApplications.userId, users.id))
+      .leftJoin(professionalSubscriptions, eq(marketExpertApplications.userId, professionalSubscriptions.userId))
+      .where(eq(marketExpertApplications.status, 'approved'));
+    
+    return results.map(r => ({
+      userId: r.userId,
+      name: [r.firstName, r.lastName].filter(Boolean).join(' ') || 'Unknown',
+      marketRegion: r.marketRegion,
+      marketCity: r.marketCity,
+      brokerageName: r.brokerageName,
+      brokerageCity: r.brokerageCity,
+      brokerageProvince: r.brokerageProvince,
+    }));
   }
 
   async createMarketExpertApplication(application: InsertMarketExpertApplication): Promise<MarketExpertApplication> {

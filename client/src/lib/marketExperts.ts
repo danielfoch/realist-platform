@@ -9,6 +9,7 @@ export interface MarketExpert {
   linkedIn?: string;
   instagram?: string;
   email?: string;
+  brokerageName?: string;
 }
 
 // Durham Region municipalities for city-level matching

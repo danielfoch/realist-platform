@@ -1,3 +1,9 @@
+export const canadaProvinces = [
+  "Alberta", "British Columbia", "Manitoba", "New Brunswick",
+  "Newfoundland and Labrador", "Northwest Territories", "Nova Scotia",
+  "Nunavut", "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan", "Yukon"
+];
+
 export const provinceCodeMap: Record<string, string> = {
   "Alberta": "AB",
   "British Columbia": "BC",

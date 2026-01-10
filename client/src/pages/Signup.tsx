@@ -3,12 +3,22 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Building, TrendingUp, Users, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Building, TrendingUp, Users, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { canadaProvinces } from "@/lib/provinces";
+
+interface BrokerageInfo {
+  brokerageName: string;
+  brokerageCity: string;
+  brokerageProvince: string;
+}
 
 export default function Signup() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
@@ -16,19 +26,23 @@ export default function Signup() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedRole, setSelectedRole] = useState<"investor" | "professional" | null>(null);
+  const [step, setStep] = useState<"role" | "brokerage">("role");
+  const [brokerageInfo, setBrokerageInfo] = useState<BrokerageInfo>({
+    brokerageName: "",
+    brokerageCity: "",
+    brokerageProvince: "",
+  });
 
   const createProfileMutation = useMutation({
-    mutationFn: async (role: "investor" | "professional") => {
-      if (role === "investor") {
+    mutationFn: async (data: { role: "investor" | "professional"; brokerage?: BrokerageInfo }) => {
+      if (data.role === "investor") {
         return apiRequest("POST", "/api/investor/profile", {});
       } else {
-        const response = await fetch("/api/subscription", { credentials: "include" });
-        if (!response.ok) throw new Error("Failed to create subscription");
-        return response.json();
+        return apiRequest("POST", "/api/subscription/create", data.brokerage || {});
       }
     },
-    onSuccess: (_, role) => {
-      if (role === "investor") {
+    onSuccess: (_, data) => {
+      if (data.role === "investor") {
         queryClient.invalidateQueries({ queryKey: ["/api/investor/profile"] });
         setLocation("/investor");
       } else {
@@ -53,9 +67,19 @@ export default function Signup() {
   };
 
   const handleContinue = () => {
-    if (selectedRole) {
-      createProfileMutation.mutate(selectedRole);
+    if (selectedRole === "investor") {
+      createProfileMutation.mutate({ role: "investor" });
+    } else if (selectedRole === "professional") {
+      setStep("brokerage");
     }
+  };
+
+  const handleBrokerageSubmit = () => {
+    if (!brokerageInfo.brokerageName.trim()) {
+      toast({ title: "Please enter your brokerage name", variant: "destructive" });
+      return;
+    }
+    createProfileMutation.mutate({ role: "professional", brokerage: brokerageInfo });
   };
 
   if (authLoading) {
@@ -66,6 +90,97 @@ export default function Signup() {
           <div className="max-w-4xl mx-auto px-4 md:px-6">
             <Skeleton className="h-12 w-64 mb-4" />
             <Skeleton className="h-96 w-full" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (step === "brokerage") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="py-8 md:py-16">
+          <div className="max-w-lg mx-auto px-4 md:px-6">
+            <Button
+              variant="ghost"
+              className="mb-6 gap-2"
+              onClick={() => setStep("role")}
+              data-testid="button-back-to-role"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+
+            <div className="text-center mb-8">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2" data-testid="text-brokerage-title">
+                Tell us about your brokerage
+              </h1>
+              <p className="text-muted-foreground">
+                This will appear on your analysis reports and expert profile
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="brokerageName">Brokerage Name *</Label>
+                  <Input
+                    id="brokerageName"
+                    placeholder="e.g., Valery Real Estate Inc"
+                    value={brokerageInfo.brokerageName}
+                    onChange={(e) => setBrokerageInfo({ ...brokerageInfo, brokerageName: e.target.value })}
+                    data-testid="input-brokerage-name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="brokerageCity">City</Label>
+                  <Input
+                    id="brokerageCity"
+                    placeholder="e.g., Toronto"
+                    value={brokerageInfo.brokerageCity}
+                    onChange={(e) => setBrokerageInfo({ ...brokerageInfo, brokerageCity: e.target.value })}
+                    data-testid="input-brokerage-city"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="brokerageProvince">Province</Label>
+                  <Select
+                    value={brokerageInfo.brokerageProvince}
+                    onValueChange={(value) => setBrokerageInfo({ ...brokerageInfo, brokerageProvince: value })}
+                  >
+                    <SelectTrigger data-testid="select-brokerage-province">
+                      <SelectValue placeholder="Select province" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {canadaProvinces.map((province) => (
+                        <SelectItem key={province} value={province}>
+                          {province}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  className="w-full mt-6 gap-2"
+                  disabled={createProfileMutation.isPending || !brokerageInfo.brokerageName.trim()}
+                  onClick={handleBrokerageSubmit}
+                  data-testid="button-complete-signup"
+                >
+                  {createProfileMutation.isPending ? (
+                    "Creating your profile..."
+                  ) : (
+                    <>
+                      Complete Setup
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </main>
       </div>
