@@ -178,6 +178,106 @@ export async function exportToPDF(data: ExportData): Promise<void> {
   pdf.text(`Break-even Occupancy: ${((results.monthlyExpenses + results.monthlyMortgagePayment) / inputs.monthlyRent * 100).toFixed(1)}%`, summaryCol1X, y);
   pdf.text(`Monthly Cash Flow: ${formatCurrency(results.monthlyCashFlow)}`, summaryCol2X, y);
 
+  pdf.addPage();
+  y = margin;
+
+  pdf.setFillColor(15, 23, 42);
+  pdf.rect(0, 0, pageWidth, 25, "F");
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(16);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("10-Year Cash Flow Proforma", margin, 16);
+  
+  y = 35;
+  pdf.setTextColor(0, 0, 0);
+
+  const projections = results.yearlyProjections;
+  const tableStartY = y;
+  const rowHeight = 6;
+  const headerHeight = 8;
+  const colWidths = [42, ...Array(10).fill((contentWidth - 42) / 10)];
+  
+  const drawTableHeader = () => {
+    pdf.setFillColor(248, 250, 252);
+    pdf.rect(margin, y, contentWidth, headerHeight, "F");
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Category", margin + 2, y + 5);
+    
+    for (let i = 0; i < Math.min(10, projections.length); i++) {
+      const xPos = margin + colWidths[0] + (colWidths[1] * i) + 2;
+      pdf.text(`Year ${i + 1}`, xPos, y + 5);
+    }
+    y += headerHeight;
+  };
+  
+  const drawRow = (label: string, values: number[], isBold = false, isNegative = false, indent = 0) => {
+    if (y > pdf.internal.pageSize.getHeight() - 20) {
+      pdf.addPage();
+      y = margin;
+      drawTableHeader();
+    }
+    
+    pdf.setFontSize(6);
+    pdf.setFont("helvetica", isBold ? "bold" : "normal");
+    pdf.text(label, margin + 2 + indent, y + 4);
+    
+    for (let i = 0; i < Math.min(10, values.length); i++) {
+      const xPos = margin + colWidths[0] + (colWidths[1] * i) + 2;
+      const displayValue = isNegative ? `(${formatCurrency(Math.abs(values[i]))})` : formatCurrency(values[i]);
+      const shortValue = displayValue.replace("CA$", "$").replace(",000", "k");
+      pdf.text(shortValue, xPos, y + 4);
+    }
+    y += rowHeight;
+  };
+  
+  drawTableHeader();
+  
+  pdf.setDrawColor(230, 230, 230);
+  pdf.line(margin, y, margin + contentWidth, y);
+  
+  drawRow("Gross Rent", projections.map(p => p.grossRent), true);
+  drawRow("Less: Vacancy", projections.map(p => p.vacancyLoss), false, true);
+  drawRow("Effective Income", projections.map(p => p.effectiveIncome), true);
+  
+  pdf.line(margin, y, margin + contentWidth, y);
+  
+  drawRow("Operating Expenses", projections.map(p => p.expenses.total), true, true);
+  drawRow("  Property Tax", projections.map(p => p.expenses.propertyTax), false, false, 4);
+  drawRow("  Insurance", projections.map(p => p.expenses.insurance), false, false, 4);
+  drawRow("  Utilities", projections.map(p => p.expenses.utilities), false, false, 4);
+  drawRow("  Maintenance", projections.map(p => p.expenses.maintenance), false, false, 4);
+  drawRow("  Management", projections.map(p => p.expenses.management), false, false, 4);
+  drawRow("  CapEx Reserve", projections.map(p => p.expenses.capexReserve), false, false, 4);
+  drawRow("  Other", projections.map(p => p.expenses.other), false, false, 4);
+  
+  pdf.line(margin, y, margin + contentWidth, y);
+  
+  drawRow("Net Operating Income", projections.map(p => p.noi), true);
+  drawRow("Less: Debt Service", projections.map(p => p.debtService), false, true);
+  
+  pdf.setFillColor(240, 253, 244);
+  pdf.rect(margin, y, contentWidth, rowHeight, "F");
+  drawRow("Cash Flow", projections.map(p => p.cashFlow), true);
+  
+  y += 4;
+  pdf.line(margin, y, margin + contentWidth, y);
+  y += 2;
+  
+  pdf.setFontSize(8);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Equity & Value", margin + 2, y + 4);
+  y += 6;
+  
+  drawRow("Property Value", projections.map(p => p.propertyValue));
+  drawRow("Loan Balance", projections.map(p => p.loanBalance), false, true);
+  drawRow("Equity", projections.map(p => p.equity), true);
+  drawRow("Cumulative Cash Flow", projections.map(p => p.cumulativeCashFlow));
+  
+  pdf.setFillColor(248, 250, 252);
+  pdf.rect(margin, y, contentWidth, rowHeight, "F");
+  drawRow("Total Return", projections.map(p => p.totalReturn), true);
+
   y = pdf.internal.pageSize.getHeight() - 15;
   pdf.setFontSize(8);
   pdf.setTextColor(128, 128, 128);
