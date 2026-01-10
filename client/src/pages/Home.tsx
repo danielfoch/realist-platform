@@ -398,21 +398,7 @@ export default function Home() {
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">Mortgage Rate</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono">{inputs.interestRate.toFixed(2)}%</span>
-                            <MortgageConsultationButton
-                              region={region}
-                              city={city}
-                              dealInfo={{
-                                address: [address, city, region].filter(Boolean).join(", "),
-                                purchasePrice: inputs.purchasePrice,
-                                monthlyRent: inputs.monthlyRent,
-                                cashFlow: results.monthlyCashFlow,
-                                capRate: results.capRate,
-                              }}
-                              defaultValues={getSavedLeadInfo() || undefined}
-                            />
-                          </div>
+                          <span className="font-mono">{inputs.interestRate.toFixed(2)}%</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Monthly Rent</span>

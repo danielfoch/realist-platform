@@ -111,7 +111,7 @@ export function MortgageConsultationButton({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="outline"
+          variant="destructive"
           size="sm"
           className="gap-1.5 text-xs whitespace-nowrap"
           data-testid="button-get-best-rate"
