@@ -120,6 +120,33 @@ export const podcastQuestions = pgTable("podcast_questions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const propertyManagers = pgTable("property_managers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  companyName: text("company_name").notNull(),
+  contactName: text("contact_name"),
+  email: text("email"),
+  phone: text("phone"),
+  website: text("website"),
+  calendlyUrl: text("calendly_url"),
+  province: text("province").notNull(),
+  provinceCode: text("province_code").notNull(),
+  city: text("city"),
+  bio: text("bio"),
+  isApproved: boolean("is_approved").default(false),
+  isFeatured: boolean("is_featured").default(false),
+  subscriptionTier: text("subscription_tier"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at"),
+});
+
+export const propertyManagersRelations = relations(propertyManagers, ({ one }) => ({
+  user: one(users, {
+    fields: [propertyManagers.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
   createdAt: true,
@@ -159,6 +186,12 @@ export const insertPodcastQuestionSchema = createInsertSchema(podcastQuestions).
   answered: true,
 });
 
+export const insertPropertyManagerSchema = createInsertSchema(propertyManagers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
 
@@ -179,6 +212,9 @@ export type SavedDeal = typeof savedDeals.$inferSelect;
 
 export type InsertPodcastQuestion = z.infer<typeof insertPodcastQuestionSchema>;
 export type PodcastQuestion = typeof podcastQuestions.$inferSelect;
+
+export type InsertPropertyManager = z.infer<typeof insertPropertyManagerSchema>;
+export type PropertyManager = typeof propertyManagers.$inferSelect;
 
 export const strategyTypes = [
   "buy_hold",

@@ -29,6 +29,7 @@ import type { BuyHoldInputs } from "@shared/schema";
 import { CashbackDisplay } from "@/components/CashbackDisplay";
 import { MortgageConsultationButton } from "@/components/MortgageConsultationButton";
 import { FinancingExpertPanel } from "@/components/FinancingExpertPanel";
+import { PropertyManagerPanel } from "@/components/PropertyManagerPanel";
 
 interface DealInputsProps {
   inputs: BuyHoldInputs;
@@ -430,8 +431,24 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
           <CurrencyInput id="insurance" label="Annual Insurance" value={inputs.insurance} onChange={(v) => updateInput("insurance", v)} testId="input-insurance" />
           <CurrencyInput id="utilities" label="Monthly Utilities" value={inputs.utilities} onChange={(v) => updateInput("utilities", v)} testId="input-utilities" />
           <PercentInput id="maintenance" label="Maintenance (% of Rent)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-maintenance" min={0} max={15} step={0.5} />
-          <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
           <PercentInput id="capex" label="CapEx Reserve (% of Rent)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-capex" min={0} max={15} step={0.5} />
+          <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
+          
+          {country === "canada" && (
+            <PropertyManagerPanel
+              region={region}
+              city={city}
+              country="canada"
+              dealInfo={{
+                address: address || "",
+                purchasePrice: inputs.purchasePrice,
+                monthlyRent: inputs.monthlyRent,
+                cashFlow: 0,
+                capRate: 0,
+              }}
+              defaultValues={defaultLeadInfo}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -966,8 +983,24 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
           <CurrencyInput id="insurance" label="Annual Insurance" value={inputs.insurance} onChange={(v) => updateInput("insurance", v)} testId="input-insurance" />
           <CurrencyInput id="utilities" label="Monthly Utilities (common areas)" value={inputs.utilities} onChange={(v) => updateInput("utilities", v)} testId="input-utilities" />
           <PercentInput id="maintenance" label="Maintenance (% of Rent)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-maintenance" min={0} max={15} step={0.5} />
-          <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
           <PercentInput id="capex" label="CapEx Reserve (% of Rent)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-capex" min={0} max={15} step={0.5} />
+          <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
+          
+          {country === "canada" && (
+            <PropertyManagerPanel
+              region={region}
+              city={city}
+              country="canada"
+              dealInfo={{
+                address: address || "",
+                purchasePrice: inputs.purchasePrice,
+                monthlyRent: inputs.monthlyRent,
+                cashFlow: 0,
+                capRate: 0,
+              }}
+              defaultValues={defaultLeadInfo}
+            />
+          )}
         </CardContent>
       </Card>
     </div>
