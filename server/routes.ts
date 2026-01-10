@@ -14,6 +14,7 @@ import {
 import { z } from "zod";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { exportToGoogleSheets } from "./googleSheets";
 
 const createLeadRequestSchema = z.object({
   lead: insertLeadSchema,
@@ -582,6 +583,33 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting deal:", error);
       res.status(500).json({ error: "Failed to delete deal" });
+    }
+  });
+
+  // Google Sheets export
+  app.post("/api/export/google-sheets", async (req, res) => {
+    try {
+      const { address, strategy, inputs, results } = req.body;
+      
+      if (!inputs || !results) {
+        res.status(400).json({ error: "Missing required data" });
+        return;
+      }
+
+      const spreadsheetUrl = await exportToGoogleSheets({
+        address: address || "Property Analysis",
+        strategy: strategy || "buy_hold",
+        inputs,
+        results,
+      });
+
+      res.json({ success: true, url: spreadsheetUrl });
+    } catch (error) {
+      console.error("Error exporting to Google Sheets:", error);
+      res.status(500).json({ 
+        error: "Failed to export to Google Sheets",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

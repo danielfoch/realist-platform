@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { calculateBuyHoldAnalysis, formatCurrency } from "@/lib/calculations";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
-import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2 } from "lucide-react";
+import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
 import { MortgageConsultationButton } from "@/components/DealPromotions";
 
@@ -80,6 +80,7 @@ export default function Home() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [dealName, setDealName] = useState("");
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isExportingSheets, setIsExportingSheets] = useState(false);
   
   const getSavedLeadInfo = () => {
     const saved = localStorage.getItem("realist_lead_info");
@@ -240,6 +241,39 @@ export default function Home() {
       });
     } finally {
       setIsExportingPDF(false);
+    }
+  };
+
+  const handleExportSheets = async () => {
+    setIsExportingSheets(true);
+    try {
+      const propertyAddress = [address, city, region].filter(Boolean).join(", ") || "Property Analysis";
+      const response = await apiRequest("POST", "/api/export/google-sheets", {
+        address: propertyAddress,
+        strategy,
+        inputs,
+        results,
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.url) {
+        window.open(data.url, "_blank");
+        toast({
+          title: "Spreadsheet Created!",
+          description: "Your financial model has been exported to Google Sheets.",
+        });
+      } else {
+        throw new Error(data.message || "Export failed");
+      }
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: error instanceof Error ? error.message : "Could not export to Google Sheets. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingSheets(false);
     }
   };
 
@@ -506,6 +540,21 @@ export default function Home() {
                       <FileDown className="h-4 w-4" />
                     )}
                     {isExportingPDF ? "Exporting..." : "Export PDF"}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2" 
+                    onClick={handleExportSheets}
+                    disabled={isExportingSheets}
+                    data-testid="button-export-sheets"
+                  >
+                    {isExportingSheets ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileSpreadsheet className="h-4 w-4" />
+                    )}
+                    {isExportingSheets ? "Exporting..." : "Google Sheets"}
                   </Button>
                   <Button variant="outline" size="sm" className="gap-2" data-testid="button-share">
                     <Share2 className="h-4 w-4" />
