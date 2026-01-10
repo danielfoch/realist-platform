@@ -21,7 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { calculateBuyHoldAnalysis, formatCurrency } from "@/lib/calculations";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
-import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare } from "lucide-react";
+import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2 } from "lucide-react";
+import { exportToPDF } from "@/lib/pdfExport";
 import { MortgageConsultationButton } from "@/components/DealPromotions";
 
 function getSessionId(): string {
@@ -78,6 +79,7 @@ export default function Home() {
   });
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [dealName, setDealName] = useState("");
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
   
   const getSavedLeadInfo = () => {
     const saved = localStorage.getItem("realist_lead_info");
@@ -213,6 +215,31 @@ export default function Home() {
   const handleConfirmSave = () => {
     if (dealName.trim()) {
       saveDealMutation.mutate(dealName.trim());
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setIsExportingPDF(true);
+    try {
+      const propertyAddress = [address, city, region].filter(Boolean).join(", ") || "Property Analysis";
+      await exportToPDF({
+        address: propertyAddress,
+        inputs,
+        results,
+        strategy,
+      });
+      toast({
+        title: "PDF Exported!",
+        description: "Your analysis has been downloaded.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Could not generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingPDF(false);
     }
   };
 
@@ -465,9 +492,20 @@ export default function Home() {
                       Compare Deals
                     </Button>
                   </Link>
-                  <Button variant="outline" size="sm" className="gap-2" data-testid="button-export">
-                    <FileDown className="h-4 w-4" />
-                    Export PDF
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2" 
+                    onClick={handleExportPDF}
+                    disabled={isExportingPDF}
+                    data-testid="button-export"
+                  >
+                    {isExportingPDF ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileDown className="h-4 w-4" />
+                    )}
+                    {isExportingPDF ? "Exporting..." : "Export PDF"}
                   </Button>
                   <Button variant="outline" size="sm" className="gap-2" data-testid="button-share">
                     <Share2 className="h-4 w-4" />
