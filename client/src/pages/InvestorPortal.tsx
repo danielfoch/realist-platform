@@ -139,8 +139,8 @@ export default function InvestorPortal() {
             <p className="text-muted-foreground mb-6">
               Please sign in to access your investor portal and manage your real estate portfolio.
             </p>
-            <Button onClick={() => window.location.href = "/api/login"} data-testid="button-sign-in">
-              Sign In with Replit
+            <Button onClick={() => window.location.href = "/login"} data-testid="button-sign-in">
+              Sign In
             </Button>
           </div>
         </main>

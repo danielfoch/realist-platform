@@ -114,8 +114,8 @@ export default function PartnerPortal() {
             <p className="text-muted-foreground mb-6">
               Please sign in to access your industry partner portal and manage leads.
             </p>
-            <Button onClick={() => window.location.href = "/api/login"} data-testid="button-sign-in">
-              Sign In with Replit
+            <Button onClick={() => window.location.href = "/login"} data-testid="button-sign-in">
+              Sign In
             </Button>
           </div>
         </main>

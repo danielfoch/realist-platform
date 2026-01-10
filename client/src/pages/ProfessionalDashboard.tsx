@@ -202,8 +202,8 @@ export default function ProfessionalDashboard() {
             <CardDescription>Sign in to access your professional tools</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
-            <Button onClick={() => setLocation('/api/login')} data-testid="button-login">
-              Sign In with Replit
+            <Button onClick={() => setLocation('/login')} data-testid="button-login">
+              Sign In
             </Button>
           </CardContent>
         </Card>

@@ -118,7 +118,7 @@ export function Navigation() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => window.location.href = "/api/login"}
+                    onClick={() => window.location.href = "/login"}
                     data-testid="button-sign-in"
                   >
                     <User className="mr-2 h-4 w-4" />
@@ -213,7 +213,7 @@ export function Navigation() {
                 <Button 
                   variant="outline" 
                   className="w-full" 
-                  onClick={() => window.location.href = "/api/login"}
+                  onClick={() => window.location.href = "/login"}
                   data-testid="button-mobile-sign-in"
                 >
                   <User className="mr-2 h-4 w-4" />
