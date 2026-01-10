@@ -1,0 +1,127 @@
+You are an expert full-stack engineer + product designer. Build a polished, mobile-first web app called “Rent vs Buy Calculator (Canada-first)”.
+
+GOAL
+Help renters decide whether buying a home is financially better than renting, using a clear, honest comparison:
+- Net worth after N years if they RENT
+vs
+- Net worth after N years if they BUY
+Also show the “break-even” year (if it exists).
+
+TECH REQUIREMENTS
+- Use Next.js (App Router) + TypeScript + Tailwind.
+- Use a simple component library if helpful (shadcn/ui ok).
+- No external paid APIs.
+- All calculations run client-side.
+- Add clean charts (recharts) and a downloadable results summary (copy-to-clipboard text block is fine).
+- Include strong input validation, sensible defaults, and tooltips that explain each input in plain English.
+- Make the UI “Realist-style”: clean, modern, minimal, with a results card, chart card, and assumptions card.
+
+USER FLOW
+1) User inputs assumptions
+2) App calculates results instantly
+3) App shows:
+   - “Net worth if you rent” vs “Net worth if you buy” at the end year
+   - Break-even year
+   - Monthly cashflow comparison
+   - Total interest paid, total principal paid (buy case)
+   - Total rent paid (rent case)
+   - Total unrecoverable ownership costs (tax, maintenance, condo fees, capex reserve, transaction costs)
+   - Sensitivity mini-table (e.g., home price growth +/- 2%, discount rate +/- 2%)
+
+INPUTS (with defaults)
+GENERAL
+- Location selector: “Canada” (default) and “US” (optional toggle). Canada logic is default.
+- Time horizon (years): default 7, range 1–30
+- Inflation rate (optional): default 2% (only used to optionally inflation-adjust rent increases and costs; keep simple)
+
+RENT SIDE
+- Current monthly rent: default 2800
+- Annual rent increase (%): default 3%
+- Renter’s insurance monthly: default 30 (optional)
+- Upfront renter costs (one-time): default 0
+
+BUY SIDE
+- Home purchase price: default 750000
+- Down payment ($): default 150000 (also allow % toggle)
+- Mortgage interest rate (%): default 4.75
+- Amortization (years): default 25
+- Mortgage term years (for info only): default 5
+- Property tax (annual $ or % of home value): default 0.8% of value (toggle)
+- Home insurance monthly: default 120
+- Monthly maintenance (as % of home value / year): default 1.0% per year, converted to monthly
+- Condo fees monthly (optional): default 0
+- Capex reserve (monthly): default 0.5% of home value per year, converted to monthly (tooltip explains “big future replacements”)
+- Closing costs (one-time % of purchase): default 1.5% (Canada typical buyer closing costs; keep editable)
+- Selling costs (one-time % of sale price): default 5.0% (agent + misc; editable)
+- Home price growth (% annual): default 3.0%
+
+INVESTING / DISCOUNT RATE
+- Discount rate / investment return (% annual): default 7.0%
+Tooltip text: “This is the annual ROI you expect to earn on investments (e.g., index funds). We use it to estimate what your money could grow to if you rent instead of buying (or if you invest the monthly savings).”
+
+COMPARISON LOGIC (IMPORTANT)
+Compute month-by-month for the chosen horizon. Use nominal dollars (no need for real/inflation adjustment unless user toggles “adjust for inflation”, which can be a simple on/off that uses inflation to adjust rent increases and home price growth; keep that optional).
+
+BUY scenario, month t:
+- Mortgage payment using standard amortization formula.
+- Split payment into interest + principal based on remaining balance.
+- Ownership monthly costs = property tax/12 + insurance + maintenance + condo fees + capex reserve.
+- Total monthly outflow (buy) = mortgage payment + ownership monthly costs.
+- Home value grows monthly from annual growth rate.
+- Home equity = home value - remaining mortgage balance.
+- Include one-time closing costs at month 0 (reduces net worth).
+- At the end month (or if user chooses “sell at end”), subtract selling costs from sale proceeds.
+- Net worth if buy at end = (home equity after selling costs) - (closing costs at start) [treat closing costs as sunk] + (optional investment account for any monthly savings vs rent, see below).
+
+RENT scenario, month t:
+- Rent increases monthly from annual rent increase.
+- Total monthly outflow (rent) = rent + renter insurance.
+- Investment account starts with:
+   - The down payment amount (because if renting, you can invest what would have been the down payment)
+   - Plus the closing costs amount (because you wouldn’t spend it if renting)
+- Each month, if rent scenario is cheaper than buy scenario, invest the difference.
+- If rent scenario is more expensive than buy scenario, withdraw the difference from the investment account (but don’t allow it to go below zero; if it would, track a “cash shortfall” metric).
+- Investment account compounds monthly at the discount rate.
+
+FAIRNESS / OPTIONAL TOGGLE
+Add a toggle: “Invest monthly difference” (default ON). If OFF, only invest upfront lump sums (down payment + closing costs).
+
+BREAKEVEN
+Break-even month = first month where NetWorth(Buy) >= NetWorth(Rent). If never, say “No break-even within X years.”
+
+OUTPUTS
+Topline cards:
+- Net worth after N years: Buy vs Rent
+- Difference ($)
+- Break-even year
+Secondary:
+- Total cost paid (rent) vs total unrecoverable costs (buy)
+- Total interest paid
+- Ending home value, ending mortgage balance
+Charts:
+1) Net worth over time (two lines)
+2) Monthly outflow over time (two lines)
+Assumptions summary:
+- Show all inputs in a compact list.
+
+EDGE CASES / VALIDATION
+- Down payment cannot exceed price
+- If down payment < minimum plausible (Canada: allow any but warn; don’t enforce rules like CMHC)
+- Interest rate 0–20%
+- Growth and rent increase -5% to +15%
+- If condo fees = 0, hide condo-related text in summary
+- Provide “Reset to defaults” and “Share link” (encode inputs into query params).
+
+COPY
+Write friendly helper text:
+- Explain discount rate simply (“what annual ROI I make on my investments”)
+- Explain capex reserve simply (“money you should set aside for big future repairs like roof/windows/HVAC”)
+- Explain maintenance (“ongoing upkeep: small fixes, servicing, wear and tear”)
+- Explain closing/selling costs.
+
+DELIVERABLES
+- Working app with clear layout
+- Well-commented calculation module (e.g., /lib/rentBuy.ts) with pure functions and unit-like sanity checks
+- No placeholder math: implement the full monthly simulation described above.
+
+After building, run the app and ensure the default scenario produces plausible results. Show any assumptions you made in a short “Assumptions” section in the UI, not in the chat.

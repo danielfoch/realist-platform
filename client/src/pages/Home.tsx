@@ -6,6 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
 import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
+import { CalculatorSelector, type CalculatorType } from "@/components/CalculatorSelector";
 import { MarketExpertPanel } from "@/components/MarketExpertPanel";
 import { DealInputs } from "@/components/DealInputs";
 import { MetricCards } from "@/components/MetricCards";
@@ -14,6 +15,7 @@ import { ResultsSummary } from "@/components/ResultsSummary";
 import { ProformaTable } from "@/components/ProformaTable";
 import { DealTimeline } from "@/components/DealTimeline";
 import { LeadCaptureModal } from "@/components/LeadCaptureModal";
+import { RentVsBuyCalculator } from "@/components/RentVsBuyCalculator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -71,6 +73,7 @@ export default function Home() {
   const [country, setCountry] = useState<"canada" | "usa">("canada");
   const [postalCode, setPostalCode] = useState("");
   const [strategy, setStrategy] = useState("buy_hold");
+  const [calculatorType, setCalculatorType] = useState<CalculatorType>("deal_analyzer");
   const [inputs, setInputs] = useState<BuyHoldInputs>(defaultInputs);
   const [showResults, setShowResults] = useState(false);
   const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
@@ -340,13 +343,24 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 md:px-6">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Deal Analyzer
+                Select a Calculator
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Enter your property details below to get a comprehensive investment analysis.
+                Choose the right tool for your real estate analysis.
               </p>
             </div>
 
+            <div className="flex justify-center mb-8">
+              <CalculatorSelector
+                selected={calculatorType}
+                onSelect={setCalculatorType}
+              />
+            </div>
+
+            {calculatorType === "rent_vs_buy" ? (
+              <RentVsBuyCalculator country={country} />
+            ) : (
+              <>
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 <Card>
@@ -521,10 +535,12 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            </>
+            )}
           </div>
         </section>
 
-        {showResults && leadCaptured && (
+        {showResults && leadCaptured && calculatorType === "deal_analyzer" && (
           <section 
             ref={resultsRef}
             className="py-16 md:py-24 border-t border-border/50 bg-muted/30"
