@@ -452,3 +452,140 @@ export type PartnerLead = typeof partnerLeads.$inferSelect;
 
 // User role type for the extended user
 export type UserRole = "investor" | "partner" | "admin";
+
+// ============================================
+// PROFESSIONAL SUBSCRIPTIONS & BILLING
+// ============================================
+
+export const subscriptionTiers = ["free", "starter", "pro"] as const;
+export type SubscriptionTier = (typeof subscriptionTiers)[number];
+
+export const professionalSubscriptions = pgTable("professional_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  tier: text("tier").default("free").notNull(),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  monthlyPullLimit: integer("monthly_pull_limit").default(5),
+  pullsUsedThisMonth: integer("pulls_used_this_month").default(0),
+  periodStart: timestamp("period_start").defaultNow(),
+  periodEnd: timestamp("period_end"),
+  status: text("status").default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const brandingAssets = pgTable("branding_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  logoUrl: text("logo_url"),
+  companyName: text("company_name"),
+  primaryColor: text("primary_color"),
+  secondaryColor: text("secondary_color"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  website: text("website"),
+  disclaimerText: text("disclaimer_text"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const marketExpertApplications = pgTable("market_expert_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  marketRegion: text("market_region").notNull(),
+  marketCity: text("market_city"),
+  packageType: text("package_type").default("featured_expert"),
+  includeMeetupHost: boolean("include_meetup_host").default(false),
+  monthlyFee: real("monthly_fee").default(1000),
+  referralFeePercent: real("referral_fee_percent").default(20),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  status: text("status").default("pending"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const verificationTokens = pgTable("verification_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  token: text("token").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const platformAnalytics = pgTable("platform_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: timestamp("date").notNull(),
+  region: text("region"),
+  city: text("city"),
+  analysisCount: integer("analysis_count").default(0),
+  uniqueUsers: integer("unique_users").default(0),
+  leadsCaptured: integer("leads_captured").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations for new tables
+export const professionalSubscriptionsRelations = relations(professionalSubscriptions, ({ one }) => ({
+  user: one(users, {
+    fields: [professionalSubscriptions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const brandingAssetsRelations = relations(brandingAssets, ({ one }) => ({
+  user: one(users, {
+    fields: [brandingAssets.userId],
+    references: [users.id],
+  }),
+}));
+
+export const marketExpertApplicationsRelations = relations(marketExpertApplications, ({ one }) => ({
+  user: one(users, {
+    fields: [marketExpertApplications.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schemas for new tables
+export const insertProfessionalSubscriptionSchema = createInsertSchema(professionalSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBrandingAssetsSchema = createInsertSchema(brandingAssets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMarketExpertApplicationSchema = createInsertSchema(marketExpertApplications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvedAt: true,
+});
+
+export const insertVerificationTokenSchema = createInsertSchema(verificationTokens).omit({
+  id: true,
+  createdAt: true,
+  verifiedAt: true,
+});
+
+// Types for new tables
+export type InsertProfessionalSubscription = z.infer<typeof insertProfessionalSubscriptionSchema>;
+export type ProfessionalSubscription = typeof professionalSubscriptions.$inferSelect;
+
+export type InsertBrandingAssets = z.infer<typeof insertBrandingAssetsSchema>;
+export type BrandingAssets = typeof brandingAssets.$inferSelect;
+
+export type InsertMarketExpertApplication = z.infer<typeof insertMarketExpertApplicationSchema>;
+export type MarketExpertApplication = typeof marketExpertApplications.$inferSelect;
+
+export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSchema>;
+export type VerificationToken = typeof verificationTokens.$inferSelect;
+
+export type PlatformAnalytics = typeof platformAnalytics.$inferSelect;
