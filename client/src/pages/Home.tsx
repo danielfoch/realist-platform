@@ -11,6 +11,7 @@ import { DealInputs } from "@/components/DealInputs";
 import { MetricCards } from "@/components/MetricCards";
 import { AnalysisCharts } from "@/components/AnalysisCharts";
 import { ResultsSummary } from "@/components/ResultsSummary";
+import { ProformaTable } from "@/components/ProformaTable";
 import { DealTimeline } from "@/components/DealTimeline";
 import { LeadCaptureModal } from "@/components/LeadCaptureModal";
 import { Button } from "@/components/ui/button";
@@ -578,6 +579,8 @@ export default function Home() {
                 results={results}
                 address={[address, city, region].filter(Boolean).join(", ")}
               />
+
+              <ProformaTable results={results} />
 
               <DealTimeline />
             </div>
