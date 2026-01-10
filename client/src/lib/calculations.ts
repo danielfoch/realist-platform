@@ -139,7 +139,9 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
   let previousLoanBalance = loanAmount;
   let cumulativePrincipalPaid = 0;
 
-  for (let year = 1; year <= holdingPeriodYears; year++) {
+  const projectionYears = Math.max(holdingPeriodYears, 10);
+  
+  for (let year = 1; year <= projectionYears; year++) {
     const rentMultiplier = Math.pow(1 + rentGrowthPercent / 100, year - 1);
     const expenseMultiplier = Math.pow(1 + expenseInflationPercent / 100, year - 1);
     const propertyMultiplier = Math.pow(1 + appreciationPercent / 100, year);
@@ -148,9 +150,14 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
     const yearlyVacancy = (yearlyRent * vacancyPercent) / 100;
     const yearlyEffectiveIncome = yearlyRent - yearlyVacancy;
 
-    const fixedExpenses = (propertyTax + insurance + utilities * 12 + otherExpenses * 12) * expenseMultiplier;
-    const rentBasedExpenses = (yearlyRent * (maintenancePercent + managementPercent + capexReservePercent)) / 100;
-    const yearlyExpenses = fixedExpenses + rentBasedExpenses;
+    const yearPropertyTax = propertyTax * expenseMultiplier;
+    const yearInsurance = insurance * expenseMultiplier;
+    const yearUtilities = utilities * 12 * expenseMultiplier;
+    const yearMaintenance = (yearlyRent * maintenancePercent) / 100;
+    const yearManagement = (yearlyRent * managementPercent) / 100;
+    const yearCapex = (yearlyRent * capexReservePercent) / 100;
+    const yearOther = otherExpenses * 12 * expenseMultiplier;
+    const yearlyExpenses = yearPropertyTax + yearInsurance + yearUtilities + yearMaintenance + yearManagement + yearCapex + yearOther;
 
     const yearlyNoi = yearlyEffectiveIncome - yearlyExpenses;
     const yearlyCashFlow = yearlyNoi - annualDebtService;
@@ -168,10 +175,25 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
 
     yearlyProjections.push({
       year,
-      equity,
+      grossRent: yearlyRent,
+      vacancyLoss: yearlyVacancy,
+      effectiveIncome: yearlyEffectiveIncome,
+      expenses: {
+        propertyTax: yearPropertyTax,
+        insurance: yearInsurance,
+        utilities: yearUtilities,
+        maintenance: yearMaintenance,
+        management: yearManagement,
+        capexReserve: yearCapex,
+        other: yearOther,
+        total: yearlyExpenses,
+      },
+      noi: yearlyNoi,
+      debtService: annualDebtService,
       cashFlow: yearlyCashFlow,
       propertyValue,
       loanBalance,
+      equity,
       cumulativeCashFlow,
       principalPaidThisYear,
       cumulativePrincipalPaid,
@@ -179,12 +201,14 @@ export function calculateBuyHoldAnalysis(inputs: BuyHoldInputs): AnalysisResults
       totalReturn: cumulativeCashFlow + cumulativePrincipalPaid + capitalAppreciation,
     });
 
-    if (year === holdingPeriodYears) {
-      const sellingCosts = (propertyValue * sellingCostsPercent) / 100;
-      const saleProceeds = propertyValue - loanBalance - sellingCosts;
-      cashFlows.push(yearlyCashFlow + saleProceeds);
-    } else {
-      cashFlows.push(yearlyCashFlow);
+    if (year <= holdingPeriodYears) {
+      if (year === holdingPeriodYears) {
+        const sellingCosts = (propertyValue * sellingCostsPercent) / 100;
+        const saleProceeds = propertyValue - loanBalance - sellingCosts;
+        cashFlows.push(yearlyCashFlow + saleProceeds);
+      } else {
+        cashFlows.push(yearlyCashFlow);
+      }
     }
   }
 
