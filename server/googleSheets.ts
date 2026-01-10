@@ -90,11 +90,30 @@ interface ExportData {
     monthlyExpenses: number;
     yearlyProjections: Array<{
       year: number;
-      equity: number;
+      grossRent: number;
+      vacancyLoss: number;
+      effectiveIncome: number;
+      expenses: {
+        propertyTax: number;
+        insurance: number;
+        utilities: number;
+        maintenance: number;
+        management: number;
+        capexReserve: number;
+        other: number;
+        total: number;
+      };
+      noi: number;
+      debtService: number;
       cashFlow: number;
       propertyValue: number;
       loanBalance: number;
+      equity: number;
       cumulativeCashFlow: number;
+      principalPaidThisYear: number;
+      cumulativePrincipalPaid: number;
+      capitalAppreciation: number;
+      totalReturn: number;
     }>;
     expenseBreakdown: {
       propertyTax: number;
@@ -196,17 +215,36 @@ export async function exportToGoogleSheets(data: ExportData): Promise<string> {
   ];
 
   const projectionsData = [
-    ['YEARLY PROJECTIONS'],
+    ['10-YEAR CASH FLOW PROFORMA'],
     [''],
-    ['Year', 'Property Value', 'Equity', 'Cash Flow', 'Cumulative Cash Flow', 'Loan Balance'],
-    ...data.results.yearlyProjections.map(p => [
-      p.year,
-      p.propertyValue,
-      p.equity,
-      p.cashFlow,
-      p.cumulativeCashFlow,
-      p.loanBalance,
-    ]),
+    ['', ...data.results.yearlyProjections.slice(0, 10).map(p => `Year ${p.year}`)],
+    [''],
+    ['REVENUE'],
+    ['Gross Rent', ...data.results.yearlyProjections.slice(0, 10).map(p => p.grossRent)],
+    ['Less: Vacancy', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.vacancyLoss)],
+    ['Effective Income', ...data.results.yearlyProjections.slice(0, 10).map(p => p.effectiveIncome)],
+    [''],
+    ['OPERATING EXPENSES'],
+    ['Property Tax', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.expenses.propertyTax)],
+    ['Insurance', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.expenses.insurance)],
+    ['Utilities', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.expenses.utilities)],
+    ['Maintenance', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.expenses.maintenance)],
+    ['Management', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.expenses.management)],
+    ['CapEx Reserve', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.expenses.capexReserve)],
+    ['Other', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.expenses.other)],
+    ['Total Expenses', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.expenses.total)],
+    [''],
+    ['CASH FLOW'],
+    ['Net Operating Income', ...data.results.yearlyProjections.slice(0, 10).map(p => p.noi)],
+    ['Less: Debt Service', ...data.results.yearlyProjections.slice(0, 10).map(p => -p.debtService)],
+    ['Cash Flow', ...data.results.yearlyProjections.slice(0, 10).map(p => p.cashFlow)],
+    [''],
+    ['EQUITY & VALUE'],
+    ['Property Value', ...data.results.yearlyProjections.slice(0, 10).map(p => p.propertyValue)],
+    ['Loan Balance', ...data.results.yearlyProjections.slice(0, 10).map(p => p.loanBalance)],
+    ['Equity', ...data.results.yearlyProjections.slice(0, 10).map(p => p.equity)],
+    ['Cumulative Cash Flow', ...data.results.yearlyProjections.slice(0, 10).map(p => p.cumulativeCashFlow)],
+    ['Total Return', ...data.results.yearlyProjections.slice(0, 10).map(p => p.totalReturn)],
   ];
 
   await sheets.spreadsheets.values.batchUpdate({
@@ -300,8 +338,15 @@ export async function exportToGoogleSheets(data: ExportData): Promise<string> {
         },
         {
           updateDimensionProperties: {
-            range: { sheetId: 2, dimension: 'COLUMNS', startIndex: 0, endIndex: 6 },
-            properties: { pixelSize: 150 },
+            range: { sheetId: 2, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 180 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 2, dimension: 'COLUMNS', startIndex: 1, endIndex: 11 },
+            properties: { pixelSize: 100 },
             fields: 'pixelSize',
           },
         },
