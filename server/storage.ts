@@ -11,6 +11,11 @@ import {
   portfolioProperties,
   industryPartners,
   partnerLeads,
+  professionalSubscriptions,
+  brandingAssets,
+  marketExpertApplications,
+  verificationTokens,
+  platformAnalytics,
   type Lead, 
   type InsertLead,
   type Property,
@@ -35,6 +40,15 @@ import {
   type InsertIndustryPartner,
   type PartnerLead,
   type InsertPartnerLead,
+  type ProfessionalSubscription,
+  type InsertProfessionalSubscription,
+  type BrandingAssets,
+  type InsertBrandingAssets,
+  type MarketExpertApplication,
+  type InsertMarketExpertApplication,
+  type VerificationToken,
+  type InsertVerificationToken,
+  type PlatformAnalytics,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
@@ -98,6 +112,31 @@ export interface IStorage {
   getPartnerLeads(partnerId: string): Promise<(PartnerLead & { lead: Lead })[]>;
   createPartnerLead(partnerLead: InsertPartnerLead): Promise<PartnerLead>;
   updatePartnerLead(id: string, updates: Partial<PartnerLead>): Promise<PartnerLead | undefined>;
+
+  // Professional Subscriptions
+  getProfessionalSubscription(userId: string): Promise<ProfessionalSubscription | undefined>;
+  upsertProfessionalSubscription(subscription: InsertProfessionalSubscription): Promise<ProfessionalSubscription>;
+  updateProfessionalSubscription(userId: string, updates: Partial<ProfessionalSubscription>): Promise<ProfessionalSubscription | undefined>;
+  incrementPullUsage(userId: string): Promise<{ allowed: boolean; pullsUsed: number; limit: number }>;
+  resetMonthlyPulls(userId: string): Promise<void>;
+
+  // Branding Assets
+  getBrandingAssets(userId: string): Promise<BrandingAssets | undefined>;
+  upsertBrandingAssets(branding: InsertBrandingAssets): Promise<BrandingAssets>;
+
+  // Market Expert Applications
+  getMarketExpertApplication(userId: string): Promise<MarketExpertApplication | undefined>;
+  createMarketExpertApplication(application: InsertMarketExpertApplication): Promise<MarketExpertApplication>;
+  updateMarketExpertApplication(id: string, updates: Partial<MarketExpertApplication>): Promise<MarketExpertApplication | undefined>;
+
+  // Verification Tokens
+  createVerificationToken(token: InsertVerificationToken): Promise<VerificationToken>;
+  getVerificationToken(token: string, type: string): Promise<VerificationToken | undefined>;
+  markTokenVerified(id: string): Promise<void>;
+
+  // Platform Analytics
+  getAnalyticsForPeriod(startDate: Date, endDate: Date, region?: string): Promise<PlatformAnalytics[]>;
+  getRecentAnalysisCount(days: number): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -373,6 +412,164 @@ export class DatabaseStorage implements IStorage {
       .where(eq(partnerLeads.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  // Professional Subscriptions
+  async getProfessionalSubscription(userId: string): Promise<ProfessionalSubscription | undefined> {
+    const [subscription] = await db.select().from(professionalSubscriptions).where(eq(professionalSubscriptions.userId, userId));
+    return subscription || undefined;
+  }
+
+  async upsertProfessionalSubscription(subscription: InsertProfessionalSubscription): Promise<ProfessionalSubscription> {
+    const existing = await this.getProfessionalSubscription(subscription.userId);
+    if (existing) {
+      const [updated] = await db
+        .update(professionalSubscriptions)
+        .set({ ...subscription, updatedAt: new Date() })
+        .where(eq(professionalSubscriptions.userId, subscription.userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(professionalSubscriptions).values(subscription).returning();
+    return created;
+  }
+
+  async updateProfessionalSubscription(userId: string, updates: Partial<ProfessionalSubscription>): Promise<ProfessionalSubscription | undefined> {
+    const [updated] = await db
+      .update(professionalSubscriptions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(professionalSubscriptions.userId, userId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async incrementPullUsage(userId: string): Promise<{ allowed: boolean; pullsUsed: number; limit: number }> {
+    let subscription = await this.getProfessionalSubscription(userId);
+    
+    if (!subscription) {
+      subscription = await this.upsertProfessionalSubscription({
+        userId,
+        tier: 'free',
+        monthlyPullLimit: 5,
+        pullsUsedThisMonth: 0,
+      });
+    }
+
+    const limit = subscription.monthlyPullLimit || 5;
+    const currentUsage = subscription.pullsUsedThisMonth || 0;
+    
+    if (limit === -1) {
+      await this.updateProfessionalSubscription(userId, {
+        pullsUsedThisMonth: currentUsage + 1,
+      });
+      return { allowed: true, pullsUsed: currentUsage + 1, limit: -1 };
+    }
+    
+    if (currentUsage >= limit) {
+      return { allowed: false, pullsUsed: currentUsage, limit };
+    }
+
+    await this.updateProfessionalSubscription(userId, {
+      pullsUsedThisMonth: currentUsage + 1,
+    });
+
+    return { allowed: true, pullsUsed: currentUsage + 1, limit };
+  }
+
+  async resetMonthlyPulls(userId: string): Promise<void> {
+    await this.updateProfessionalSubscription(userId, {
+      pullsUsedThisMonth: 0,
+      periodStart: new Date(),
+    });
+  }
+
+  // Branding Assets
+  async getBrandingAssets(userId: string): Promise<BrandingAssets | undefined> {
+    const [branding] = await db.select().from(brandingAssets).where(eq(brandingAssets.userId, userId));
+    return branding || undefined;
+  }
+
+  async upsertBrandingAssets(branding: InsertBrandingAssets): Promise<BrandingAssets> {
+    const existing = await this.getBrandingAssets(branding.userId);
+    if (existing) {
+      const [updated] = await db
+        .update(brandingAssets)
+        .set({ ...branding, updatedAt: new Date() })
+        .where(eq(brandingAssets.userId, branding.userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(brandingAssets).values(branding).returning();
+    return created;
+  }
+
+  // Market Expert Applications
+  async getMarketExpertApplication(userId: string): Promise<MarketExpertApplication | undefined> {
+    const [application] = await db.select().from(marketExpertApplications).where(eq(marketExpertApplications.userId, userId));
+    return application || undefined;
+  }
+
+  async createMarketExpertApplication(application: InsertMarketExpertApplication): Promise<MarketExpertApplication> {
+    const [created] = await db.insert(marketExpertApplications).values(application).returning();
+    return created;
+  }
+
+  async updateMarketExpertApplication(id: string, updates: Partial<MarketExpertApplication>): Promise<MarketExpertApplication | undefined> {
+    const [updated] = await db
+      .update(marketExpertApplications)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(marketExpertApplications.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Verification Tokens
+  async createVerificationToken(token: InsertVerificationToken): Promise<VerificationToken> {
+    const [created] = await db.insert(verificationTokens).values(token).returning();
+    return created;
+  }
+
+  async getVerificationToken(token: string, type: string): Promise<VerificationToken | undefined> {
+    const [found] = await db.select().from(verificationTokens)
+      .where(and(eq(verificationTokens.token, token), eq(verificationTokens.type, type)));
+    return found || undefined;
+  }
+
+  async markTokenVerified(id: string): Promise<void> {
+    await db.update(verificationTokens)
+      .set({ verifiedAt: new Date() })
+      .where(eq(verificationTokens.id, id));
+  }
+
+  // Platform Analytics
+  async getAnalyticsForPeriod(startDate: Date, endDate: Date, region?: string): Promise<PlatformAnalytics[]> {
+    let query = db.select().from(platformAnalytics)
+      .where(and(
+        gte(platformAnalytics.date, startDate),
+        gte(endDate, platformAnalytics.date)
+      ));
+    
+    if (region) {
+      query = db.select().from(platformAnalytics)
+        .where(and(
+          gte(platformAnalytics.date, startDate),
+          gte(endDate, platformAnalytics.date),
+          eq(platformAnalytics.region, region)
+        ));
+    }
+    
+    return query;
+  }
+
+  async getRecentAnalysisCount(days: number): Promise<number> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const [result] = await db.select({ count: sql<number>`count(*)` })
+      .from(analyses)
+      .where(gte(analyses.createdAt, startDate));
+    
+    return Number(result?.count || 0);
   }
 }
 

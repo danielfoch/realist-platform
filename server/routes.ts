@@ -946,5 +946,230 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // PROFESSIONAL SUBSCRIPTION ROUTES
+  // ============================================
+
+  // Get current user's subscription
+  app.get("/api/subscription", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      let subscription = await storage.getProfessionalSubscription(userId);
+      
+      if (!subscription) {
+        subscription = await storage.upsertProfessionalSubscription({
+          userId,
+          tier: 'free',
+          monthlyPullLimit: 5,
+          pullsUsedThisMonth: 0,
+        });
+      }
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      res.status(500).json({ error: "Failed to fetch subscription" });
+    }
+  });
+
+  // Check and increment pull usage
+  app.post("/api/subscription/use-pull", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const result = await storage.incrementPullUsage(userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error incrementing pull usage:", error);
+      res.status(500).json({ error: "Failed to update usage" });
+    }
+  });
+
+  // Get Stripe publishable key
+  app.get("/api/stripe/publishable-key", async (_req, res) => {
+    try {
+      const { getStripePublishableKey } = await import("./stripeClient");
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error) {
+      console.error("Error fetching Stripe key:", error);
+      res.status(500).json({ error: "Failed to fetch Stripe key" });
+    }
+  });
+
+  // Create checkout session for subscription
+  app.post("/api/subscription/checkout", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { tier } = req.body;
+      
+      const { stripeService } = await import("./stripeService");
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      
+      // Get or create Stripe customer
+      let subscription = await storage.getProfessionalSubscription(userId);
+      let customerId = subscription?.stripeCustomerId;
+      
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(
+          req.user.claims.email || `${userId}@realist.ca`,
+          userId,
+          req.user.claims.name
+        );
+        customerId = customer.id;
+        await storage.upsertProfessionalSubscription({
+          userId,
+          tier: 'free',
+          stripeCustomerId: customerId,
+        });
+      }
+      
+      // Define price IDs for each tier
+      const priceIds: Record<string, string> = {
+        starter: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
+        pro: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
+      };
+      
+      const priceId = priceIds[tier];
+      if (!priceId) {
+        res.status(400).json({ error: "Invalid tier" });
+        return;
+      }
+      
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: 'subscription',
+        success_url: `${baseUrl}/professional/dashboard?success=true`,
+        cancel_url: `${baseUrl}/professional/dashboard?canceled=true`,
+        metadata: { userId, tier },
+      });
+      
+      res.json({ sessionId: session.id, url: session.url });
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  // Create customer portal session
+  app.post("/api/subscription/portal", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const subscription = await storage.getProfessionalSubscription(userId);
+      
+      if (!subscription?.stripeCustomerId) {
+        res.status(400).json({ error: "No subscription found" });
+        return;
+      }
+      
+      const { stripeService } = await import("./stripeService");
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const session = await stripeService.createCustomerPortalSession(
+        subscription.stripeCustomerId,
+        `${baseUrl}/professional/dashboard`
+      );
+      
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating portal session:", error);
+      res.status(500).json({ error: "Failed to create portal session" });
+    }
+  });
+
+  // ============================================
+  // BRANDING ASSETS ROUTES
+  // ============================================
+
+  app.get("/api/branding", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const branding = await storage.getBrandingAssets(userId);
+      res.json(branding || {});
+    } catch (error) {
+      console.error("Error fetching branding:", error);
+      res.status(500).json({ error: "Failed to fetch branding" });
+    }
+  });
+
+  app.put("/api/branding", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Check if user has starter or pro tier
+      const subscription = await storage.getProfessionalSubscription(userId);
+      if (!subscription || subscription.tier === 'free') {
+        res.status(403).json({ error: "Branding requires a paid subscription" });
+        return;
+      }
+      
+      const branding = await storage.upsertBrandingAssets({ ...req.body, userId });
+      res.json(branding);
+    } catch (error) {
+      console.error("Error updating branding:", error);
+      res.status(500).json({ error: "Failed to update branding" });
+    }
+  });
+
+  // ============================================
+  // MARKET EXPERT ROUTES
+  // ============================================
+
+  app.post("/api/market-expert/apply", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { marketRegion, marketCity, includeMeetupHost } = req.body;
+      
+      const existingApplication = await storage.getMarketExpertApplication(userId);
+      if (existingApplication) {
+        res.status(400).json({ error: "Application already exists" });
+        return;
+      }
+      
+      const monthlyFee = includeMeetupHost ? 1250 : 1000;
+      
+      const application = await storage.createMarketExpertApplication({
+        userId,
+        marketRegion,
+        marketCity,
+        includeMeetupHost,
+        monthlyFee,
+        referralFeePercent: 20,
+      });
+      
+      res.json(application);
+    } catch (error) {
+      console.error("Error creating expert application:", error);
+      res.status(500).json({ error: "Failed to create application" });
+    }
+  });
+
+  app.get("/api/market-expert/application", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const application = await storage.getMarketExpertApplication(userId);
+      res.json(application || null);
+    } catch (error) {
+      console.error("Error fetching expert application:", error);
+      res.status(500).json({ error: "Failed to fetch application" });
+    }
+  });
+
+  // ============================================
+  // PLATFORM ANALYTICS (Public for checkout display)
+  // ============================================
+
+  app.get("/api/analytics/deals-count", async (_req, res) => {
+    try {
+      const last30Days = await storage.getRecentAnalysisCount(30);
+      res.json({ count: last30Days, period: "30 days" });
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
   return httpServer;
 }
