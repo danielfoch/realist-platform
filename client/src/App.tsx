@@ -17,6 +17,7 @@ import Terms from "@/pages/Terms";
 import InvestorPortal from "@/pages/InvestorPortal";
 import PartnerPortal from "@/pages/PartnerPortal";
 import ProfessionalDashboard from "@/pages/ProfessionalDashboard";
+import Signup from "@/pages/Signup";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -35,6 +36,8 @@ function Router() {
       <Route path="/investor" component={InvestorPortal} />
       <Route path="/partner" component={PartnerPortal} />
       <Route path="/professional/dashboard" component={ProfessionalDashboard} />
+      <Route path="/signup" component={Signup} />
+      <Route path="/get-started" component={Signup} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -748,6 +748,23 @@ export async function registerRoutes(
     }
   });
 
+  // Create investor profile (for signup flow)
+  app.post("/api/investor/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const existingProfile = await storage.getInvestorProfile(userId);
+      if (existingProfile) {
+        res.json(existingProfile);
+        return;
+      }
+      const profile = await storage.upsertInvestorProfile({ userId });
+      res.json(profile);
+    } catch (error) {
+      console.error("Error creating investor profile:", error);
+      res.status(500).json({ error: "Failed to create profile" });
+    }
+  });
+
   // Update investor profile
   app.put("/api/investor/profile", isAuthenticated, async (req: any, res) => {
     try {
@@ -1123,26 +1140,83 @@ export async function registerRoutes(
       const { marketRegion, marketCity, includeMeetupHost } = req.body;
       
       const existingApplication = await storage.getMarketExpertApplication(userId);
-      if (existingApplication) {
-        res.status(400).json({ error: "Application already exists" });
+      if (existingApplication && existingApplication.status === 'approved') {
+        res.status(400).json({ error: "You are already an approved expert" });
         return;
       }
       
       const monthlyFee = includeMeetupHost ? 1250 : 1000;
       
-      const application = await storage.createMarketExpertApplication({
-        userId,
-        marketRegion,
-        marketCity,
-        includeMeetupHost,
-        monthlyFee,
-        referralFeePercent: 20,
+      const { stripeService } = await import("./stripeService");
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      
+      let subscription = await storage.getProfessionalSubscription(userId);
+      let customerId = subscription?.stripeCustomerId;
+      
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(
+          req.user.claims.email || `${userId}@realist.ca`,
+          userId,
+          req.user.claims.name
+        );
+        customerId = customer.id;
+        await storage.upsertProfessionalSubscription({
+          userId,
+          tier: 'free',
+          stripeCustomerId: customerId,
+        });
+      }
+      
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      
+      const expertPriceId = process.env.STRIPE_EXPERT_PRICE_ID;
+      const meetupPriceId = process.env.STRIPE_MEETUP_PRICE_ID;
+      
+      if (!expertPriceId) {
+        res.status(500).json({ error: "Expert pricing not configured" });
+        return;
+      }
+      
+      const lineItems: Array<{ price: string; quantity: number }> = [
+        { price: expertPriceId, quantity: 1 }
+      ];
+      
+      if (includeMeetupHost && meetupPriceId) {
+        lineItems.push({ price: meetupPriceId, quantity: 1 });
+      }
+      
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: 'subscription',
+        line_items: lineItems,
+        success_url: `${baseUrl}/professional/dashboard?expert=success`,
+        cancel_url: `${baseUrl}/professional/dashboard?expert=cancelled`,
+        metadata: {
+          userId,
+          marketRegion,
+          marketCity,
+          includeMeetupHost: includeMeetupHost ? 'true' : 'false',
+          type: 'featured_expert',
+        },
       });
       
-      res.json(application);
+      if (!existingApplication) {
+        await storage.createMarketExpertApplication({
+          userId,
+          marketRegion,
+          marketCity,
+          includeMeetupHost,
+          monthlyFee,
+          referralFeePercent: 20,
+          status: 'pending_payment',
+        });
+      }
+      
+      res.json({ url: session.url });
     } catch (error) {
-      console.error("Error creating expert application:", error);
-      res.status(500).json({ error: "Failed to create application" });
+      console.error("Error creating expert checkout:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
     }
   });
 

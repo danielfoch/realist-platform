@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,13 @@ import {
   Crown,
   Zap,
   ArrowUpRight,
-  Check
+  Check,
+  Star,
+  MapPin,
+  Users
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -87,6 +93,17 @@ export default function ProfessionalDashboard() {
     queryKey: ['/api/analytics/deals-count'],
   });
 
+  const { data: expertApplication } = useQuery<any>({
+    queryKey: ['/api/market-expert/application'],
+    enabled: !!user,
+  });
+
+  const [expertForm, setExpertForm] = useState({
+    marketRegion: '',
+    marketCity: '',
+    includeMeetupHost: false,
+  });
+
   const brandingForm = useForm<BrandingAssets>({
     defaultValues: branding || {},
   });
@@ -138,6 +155,31 @@ export default function ProfessionalDashboard() {
       toast({
         title: "Error",
         description: "Failed to save branding. You may need a paid subscription.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const expertMutation = useMutation({
+    mutationFn: async (data: { marketRegion: string; marketCity: string; includeMeetupHost: boolean }) => {
+      const response = await apiRequest('POST', '/api/market-expert/apply', data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['/api/market-expert/application'] });
+        toast({
+          title: "Application Submitted",
+          description: "Redirecting to checkout...",
+        });
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to submit application. Please try again.",
         variant: "destructive",
       });
     },
@@ -202,6 +244,10 @@ export default function ProfessionalDashboard() {
             <TabsTrigger value="branding" data-testid="tab-branding">
               <Palette className="w-4 h-4 mr-2" />
               Branding
+            </TabsTrigger>
+            <TabsTrigger value="expert" data-testid="tab-expert">
+              <Star className="w-4 h-4 mr-2" />
+              Featured Expert
             </TabsTrigger>
           </TabsList>
 
@@ -522,6 +568,170 @@ export default function ProfessionalDashboard() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="expert" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  Become a Featured Market Expert
+                </CardTitle>
+                <CardDescription>
+                  Get featured on Realist.ca as the go-to expert for your market. Receive investor leads and build your reputation.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {expertApplication ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <Check className="w-5 h-5 text-green-500" />
+                      <div>
+                        <p className="font-medium text-green-600">Application Submitted</p>
+                        <p className="text-sm text-muted-foreground">
+                          {expertApplication.marketCity}, {expertApplication.marketRegion}
+                          {expertApplication.includeMeetupHost && ' (with Meetup Host)'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Status: <Badge variant={expertApplication.status === 'approved' ? 'default' : 'secondary'}>
+                        {expertApplication.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card className="border-2">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-lg">Featured Expert</CardTitle>
+                          <div className="text-2xl font-bold">$1,000<span className="text-sm font-normal text-muted-foreground">/month</span></div>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="space-y-2 text-sm">
+                            <li className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-green-500" />
+                              Featured listing on your market page
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-green-500" />
+                              Direct investor lead referrals
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-green-500" />
+                              20% referral fee on closed deals
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-green-500" />
+                              Priority support and marketing
+                            </li>
+                          </ul>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="border-2 border-primary/50">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-lg">+ Meetup Host</CardTitle>
+                            <Badge variant="secondary">Add-on</Badge>
+                          </div>
+                          <div className="text-2xl font-bold">+$250<span className="text-sm font-normal text-muted-foreground">/month</span></div>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="space-y-2 text-sm">
+                            <li className="flex items-center gap-2">
+                              <Users className="w-4 h-4 text-primary" />
+                              Host local investor meetups
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Users className="w-4 h-4 text-primary" />
+                              Event promotion on platform
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Users className="w-4 h-4 text-primary" />
+                              Connect with local investors
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Users className="w-4 h-4 text-primary" />
+                              Build your local network
+                            </li>
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-4">
+                      <h3 className="font-semibold">Select Your Market</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Province/State</Label>
+                          <Select 
+                            value={expertForm.marketRegion}
+                            onValueChange={(value) => setExpertForm(prev => ({ ...prev, marketRegion: value }))}
+                          >
+                            <SelectTrigger data-testid="select-market-region">
+                              <SelectValue placeholder="Select region" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ON">Ontario</SelectItem>
+                              <SelectItem value="BC">British Columbia</SelectItem>
+                              <SelectItem value="AB">Alberta</SelectItem>
+                              <SelectItem value="QC">Quebec</SelectItem>
+                              <SelectItem value="MB">Manitoba</SelectItem>
+                              <SelectItem value="SK">Saskatchewan</SelectItem>
+                              <SelectItem value="NS">Nova Scotia</SelectItem>
+                              <SelectItem value="NB">New Brunswick</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>City</Label>
+                          <Input 
+                            value={expertForm.marketCity}
+                            onChange={(e) => setExpertForm(prev => ({ ...prev, marketCity: e.target.value }))}
+                            placeholder="e.g., Toronto, Vancouver"
+                            data-testid="input-market-city"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2 p-4 bg-muted rounded-lg">
+                        <Checkbox 
+                          id="meetupHost"
+                          checked={expertForm.includeMeetupHost}
+                          onCheckedChange={(checked) => setExpertForm(prev => ({ ...prev, includeMeetupHost: !!checked }))}
+                          data-testid="checkbox-meetup-host"
+                        />
+                        <label htmlFor="meetupHost" className="text-sm font-medium leading-none cursor-pointer">
+                          Add Meetup Host (+$250/month) - Host local investor meetups in your area
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg">
+                        <div>
+                          <p className="font-semibold">Total Monthly</p>
+                          <p className="text-2xl font-bold">
+                            ${expertForm.includeMeetupHost ? '1,250' : '1,000'}
+                            <span className="text-sm font-normal text-muted-foreground">/month + 20% referral fee</span>
+                          </p>
+                        </div>
+                        <Button
+                          size="lg"
+                          onClick={() => expertMutation.mutate(expertForm)}
+                          disabled={!expertForm.marketRegion || !expertForm.marketCity || expertMutation.isPending}
+                          data-testid="button-apply-expert"
+                        >
+                          {expertMutation.isPending ? 'Submitting...' : 'Apply Now'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

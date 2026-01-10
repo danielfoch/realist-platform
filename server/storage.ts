@@ -126,6 +126,7 @@ export interface IStorage {
 
   // Market Expert Applications
   getMarketExpertApplication(userId: string): Promise<MarketExpertApplication | undefined>;
+  getMarketExpertApplicationBySubscription(subscriptionId: string): Promise<MarketExpertApplication | undefined>;
   createMarketExpertApplication(application: InsertMarketExpertApplication): Promise<MarketExpertApplication>;
   updateMarketExpertApplication(id: string, updates: Partial<MarketExpertApplication>): Promise<MarketExpertApplication | undefined>;
 
@@ -506,6 +507,11 @@ export class DatabaseStorage implements IStorage {
   // Market Expert Applications
   async getMarketExpertApplication(userId: string): Promise<MarketExpertApplication | undefined> {
     const [application] = await db.select().from(marketExpertApplications).where(eq(marketExpertApplications.userId, userId));
+    return application || undefined;
+  }
+
+  async getMarketExpertApplicationBySubscription(subscriptionId: string): Promise<MarketExpertApplication | undefined> {
+    const [application] = await db.select().from(marketExpertApplications).where(eq(marketExpertApplications.stripeSubscriptionId, subscriptionId));
     return application || undefined;
   }
 

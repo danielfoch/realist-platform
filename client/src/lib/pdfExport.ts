@@ -384,6 +384,11 @@ export async function captureAndExportPDF(
 
     pdf.addImage(dataUrl, "PNG", 10, 15, imgWidth, imgHeight);
 
+    const footerY = pageHeight - 10;
+    pdf.setFontSize(8);
+    pdf.setTextColor(128, 128, 128);
+    pdf.text("This report was prepared on realist.ca", 10, footerY);
+
     const filename = `realist-analysis-${data.address ? data.address.toLowerCase().replace(/[^a-z0-9]/g, "-").substring(0, 30) : "property"}-${new Date().toISOString().split("T")[0]}.pdf`;
     pdf.save(filename);
   } catch {
