@@ -368,7 +368,7 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
             </div>
             <PercentInput id="interestRate" label="" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
               <Input id="amortization" type="number" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
@@ -682,7 +682,7 @@ function BRRRInputs({ inputs, onChange, country, region, city, address, defaultL
             </div>
             <PercentInput id="interestRate" label="" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
               <Input id="amortization" type="number" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
@@ -770,7 +770,7 @@ function AirbnbInputs({ inputs, onChange, region, city, address, defaultLeadInfo
             </div>
             <PercentInput id="interestRate" label="" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
               <Input id="amortization" type="number" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
@@ -879,7 +879,7 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
               <PercentInput id="constructionRate" label="Construction Loan Rate" value={inputs.interestRate + 2} onChange={() => {}} testId="slider-construction-rate" min={6} max={20} step={0.25} />
               <div className="space-y-2">
                 <Label>Draw Schedule (%)</Label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {drawSchedule.map((draw, i) => (
                     <div key={i} className="space-y-1">
                       <span className="text-xs text-muted-foreground">Draw {i + 1}</span>
@@ -928,7 +928,7 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
             </div>
             <PercentInput id="interestRate" label="" value={inputs.interestRate} onChange={(v) => updateInput("interestRate", v)} testId="slider-interest-rate" min={0} max={15} step={0.1} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
               <Input id="amortization" type="number" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
