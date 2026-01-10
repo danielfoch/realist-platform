@@ -26,7 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getProvinceCode } from "@/lib/provinces";
-import { getMarketExpert, hasMarketExpert, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
+import { getMarketExpertByCity, hasMarketExpertByCity, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
 import { Phone, Mail, Loader2, UserPlus, MapPin } from "lucide-react";
 
 const consultationFormSchema = z.object({
@@ -56,8 +56,8 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const provinceCode = getProvinceCode(region);
-  const expert = getMarketExpert(provinceCode);
-  const hasExpert = hasMarketExpert(provinceCode);
+  const expert = getMarketExpertByCity(city, provinceCode);
+  const hasExpert = hasMarketExpertByCity(city, provinceCode);
 
   const form = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationFormSchema),

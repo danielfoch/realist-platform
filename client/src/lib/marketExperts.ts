@@ -11,6 +11,25 @@ export interface MarketExpert {
   email?: string;
 }
 
+// Durham Region municipalities for city-level matching
+const durhamRegionCities = [
+  "oshawa", "pickering", "ajax", "whitby", "clarington", 
+  "brock", "scugog", "uxbridge", "durham", "bowmanville",
+  "courtice", "newcastle", "port perry", "brooklin"
+];
+
+// City-specific experts (checked before province-level)
+export const cityExperts: Record<string, MarketExpert> = {
+  durham: {
+    name: "Trevor Nicolle",
+    title: "Durham Region Market Expert",
+    province: "Ontario",
+    provinceCode: "ON",
+    city: "Durham Region",
+    bio: "Durham Region investment specialist covering Oshawa, Pickering, Ajax, Whitby, Clarington, and surrounding municipalities. Deep local knowledge of Ontario's fastest-growing investment corridor.",
+  },
+};
+
 export const marketExperts: Record<string, MarketExpert> = {
   ON: {
     name: "Daniel Foch",
@@ -58,11 +77,36 @@ export const marketExperts: Record<string, MarketExpert> = {
 
 export const provincesWithoutExperts = ["SK", "NS", "MB", "PE", "NL", "YT", "NT", "NU"];
 
+// Check if a city is in Durham Region
+export function isDurhamRegion(city: string): boolean {
+  if (!city) return false;
+  const normalizedCity = city.toLowerCase().trim();
+  return durhamRegionCities.some(durhamCity => 
+    normalizedCity.includes(durhamCity) || durhamCity.includes(normalizedCity)
+  );
+}
+
+// Get expert with city-level matching (checks city first, then province)
+export function getMarketExpertByCity(city: string, provinceCode: string): MarketExpert | null {
+  // Check for Durham Region first
+  if (isDurhamRegion(city)) {
+    return cityExperts.durham;
+  }
+  
+  // Fall back to province-level expert
+  return marketExperts[provinceCode] || null;
+}
+
 export function getMarketExpert(provinceCode: string): MarketExpert | null {
   return marketExperts[provinceCode] || null;
 }
 
 export function hasMarketExpert(provinceCode: string): boolean {
+  return provinceCode in marketExperts;
+}
+
+export function hasMarketExpertByCity(city: string, provinceCode: string): boolean {
+  if (isDurhamRegion(city)) return true;
   return provinceCode in marketExperts;
 }
 

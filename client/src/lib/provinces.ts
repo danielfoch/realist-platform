@@ -28,8 +28,28 @@ export interface MarketExpert {
   becomePartner?: boolean;
 }
 
+// Durham Region municipalities
+const durhamRegionCities = [
+  "oshawa", "pickering", "ajax", "whitby", "clarington", 
+  "brock", "scugog", "uxbridge", "durham", "bowmanville",
+  "courtice", "newcastle", "port perry", "brooklin"
+];
+
+function isDurhamRegion(city?: string): boolean {
+  if (!city) return false;
+  const normalizedCity = city.toLowerCase().trim();
+  return durhamRegionCities.some(durhamCity => 
+    normalizedCity.includes(durhamCity) || durhamCity.includes(normalizedCity)
+  );
+}
+
 export function getMarketExpert(province: string, city?: string): MarketExpert {
   const code = getProvinceCode(province);
+  
+  // Check for Durham Region first (Ontario sub-region)
+  if (code === "ON" && isDurhamRegion(city)) {
+    return { name: "Trevor Nicolle", available: true };
+  }
   
   switch (code) {
     case "ON":
