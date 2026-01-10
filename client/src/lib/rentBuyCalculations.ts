@@ -163,17 +163,16 @@ export function calculateRentVsBuy(inputs: RentVsBuyInputs): RentVsBuyResults {
     
     const homeEquity = homeValue - mortgageBalance;
     
-    // Buy net worth = home equity minus selling costs (closing costs already spent, don't double count)
-    // The buyer's cash outlay (down payment + closing costs) was spent to acquire the home
-    // So their net worth is just: home equity - selling costs
+    // Buy net worth = home equity minus selling costs minus closing costs paid upfront
+    // The buyer spent closingCosts at month 0 which reduces their final net worth
     let buyNetWorth: number;
     if (month === totalMonths) {
       const sellingCosts = homeValue * (inputs.sellingCostsPercent / 100);
       totalUnrecoverableCosts += sellingCosts;
-      buyNetWorth = homeEquity - sellingCosts;
+      buyNetWorth = homeEquity - sellingCosts - closingCosts;
     } else {
       // For intermediate months, estimate net worth as if selling now
-      buyNetWorth = homeEquity - (homeValue * (inputs.sellingCostsPercent / 100));
+      buyNetWorth = homeEquity - (homeValue * (inputs.sellingCostsPercent / 100)) - closingCosts;
     }
     
     const rentNetWorth = investmentBalance;

@@ -322,7 +322,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <SEO
         title="Canadian Real Estate Deal Analyzer - Toronto Property Calculator"
         description="Free real estate analyzer for Canadian investors. Calculate cap rates, IRR, cash-on-cash for Toronto, Vancouver, Calgary. Home of Daniel Foch's podcast."

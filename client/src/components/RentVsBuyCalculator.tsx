@@ -308,8 +308,8 @@ Rent Increase: ${inputs.annualRentIncrease}%
     }));
 
   return (
-    <div className="space-y-8">
-      <div className="grid lg:grid-cols-2 gap-8">
+    <div className="space-y-8 overflow-x-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
         <div className="space-y-6">
           <Card>
             <CardHeader className="pb-4">
@@ -533,8 +533,8 @@ Rent Increase: ${inputs.annualRentIncrease}%
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
+              <div className="flex items-start sm:items-center justify-between gap-4">
+                <div className="space-y-0.5 flex-1 min-w-0">
                   <Label htmlFor="investDifference">Invest Monthly Savings</Label>
                   <p className="text-sm text-muted-foreground">
                     If renting is cheaper, invest the difference monthly
@@ -760,7 +760,7 @@ Rent Increase: ${inputs.annualRentIncrease}%
             <TabsContent value="assumptions">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Time Horizon</span>
                       <span>{inputs.timeHorizonYears} years</span>
