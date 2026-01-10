@@ -58,9 +58,9 @@ export default function Signup() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      window.location.href = "/api/login";
+      setLocation("/login");
     }
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, setLocation]);
 
   const handleRoleSelect = (role: "investor" | "professional") => {
     setSelectedRole(role);

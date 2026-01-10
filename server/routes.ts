@@ -13,7 +13,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./auth";
 import { exportToGoogleSheets } from "./googleSheets";
 
 const createLeadRequestSchema = z.object({
@@ -87,8 +87,8 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // Set up Replit Auth (BEFORE other routes)
-  await setupAuth(app);
+  // Set up email/password authentication
+  setupAuth(app);
   registerAuthRoutes(app);
   
   app.post("/api/leads", async (req, res) => {

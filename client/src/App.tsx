@@ -18,6 +18,11 @@ import InvestorPortal from "@/pages/InvestorPortal";
 import PartnerPortal from "@/pages/PartnerPortal";
 import ProfessionalDashboard from "@/pages/ProfessionalDashboard";
 import Signup from "@/pages/Signup";
+import Login from "@/pages/Login";
+import CreateAccount from "@/pages/CreateAccount";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import SetPassword from "@/pages/SetPassword";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -38,6 +43,11 @@ function Router() {
       <Route path="/professional/dashboard" component={ProfessionalDashboard} />
       <Route path="/signup" component={Signup} />
       <Route path="/get-started" component={Signup} />
+      <Route path="/login" component={Login} />
+      <Route path="/create-account" component={CreateAccount} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/set-password" component={SetPassword} />
       <Route component={NotFound} />
     </Switch>
   );

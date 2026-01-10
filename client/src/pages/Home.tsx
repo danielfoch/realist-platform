@@ -129,11 +129,35 @@ export default function Home() {
         },
       });
       
-      localStorage.setItem("realist_lead_info", JSON.stringify({
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-      }));
+      // Auto-enroll user account from lead data
+      const nameParts = data.name.trim().split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      
+      try {
+        const enrollResponse = await apiRequest("POST", "/api/auth/lead-enroll", {
+          email: data.email,
+          firstName,
+          lastName,
+        });
+        const enrollData = await enrollResponse.json();
+        
+        // Store enrollment status (setup token is sent via email for security)
+        localStorage.setItem("realist_lead_info", JSON.stringify({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          isNewUser: enrollData.isNewUser,
+          needsPassword: enrollData.needsPassword,
+        }));
+      } catch {
+        // Enrollment failed, still save lead info
+        localStorage.setItem("realist_lead_info", JSON.stringify({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+        }));
+      }
       
       return response;
     },
@@ -141,10 +165,21 @@ export default function Home() {
       setLeadCaptured(true);
       setLeadCaptureOpen(false);
       setShowResults(true);
-      toast({
-        title: "Analysis Ready!",
-        description: "Your complete deal analysis is now available.",
-      });
+      
+      // Check if user needs to set password
+      const leadInfo = getSavedLeadInfo();
+      if (leadInfo && (leadInfo as any).needsPassword) {
+        toast({
+          title: "Analysis Ready!",
+          description: "Create a password to save your analysis and track your deals.",
+        });
+      } else {
+        toast({
+          title: "Analysis Ready!",
+          description: "Your complete deal analysis is now available.",
+        });
+      }
+      
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);

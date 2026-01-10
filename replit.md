@@ -44,6 +44,23 @@ Preferred communication style: Simple, everyday language.
 - `/about` - Team bios and company information
 - `/admin` - Protected dashboard for lead and webhook management
 - `/privacy` and `/terms` - Legal pages
+- `/login` - User login page
+- `/create-account` - New user registration
+- `/forgot-password` - Password reset request
+- `/reset-password` - Password reset with token
+- `/set-password` - Account setup for auto-enrolled leads
+
+### Authentication System
+- **Type**: Custom email/password authentication (not Replit OAuth)
+- **Session Store**: PostgreSQL-backed sessions via connect-pg-simple
+- **Password Hashing**: bcrypt with 12 rounds
+- **Security Features**:
+  - SHA-256 hashed tokens for password reset and account setup
+  - Single-use tokens with expiration (1 hour for reset, 24 hours for setup)
+  - Token invalidation on new request
+  - SESSION_SECRET validation at startup
+  - Development-only token logging (disabled in production)
+- **Lead Auto-Enrollment**: When leads submit the deal analyzer form, accounts are created without passwords; setup tokens are sent via email (logged in dev mode)
 
 ## External Dependencies
 
