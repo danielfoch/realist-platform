@@ -51,7 +51,7 @@ import {
   type PlatformAnalytics,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, gte } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -543,22 +543,16 @@ export class DatabaseStorage implements IStorage {
 
   // Platform Analytics
   async getAnalyticsForPeriod(startDate: Date, endDate: Date, region?: string): Promise<PlatformAnalytics[]> {
-    let query = db.select().from(platformAnalytics)
-      .where(and(
-        gte(platformAnalytics.date, startDate),
-        gte(endDate, platformAnalytics.date)
-      ));
+    const conditions = [
+      gte(platformAnalytics.date, startDate),
+      lte(platformAnalytics.date, endDate)
+    ];
     
     if (region) {
-      query = db.select().from(platformAnalytics)
-        .where(and(
-          gte(platformAnalytics.date, startDate),
-          gte(endDate, platformAnalytics.date),
-          eq(platformAnalytics.region, region)
-        ));
+      conditions.push(eq(platformAnalytics.region, region));
     }
     
-    return query;
+    return db.select().from(platformAnalytics).where(and(...conditions));
   }
 
   async getRecentAnalysisCount(days: number): Promise<number> {
