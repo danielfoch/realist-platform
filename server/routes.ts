@@ -780,6 +780,84 @@ export async function registerRoutes(
     }
   });
 
+  // Market Expert Application endpoint
+  const expertApplicationSchema = z.object({
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    email: z.string().email(),
+    phone: z.string().min(10),
+    province: z.string().min(1),
+    city: z.string().min(1),
+    brokerageName: z.string().min(1),
+    licenseNumber: z.string().optional(),
+    yearsExperience: z.string().min(1),
+    specializations: z.string().optional(),
+    bio: z.string().min(50),
+    website: z.string().optional(),
+    consent: z.boolean(),
+  });
+
+  app.post("/api/expert-applications", async (req, res) => {
+    try {
+      const data = expertApplicationSchema.parse(req.body);
+      
+      // Create a lead record
+      const lead = await storage.createLead({
+        name: `${data.firstName} ${data.lastName}`,
+        email: data.email,
+        phone: data.phone,
+        consent: data.consent,
+        leadSource: "Market Expert Application",
+      });
+
+      // Format phone to E.164 format
+      const formatPhoneE164 = (phone: string): string => {
+        const cleaned = phone.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Send to GHL with expert application tags
+      await sendWebhook(lead.id, {
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: formatPhoneE164(data.phone),
+        fullName: `${data.firstName} ${data.lastName}`,
+        consent: data.consent,
+        leadSource: "Market Expert Application",
+        formTag: "expert_application",
+        tags: ["expert_application", `EXPERT_${data.province}`, "partner_application"],
+        customField: {
+          expert_province: data.province,
+          expert_city: data.city,
+          expert_brokerage: data.brokerageName,
+          expert_license: data.licenseNumber || "",
+          expert_experience: data.yearsExperience,
+          expert_specializations: data.specializations || "",
+          expert_bio: data.bio,
+          expert_website: data.website || "",
+        },
+      });
+
+      console.log(`Market Expert Application received: ${data.firstName} ${data.lastName} from ${data.city}, ${data.province}`);
+
+      res.json({ success: true, leadId: lead.id });
+    } catch (error) {
+      console.error("Error processing expert application:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to submit application" });
+      }
+    }
+  });
+
   app.post("/api/admin/clear-event-cache", async (req, res) => {
     try {
       clearEventCache();
