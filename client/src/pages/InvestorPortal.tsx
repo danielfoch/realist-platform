@@ -16,9 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin } from "lucide-react";
+import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink } from "lucide-react";
 import { useState } from "react";
-import type { InvestorProfile, InvestorKyc, PortfolioProperty } from "@shared/schema";
+import type { InvestorProfile, InvestorKyc, PortfolioProperty, SavedDeal } from "@shared/schema";
 
 const PROVINCES = [
   { value: "ON", label: "Ontario" },
@@ -60,6 +60,11 @@ export default function InvestorPortal() {
 
   const { data: portfolio, isLoading: portfolioLoading } = useQuery<PortfolioProperty[]>({
     queryKey: ["/api/investor/portfolio"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: savedDeals, isLoading: savedDealsLoading } = useQuery<SavedDeal[]>({
+    queryKey: ["/api/user/saved-deals"],
     enabled: isAuthenticated,
   });
 
@@ -234,6 +239,7 @@ export default function InvestorPortal() {
           <Tabs defaultValue="portfolio" className="space-y-6">
             <TabsList data-testid="investor-tabs">
               <TabsTrigger value="portfolio" data-testid="tab-portfolio">Portfolio</TabsTrigger>
+              <TabsTrigger value="saved-deals" data-testid="tab-saved-deals">Saved Deals</TabsTrigger>
               <TabsTrigger value="profile" data-testid="tab-profile">Profile</TabsTrigger>
               <TabsTrigger value="kyc" data-testid="tab-kyc">KYC / Accreditation</TabsTrigger>
             </TabsList>
@@ -344,6 +350,109 @@ export default function InvestorPortal() {
                     Compare with New Deals
                   </Button>
                 </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="saved-deals" className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-xl font-semibold">Saved Deal Analyses</h2>
+                <Button variant="outline" onClick={() => setLocation("/")} className="gap-2" data-testid="button-new-analysis">
+                  <Calculator className="h-4 w-4" />
+                  New Analysis
+                </Button>
+              </div>
+
+              {savedDealsLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : savedDeals?.length === 0 || !savedDeals ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Calculator className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="font-semibold mb-2">No saved analyses yet</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Run a deal analysis and save it to see it here. Your analyses include key metrics like cap rate, cash-on-cash, and IRR.
+                    </p>
+                    <Button onClick={() => setLocation("/")} data-testid="button-start-analysis">
+                      Start an Analysis
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Address</TableHead>
+                        <TableHead>Strategy</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Cap Rate</TableHead>
+                        <TableHead className="text-right">Cash on Cash</TableHead>
+                        <TableHead className="text-right">IRR</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {savedDeals.map((deal) => {
+                        const results = deal.resultsJson as Record<string, unknown> | null;
+                        const inputs = deal.inputsJson as Record<string, unknown> | null;
+                        const price = Number(inputs?.purchasePrice) || 0;
+                        const capRate = Number(results?.capRate) || 0;
+                        const cashOnCash = Number(results?.cashOnCash) || Number(results?.cashOnCashReturn) || 0;
+                        const irr = Number(results?.irr) || 0;
+                        
+                        return (
+                          <TableRow key={deal.id} data-testid={`row-saved-deal-${deal.id}`}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{deal.address || deal.name}</p>
+                                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {deal.countryMode === "canada" ? "Canada" : "USA"}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">
+                                {STRATEGY_TYPES.find(t => t.value === deal.strategyType)?.label || deal.strategyType}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              ${price.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              <span className={capRate >= 5 ? "text-green-600" : "text-muted-foreground"}>
+                                {capRate.toFixed(1)}%
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              <span className={cashOnCash >= 8 ? "text-green-600" : "text-muted-foreground"}>
+                                {cashOnCash.toFixed(1)}%
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              <span className={irr >= 15 ? "text-green-600" : "text-muted-foreground"}>
+                                {irr.toFixed(1)}%
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => setLocation(`/?dealId=${deal.id}`)}
+                                data-testid={`button-view-deal-${deal.id}`}
+                              >
+                                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </Card>
               )}
             </TabsContent>
 

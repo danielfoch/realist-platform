@@ -85,6 +85,7 @@ export interface IStorage {
   createSavedDeal(deal: InsertSavedDeal): Promise<SavedDeal>;
   getSavedDeal(id: string): Promise<SavedDeal | undefined>;
   getSavedDealsBySession(sessionId: string): Promise<SavedDeal[]>;
+  getSavedDealsByUser(userId: string): Promise<SavedDeal[]>;
   deleteSavedDeal(id: string): Promise<void>;
 
   createPodcastQuestion(question: InsertPodcastQuestion): Promise<PodcastQuestion>;
@@ -281,6 +282,10 @@ export class DatabaseStorage implements IStorage {
 
   async getSavedDealsBySession(sessionId: string): Promise<SavedDeal[]> {
     return db.select().from(savedDeals).where(eq(savedDeals.sessionId, sessionId)).orderBy(desc(savedDeals.createdAt));
+  }
+
+  async getSavedDealsByUser(userId: string): Promise<SavedDeal[]> {
+    return db.select().from(savedDeals).where(eq(savedDeals.userId, userId)).orderBy(desc(savedDeals.createdAt));
   }
 
   async deleteSavedDeal(id: string): Promise<void> {

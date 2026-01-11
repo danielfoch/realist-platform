@@ -101,6 +101,7 @@ export const dataCache = pgTable("data_cache", {
 
 export const savedDeals = pgTable("saved_deals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
   name: text("name").notNull(),
   address: text("address"),
   countryMode: text("country_mode").notNull(),
@@ -110,6 +111,13 @@ export const savedDeals = pgTable("saved_deals", {
   sessionId: varchar("session_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const savedDealsRelations = relations(savedDeals, ({ one }) => ({
+  user: one(users, {
+    fields: [savedDeals.userId],
+    references: [users.id],
+  }),
+}));
 
 export const podcastQuestions = pgTable("podcast_questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

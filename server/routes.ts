@@ -831,7 +831,11 @@ export async function registerRoutes(
   app.post("/api/saved-deals", async (req, res) => {
     try {
       const validatedData = insertSavedDealSchema.parse(req.body);
-      const deal = await storage.createSavedDeal(validatedData);
+      const userId = req.session.userId as string | undefined;
+      const dealData = userId 
+        ? { ...validatedData, userId }
+        : validatedData;
+      const deal = await storage.createSavedDeal(dealData);
       res.json({ success: true, data: deal });
     } catch (error) {
       console.error("Error saving deal:", error);
@@ -854,6 +858,17 @@ export async function registerRoutes(
       res.json(deals);
     } catch (error) {
       console.error("Error fetching saved deals:", error);
+      res.status(500).json({ error: "Failed to fetch saved deals" });
+    }
+  });
+
+  app.get("/api/user/saved-deals", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const deals = await storage.getSavedDealsByUser(userId);
+      res.json(deals);
+    } catch (error) {
+      console.error("Error fetching user saved deals:", error);
       res.status(500).json({ error: "Failed to fetch saved deals" });
     }
   });
