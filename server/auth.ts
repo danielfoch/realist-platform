@@ -115,6 +115,11 @@ export function registerAuthRoutes(app: Express): void {
       // Set session
       req.session.userId = user.id;
       
+      // Extend session if "Remember me" is checked (30 days instead of 1 week)
+      if (data.rememberMe) {
+        req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+      }
+      
       res.json({
         id: user.id,
         email: user.email,
