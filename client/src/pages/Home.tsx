@@ -12,6 +12,7 @@ import { DealInputs } from "@/components/DealInputs";
 import { MetricCards } from "@/components/MetricCards";
 import { AnalysisCharts } from "@/components/AnalysisCharts";
 import { ResultsSummary } from "@/components/ResultsSummary";
+import { SourcesUsesWaterfall } from "@/components/SourcesUsesWaterfall";
 import { ProformaTable } from "@/components/ProformaTable";
 import { DealTimeline } from "@/components/DealTimeline";
 import { LeadCaptureModal } from "@/components/LeadCaptureModal";
@@ -611,6 +612,12 @@ export default function Home() {
                 dscr={results.dscr}
                 irr={results.irr}
                 monthlyCashFlow={results.monthlyCashFlow}
+              />
+
+              <SourcesUsesWaterfall
+                inputs={inputs}
+                results={results}
+                strategy={strategy}
               />
 
               <AnalysisCharts results={results} />
