@@ -4,12 +4,24 @@ import connectPg from "connect-pg-simple";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { db } from "./db";
-import { users, passwordResetTokens, signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/models/auth";
+import { users, passwordResetTokens, signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, userOAuthAccounts, phoneVerificationSchema, verifyPhoneCodeSchema } from "@shared/models/auth";
 import { eq, and, gt } from "drizzle-orm";
+import { storage } from "./storage";
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_AUTH_REDIRECT_URI = process.env.NODE_ENV === "production"
+  ? "https://realist.ca/api/auth/google/callback"
+  : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/google/callback`;
+const GOOGLE_AUTH_SCOPES = [
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+];
 
 declare module "express-session" {
   interface SessionData {
     userId?: string;
+    googleAuthState?: string;
   }
 }
 
@@ -435,6 +447,267 @@ export function registerAuthRoutes(app: Express): void {
     } catch (error) {
       console.error("Set password error:", error);
       res.status(500).json({ message: "Failed to set password" });
+    }
+  });
+
+  // Google OAuth Login/Signup - Start flow
+  app.get("/api/auth/google/start", (req, res) => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      res.redirect("/login?error=google_not_configured");
+      return;
+    }
+
+    const { google } = require("googleapis");
+    const oauth2Client = new google.auth.OAuth2(
+      GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET,
+      GOOGLE_AUTH_REDIRECT_URI
+    );
+
+    // Generate a random state to prevent CSRF
+    const state = crypto.randomBytes(32).toString("hex");
+    req.session.googleAuthState = state;
+
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      scope: GOOGLE_AUTH_SCOPES,
+      prompt: "select_account",
+      state,
+    });
+
+    res.redirect(authUrl);
+  });
+
+  // Google OAuth Login/Signup - Callback
+  app.get("/api/auth/google/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      
+      // Validate state parameter
+      if (!state || state !== req.session.googleAuthState) {
+        console.error("Google OAuth callback: State mismatch");
+        res.redirect("/login?error=auth_failed&reason=state_mismatch");
+        return;
+      }
+      
+      // Clear the state from session
+      delete req.session.googleAuthState;
+      
+      if (!code || typeof code !== "string") {
+        res.redirect("/login?error=auth_failed");
+        return;
+      }
+
+      if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+        res.redirect("/login?error=google_not_configured");
+        return;
+      }
+
+      const { google } = require("googleapis");
+      const oauth2Client = new google.auth.OAuth2(
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET,
+        GOOGLE_AUTH_REDIRECT_URI
+      );
+
+      const { tokens } = await oauth2Client.getToken(code);
+      oauth2Client.setCredentials(tokens);
+
+      // Get user info from Google
+      const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+      const userInfo = await oauth2.userinfo.get();
+      const googleEmail = userInfo.data.email?.toLowerCase();
+      const googleId = userInfo.data.id;
+      const firstName = userInfo.data.given_name || "";
+      const lastName = userInfo.data.family_name || "";
+      const profileImageUrl = userInfo.data.picture || null;
+
+      if (!googleEmail || !googleId) {
+        res.redirect("/login?error=auth_failed&reason=no_email");
+        return;
+      }
+
+      // Check if we have an existing OAuth account link
+      const existingOAuthAccount = await storage.getUserOAuthAccount("google", googleId);
+
+      if (existingOAuthAccount) {
+        // User has linked Google before - log them in
+        req.session.userId = existingOAuthAccount.userId;
+        
+        // Check if phone is verified
+        const [user] = await db.select().from(users).where(eq(users.id, existingOAuthAccount.userId)).limit(1);
+        if (user && !user.phoneVerified) {
+          res.redirect("/verify-phone");
+          return;
+        }
+        
+        res.redirect("/investor");
+        return;
+      }
+
+      // Check if a user with this email already exists
+      const [existingUser] = await db.select().from(users).where(eq(users.email, googleEmail)).limit(1);
+
+      if (existingUser) {
+        // Link Google to existing account
+        await storage.createUserOAuthAccount({
+          userId: existingUser.id,
+          provider: "google",
+          providerUserId: googleId,
+          providerEmail: googleEmail,
+          accessToken: tokens.access_token || undefined,
+          refreshToken: tokens.refresh_token || undefined,
+          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+        });
+        
+        // Update profile image if not set
+        if (!existingUser.profileImageUrl && profileImageUrl) {
+          await db.update(users).set({ profileImageUrl }).where(eq(users.id, existingUser.id));
+        }
+        
+        req.session.userId = existingUser.id;
+        
+        // Check if phone is verified
+        if (!existingUser.phoneVerified) {
+          res.redirect("/verify-phone");
+          return;
+        }
+        
+        res.redirect("/investor");
+        return;
+      }
+
+      // Create new user
+      const [newUser] = await db.insert(users).values({
+        email: googleEmail,
+        firstName,
+        lastName,
+        profileImageUrl,
+        emailVerified: true, // Google emails are verified
+      }).returning();
+
+      // Create OAuth account link
+      await storage.createUserOAuthAccount({
+        userId: newUser.id,
+        provider: "google",
+        providerUserId: googleId,
+        providerEmail: googleEmail,
+        accessToken: tokens.access_token || undefined,
+        refreshToken: tokens.refresh_token || undefined,
+        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+      });
+
+      req.session.userId = newUser.id;
+
+      // Redirect to phone verification for new users
+      res.redirect("/verify-phone");
+    } catch (error) {
+      console.error("Error in Google OAuth callback:", error);
+      res.redirect("/login?error=auth_failed");
+    }
+  });
+
+  // Phone Verification - Get status
+  app.get("/api/auth/phone/status", isAuthenticated, async (req, res) => {
+    try {
+      const [user] = await db.select({
+        phone: users.phone,
+        phoneVerified: users.phoneVerified,
+      }).from(users).where(eq(users.id, req.session.userId!)).limit(1);
+      
+      res.json({
+        phone: user?.phone || null,
+        phoneVerified: user?.phoneVerified || false,
+      });
+    } catch (error) {
+      console.error("Error checking phone status:", error);
+      res.status(500).json({ message: "Failed to check phone status" });
+    }
+  });
+
+  // Phone Verification - Send code
+  app.post("/api/auth/phone/send-code", isAuthenticated, async (req, res) => {
+    try {
+      const data = phoneVerificationSchema.parse(req.body);
+      const userId = req.session.userId!;
+      
+      // Generate 6-digit code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      
+      // Store the verification code
+      await storage.createPhoneVerificationCode({
+        userId,
+        phone: data.phone,
+        code,
+        expiresAt,
+      });
+      
+      // TODO: Send SMS via Twilio or other provider
+      // For now, log the code in development mode
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`[DEV] Phone verification code for ${data.phone}: ${code}`);
+      }
+      
+      // In production, you would integrate with Twilio here:
+      // await sendSmsViaWebhook(data.phone, code);
+      
+      res.json({ message: "Verification code sent", phone: data.phone });
+    } catch (error: any) {
+      console.error("Error sending phone verification code:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: error.errors[0]?.message || "Invalid phone number" });
+      }
+      res.status(500).json({ message: "Failed to send verification code" });
+    }
+  });
+
+  // Phone Verification - Verify code
+  app.post("/api/auth/phone/verify", isAuthenticated, async (req, res) => {
+    try {
+      const data = verifyPhoneCodeSchema.parse(req.body);
+      const userId = req.session.userId!;
+      
+      // Get the active verification code
+      const verificationCode = await storage.getActivePhoneVerificationCode(userId);
+      
+      if (!verificationCode) {
+        return res.status(400).json({ message: "No active verification code. Please request a new one." });
+      }
+      
+      // Check attempts (max 5)
+      const attempts = parseInt(verificationCode.attempts || "0");
+      if (attempts >= 5) {
+        return res.status(400).json({ message: "Too many attempts. Please request a new code." });
+      }
+      
+      // Verify the code
+      if (verificationCode.code !== data.code) {
+        await storage.incrementVerificationAttempts(verificationCode.id);
+        return res.status(400).json({ message: "Invalid verification code" });
+      }
+      
+      // Mark phone as verified
+      await storage.markPhoneVerified(userId, verificationCode.phone);
+      
+      res.json({ message: "Phone verified successfully" });
+    } catch (error: any) {
+      console.error("Error verifying phone code:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: error.errors[0]?.message || "Invalid code" });
+      }
+      res.status(500).json({ message: "Failed to verify code" });
+    }
+  });
+
+  // Phone Verification - Skip (optional, for users who don't want to verify)
+  app.post("/api/auth/phone/skip", isAuthenticated, async (req, res) => {
+    try {
+      // Just redirect them without marking as verified
+      res.json({ message: "Phone verification skipped" });
+    } catch (error) {
+      console.error("Error skipping phone verification:", error);
+      res.status(500).json({ message: "Failed to skip verification" });
     }
   });
 }

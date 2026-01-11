@@ -56,7 +56,7 @@ import {
   type GoogleOAuthToken,
   type InsertGoogleOAuthToken,
 } from "@shared/schema";
-import { users } from "@shared/models/auth";
+import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -167,6 +167,18 @@ export interface IStorage {
   getGoogleOAuthToken(userId: string): Promise<GoogleOAuthToken | undefined>;
   upsertGoogleOAuthToken(token: InsertGoogleOAuthToken): Promise<GoogleOAuthToken>;
   deleteGoogleOAuthToken(userId: string): Promise<void>;
+
+  // User OAuth Accounts (for login with Google, etc.)
+  getUserOAuthAccount(provider: string, providerUserId: string): Promise<UserOAuthAccount | undefined>;
+  getUserOAuthAccountsByUser(userId: string): Promise<UserOAuthAccount[]>;
+  createUserOAuthAccount(account: InsertUserOAuthAccount): Promise<UserOAuthAccount>;
+  deleteUserOAuthAccount(userId: string, provider: string): Promise<void>;
+
+  // Phone Verification
+  createPhoneVerificationCode(code: InsertPhoneVerificationCode): Promise<PhoneVerificationCode>;
+  getActivePhoneVerificationCode(userId: string): Promise<PhoneVerificationCode | undefined>;
+  markPhoneVerified(userId: string, phone: string): Promise<void>;
+  incrementVerificationAttempts(codeId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -735,6 +747,66 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGoogleOAuthToken(userId: string): Promise<void> {
     await db.delete(googleOAuthTokens).where(eq(googleOAuthTokens.userId, userId));
+  }
+
+  // User OAuth Accounts (for login with Google, etc.)
+  async getUserOAuthAccount(provider: string, providerUserId: string): Promise<UserOAuthAccount | undefined> {
+    const [account] = await db.select().from(userOAuthAccounts)
+      .where(and(
+        eq(userOAuthAccounts.provider, provider),
+        eq(userOAuthAccounts.providerUserId, providerUserId)
+      ));
+    return account || undefined;
+  }
+
+  async getUserOAuthAccountsByUser(userId: string): Promise<UserOAuthAccount[]> {
+    return db.select().from(userOAuthAccounts).where(eq(userOAuthAccounts.userId, userId));
+  }
+
+  async createUserOAuthAccount(account: InsertUserOAuthAccount): Promise<UserOAuthAccount> {
+    const [result] = await db.insert(userOAuthAccounts).values(account).returning();
+    return result;
+  }
+
+  async deleteUserOAuthAccount(userId: string, provider: string): Promise<void> {
+    await db.delete(userOAuthAccounts).where(
+      and(
+        eq(userOAuthAccounts.userId, userId),
+        eq(userOAuthAccounts.provider, provider)
+      )
+    );
+  }
+
+  // Phone Verification
+  async createPhoneVerificationCode(code: InsertPhoneVerificationCode): Promise<PhoneVerificationCode> {
+    const [result] = await db.insert(phoneVerificationCodes).values(code).returning();
+    return result;
+  }
+
+  async getActivePhoneVerificationCode(userId: string): Promise<PhoneVerificationCode | undefined> {
+    const now = new Date();
+    const [code] = await db.select().from(phoneVerificationCodes)
+      .where(and(
+        eq(phoneVerificationCodes.userId, userId),
+        gte(phoneVerificationCodes.expiresAt, now),
+        sql`${phoneVerificationCodes.verifiedAt} IS NULL`
+      ))
+      .orderBy(desc(phoneVerificationCodes.createdAt))
+      .limit(1);
+    return code || undefined;
+  }
+
+  async markPhoneVerified(userId: string, phone: string): Promise<void> {
+    await db.update(users).set({ phone, phoneVerified: true }).where(eq(users.id, userId));
+    await db.update(phoneVerificationCodes).set({ verifiedAt: new Date() })
+      .where(and(
+        eq(phoneVerificationCodes.userId, userId),
+        eq(phoneVerificationCodes.phone, phone)
+      ));
+  }
+
+  async incrementVerificationAttempts(codeId: string): Promise<void> {
+    await db.execute(sql`UPDATE phone_verification_codes SET attempts = CAST(attempts AS INTEGER) + 1 WHERE id = ${codeId}`);
   }
 }
 

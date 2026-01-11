@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -204,6 +205,17 @@ export default function CreateAccount() {
                   </>
                 )}
               </Button>
+
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                </div>
+              </div>
+
+              <GoogleSignInButton variant="signup" />
             </form>
           </Form>
 

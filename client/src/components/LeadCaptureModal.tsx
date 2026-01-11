@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Lock, Users, ExternalLink } from "lucide-react";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const leadFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -196,7 +197,18 @@ export function LeadCaptureModal({
                   )}
                 </Button>
 
-                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <div className="relative my-3">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
+
+                <GoogleSignInButton variant="continue" />
+
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-3">
                   <Lock className="h-3 w-3" />
                   <span>Your information is secure and will never be shared.</span>
                 </div>

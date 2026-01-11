@@ -23,6 +23,7 @@ import CreateAccount from "@/pages/CreateAccount";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import SetPassword from "@/pages/SetPassword";
+import VerifyPhone from "@/pages/VerifyPhone";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/set-password" component={SetPassword} />
+      <Route path="/verify-phone" component={VerifyPhone} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, ArrowRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -153,6 +154,17 @@ export default function Login() {
                   </>
                 )}
               </Button>
+
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                </div>
+              </div>
+
+              <GoogleSignInButton variant="login" />
             </form>
           </Form>
 
