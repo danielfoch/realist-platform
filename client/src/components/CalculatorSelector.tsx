@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, Home, TrendingUp } from "lucide-react";
+import { Calculator, Home, TrendingUp, Hammer } from "lucide-react";
 
-export type CalculatorType = "deal_analyzer" | "rent_vs_buy" | "real_estate_vs_stocks";
+export type CalculatorType = "deal_analyzer" | "rent_vs_buy" | "reno_quote" | "real_estate_vs_stocks";
 
 interface CalculatorSelectorProps {
   selected: CalculatorType;
@@ -22,6 +22,13 @@ const calculators = [
     label: "Rent vs Buy", 
     icon: Home, 
     description: "Should you rent or buy?",
+    comingSoon: false 
+  },
+  { 
+    id: "reno_quote" as CalculatorType, 
+    label: "RenoQuote", 
+    icon: Hammer, 
+    description: "Estimate renovation costs with detailed line items",
     comingSoon: false 
   },
   { 

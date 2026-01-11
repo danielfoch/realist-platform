@@ -16,6 +16,7 @@ import { ProformaTable } from "@/components/ProformaTable";
 import { DealTimeline } from "@/components/DealTimeline";
 import { LeadCaptureModal } from "@/components/LeadCaptureModal";
 import { RentVsBuyCalculator } from "@/components/RentVsBuyCalculator";
+import { RenoQuoteWizard } from "@/components/RenoQuoteWizard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -360,6 +361,8 @@ export default function Home() {
 
             {calculatorType === "rent_vs_buy" ? (
               <RentVsBuyCalculator country={country} />
+            ) : calculatorType === "reno_quote" ? (
+              <RenoQuoteWizard />
             ) : (
               <>
             <div className="grid lg:grid-cols-3 gap-8">

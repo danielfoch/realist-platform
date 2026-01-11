@@ -13,8 +13,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield } from "lucide-react";
-import type { Lead, MarketExpertApplication } from "@shared/schema";
+import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer } from "lucide-react";
+import type { Lead, MarketExpertApplication, RenoQuote } from "@shared/schema";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +60,11 @@ export default function Admin() {
 
   const { data: users, isLoading: usersLoading, refetch: refetchUsers } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
+    retry: false,
+  });
+
+  const { data: renoQuotes, isLoading: renoQuotesLoading, refetch: refetchRenoQuotes } = useQuery<RenoQuote[]>({
+    queryKey: ["/api/admin/reno-quotes"],
     retry: false,
   });
 
@@ -235,6 +240,7 @@ export default function Admin() {
               </TabsTrigger>
               <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
               <TabsTrigger value="leads" data-testid="tab-leads">Leads</TabsTrigger>
+              <TabsTrigger value="reno-quotes" data-testid="tab-reno-quotes">RenoQuotes</TabsTrigger>
             </TabsList>
 
             <TabsContent value="applications">
@@ -474,6 +480,85 @@ export default function Admin() {
                       <p className="text-muted-foreground">No leads yet</p>
                       <p className="text-sm text-muted-foreground">
                         Leads will appear here when users submit the analyzer form.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="reno-quotes">
+              <Card data-testid="card-reno-quotes-table">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Hammer className="h-5 w-5" />
+                    RenoQuote Submissions
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchRenoQuotes()}
+                    className="gap-2"
+                    data-testid="button-refresh-reno-quotes"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {renoQuotesLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                    </div>
+                  ) : renoQuotes && renoQuotes.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Persona</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead>Estimate Range</TableHead>
+                          <TableHead>Created</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {renoQuotes.map((quote) => {
+                          const pricing = quote.pricingResultJson as { totalLow?: number; totalBase?: number; totalHigh?: number } | null;
+                          return (
+                            <TableRow key={quote.id} data-testid={`row-reno-quote-${quote.id}`}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{quote.leadName || "Anonymous"}</p>
+                                  <p className="text-sm text-muted-foreground">{quote.leadEmail || "-"}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">{quote.persona}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                {quote.city && quote.region ? `${quote.city}, ${quote.region}` : quote.city || quote.region || "-"}
+                              </TableCell>
+                              <TableCell className="font-mono">
+                                {pricing?.totalLow && pricing?.totalHigh ? (
+                                  `$${pricing.totalLow.toLocaleString()} - $${pricing.totalHigh.toLocaleString()}`
+                                ) : "-"}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {quote.createdAt ? format(new Date(quote.createdAt), "MMM d, yyyy h:mm a") : "N/A"}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Hammer className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No RenoQuote submissions yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Quotes will appear here when users submit the RenoQuote calculator.
                       </p>
                     </div>
                   )}

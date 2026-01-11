@@ -628,3 +628,146 @@ export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSche
 export type VerificationToken = typeof verificationTokens.$inferSelect;
 
 export type PlatformAnalytics = typeof platformAnalytics.$inferSelect;
+
+// ============================================
+// RENOQUOTE CALCULATOR SCHEMA
+// ============================================
+
+export const renoQuotePersonas = ["homeowner", "investor", "multiplex"] as const;
+export type RenoQuotePersona = (typeof renoQuotePersonas)[number];
+
+export const renoQuotePropertyTypes = [
+  "condo", "detached", "semi", "townhouse", "duplex", "triplex", "fourplex", "multifamily"
+] as const;
+export type RenoQuotePropertyType = (typeof renoQuotePropertyTypes)[number];
+
+export const renoQuoteProjectIntents = [
+  "cosmetic", "moderate", "full_gut", "add_unit", "legalize_unit", 
+  "add_bathroom", "add_kitchen", "underpinning", "extension"
+] as const;
+export type RenoQuoteProjectIntent = (typeof renoQuoteProjectIntents)[number];
+
+export const renoQuoteQualityLevels = ["basic", "mid", "high"] as const;
+export type RenoQuoteQualityLevel = (typeof renoQuoteQualityLevels)[number];
+
+export const renoQuoteComplexityLevels = ["easy", "standard", "complex"] as const;
+export type RenoQuoteComplexityLevel = (typeof renoQuoteComplexityLevels)[number];
+
+export const renoQuoteLineItemSchema = z.object({
+  id: z.string(),
+  itemType: z.string(),
+  label: z.string(),
+  quantity: z.number().min(0),
+  unit: z.enum(["sqft", "linear_ft", "each", "room"]),
+  qualityLevel: z.enum(renoQuoteQualityLevels),
+  complexity: z.enum(renoQuoteComplexityLevels),
+  isDiy: z.boolean().default(false),
+  baseUnitCost: z.number().optional(),
+});
+
+export type RenoQuoteLineItem = z.infer<typeof renoQuoteLineItemSchema>;
+
+export const renoQuoteAssumptionsSchema = z.object({
+  contingencyPercent: z.number().min(0).max(50).default(15),
+  overheadProfitPercent: z.number().min(0).max(50).default(15),
+  laborMaterialSplit: z.object({
+    labor: z.number().default(55),
+    material: z.number().default(45),
+  }),
+  isRushTimeline: z.boolean().default(false),
+  regionalMultiplier: z.number().default(1),
+});
+
+export type RenoQuoteAssumptions = z.infer<typeof renoQuoteAssumptionsSchema>;
+
+export const renoQuotePricingResultSchema = z.object({
+  totalLow: z.number(),
+  totalBase: z.number(),
+  totalHigh: z.number(),
+  costPerSqft: z.object({
+    low: z.number().nullable(),
+    base: z.number().nullable(),
+    high: z.number().nullable(),
+  }),
+  timelineWeeks: z.object({
+    low: z.number(),
+    base: z.number(),
+    high: z.number(),
+  }),
+  lineItemBreakdown: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    quantity: z.number(),
+    unit: z.string(),
+    unitCostLow: z.number(),
+    unitCostBase: z.number(),
+    unitCostHigh: z.number(),
+    subtotalLow: z.number(),
+    subtotalBase: z.number(),
+    subtotalHigh: z.number(),
+  })),
+  contingencyAmount: z.object({
+    low: z.number(),
+    base: z.number(),
+    high: z.number(),
+  }),
+  overheadAmount: z.object({
+    low: z.number(),
+    base: z.number(),
+    high: z.number(),
+  }),
+  topCostDrivers: z.array(z.object({
+    label: z.string(),
+    percentage: z.number(),
+    amount: z.number(),
+  })),
+});
+
+export type RenoQuotePricingResult = z.infer<typeof renoQuotePricingResultSchema>;
+
+export const renoQuotes = pgTable("reno_quotes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  
+  persona: text("persona").notNull(),
+  
+  address: text("address"),
+  city: text("city"),
+  region: text("region"),
+  country: text("country").default("canada"),
+  postalCode: text("postal_code"),
+  
+  propertyType: text("property_type"),
+  existingSqft: real("existing_sqft"),
+  bedrooms: integer("bedrooms"),
+  bathrooms: integer("bathrooms"),
+  basementType: text("basement_type"),
+  basementHeight: real("basement_height"),
+  projectIntents: text("project_intents").array(),
+  
+  lineItemsJson: jsonb("line_items_json").notNull(),
+  assumptionsJson: jsonb("assumptions_json").notNull(),
+  pricingResultJson: jsonb("pricing_result_json"),
+  
+  leadName: text("lead_name"),
+  leadEmail: text("lead_email"),
+  leadPhone: text("lead_phone"),
+  leadConsent: boolean("lead_consent").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const renoQuotesRelations = relations(renoQuotes, ({ one }) => ({
+  lead: one(leads, {
+    fields: [renoQuotes.leadId],
+    references: [leads.id],
+  }),
+}));
+
+export const insertRenoQuoteSchema = createInsertSchema(renoQuotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRenoQuote = z.infer<typeof insertRenoQuoteSchema>;
+export type RenoQuote = typeof renoQuotes.$inferSelect;

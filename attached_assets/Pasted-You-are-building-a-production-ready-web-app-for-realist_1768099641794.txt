@@ -1,0 +1,157 @@
+You are building a production-ready web app for realist.ca with THREE calculators in one cohesive platform:
+
+1) Deal Analyzer
+2) Rent vs Buy
+3) NEW: RenoQuote (renovation cost + timeline + scope estimator)
+
+This task is ONLY to implement #3 (RenoQuote) and integrate it into the existing Realist UI as the third calculator option.
+
+## Product goals
+- The UI must feel like one unified Realist platform (minimal, fast, premium).
+- RenoQuote must work for BOTH homeowners and investors.
+- Output must be transparent: line-by-line estimate + assumptions + ranges + low/base/high.
+- Lead capture is mandatory before revealing full results (name, email, phone).
+- Store all submissions in a database and provide an admin login to view, filter, and export leads.
+- Include a clear disclaimer: “Estimates only. Not a contractor bid. Verify locally.”
+
+## Tech requirements
+- Use Next.js (App Router) + TypeScript.
+- Use Tailwind CSS for styling.
+- Use a database (SQLite for dev + Prisma ORM). Make it easy to swap to Postgres later.
+- Use secure auth for admin (simple password-based or NextAuth).
+- Use server actions or API routes for saving submissions.
+- Add environment variables support.
+- All code must run locally with a single command.
+
+## Navigation / IA
+Add a top nav with “Calculators” dropdown:
+- Deal Analyzer
+- Rent vs Buy
+- RenoQuote (new)
+
+RenoQuote page route: /calculators/renoquote
+
+## RenoQuote UX flow
+### Step 0: Persona selector
+User chooses:
+- “Homeowner renovation”
+- “Investor value-add / rental upgrade”
+- “Multiplex / adding units”
+
+### Step 1: Property + project basics
+Inputs:
+- Address autocomplete (Google Places API) OR manual entry fallback
+- City/Province/State + country selector (Canada/US)
+- Property type: Condo / Detached / Semi / Townhouse / Duplex / Triplex / 4-plex / 5+ multifamily
+- Existing size: sqft (optional) + bedrooms/bathrooms (optional)
+- Basement: unfinished/finished + height (optional)
+- Project intent: cosmetic / moderate / full gut / add unit / legalize unit / add bathroom / add kitchen / underpinning / extension (multi-select)
+
+### Step 2: Renovation scope builder (line items)
+Let users add items from a curated list AND edit quantities.
+Each item should have fields:
+- Quantity (sqft, linear feet, each, rooms)
+- Quality level: Basic / Mid / High
+- Complexity: Easy / Standard / Complex
+- DIY? toggle (reduces labor share)
+Default items to include (at minimum):
+- Paint (per sqft)
+- Flooring (LVP/hardwood/tile) (per sqft)
+- Kitchen refresh (cabinet refacing, countertops, appliances) (each)
+- Full kitchen (each)
+- Bathroom refresh (each)
+- Full bathroom (each)
+- Electrical panel upgrade (each)
+- Electrical rough-in (per sqft)
+- Plumbing rough-in (per sqft)
+- Pot lights (each)
+- Windows (each)
+- Doors (each)
+- Roofing (per sqft or per “small/med/large”)
+- HVAC (each)
+- Insulation (per sqft)
+- Drywall (per sqft)
+- Demolition (per sqft)
+- Dumpster/waste (each)
+- Permits (each, by city risk factor)
+Investor/multiplex extras:
+- Fire separation + soundproofing allowance
+- Egress window (each)
+- Separate entrance (each)
+- Second meter / electrical split allowance
+- Sprinklers allowance (if 5+ unit / as an option)
+- Architect/engineering (allowance)
+- Contingency (%)
+
+### Step 3: Assumptions engine
+Implement a pricing model that outputs LOW / BASE / HIGH using:
+- Regional multipliers (by country + province/state + major metro vs non-metro)
+- Quality level multipliers
+- Complexity multipliers
+- Labor/material split (e.g., 55/45 default) with adjusters for DIY toggle
+- Contractor overhead & profit (default 15%) toggleable
+- Contingency (default 10–20% based on scope intensity)
+Allow user to adjust:
+- Contingency %
+- Overhead & profit %
+- Timeline urgency (normal / rush) -> increases labor cost
+
+### Step 4: Results
+Show:
+1) Total estimate: Low/Base/High
+2) Cost per sqft (if sqft provided)
+3) Timeline estimate (weeks) based on scope intensity and item mix
+4) Line-by-line breakdown table:
+   - Item
+   - Quantity
+   - Unit cost (low/base/high)
+   - Subtotal (low/base/high)
+5) “Top cost drivers” section (auto-generated)
+6) Downloadable PDF of the estimate (server-generated)
+7) CTA section:
+   - “Want a real quote? Book a call” (link placeholder)
+   - “Send this to a contractor” (email share placeholder)
+   - “Run the Deal Analyzer with these CapEx numbers” button that pre-fills CapEx in Deal Analyzer (store in session/local storage or URL params)
+
+## Lead capture + CRM hook
+Before showing the full line-by-line breakdown:
+- Gate with a modal requiring Name + Email + Phone + Consent checkbox
+- Save to DB with:
+  - lead info
+  - address + city + region + country
+  - persona
+  - all item selections + assumptions
+  - estimate totals
+  - timestamp
+- Add webhook integration (configurable via ENV):
+  - If WEBHOOK_URL exists, POST the full payload to it (for GHL)
+  - Provide robust error handling + retries (at least 1 retry)
+
+## Admin dashboard
+Route: /admin
+- Login required
+- Table of leads with filters:
+  - date range
+  - persona
+  - city/region
+  - estimate range
+- Lead detail view showing:
+  - all inputs
+  - itemized breakdown
+  - exported JSON
+- Export CSV
+
+## Style / Brand
+- Minimal Realist feel: white background, black text, red accents.
+- Use clean cards, good spacing, mobile responsive.
+- Avoid clutter; progressive disclosure with steps.
+
+## Deliverables
+- Provide the full working code.
+- Include a README with setup steps:
+  - env vars needed (Google Places, webhook, admin password)
+  - how to run migrations
+  - how to start dev server
+- Include seed data for a few sample leads for testing.
+
+Now implement RenoQuote and integrate it as the third calculator in the existing Realist platform.

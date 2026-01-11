@@ -16,6 +16,7 @@ import {
   marketExpertApplications,
   verificationTokens,
   platformAnalytics,
+  renoQuotes,
   type Lead, 
   type InsertLead,
   type Property,
@@ -49,6 +50,8 @@ import {
   type VerificationToken,
   type InsertVerificationToken,
   type PlatformAnalytics,
+  type RenoQuote,
+  type InsertRenoQuote,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { db } from "./db";
@@ -149,6 +152,12 @@ export interface IStorage {
   // Platform Analytics
   getAnalyticsForPeriod(startDate: Date, endDate: Date, region?: string): Promise<PlatformAnalytics[]>;
   getRecentAnalysisCount(days: number): Promise<number>;
+
+  // RenoQuotes
+  createRenoQuote(quote: InsertRenoQuote): Promise<RenoQuote>;
+  getRenoQuote(id: string): Promise<RenoQuote | undefined>;
+  getAllRenoQuotes(): Promise<RenoQuote[]>;
+  getRenoQuotesCount(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -662,6 +671,26 @@ export class DatabaseStorage implements IStorage {
       .from(analyses)
       .where(gte(analyses.createdAt, startDate));
     
+    return Number(result?.count || 0);
+  }
+
+  // RenoQuotes
+  async createRenoQuote(quote: InsertRenoQuote): Promise<RenoQuote> {
+    const [created] = await db.insert(renoQuotes).values(quote).returning();
+    return created;
+  }
+
+  async getRenoQuote(id: string): Promise<RenoQuote | undefined> {
+    const [quote] = await db.select().from(renoQuotes).where(eq(renoQuotes.id, id));
+    return quote || undefined;
+  }
+
+  async getAllRenoQuotes(): Promise<RenoQuote[]> {
+    return db.select().from(renoQuotes).orderBy(desc(renoQuotes.createdAt));
+  }
+
+  async getRenoQuotesCount(): Promise<number> {
+    const [result] = await db.select({ count: sql<number>`count(*)` }).from(renoQuotes);
     return Number(result?.count || 0);
   }
 }

@@ -12,12 +12,47 @@ import {
   insertPortfolioPropertySchema,
   insertIndustryPartnerSchema,
   users,
+  renoQuoteLineItemSchema,
+  renoQuoteAssumptionsSchema,
+  type RenoQuoteLineItem,
+  type RenoQuoteAssumptions,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
 import { exportToGoogleSheets } from "./googleSheets";
+import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
+
+const rateLimit = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 5;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimit.get(ip);
+  
+  if (!entry || now > entry.resetTime) {
+    rateLimit.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+  
+  entry.count++;
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimit.entries()) {
+    if (now > entry.resetTime) {
+      rateLimit.delete(ip);
+    }
+  }
+}, RATE_LIMIT_WINDOW_MS);
 
 const createLeadRequestSchema = z.object({
   lead: insertLeadSchema,
@@ -358,6 +393,171 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating user role:", error);
       res.status(500).json({ error: "Failed to update user role" });
+    }
+  });
+
+  // ============================================
+  // RENOQUOTE API ROUTES
+  // ============================================
+
+  const createRenoQuoteSchema = z.object({
+    persona: z.enum(["homeowner", "investor", "multiplex"]),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    region: z.string().optional(),
+    country: z.string().default("canada"),
+    postalCode: z.string().optional(),
+    propertyType: z.string().optional(),
+    existingSqft: z.number().nullable().optional(),
+    bedrooms: z.number().nullable().optional(),
+    bathrooms: z.number().nullable().optional(),
+    basementType: z.string().optional(),
+    basementHeight: z.number().nullable().optional(),
+    projectIntents: z.array(z.string()).optional(),
+    lineItems: z.array(renoQuoteLineItemSchema),
+    assumptions: renoQuoteAssumptionsSchema,
+    leadName: z.string().optional(),
+    leadEmail: z.string().email().optional(),
+    leadPhone: z.string().optional(),
+    leadConsent: z.boolean().default(false),
+  });
+
+  app.get("/api/reno-quotes/catalog", (req, res) => {
+    const persona = (req.query.persona as string) || "homeowner";
+    const validPersonas = ["homeowner", "investor", "multiplex"];
+    const selectedPersona = validPersonas.includes(persona) ? persona : "homeowner";
+    res.json(getLineItemCatalog(selectedPersona as "homeowner" | "investor" | "multiplex"));
+  });
+
+  app.post("/api/reno-quotes/calculate", (req, res) => {
+    try {
+      const parsed = createRenoQuoteSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.errors });
+      }
+      
+      const { lineItems, assumptions, persona, country, region, city, existingSqft } = parsed.data;
+      
+      const pricingResult = calculateRenoQuotePricing(
+        lineItems as RenoQuoteLineItem[],
+        assumptions as RenoQuoteAssumptions,
+        { country, region, city, existingSqft, persona }
+      );
+      
+      res.json(pricingResult);
+    } catch (error) {
+      console.error("Error calculating reno quote:", error);
+      res.status(500).json({ error: "Failed to calculate renovation estimate" });
+    }
+  });
+
+  app.post("/api/reno-quotes", async (req, res) => {
+    try {
+      const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+      if (!checkRateLimit(clientIp)) {
+        return res.status(429).json({ error: "Too many requests. Please try again later." });
+      }
+      
+      const parsed = createRenoQuoteSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.errors });
+      }
+      
+      const { lineItems, assumptions, leadName, leadEmail, leadPhone, leadConsent, ...propertyData } = parsed.data;
+      
+      const pricingResult = calculateRenoQuotePricing(
+        lineItems as RenoQuoteLineItem[],
+        assumptions as RenoQuoteAssumptions,
+        { 
+          country: propertyData.country, 
+          region: propertyData.region, 
+          city: propertyData.city, 
+          existingSqft: propertyData.existingSqft,
+          persona: propertyData.persona
+        }
+      );
+      
+      let leadId: string | undefined;
+      if (leadEmail && leadName) {
+        const lead = await storage.createLead({
+          name: leadName,
+          email: leadEmail,
+          phone: leadPhone || "",
+          consent: leadConsent,
+          leadSource: "RenoQuote Calculator",
+        });
+        leadId = lead.id;
+        
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          sendWebhook(leadId, {
+            source: "RenoQuote Calculator",
+            name: leadName,
+            email: leadEmail,
+            phone: leadPhone,
+            persona: propertyData.persona,
+            address: propertyData.address,
+            city: propertyData.city,
+            region: propertyData.region,
+            country: propertyData.country,
+            estimateLow: pricingResult.totalLow,
+            estimateBase: pricingResult.totalBase,
+            estimateHigh: pricingResult.totalHigh,
+          });
+        }
+      }
+      
+      const renoQuote = await storage.createRenoQuote({
+        leadId,
+        persona: propertyData.persona,
+        address: propertyData.address,
+        city: propertyData.city,
+        region: propertyData.region,
+        country: propertyData.country,
+        postalCode: propertyData.postalCode,
+        propertyType: propertyData.propertyType,
+        existingSqft: propertyData.existingSqft,
+        bedrooms: propertyData.bedrooms,
+        bathrooms: propertyData.bathrooms,
+        basementType: propertyData.basementType,
+        basementHeight: propertyData.basementHeight,
+        projectIntents: propertyData.projectIntents,
+        lineItemsJson: lineItems,
+        assumptionsJson: assumptions,
+        pricingResultJson: pricingResult,
+        leadName,
+        leadEmail,
+        leadPhone,
+        leadConsent,
+      });
+      
+      res.json({ id: renoQuote.id, pricingResult });
+    } catch (error) {
+      console.error("Error creating reno quote:", error);
+      res.status(500).json({ error: "Failed to save renovation quote" });
+    }
+  });
+
+  app.get("/api/reno-quotes/:id", async (req, res) => {
+    try {
+      const quote = await storage.getRenoQuote(req.params.id);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      res.json(quote);
+    } catch (error) {
+      console.error("Error fetching reno quote:", error);
+      res.status(500).json({ error: "Failed to fetch quote" });
+    }
+  });
+
+  app.get("/api/admin/reno-quotes", isAdmin, async (req, res) => {
+    try {
+      const quotes = await storage.getAllRenoQuotes();
+      res.json(quotes);
+    } catch (error) {
+      console.error("Error fetching reno quotes:", error);
+      res.status(500).json({ error: "Failed to fetch quotes" });
     }
   });
 
