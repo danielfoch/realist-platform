@@ -74,6 +74,7 @@ export function MortgageConsultationButton({
       return apiRequest("POST", "/api/leads/engage", {
         ...data,
         formType: "Mortgage Consultation",
+        formTag: "mortgage_rate_request",
         tags: ["mortgage_consultation", "rate_request"],
         province: region,
         city,

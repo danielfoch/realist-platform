@@ -145,6 +145,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
       return apiRequest("POST", "/api/leads/engage", {
         ...data,
         formType: "Expert Consultation",
+        formTag: "expert_consultation",
         tags: [`LEAD_${provinceCode}`, "expert_consultation"],
         province: provinceCode,
         city,

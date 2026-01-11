@@ -83,6 +83,7 @@ export function PropertyManagerPanel({ region, city, country, dealInfo, defaultV
       return apiRequest("POST", "/api/leads/engage", {
         ...data,
         formType: "Property Management Consultation",
+        formTag: "property_management",
         tags: [`LEAD_${provinceCode}`, "property_management"],
         province: provinceCode,
         city: displayCity,

@@ -98,10 +98,10 @@ export function DealPromotions({ region, city, country, dealInfo, defaultValues 
   });
 
   const handleSubmit = async (data: EngageFormValues) => {
-    const formConfigs: Record<string, { formType: string; tags: string[] }> = {
-      cashback: { formType: "Cashback Request", tags: ["Keypr"] },
-      expert: { formType: "Local Expert Request", tags: [] },
-      mortgage: { formType: "Mortgage Consultation", tags: ["mortgage_consultation"] },
+    const formConfigs: Record<string, { formType: string; formTag: string; tags: string[] }> = {
+      cashback: { formType: "Cashback Request", formTag: "cashback_request", tags: ["Keypr"] },
+      expert: { formType: "Local Expert Request", formTag: "local_expert_request", tags: [] },
+      mortgage: { formType: "Mortgage Consultation", formTag: "mortgage_consultation", tags: ["mortgage_consultation"] },
     };
     const config = formConfigs[modalType || "cashback"];
     await engageMutation.mutateAsync({ ...data, ...config });

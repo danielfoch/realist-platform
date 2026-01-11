@@ -77,6 +77,7 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
       return apiRequest("POST", "/api/leads/engage", {
         ...data,
         formType: "Cashback Request",
+        formTag: "cashback_request",
         tags: ["Keypr"],
         province: provinceCode,
         city,

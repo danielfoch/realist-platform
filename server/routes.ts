@@ -172,6 +172,7 @@ export async function registerRoutes(
         fullName: lead.name,
         consent: lead.consent,
         leadSource: lead.leadSource,
+        formTag: "deal_analyzer",
         propertyAddress: property.formattedAddress,
         propertyCity: property.city,
         propertyRegion: property.region,
@@ -209,7 +210,7 @@ export async function registerRoutes(
   // Lead engagement endpoint with tagging for cashback, mortgage consultation, and local expert
   app.post("/api/leads/engage", async (req, res) => {
     try {
-      const { name, email, phone, consent, formType, tags, dealInfo, province, city } = req.body;
+      const { name, email, phone, consent, formType, formTag, tags, dealInfo, province, city } = req.body;
 
       if (!name || !email || !phone) {
         res.status(400).json({ error: "Name, email, and phone are required" });
@@ -259,6 +260,7 @@ export async function registerRoutes(
         fullName: name,
         consent: consent || false,
         leadSource: formType || "Deal Engagement",
+        formTag: formTag || "engagement",
         tags: allTags,
         formType,
         province,
@@ -492,6 +494,7 @@ export async function registerRoutes(
         if (webhookUrl) {
           sendWebhook(leadId, {
             source: "RenoQuote Calculator",
+            formTag: "reno_quote",
             name: leadName,
             email: leadEmail,
             phone: leadPhone,
@@ -752,6 +755,7 @@ export async function registerRoutes(
         fullName: data.name,
         consent: true,
         leadSource: "meetup_contact",
+        formTag: "meetup_contact",
         tags: ["meetup_contact", `MEETUP_${data.city.toUpperCase().replace(/\s+/g, '_')}`],
         customField: {
           meetup_message: data.message,

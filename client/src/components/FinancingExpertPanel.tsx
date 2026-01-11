@@ -89,6 +89,7 @@ export function FinancingExpertPanel({
       return apiRequest("POST", "/api/leads/engage", {
         ...data,
         formType: "Financing Consultation",
+        formTag: "financing_consultation",
         tags: ["financing_consultation", "mortgage_request"],
         province: region,
         city,
