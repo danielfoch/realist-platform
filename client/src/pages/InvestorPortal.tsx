@@ -236,7 +236,7 @@ export default function InvestorPortal() {
             </Card>
           </div>
 
-          <Tabs defaultValue="portfolio" className="space-y-6">
+          <Tabs defaultValue="saved-deals" className="space-y-6">
             <TabsList data-testid="investor-tabs">
               <TabsTrigger value="portfolio" data-testid="tab-portfolio">Portfolio</TabsTrigger>
               <TabsTrigger value="saved-deals" data-testid="tab-saved-deals">Saved Deals</TabsTrigger>
