@@ -739,7 +739,7 @@ export async function registerRoutes(
   // Get investor profile
   app.get("/api/investor/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const profile = await storage.getInvestorProfile(userId);
       res.json(profile || null);
     } catch (error) {
@@ -751,7 +751,7 @@ export async function registerRoutes(
   // Create investor profile (for signup flow)
   app.post("/api/investor/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const existingProfile = await storage.getInvestorProfile(userId);
       if (existingProfile) {
         res.json(existingProfile);
@@ -768,7 +768,7 @@ export async function registerRoutes(
   // Update investor profile
   app.put("/api/investor/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const validatedData = insertInvestorProfileSchema.parse({ ...req.body, userId });
       const profile = await storage.upsertInvestorProfile(validatedData);
       res.json(profile);
@@ -785,7 +785,7 @@ export async function registerRoutes(
   // Get investor KYC
   app.get("/api/investor/kyc", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const kyc = await storage.getInvestorKyc(userId);
       res.json(kyc || null);
     } catch (error) {
@@ -797,7 +797,7 @@ export async function registerRoutes(
   // Update investor KYC
   app.put("/api/investor/kyc", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const validatedData = insertInvestorKycSchema.parse({ ...req.body, userId });
       const kyc = await storage.upsertInvestorKyc(validatedData);
       res.json(kyc);
@@ -814,7 +814,7 @@ export async function registerRoutes(
   // Get portfolio properties
   app.get("/api/investor/portfolio", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const properties = await storage.getPortfolioProperties(userId);
       res.json(properties);
     } catch (error) {
@@ -826,7 +826,7 @@ export async function registerRoutes(
   // Add portfolio property
   app.post("/api/investor/portfolio", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const validatedData = insertPortfolioPropertySchema.parse({ ...req.body, userId });
       const property = await storage.createPortfolioProperty(validatedData);
       res.json(property);
@@ -843,7 +843,7 @@ export async function registerRoutes(
   // Update portfolio property
   app.put("/api/investor/portfolio/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const property = await storage.getPortfolioProperty(req.params.id);
       if (!property || property.userId !== userId) {
         res.status(404).json({ error: "Property not found" });
@@ -860,7 +860,7 @@ export async function registerRoutes(
   // Delete portfolio property
   app.delete("/api/investor/portfolio/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const property = await storage.getPortfolioProperty(req.params.id);
       if (!property || property.userId !== userId) {
         res.status(404).json({ error: "Property not found" });
@@ -881,7 +881,7 @@ export async function registerRoutes(
   // Get partner profile
   app.get("/api/partner/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const partner = await storage.getIndustryPartner(userId);
       res.json(partner || null);
     } catch (error) {
@@ -893,7 +893,7 @@ export async function registerRoutes(
   // Update partner profile
   app.put("/api/partner/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const validatedData = insertIndustryPartnerSchema.parse({ ...req.body, userId });
       const partner = await storage.upsertIndustryPartner(validatedData);
       res.json(partner);
@@ -910,7 +910,7 @@ export async function registerRoutes(
   // Get partner leads
   app.get("/api/partner/leads", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const partner = await storage.getIndustryPartner(userId);
       if (!partner) {
         res.status(404).json({ error: "Partner profile not found" });
@@ -927,7 +927,7 @@ export async function registerRoutes(
   // Update partner lead status
   app.put("/api/partner/leads/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const partner = await storage.getIndustryPartner(userId);
       if (!partner) {
         res.status(404).json({ error: "Partner profile not found" });
@@ -970,7 +970,7 @@ export async function registerRoutes(
   // Get current user's subscription
   app.get("/api/subscription", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       let subscription = await storage.getProfessionalSubscription(userId);
       
       if (!subscription) {
@@ -992,7 +992,7 @@ export async function registerRoutes(
   // Create new professional subscription with brokerage info
   app.post("/api/subscription/create", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { brokerageName, brokerageCity, brokerageProvince } = req.body;
       
       const subscription = await storage.upsertProfessionalSubscription({
@@ -1015,7 +1015,7 @@ export async function registerRoutes(
   // Update brokerage information
   app.patch("/api/subscription/brokerage", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { brokerageName, brokerageCity, brokerageProvince } = req.body;
       
       const subscription = await storage.upsertProfessionalSubscription({
@@ -1035,7 +1035,7 @@ export async function registerRoutes(
   // Check and increment pull usage
   app.post("/api/subscription/use-pull", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const result = await storage.incrementPullUsage(userId);
       res.json(result);
     } catch (error) {
@@ -1059,7 +1059,7 @@ export async function registerRoutes(
   // Create checkout session for subscription
   app.post("/api/subscription/checkout", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { tier } = req.body;
       
       const { stripeService } = await import("./stripeService");
@@ -1117,7 +1117,7 @@ export async function registerRoutes(
   // Create customer portal session
   app.post("/api/subscription/portal", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const subscription = await storage.getProfessionalSubscription(userId);
       
       if (!subscription?.stripeCustomerId) {
@@ -1145,7 +1145,7 @@ export async function registerRoutes(
 
   app.get("/api/branding", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const branding = await storage.getBrandingAssets(userId);
       res.json(branding || {});
     } catch (error) {
@@ -1156,7 +1156,7 @@ export async function registerRoutes(
 
   app.put("/api/branding", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       
       // Check if user has starter or pro tier
       const subscription = await storage.getProfessionalSubscription(userId);
@@ -1190,7 +1190,7 @@ export async function registerRoutes(
 
   app.post("/api/market-expert/apply", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { marketRegion, marketCity, includeMeetupHost } = req.body;
       
       const existingApplication = await storage.getMarketExpertApplication(userId);
@@ -1276,7 +1276,7 @@ export async function registerRoutes(
 
   app.get("/api/market-expert/application", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const application = await storage.getMarketExpertApplication(userId);
       res.json(application || null);
     } catch (error) {
