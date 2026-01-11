@@ -1,7 +1,15 @@
-// Google Sheets Integration - using Replit Connector
+// Google Sheets Integration - using Replit Connector or User OAuth tokens
 import { google } from 'googleapis';
 
+// Replit connector settings cache
 let connectionSettings: any;
+
+// Interface for user OAuth tokens
+interface UserOAuthTokens {
+  accessToken: string;
+  refreshToken?: string | null;
+  expiresAt?: Date | null;
+}
 
 async function getAccessToken() {
   if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
@@ -43,6 +51,25 @@ export async function getUncachableGoogleSheetClient() {
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({
     access_token: accessToken
+  });
+
+  return google.sheets({ version: 'v4', auth: oauth2Client });
+}
+
+// Get a Google Sheets client using user's own OAuth tokens
+export function getUserGoogleSheetClient(tokens: UserOAuthTokens) {
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+  const oauth2Client = new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET
+  );
+
+  oauth2Client.setCredentials({
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken || undefined,
+    expiry_date: tokens.expiresAt ? tokens.expiresAt.getTime() : undefined,
   });
 
   return google.sheets({ version: 'v4', auth: oauth2Client });
@@ -127,8 +154,11 @@ interface ExportData {
   };
 }
 
-export async function exportToGoogleSheets(data: ExportData): Promise<string> {
-  const sheets = await getUncachableGoogleSheetClient();
+export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOAuthTokens): Promise<string> {
+  // Use user's own tokens if provided, otherwise fall back to Replit connector
+  const sheets = userTokens 
+    ? getUserGoogleSheetClient(userTokens)
+    : await getUncachableGoogleSheetClient();
   
   const title = `Realist Analysis - ${data.address || 'Property'} - ${new Date().toLocaleDateString()}`;
   

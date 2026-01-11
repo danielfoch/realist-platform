@@ -638,6 +638,39 @@ export type VerificationToken = typeof verificationTokens.$inferSelect;
 export type PlatformAnalytics = typeof platformAnalytics.$inferSelect;
 
 // ============================================
+// GOOGLE OAUTH TOKENS (For user-owned exports)
+// ============================================
+
+export const googleOAuthTokens = pgTable("google_oauth_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  tokenType: text("token_type").default("Bearer"),
+  expiresAt: timestamp("expires_at"),
+  scope: text("scope"),
+  googleEmail: text("google_email"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const googleOAuthTokensRelations = relations(googleOAuthTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [googleOAuthTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertGoogleOAuthTokenSchema = createInsertSchema(googleOAuthTokens).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGoogleOAuthToken = z.infer<typeof insertGoogleOAuthTokenSchema>;
+export type GoogleOAuthToken = typeof googleOAuthTokens.$inferSelect;
+
+// ============================================
 // RENOQUOTE CALCULATOR SCHEMA
 // ============================================
 

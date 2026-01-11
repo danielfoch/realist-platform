@@ -17,6 +17,7 @@ import {
   verificationTokens,
   platformAnalytics,
   renoQuotes,
+  googleOAuthTokens,
   type Lead, 
   type InsertLead,
   type Property,
@@ -52,6 +53,8 @@ import {
   type PlatformAnalytics,
   type RenoQuote,
   type InsertRenoQuote,
+  type GoogleOAuthToken,
+  type InsertGoogleOAuthToken,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { db } from "./db";
@@ -159,6 +162,11 @@ export interface IStorage {
   getRenoQuote(id: string): Promise<RenoQuote | undefined>;
   getAllRenoQuotes(): Promise<RenoQuote[]>;
   getRenoQuotesCount(): Promise<number>;
+
+  // Google OAuth Tokens
+  getGoogleOAuthToken(userId: string): Promise<GoogleOAuthToken | undefined>;
+  upsertGoogleOAuthToken(token: InsertGoogleOAuthToken): Promise<GoogleOAuthToken>;
+  deleteGoogleOAuthToken(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -697,6 +705,36 @@ export class DatabaseStorage implements IStorage {
   async getRenoQuotesCount(): Promise<number> {
     const [result] = await db.select({ count: sql<number>`count(*)` }).from(renoQuotes);
     return Number(result?.count || 0);
+  }
+
+  // Google OAuth Tokens
+  async getGoogleOAuthToken(userId: string): Promise<GoogleOAuthToken | undefined> {
+    const [token] = await db.select().from(googleOAuthTokens).where(eq(googleOAuthTokens.userId, userId));
+    return token || undefined;
+  }
+
+  async upsertGoogleOAuthToken(token: InsertGoogleOAuthToken): Promise<GoogleOAuthToken> {
+    const [result] = await db
+      .insert(googleOAuthTokens)
+      .values(token)
+      .onConflictDoUpdate({
+        target: googleOAuthTokens.userId,
+        set: {
+          accessToken: token.accessToken,
+          refreshToken: token.refreshToken,
+          tokenType: token.tokenType,
+          expiresAt: token.expiresAt,
+          scope: token.scope,
+          googleEmail: token.googleEmail,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async deleteGoogleOAuthToken(userId: string): Promise<void> {
+    await db.delete(googleOAuthTokens).where(eq(googleOAuthTokens.userId, userId));
   }
 }
 

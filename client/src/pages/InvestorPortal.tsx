@@ -16,7 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink } from "lucide-react";
+import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink, Settings } from "lucide-react";
+import { GoogleConnectionCard } from "@/components/GoogleConnectionCard";
 import { useState } from "react";
 import type { InvestorProfile, InvestorKyc, PortfolioProperty, SavedDeal } from "@shared/schema";
 
@@ -242,6 +243,7 @@ export default function InvestorPortal() {
               <TabsTrigger value="saved-deals" data-testid="tab-saved-deals">Saved Deals</TabsTrigger>
               <TabsTrigger value="profile" data-testid="tab-profile">Profile</TabsTrigger>
               <TabsTrigger value="kyc" data-testid="tab-kyc">KYC / Accreditation</TabsTrigger>
+              <TabsTrigger value="settings" data-testid="tab-settings">Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="portfolio" className="space-y-4">
@@ -493,6 +495,15 @@ export default function InvestorPortal() {
                   />
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="settings" className="space-y-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Account Settings
+              </h2>
+              
+              <GoogleConnectionCard />
             </TabsContent>
           </Tabs>
         </div>

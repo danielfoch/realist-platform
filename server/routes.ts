@@ -989,20 +989,180 @@ export async function registerRoutes(
         return;
       }
 
+      // Check if user has their own Google OAuth tokens
+      const userId = req.session?.userId;
+      let userTokens = null;
+      let exportedToUserAccount = false;
+      
+      if (userId) {
+        const googleToken = await storage.getGoogleOAuthToken(userId);
+        if (googleToken) {
+          userTokens = {
+            accessToken: googleToken.accessToken,
+            refreshToken: googleToken.refreshToken,
+            expiresAt: googleToken.expiresAt,
+          };
+          exportedToUserAccount = true;
+        }
+      }
+
       const spreadsheetUrl = await exportToGoogleSheets({
         address: address || "Property Analysis",
         strategy: strategy || "buy_hold",
         inputs,
         results,
-      });
+      }, userTokens || undefined);
 
-      res.json({ success: true, url: spreadsheetUrl });
+      res.json({ 
+        success: true, 
+        url: spreadsheetUrl,
+        exportedToUserAccount,
+      });
     } catch (error) {
       console.error("Error exporting to Google Sheets:", error);
       res.status(500).json({ 
         error: "Failed to export to Google Sheets",
         message: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  // Google OAuth for user-owned exports
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+  const GOOGLE_REDIRECT_URI = process.env.REPLIT_DEV_DOMAIN 
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/google/callback`
+    : process.env.REPLIT_DEPLOYMENT_URL
+    ? `${process.env.REPLIT_DEPLOYMENT_URL}/api/google/callback`
+    : "http://localhost:5000/api/google/callback";
+  const GOOGLE_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/userinfo.email",
+  ];
+
+  // Check if Google OAuth is configured
+  app.get("/api/google/status", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        res.json({ connected: false, configured: !!GOOGLE_CLIENT_ID });
+        return;
+      }
+
+      const token = await storage.getGoogleOAuthToken(userId);
+      res.json({ 
+        connected: !!token, 
+        configured: !!GOOGLE_CLIENT_ID,
+        email: token?.googleEmail || null,
+      });
+    } catch (error) {
+      console.error("Error checking Google status:", error);
+      res.status(500).json({ error: "Failed to check Google status" });
+    }
+  });
+
+  // Start Google OAuth flow
+  app.get("/api/google/authorize", isAuthenticated, (req, res) => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      res.status(400).json({ error: "Google OAuth not configured" });
+      return;
+    }
+
+    const { google } = require("googleapis");
+    const oauth2Client = new google.auth.OAuth2(
+      GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET,
+      GOOGLE_REDIRECT_URI
+    );
+
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      scope: GOOGLE_SCOPES,
+      prompt: "consent",
+      state: req.session?.userId,
+    });
+
+    res.redirect(authUrl);
+  });
+
+  // Handle Google OAuth callback
+  app.get("/api/google/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      const sessionUserId = req.session?.userId;
+      
+      // Validate session and state match to prevent CSRF attacks
+      if (!sessionUserId) {
+        console.error("Google OAuth callback: No session user ID");
+        res.redirect("/investor?error=google_auth_failed&reason=no_session");
+        return;
+      }
+      
+      if (!code || !state || typeof code !== "string" || typeof state !== "string") {
+        res.redirect("/investor?error=google_auth_failed");
+        return;
+      }
+      
+      // Critical security check: Ensure the state matches the session user
+      if (state !== sessionUserId) {
+        console.error(`Google OAuth callback: State mismatch. State: ${state}, Session: ${sessionUserId}`);
+        res.redirect("/investor?error=google_auth_failed&reason=state_mismatch");
+        return;
+      }
+
+      if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+        res.redirect("/investor?error=google_not_configured");
+        return;
+      }
+
+      const { google } = require("googleapis");
+      const oauth2Client = new google.auth.OAuth2(
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET,
+        GOOGLE_REDIRECT_URI
+      );
+
+      const { tokens } = await oauth2Client.getToken(code);
+      oauth2Client.setCredentials(tokens);
+
+      // Get user email
+      const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+      const userInfo = await oauth2.userinfo.get();
+      const googleEmail = userInfo.data.email;
+
+      // Save tokens to database using verified session user ID
+      await storage.upsertGoogleOAuthToken({
+        userId: sessionUserId,
+        accessToken: tokens.access_token!,
+        refreshToken: tokens.refresh_token || null,
+        tokenType: tokens.token_type || "Bearer",
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+        scope: tokens.scope || GOOGLE_SCOPES.join(" "),
+        googleEmail,
+      });
+
+      console.log(`Google OAuth connected for user ${sessionUserId} (${googleEmail})`);
+      res.redirect("/investor?google=connected");
+    } catch (error) {
+      console.error("Error in Google OAuth callback:", error);
+      res.redirect("/investor?error=google_auth_failed");
+    }
+  });
+
+  // Disconnect Google account
+  app.post("/api/google/disconnect", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
+
+      await storage.deleteGoogleOAuthToken(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error disconnecting Google:", error);
+      res.status(500).json({ error: "Failed to disconnect Google" });
     }
   });
 
