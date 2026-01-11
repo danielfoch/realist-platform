@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { calculateBuyHoldAnalysis, formatCurrency } from "@/lib/calculations";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
-import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet } from "lucide-react";
+import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet, Table } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
 import { MortgageConsultationButton } from "@/components/DealPromotions";
 
@@ -85,6 +85,7 @@ export default function Home() {
   const [dealName, setDealName] = useState("");
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingSheets, setIsExportingSheets] = useState(false);
+  const [showProforma, setShowProforma] = useState(false);
   
   const getSavedLeadInfo = () => {
     const saved = localStorage.getItem("realist_lead_info");
@@ -617,7 +618,36 @@ export default function Home() {
                 address={[address, city, region].filter(Boolean).join(", ")}
               />
 
-              <ProformaTable results={results} />
+              <div className="hidden sm:block">
+                <ProformaTable results={results} />
+              </div>
+
+              <div className="sm:hidden">
+                {showProforma ? (
+                  <div>
+                    <ProformaTable results={results} />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-4"
+                      onClick={() => setShowProforma(false)}
+                      data-testid="button-hide-proforma"
+                    >
+                      Hide Proforma Table
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2"
+                    onClick={() => setShowProforma(true)}
+                    data-testid="button-show-proforma"
+                  >
+                    <Table className="h-4 w-4" />
+                    Show 10-Year Proforma Table
+                  </Button>
+                )}
+              </div>
 
               <DealTimeline />
             </div>

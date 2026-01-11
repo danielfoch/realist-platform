@@ -490,6 +490,7 @@ function FlipInputs({ inputs, onChange, region, city, address, defaultLeadInfo, 
     { id: "6", name: "Fixtures", cost: 3000 },
   ]);
   const [ganttTasks, setGanttTasks] = useState<GanttTask[]>(defaultFlipTasks);
+  const [showGantt, setShowGantt] = useState(false);
 
   const updateInput = <K extends keyof BuyHoldInputs>(key: K, value: BuyHoldInputs[K]) => {
     onChange({ ...inputs, [key]: value });
@@ -550,17 +551,54 @@ function FlipInputs({ inputs, onChange, region, city, address, defaultLeadInfo, 
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Project Timeline (Gantt Chart)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SimpleGanttChart tasks={ganttTasks} onTasksChange={setGanttTasks} />
-        </CardContent>
-      </Card>
+      <div className="hidden sm:block">
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Project Timeline (Gantt Chart)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SimpleGanttChart tasks={ganttTasks} onTasksChange={setGanttTasks} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="sm:hidden">
+        {showGantt ? (
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Project Timeline (Gantt Chart)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SimpleGanttChart tasks={ganttTasks} onTasksChange={setGanttTasks} />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full mt-4"
+                onClick={() => setShowGantt(false)}
+                data-testid="button-hide-gantt"
+              >
+                Hide Timeline
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Button 
+            variant="outline" 
+            className="w-full gap-2"
+            onClick={() => setShowGantt(true)}
+            data-testid="button-show-gantt"
+          >
+            <Calendar className="h-4 w-4" />
+            Show Project Timeline
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
