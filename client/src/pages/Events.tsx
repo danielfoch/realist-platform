@@ -14,9 +14,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { format, parseISO, isPast, isFuture, startOfDay, isToday, isTomorrow } from "date-fns";
-import { marketExperts, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
+import { marketExperts, type MarketExpert } from "@/lib/marketExperts";
 import { getHostByEventName } from "@/lib/meetupHosts";
 import { ContactHostDialog } from "@/components/ContactHostDialog";
+import { MarketExpertApplicationDialog } from "@/components/MarketExpertApplicationDialog";
 
 interface GroupedEvents {
   date: Date;
@@ -578,16 +579,14 @@ export default function Events() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Are you a trusted realtor or investor looking to host meetups in your area?
                   </p>
-                  <a
-                    href={partnerApplicationUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button variant="outline" className="gap-2" data-testid="button-become-partner">
-                      <Handshake className="h-4 w-4" />
-                      Apply Now
-                    </Button>
-                  </a>
+                  <MarketExpertApplicationDialog 
+                    trigger={
+                      <Button variant="outline" className="gap-2" data-testid="button-become-partner">
+                        <Handshake className="h-4 w-4" />
+                        Apply Now
+                      </Button>
+                    }
+                  />
                 </CardContent>
               </Card>
             </div>

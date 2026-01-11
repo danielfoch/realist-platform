@@ -31,7 +31,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getProvinceCode } from "@/lib/provinces";
-import { getMarketExpertByCity, hasMarketExpertByCity, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
+import { getMarketExpertByCity, hasMarketExpertByCity, type MarketExpert } from "@/lib/marketExperts";
+import { MarketExpertApplicationDialog } from "@/components/MarketExpertApplicationDialog";
 import { Phone, Mail, Loader2, UserPlus, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ApprovedExpert {
@@ -188,16 +189,15 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
                 We're looking for a trusted expert in {region || "this province"}
               </p>
             </div>
-            <a
-              href={partnerApplicationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline" className="gap-2 mt-2" data-testid="button-apply-expert">
-                <UserPlus className="h-4 w-4" />
-                Apply to be Market Expert
-              </Button>
-            </a>
+            <MarketExpertApplicationDialog 
+              defaultProvince={provinceCode}
+              trigger={
+                <Button variant="outline" className="gap-2 mt-2" data-testid="button-apply-expert">
+                  <UserPlus className="h-4 w-4" />
+                  Apply to be Market Expert
+                </Button>
+              }
+            />
           </div>
         </CardContent>
       </Card>
