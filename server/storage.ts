@@ -126,6 +126,7 @@ export interface IStorage {
   upsertBrandingAssets(branding: InsertBrandingAssets): Promise<BrandingAssets>;
 
   // Market Expert Applications
+  getAllMarketExpertApplications(): Promise<Array<MarketExpertApplication & { user?: { email: string; firstName: string | null; lastName: string | null } }>>;
   getMarketExpertApplication(userId: string): Promise<MarketExpertApplication | undefined>;
   getMarketExpertApplicationBySubscription(subscriptionId: string): Promise<MarketExpertApplication | undefined>;
   getApprovedMarketExperts(): Promise<Array<{
@@ -515,6 +516,52 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Market Expert Applications
+  async getAllMarketExpertApplications(): Promise<Array<MarketExpertApplication & { user?: { email: string; firstName: string | null; lastName: string | null } }>> {
+    const results = await db
+      .select({
+        id: marketExpertApplications.id,
+        userId: marketExpertApplications.userId,
+        marketRegion: marketExpertApplications.marketRegion,
+        marketCity: marketExpertApplications.marketCity,
+        packageType: marketExpertApplications.packageType,
+        includeMeetupHost: marketExpertApplications.includeMeetupHost,
+        monthlyFee: marketExpertApplications.monthlyFee,
+        referralFeePercent: marketExpertApplications.referralFeePercent,
+        stripeSubscriptionId: marketExpertApplications.stripeSubscriptionId,
+        status: marketExpertApplications.status,
+        approvedAt: marketExpertApplications.approvedAt,
+        createdAt: marketExpertApplications.createdAt,
+        updatedAt: marketExpertApplications.updatedAt,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+      })
+      .from(marketExpertApplications)
+      .innerJoin(users, eq(marketExpertApplications.userId, users.id))
+      .orderBy(marketExpertApplications.createdAt);
+    
+    return results.map(r => ({
+      id: r.id,
+      userId: r.userId,
+      marketRegion: r.marketRegion,
+      marketCity: r.marketCity,
+      packageType: r.packageType,
+      includeMeetupHost: r.includeMeetupHost,
+      monthlyFee: r.monthlyFee,
+      referralFeePercent: r.referralFeePercent,
+      stripeSubscriptionId: r.stripeSubscriptionId,
+      status: r.status,
+      approvedAt: r.approvedAt,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      user: {
+        email: r.userEmail,
+        firstName: r.userFirstName,
+        lastName: r.userLastName,
+      },
+    }));
+  }
+
   async getMarketExpertApplication(userId: string): Promise<MarketExpertApplication | undefined> {
     const [application] = await db.select().from(marketExpertApplications).where(eq(marketExpertApplications.userId, userId));
     return application || undefined;

@@ -54,6 +54,23 @@ export function isAuthenticated(req: Request, res: Response, next: NextFunction)
   }
 }
 
+export async function isAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  try {
+    const [user] = await db.select({ role: users.role }).from(users).where(eq(users.id, req.session.userId)).limit(1);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
+    }
+    next();
+  } catch (error) {
+    console.error("Admin check error:", error);
+    res.status(500).json({ message: "Failed to verify admin status" });
+  }
+}
+
 export function registerAuthRoutes(app: Express): void {
   // Signup
   app.post("/api/auth/signup", async (req, res) => {
@@ -160,6 +177,7 @@ export function registerAuthRoutes(app: Express): void {
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
+        role: users.role,
         emailVerified: users.emailVerified,
         createdAt: users.createdAt,
       }).from(users).where(eq(users.id, req.session.userId)).limit(1);

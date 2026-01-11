@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
 import { 
   insertLeadSchema, 
   insertPropertySchema, 
@@ -10,10 +11,12 @@ import {
   insertInvestorKycSchema,
   insertPortfolioPropertySchema,
   insertIndustryPartnerSchema,
+  users,
 } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./auth";
+import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
 import { exportToGoogleSheets } from "./googleSheets";
 
 const createLeadRequestSchema = z.object({
@@ -236,7 +239,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/leads", async (req, res) => {
+  app.get("/api/admin/leads", isAdmin, async (req, res) => {
     try {
       const leads = await storage.getAllLeads();
       res.json(leads);
@@ -246,7 +249,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/admin/stats", async (req, res) => {
+  app.get("/api/admin/stats", isAdmin, async (req, res) => {
     try {
       const [totalLeads, todayLeads, totalAnalyses] = await Promise.all([
         storage.getLeadsCount(),
@@ -262,6 +265,99 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Get all market expert applications (admin only)
+  app.get("/api/admin/applications", isAdmin, async (req, res) => {
+    try {
+      const applications = await storage.getAllMarketExpertApplications();
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching applications:", error);
+      res.status(500).json({ error: "Failed to fetch applications" });
+    }
+  });
+
+  // Zod schemas for admin endpoints
+  const updateApplicationStatusSchema = z.object({
+    status: z.enum(["approved", "rejected", "pending"]),
+  });
+
+  const updateUserRoleSchema = z.object({
+    role: z.enum(["investor", "partner", "admin"]),
+  });
+
+  // Approve or reject a market expert application (admin only)
+  app.patch("/api/admin/applications/:id", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const parsed = updateApplicationStatusSchema.safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid status", details: parsed.error.errors });
+      }
+      
+      const { status } = parsed.data;
+      const updates: { status: string; approvedAt?: Date } = { status };
+      if (status === "approved") {
+        updates.approvedAt = new Date();
+      }
+      
+      const application = await storage.updateMarketExpertApplication(id, updates);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      res.json(application);
+    } catch (error) {
+      console.error("Error updating application:", error);
+      res.status(500).json({ error: "Failed to update application" });
+    }
+  });
+
+  // Get all users (admin only)
+  app.get("/api/admin/users", isAdmin, async (req, res) => {
+    try {
+      const allUsers = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        createdAt: users.createdAt,
+      }).from(users).orderBy(users.createdAt);
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Update user role (admin only)
+  app.patch("/api/admin/users/:id/role", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const parsed = updateUserRoleSchema.safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid role", details: parsed.error.errors });
+      }
+      
+      const { role } = parsed.data;
+      const [updated] = await db.update(users)
+        .set({ role, updatedAt: new Date() })
+        .where(eq(users.id, id))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({ id: updated.id, email: updated.email, role: updated.role });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ error: "Failed to update user role" });
     }
   });
 
