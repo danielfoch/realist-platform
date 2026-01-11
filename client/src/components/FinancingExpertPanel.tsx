@@ -9,6 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -25,7 +30,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Phone, Mail, Loader2 } from "lucide-react";
+import { Phone, Mail, Loader2, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 
 const financingExpert = {
   name: "Nick Hill",
@@ -65,6 +70,7 @@ export function FinancingExpertPanel({
 }: FinancingExpertPanelProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
 
   const form = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationFormSchema),
@@ -113,40 +119,67 @@ export function FinancingExpertPanel({
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
 
+  const expertContent = (
+    <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+      <div className="flex items-center gap-3 min-w-0">
+        <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+            {getInitials(financingExpert.name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <h4 className="font-semibold text-sm" data-testid="text-financing-expert-name">{financingExpert.name}</h4>
+          <p className="text-xs text-muted-foreground truncate">{financingExpert.title}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+        <a href={financingExpert.calendlyUrl} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+          <Button size="sm" variant="outline" className="gap-1 w-full sm:w-auto" data-testid="button-financing-book-call">
+            <Phone className="h-3 w-3" />
+            Book a Call
+          </Button>
+        </a>
+        <Button 
+          size="sm"
+          className="gap-1 flex-1 sm:flex-none" 
+          onClick={() => setIsOpen(true)}
+          data-testid="button-financing-send-email"
+        >
+          <Mail className="h-3 w-3" />
+          Send Email
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <Card data-testid="card-financing-expert">
+      {/* Mobile: Collapsible button */}
+      <div className="sm:hidden">
+        <Collapsible open={mobileExpanded} onOpenChange={setMobileExpanded}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" className="w-full justify-between gap-2" data-testid="button-financing-expert-mobile">
+              <span className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Financing Expert
+              </span>
+              {mobileExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <Card data-testid="card-financing-expert-mobile">
+              <CardContent className="py-3 px-4">
+                {expertContent}
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Desktop: Full panel */}
+      <Card className="hidden sm:block" data-testid="card-financing-expert">
         <CardContent className="py-3 px-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                  {getInitials(financingExpert.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <h4 className="font-semibold text-sm" data-testid="text-financing-expert-name">{financingExpert.name}</h4>
-                <p className="text-xs text-muted-foreground truncate">{financingExpert.title}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <a href={financingExpert.calendlyUrl} target="_blank" rel="noopener noreferrer">
-                <Button size="sm" variant="outline" className="gap-1" data-testid="button-financing-book-call">
-                  <Phone className="h-3 w-3" />
-                  Book a Call
-                </Button>
-              </a>
-              <Button 
-                size="sm"
-                className="gap-1" 
-                onClick={() => setIsOpen(true)}
-                data-testid="button-financing-send-email"
-              >
-                <Mail className="h-3 w-3" />
-                Send Email
-              </Button>
-            </div>
-          </div>
+          {expertContent}
         </CardContent>
       </Card>
 

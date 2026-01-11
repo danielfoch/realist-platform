@@ -9,6 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -27,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getProvinceCode } from "@/lib/provinces";
 import { getMarketExpertByCity, hasMarketExpertByCity, partnerApplicationUrl, type MarketExpert } from "@/lib/marketExperts";
-import { Phone, Mail, Loader2, UserPlus, MapPin } from "lucide-react";
+import { Phone, Mail, Loader2, UserPlus, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ApprovedExpert {
   userId: string;
@@ -65,6 +70,7 @@ interface MarketExpertPanelProps {
 export function MarketExpertPanel({ region, city, country, dealInfo, defaultValues }: MarketExpertPanelProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   const provinceCode = getProvinceCode(region);
   
   // Fetch approved experts from database
@@ -197,40 +203,67 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
     );
   }
 
+  const expertContent = (
+    <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+      <div className="flex items-center gap-3 min-w-0">
+        <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+            {getInitials(displayExpert!.name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <h4 className="font-semibold text-sm" data-testid="text-expert-name">{displayExpert!.name}</h4>
+          <p className="text-xs text-muted-foreground truncate">{displayExpert!.displayTitle} - {displayExpert!.displayCity}, {displayExpert!.province}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+        <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+          <Button size="sm" variant="outline" className="gap-1 w-full sm:w-auto" data-testid="button-book-call">
+            <Phone className="h-3 w-3" />
+            Book a Call
+          </Button>
+        </a>
+        <Button 
+          size="sm"
+          className="gap-1 flex-1 sm:flex-none" 
+          onClick={() => setIsOpen(true)}
+          data-testid="button-send-email"
+        >
+          <Mail className="h-3 w-3" />
+          Send Email
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <Card data-testid="card-market-expert">
+      {/* Mobile: Collapsible button */}
+      <div className="sm:hidden">
+        <Collapsible open={mobileExpanded} onOpenChange={setMobileExpanded}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" className="w-full justify-between gap-2" data-testid="button-area-specialist-mobile">
+              <span className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Area Specialist
+              </span>
+              {mobileExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <Card data-testid="card-market-expert-mobile">
+              <CardContent className="py-3 px-4">
+                {expertContent}
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Desktop: Full panel */}
+      <Card className="hidden sm:block" data-testid="card-market-expert">
         <CardContent className="py-3 px-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                  {getInitials(displayExpert!.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <h4 className="font-semibold text-sm" data-testid="text-expert-name">{displayExpert!.name}</h4>
-                <p className="text-xs text-muted-foreground truncate">{displayExpert!.displayTitle} - {displayExpert!.displayCity}, {displayExpert!.province}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer">
-                <Button size="sm" variant="outline" className="gap-1" data-testid="button-book-call">
-                  <Phone className="h-3 w-3" />
-                  Book a Call
-                </Button>
-              </a>
-              <Button 
-                size="sm"
-                className="gap-1" 
-                onClick={() => setIsOpen(true)}
-                data-testid="button-send-email"
-              >
-                <Mail className="h-3 w-3" />
-                Send Email
-              </Button>
-            </div>
-          </div>
+          {expertContent}
         </CardContent>
       </Card>
 

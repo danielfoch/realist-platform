@@ -9,6 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -27,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getProvinceCode } from "@/lib/provinces";
 import { getPropertyManager, type PropertyManager } from "@/lib/propertyManagers";
-import { Phone, Mail, Loader2, Building2 } from "lucide-react";
+import { Phone, Mail, Loader2, Building2, ChevronDown, ChevronUp } from "lucide-react";
 
 const consultationFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -55,6 +60,7 @@ interface PropertyManagerPanelProps {
 export function PropertyManagerPanel({ region, city, country, dealInfo, defaultValues }: PropertyManagerPanelProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   const provinceCode = getProvinceCode(region || "Ontario");
   const displayCity = city || "Toronto";
   const displayRegion = region || "Ontario";
@@ -102,40 +108,67 @@ export function PropertyManagerPanel({ region, city, country, dealInfo, defaultV
     return null;
   }
 
+  const managerContent = (
+    <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+      <div className="flex items-center gap-3 min-w-0">
+        <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+            <Building2 className="h-5 w-5" />
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <h4 className="font-semibold text-sm" data-testid="text-pm-name">{displayManager.companyName}</h4>
+          <p className="text-xs text-muted-foreground truncate">Property Management - {displayManager.city}, {displayManager.province}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+        <Button size="sm" variant="outline" className="gap-1 flex-1 sm:flex-none" asChild data-testid="button-pm-book-call">
+          <a href={displayManager.calendlyUrl || "https://calendly.com/royalyork/consultation"} target="_blank" rel="noopener noreferrer">
+            <Phone className="h-3 w-3" />
+            Book a Call
+          </a>
+        </Button>
+        <Button 
+          size="sm"
+          className="gap-1 flex-1 sm:flex-none" 
+          onClick={() => setIsOpen(true)}
+          data-testid="button-pm-send-email"
+        >
+          <Mail className="h-3 w-3" />
+          Send Email
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <Card data-testid="card-property-manager">
+      {/* Mobile: Collapsible button */}
+      <div className="sm:hidden">
+        <Collapsible open={mobileExpanded} onOpenChange={setMobileExpanded}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" className="w-full justify-between gap-2" data-testid="button-property-manager-mobile">
+              <span className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Property Manager
+              </span>
+              {mobileExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <Card data-testid="card-property-manager-mobile">
+              <CardContent className="py-3 px-4">
+                {managerContent}
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+
+      {/* Desktop: Full panel */}
+      <Card className="hidden sm:block" data-testid="card-property-manager">
         <CardContent className="py-3 px-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                  <Building2 className="h-5 w-5" />
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <h4 className="font-semibold text-sm" data-testid="text-pm-name">{displayManager.companyName}</h4>
-                <p className="text-xs text-muted-foreground truncate">Property Management - {displayManager.city}, {displayManager.province}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button size="sm" variant="outline" className="gap-1" asChild data-testid="button-pm-book-call">
-                <a href={displayManager.calendlyUrl || "https://calendly.com/royalyork/consultation"} target="_blank" rel="noopener noreferrer">
-                  <Phone className="h-3 w-3" />
-                  Book a Call
-                </a>
-              </Button>
-              <Button 
-                size="sm"
-                className="gap-1" 
-                onClick={() => setIsOpen(true)}
-                data-testid="button-pm-send-email"
-              >
-                <Mail className="h-3 w-3" />
-                Send Email
-              </Button>
-            </div>
-          </div>
+          {managerContent}
         </CardContent>
       </Card>
 
