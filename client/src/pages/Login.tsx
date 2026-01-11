@@ -139,7 +139,7 @@ export default function Login() {
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Link href="/signup">
+              <Link href="/create-account">
                 <span className="text-primary hover:underline cursor-pointer" data-testid="link-signup">
                   Create one
                 </span>
