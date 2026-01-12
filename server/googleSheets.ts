@@ -179,8 +179,8 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
   const spreadsheetUrl = createResponse.data.spreadsheetUrl!;
 
   const inputsData = [
-    ['REALIST.CA - REAL ESTATE INVESTMENT CALCULATOR'],
-    ['Edit the yellow cells below to update all calculations'],
+    ['Realist.ca Deal Analyzer'],
+    ['Free Real Estate Investment Calculator - realist.ca'],
     [''],
     ['PROPERTY INFO'],
     ['Address', data.address || 'Not specified'],
@@ -247,6 +247,9 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
   ];
 
   const summaryData = [
+    ['Realist.ca Deal Analyzer'],
+    ['Free Real Estate Investment Calculator - realist.ca'],
+    [''],
     ['INVESTMENT SUMMARY'],
     ['All values auto-calculate from Inputs tab'],
     [''],
@@ -284,6 +287,9 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
   ];
 
   const projectionsData = [
+    ['Realist.ca Deal Analyzer'],
+    ['Free Real Estate Investment Calculator - realist.ca'],
+    [''],
     ['10-YEAR CASH FLOW PROFORMA'],
     ['All values auto-calculate based on Inputs tab - change inputs to update projections'],
     [''],
@@ -292,39 +298,39 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
     ['REVENUE'],
     ['Gross Rent', 
       '=Inputs!$B$45',
-      '=B7*(1+Inputs!$B$31)',
-      '=C7*(1+Inputs!$B$31)',
-      '=D7*(1+Inputs!$B$31)',
-      '=E7*(1+Inputs!$B$31)',
-      '=F7*(1+Inputs!$B$31)',
-      '=G7*(1+Inputs!$B$31)',
-      '=H7*(1+Inputs!$B$31)',
-      '=I7*(1+Inputs!$B$31)',
-      '=J7*(1+Inputs!$B$31)'
+      '=B10*(1+Inputs!$B$31)',
+      '=C10*(1+Inputs!$B$31)',
+      '=D10*(1+Inputs!$B$31)',
+      '=E10*(1+Inputs!$B$31)',
+      '=F10*(1+Inputs!$B$31)',
+      '=G10*(1+Inputs!$B$31)',
+      '=H10*(1+Inputs!$B$31)',
+      '=I10*(1+Inputs!$B$31)',
+      '=J10*(1+Inputs!$B$31)'
     ],
     ['Less: Vacancy',
-      '=-B7*Inputs!$B$19',
-      '=-C7*Inputs!$B$19',
-      '=-D7*Inputs!$B$19',
-      '=-E7*Inputs!$B$19',
-      '=-F7*Inputs!$B$19',
-      '=-G7*Inputs!$B$19',
-      '=-H7*Inputs!$B$19',
-      '=-I7*Inputs!$B$19',
-      '=-J7*Inputs!$B$19',
-      '=-K7*Inputs!$B$19'
+      '=-B10*Inputs!$B$19',
+      '=-C10*Inputs!$B$19',
+      '=-D10*Inputs!$B$19',
+      '=-E10*Inputs!$B$19',
+      '=-F10*Inputs!$B$19',
+      '=-G10*Inputs!$B$19',
+      '=-H10*Inputs!$B$19',
+      '=-I10*Inputs!$B$19',
+      '=-J10*Inputs!$B$19',
+      '=-K10*Inputs!$B$19'
     ],
     ['Effective Income',
-      '=B7+B8',
-      '=C7+C8',
-      '=D7+D8',
-      '=E7+E8',
-      '=F7+F8',
-      '=G7+G8',
-      '=H7+H8',
-      '=I7+I8',
-      '=J7+J8',
-      '=K7+K8'
+      '=B10+B11',
+      '=C10+C11',
+      '=D10+D11',
+      '=E10+E11',
+      '=F10+F11',
+      '=G10+G11',
+      '=H10+H11',
+      '=I10+I11',
+      '=J10+J11',
+      '=K10+K11'
     ],
     [''],
     ['OPERATING EXPENSES'],
@@ -365,40 +371,40 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
       '=-Inputs!$B$24*12*(1+Inputs!$B$32)^9'
     ],
     ['Maintenance',
-      '=-B9*Inputs!$B$25',
-      '=-C9*Inputs!$B$25',
-      '=-D9*Inputs!$B$25',
-      '=-E9*Inputs!$B$25',
-      '=-F9*Inputs!$B$25',
-      '=-G9*Inputs!$B$25',
-      '=-H9*Inputs!$B$25',
-      '=-I9*Inputs!$B$25',
-      '=-J9*Inputs!$B$25',
-      '=-K9*Inputs!$B$25'
+      '=-B12*Inputs!$B$25',
+      '=-C12*Inputs!$B$25',
+      '=-D12*Inputs!$B$25',
+      '=-E12*Inputs!$B$25',
+      '=-F12*Inputs!$B$25',
+      '=-G12*Inputs!$B$25',
+      '=-H12*Inputs!$B$25',
+      '=-I12*Inputs!$B$25',
+      '=-J12*Inputs!$B$25',
+      '=-K12*Inputs!$B$25'
     ],
     ['Management',
-      '=-B9*Inputs!$B$26',
-      '=-C9*Inputs!$B$26',
-      '=-D9*Inputs!$B$26',
-      '=-E9*Inputs!$B$26',
-      '=-F9*Inputs!$B$26',
-      '=-G9*Inputs!$B$26',
-      '=-H9*Inputs!$B$26',
-      '=-I9*Inputs!$B$26',
-      '=-J9*Inputs!$B$26',
-      '=-K9*Inputs!$B$26'
+      '=-B12*Inputs!$B$26',
+      '=-C12*Inputs!$B$26',
+      '=-D12*Inputs!$B$26',
+      '=-E12*Inputs!$B$26',
+      '=-F12*Inputs!$B$26',
+      '=-G12*Inputs!$B$26',
+      '=-H12*Inputs!$B$26',
+      '=-I12*Inputs!$B$26',
+      '=-J12*Inputs!$B$26',
+      '=-K12*Inputs!$B$26'
     ],
     ['CapEx Reserve',
-      '=-B9*Inputs!$B$27',
-      '=-C9*Inputs!$B$27',
-      '=-D9*Inputs!$B$27',
-      '=-E9*Inputs!$B$27',
-      '=-F9*Inputs!$B$27',
-      '=-G9*Inputs!$B$27',
-      '=-H9*Inputs!$B$27',
-      '=-I9*Inputs!$B$27',
-      '=-J9*Inputs!$B$27',
-      '=-K9*Inputs!$B$27'
+      '=-B12*Inputs!$B$27',
+      '=-C12*Inputs!$B$27',
+      '=-D12*Inputs!$B$27',
+      '=-E12*Inputs!$B$27',
+      '=-F12*Inputs!$B$27',
+      '=-G12*Inputs!$B$27',
+      '=-H12*Inputs!$B$27',
+      '=-I12*Inputs!$B$27',
+      '=-J12*Inputs!$B$27',
+      '=-K12*Inputs!$B$27'
     ],
     ['Other',
       '=-Inputs!$B$28',
@@ -413,30 +419,30 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
       '=-Inputs!$B$28*(1+Inputs!$B$32)^9'
     ],
     ['Total Expenses',
-      '=SUM(B12:B18)',
-      '=SUM(C12:C18)',
-      '=SUM(D12:D18)',
-      '=SUM(E12:E18)',
-      '=SUM(F12:F18)',
-      '=SUM(G12:G18)',
-      '=SUM(H12:H18)',
-      '=SUM(I12:I18)',
-      '=SUM(J12:J18)',
-      '=SUM(K12:K18)'
+      '=SUM(B15:B21)',
+      '=SUM(C15:C21)',
+      '=SUM(D15:D21)',
+      '=SUM(E15:E21)',
+      '=SUM(F15:F21)',
+      '=SUM(G15:G21)',
+      '=SUM(H15:H21)',
+      '=SUM(I15:I21)',
+      '=SUM(J15:J21)',
+      '=SUM(K15:K21)'
     ],
     [''],
     ['CASH FLOW'],
     ['Net Operating Income',
-      '=B9+B19',
-      '=C9+C19',
-      '=D9+D19',
-      '=E9+E19',
-      '=F9+F19',
-      '=G9+G19',
-      '=H9+H19',
-      '=I9+I19',
-      '=J9+J19',
-      '=K9+K19'
+      '=B12+B22',
+      '=C12+C22',
+      '=D12+D22',
+      '=E12+E22',
+      '=F12+F22',
+      '=G12+G22',
+      '=H12+H22',
+      '=I12+I22',
+      '=J12+J22',
+      '=K12+K22'
     ],
     ['Less: Debt Service',
       '=-Inputs!$B$43',
@@ -451,28 +457,28 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
       '=-Inputs!$B$43'
     ],
     ['Cash Flow',
-      '=B22+B23',
-      '=C22+C23',
-      '=D22+D23',
-      '=E22+E23',
-      '=F22+F23',
-      '=G22+G23',
-      '=H22+H23',
-      '=I22+I23',
-      '=J22+J23',
-      '=K22+K23'
+      '=B25+B26',
+      '=C25+C26',
+      '=D25+D26',
+      '=E25+E26',
+      '=F25+F26',
+      '=G25+G26',
+      '=H25+H26',
+      '=I25+I26',
+      '=J25+J26',
+      '=K25+K26'
     ],
     ['Cumulative Cash Flow',
-      '=B24',
-      '=B25+C24',
-      '=C25+D24',
-      '=D25+E24',
-      '=E25+F24',
-      '=F25+G24',
-      '=G25+H24',
-      '=H25+I24',
-      '=I25+J24',
-      '=J25+K24'
+      '=B27',
+      '=B28+C27',
+      '=C28+D27',
+      '=D28+E27',
+      '=E28+F27',
+      '=F28+G27',
+      '=G28+H27',
+      '=H28+I27',
+      '=I28+J27',
+      '=J28+K27'
     ],
     [''],
     ['EQUITY & VALUE'],
@@ -501,28 +507,28 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
       '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,120,-Inputs!$B$42,Inputs!$B$39))'
     ],
     ['Equity',
-      '=B28-B29',
-      '=C28-C29',
-      '=D28-D29',
-      '=E28-E29',
-      '=F28-F29',
-      '=G28-G29',
-      '=H28-H29',
-      '=I28-I29',
-      '=J28-J29',
-      '=K28-K29'
+      '=B31-B32',
+      '=C31-C32',
+      '=D31-D32',
+      '=E31-E32',
+      '=F31-F32',
+      '=G31-G32',
+      '=H31-H32',
+      '=I31-I32',
+      '=J31-J32',
+      '=K31-K32'
     ],
     ['Total Return (Equity + Cash)',
-      '=B30+B25',
-      '=C30+C25',
-      '=D30+D25',
-      '=E30+E25',
-      '=F30+F25',
-      '=G30+G25',
-      '=H30+H25',
-      '=I30+I25',
-      '=J30+J25',
-      '=K30+K25'
+      '=B33+B28',
+      '=C33+C28',
+      '=D33+D28',
+      '=E33+E28',
+      '=F33+F28',
+      '=G33+G28',
+      '=H33+H28',
+      '=I33+I28',
+      '=J33+J28',
+      '=K33+K28'
     ],
   ];
 
@@ -542,13 +548,14 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
     spreadsheetId,
     requestBody: {
       requests: [
+        // Projections sheet (sheetId: 0) - branded header styling
         {
           repeatCell: {
             range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1 },
             cell: {
               userEnteredFormat: {
-                textFormat: { bold: true, fontSize: 16 },
-                backgroundColor: { red: 0.06, green: 0.09, blue: 0.16 },
+                textFormat: { bold: true, fontSize: 18, foregroundColor: { red: 1, green: 1, blue: 1 } },
+                backgroundColor: { red: 0.13, green: 0.55, blue: 0.13 },
               },
             },
             fields: 'userEnteredFormat(textFormat,backgroundColor)',
@@ -556,14 +563,37 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
         },
         {
           repeatCell: {
+            range: { sheetId: 0, startRowIndex: 1, endRowIndex: 2 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { italic: true, fontSize: 11, foregroundColor: { red: 0.4, green: 0.4, blue: 0.4 } },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat)',
+          },
+        },
+        // Inputs sheet (sheetId: 1) - branded header styling
+        {
+          repeatCell: {
             range: { sheetId: 1, startRowIndex: 0, endRowIndex: 1 },
             cell: {
               userEnteredFormat: {
-                textFormat: { bold: true, fontSize: 16 },
-                backgroundColor: { red: 0.06, green: 0.09, blue: 0.16 },
+                textFormat: { bold: true, fontSize: 18, foregroundColor: { red: 1, green: 1, blue: 1 } },
+                backgroundColor: { red: 0.13, green: 0.55, blue: 0.13 },
               },
             },
             fields: 'userEnteredFormat(textFormat,backgroundColor)',
+          },
+        },
+        {
+          repeatCell: {
+            range: { sheetId: 1, startRowIndex: 1, endRowIndex: 2 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { italic: true, fontSize: 11, foregroundColor: { red: 0.4, green: 0.4, blue: 0.4 } },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat)',
           },
         },
         {
@@ -600,6 +630,31 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
             fields: 'userEnteredFormat(backgroundColor)',
           },
         },
+        // Summary sheet (sheetId: 2) - branded header styling
+        {
+          repeatCell: {
+            range: { sheetId: 2, startRowIndex: 0, endRowIndex: 1 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { bold: true, fontSize: 18, foregroundColor: { red: 1, green: 1, blue: 1 } },
+                backgroundColor: { red: 0.13, green: 0.55, blue: 0.13 },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat,backgroundColor)',
+          },
+        },
+        {
+          repeatCell: {
+            range: { sheetId: 2, startRowIndex: 1, endRowIndex: 2 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { italic: true, fontSize: 11, foregroundColor: { red: 0.4, green: 0.4, blue: 0.4 } },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat)',
+          },
+        },
+        // Column widths
         {
           updateDimensionProperties: {
             range: { sheetId: 0, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
@@ -645,7 +700,7 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
         {
           setBasicFilter: {
             filter: {
-              range: { sheetId: 0, startRowIndex: 3, endRowIndex: 32, startColumnIndex: 0, endColumnIndex: 11 }
+              range: { sheetId: 0, startRowIndex: 6, endRowIndex: 35, startColumnIndex: 0, endColumnIndex: 11 }
             }
           }
         },
