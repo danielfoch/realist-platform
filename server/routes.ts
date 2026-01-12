@@ -995,8 +995,11 @@ export async function registerRoutes(
       let userTokens = null;
       let exportedToUserAccount = false;
       
+      console.log("[Google Sheets Export] User ID:", userId || "anonymous");
+      
       if (userId) {
         const googleToken = await storage.getGoogleOAuthToken(userId);
+        console.log("[Google Sheets Export] Token found:", !!googleToken, googleToken?.googleEmail || "no email");
         if (googleToken) {
           userTokens = {
             accessToken: googleToken.accessToken,
@@ -1006,6 +1009,8 @@ export async function registerRoutes(
           exportedToUserAccount = true;
         }
       }
+      
+      console.log("[Google Sheets Export] Exporting to:", exportedToUserAccount ? "user account" : "shared account");
 
       const spreadsheetUrl = await exportToGoogleSheets({
         address: address || "Property Analysis",
@@ -1036,6 +1041,7 @@ export async function registerRoutes(
     : `https://${process.env.REPLIT_DEV_DOMAIN}/api/google/callback`;
   const GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/userinfo.email",
   ];
 
