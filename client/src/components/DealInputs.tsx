@@ -382,14 +382,23 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
             <div className="pt-4 border-t border-border space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="cmhc">CMHC MLI Select</Label>
-                  <p className="text-sm text-muted-foreground">Enable for 5+ unit properties</p>
+                  <Label>CMHC MLI Select</Label>
+                  <p className="text-sm text-muted-foreground">Calculate points for 5+ unit properties</p>
                 </div>
-                <Switch id="cmhc" checked={inputs.isCmhcMliSelect} onCheckedChange={(v) => updateInput("isCmhcMliSelect", v)} data-testid="switch-cmhc" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const mliButton = document.querySelector('[data-testid="button-calculator-mli_select"]') as HTMLButtonElement;
+                    if (mliButton) mliButton.click();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  data-testid="button-open-mli-calculator"
+                >
+                  <Building2 className="h-4 w-4 mr-2" />
+                  MLI Calculator
+                </Button>
               </div>
-              {inputs.isCmhcMliSelect && (
-                <PercentInput id="cmhcPoints" label="MLI Select Points" value={inputs.cmhcMliPoints} onChange={(v) => updateInput("cmhcMliPoints", v)} testId="slider-cmhc-points" min={0} max={100} step={5} />
-              )}
             </div>
           )}
           <div className="pt-4 border-t border-border">
@@ -980,14 +989,23 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
             <div className="pt-4 border-t border-border space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="cmhc">CMHC MLI Select</Label>
-                  <p className="text-sm text-muted-foreground">Available for 5+ unit properties</p>
+                  <Label>CMHC MLI Select</Label>
+                  <p className="text-sm text-muted-foreground">Calculate points for 5+ unit properties</p>
                 </div>
-                <Switch id="cmhc" checked={inputs.isCmhcMliSelect} onCheckedChange={(v) => updateInput("isCmhcMliSelect", v)} data-testid="switch-cmhc" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const mliButton = document.querySelector('[data-testid="button-calculator-mli_select"]') as HTMLButtonElement;
+                    if (mliButton) mliButton.click();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  data-testid="button-open-mli-calculator-multiplex"
+                >
+                  <Building2 className="h-4 w-4 mr-2" />
+                  MLI Calculator
+                </Button>
               </div>
-              {inputs.isCmhcMliSelect && (
-                <PercentInput id="cmhcPoints" label="MLI Select Points" value={inputs.cmhcMliPoints} onChange={(v) => updateInput("cmhcMliPoints", v)} testId="slider-cmhc-points" min={0} max={100} step={5} />
-              )}
             </div>
           )}
         </CardContent>

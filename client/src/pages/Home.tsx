@@ -18,6 +18,7 @@ import { DealTimeline } from "@/components/DealTimeline";
 import { LeadCaptureModal } from "@/components/LeadCaptureModal";
 import { RentVsBuyCalculator } from "@/components/RentVsBuyCalculator";
 import { RenoQuoteWizard } from "@/components/RenoQuoteWizard";
+import { MLISelectCalculator } from "@/components/MLISelectCalculator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -367,6 +368,8 @@ export default function Home() {
 
             {calculatorType === "rent_vs_buy" ? (
               <RentVsBuyCalculator country={country} />
+            ) : calculatorType === "mli_select" ? (
+              <MLISelectCalculator />
             ) : calculatorType === "reno_quote" ? (
               <RenoQuoteWizard />
             ) : (

@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, Home, TrendingUp, Hammer } from "lucide-react";
+import { Calculator, Home, TrendingUp, Hammer, Building2 } from "lucide-react";
 
-export type CalculatorType = "deal_analyzer" | "rent_vs_buy" | "reno_quote" | "real_estate_vs_stocks";
+export type CalculatorType = "deal_analyzer" | "mli_select" | "rent_vs_buy" | "reno_quote" | "real_estate_vs_stocks";
 
 interface CalculatorSelectorProps {
   selected: CalculatorType;
@@ -18,6 +18,13 @@ const calculators = [
     comingSoon: false 
   },
   { 
+    id: "mli_select" as CalculatorType, 
+    label: "MLI Select", 
+    icon: Building2, 
+    description: "Calculate CMHC MLI Select points for multi-family financing",
+    comingSoon: false 
+  },
+  { 
     id: "rent_vs_buy" as CalculatorType, 
     label: "Rent vs Buy", 
     icon: Home, 
@@ -29,7 +36,7 @@ const calculators = [
     label: "RenoQuote", 
     icon: Hammer, 
     description: "Estimate renovation costs with detailed line items",
-    comingSoon: false 
+    comingSoon: true 
   },
   { 
     id: "real_estate_vs_stocks" as CalculatorType, 
