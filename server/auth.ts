@@ -3,6 +3,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { google } from "googleapis";
 import { db } from "./db";
 import { users, passwordResetTokens, signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, userOAuthAccounts, phoneVerificationSchema, verifyPhoneCodeSchema } from "@shared/models/auth";
 import { eq, and, gt } from "drizzle-orm";
@@ -458,7 +459,6 @@ export function registerAuthRoutes(app: Express): void {
       return;
     }
 
-    const { google } = require("googleapis");
     const oauth2Client = new google.auth.OAuth2(
       GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET,
@@ -504,7 +504,6 @@ export function registerAuthRoutes(app: Express): void {
         return;
       }
 
-      const { google } = require("googleapis");
       const oauth2Client = new google.auth.OAuth2(
         GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET,
