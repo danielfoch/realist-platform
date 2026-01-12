@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { calculateBuyHoldAnalysis, formatCurrency } from "@/lib/calculations";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
@@ -66,6 +67,7 @@ const defaultInputs: BuyHoldInputs = {
 
 export default function Home() {
   const { toast } = useToast();
+  const { isAuthenticated, user } = useAuth();
   const analyzerRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -79,10 +81,13 @@ export default function Home() {
   const [inputs, setInputs] = useState<BuyHoldInputs>(defaultInputs);
   const [showResults, setShowResults] = useState(false);
   const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
-  const [leadCaptured, setLeadCaptured] = useState(() => {
+  const [leadCapturedLocal, setLeadCapturedLocal] = useState(() => {
     const savedLead = localStorage.getItem("realist_lead_info");
     return !!savedLead;
   });
+  
+  // User is considered "captured" if they're logged in OR have submitted lead info
+  const leadCaptured = isAuthenticated || leadCapturedLocal;
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [dealName, setDealName] = useState("");
   const [isExportingPDF, setIsExportingPDF] = useState(false);
@@ -168,7 +173,7 @@ export default function Home() {
       return response;
     },
     onSuccess: () => {
-      setLeadCaptured(true);
+      setLeadCapturedLocal(true);
       setLeadCaptureOpen(false);
       setShowResults(true);
       
