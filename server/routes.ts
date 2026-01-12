@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { google } from "googleapis";
 import { storage } from "./storage";
 import { db } from "./db";
 import { 
@@ -1030,11 +1031,9 @@ export async function registerRoutes(
   // Google OAuth for user-owned exports
   const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
   const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-  const GOOGLE_REDIRECT_URI = process.env.REPLIT_DEV_DOMAIN 
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/google/callback`
-    : process.env.REPLIT_DEPLOYMENT_URL
-    ? `${process.env.REPLIT_DEPLOYMENT_URL}/api/google/callback`
-    : "http://localhost:5000/api/google/callback";
+  const GOOGLE_REDIRECT_URI = process.env.NODE_ENV === "production"
+    ? "https://realist.ca/api/google/callback"
+    : `https://${process.env.REPLIT_DEV_DOMAIN}/api/google/callback`;
   const GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/userinfo.email",
@@ -1068,7 +1067,6 @@ export async function registerRoutes(
       return;
     }
 
-    const { google } = require("googleapis");
     const oauth2Client = new google.auth.OAuth2(
       GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET,
@@ -1115,7 +1113,6 @@ export async function registerRoutes(
         return;
       }
 
-      const { google } = require("googleapis");
       const oauth2Client = new google.auth.OAuth2(
         GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET,
