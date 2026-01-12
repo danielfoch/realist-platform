@@ -7,6 +7,7 @@ import { db } from "./db";
 import { users, passwordResetTokens, signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, userOAuthAccounts, phoneVerificationSchema, verifyPhoneCodeSchema } from "@shared/models/auth";
 import { eq, and, gt } from "drizzle-orm";
 import { storage } from "./storage";
+import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -627,38 +628,57 @@ export function registerAuthRoutes(app: Express): void {
 
   // Phone Verification - Send code
   app.post("/api/auth/phone/send-code", isAuthenticated, async (req, res) => {
+    let verificationCode: { id: string } | null = null;
+    let smsSent = false;
+    
     try {
       const data = phoneVerificationSchema.parse(req.body);
       const userId = req.session.userId!;
+      
+      // Validate phone number format
+      if (!isValidPhoneNumber(data.phone)) {
+        return res.status(400).json({ message: "Please enter a valid phone number" });
+      }
+      
+      const normalizedPhone = normalizePhoneNumber(data.phone);
       
       // Generate 6-digit code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
       
       // Store the verification code
-      await storage.createPhoneVerificationCode({
+      verificationCode = await storage.createPhoneVerificationCode({
         userId,
-        phone: data.phone,
+        phone: normalizedPhone,
         code,
         expiresAt,
       });
       
-      // TODO: Send SMS via Twilio or other provider
-      // For now, log the code in development mode
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`[DEV] Phone verification code for ${data.phone}: ${code}`);
+      // Send SMS via Twilio
+      const smsResult = await sendVerificationSMS(normalizedPhone, code);
+      
+      if (!smsResult.success) {
+        console.error("Failed to send SMS:", smsResult.error);
+        return res.status(500).json({ message: smsResult.error || "Failed to send verification code" });
       }
       
-      // In production, you would integrate with Twilio here:
-      // await sendSmsViaWebhook(data.phone, code);
-      
-      res.json({ message: "Verification code sent", phone: data.phone });
+      smsSent = true;
+      res.json({ message: "Verification code sent", phone: normalizedPhone });
     } catch (error: any) {
       console.error("Error sending phone verification code:", error);
       if (error.name === "ZodError") {
         return res.status(400).json({ message: error.errors[0]?.message || "Invalid phone number" });
       }
       res.status(500).json({ message: "Failed to send verification code" });
+    } finally {
+      // Clean up orphaned verification code if SMS was not successfully sent
+      if (verificationCode && !smsSent) {
+        try {
+          await storage.deletePhoneVerificationCode(verificationCode.id);
+        } catch (cleanupError) {
+          console.error("Failed to clean up verification code:", cleanupError);
+        }
+      }
     }
   });
 

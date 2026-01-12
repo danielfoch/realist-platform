@@ -179,6 +179,7 @@ export interface IStorage {
   getActivePhoneVerificationCode(userId: string): Promise<PhoneVerificationCode | undefined>;
   markPhoneVerified(userId: string, phone: string): Promise<void>;
   incrementVerificationAttempts(codeId: string): Promise<void>;
+  deletePhoneVerificationCode(codeId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -807,6 +808,10 @@ export class DatabaseStorage implements IStorage {
 
   async incrementVerificationAttempts(codeId: string): Promise<void> {
     await db.execute(sql`UPDATE phone_verification_codes SET attempts = CAST(attempts AS INTEGER) + 1 WHERE id = ${codeId}`);
+  }
+
+  async deletePhoneVerificationCode(codeId: string): Promise<void> {
+    await db.delete(phoneVerificationCodes).where(eq(phoneVerificationCodes.id, codeId));
   }
 }
 
