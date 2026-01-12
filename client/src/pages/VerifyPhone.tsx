@@ -201,6 +201,8 @@ export default function VerifyPhone() {
                           maxLength={6} 
                           value={field.value}
                           onChange={field.onChange}
+                          autoComplete="one-time-code"
+                          inputMode="numeric"
                           data-testid="input-otp"
                         >
                           <InputOTPGroup>
