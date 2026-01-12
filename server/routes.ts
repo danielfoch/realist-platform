@@ -1067,6 +1067,10 @@ export async function registerRoutes(
       return;
     }
 
+    console.log("[Google Sheets OAuth] Starting authorization flow");
+    console.log("[Google Sheets OAuth] Redirect URI:", GOOGLE_REDIRECT_URI);
+    console.log("[Google Sheets OAuth] NODE_ENV:", process.env.NODE_ENV);
+
     const oauth2Client = new google.auth.OAuth2(
       GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET,
@@ -1080,6 +1084,7 @@ export async function registerRoutes(
       state: req.session?.userId,
     });
 
+    console.log("[Google Sheets OAuth] Auth URL:", authUrl);
     res.redirect(authUrl);
   });
 
