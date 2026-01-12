@@ -75,7 +75,7 @@ export default function Blog() {
             Insights on Canadian real estate investing, market analysis, and wealth-building strategies from The Canadian Real Estate Investor Podcast.
           </p>
           <a 
-            href="https://danielfoch.substack.com" 
+            href="https://padder.substack.com" 
             target="_blank" 
             rel="noopener noreferrer"
             className="inline-block mt-4"
@@ -112,7 +112,7 @@ export default function Blog() {
               Unable to load blog posts at this time.
             </p>
             <a 
-              href="https://danielfoch.substack.com" 
+              href="https://padder.substack.com" 
               target="_blank" 
               rel="noopener noreferrer"
             >

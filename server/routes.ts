@@ -893,7 +893,7 @@ export async function registerRoutes(
   // Blog posts from Substack RSS feed
   app.get("/api/blog/posts", async (req, res) => {
     try {
-      const substackName = "danielfoch";
+      const substackName = "padder";
       const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=https://${substackName}.substack.com/feed`;
       
       const response = await fetch(rss2jsonUrl);
