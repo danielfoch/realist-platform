@@ -14,7 +14,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_AUTH_REDIRECT_URI = process.env.NODE_ENV === "production"
   ? "https://realist.ca/api/auth/google/callback"
-  : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/google/callback`;
+  : `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/google/callback`;
 const GOOGLE_AUTH_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
