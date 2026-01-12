@@ -453,7 +453,7 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   // Google OAuth Login/Signup - Start flow
-  app.get("/api/auth/google/start", (req, res) => {
+  app.get("/api/auth/google/start", async (req, res) => {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
       res.redirect("/login?error=google_not_configured");
       return;
@@ -468,6 +468,14 @@ export function registerAuthRoutes(app: Express): void {
     // Generate a random state to prevent CSRF
     const state = crypto.randomBytes(32).toString("hex");
     req.session.googleAuthState = state;
+
+    // Explicitly save session before redirect to ensure state persists
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
 
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: "offline",
