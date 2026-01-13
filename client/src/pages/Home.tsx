@@ -280,6 +280,7 @@ export default function Home() {
         inputs,
         results,
         strategy,
+        stressTest: stressTestResults,
       });
       toast({
         title: "PDF Exported!",
