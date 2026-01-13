@@ -1,13 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatCurrency } from "@/lib/calculations";
+import { formatCurrency, type StressTestResults } from "@/lib/calculations";
 import type { AnalysisResults, BuyHoldInputs } from "@shared/schema";
-import { DollarSign, TrendingUp, Wallet, Building } from "lucide-react";
+import { DollarSign, TrendingUp, Wallet } from "lucide-react";
+import { StressTestCard } from "./StressTestCard";
 
 interface ResultsSummaryProps {
   inputs: BuyHoldInputs;
   results: AnalysisResults;
   address: string;
+  stressTest: StressTestResults;
 }
 
 function SummaryRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
@@ -19,7 +21,10 @@ function SummaryRow({ label, value, highlight = false }: { label: string; value:
   );
 }
 
-export function ResultsSummary({ inputs, results, address }: ResultsSummaryProps) {
+export function ResultsSummary({ inputs, results, address, stressTest }: ResultsSummaryProps) {
+  const finalYearEquity = results.yearlyProjections.length > 0 
+    ? results.yearlyProjections[Math.min(inputs.holdingPeriodYears - 1, results.yearlyProjections.length - 1)].equity 
+    : results.totalCashInvested;
   return (
     <div className="grid md:grid-cols-2 gap-6">
       <Card data-testid="summary-financing">
@@ -87,33 +92,7 @@ export function ResultsSummary({ inputs, results, address }: ResultsSummaryProps
         </CardContent>
       </Card>
 
-      <Card data-testid="summary-property">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Building className="h-5 w-5" />
-            Property Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-0">
-          <SummaryRow label="Address" value={address || "Not specified"} />
-          <SummaryRow label="Strategy" value="Buy & Hold" />
-          <SummaryRow label="Holding Period" value={`${inputs.holdingPeriodYears} years`} />
-          <Separator className="my-2" />
-          {results.yearlyProjections.length > 0 && (
-            <>
-              <SummaryRow 
-                label={`Year ${inputs.holdingPeriodYears} Property Value`} 
-                value={formatCurrency(results.yearlyProjections[results.yearlyProjections.length - 1].propertyValue)} 
-              />
-              <SummaryRow 
-                label={`Year ${inputs.holdingPeriodYears} Equity`} 
-                value={formatCurrency(results.yearlyProjections[results.yearlyProjections.length - 1].equity)} 
-                highlight
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <StressTestCard stressTest={stressTest} equity={finalYearEquity} />
     </div>
   );
 }

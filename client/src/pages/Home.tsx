@@ -26,7 +26,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { calculateBuyHoldAnalysis, calculateStressTest, formatCurrency } from "@/lib/calculations";
-import { StressTestCard } from "@/components/StressTestCard";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
 import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet, Table } from "lucide-react";
@@ -635,12 +634,11 @@ export default function Home() {
 
               <AnalysisCharts results={results} />
 
-              <StressTestCard stressTest={stressTestResults} />
-
               <ResultsSummary
                 inputs={inputs}
                 results={results}
                 address={[address, city, region].filter(Boolean).join(", ")}
+                stressTest={stressTestResults}
               />
 
               <div className="hidden sm:block">
