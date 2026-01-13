@@ -6,6 +6,7 @@ import {
   dataCache,
   savedDeals,
   podcastQuestions,
+  coachingWaitlist,
   investorProfiles,
   investorKyc,
   portfolioProperties,
@@ -32,6 +33,8 @@ import {
   type InsertSavedDeal,
   type PodcastQuestion,
   type InsertPodcastQuestion,
+  type CoachingWaitlist,
+  type InsertCoachingWaitlist,
   type InvestorProfile,
   type InsertInvestorProfile,
   type InvestorKyc,
@@ -93,6 +96,11 @@ export interface IStorage {
 
   createPodcastQuestion(question: InsertPodcastQuestion): Promise<PodcastQuestion>;
   getPodcastQuestions(): Promise<PodcastQuestion[]>;
+
+  // Coaching Waitlist
+  createCoachingWaitlistEntry(entry: InsertCoachingWaitlist): Promise<CoachingWaitlist>;
+  getCoachingWaitlistEntries(): Promise<CoachingWaitlist[]>;
+  updateCoachingWaitlistEntry(id: string, updates: Partial<CoachingWaitlist>): Promise<CoachingWaitlist | undefined>;
 
   // Investor Profile
   getInvestorProfile(userId: string): Promise<InvestorProfile | undefined>;
@@ -320,6 +328,21 @@ export class DatabaseStorage implements IStorage {
 
   async getPodcastQuestions(): Promise<PodcastQuestion[]> {
     return db.select().from(podcastQuestions).orderBy(desc(podcastQuestions.createdAt));
+  }
+
+  // Coaching Waitlist
+  async createCoachingWaitlistEntry(entry: InsertCoachingWaitlist): Promise<CoachingWaitlist> {
+    const [created] = await db.insert(coachingWaitlist).values(entry).returning();
+    return created;
+  }
+
+  async getCoachingWaitlistEntries(): Promise<CoachingWaitlist[]> {
+    return db.select().from(coachingWaitlist).orderBy(desc(coachingWaitlist.createdAt));
+  }
+
+  async updateCoachingWaitlistEntry(id: string, updates: Partial<CoachingWaitlist>): Promise<CoachingWaitlist | undefined> {
+    const [updated] = await db.update(coachingWaitlist).set(updates).where(eq(coachingWaitlist.id, id)).returning();
+    return updated || undefined;
   }
 
   // Investor Profile

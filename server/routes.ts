@@ -12,6 +12,7 @@ import {
   insertInvestorKycSchema,
   insertPortfolioPropertySchema,
   insertIndustryPartnerSchema,
+  insertCoachingWaitlistSchema,
   users,
   renoQuoteLineItemSchema,
   renoQuoteAssumptionsSchema,
@@ -30,7 +31,8 @@ import {
   sendRenoQuoteNotification,
   sendContactHostNotification,
   sendExpertApplicationNotification,
-  sendMarketExpertApplyNotification 
+  sendMarketExpertApplyNotification,
+  sendCoachingWaitlistNotification 
 } from "./resend";
 
 const rateLimit = new Map<string, { count: number; resetTime: number }>();
@@ -1362,6 +1364,90 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching podcast questions:", error);
       res.status(500).json({ error: "Failed to fetch questions" });
+    }
+  });
+
+  // ============================================
+  // COACHING WAITLIST API ROUTES
+  // ============================================
+
+  // Submit coaching waitlist entry
+  app.post("/api/coaching-waitlist", async (req, res) => {
+    try {
+      const { fullName, email, phone, mainProblem } = req.body;
+      
+      if (!fullName || !email || !phone || !mainProblem) {
+        res.status(400).json({ error: "All fields are required" });
+        return;
+      }
+
+      const validatedData = insertCoachingWaitlistSchema.parse({
+        fullName,
+        email,
+        phone,
+        mainProblem,
+      });
+
+      const entry = await storage.createCoachingWaitlistEntry(validatedData);
+
+      // Send email notification
+      sendCoachingWaitlistNotification({
+        fullName,
+        email,
+        phone,
+        mainProblem,
+      }).catch(err => console.error("Coaching waitlist email error:", err));
+
+      // Send to GHL webhook
+      const nameParts = fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      sendWebhook(entry.id, {
+        email,
+        firstName,
+        lastName,
+        fullName,
+        phone,
+        formTag: "coaching_waitlist",
+        leadSource: "Coaching Waitlist",
+        mainProblem,
+        submittedAt: new Date().toISOString(),
+      }).catch(err => console.error("Webhook error:", err));
+
+      res.json({ success: true, data: entry });
+    } catch (error) {
+      console.error("Error submitting coaching waitlist:", error);
+      res.status(500).json({ error: "Failed to join waitlist" });
+    }
+  });
+
+  // Get coaching waitlist entries (admin)
+  app.get("/api/coaching-waitlist", isAdmin, async (req, res) => {
+    try {
+      const entries = await storage.getCoachingWaitlistEntries();
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching coaching waitlist:", error);
+      res.status(500).json({ error: "Failed to fetch waitlist" });
+    }
+  });
+
+  // Update coaching waitlist entry status (admin)
+  app.patch("/api/coaching-waitlist/:id", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, notes } = req.body;
+      
+      const updated = await storage.updateCoachingWaitlistEntry(id, { status, notes });
+      if (!updated) {
+        res.status(404).json({ error: "Entry not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating coaching waitlist entry:", error);
+      res.status(500).json({ error: "Failed to update entry" });
     }
   });
 

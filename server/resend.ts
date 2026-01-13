@@ -87,7 +87,7 @@ function formatRow(label: string, value: string | number | undefined | null) {
 
 // Send form notification with CC support
 export async function sendFormNotification(params: {
-  formType: 'lead' | 'podcast_question' | 'reno_quote' | 'contact_host' | 'expert_application' | 'market_expert_apply';
+  formType: 'lead' | 'podcast_question' | 'reno_quote' | 'contact_host' | 'expert_application' | 'market_expert_apply' | 'coaching_waitlist';
   subject: string;
   data: Record<string, any>;
 }) {
@@ -106,6 +106,7 @@ export async function sendFormNotification(params: {
     contact_host: { title: 'Event Host Contact Request', subtitle: 'Meetup Event Inquiry' },
     expert_application: { title: 'New Expert Application', subtitle: 'Featured Expert Application' },
     market_expert_apply: { title: 'Market Expert Application', subtitle: 'Professional Application' },
+    coaching_waitlist: { title: 'New Coaching Waitlist Signup', subtitle: 'Coaching Program Interest' },
   };
 
   const { title, subtitle } = formTypeLabels[params.formType] || { title: 'New Form Submission', subtitle: 'Realist.ca' };
@@ -250,6 +251,24 @@ export async function sendContactHostNotification(contact: {
       Event: contact.eventTitle,
       Host: contact.hostName,
       Message: contact.message,
+    },
+  });
+}
+
+export async function sendCoachingWaitlistNotification(entry: {
+  fullName: string;
+  email: string;
+  phone: string;
+  mainProblem: string;
+}) {
+  return sendFormNotification({
+    formType: 'coaching_waitlist',
+    subject: `Coaching Waitlist: ${entry.fullName}`,
+    data: {
+      'Full Name': entry.fullName,
+      Email: entry.email,
+      Phone: entry.phone,
+      'Main Problem': entry.mainProblem,
     },
   });
 }
