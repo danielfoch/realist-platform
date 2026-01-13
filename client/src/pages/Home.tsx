@@ -642,13 +642,13 @@ export default function Home() {
               />
 
               <div className="hidden sm:block">
-                <ProformaTable results={results} />
+                <ProformaTable results={results} inputs={inputs} />
               </div>
 
               <div className="sm:hidden">
                 {showProforma ? (
                   <div>
-                    <ProformaTable results={results} />
+                    <ProformaTable results={results} inputs={inputs} />
                     <Button 
                       variant="outline" 
                       size="sm" 

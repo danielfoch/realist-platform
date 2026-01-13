@@ -1,22 +1,98 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { formatCurrency } from "@/lib/calculations";
-import type { AnalysisResults } from "@shared/schema";
+import { ChevronDown, ChevronUp, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { formatCurrency, calculateBuyHoldAnalysis, STRESS_TEST_CONFIG } from "@/lib/calculations";
+import type { AnalysisResults, BuyHoldInputs } from "@shared/schema";
+
+type ScenarioType = "base" | "bear" | "bull";
 
 interface ProformaTableProps {
   results: AnalysisResults;
+  inputs?: BuyHoldInputs;
 }
 
-export function ProformaTable({ results }: ProformaTableProps) {
+const SCENARIO_DESCRIPTIONS: Record<ScenarioType, string> = {
+  base: "",
+  bear: "Conservative assumptions: -5% rent, +3% vacancy, +5% expenses, +1% interest rate",
+  bull: "Optimistic assumptions: +3% rent, -1% vacancy, -2% expenses, -0.5% interest rate",
+};
+
+export function ProformaTable({ results, inputs }: ProformaTableProps) {
   const [showExpenseDetails, setShowExpenseDetails] = useState(false);
-  const projections = results.yearlyProjections;
+  const [selectedScenario, setSelectedScenario] = useState<ScenarioType>("base");
+
+  const scenarioResults = useMemo(() => {
+    if (!inputs || selectedScenario === "base") {
+      return results;
+    }
+
+    const config = selectedScenario === "bear" ? STRESS_TEST_CONFIG.bear : STRESS_TEST_CONFIG.bull;
+    
+    const adjustedInputs: BuyHoldInputs = {
+      ...inputs,
+      monthlyRent: inputs.monthlyRent * (1 + config.rentChange),
+      vacancyPercent: Math.max(0, Math.min(50, inputs.vacancyPercent + (config.vacancyChange * 100))),
+      interestRate: Math.max(0.1, inputs.interestRate + (config.rateChange * 100)),
+      propertyTax: inputs.propertyTax * (1 + config.expenseChange),
+      insurance: inputs.insurance * (1 + config.expenseChange),
+      utilities: inputs.utilities * (1 + config.expenseChange),
+      otherExpenses: inputs.otherExpenses * (1 + config.expenseChange),
+      maintenancePercent: inputs.maintenancePercent * (1 + config.expenseChange),
+      managementPercent: inputs.managementPercent * (1 + config.expenseChange),
+      capexReservePercent: inputs.capexReservePercent * (1 + config.expenseChange),
+    };
+
+    return calculateBuyHoldAnalysis(adjustedInputs);
+  }, [inputs, results, selectedScenario]);
+
+  const projections = scenarioResults.yearlyProjections;
 
   return (
     <Card className="mt-6" data-testid="proforma-table">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">10-Year Cash Flow Proforma</CardTitle>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="text-lg">10-Year Cash Flow Proforma</CardTitle>
+          {inputs && (
+            <div className="flex gap-1">
+              <Button
+                variant={selectedScenario === "base" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedScenario("base")}
+                className="gap-1"
+                data-testid="button-scenario-base"
+              >
+                <Minus className="h-3 w-3" />
+                Base
+              </Button>
+              <Button
+                variant={selectedScenario === "bear" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedScenario("bear")}
+                className="gap-1"
+                data-testid="button-scenario-bear"
+              >
+                <TrendingDown className="h-3 w-3" />
+                Bear
+              </Button>
+              <Button
+                variant={selectedScenario === "bull" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedScenario("bull")}
+                className="gap-1"
+                data-testid="button-scenario-bull"
+              >
+                <TrendingUp className="h-3 w-3" />
+                Bull
+              </Button>
+            </div>
+          )}
+        </div>
+        {selectedScenario !== "base" && (
+          <p className="text-sm text-muted-foreground mt-2 p-2 bg-muted/50 rounded-md">
+            {SCENARIO_DESCRIPTIONS[selectedScenario]}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
