@@ -258,3 +258,121 @@ export function formatPercent(value: number, decimals = 1): string {
 export function formatNumber(value: number, decimals = 2): string {
   return value.toFixed(decimals);
 }
+
+// Stress Test Configuration
+export const STRESS_TEST_CONFIG = {
+  bear: {
+    label: "Bear Case",
+    description: "Conservative scenario with higher vacancy, lower rents, higher expenses",
+    rentChange: -0.05,      // -5% rent
+    vacancyChange: 0.03,    // +3% vacancy
+    expenseChange: 0.05,    // +5% expenses
+    rateChange: 0.01,       // +100bps rate
+  },
+  bull: {
+    label: "Bull Case",
+    description: "Optimistic scenario with lower vacancy, higher rents, lower expenses",
+    rentChange: 0.03,       // +3% rent
+    vacancyChange: -0.01,   // -1% vacancy
+    expenseChange: -0.02,   // -2% expenses
+    rateChange: -0.005,     // -50bps rate
+  },
+};
+
+export interface StressTestScenario {
+  label: string;
+  description: string;
+  capRate: number;
+  cashOnCash: number;
+  dscr: number;
+  annualCashFlow: number;
+  annualNoi: number;
+  monthlyRent: number;
+  vacancyPercent: number;
+  expenseRatio: number;
+  interestRate: number;
+}
+
+export interface StressTestResults {
+  base: StressTestScenario;
+  bear: StressTestScenario;
+  bull: StressTestScenario;
+}
+
+export function calculateStressTest(inputs: BuyHoldInputs): StressTestResults {
+  const calculateScenario = (
+    rentMod: number = 0,
+    vacancyMod: number = 0,
+    expenseMod: number = 0,
+    rateMod: number = 0,
+    label: string = "Base Case",
+    description: string = "Current assumptions"
+  ): StressTestScenario => {
+    const adjustedRent = inputs.monthlyRent * (1 + rentMod);
+    const adjustedVacancy = Math.max(0, Math.min(50, inputs.vacancyPercent + (vacancyMod * 100)));
+    const adjustedRate = Math.max(0.1, inputs.interestRate + (rateMod * 100));
+    
+    // Calculate expense ratio from base inputs for adjustment
+    const baseAnnualRent = inputs.monthlyRent * 12;
+    const baseAnnualExpenses = inputs.propertyTax + inputs.insurance + (inputs.utilities * 12) +
+      (baseAnnualRent * inputs.maintenancePercent / 100) +
+      (baseAnnualRent * inputs.managementPercent / 100) +
+      (baseAnnualRent * inputs.capexReservePercent / 100) +
+      (inputs.otherExpenses * 12);
+    const baseExpenseRatio = baseAnnualRent > 0 ? baseAnnualExpenses / baseAnnualRent : 0;
+    const adjustedExpenseRatio = baseExpenseRatio * (1 + expenseMod);
+    
+    // Create adjusted inputs - scale ALL expense components
+    const adjustedInputs: BuyHoldInputs = {
+      ...inputs,
+      monthlyRent: adjustedRent,
+      vacancyPercent: adjustedVacancy,
+      interestRate: adjustedRate,
+      // Adjust fixed dollar expenses
+      propertyTax: inputs.propertyTax * (1 + expenseMod),
+      insurance: inputs.insurance * (1 + expenseMod),
+      utilities: inputs.utilities * (1 + expenseMod),
+      otherExpenses: inputs.otherExpenses * (1 + expenseMod),
+      // Adjust percentage-based expenses
+      maintenancePercent: inputs.maintenancePercent * (1 + expenseMod),
+      managementPercent: inputs.managementPercent * (1 + expenseMod),
+      capexReservePercent: inputs.capexReservePercent * (1 + expenseMod),
+    };
+    
+    const result = calculateBuyHoldAnalysis(adjustedInputs);
+    
+    return {
+      label,
+      description,
+      capRate: result.capRate,
+      cashOnCash: result.cashOnCash,
+      dscr: result.dscr,
+      annualCashFlow: result.annualCashFlow,
+      annualNoi: result.annualNoi,
+      monthlyRent: adjustedRent,
+      vacancyPercent: adjustedVacancy,
+      expenseRatio: adjustedExpenseRatio * 100,
+      interestRate: adjustedRate,
+    };
+  };
+  
+  return {
+    base: calculateScenario(0, 0, 0, 0, "Base Case", "Current assumptions"),
+    bear: calculateScenario(
+      STRESS_TEST_CONFIG.bear.rentChange,
+      STRESS_TEST_CONFIG.bear.vacancyChange,
+      STRESS_TEST_CONFIG.bear.expenseChange,
+      STRESS_TEST_CONFIG.bear.rateChange,
+      STRESS_TEST_CONFIG.bear.label,
+      STRESS_TEST_CONFIG.bear.description
+    ),
+    bull: calculateScenario(
+      STRESS_TEST_CONFIG.bull.rentChange,
+      STRESS_TEST_CONFIG.bull.vacancyChange,
+      STRESS_TEST_CONFIG.bull.expenseChange,
+      STRESS_TEST_CONFIG.bull.rateChange,
+      STRESS_TEST_CONFIG.bull.label,
+      STRESS_TEST_CONFIG.bull.description
+    ),
+  };
+}

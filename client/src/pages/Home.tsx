@@ -25,7 +25,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { calculateBuyHoldAnalysis, formatCurrency } from "@/lib/calculations";
+import { calculateBuyHoldAnalysis, calculateStressTest, formatCurrency } from "@/lib/calculations";
+import { StressTestCard } from "@/components/StressTestCard";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
 import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet, Table } from "lucide-react";
@@ -109,6 +110,10 @@ export default function Home() {
 
   const results = useMemo<AnalysisResults>(() => {
     return calculateBuyHoldAnalysis(inputs);
+  }, [inputs]);
+
+  const stressTestResults = useMemo(() => {
+    return calculateStressTest(inputs);
   }, [inputs]);
 
   const leadMutation = useMutation({
@@ -629,6 +634,8 @@ export default function Home() {
               />
 
               <AnalysisCharts results={results} />
+
+              <StressTestCard stressTest={stressTestResults} />
 
               <ResultsSummary
                 inputs={inputs}
