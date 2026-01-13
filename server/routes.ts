@@ -24,6 +24,7 @@ import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
 import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
+import { sendPodcastQuestionNotification } from "./resend";
 
 const rateLimit = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -1255,7 +1256,23 @@ export async function registerRoutes(
       // Store in database
       const storedQuestion = await storage.createPodcastQuestion({ name, email, question });
 
-      // Send email notification via webhook or direct email
+      // Send email notification via Resend
+      const notifyEmail = process.env.PODCAST_NOTIFY_EMAIL;
+      if (notifyEmail) {
+        try {
+          await sendPodcastQuestionNotification({
+            name,
+            email,
+            question,
+            notifyEmail,
+          });
+          console.log(`Podcast question email sent to ${notifyEmail}`);
+        } catch (emailError) {
+          console.error("Email notification failed:", emailError);
+        }
+      }
+
+      // Also send to GHL webhook if configured
       const webhookUrl = process.env.GHL_WEBHOOK_URL;
       if (webhookUrl) {
         try {
