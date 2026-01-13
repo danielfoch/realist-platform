@@ -128,6 +128,17 @@ export const podcastQuestions = pgTable("podcast_questions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const coachingWaitlist = pgTable("coaching_waitlist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  mainProblem: text("main_problem").notNull(),
+  status: text("status").default("pending"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const propertyManagers = pgTable("property_managers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
@@ -194,6 +205,13 @@ export const insertPodcastQuestionSchema = createInsertSchema(podcastQuestions).
   answered: true,
 });
 
+export const insertCoachingWaitlistSchema = createInsertSchema(coachingWaitlist).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+  notes: true,
+});
+
 export const insertPropertyManagerSchema = createInsertSchema(propertyManagers).omit({
   id: true,
   createdAt: true,
@@ -223,6 +241,9 @@ export type PodcastQuestion = typeof podcastQuestions.$inferSelect;
 
 export type InsertPropertyManager = z.infer<typeof insertPropertyManagerSchema>;
 export type PropertyManager = typeof propertyManagers.$inferSelect;
+
+export type InsertCoachingWaitlist = z.infer<typeof insertCoachingWaitlistSchema>;
+export type CoachingWaitlist = typeof coachingWaitlist.$inferSelect;
 
 export const strategyTypes = [
   "buy_hold",
