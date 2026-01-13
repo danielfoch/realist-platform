@@ -442,7 +442,6 @@ export async function exportToPDF(data: ExportData): Promise<void> {
 
   const maxCashFlow = Math.max(...projections.map(p => p.cashFlow));
   const minCashFlow = Math.min(...projections.map(p => p.cashFlow));
-  const range = maxCashFlow - minCashFlow || 1;
   const chartHeight = 40;
   const chartWidth = contentWidth - 20;
   const barSpacing = chartWidth / projections.length;
@@ -451,32 +450,69 @@ export async function exportToPDF(data: ExportData): Promise<void> {
   pdf.setFillColor(248, 250, 252);
   pdf.roundedRect(margin, y, contentWidth, chartHeight + 20, 3, 3, "F");
   
-  // Draw zero line if there are negative values
-  const zeroY = minCashFlow < 0 
-    ? y + 5 + (chartHeight * (maxCashFlow / range))
-    : y + 5 + chartHeight;
+  // Calculate chart bounds properly for all scenarios
+  const chartTop = y + 5;
+  const chartBottom = y + 5 + chartHeight;
+  
+  // Handle different scenarios for positive/negative values
+  let zeroY: number;
+  let maxScale: number;
+  
+  if (minCashFlow >= 0) {
+    // All positive: bars grow up from bottom
+    zeroY = chartBottom;
+    maxScale = maxCashFlow || 1;
+  } else if (maxCashFlow <= 0) {
+    // All negative: bars grow down from top
+    zeroY = chartTop;
+    maxScale = Math.abs(minCashFlow) || 1;
+  } else {
+    // Mixed: zero line in the middle based on proportion
+    const totalRange = maxCashFlow - minCashFlow;
+    const positiveRatio = maxCashFlow / totalRange;
+    zeroY = chartTop + (chartHeight * positiveRatio);
+    maxScale = Math.max(maxCashFlow, Math.abs(minCashFlow));
+  }
   
   pdf.setDrawColor(200, 200, 200);
   pdf.line(margin + 10, zeroY, margin + contentWidth - 10, zeroY);
 
   // Draw bars
   projections.forEach((p, i) => {
-    const barHeight = (Math.abs(p.cashFlow) / range) * chartHeight;
     const barX = margin + 10 + (i * barSpacing) + 2;
-    const barY = p.cashFlow >= 0 ? zeroY - barHeight : zeroY;
+    const barWidth = barSpacing - 4;
+    const barMaxHeight = minCashFlow >= 0 || maxCashFlow <= 0 ? chartHeight : (p.cashFlow >= 0 ? zeroY - chartTop : chartBottom - zeroY);
+    const barHeight = Math.min((Math.abs(p.cashFlow) / maxScale) * chartHeight, barMaxHeight);
     
-    if (p.cashFlow >= 0) {
-      pdf.setFillColor(34, 197, 94);
-    } else {
-      pdf.setFillColor(239, 68, 68);
+    if (barHeight < 1) {
+      // Skip very small bars
+      pdf.setFontSize(6);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`Y${p.year}`, barX + barWidth / 2, y + chartHeight + 15, { align: "center" });
+      return;
     }
     
-    pdf.roundedRect(barX, barY, barSpacing - 4, barHeight, 1, 1, "F");
+    let barY: number;
+    if (p.cashFlow >= 0) {
+      pdf.setFillColor(34, 197, 94);
+      barY = zeroY - barHeight;
+    } else {
+      pdf.setFillColor(239, 68, 68);
+      barY = zeroY;
+    }
+    
+    // Ensure bar stays within chart bounds
+    const clampedBarY = Math.max(chartTop, Math.min(barY, chartBottom - 1));
+    const clampedHeight = Math.min(barHeight, chartBottom - clampedBarY);
+    
+    if (clampedHeight > 0) {
+      pdf.roundedRect(barX, clampedBarY, barWidth, clampedHeight, 1, 1, "F");
+    }
     
     // Year label
     pdf.setFontSize(6);
     pdf.setTextColor(100, 100, 100);
-    pdf.text(`Y${p.year}`, barX + (barSpacing - 4) / 2, y + chartHeight + 15, { align: "center" });
+    pdf.text(`Y${p.year}`, barX + barWidth / 2, y + chartHeight + 15, { align: "center" });
   });
   
   pdf.setTextColor(0, 0, 0);
