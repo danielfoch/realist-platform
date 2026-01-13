@@ -56,6 +56,36 @@ export async function getUncachableGoogleSheetClient() {
   return google.sheets({ version: 'v4', auth: oauth2Client });
 }
 
+export async function getUncachableGoogleDriveClient() {
+  const accessToken = await getAccessToken();
+
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({
+    access_token: accessToken
+  });
+
+  return google.drive({ version: 'v3', auth: oauth2Client });
+}
+
+// Get a Google Drive client using user's own OAuth tokens
+export function getUserGoogleDriveClient(tokens: UserOAuthTokens) {
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+  const oauth2Client = new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET
+  );
+
+  oauth2Client.setCredentials({
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken || undefined,
+    expiry_date: tokens.expiresAt ? tokens.expiresAt.getTime() : undefined,
+  });
+
+  return google.drive({ version: 'v3', auth: oauth2Client });
+}
+
 // Get a Google Sheets client using user's own OAuth tokens
 export function getUserGoogleSheetClient(tokens: UserOAuthTokens) {
   const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
