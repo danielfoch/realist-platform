@@ -180,9 +180,13 @@ export function MLISelectCalculator() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.keys(MEDIAN_INCOMES).map(city => (
-                      <SelectItem key={city} value={city}>{city}</SelectItem>
-                    ))}
+                    {Object.keys(MEDIAN_INCOMES)
+                      .filter(city => city !== "Other")
+                      .sort((a, b) => a.localeCompare(b))
+                      .concat(["Other"])
+                      .map(city => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
