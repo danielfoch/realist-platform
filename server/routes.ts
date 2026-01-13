@@ -24,7 +24,14 @@ import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
 import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
-import { sendPodcastQuestionNotification } from "./resend";
+import { 
+  sendPodcastQuestionNotification, 
+  sendLeadNotification, 
+  sendRenoQuoteNotification,
+  sendContactHostNotification,
+  sendExpertApplicationNotification,
+  sendMarketExpertApplyNotification 
+} from "./resend";
 
 const rateLimit = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -184,6 +191,16 @@ export async function registerRoutes(
         createdAt: lead.createdAt,
       }).catch(err => console.error("Webhook error:", err));
 
+      // Send email notification
+      sendLeadNotification({
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        address: property.formattedAddress,
+        strategy: analysis.strategyType,
+        source: lead.leadSource || 'Deal Analyzer',
+      }).catch(err => console.error("Email notification error:", err));
+
       res.json({
         success: true,
         data: {
@@ -270,6 +287,15 @@ export async function registerRoutes(
         dealInfo: dealInfo || {},
         createdAt: lead.createdAt,
       }).catch(err => console.error("Webhook error:", err));
+
+      // Send email notification
+      sendLeadNotification({
+        name,
+        email,
+        phone,
+        strategy: formType,
+        source: formTag || formType || 'Deal Engagement',
+      }).catch(err => console.error("Email notification error:", err));
 
       res.json({ success: true, data: { leadId: lead.id } });
     } catch (error) {
@@ -510,6 +536,17 @@ export async function registerRoutes(
             estimateHigh: pricingResult.totalHigh,
           });
         }
+
+        // Send email notification
+        sendRenoQuoteNotification({
+          name: leadName,
+          email: leadEmail,
+          phone: leadPhone,
+          address: propertyData.address,
+          projectType: propertyData.persona,
+          squareFootage: propertyData.existingSqft,
+          estimatedTotal: pricingResult.totalBase,
+        }).catch(err => console.error("Reno quote email error:", err));
       }
       
       const renoQuote = await storage.createRenoQuote({
@@ -767,8 +804,16 @@ export async function registerRoutes(
         },
       });
 
-      // TODO: When email service is configured, send email directly to host
-      // For now, the webhook will handle routing to the host via GHL workflows
+      // Send email notification to admin
+      sendContactHostNotification({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        message: data.message,
+        eventTitle: data.eventName,
+        hostName: data.hostName,
+      }).catch(err => console.error("Contact host email error:", err));
+
       console.log(`Meetup contact request: ${data.name} wants to contact ${data.hostName} (${data.hostEmail}) about ${data.eventName}`);
 
       res.json({ success: true, message: "Message sent to host" });
@@ -846,6 +891,18 @@ export async function registerRoutes(
           expert_website: data.website || "",
         },
       });
+
+      // Send email notification
+      sendExpertApplicationNotification({
+        name: `${data.firstName} ${data.lastName}`,
+        email: data.email,
+        phone: data.phone,
+        company: data.brokerageName,
+        expertise: data.specializations,
+        markets: [data.city, data.province],
+        website: data.website,
+        message: data.bio,
+      }).catch(err => console.error("Expert application email error:", err));
 
       console.log(`Market Expert Application received: ${data.firstName} ${data.lastName} from ${data.city}, ${data.province}`);
 
@@ -1257,20 +1314,11 @@ export async function registerRoutes(
       const storedQuestion = await storage.createPodcastQuestion({ name, email, question });
 
       // Send email notification via Resend
-      const notifyEmail = process.env.PODCAST_NOTIFY_EMAIL;
-      if (notifyEmail) {
-        try {
-          await sendPodcastQuestionNotification({
-            name,
-            email,
-            question,
-            notifyEmail,
-          });
-          console.log(`Podcast question email sent to ${notifyEmail}`);
-        } catch (emailError) {
-          console.error("Email notification failed:", emailError);
-        }
-      }
+      sendPodcastQuestionNotification({
+        name,
+        email,
+        question,
+      }).catch(err => console.error("Podcast question email error:", err));
 
       // Also send to GHL webhook if configured
       const webhookUrl = process.env.GHL_WEBHOOK_URL;

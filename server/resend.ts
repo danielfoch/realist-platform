@@ -43,75 +43,266 @@ export async function getResendClient() {
   };
 }
 
-// Send podcast question notification email
+// Get notification recipients from environment
+function getNotifyEmails(): string[] {
+  const primary = process.env.PODCAST_NOTIFY_EMAIL;
+  const cc = process.env.NOTIFY_CC_EMAIL;
+  const emails: string[] = [];
+  if (primary) emails.push(primary);
+  if (cc) emails.push(cc);
+  return emails;
+}
+
+// Email header template
+function emailHeader(title: string, subtitle: string) {
+  return `
+    <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 24px; border-radius: 8px 8px 0 0;">
+      <h1 style="color: white; margin: 0; font-size: 24px;">${title}</h1>
+      <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">${subtitle}</p>
+    </div>
+  `;
+}
+
+// Email footer template
+function emailFooter() {
+  return `
+    <div style="text-align: center; padding: 16px;">
+      <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+        Realist.ca - Canada's #1 Real Estate Deal Analyzer
+      </p>
+    </div>
+  `;
+}
+
+// Format data row for email
+function formatRow(label: string, value: string | number | undefined | null) {
+  if (value === undefined || value === null || value === '') return '';
+  return `
+    <tr>
+      <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">${label}</td>
+      <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${value}</td>
+    </tr>
+  `;
+}
+
+// Send form notification with CC support
+export async function sendFormNotification(params: {
+  formType: 'lead' | 'podcast_question' | 'reno_quote' | 'contact_host' | 'expert_application' | 'market_expert_apply';
+  subject: string;
+  data: Record<string, any>;
+}) {
+  const { client, fromEmail } = await getResendClient();
+  const recipients = getNotifyEmails();
+  
+  if (recipients.length === 0) {
+    console.log('No notification emails configured, skipping email send');
+    return null;
+  }
+
+  const formTypeLabels: Record<string, { title: string; subtitle: string }> = {
+    lead: { title: 'New Lead Submission', subtitle: 'Deal Analyzer Lead Capture' },
+    podcast_question: { title: 'New Podcast Question', subtitle: 'The Canadian Real Estate Investor Podcast' },
+    reno_quote: { title: 'New Renovation Quote Request', subtitle: 'Renovation Calculator Submission' },
+    contact_host: { title: 'Event Host Contact Request', subtitle: 'Meetup Event Inquiry' },
+    expert_application: { title: 'New Expert Application', subtitle: 'Featured Expert Application' },
+    market_expert_apply: { title: 'Market Expert Application', subtitle: 'Professional Application' },
+  };
+
+  const { title, subtitle } = formTypeLabels[params.formType] || { title: 'New Form Submission', subtitle: 'Realist.ca' };
+  
+  // Build data rows
+  let dataRows = '';
+  for (const [key, value] of Object.entries(params.data)) {
+    if (value !== undefined && value !== null && value !== '') {
+      const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+      const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+      dataRows += formatRow(label, displayValue);
+    }
+  }
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      ${emailHeader(title, subtitle)}
+      
+      <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          ${dataRows}
+        </table>
+        
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
+          <p style="margin: 0; color: #6b7280; font-size: 12px;">
+            Submitted on ${new Date().toLocaleString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </p>
+          <p style="margin: 8px 0 0 0;">
+            <a href="https://realist.ca/admin" style="color: #22c55e; text-decoration: none; font-weight: 500;">View in Admin Dashboard →</a>
+          </p>
+        </div>
+      </div>
+      
+      ${emailFooter()}
+    </div>
+  `;
+
+  const { data, error } = await client.emails.send({
+    from: fromEmail,
+    to: recipients,
+    subject: params.subject,
+    html,
+  });
+
+  if (error) {
+    console.error(`Failed to send ${params.formType} notification email:`, error);
+    throw error;
+  }
+
+  console.log(`Form notification sent to: ${recipients.join(', ')}`);
+  return data;
+}
+
+// Convenience wrappers for specific form types
+export async function sendLeadNotification(lead: {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  strategy?: string;
+  purchasePrice?: number;
+  source?: string;
+}) {
+  return sendFormNotification({
+    formType: 'lead',
+    subject: `New Lead: ${lead.name} - ${lead.address || 'Deal Analyzer'}`,
+    data: {
+      Name: lead.name,
+      Email: lead.email,
+      Phone: lead.phone,
+      'Property Address': lead.address,
+      'Investment Strategy': lead.strategy,
+      'Purchase Price': lead.purchasePrice ? `$${lead.purchasePrice.toLocaleString()}` : undefined,
+      Source: lead.source,
+    },
+  });
+}
+
 export async function sendPodcastQuestionNotification(params: {
   name: string;
   email: string;
   question: string;
-  notifyEmail: string;
+  notifyEmail?: string; // kept for backwards compatibility
 }) {
-  const { client, fromEmail } = await getResendClient();
-  
-  const { data, error } = await client.emails.send({
-    from: fromEmail,
-    to: params.notifyEmail,
+  return sendFormNotification({
+    formType: 'podcast_question',
     subject: `New Podcast Question from ${params.name}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 24px; border-radius: 8px 8px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">New Podcast Question</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">The Canadian Real Estate Investor Podcast</p>
-        </div>
-        
-        <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <div style="margin-bottom: 20px;">
-            <p style="margin: 0 0 4px 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">From</p>
-            <p style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">${params.name}</p>
-            <p style="margin: 4px 0 0 0; color: #4b5563;">${params.email}</p>
-          </div>
-          
-          <div style="margin-bottom: 20px;">
-            <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Question</p>
-            <div style="background: white; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #374151; line-height: 1.6; white-space: pre-wrap;">${params.question}</p>
-            </div>
-          </div>
-          
-          <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
-            <p style="margin: 0; color: #6b7280; font-size: 12px;">
-              Submitted on ${new Date().toLocaleString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </p>
-            <p style="margin: 8px 0 0 0;">
-              <a href="https://realist.ca/admin" style="color: #22c55e; text-decoration: none; font-weight: 500;">View all questions in Admin Dashboard →</a>
-            </p>
-          </div>
-        </div>
-        
-        <div style="text-align: center; padding: 16px;">
-          <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-            Realist.ca - Canada's #1 Real Estate Deal Analyzer
-          </p>
-        </div>
-      </div>
-    `,
+    data: {
+      Name: params.name,
+      Email: params.email,
+      Question: params.question,
+    },
   });
-
-  if (error) {
-    console.error('Failed to send podcast question email:', error);
-    throw error;
-  }
-
-  return data;
 }
 
-// Send a generic notification email
+export async function sendRenoQuoteNotification(quote: {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  projectType?: string;
+  squareFootage?: number;
+  estimatedTotal?: number;
+}) {
+  return sendFormNotification({
+    formType: 'reno_quote',
+    subject: `New Reno Quote Request${quote.name ? `: ${quote.name}` : ''}`,
+    data: {
+      Name: quote.name,
+      Email: quote.email,
+      Phone: quote.phone,
+      Address: quote.address,
+      'Project Type': quote.projectType,
+      'Square Footage': quote.squareFootage,
+      'Estimated Total': quote.estimatedTotal ? `$${quote.estimatedTotal.toLocaleString()}` : undefined,
+    },
+  });
+}
+
+export async function sendContactHostNotification(contact: {
+  name: string;
+  email: string;
+  phone?: string;
+  message: string;
+  eventTitle?: string;
+  hostName?: string;
+}) {
+  return sendFormNotification({
+    formType: 'contact_host',
+    subject: `Event Host Contact: ${contact.eventTitle || 'Meetup Inquiry'}`,
+    data: {
+      'Contact Name': contact.name,
+      'Contact Email': contact.email,
+      'Contact Phone': contact.phone,
+      Event: contact.eventTitle,
+      Host: contact.hostName,
+      Message: contact.message,
+    },
+  });
+}
+
+export async function sendExpertApplicationNotification(application: {
+  name: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  expertise?: string;
+  markets?: string[];
+  website?: string;
+  message?: string;
+}) {
+  return sendFormNotification({
+    formType: 'expert_application',
+    subject: `New Expert Application: ${application.name}`,
+    data: {
+      Name: application.name,
+      Email: application.email,
+      Phone: application.phone,
+      Company: application.company,
+      Expertise: application.expertise,
+      Markets: application.markets?.join(', '),
+      Website: application.website,
+      Message: application.message,
+    },
+  });
+}
+
+export async function sendMarketExpertApplyNotification(application: {
+  userId: number;
+  userName?: string;
+  userEmail?: string;
+  markets?: string[];
+  specialties?: string[];
+  bio?: string;
+}) {
+  return sendFormNotification({
+    formType: 'market_expert_apply',
+    subject: `Market Expert Application: ${application.userName || 'User #' + application.userId}`,
+    data: {
+      'User ID': application.userId,
+      Name: application.userName,
+      Email: application.userEmail,
+      Markets: application.markets?.join(', '),
+      Specialties: application.specialties?.join(', '),
+      Bio: application.bio,
+    },
+  });
+}
+
+// Send a generic notification email (backwards compatible)
 export async function sendNotificationEmail(params: {
   to: string;
   subject: string;
