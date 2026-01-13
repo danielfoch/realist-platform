@@ -56,6 +56,7 @@ export default function VerifyPhone() {
     },
     onSuccess: (_, variables) => {
       setSubmittedPhone(variables.phone);
+      codeForm.reset({ code: "" });
       setStep("code");
       toast({ title: "Code sent!", description: "Check your phone for the verification code." });
     },
@@ -201,7 +202,7 @@ export default function VerifyPhone() {
                           maxLength={6} 
                           value={field.value}
                           onChange={field.onChange}
-                          autoComplete="one-time-code"
+                          autoComplete="off"
                           inputMode="numeric"
                           data-testid="input-otp"
                         >
