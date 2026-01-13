@@ -16,7 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink, Settings } from "lucide-react";
+import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink, Settings, GitCompare, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { GoogleConnectionCard } from "@/components/GoogleConnectionCard";
 import { useState } from "react";
 import type { InvestorProfile, InvestorKyc, PortfolioProperty, SavedDeal } from "@shared/schema";
@@ -115,6 +116,18 @@ export default function InvestorPortal() {
     },
     onError: () => {
       toast({ title: "Failed to remove property", variant: "destructive" });
+    },
+  });
+
+  const deleteDealMutation = useMutation({
+    mutationFn: (id: string) => 
+      apiRequest("DELETE", `/api/user/saved-deals/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/saved-deals"] });
+      toast({ title: "Deal deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete deal", variant: "destructive" });
     },
   });
 
@@ -389,21 +402,20 @@ export default function InvestorPortal() {
                       <TableRow>
                         <TableHead>Address</TableHead>
                         <TableHead>Strategy</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Cash Flow</TableHead>
                         <TableHead className="text-right">Cap Rate</TableHead>
-                        <TableHead className="text-right">Cash on Cash</TableHead>
-                        <TableHead className="text-right">IRR</TableHead>
-                        <TableHead></TableHead>
+                        <TableHead className="text-right">CoC Return</TableHead>
+                        <TableHead className="text-right">DSCR</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {savedDeals.map((deal) => {
                         const results = deal.resultsJson as Record<string, unknown> | null;
-                        const inputs = deal.inputsJson as Record<string, unknown> | null;
-                        const price = Number(inputs?.purchasePrice) || 0;
+                        const monthlyCashFlow = Number(results?.monthlyCashFlow) || 0;
                         const capRate = Number(results?.capRate) || 0;
                         const cashOnCash = Number(results?.cashOnCash) || Number(results?.cashOnCashReturn) || 0;
-                        const irr = Number(results?.irr) || 0;
+                        const dscr = Number(results?.dscr) || 0;
                         
                         return (
                           <TableRow key={deal.id} data-testid={`row-saved-deal-${deal.id}`}>
@@ -422,7 +434,9 @@ export default function InvestorPortal() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right font-mono">
-                              ${price.toLocaleString()}
+                              <span className={monthlyCashFlow >= 0 ? "text-green-600" : "text-red-500"}>
+                                ${monthlyCashFlow.toLocaleString()}/mo
+                              </span>
                             </TableCell>
                             <TableCell className="text-right font-mono">
                               <span className={capRate >= 5 ? "text-green-600" : "text-muted-foreground"}>
@@ -435,19 +449,42 @@ export default function InvestorPortal() {
                               </span>
                             </TableCell>
                             <TableCell className="text-right font-mono">
-                              <span className={irr >= 15 ? "text-green-600" : "text-muted-foreground"}>
-                                {irr.toFixed(1)}%
+                              <span className={dscr >= 1.2 ? "text-green-600" : dscr >= 1 ? "text-muted-foreground" : "text-red-500"}>
+                                {dscr.toFixed(2)}x
                               </span>
                             </TableCell>
                             <TableCell>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => setLocation(`/?dealId=${deal.id}`)}
-                                data-testid={`button-view-deal-${deal.id}`}
-                              >
-                                <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" data-testid={`button-deal-menu-${deal.id}`}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem 
+                                    onClick={() => setLocation(`/?dealId=${deal.id}`)}
+                                    data-testid={`menu-view-deal-${deal.id}`}
+                                  >
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    View Analysis
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => setLocation("/compare")}
+                                    data-testid={`menu-compare-deal-${deal.id}`}
+                                  >
+                                    <GitCompare className="h-4 w-4 mr-2" />
+                                    Compare Deals
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => deleteDealMutation.mutate(deal.id)}
+                                    className="text-destructive focus:text-destructive"
+                                    data-testid={`menu-delete-deal-${deal.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </TableCell>
                           </TableRow>
                         );
