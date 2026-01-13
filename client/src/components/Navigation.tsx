@@ -2,9 +2,10 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, X, User, LogOut, Briefcase, Building } from "lucide-react";
+import { Menu, X, User, LogOut, Briefcase, Building, Users } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { CoachingWaitlistDialog } from "@/components/CoachingWaitlistDialog";
 import logoImage from "@assets/Screenshot_2026-01-04_at_3.46.09_PM_1767559573207.png";
 
 export function Navigation() {
@@ -65,11 +66,14 @@ export function Navigation() {
 
           <div className="flex items-center gap-2">
             <div className="hidden md:block">
-              <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer">
-                <Button size="sm" data-testid="button-book-call">
-                  Book a Free Consult Call
-                </Button>
-              </a>
+              <CoachingWaitlistDialog 
+                trigger={
+                  <Button size="sm" data-testid="button-join-waitlist">
+                    <Users className="h-4 w-4 mr-2" />
+                    Join Coaching Waitlist
+                  </Button>
+                }
+              />
             </div>
 
             {!isLoading && (
@@ -179,11 +183,14 @@ export function Navigation() {
                 </Link>
               )
             )}
-            <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer" className="block">
-              <Button className="w-full" data-testid="button-mobile-book-call">
-                Book a Free Consult Call
-              </Button>
-            </a>
+            <CoachingWaitlistDialog 
+              trigger={
+                <Button className="w-full" data-testid="button-mobile-join-waitlist">
+                  <Users className="h-4 w-4 mr-2" />
+                  Join Coaching Waitlist
+                </Button>
+              }
+            />
             <div className="border-t border-border/50 pt-2 mt-2">
               {isAuthenticated ? (
                 <>

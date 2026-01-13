@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { CoachingWaitlistDialog } from "@/components/CoachingWaitlistDialog";
 import { 
   ExternalLink, 
   Podcast, 
@@ -499,8 +500,12 @@ export default function About() {
                 </Button>
               </a>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Prefer a 1:1? <a href="#book-consult" className="text-primary hover:underline">Book a free consult call</a>.
+            <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+              Prefer coaching? <CoachingWaitlistDialog 
+                trigger={
+                  <button className="text-primary hover:underline font-medium">Join the waitlist</button>
+                }
+              />
             </p>
           </div>
         </section>

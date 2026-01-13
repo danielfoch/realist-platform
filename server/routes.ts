@@ -1016,6 +1016,29 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/user/saved-deals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const deal = await storage.getSavedDeal(req.params.id);
+      
+      if (!deal) {
+        res.status(404).json({ error: "Deal not found" });
+        return;
+      }
+      
+      if (deal.userId !== userId) {
+        res.status(403).json({ error: "Not authorized to delete this deal" });
+        return;
+      }
+      
+      await storage.deleteSavedDeal(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting user saved deal:", error);
+      res.status(500).json({ error: "Failed to delete deal" });
+    }
+  });
+
   app.get("/api/saved-deals/:id", async (req, res) => {
     try {
       const deal = await storage.getSavedDeal(req.params.id);
