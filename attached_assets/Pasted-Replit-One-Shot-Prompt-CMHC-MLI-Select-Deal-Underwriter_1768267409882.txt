@@ -1,0 +1,409 @@
+Replit One-Shot Prompt: “CMHC MLI Select + Deal Underwriter (New Build + Retrofit)”
+
+Build a production-grade web app on Replit called “CMHC MLI Select Underwriter” that combines:
+
+MLI Select points + affordability/energy/accessibility tier selection, and
+
+Full deal underwriting (land + construction + takeout) using the loan terms implied by the MLI result,
+with a DSCR-first workflow and an LTV slider that lets users adjust leverage until DSCR ≥ 1.10.
+
+Tech Requirements
+
+Use Next.js (TypeScript) + Tailwind + shadcn/ui for UI components.
+
+Use a simple backend API (Next.js route handlers) to:
+
+fetch benchmark rates (GoC 5yr bond + spread; fallback to manual input if fetch fails)
+
+handle email + webhook lead submission
+
+Use a clean state model with recalculation on input change.
+
+All key calculations must be deterministic and visible (tooltips show formulas).
+
+1) UX / Product Flow
+Step A — Project Setup
+
+Inputs:
+
+Project Type: New Build | Retrofit
+
+Address (Google Places autocomplete)
+
+Province/City selection (derived from address; fallback manual)
+
+Units (integer)
+
+Bedroom mix optional (studio/1/2/3) to support weighted rents (nice-to-have)
+
+Step B — MLI Select Tier Selector (Points)
+
+User selects one tier per category (or “none”):
+
+Affordability Tier: 0 / 50 / 70 / 100 points
+
+Energy Tier: 0 / 20 / 35 / 50 points
+
+Accessibility Tier: 0 / 20 / 30 (and if applicable 50) points (use tier text-only guidance)
+
+Then:
+
+Compute total points
+
+Map total points to program level: <50 not eligible, 50 / 70 / 100 eligible
+
+Display loan benefits associated with level:
+
+Max amortization (40 / 45 / 50 years)
+
+Default “max LTV” (or loan-to-cost for new build) based on level
+
+Insurance premium % based on level (use a configurable table)
+
+Important: keep all premium rates / term mapping in a single config file so Daniel can update annually.
+
+Step C — Underwriting Inputs
+
+Add underwriting inputs that drive NOI + DSCR:
+
+Income
+
+Market Rent (avg per unit) input OR rent roll table (simple mode default avg)
+
+Rent Growth (annual): slider from -5% to +5%, default 0%
+
+Other income (monthly) optional
+
+Affordable Units % (auto-populated based on tier + market affordability cutoffs, user can override with warning)
+
+Affordable Rent calculation:
+
+Pull median renter income by geography from:
+
+Option 1: MountainMath/CMHC API flow if available
+
+Option 2: fallback to uploaded “Median Income.xlsx” lookup table
+
+Affordable rent threshold = 30% of median renter income / 12
+
+Apply: affordable_units * min(market_rent, affordable_rent_threshold)
+
+Vacancy
+
+Vacancy Rate slider: 0%–10%, default 4% (this must be a slider)
+
+Expenses
+
+Expense ratio (% of EGI) OR itemized expenses mode
+
+Default mode: expense ratio slider 20%–60% (pre-fill 30–35%)
+
+Property taxes, insurance, utilities optional overrides
+
+Development / Costs
+
+Land Cost
+
+Hard Construction Cost
+
+Soft Costs
+
+Contingency %
+
+Financing Fees (broker/lender)
+
+Construction timeline (months):
+
+base default 18 months
+
+if “CMHC construction” selected add +9 months lead time (6–12 range; use 9 default and show tooltip)
+
+Exit / Takeout Assumptions
+
+Stabilized cap rate (optional; for valuation)
+
+Exit / refinance event trigger (month)
+
+Step D — Financing Mode
+
+User chooses financing path:
+
+Construction Financing
+
+CMHC Construction (slower timeline)
+
+Conventional (rate default 7%)
+
+Private (user inputs rate, lender fees, interest-only option)
+
+Takeout Financing
+
+Always runs MLI Select takeout model if eligible
+
+If not eligible (<50 points), show “Conventional takeout” fallback
+
+2) Core Outputs (Must Be Minimal + User-Friendly)
+Primary KPI Cards (always visible)
+
+DSCR (must be ≥ 1.10)
+
+Show a note: “CMHC often accepts ~1.10–1.20; 1.10 is workable but tight—small rent/expense shocks matter.”
+
+Net Loan Amount (after premiums/fees)
+
+Equity Required (cash in)
+
+Stabilized NOI
+
+Cash Flow After Debt
+
+Stress Table (3 columns only)
+
+A compact table with only the best metrics:
+
+Rows:
+
+EGI
+
+Vacancy loss
+
+EGI after vacancy
+
+OpEx
+
+NOI
+
+Rate
+
+Amortization
+
+Loan Amount
+
+Annual Debt Service
+
+DSCR
+
+Cash Flow
+
+Equity Required
+
+LTV (or LTC for new build)
+
+Columns:
+
+Base (defaults)
+
+Bear (rent -5%, vacancy +2%, expenses +5%, rate +50bps)
+
+Bull (rent +5%, vacancy -1%, expenses -3%, rate -25bps)
+
+No giant spreadsheets. Clean and modern.
+
+3) The LTV Slider (“Solve for DSCR”)
+
+Add an LTV slider that directly changes the takeout loan size and recalculates DSCR in real time.
+
+Slider range depends on program tier:
+
+if eligible: from 50% up to tier max (ex 85/95 etc; use config)
+
+if not eligible: from 50% to 75% default cap
+
+As user adjusts LTV:
+
+Loan amount updates
+
+Debt service updates
+
+DSCR updates
+
+Equity required updates
+
+Also add a button:
+
+“Find Max LTV that keeps DSCR ≥ 1.10”
+
+run a quick binary search on LTV within range and set slider to max allowed LTV satisfying DSCR constraint.
+
+This is the key “wow” feature: users can see how much equity they need to inject to make the deal CMHC-safe.
+
+4) Financial Logic (Define Clearly in Code)
+Effective Gross Income (EGI)
+
+Gross rent = (market_units * market_rent + affordable_units * affordable_rent) * 12
+
+Vacancy loss = gross rent * vacancy_rate
+
+EGI = gross rent - vacancy_loss + other_income
+
+NOI
+
+OpEx = either:
+
+expense_ratio * EGI, or
+
+sum(itemized)
+
+NOI = EGI - OpEx
+
+Debt Service + DSCR
+
+Use standard mortgage payment formula (annualized):
+
+Payment = P * r / (1 - (1+r)^-n)
+
+r = monthly rate
+
+n = amortization_months
+
+Annual Debt Service = monthly_payment * 12
+
+DSCR = NOI / Annual Debt Service
+
+Loan Amount
+
+For acquisition: Loan = LTV * purchase_price
+
+For new build: allow toggle “use LTC instead of LTV”
+
+Loan = LTC * total_project_cost
+
+Total project cost = land + hard + soft + contingency + fees
+
+CMHC Insurance Premium
+
+Use config table keyed by point tier:
+
+premium % applied to base loan amount (or show both “net loan” and “gross loan”)
+
+Net loan amount after premium/fees displayed clearly.
+
+Keep this modular so rates can be updated without code changes.
+
+5) Affordability Cutoffs (Auto-Select Affordable Units)
+
+If project type = New Build:
+
+Default affordable unit % based on affordability points tier:
+
+50 => 10%, 70 => 15%, 100 => 25%
+
+If retrofit/existing:
+
+50 => 40%, 70 => 60%, 100 => 80%
+
+Compute affordable rent threshold using median renter income:
+
+monthly affordable rent = (median_income * 0.30) / 12
+
+Apply that rent only to the affordable unit portion.
+
+Show a small “affordable rent summary” box:
+
+median income used, affordable rent threshold, # units affordable
+
+6) Lead Capture + Routing (Nick + GHL)
+
+On “Save / Send Results”:
+Require:
+
+Name
+
+Email
+
+Phone
+
+Then:
+
+Send an email to nick@bldfinancial.ca
+ with:
+
+user contact
+
+address, unit count, project type
+
+points + tier summary
+
+base/bear/bull DSCR and equity required
+
+selected financing path
+
+Fire a webhook to a configurable URL (env var) with:
+
+webhookType: "MLISelect"
+
+all inputs + computed outputs
+
+Store submission in a simple DB (SQLite or Postgres via Prisma) so app has internal lead log.
+
+Webhook payload must include:
+
+formTag: "MLISelect"
+
+contact info
+
+project details
+
+scenario outputs (base/bear/bull)
+
+timestamp
+
+7) UI Details (Make it 10/10)
+
+Use sliders for:
+
+Vacancy (default 4%)
+
+Rent growth (default 0%)
+
+LTV (with DSCR constraint helper)
+
+Expense ratio (if in simple mode)
+
+Tooltips everywhere with plain English:
+
+“DSCR = NOI ÷ annual debt payments”
+
+“1.10 is often acceptable for CMHC but leaves less buffer”
+
+Strong visual hierarchy:
+
+inputs left / outputs right on desktop
+
+stacked sections on mobile
+
+Include “Export PDF summary” nice-to-have (optional)
+
+8) Config + Maintainability
+
+Create a single mliConfig.ts for:
+
+tier mappings
+
+max amortization by tier
+
+max LTV/LTC by tier
+
+insurance premium rate by tier
+
+stress test deltas (bear/bull adjustments)
+
+Make it easy for Daniel to update annually without rewriting logic.
+
+9) Acceptance Tests (Must Pass)
+
+Changing LTV updates DSCR and equity instantly.
+
+Clicking “Find Max LTV ≥ 1.10 DSCR” sets slider accordingly.
+
+Affordable rent threshold changes when location changes.
+
+Stress table matches base case and applies deltas.
+
+Lead submission triggers:
+
+email to nick@bldfinancial.ca
+
+webhook with formTag=MLISelect
+
+DB record stored
