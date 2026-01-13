@@ -1303,42 +1303,49 @@ export async function registerRoutes(
   // Podcast Q&A question submission
   app.post("/api/podcast/question", async (req, res) => {
     try {
-      const { name, email, question } = req.body;
+      const { firstName, lastName, email, question } = req.body;
       
-      if (!name || !email || !question) {
-        res.status(400).json({ error: "Name, email, and question are required" });
+      if (!firstName || !lastName || !email || !question) {
+        res.status(400).json({ error: "First name, last name, email, and question are required" });
         return;
       }
 
-      // Store in database
-      const storedQuestion = await storage.createPodcastQuestion({ name, email, question });
+      const fullName = `${firstName} ${lastName}`;
+
+      // Store in database (using full name for backwards compatibility)
+      const storedQuestion = await storage.createPodcastQuestion({ name: fullName, email, question });
 
       // Send email notification via Resend
       sendPodcastQuestionNotification({
-        name,
+        name: fullName,
         email,
         question,
       }).catch(err => console.error("Podcast question email error:", err));
 
-      // Also send to GHL webhook if configured
-      const webhookUrl = process.env.GHL_WEBHOOK_URL;
-      if (webhookUrl) {
-        try {
-          await fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "podcast_question",
-              name,
-              email,
-              question,
-              submittedAt: new Date().toISOString(),
-            }),
-          });
-        } catch (webhookError) {
-          console.error("Webhook notification failed:", webhookError);
+      // Format phone to E.164 format for GHL (no phone for podcast, use placeholder)
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
         }
-      }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Send to GHL webhook with standardized format
+      sendWebhook(storedQuestion.id.toString(), {
+        email,
+        firstName,
+        lastName,
+        fullName,
+        phone: "",
+        formTag: "podcast_question",
+        leadSource: "Podcast Q&A",
+        question,
+        submittedAt: new Date().toISOString(),
+      }).catch(err => console.error("Webhook error:", err));
 
       res.json({ success: true, data: storedQuestion });
     } catch (error) {

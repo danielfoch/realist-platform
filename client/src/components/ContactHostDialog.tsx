@@ -29,7 +29,8 @@ import { Mail, User, Phone, MessageSquare, Loader2 } from "lucide-react";
 import type { MeetupHost } from "@/lib/meetupHosts";
 
 const contactHostSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Please enter a valid email"),
   phone: z.string().min(10, "Please enter a valid phone number"),
   message: z.string().min(10, "Message must be at least 10 characters"),
@@ -51,7 +52,8 @@ export function ContactHostDialog({ host, eventName, eventId, children }: Contac
   const form = useForm<ContactHostFormValues>({
     resolver: zodResolver(contactHostSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       phone: "",
       message: "",
@@ -62,6 +64,7 @@ export function ContactHostDialog({ host, eventName, eventId, children }: Contac
     mutationFn: async (data: ContactHostFormValues) => {
       return apiRequest("POST", "/api/events/contact-host", {
         ...data,
+        name: `${data.firstName} ${data.lastName}`,
         hostId: host.id,
         hostEmail: host.email,
         hostName: host.name,
@@ -125,27 +128,46 @@ export function ContactHostDialog({ host, eventName, eventId, children }: Contac
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Your Name</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="John"
+                          className="pl-10"
+                          data-testid="input-contact-firstname"
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
                       <Input
-                        placeholder="John Smith"
-                        className="pl-10"
-                        data-testid="input-contact-name"
+                        placeholder="Smith"
+                        data-testid="input-contact-lastname"
                         {...field}
                       />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}

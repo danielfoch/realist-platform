@@ -45,7 +45,8 @@ interface PodcastEpisode {
 }
 
 const questionSchema = z.object({
-  name: z.string().min(2, "Name is required"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Please enter a valid email"),
   question: z.string().min(10, "Please provide more detail for your question"),
 });
@@ -63,7 +64,8 @@ export default function Podcast() {
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(questionSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       question: "",
     },
@@ -186,15 +188,28 @@ export default function Podcast() {
 
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmitQuestion)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Your Name</FormLabel>
+                        <FormLabel>First Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="John Smith" {...field} data-testid="input-question-name" />
+                          <Input placeholder="John" {...field} data-testid="input-question-firstname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Smith" {...field} data-testid="input-question-lastname" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

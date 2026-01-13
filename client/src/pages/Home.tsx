@@ -116,18 +116,22 @@ export default function Home() {
   }, [inputs]);
 
   const leadMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string; phone: string; consent: boolean }) => {
+    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone: string; consent: boolean }) => {
       const formattedAddress = [address, city, region, country === "canada" ? "Canada" : "USA", postalCode]
         .filter(Boolean)
         .join(", ");
 
+      const fullName = `${data.firstName} ${data.lastName}`;
+
       const response = await apiRequest("POST", "/api/leads", {
         lead: {
-          name: data.name,
+          name: fullName,
           email: data.email,
           phone: data.phone,
           consent: data.consent,
           leadSource: "Deal Analyzer",
+          firstName: data.firstName,
+          lastName: data.lastName,
         },
         property: {
           formattedAddress,
@@ -146,21 +150,17 @@ export default function Home() {
       });
       
       // Auto-enroll user account from lead data
-      const nameParts = data.name.trim().split(" ");
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
-      
       try {
         const enrollResponse = await apiRequest("POST", "/api/auth/lead-enroll", {
           email: data.email,
-          firstName,
-          lastName,
+          firstName: data.firstName,
+          lastName: data.lastName,
         });
         const enrollData = await enrollResponse.json();
         
         // Store enrollment status (setup token is sent via email for security)
         localStorage.setItem("realist_lead_info", JSON.stringify({
-          name: data.name,
+          name: fullName,
           email: data.email,
           phone: data.phone,
           isNewUser: enrollData.isNewUser,
@@ -169,7 +169,7 @@ export default function Home() {
       } catch {
         // Enrollment failed, still save lead info
         localStorage.setItem("realist_lead_info", JSON.stringify({
-          name: data.name,
+          name: fullName,
           email: data.email,
           phone: data.phone,
         }));
@@ -224,7 +224,7 @@ export default function Home() {
     }
   };
 
-  const handleLeadSubmit = async (data: { name: string; email: string; phone: string; consent: boolean }) => {
+  const handleLeadSubmit = async (data: { firstName: string; lastName: string; email: string; phone: string; consent: boolean }) => {
     await leadMutation.mutateAsync(data);
   };
 

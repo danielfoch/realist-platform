@@ -24,7 +24,8 @@ import { Loader2, Lock, Users, ExternalLink } from "lucide-react";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const leadFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(10, "Please enter a valid phone number"),
   consent: z.boolean().default(false),
@@ -37,7 +38,7 @@ interface LeadCaptureModalProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: LeadFormValues) => Promise<void>;
   isSubmitting: boolean;
-  defaultValues?: { name?: string; email?: string; phone?: string };
+  defaultValues?: { firstName?: string; lastName?: string; email?: string; phone?: string };
 }
 
 export function LeadCaptureModal({
@@ -52,7 +53,8 @@ export function LeadCaptureModal({
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
-      name: defaultValues?.name || "",
+      firstName: defaultValues?.firstName || "",
+      lastName: defaultValues?.lastName || "",
       email: defaultValues?.email || "",
       phone: defaultValues?.phone || "",
       consent: false,
@@ -101,24 +103,44 @@ export function LeadCaptureModal({
 
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name *</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="John Smith"
-                          className="h-12"
-                          data-testid="input-lead-name"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name *</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="John"
+                            className="h-12"
+                            data-testid="input-lead-firstname"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name *</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Smith"
+                            className="h-12"
+                            data-testid="input-lead-lastname"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
