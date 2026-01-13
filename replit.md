@@ -77,6 +77,24 @@ Preferred communication style: Simple, everyday language.
 - **Google Maps Places API**: For address autocomplete and geocoding (referenced in requirements)
 - **PDF Export**: html-to-image and jsPDF for analysis exports
 
+## Recent Changes
+
+### Stress Test Analysis (January 2026)
+- Added stress test feature to Deal Analyzer showing Base/Bear/Bull scenarios
+- Compact table format in ResultsSummary displaying NOI, DSCR, Cash Flow, and Equity across scenarios
+- Proforma table now has scenario selection buttons (Base/Bear/Bull) with full 10-year projections for each
+- Assumptions displayed when Bear or Bull scenario is selected
+- Bear case: -5% rent, +3% vacancy, +5% expenses, +1% interest rate
+- Bull case: +3% rent, -1% vacancy, -2% expenses, -0.5% interest rate
+
+### MLI Select Calculator
+- Standalone CMHC MLI Select points calculator as top-level calculator
+- Full underwriting with NOI, DSCR, and debt service calculations
+- Insurance premiums properly financed into loan balance
+- LTV slider with "Find Max LTC for DSCR >= 1.10" optimization
+- Stress testing table with configurable scenarios
+- Lead capture integration with MLISelect webhook type
+
 ### Key NPM Packages
 - `drizzle-orm` / `drizzle-zod` - Database ORM and schema validation
 - `@tanstack/react-query` - Data fetching and caching
