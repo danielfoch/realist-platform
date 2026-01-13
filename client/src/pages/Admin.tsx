@@ -13,8 +13,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer } from "lucide-react";
-import type { Lead, MarketExpertApplication, RenoQuote } from "@shared/schema";
+import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer, GraduationCap, Phone, Mail, MessageSquare } from "lucide-react";
+import type { Lead, MarketExpertApplication, RenoQuote, CoachingWaitlist } from "@shared/schema";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -68,12 +68,27 @@ export default function Admin() {
     retry: false,
   });
 
+  const { data: coachingWaitlist, isLoading: coachingLoading, refetch: refetchCoaching } = useQuery<CoachingWaitlist[]>({
+    queryKey: ["/api/coaching-waitlist"],
+    retry: false,
+  });
+
+  const updateCoachingMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      return apiRequest("PATCH", `/api/coaching-waitlist/${id}`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coaching-waitlist"] });
+      toast({ title: "Waitlist entry updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update entry", variant: "destructive" });
+    },
+  });
+
   const updateApplicationMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return apiRequest(`/api/admin/applications/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
+      return apiRequest("PATCH", `/api/admin/applications/${id}`, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/applications"] });
@@ -86,10 +101,7 @@ export default function Admin() {
 
   const updateUserRoleMutation = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: string }) => {
-      return apiRequest(`/api/admin/users/${id}/role`, {
-        method: "PATCH",
-        body: JSON.stringify({ role }),
-      });
+      return apiRequest("PATCH", `/api/admin/users/${id}/role`, { role });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -130,6 +142,7 @@ export default function Admin() {
   }
 
   const pendingApplications = applications?.filter(a => a.status === "pending") || [];
+  const pendingCoaching = coachingWaitlist?.filter(c => c.status === "pending") || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -241,6 +254,11 @@ export default function Admin() {
               <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
               <TabsTrigger value="leads" data-testid="tab-leads">Leads</TabsTrigger>
               <TabsTrigger value="reno-quotes" data-testid="tab-reno-quotes">RenoQuotes</TabsTrigger>
+              <TabsTrigger value="coaching" data-testid="tab-coaching">
+                Coaching {pendingCoaching.length > 0 && (
+                  <Badge variant="destructive" className="ml-2">{pendingCoaching.length}</Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="applications">
@@ -559,6 +577,135 @@ export default function Admin() {
                       <p className="text-muted-foreground">No RenoQuote submissions yet</p>
                       <p className="text-sm text-muted-foreground">
                         Quotes will appear here when users submit the RenoQuote calculator.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="coaching">
+              <Card data-testid="card-coaching-table">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5" />
+                    Coaching Waitlist
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchCoaching()}
+                    className="gap-2"
+                    data-testid="button-refresh-coaching"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {coachingLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                    </div>
+                  ) : coachingWaitlist && coachingWaitlist.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Main Problem</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {coachingWaitlist.map((entry) => (
+                          <TableRow key={entry.id} data-testid={`row-coaching-${entry.id}`}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{entry.fullName}</p>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Mail className="h-3 w-3" />
+                                  <span>{entry.email}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Phone className="h-3 w-3" />
+                                  <span>{entry.phone}</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="max-w-xs">
+                                <p className="text-sm truncate" title={entry.mainProblem}>
+                                  {entry.mainProblem}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  entry.status === "contacted" ? "default" : 
+                                  entry.status === "enrolled" ? "default" : 
+                                  entry.status === "declined" ? "destructive" : 
+                                  "outline"
+                                }
+                              >
+                                {entry.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {entry.createdAt ? format(new Date(entry.createdAt), "MMM d, yyyy") : "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {entry.status === "pending" && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => updateCoachingMutation.mutate({ id: entry.id, status: "contacted" })}
+                                    disabled={updateCoachingMutation.isPending}
+                                    data-testid={`button-contact-${entry.id}`}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Contacted
+                                  </Button>
+                                </div>
+                              )}
+                              {entry.status === "contacted" && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => updateCoachingMutation.mutate({ id: entry.id, status: "enrolled" })}
+                                    disabled={updateCoachingMutation.isPending}
+                                    data-testid={`button-enroll-${entry.id}`}
+                                  >
+                                    Enrolled
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => updateCoachingMutation.mutate({ id: entry.id, status: "declined" })}
+                                    disabled={updateCoachingMutation.isPending}
+                                    data-testid={`button-decline-${entry.id}`}
+                                  >
+                                    Declined
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-12">
+                      <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No coaching waitlist entries yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Entries will appear here when users join the coaching waitlist.
                       </p>
                     </div>
                   )}
