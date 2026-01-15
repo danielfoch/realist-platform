@@ -738,5 +738,24 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
     },
   });
 
+  // Make the spreadsheet publicly accessible (anyone with link can view)
+  try {
+    const drive = userTokens 
+      ? getUserGoogleDriveClient(userTokens)
+      : await getUncachableGoogleDriveClient();
+    
+    await drive.permissions.create({
+      fileId: spreadsheetId,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone',
+      },
+    });
+    console.log(`Sheet ${spreadsheetId} set to public access`);
+  } catch (permError) {
+    console.error('Failed to set public access on sheet:', permError);
+    // Continue anyway - sheet is still created, just private
+  }
+
   return spreadsheetUrl;
 }
