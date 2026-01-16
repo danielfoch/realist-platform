@@ -105,9 +105,16 @@ export function getUserGoogleSheetClient(tokens: UserOAuthTokens) {
   return google.sheets({ version: 'v4', auth: oauth2Client });
 }
 
+interface UserInfo {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 interface ExportData {
   address: string;
   strategy: string;
+  userInfo?: UserInfo;
   inputs: {
     purchasePrice: number;
     closingCosts: number;
@@ -279,6 +286,14 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
   const summaryData = [
     ['Realist.ca Deal Analyzer'],
     ['Free Real Estate Investment Calculator - realist.ca'],
+    [''],
+    ['PROPERTY'],
+    ['Address', data.address || 'Not specified'],
+    [''],
+    ['PREPARED FOR'],
+    ['Name', data.userInfo?.name || 'Not specified'],
+    ['Email', data.userInfo?.email || 'Not specified'],
+    ['Phone', data.userInfo?.phone || 'Not specified'],
     [''],
     ['INVESTMENT SUMMARY'],
     ['All values auto-calculate from Inputs tab'],

@@ -32,8 +32,10 @@ import {
   sendContactHostNotification,
   sendExpertApplicationNotification,
   sendMarketExpertApplyNotification,
-  sendCoachingWaitlistNotification 
+  sendCoachingWaitlistNotification,
+  sendNotificationEmail,
 } from "./resend";
+import { authStorage } from "./replit_integrations/auth/storage";
 
 const rateLimit = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -1077,10 +1079,21 @@ export async function registerRoutes(
       const userId = req.session?.userId;
       let userTokens = null;
       let exportedToUserAccount = false;
+      let userInfo: { name?: string; email?: string; phone?: string } = {};
       
       console.log("[Google Sheets Export] User ID:", userId || "anonymous");
       
       if (userId) {
+        // Fetch user info
+        const user = await authStorage.getUser(userId);
+        if (user) {
+          userInfo = {
+            name: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+            email: user.email || undefined,
+            phone: user.phone || undefined,
+          };
+        }
+        
         const googleToken = await storage.getGoogleOAuthToken(userId);
         console.log("[Google Sheets Export] Token found:", !!googleToken, googleToken?.googleEmail || "no email");
         if (googleToken) {
@@ -1094,13 +1107,83 @@ export async function registerRoutes(
       }
       
       console.log("[Google Sheets Export] Exporting to:", exportedToUserAccount ? "user account" : "shared account");
+      console.log("[Google Sheets Export] User info:", userInfo);
 
       const spreadsheetUrl = await exportToGoogleSheets({
         address: address || "Property Analysis",
         strategy: strategy || "buy_hold",
+        userInfo,
         inputs,
         results,
       }, userTokens || undefined);
+
+      // Send email notification to danielfoch@gmail.com
+      try {
+        await sendNotificationEmail({
+          to: "danielfoch@gmail.com",
+          subject: `New Google Sheet Created: ${address || "Property Analysis"}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 24px; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">New Google Sheet Created</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Realist.ca Deal Analyzer Export</p>
+              </div>
+              
+              <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">Property Address</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${address || "Not specified"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">User Name</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${userInfo.name || "Not specified"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">User Email</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${userInfo.email || "Not specified"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">User Phone</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${userInfo.phone || "Not specified"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">Strategy</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${strategy || "buy_hold"}</td>
+                  </tr>
+                </table>
+                
+                <div style="margin-top: 20px; text-align: center;">
+                  <a href="${spreadsheetUrl}" style="display: inline-block; background: #22c55e; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">View Google Sheet</a>
+                </div>
+                
+                <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
+                  <p style="margin: 0; color: #6b7280; font-size: 12px;">
+                    Created on ${new Date().toLocaleString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              </div>
+              
+              <div style="text-align: center; padding: 16px;">
+                <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                  Realist.ca - Canada's #1 Real Estate Deal Analyzer
+                </p>
+              </div>
+            </div>
+          `,
+        });
+        console.log("[Google Sheets Export] Email notification sent to danielfoch@gmail.com");
+      } catch (emailError) {
+        console.error("[Google Sheets Export] Failed to send email notification:", emailError);
+        // Don't fail the whole request if email fails
+      }
 
       res.json({ 
         success: true, 
