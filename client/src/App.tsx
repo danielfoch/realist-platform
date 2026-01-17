@@ -24,6 +24,10 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import SetPassword from "@/pages/SetPassword";
 import VerifyPhone from "@/pages/VerifyPhone";
+import BuyBox from "@/pages/BuyBox";
+import BuyBoxAgreement from "@/pages/BuyBoxAgreement";
+import BuyBoxConfirmation from "@/pages/BuyBoxConfirmation";
+import RealtorBuyBoxes from "@/pages/RealtorBuyBoxes";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -50,6 +54,10 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/set-password" component={SetPassword} />
       <Route path="/verify-phone" component={VerifyPhone} />
+      <Route path="/buybox" component={BuyBox} />
+      <Route path="/buybox/agreement" component={BuyBoxAgreement} />
+      <Route path="/buybox/confirmation/:id" component={BuyBoxConfirmation} />
+      <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
       <Route component={NotFound} />
     </Switch>
   );

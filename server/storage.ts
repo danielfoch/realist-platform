@@ -19,6 +19,10 @@ import {
   platformAnalytics,
   renoQuotes,
   googleOAuthTokens,
+  buyBoxAgreements,
+  buyBoxMandates,
+  buyBoxResponses,
+  buyBoxNotifications,
   type Lead, 
   type InsertLead,
   type Property,
@@ -58,6 +62,14 @@ import {
   type InsertRenoQuote,
   type GoogleOAuthToken,
   type InsertGoogleOAuthToken,
+  type BuyBoxAgreement,
+  type InsertBuyBoxAgreement,
+  type BuyBoxMandate,
+  type InsertBuyBoxMandate,
+  type BuyBoxResponse,
+  type InsertBuyBoxResponse,
+  type BuyBoxNotification,
+  type InsertBuyBoxNotification,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -188,6 +200,24 @@ export interface IStorage {
   markPhoneVerified(userId: string, phone: string): Promise<void>;
   incrementVerificationAttempts(codeId: string): Promise<void>;
   deletePhoneVerificationCode(codeId: string): Promise<void>;
+
+  // BuyBox System
+  createBuyBoxAgreement(agreement: InsertBuyBoxAgreement): Promise<BuyBoxAgreement>;
+  getBuyBoxAgreement(id: string): Promise<BuyBoxAgreement | undefined>;
+  getBuyBoxAgreementsByUser(userId: string): Promise<BuyBoxAgreement[]>;
+  
+  createBuyBoxMandate(mandate: InsertBuyBoxMandate): Promise<BuyBoxMandate>;
+  getBuyBoxMandate(id: string): Promise<BuyBoxMandate | undefined>;
+  getBuyBoxMandatesByUser(userId: string): Promise<BuyBoxMandate[]>;
+  getAllBuyBoxMandates(): Promise<BuyBoxMandate[]>;
+  updateBuyBoxMandate(id: string, updates: Partial<BuyBoxMandate>): Promise<BuyBoxMandate | undefined>;
+  
+  createBuyBoxResponse(response: InsertBuyBoxResponse): Promise<BuyBoxResponse>;
+  getBuyBoxResponsesByMandate(mandateId: string): Promise<BuyBoxResponse[]>;
+  
+  createBuyBoxNotification(notification: InsertBuyBoxNotification): Promise<BuyBoxNotification>;
+  getBuyBoxNotificationsByUser(userId: string): Promise<BuyBoxNotification[]>;
+  markBuyBoxNotificationRead(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -835,6 +865,79 @@ export class DatabaseStorage implements IStorage {
 
   async deletePhoneVerificationCode(codeId: string): Promise<void> {
     await db.delete(phoneVerificationCodes).where(eq(phoneVerificationCodes.id, codeId));
+  }
+
+  // BuyBox System Implementation
+  async createBuyBoxAgreement(agreement: InsertBuyBoxAgreement): Promise<BuyBoxAgreement> {
+    const [result] = await db.insert(buyBoxAgreements).values(agreement).returning();
+    return result;
+  }
+
+  async getBuyBoxAgreement(id: string): Promise<BuyBoxAgreement | undefined> {
+    const [result] = await db.select().from(buyBoxAgreements).where(eq(buyBoxAgreements.id, id));
+    return result || undefined;
+  }
+
+  async getBuyBoxAgreementsByUser(userId: string): Promise<BuyBoxAgreement[]> {
+    return db.select().from(buyBoxAgreements)
+      .where(eq(buyBoxAgreements.userId, userId))
+      .orderBy(desc(buyBoxAgreements.createdAt));
+  }
+
+  async createBuyBoxMandate(mandate: InsertBuyBoxMandate): Promise<BuyBoxMandate> {
+    const [result] = await db.insert(buyBoxMandates).values(mandate).returning();
+    return result;
+  }
+
+  async getBuyBoxMandate(id: string): Promise<BuyBoxMandate | undefined> {
+    const [result] = await db.select().from(buyBoxMandates).where(eq(buyBoxMandates.id, id));
+    return result || undefined;
+  }
+
+  async getBuyBoxMandatesByUser(userId: string): Promise<BuyBoxMandate[]> {
+    return db.select().from(buyBoxMandates)
+      .where(eq(buyBoxMandates.userId, userId))
+      .orderBy(desc(buyBoxMandates.createdAt));
+  }
+
+  async getAllBuyBoxMandates(): Promise<BuyBoxMandate[]> {
+    return db.select().from(buyBoxMandates).orderBy(desc(buyBoxMandates.createdAt));
+  }
+
+  async updateBuyBoxMandate(id: string, updates: Partial<BuyBoxMandate>): Promise<BuyBoxMandate | undefined> {
+    const [result] = await db.update(buyBoxMandates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(buyBoxMandates.id, id))
+      .returning();
+    return result || undefined;
+  }
+
+  async createBuyBoxResponse(response: InsertBuyBoxResponse): Promise<BuyBoxResponse> {
+    const [result] = await db.insert(buyBoxResponses).values(response).returning();
+    return result;
+  }
+
+  async getBuyBoxResponsesByMandate(mandateId: string): Promise<BuyBoxResponse[]> {
+    return db.select().from(buyBoxResponses)
+      .where(eq(buyBoxResponses.mandateId, mandateId))
+      .orderBy(desc(buyBoxResponses.createdAt));
+  }
+
+  async createBuyBoxNotification(notification: InsertBuyBoxNotification): Promise<BuyBoxNotification> {
+    const [result] = await db.insert(buyBoxNotifications).values(notification).returning();
+    return result;
+  }
+
+  async getBuyBoxNotificationsByUser(userId: string): Promise<BuyBoxNotification[]> {
+    return db.select().from(buyBoxNotifications)
+      .where(eq(buyBoxNotifications.userId, userId))
+      .orderBy(desc(buyBoxNotifications.createdAt));
+  }
+
+  async markBuyBoxNotificationRead(id: string): Promise<void> {
+    await db.update(buyBoxNotifications)
+      .set({ readAt: new Date() })
+      .where(eq(buyBoxNotifications.id, id));
   }
 }
 

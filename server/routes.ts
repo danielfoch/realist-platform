@@ -2124,5 +2124,340 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // BUYBOX MANDATE SYSTEM ROUTES
+  // ============================================
+
+  // Helper to coerce empty strings to null for optional number fields
+  const optionalNumber = z.preprocess(
+    (val) => (val === "" || val === undefined || val === null ? null : Number(val)),
+    z.number().nullable().optional()
+  );
+
+  // BuyBox submission schema with coercion for string-to-number fields
+  const buyBoxSubmissionSchema = z.object({
+    agreement: z.object({
+      signedName: z.string().min(1, "Signed name is required"),
+      signatureDataUrl: z.string().min(1, "Signature is required"),
+      termEndDate: z.string(),
+      holdoverDays: z.coerce.number().int().min(0).optional().default(60),
+      commissionPercent: z.coerce.number().min(0).max(100).optional().default(2.5),
+      agreedToTerms: z.boolean(),
+      extendedTermConsent: z.boolean(),
+    }),
+    mandate: z.object({
+      polygonGeoJson: z.any(),
+      centroidLat: optionalNumber,
+      centroidLng: optionalNumber,
+      areaName: z.string().optional().nullable(),
+      targetPrice: optionalNumber,
+      maxPrice: optionalNumber,
+      lotFrontage: optionalNumber,
+      lotFrontageUnit: z.string().optional().nullable(),
+      lotDepth: optionalNumber,
+      lotDepthUnit: z.string().optional().nullable(),
+      totalLotArea: optionalNumber,
+      totalLotAreaUnit: z.string().optional().nullable(),
+      zoningPlanningStatus: z.string().optional().nullable(),
+      buildingType: z.string().optional().nullable(),
+      occupancy: z.string().optional().nullable(),
+      targetClosingDate: z.string().optional().nullable(),
+      possessionDate: z.string().optional().nullable(),
+      offerConditions: z.array(z.string()).optional().nullable(),
+      additionalNotes: z.string().optional().nullable(),
+    }),
+  });
+
+  // Submit a new BuyBox mandate with agreement
+  app.post("/api/buybox/submit", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // Validate request body
+      const parseResult = buyBoxSubmissionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        res.status(400).json({ error: "Invalid submission data", details: parseResult.error.errors });
+        return;
+      }
+      
+      const { agreement, mandate } = parseResult.data;
+
+      if (!mandate.polygonGeoJson) {
+        res.status(400).json({ error: "Target area polygon is required" });
+        return;
+      }
+
+      // Generate agreement HTML
+      const agreementHtml = generateBuyBoxAgreementHtml({
+        signedName: agreement.signedName,
+        termEndDate: agreement.termEndDate,
+        holdoverDays: agreement.holdoverDays,
+        commissionPercent: agreement.commissionPercent,
+      });
+
+      // Create the agreement record
+      const agreementRecord = await storage.createBuyBoxAgreement({
+        userId,
+        agreementVersion: "1.0",
+        agreementHtml,
+        signedName: agreement.signedName,
+        signatureDataUrl: agreement.signatureDataUrl,
+        termStartDate: new Date(),
+        termEndDate: new Date(agreement.termEndDate),
+        holdoverDays: agreement.holdoverDays || 60,
+        commissionPercent: agreement.commissionPercent || 2.5,
+        ipAddress: req.ip || req.connection?.remoteAddress || null,
+        userAgent: req.headers["user-agent"] || null,
+        signedAt: new Date(),
+      });
+
+      // Normalize optional fields to avoid undefined being sent to database
+      const normalizedMandate = {
+        userId,
+        agreementId: agreementRecord.id,
+        status: "new" as const,
+        polygonGeoJson: mandate.polygonGeoJson,
+        centroidLat: mandate.centroidLat ?? null,
+        centroidLng: mandate.centroidLng ?? null,
+        areaName: mandate.areaName ?? null,
+        targetPrice: mandate.targetPrice ?? null,
+        maxPrice: mandate.maxPrice ?? null,
+        lotFrontage: mandate.lotFrontage ?? null,
+        lotFrontageUnit: mandate.lotFrontageUnit ?? null,
+        lotDepth: mandate.lotDepth ?? null,
+        lotDepthUnit: mandate.lotDepthUnit ?? null,
+        totalLotArea: mandate.totalLotArea ?? null,
+        totalLotAreaUnit: mandate.totalLotAreaUnit ?? null,
+        zoningPlanningStatus: mandate.zoningPlanningStatus ?? null,
+        buildingType: mandate.buildingType ?? null,
+        occupancy: mandate.occupancy ?? null,
+        targetClosingDate: mandate.targetClosingDate ? new Date(mandate.targetClosingDate) : null,
+        possessionDate: mandate.possessionDate ? new Date(mandate.possessionDate) : null,
+        offerConditions: mandate.offerConditions ?? null,
+        additionalNotes: mandate.additionalNotes ?? null,
+      };
+
+      // Create the mandate record
+      const mandateRecord = await storage.createBuyBoxMandate(normalizedMandate);
+
+      // Send email notification to admin
+      try {
+        const user = await authStorage.getUser(userId);
+        await sendNotificationEmail({
+          to: "danielfoch@gmail.com",
+          subject: `New BuyBox Mandate Submitted`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+              <h2 style="color: #22c55e;">New BuyBox Mandate</h2>
+              <p><strong>From:</strong> ${user?.firstName || ""} ${user?.lastName || ""} (${user?.email})</p>
+              <p><strong>Mandate ID:</strong> ${mandateRecord.id}</p>
+              <p><strong>Budget:</strong> ${mandate.targetPrice ? `$${mandate.targetPrice.toLocaleString()}` : "Not specified"} - ${mandate.maxPrice ? `$${mandate.maxPrice.toLocaleString()}` : "Not specified"}</p>
+              <p><strong>Building Type:</strong> ${mandate.buildingType || "Not specified"}</p>
+              <p><strong>Signed Name:</strong> ${agreement.signedName}</p>
+              <p><strong>Agreement Term:</strong> Ends ${new Date(agreement.termEndDate).toLocaleDateString()}</p>
+              <p><strong>Commission:</strong> ${agreement.commissionPercent}%</p>
+            </div>
+          `,
+        });
+      } catch (emailError) {
+        console.error("[BuyBox] Failed to send notification email:", emailError);
+      }
+
+      res.json({ 
+        success: true, 
+        mandateId: mandateRecord.id,
+        agreementId: agreementRecord.id,
+      });
+    } catch (error) {
+      console.error("Error submitting BuyBox:", error);
+      res.status(500).json({ error: "Failed to submit BuyBox mandate" });
+    }
+  });
+
+  // Get a specific BuyBox mandate (requires authentication and ownership/role check)
+  app.get("/api/buybox/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await authStorage.getUser(userId);
+      
+      const mandate = await storage.getBuyBoxMandate(req.params.id);
+      if (!mandate) {
+        res.status(404).json({ error: "Mandate not found" });
+        return;
+      }
+      
+      // Only mandate owner, admin, or realtor can view
+      if (mandate.userId !== userId && user?.role !== "admin" && user?.role !== "realtor") {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+      
+      res.json(mandate);
+    } catch (error) {
+      console.error("Error fetching BuyBox mandate:", error);
+      res.status(500).json({ error: "Failed to fetch mandate" });
+    }
+  });
+
+  // Get user's BuyBox mandates
+  app.get("/api/buybox/user/mandates", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const mandates = await storage.getBuyBoxMandatesByUser(userId);
+      res.json(mandates);
+    } catch (error) {
+      console.error("Error fetching user mandates:", error);
+      res.status(500).json({ error: "Failed to fetch mandates" });
+    }
+  });
+
+  // Get all BuyBox mandates (for realtors/admin)
+  app.get("/api/buybox/all/mandates", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await authStorage.getUser(req.session.userId);
+      // Only allow admin or realtor roles
+      if (!user || (user.role !== "admin" && user.role !== "realtor")) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+      const mandates = await storage.getAllBuyBoxMandates();
+      res.json(mandates);
+    } catch (error) {
+      console.error("Error fetching all mandates:", error);
+      res.status(500).json({ error: "Failed to fetch mandates" });
+    }
+  });
+
+  // Submit a realtor response to a mandate
+  app.post("/api/buybox/:id/respond", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await authStorage.getUser(userId);
+      
+      if (!user || (user.role !== "admin" && user.role !== "realtor")) {
+        res.status(403).json({ error: "Only realtors can respond to mandates" });
+        return;
+      }
+
+      const mandate = await storage.getBuyBoxMandate(req.params.id);
+      if (!mandate) {
+        res.status(404).json({ error: "Mandate not found" });
+        return;
+      }
+
+      const { message, propertyAddress, propertyLink } = req.body;
+      if (!message) {
+        res.status(400).json({ error: "Message is required" });
+        return;
+      }
+
+      const response = await storage.createBuyBoxResponse({
+        mandateId: mandate.id,
+        realtorId: userId,
+        message,
+        propertyAddress,
+        propertyLink,
+      });
+
+      // Create notification for mandate owner
+      await storage.createBuyBoxNotification({
+        userId: mandate.userId,
+        type: "realtor_response",
+        title: "New Response to Your BuyBox",
+        message: `A realtor has responded to your property search mandate.`,
+        mandateId: mandate.id,
+      });
+
+      res.json({ success: true, responseId: response.id });
+    } catch (error) {
+      console.error("Error submitting response:", error);
+      res.status(500).json({ error: "Failed to submit response" });
+    }
+  });
+
+  // Get responses for a mandate
+  app.get("/api/buybox/:id/responses", isAuthenticated, async (req: any, res) => {
+    try {
+      const mandate = await storage.getBuyBoxMandate(req.params.id);
+      if (!mandate) {
+        res.status(404).json({ error: "Mandate not found" });
+        return;
+      }
+
+      // Only mandate owner or realtors/admin can view responses
+      const userId = req.session.userId;
+      const user = await authStorage.getUser(userId);
+      if (mandate.userId !== userId && user?.role !== "admin" && user?.role !== "realtor") {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+
+      const responses = await storage.getBuyBoxResponsesByMandate(req.params.id);
+      res.json(responses);
+    } catch (error) {
+      console.error("Error fetching responses:", error);
+      res.status(500).json({ error: "Failed to fetch responses" });
+    }
+  });
+
+  // Get user's notifications
+  app.get("/api/buybox/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const notifications = await storage.getBuyBoxNotificationsByUser(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Mark notification as read
+  app.post("/api/buybox/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.markBuyBoxNotificationRead(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification read:", error);
+      res.status(500).json({ error: "Failed to mark notification read" });
+    }
+  });
+
   return httpServer;
+}
+
+// Helper function to generate agreement HTML
+function generateBuyBoxAgreementHtml(data: {
+  signedName: string;
+  termEndDate: string;
+  holdoverDays: number;
+  commissionPercent: number;
+}): string {
+  return `
+    <html>
+    <head><title>Buyer Representation Agreement</title></head>
+    <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+      <h1>Buyer Representation & BuyBox Terms</h1>
+      <p><strong>Version:</strong> 1.0</p>
+      <p><strong>Date Signed:</strong> ${new Date().toLocaleDateString()}</p>
+      
+      <h2>Parties</h2>
+      <p><strong>Buyer:</strong> ${data.signedName}</p>
+      <p><strong>Brokerage:</strong> Valery Real Estate Inc.</p>
+      <p><strong>Agent:</strong> Daniel Foch (and referrals/assigns)</p>
+      
+      <h2>Term</h2>
+      <p>This agreement begins on ${new Date().toLocaleDateString()} and expires on ${new Date(data.termEndDate).toLocaleDateString()}.</p>
+      
+      <h2>Holdover Period</h2>
+      <p>${data.holdoverDays} days after agreement expiry.</p>
+      
+      <h2>Commission</h2>
+      <p>Agreed commission rate: ${data.commissionPercent}%</p>
+      
+      <h2>Legal Notice</h2>
+      <p>This document is not legal advice. Consult with a licensed real estate lawyer for professional guidance.</p>
+    </body>
+    </html>
+  `;
 }
