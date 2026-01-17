@@ -833,3 +833,232 @@ export const insertRenoQuoteSchema = createInsertSchema(renoQuotes).omit({
 
 export type InsertRenoQuote = z.infer<typeof insertRenoQuoteSchema>;
 export type RenoQuote = typeof renoQuotes.$inferSelect;
+
+// ============================================
+// BUYBOX MANDATE SYSTEM
+// ============================================
+
+export const buyBoxMandateStatuses = [
+  "new",
+  "contacted", 
+  "showing_searching",
+  "offer_submitted",
+  "under_contract",
+  "closed",
+  "not_proceeding"
+] as const;
+export type BuyBoxMandateStatus = (typeof buyBoxMandateStatuses)[number];
+
+export const buyBoxBuildingTypes = [
+  "detached",
+  "semi",
+  "townhouse", 
+  "condo",
+  "multiplex",
+  "land",
+  "commercial",
+  "other"
+] as const;
+export type BuyBoxBuildingType = (typeof buyBoxBuildingTypes)[number];
+
+export const buyBoxOccupancyTypes = [
+  "vacant",
+  "tenanted",
+  "owner_occupied"
+] as const;
+export type BuyBoxOccupancyType = (typeof buyBoxOccupancyTypes)[number];
+
+// BuyBox Agreement (e-signed buyer representation)
+export const buyBoxAgreements = pgTable("buybox_agreements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  agreementVersion: varchar("agreement_version").notNull().default("1.0"),
+  agreementHtml: text("agreement_html").notNull(),
+  signedName: text("signed_name").notNull(),
+  signatureDataUrl: text("signature_data_url").notNull(),
+  termStartDate: timestamp("term_start_date").notNull(),
+  termEndDate: timestamp("term_end_date").notNull(),
+  holdoverDays: integer("holdover_days").default(60),
+  commissionPercent: real("commission_percent").default(2.5),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  signedAt: timestamp("signed_at").notNull(),
+  pdfUrl: text("pdf_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const buyBoxAgreementsRelations = relations(buyBoxAgreements, ({ one, many }) => ({
+  user: one(users, {
+    fields: [buyBoxAgreements.userId],
+    references: [users.id],
+  }),
+  mandates: many(buyBoxMandates),
+}));
+
+// BuyBox Mandate (the property search criteria)
+export const buyBoxMandates = pgTable("buybox_mandates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  agreementId: varchar("agreement_id").references(() => buyBoxAgreements.id).notNull(),
+  status: text("status").default("new").notNull(),
+  
+  // Polygon data
+  polygonGeoJson: jsonb("polygon_geo_json").notNull(),
+  centroidLat: real("centroid_lat"),
+  centroidLng: real("centroid_lng"),
+  areaName: text("area_name"),
+  
+  // Optional mandate details
+  targetPrice: integer("target_price"),
+  maxPrice: integer("max_price"),
+  lotFrontage: real("lot_frontage"),
+  lotFrontageUnit: text("lot_frontage_unit").default("ft"),
+  lotDepth: real("lot_depth"),
+  lotDepthUnit: text("lot_depth_unit").default("ft"),
+  totalLotArea: real("total_lot_area"),
+  totalLotAreaUnit: text("total_lot_area_unit").default("sqft"),
+  zoningPlanningStatus: text("zoning_planning_status"),
+  buildingType: text("building_type"),
+  occupancy: text("occupancy"),
+  targetClosingDate: timestamp("target_closing_date"),
+  possessionDate: timestamp("possession_date"),
+  offerConditions: text("offer_conditions").array(),
+  additionalNotes: text("additional_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const buyBoxMandatesRelations = relations(buyBoxMandates, ({ one, many }) => ({
+  user: one(users, {
+    fields: [buyBoxMandates.userId],
+    references: [users.id],
+  }),
+  agreement: one(buyBoxAgreements, {
+    fields: [buyBoxMandates.agreementId],
+    references: [buyBoxAgreements.id],
+  }),
+  responses: many(buyBoxResponses),
+}));
+
+// Realtor responses to mandates
+export const buyBoxResponses = pgTable("buybox_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mandateId: varchar("mandate_id").references(() => buyBoxMandates.id).notNull(),
+  realtorId: varchar("realtor_id").references(() => users.id).notNull(),
+  message: text("message").notNull(),
+  propertyAddress: text("property_address"),
+  propertyLink: text("property_link"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const buyBoxResponsesRelations = relations(buyBoxResponses, ({ one }) => ({
+  mandate: one(buyBoxMandates, {
+    fields: [buyBoxResponses.mandateId],
+    references: [buyBoxMandates.id],
+  }),
+  realtor: one(users, {
+    fields: [buyBoxResponses.realtorId],
+    references: [users.id],
+  }),
+}));
+
+// BuyBox notifications
+export const buyBoxNotifications = pgTable("buybox_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  mandateId: varchar("mandate_id").references(() => buyBoxMandates.id),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const buyBoxNotificationsRelations = relations(buyBoxNotifications, ({ one }) => ({
+  user: one(users, {
+    fields: [buyBoxNotifications.userId],
+    references: [users.id],
+  }),
+  mandate: one(buyBoxMandates, {
+    fields: [buyBoxNotifications.mandateId],
+    references: [buyBoxMandates.id],
+  }),
+}));
+
+// Admin config for BuyBox defaults
+export const buyBoxConfig = pgTable("buybox_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key").notNull().unique(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Insert schemas
+export const insertBuyBoxAgreementSchema = createInsertSchema(buyBoxAgreements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBuyBoxMandateSchema = createInsertSchema(buyBoxMandates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBuyBoxResponseSchema = createInsertSchema(buyBoxResponses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBuyBoxNotificationSchema = createInsertSchema(buyBoxNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type InsertBuyBoxAgreement = z.infer<typeof insertBuyBoxAgreementSchema>;
+export type BuyBoxAgreement = typeof buyBoxAgreements.$inferSelect;
+
+export type InsertBuyBoxMandate = z.infer<typeof insertBuyBoxMandateSchema>;
+export type BuyBoxMandate = typeof buyBoxMandates.$inferSelect;
+
+export type InsertBuyBoxResponse = z.infer<typeof insertBuyBoxResponseSchema>;
+export type BuyBoxResponse = typeof buyBoxResponses.$inferSelect;
+
+export type InsertBuyBoxNotification = z.infer<typeof insertBuyBoxNotificationSchema>;
+export type BuyBoxNotification = typeof buyBoxNotifications.$inferSelect;
+
+// Validation schemas for BuyBox forms
+export const buyBoxMandateFormSchema = z.object({
+  polygonGeoJson: z.any(),
+  areaName: z.string().optional(),
+  targetPrice: z.number().min(0).optional(),
+  maxPrice: z.number().min(0).optional(),
+  lotFrontage: z.number().min(0).optional(),
+  lotFrontageUnit: z.enum(["ft", "m"]).default("ft"),
+  lotDepth: z.number().min(0).optional(),
+  lotDepthUnit: z.enum(["ft", "m"]).default("ft"),
+  totalLotArea: z.number().min(0).optional(),
+  totalLotAreaUnit: z.enum(["sqft", "sqm", "acres"]).default("sqft"),
+  zoningPlanningStatus: z.string().optional(),
+  buildingType: z.enum(buyBoxBuildingTypes).optional(),
+  occupancy: z.enum(buyBoxOccupancyTypes).optional(),
+  targetClosingDate: z.string().optional(),
+  possessionDate: z.string().optional(),
+  offerConditions: z.array(z.string()).optional(),
+  additionalNotes: z.string().optional(),
+});
+
+export type BuyBoxMandateFormData = z.infer<typeof buyBoxMandateFormSchema>;
+
+export const buyBoxAgreementFormSchema = z.object({
+  termEndDate: z.string(),
+  holdoverDays: z.number().min(0).max(180).default(60),
+  commissionPercent: z.number().min(0).max(10).default(2.5),
+  signedName: z.string().min(1, "Legal name is required"),
+  signatureDataUrl: z.string().min(1, "Signature is required"),
+  agreedToTerms: z.boolean().refine(val => val === true, "You must agree to the terms"),
+});
+
+export type BuyBoxAgreementFormData = z.infer<typeof buyBoxAgreementFormSchema>;

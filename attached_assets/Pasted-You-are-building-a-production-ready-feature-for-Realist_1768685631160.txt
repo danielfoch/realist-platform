@@ -1,0 +1,178 @@
+You are building a production-ready feature for Realist.ca called “BuyBox”.
+
+Goal
+- Let a consumer draw a polygon on a map (their target buy area), optionally add mandate details about the property they want, then submit.
+- Submission creates a “BuyBox Mandate” record.
+- That mandate is automatically pushed to Realtor members in our internal network (in-app feed + email notification).
+- Before final submission, the user MUST agree to and e-sign a Buyer Representation Agreement-style contract (BRA-equivalent clickwrap + signature block). This agreement must be stored with an audit trail and be downloadable as a PDF.
+
+Important legal/compliance constraints
+- Do NOT copy any proprietary OREA/TRREB form wording verbatim. Create original agreement language that captures the business terms.
+- Include disclosures and consent consistent with Ontario/Canada practice: exclusivity, term, geographic area, commission entitlement, privacy/consent for sharing mandate to our realtor network, electronic communication consent.
+- Provide a clear “Not legal advice” notice and advise the user to obtain independent legal advice if desired.
+
+Tech stack
+- Frontend: Next.js (App Router), TypeScript, Tailwind.
+- Maps: Google Maps JavaScript API with Drawing Library OR Mapbox GL Draw (pick one; default to Google Maps because we already use Google Maps address lookup elsewhere).
+- Backend: Node/Next API routes OR Express server.
+- DB: Postgres via Prisma ORM.
+- Auth: NextAuth (email magic link) with roles:
+  - consumer
+  - realtor_member
+  - admin
+- Email: Resend or SendGrid.
+- File/PDF generation: server-side PDF (pdf-lib or similar) to produce a signed agreement PDF and a mandate summary PDF.
+
+Core UX flow (Consumer)
+1) BuyBox Builder Page
+   - Map widget with polygon drawing enabled.
+   - Controls:
+     - Draw polygon / Edit polygon / Clear polygon.
+     - Optional: also allow searching an address to center map (Google Places Autocomplete).
+   - After polygon exists, show “Mandate Details” form (all optional):
+     - targetPrice (number)
+     - maxPrice (number)
+     - lotFrontage (number + unit)
+     - lotDepth (number + unit)
+     - totalLotArea (number + unit)
+     - zoningPlanningStatus (text or dropdown + free text)
+     - buildingType (dropdown: detached, semi, townhouse, condo, multiplex, land, commercial, other)
+     - occupancy (dropdown: vacant, tenanted, ownerOccupied)
+     - targetClosingDate (date)
+     - possessionDate (date)
+     - offerConditions (multi-select + free text: financing, inspection, lawyer review, sale of buyer property, status certificate, zoning due diligence, other)
+     - additionalNotes (textarea)
+
+2) Agreement Gate (Required)
+   - Before submission, show “Buyer Representation & BuyBox Terms” contract page with:
+     - Summary of what the user is authorizing (exclusive representation by Daniel Foch / Valery Real Estate Inc., and any referrals/assigns).
+     - Agreement term (start now, end date selectable; default 90 days; disallow > 6 months without explicit initials checkbox).
+     - Geographic area = the polygon they drew (show a mini map preview).
+     - Commission clause:
+       - We are entitled to commission offered by listing brokerage/seller; if less than agreed commission, buyer pays the deficiency.
+       - Provide commission input fields (admin-configurable defaults).
+     - Holdover period input (e.g., 60 days default).
+     - Referral/introductions clause: if we introduce a property or opportunity in the target area during the term/holdover and buyer purchases, commission applies.
+     - Consent to electronic communication and e-sign.
+     - Privacy & sharing consent: buyer consents to sharing their mandate details with vetted realtor members in our network for the purpose of sourcing properties.
+     - Mandatory checkbox: “I have read and agree” (cannot proceed without checking).
+     - Signature block:
+       - Full legal name (typed)
+       - Signature (drawn canvas or typed signature)
+       - Date/time auto-stamped
+       - IP address + user agent captured server-side
+     - Button: “Sign & Submit BuyBox”
+
+3) Confirmation
+   - Show mandate ID
+   - Show a link to download:
+     - Signed Agreement PDF
+     - Mandate Summary PDF
+   - Show “Your BuyBox was shared with X realtor members.”
+
+Realtor member experience
+- Realtor Dashboard includes:
+  - “New BuyBoxes” feed with filtering by city/region, budget, buildingType.
+  - Map preview of polygon.
+  - Ability to “Claim / Respond”:
+    - Realtor can message the consumer inside the platform (in-app messaging) OR send a structured lead email (route through platform).
+  - Track status:
+    - New → Contacted → Showing/Searching → Offer Submitted → Under Contract → Closed → Not Proceeding
+- Notifications:
+  - On new mandate submission, notify realtor members:
+    - In-app notification
+    - Email digest (immediate + optional daily digest setting)
+
+Admin
+- Admin can:
+  - Configure who counts as “realtor members”
+  - Configure commission default, holdover default, agreement default term
+  - View all mandates and signed agreements
+  - Export CSV
+  - Disable/ban abusive users
+  - Audit logs
+
+Data model (Prisma)
+- User: id, email, name, role, phone, createdAt
+- BuyBoxMandate:
+  - id, consumerId, status, createdAt, updatedAt
+  - polygonGeoJson (stored as JSON)
+  - centroidLat, centroidLng
+  - fields for each optional mandate detail
+  - agreementId (FK)
+- Agreement:
+  - id, consumerId, mandateId
+  - agreementVersion (string)
+  - agreementHtml (string) OR agreementJson (structured sections)
+  - signedName
+  - signatureImageUrl (or base64 stored securely)
+  - signedAt
+  - ipAddress
+  - userAgent
+  - pdfUrl
+- RealtorResponse:
+  - id, mandateId, realtorId, message, createdAt
+- Notification:
+  - id, userId, type, payloadJson, readAt, createdAt
+- AuditLog:
+  - id, userId, action, entityType, entityId, metaJson, createdAt
+
+Implementation details
+- Polygon drawing:
+  - Use Google Maps DrawingManager to create/edit polygons.
+  - Export polygon as GeoJSON.
+  - Compute centroid server-side or client-side.
+- Validation:
+  - Mandate optional fields can be blank.
+  - Agreement is mandatory. No mandate creation without signed agreement.
+- Security:
+  - Role-based access control.
+  - Only realtor_member can view mandates; consumers can only view their own.
+  - Rate limit creation endpoint to prevent spam.
+- PDF generation:
+  - Generate a clean PDF with:
+    - Mandate details
+    - Polygon screenshot (optional) or polygon coordinates summary
+    - Agreement text
+    - Signature image + signedName + timestamps + IP
+- Versioning:
+  - Agreement text must be versioned (agreementVersion) so you can update later without altering past records.
+
+Deliverables
+- Create the BuyBox pages/components:
+  - /buybox/new (builder)
+  - /buybox/agreement (gate + signature)
+  - /buybox/confirm/[id]
+- Create realtor dashboard:
+  - /realtor/buyboxes
+  - /realtor/buyboxes/[id]
+- Create API routes:
+  - POST /api/buybox/draft (optional)
+  - POST /api/buybox/submit (requires agreement signature payload)
+  - GET /api/buybox/[id]
+  - POST /api/realtor/respond
+  - POST /api/notifications/mark-read
+- Add database migrations via Prisma.
+- Add seed script to create an admin + sample realtor members.
+- Add a minimal, clean UI consistent with Realist branding.
+
+Agreement language (original, not copied)
+- Write a concise agreement with headings:
+  - Parties (Buyer, Brokerage: Valery Real Estate Inc; Agent: Daniel Foch; includes “referrals or assigns”)
+  - Exclusive authority + scope (locate property in polygon area)
+  - Term + expiry
+  - Geographic area definition (polygon)
+  - Commission/compensation
+  - Holdover
+  - Buyer cooperation / referral of properties
+  - Multiple representation disclosure (if applicable)
+  - Privacy/consent
+  - Electronic communications & e-sign
+  - Governing law (Ontario)
+  - Signature block
+- Include a non-legal-advice notice.
+
+Output requirement
+- Produce complete code with clear comments.
+- Make it run in Replit with environment variables for API keys.
+- Provide a README with setup steps (Google Maps key, DB, email provider).
