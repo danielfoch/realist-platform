@@ -31,7 +31,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
 - **Schema Location**: `shared/schema.ts` contains all table definitions
-- **Tables**: leads, properties, analyses, webhookLogs, dataCache
+- **Tables**: leads, properties, analyses, webhookLogs, dataCache, buyBoxAgreements, buyBoxMandates, buyBoxResponses, buyBoxNotifications
 - **Migrations**: Drizzle Kit for schema management (`npm run db:push`)
 
 ### Key Design Patterns
@@ -49,6 +49,10 @@ Preferred communication style: Simple, everyday language.
 - `/forgot-password` - Password reset request
 - `/reset-password` - Password reset with token
 - `/set-password` - Account setup for auto-enrolled leads
+- `/buybox` - BuyBox mandate builder with Google Maps polygon drawing
+- `/buybox/agreement` - E-signature agreement page for buyer representation
+- `/buybox/confirmation/:id` - Confirmation page after mandate submission
+- `/realtor/buyboxes` - Realtor dashboard to view and respond to mandates
 
 ### Authentication System
 - **Type**: Custom email/password authentication (not Replit OAuth)
@@ -78,6 +82,18 @@ Preferred communication style: Simple, everyday language.
 - **PDF Export**: html-to-image and jsPDF for analysis exports
 
 ## Recent Changes
+
+### BuyBox Mandate System (January 2026)
+- Multi-step BuyBox builder for buyers to define target investment areas
+- Google Maps polygon drawing to define search geography
+- Optional mandate details: price range, lot dimensions, building type, occupancy, closing conditions
+- E-signature agreement page with buyer representation terms
+- Session-based data transport (sessionStorage) to handle large polygons
+- Automatic cleanup of session data on flow abandonment or completion
+- Database tables: buyBoxAgreements, buyBoxMandates, buyBoxResponses, buyBoxNotifications
+- Realtor dashboard at `/realtor/buyboxes` with status and building type filters
+- Email notifications to danielfoch@gmail.com on new mandate submissions
+- API routes with Zod validation and authentication/authorization checks
 
 ### Stress Test Analysis (January 2026)
 - Added stress test feature to Deal Analyzer showing Base/Bear/Bull scenarios
