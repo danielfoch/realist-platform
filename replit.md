@@ -31,7 +31,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
 - **Schema Location**: `shared/schema.ts` contains all table definitions
-- **Tables**: leads, properties, analyses, webhookLogs, dataCache, buyBoxAgreements, buyBoxMandates, buyBoxResponses, buyBoxNotifications
+- **Tables**: leads, properties, analyses, webhookLogs, dataCache, buyBoxAgreements, buyBoxMandates, buyBoxResponses, buyBoxNotifications, coInvestUserProfiles, coInvestGroups, coInvestMemberships, coInvestChecklistResults, coInvestMessages
 - **Migrations**: Drizzle Kit for schema management (`npm run db:push`)
 
 ### Key Design Patterns
@@ -53,6 +53,11 @@ Preferred communication style: Simple, everyday language.
 - `/buybox/agreement` - E-signature agreement page for buyer representation
 - `/buybox/confirmation/:id` - Confirmation page after mandate submission
 - `/realtor/buyboxes` - Realtor dashboard to view and respond to mandates
+- `/coinvesting` - Co-Investing landing page with feature overview
+- `/coinvesting/opportunities` - Browse and filter co-investing groups
+- `/coinvesting/checklist` - Interactive complexity assessment tool
+- `/coinvesting/groups/new` - Multi-step group creation wizard (requires auth)
+- `/coinvesting/groups/:id` - Group detail page with chat for approved members
 
 ### Authentication System
 - **Type**: Custom email/password authentication (not Replit OAuth)
@@ -82,6 +87,18 @@ Preferred communication style: Simple, everyday language.
 - **PDF Export**: html-to-image and jsPDF for analysis exports
 
 ## Recent Changes
+
+### Co-Investing Platform (February 2026)
+- Co-Investing feature for finding partners and pooling capital for real estate deals
+- Multi-step group creation wizard with complexity scoring system (0-100 score, 3-tier classification)
+- Educational disclaimer system throughout emphasizing this is not legal/securities/tax advice
+- Complexity checklist evaluates 10+ factors (passive investors, profit promises, centralized management, etc.)
+- Tier classification: simple_coownership (<30), borderline (30-60), likely_complex (>60)
+- Public/private group visibility with member approval workflow
+- Basic chat functionality for approved group members
+- Database tables: coInvestUserProfiles, coInvestGroups, coInvestMemberships, coInvestChecklistResults, coInvestMessages
+- Navigation updated with "Co-Invest" link
+- Frontend library: `client/src/lib/coinvesting.ts` for shared labels and complexity calculation
 
 ### BuyBox Mandate System (January 2026)
 - Multi-step BuyBox builder for buyers to define target investment areas

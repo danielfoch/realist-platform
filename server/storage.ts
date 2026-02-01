@@ -23,6 +23,11 @@ import {
   buyBoxMandates,
   buyBoxResponses,
   buyBoxNotifications,
+  coInvestUserProfiles,
+  coInvestGroups,
+  coInvestMemberships,
+  coInvestChecklistResults,
+  coInvestMessages,
   type Lead, 
   type InsertLead,
   type Property,
@@ -70,6 +75,16 @@ import {
   type InsertBuyBoxResponse,
   type BuyBoxNotification,
   type InsertBuyBoxNotification,
+  type CoInvestUserProfile,
+  type InsertCoInvestUserProfile,
+  type CoInvestGroup,
+  type InsertCoInvestGroup,
+  type CoInvestMembership,
+  type InsertCoInvestMembership,
+  type CoInvestChecklistResult,
+  type InsertCoInvestChecklistResult,
+  type CoInvestMessage,
+  type InsertCoInvestMessage,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -218,6 +233,34 @@ export interface IStorage {
   createBuyBoxNotification(notification: InsertBuyBoxNotification): Promise<BuyBoxNotification>;
   getBuyBoxNotificationsByUser(userId: string): Promise<BuyBoxNotification[]>;
   markBuyBoxNotificationRead(id: string): Promise<void>;
+
+  // Co-Investing User Profiles
+  getCoInvestUserProfile(userId: string): Promise<CoInvestUserProfile | undefined>;
+  upsertCoInvestUserProfile(profile: InsertCoInvestUserProfile): Promise<CoInvestUserProfile>;
+
+  // Co-Investing Groups
+  createCoInvestGroup(group: InsertCoInvestGroup): Promise<CoInvestGroup>;
+  getCoInvestGroup(id: string): Promise<CoInvestGroup | undefined>;
+  getCoInvestGroupsByOwner(userId: string): Promise<CoInvestGroup[]>;
+  getPublicCoInvestGroups(filters?: { jurisdiction?: string; propertyType?: string; strategy?: string; skillsNeeded?: string[]; tier?: string }): Promise<CoInvestGroup[]>;
+  updateCoInvestGroup(id: string, updates: Partial<CoInvestGroup>): Promise<CoInvestGroup | undefined>;
+
+  // Co-Investing Memberships
+  createCoInvestMembership(membership: InsertCoInvestMembership): Promise<CoInvestMembership>;
+  getCoInvestMembership(id: string): Promise<CoInvestMembership | undefined>;
+  getCoInvestMembershipsByGroup(groupId: string): Promise<CoInvestMembership[]>;
+  getCoInvestMembershipsByUser(userId: string): Promise<CoInvestMembership[]>;
+  getUserMembershipInGroup(userId: string, groupId: string): Promise<CoInvestMembership | undefined>;
+  updateCoInvestMembership(id: string, updates: Partial<CoInvestMembership>): Promise<CoInvestMembership | undefined>;
+
+  // Co-Investing Checklist Results
+  createCoInvestChecklistResult(result: InsertCoInvestChecklistResult): Promise<CoInvestChecklistResult>;
+  getCoInvestChecklistResult(id: string): Promise<CoInvestChecklistResult | undefined>;
+  getCoInvestChecklistResultsByGroup(groupId: string): Promise<CoInvestChecklistResult[]>;
+
+  // Co-Investing Messages
+  createCoInvestMessage(message: InsertCoInvestMessage): Promise<CoInvestMessage>;
+  getCoInvestMessagesByGroup(groupId: string): Promise<CoInvestMessage[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -938,6 +981,127 @@ export class DatabaseStorage implements IStorage {
     await db.update(buyBoxNotifications)
       .set({ readAt: new Date() })
       .where(eq(buyBoxNotifications.id, id));
+  }
+
+  // Co-Investing User Profiles
+  async getCoInvestUserProfile(userId: string): Promise<CoInvestUserProfile | undefined> {
+    const [result] = await db.select().from(coInvestUserProfiles).where(eq(coInvestUserProfiles.userId, userId));
+    return result || undefined;
+  }
+
+  async upsertCoInvestUserProfile(profile: InsertCoInvestUserProfile): Promise<CoInvestUserProfile> {
+    const existing = await this.getCoInvestUserProfile(profile.userId);
+    if (existing) {
+      const [result] = await db.update(coInvestUserProfiles)
+        .set({ ...profile, updatedAt: new Date() })
+        .where(eq(coInvestUserProfiles.userId, profile.userId))
+        .returning();
+      return result;
+    }
+    const [result] = await db.insert(coInvestUserProfiles).values(profile).returning();
+    return result;
+  }
+
+  // Co-Investing Groups
+  async createCoInvestGroup(group: InsertCoInvestGroup): Promise<CoInvestGroup> {
+    const [result] = await db.insert(coInvestGroups).values(group).returning();
+    return result;
+  }
+
+  async getCoInvestGroup(id: string): Promise<CoInvestGroup | undefined> {
+    const [result] = await db.select().from(coInvestGroups).where(eq(coInvestGroups.id, id));
+    return result || undefined;
+  }
+
+  async getCoInvestGroupsByOwner(userId: string): Promise<CoInvestGroup[]> {
+    return db.select().from(coInvestGroups)
+      .where(eq(coInvestGroups.ownerUserId, userId))
+      .orderBy(desc(coInvestGroups.createdAt));
+  }
+
+  async getPublicCoInvestGroups(filters?: { jurisdiction?: string; propertyType?: string; strategy?: string; skillsNeeded?: string[]; tier?: string }): Promise<CoInvestGroup[]> {
+    let query = db.select().from(coInvestGroups)
+      .where(eq(coInvestGroups.visibility, "public"))
+      .orderBy(desc(coInvestGroups.createdAt));
+    
+    return query;
+  }
+
+  async updateCoInvestGroup(id: string, updates: Partial<CoInvestGroup>): Promise<CoInvestGroup | undefined> {
+    const [result] = await db.update(coInvestGroups)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(coInvestGroups.id, id))
+      .returning();
+    return result || undefined;
+  }
+
+  // Co-Investing Memberships
+  async createCoInvestMembership(membership: InsertCoInvestMembership): Promise<CoInvestMembership> {
+    const [result] = await db.insert(coInvestMemberships).values(membership).returning();
+    return result;
+  }
+
+  async getCoInvestMembership(id: string): Promise<CoInvestMembership | undefined> {
+    const [result] = await db.select().from(coInvestMemberships).where(eq(coInvestMemberships.id, id));
+    return result || undefined;
+  }
+
+  async getCoInvestMembershipsByGroup(groupId: string): Promise<CoInvestMembership[]> {
+    return db.select().from(coInvestMemberships)
+      .where(eq(coInvestMemberships.groupId, groupId))
+      .orderBy(desc(coInvestMemberships.createdAt));
+  }
+
+  async getCoInvestMembershipsByUser(userId: string): Promise<CoInvestMembership[]> {
+    return db.select().from(coInvestMemberships)
+      .where(eq(coInvestMemberships.userId, userId))
+      .orderBy(desc(coInvestMemberships.createdAt));
+  }
+
+  async getUserMembershipInGroup(userId: string, groupId: string): Promise<CoInvestMembership | undefined> {
+    const [result] = await db.select().from(coInvestMemberships)
+      .where(and(
+        eq(coInvestMemberships.userId, userId),
+        eq(coInvestMemberships.groupId, groupId)
+      ));
+    return result || undefined;
+  }
+
+  async updateCoInvestMembership(id: string, updates: Partial<CoInvestMembership>): Promise<CoInvestMembership | undefined> {
+    const [result] = await db.update(coInvestMemberships)
+      .set(updates)
+      .where(eq(coInvestMemberships.id, id))
+      .returning();
+    return result || undefined;
+  }
+
+  // Co-Investing Checklist Results
+  async createCoInvestChecklistResult(result: InsertCoInvestChecklistResult): Promise<CoInvestChecklistResult> {
+    const [created] = await db.insert(coInvestChecklistResults).values(result).returning();
+    return created;
+  }
+
+  async getCoInvestChecklistResult(id: string): Promise<CoInvestChecklistResult | undefined> {
+    const [result] = await db.select().from(coInvestChecklistResults).where(eq(coInvestChecklistResults.id, id));
+    return result || undefined;
+  }
+
+  async getCoInvestChecklistResultsByGroup(groupId: string): Promise<CoInvestChecklistResult[]> {
+    return db.select().from(coInvestChecklistResults)
+      .where(eq(coInvestChecklistResults.groupId, groupId))
+      .orderBy(desc(coInvestChecklistResults.createdAt));
+  }
+
+  // Co-Investing Messages
+  async createCoInvestMessage(message: InsertCoInvestMessage): Promise<CoInvestMessage> {
+    const [result] = await db.insert(coInvestMessages).values(message).returning();
+    return result;
+  }
+
+  async getCoInvestMessagesByGroup(groupId: string): Promise<CoInvestMessage[]> {
+    return db.select().from(coInvestMessages)
+      .where(eq(coInvestMessages.groupId, groupId))
+      .orderBy(coInvestMessages.createdAt);
   }
 }
 

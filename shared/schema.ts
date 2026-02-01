@@ -1062,3 +1062,271 @@ export const buyBoxAgreementFormSchema = z.object({
 });
 
 export type BuyBoxAgreementFormData = z.infer<typeof buyBoxAgreementFormSchema>;
+
+// ============================================
+// CO-INVESTING SCHEMAS
+// ============================================
+
+export const coInvestSkillsList = [
+  "contractor",
+  "property_manager", 
+  "realtor",
+  "mortgage_broker",
+  "accountant",
+  "designer",
+  "project_manager",
+  "analyst",
+  "legal",
+  "insurance",
+  "handyman",
+  "marketing",
+  "other"
+] as const;
+
+export type CoInvestSkill = (typeof coInvestSkillsList)[number];
+
+export const coInvestInvestorTypes = ["owner_occupier", "investor", "builder", "agent", "other"] as const;
+export const coInvestTimeHorizons = ["0_3m", "3_6m", "6_12m", "12m_plus"] as const;
+export const coInvestRiskTolerances = ["low", "medium", "high"] as const;
+export const coInvestContactPreferences = ["in_app", "email"] as const;
+
+export const coInvestGroupStatuses = ["forming", "under_contract", "closed", "paused"] as const;
+export const coInvestOwnershipStructures = ["tic", "joint_tenancy"] as const;
+export const coInvestJurisdictions = ["ON", "BC", "AB", "QC", "NS", "NB", "MB", "SK", "PE", "NL", "YT", "NT", "NU", "US", "other"] as const;
+export const coInvestPropertyTypes = ["single_family", "condo", "duplex", "triplex", "fourplex", "small_multifamily_5_19", "20_plus", "land_development", "mixed_use", "other"] as const;
+export const coInvestStrategies = ["buy_hold", "brrr", "flip", "airbnb", "student", "other"] as const;
+export const coInvestVisibilities = ["public", "members_only", "unlisted"] as const;
+export const coInvestMembershipStatuses = ["requested", "approved", "rejected", "left"] as const;
+export const coInvestMemberRoles = ["owner", "member"] as const;
+export const coInvestChecklistTiers = ["simple_coownership", "borderline", "likely_complex"] as const;
+
+// Extended user profile for co-investing
+export const coInvestUserProfiles = pgTable("coinvest_user_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  displayName: text("display_name"),
+  location: text("location"),
+  city: text("city"),
+  region: text("region"),
+  country: text("country").default("canada"),
+  investorType: text("investor_type"),
+  skills: text("skills").array(),
+  certifications: text("certifications").array(),
+  capitalMinCad: real("capital_min_cad"),
+  capitalMaxCad: real("capital_max_cad"),
+  timeHorizon: text("time_horizon"),
+  riskTolerance: text("risk_tolerance"),
+  contactPreference: text("contact_preference").default("in_app"),
+  disclaimerAcceptedAt: timestamp("disclaimer_accepted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Co-invest groups (opportunities)
+export const coInvestGroups = pgTable("coinvest_groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerUserId: varchar("owner_user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status").default("forming").notNull(),
+  ownershipStructure: text("ownership_structure").notNull(),
+  jurisdiction: text("jurisdiction").notNull(),
+  propertyAddress: text("property_address"),
+  propertyCity: text("property_city"),
+  propertyRegion: text("property_region"),
+  propertyCountry: text("property_country").default("canada"),
+  propertyType: text("property_type"),
+  unitsCount: integer("units_count"),
+  targetStrategy: text("target_strategy"),
+  targetCloseDate: timestamp("target_close_date"),
+  capitalTargetCad: real("capital_target_cad"),
+  minCommitmentCad: real("min_commitment_cad"),
+  targetGroupSize: integer("target_group_size"),
+  skillsNeeded: text("skills_needed").array(),
+  visibility: text("visibility").default("public").notNull(),
+  requiresAccredited: boolean("requires_accredited").default(false),
+  checklistResultId: varchar("checklist_result_id"),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  analysisSnapshot: jsonb("analysis_snapshot"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Group memberships
+export const coInvestMemberships = pgTable("coinvest_memberships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").references(() => coInvestGroups.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  role: text("role").default("member").notNull(),
+  pledgedCapitalCad: real("pledged_capital_cad"),
+  skillsOffered: text("skills_offered").array(),
+  note: text("note"),
+  status: text("status").default("requested").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Checklist results (complexity scoring)
+export const coInvestChecklistResults = pgTable("coinvest_checklist_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").references(() => coInvestGroups.id),
+  userId: varchar("user_id").references(() => users.id),
+  inputs: jsonb("inputs").notNull(),
+  score: integer("score").notNull(),
+  tier: text("tier").notNull(),
+  flags: text("flags").array(),
+  recommendations: text("recommendations").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Group messages (chat-lite)
+export const coInvestMessages = pgTable("coinvest_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").references(() => coInvestGroups.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations
+export const coInvestUserProfilesRelations = relations(coInvestUserProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [coInvestUserProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export const coInvestGroupsRelations = relations(coInvestGroups, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [coInvestGroups.ownerUserId],
+    references: [users.id],
+  }),
+  analysis: one(analyses, {
+    fields: [coInvestGroups.analysisId],
+    references: [analyses.id],
+  }),
+  memberships: many(coInvestMemberships),
+  messages: many(coInvestMessages),
+  checklistResult: one(coInvestChecklistResults, {
+    fields: [coInvestGroups.checklistResultId],
+    references: [coInvestChecklistResults.id],
+  }),
+}));
+
+export const coInvestMembershipsRelations = relations(coInvestMemberships, ({ one }) => ({
+  group: one(coInvestGroups, {
+    fields: [coInvestMemberships.groupId],
+    references: [coInvestGroups.id],
+  }),
+  user: one(users, {
+    fields: [coInvestMemberships.userId],
+    references: [users.id],
+  }),
+}));
+
+export const coInvestChecklistResultsRelations = relations(coInvestChecklistResults, ({ one }) => ({
+  group: one(coInvestGroups, {
+    fields: [coInvestChecklistResults.groupId],
+    references: [coInvestGroups.id],
+  }),
+  user: one(users, {
+    fields: [coInvestChecklistResults.userId],
+    references: [users.id],
+  }),
+}));
+
+export const coInvestMessagesRelations = relations(coInvestMessages, ({ one }) => ({
+  group: one(coInvestGroups, {
+    fields: [coInvestMessages.groupId],
+    references: [coInvestGroups.id],
+  }),
+  user: one(users, {
+    fields: [coInvestMessages.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schemas
+export const insertCoInvestUserProfileSchema = createInsertSchema(coInvestUserProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCoInvestGroupSchema = createInsertSchema(coInvestGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCoInvestMembershipSchema = createInsertSchema(coInvestMemberships).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCoInvestChecklistResultSchema = createInsertSchema(coInvestChecklistResults).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCoInvestMessageSchema = createInsertSchema(coInvestMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type InsertCoInvestUserProfile = z.infer<typeof insertCoInvestUserProfileSchema>;
+export type CoInvestUserProfile = typeof coInvestUserProfiles.$inferSelect;
+
+export type InsertCoInvestGroup = z.infer<typeof insertCoInvestGroupSchema>;
+export type CoInvestGroup = typeof coInvestGroups.$inferSelect;
+
+export type InsertCoInvestMembership = z.infer<typeof insertCoInvestMembershipSchema>;
+export type CoInvestMembership = typeof coInvestMemberships.$inferSelect;
+
+export type InsertCoInvestChecklistResult = z.infer<typeof insertCoInvestChecklistResultSchema>;
+export type CoInvestChecklistResult = typeof coInvestChecklistResults.$inferSelect;
+
+export type InsertCoInvestMessage = z.infer<typeof insertCoInvestMessageSchema>;
+export type CoInvestMessage = typeof coInvestMessages.$inferSelect;
+
+// Checklist input validation
+export const coInvestChecklistInputSchema = z.object({
+  numberOfProperties: z.number().min(1).default(1),
+  propertyType: z.string().optional(),
+  unitsCount: z.number().min(0).default(0),
+  groupSize: z.number().min(1).default(2),
+  marketingToPublic: z.boolean().default(false),
+  passiveInvestors: z.boolean().default(false),
+  profitSharingPromised: z.boolean().default(false),
+  managerCentralized: z.boolean().default(false),
+  multiplePropertiesOrPortfolioPlan: z.boolean().default(false),
+  relianceOnSponsorEfforts: z.boolean().default(false),
+  sophisticatedStructure: z.boolean().default(false),
+  renovationDevelopmentIntensity: z.enum(["light", "moderate", "heavy"]).default("light"),
+});
+
+export type CoInvestChecklistInput = z.infer<typeof coInvestChecklistInputSchema>;
+
+// Group creation wizard form schema
+export const coInvestGroupFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  ownershipStructure: z.enum(["tic", "joint_tenancy"]),
+  jurisdiction: z.string().min(1, "Jurisdiction is required"),
+  visibility: z.enum(["public", "members_only", "unlisted"]).default("public"),
+  propertyAddress: z.string().optional(),
+  propertyCity: z.string().optional(),
+  propertyRegion: z.string().optional(),
+  propertyCountry: z.string().default("canada"),
+  propertyType: z.string().optional(),
+  unitsCount: z.number().min(0).optional(),
+  targetStrategy: z.string().optional(),
+  targetCloseDate: z.string().optional(),
+  capitalTargetCad: z.number().min(0).optional(),
+  minCommitmentCad: z.number().min(0).optional(),
+  targetGroupSize: z.number().min(2).max(50).optional(),
+  skillsNeeded: z.array(z.string()).optional(),
+  requiresAccredited: z.boolean().default(false),
+});
+
+export type CoInvestGroupFormData = z.infer<typeof coInvestGroupFormSchema>;

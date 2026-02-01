@@ -2423,6 +2423,287 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // CO-INVESTING ROUTES
+  // ============================================
+
+  // Get or create user's co-invest profile
+  app.get("/api/coinvesting/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      let profile = await storage.getCoInvestUserProfile(userId);
+      res.json({ profile: profile || null });
+    } catch (error) {
+      console.error("Error fetching co-invest profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.post("/api/coinvesting/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const profile = await storage.upsertCoInvestUserProfile({
+        ...req.body,
+        userId,
+      });
+      res.json({ profile });
+    } catch (error) {
+      console.error("Error updating co-invest profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  // List public groups
+  app.get("/api/coinvesting/groups", async (req, res) => {
+    try {
+      const groups = await storage.getPublicCoInvestGroups();
+      res.json({ groups });
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+      res.status(500).json({ error: "Failed to fetch groups" });
+    }
+  });
+
+  // Get user's own groups
+  app.get("/api/coinvesting/my-groups", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const ownedGroups = await storage.getCoInvestGroupsByOwner(userId);
+      const memberships = await storage.getCoInvestMembershipsByUser(userId);
+      res.json({ ownedGroups, memberships });
+    } catch (error) {
+      console.error("Error fetching user groups:", error);
+      res.status(500).json({ error: "Failed to fetch groups" });
+    }
+  });
+
+  // Create a new group
+  app.post("/api/coinvesting/groups", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const group = await storage.createCoInvestGroup({
+        ...req.body,
+        ownerUserId: userId,
+      });
+      
+      // Auto-create owner membership
+      await storage.createCoInvestMembership({
+        groupId: group.id,
+        userId: userId,
+        role: "owner",
+        status: "approved",
+      });
+      
+      res.json({ group });
+    } catch (error) {
+      console.error("Error creating group:", error);
+      res.status(500).json({ error: "Failed to create group" });
+    }
+  });
+
+  // Get single group - with visibility and auth checks
+  app.get("/api/coinvesting/groups/:id", async (req: any, res) => {
+    try {
+      const group = await storage.getCoInvestGroup(req.params.id);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+      
+      const userId = req.user?.id;
+      const isOwner = userId && group.ownerUserId === userId;
+      
+      // Check visibility permissions
+      if (group.visibility !== "public" && !isOwner) {
+        // For private/unlisted groups, check if user is a member
+        if (userId) {
+          const membership = await storage.getUserMembershipInGroup(userId, group.id);
+          if (!membership) {
+            return res.status(403).json({ error: "Not authorized to view this group" });
+          }
+        } else {
+          return res.status(403).json({ error: "Not authorized to view this group" });
+        }
+      }
+      
+      const checklistResult = group.checklistResultId 
+        ? await storage.getCoInvestChecklistResult(group.checklistResultId)
+        : null;
+      
+      // Only return full membership list to owner or approved members
+      let memberships: any[] = [];
+      if (isOwner) {
+        memberships = await storage.getCoInvestMembershipsByGroup(group.id);
+      } else if (userId) {
+        const userMembership = await storage.getUserMembershipInGroup(userId, group.id);
+        if (userMembership?.status === "approved") {
+          // Approved members can see other approved members (not pending requests)
+          const allMemberships = await storage.getCoInvestMembershipsByGroup(group.id);
+          memberships = allMemberships.filter(m => m.status === "approved");
+        } else if (userMembership) {
+          // Non-approved members can only see their own membership
+          memberships = [userMembership];
+        }
+      }
+      // Anonymous users get empty memberships array (only see approved count if needed)
+      
+      res.json({ 
+        group, 
+        memberships,
+        checklistResult,
+        approvedMemberCount: (await storage.getCoInvestMembershipsByGroup(group.id))
+          .filter(m => m.status === "approved").length
+      });
+    } catch (error) {
+      console.error("Error fetching group:", error);
+      res.status(500).json({ error: "Failed to fetch group" });
+    }
+  });
+
+  // Update group
+  app.patch("/api/coinvesting/groups/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const group = await storage.getCoInvestGroup(req.params.id);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+      if (group.ownerUserId !== req.user.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      const updated = await storage.updateCoInvestGroup(req.params.id, req.body);
+      res.json({ group: updated });
+    } catch (error) {
+      console.error("Error updating group:", error);
+      res.status(500).json({ error: "Failed to update group" });
+    }
+  });
+
+  // Request to join group
+  app.post("/api/coinvesting/groups/:id/join", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const groupId = req.params.id;
+      
+      const group = await storage.getCoInvestGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+      
+      // Check if already a member
+      const existing = await storage.getUserMembershipInGroup(userId, groupId);
+      if (existing) {
+        return res.status(400).json({ error: "Already a member or pending" });
+      }
+      
+      const membership = await storage.createCoInvestMembership({
+        groupId,
+        userId,
+        role: "member",
+        status: "requested",
+        pledgedCapitalCad: req.body.pledgedCapitalCad,
+        skillsOffered: req.body.skillsOffered,
+        note: req.body.note,
+      });
+      
+      res.json({ membership });
+    } catch (error) {
+      console.error("Error joining group:", error);
+      res.status(500).json({ error: "Failed to join group" });
+    }
+  });
+
+  // Approve/reject membership
+  app.patch("/api/coinvesting/memberships/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const membership = await storage.getCoInvestMembership(req.params.id);
+      if (!membership) {
+        return res.status(404).json({ error: "Membership not found" });
+      }
+      
+      const group = await storage.getCoInvestGroup(membership.groupId);
+      if (!group || group.ownerUserId !== req.user.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      // Validate status value - only allow valid transitions
+      const validStatuses = ["approved", "rejected", "removed"];
+      if (!req.body.status || !validStatuses.includes(req.body.status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+      
+      // Validate status transitions
+      if (membership.status === "approved" && req.body.status === "approved") {
+        return res.status(400).json({ error: "Member is already approved" });
+      }
+      
+      const updated = await storage.updateCoInvestMembership(req.params.id, {
+        status: req.body.status,
+      });
+      res.json({ membership: updated });
+    } catch (error) {
+      console.error("Error updating membership:", error);
+      res.status(500).json({ error: "Failed to update membership" });
+    }
+  });
+
+  // Save checklist result
+  app.post("/api/coinvesting/checklist", isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await storage.createCoInvestChecklistResult({
+        ...req.body,
+        userId: req.user.id,
+      });
+      res.json({ result });
+    } catch (error) {
+      console.error("Error saving checklist:", error);
+      res.status(500).json({ error: "Failed to save checklist" });
+    }
+  });
+
+  // Get messages for a group
+  app.get("/api/coinvesting/groups/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const groupId = req.params.id;
+      const userId = req.user.id;
+      
+      // Check membership
+      const membership = await storage.getUserMembershipInGroup(userId, groupId);
+      if (!membership || membership.status !== "approved") {
+        return res.status(403).json({ error: "Must be an approved member" });
+      }
+      
+      const messages = await storage.getCoInvestMessagesByGroup(groupId);
+      res.json({ messages });
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // Post a message
+  app.post("/api/coinvesting/groups/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const groupId = req.params.id;
+      const userId = req.user.id;
+      
+      // Check membership
+      const membership = await storage.getUserMembershipInGroup(userId, groupId);
+      if (!membership || membership.status !== "approved") {
+        return res.status(403).json({ error: "Must be an approved member" });
+      }
+      
+      const message = await storage.createCoInvestMessage({
+        groupId,
+        userId,
+        message: req.body.message,
+      });
+      res.json({ message });
+    } catch (error) {
+      console.error("Error posting message:", error);
+      res.status(500).json({ error: "Failed to post message" });
+    }
+  });
+
   return httpServer;
 }
 

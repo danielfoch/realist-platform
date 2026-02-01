@@ -1,0 +1,224 @@
+You are a senior full-stack engineer working inside an existing Replit-hosted web app for Realist.ca (Next.js + TypeScript + Tailwind). Add a new first-class product area called “Co-Investing” that integrates with existing user accounts/profiles and property calculators (Deal Analyzer, etc.). Build it as production-quality code with clean UI, safe defaults, and clear educational tooltips + disclaimers.
+
+# CORE GOAL
+Add a “Co-Investing” section that lets users:
+1) Create or join co-investing groups for a *single property* using common co-ownership structures (Tenants-in-Common or Joint Tenancy).
+2) Run a “Deal Simplicity / Securities Threshold” checklist that helps users understand when a deal looks like simple co-ownership vs. when it may resemble a securities offering (and should push to professional advice / accredited pathways / partner platforms).
+3) Match with co-buyers based on: location, strategy, capital range, timeline, and *skills they bring* (Contractor, Property Manager, Agent, Mortgage Broker, Bookkeeper, Analyst, etc.).
+4) Seamlessly surface co-investing opportunities alongside the existing property analysis pages.
+
+IMPORTANT:
+- This is educational software, not legal advice. Never claim something is or is not a “security.” Use careful language: “may”, “often”, “commonly”, “higher risk of being treated as…”
+- Add disclaimers everywhere this checklist appears and require explicit acknowledgement before proceeding to “next steps”.
+
+# TECH / STACK ASSUMPTIONS
+- Next.js App Router (preferred). If current repo uses Pages Router, mirror the existing structure.
+- TypeScript everywhere.
+- Tailwind UI styling consistent with existing Realist design system.
+- Auth exists (use existing session/user provider). If no auth exists, implement NextAuth with email magic link.
+- Data layer: use Prisma + Postgres (or existing DB). If the app uses Supabase already, use Supabase tables + RLS and Supabase client. Detect existing approach and follow it.
+
+# INFORMATION ARCHITECTURE (NEW NAV ITEMS)
+Add a top-level nav item: “Co-Investing”.
+Routes:
+- /coinvesting (Hub)
+- /coinvesting/opportunities (Browse & search groups)
+- /coinvesting/groups/new (Create group wizard)
+- /coinvesting/groups/[id] (Group detail + chat-lite + members)
+- /coinvesting/checklist (Standalone checker; also embedded in Group wizard)
+- /profile (extend existing profile with skills + capital)
+
+# DATA MODEL (CREATE TABLES / PRISMA MODELS)
+1) UserProfile (extend existing user profile if present)
+- id (user id FK)
+- displayName
+- location (city, region, country)
+- investorType: "owner_occupier" | "investor" | "builder" | "agent" | "other"
+- skills: string[] (multi-select list)
+- certifications: string[] (optional free text tags)
+- capitalMinCad: number (nullable)
+- capitalMaxCad: number (nullable)
+- timeHorizon: "0_3m" | "3_6m" | "6_12m" | "12m_plus"
+- riskTolerance: "low" | "medium" | "high"
+- contactPreference: "in_app" | "email"
+- disclaimerAcceptedAt: datetime (nullable)
+
+2) CoInvestGroup
+- id (uuid)
+- ownerUserId
+- title
+- description
+- status: "forming" | "under_contract" | "closed" | "paused"
+- ownershipStructure: "tic" | "joint_tenancy"
+- jurisdiction: "ON" | "BC" | "AB" | "QC" | "NS" | "NB" | "MB" | "SK" | "PE" | "NL" | "YT" | "NT" | "NU" | "US" | "other"
+- propertyAddress (string)
+- propertyCity, propertyRegion, propertyCountry
+- propertyType: "single_family" | "condo" | "duplex" | "triplex" | "fourplex" | "small_multifamily_5_19" | "20_plus" | "land_development" | "mixed_use" | "other"
+- unitsCount (number, nullable)
+- targetStrategy: "buy_hold" | "brrr" | "flip" | "airbnb" | "student" | "other"
+- targetCloseDate (date nullable)
+- capitalTargetCad (number nullable)
+- minCommitmentCad (number nullable)
+- visibility: "public" | "members_only" | "unlisted"
+- requiresAccredited: boolean (default false)
+- checklistResultId (FK nullable)
+- createdAt, updatedAt
+
+3) CoInvestMembership
+- id
+- groupId
+- userId
+- role: "owner" | "member"
+- pledgedCapitalCad (number nullable)
+- skillsOffered: string[] (snapshot of user-selected skills for this group)
+- note (string nullable)
+- status: "requested" | "approved" | "rejected" | "left"
+- createdAt
+
+4) CoInvestChecklistResult
+- id
+- groupId (nullable for standalone)
+- userId (nullable)
+- inputs (json)
+- score (number)
+- tier: "simple_coownership" | "borderline" | "likely_complex"
+- flags: string[] (reasons)
+- recommendations: string[] (next steps)
+- createdAt
+
+5) CoInvestMessage (optional “chat-lite”)
+- id
+- groupId
+- userId
+- message
+- createdAt
+
+# CHECKLIST / THRESHOLD LOGIC
+Create a deterministic “Complexity Score” (0–100) with transparent flags. Example scoring (implement as a pure function with tests):
+Inputs:
+- numberOfProperties (default 1)
+- propertyType
+- unitsCount
+- groupSize (# participants)
+- marketingToPublic (yes/no)
+- passiveInvestors (yes/no)
+- profitSharingPromised (yes/no)
+- managerCentralized (yes/no)
+- multiplePropertiesOrPortfolioPlan (yes/no)
+- relianceOnSponsorEfforts (yes/no)
+- sophisticatedStructure (corp/LP/GP/trust) (yes/no)
+- renovationDevelopmentIntensity: "light" | "moderate" | "heavy"
+Scoring guideline (feel free to refine):
+- Multiple properties/portfolio: +25
+- Marketing to public: +15
+- Passive investors: +20
+- Central manager/sponsor: +15
+- Promised profit distribution / “returns”: +15
+- 20+ units or land development: +20
+- Group size > 4: +10; > 10: +20
+- Sophisticated structure (LP/GP/trust): +20
+Tiers:
+- 0–29: simple_coownership
+- 30–59: borderline
+- 60–100: likely_complex
+Output:
+- tier + flags + plain-language recommendations
+Important copy constraints:
+- Never state legal conclusions. Use language: “often triggers additional scrutiny”, “commonly treated as more complex”, “consider professional advice”.
+
+# USER FLOWS
+A) Hub (/coinvesting)
+- Two CTAs: “Browse Groups” + “Create a Group”
+- A “How it works” panel (3 steps) + disclaimers
+- Show “Suggested Groups” based on user location + strategy + capital range + skills
+
+B) Create Group Wizard (/coinvesting/groups/new)
+Multi-step wizard with progress indicator:
+1) Basics: title, strategy, location/jurisdiction, ownership structure (TIC vs JT), visibility
+2) Property: address (Google Places autocomplete if already used elsewhere), property type, units, target close date
+3) Partnership: capital target, minimum commitment, desired group size, desired skills (multi-select), roles needed (checkboxes)
+4) Checklist: run the Complexity Score with tooltips on each question
+5) Results: show tier + flags + recommended next steps; require “I understand this is educational” checkbox
+6) Publish: create group; owner becomes member/owner
+
+C) Browse/Search (/coinvesting/opportunities)
+Filters:
+- location (city/region)
+- propertyType
+- targetStrategy
+- ownershipStructure
+- capital range slider
+- skills needed (multi-select)
+- tier (simple/borderline/likely complex)
+Cards show:
+- title, location, strategy, skills needed, min commitment, tier badge, status
+
+D) Group Detail (/coinvesting/groups/[id])
+Sections:
+- Overview (property + strategy)
+- “What we need” (skills needed, capital target, min commitment)
+- Tier badge + “View checklist result”
+- Members list (approved + requested)
+- Join flow: user enters pledged capital + skills offered (pre-filled from profile) + short note; request membership
+- Owner tools: approve/reject requests, edit group, pause group
+- Chat-lite: simple message list with timestamps + sender
+
+E) Profile Updates
+Add “Skills & Capital” to user profile:
+- Skills multi-select (Contractor, Property Manager, Realtor, Mortgage Broker, Accountant/Bookkeeper, Designer, Project Manager, Data/Underwriting, Legal, Insurance, Handyman, Marketing, Other)
+- Capital range: min/max CAD (allow blank)
+- Time horizon, risk tolerance
+Store to UserProfile; used for matching.
+
+# INTEGRATION WITH EXISTING PROPERTY CALCULATORS
+Wherever there is a property analysis result page (e.g., Deal Analyzer output):
+- Add a panel: “Co-Invest This Deal”
+- Button: “Create Co-Invest Group from this Analysis”
+- Auto-fill wizard fields (address, property type, units, strategy, jurisdiction)
+- Also: show “Existing groups near this address/city” if public.
+
+# EDUCATIONAL TOOLTIPS + DISCLAIMER COPY
+Add a reusable <InfoTooltip /> component.
+Add a <DisclaimerCallout /> component with this general copy (editable):
+“This tool provides general educational information about co-ownership and deal complexity. It does not provide legal, tax, or securities advice. If your deal involves passive investors, public fundraising, multiple properties, or a managing sponsor promising returns, you may need professional advice and/or a compliant structure.”
+
+At points where user might proceed despite “likely_complex”, show:
+- “Consider: speaking with a securities lawyer, exploring exempt market dealer (EMD) routes, or regulated crowdfunding platforms.”
+Do NOT recommend specific providers as endorsements. Provide generic categories.
+
+# PERMISSIONS / SAFETY
+- Only authenticated users can create/join groups.
+- Public groups show limited info; full details require login.
+- Owners can moderate membership.
+- Rate-limit join requests (basic server-side check).
+- Basic abuse controls: report group button (stub), hide phone/email by default.
+
+# IMPLEMENTATION DETAILS
+1) Create new UI components:
+- CoInvestLayout
+- GroupCard
+- SkillsMultiSelect
+- CapitalRangeInput
+- ChecklistForm
+- TierBadge
+- DisclaimerCallout
+- InfoTooltip
+2) Create server actions / API routes for:
+- createGroup
+- updateGroup
+- requestJoinGroup
+- approveMember
+- postMessage
+- runChecklist (or run client-side but store results server-side)
+3) Write unit tests for checklist scoring function.
+4) Add seed data for skills list and tooltip text in a constants file.
+5) Ensure mobile-first responsive design.
+6) Ensure accessibility: labels, focus states, keyboard nav.
+
+# OUTPUT REQUIREMENTS
+- Generate all necessary files and code.
+- Do not leave TODOs for core features.
+- If you must stub an external integration (like Google Places), wrap it behind a feature flag and provide a clean fallback manual address input.
+- Provide a short “DEV NOTES” section at the end explaining where the new routes are and how to configure env vars (DB, auth, Google Places).
+
+Build this now in the existing codebase, following the current patterns.

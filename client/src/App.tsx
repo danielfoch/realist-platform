@@ -28,6 +28,11 @@ import BuyBox from "@/pages/BuyBox";
 import BuyBoxAgreement from "@/pages/BuyBoxAgreement";
 import BuyBoxConfirmation from "@/pages/BuyBoxConfirmation";
 import RealtorBuyBoxes from "@/pages/RealtorBuyBoxes";
+import CoInvesting from "@/pages/CoInvesting";
+import CoInvestingOpportunities from "@/pages/CoInvestingOpportunities";
+import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
+import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
+import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -58,6 +63,11 @@ function Router() {
       <Route path="/buybox/agreement" component={BuyBoxAgreement} />
       <Route path="/buybox/confirmation/:id" component={BuyBoxConfirmation} />
       <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
+      <Route path="/coinvesting" component={CoInvesting} />
+      <Route path="/coinvesting/opportunities" component={CoInvestingOpportunities} />
+      <Route path="/coinvesting/checklist" component={CoInvestingChecklist} />
+      <Route path="/coinvesting/groups/new" component={CoInvestingGroupNew} />
+      <Route path="/coinvesting/groups/:id" component={CoInvestingGroupDetail} />
       <Route component={NotFound} />
     </Switch>
   );
