@@ -39,9 +39,43 @@ Preferred communication style: Simple, everyday language.
 - **Storage Abstraction**: `IStorage` interface in `server/storage.ts` abstracts database operations
 - **Path Aliases**: `@/` maps to client source, `@shared/` maps to shared code
 
+### Navigation Structure (Reorganized February 2026)
+The navigation uses a category-based dropdown structure:
+- **Tools**: Deal Analyzer, BuyBox, Co-Invest, Calculators hub
+- **Community**: Events, Network, Online Community (Skool)
+- **Insights**: Podcast, Blog, Guides
+- **About**: About Realist, Team, Programs, Shop, Contact
+
 ### Page Structure
-- `/` - Deal Analyzer (main product page with hero section and calculator)
+#### Tools (/tools/*)
+- `/` and `/tools/analyzer` - Deal Analyzer (main product page with hero section and calculator)
+- `/tools` - Tools hub page listing all calculators and tools
+- `/tools/buybox` - BuyBox mandate builder with Google Maps polygon drawing
+- `/tools/buybox/agreement` - E-signature agreement page for buyer representation
+- `/tools/buybox/confirmation/:id` - Confirmation page after mandate submission
+- `/tools/coinvest` - Co-Investing landing page with feature overview
+- `/tools/coinvest/opportunities` - Browse and filter co-investing groups
+- `/tools/coinvest/checklist` - Interactive complexity assessment tool
+- `/tools/coinvest/groups/new` - Multi-step group creation wizard (requires auth)
+- `/tools/coinvest/groups/:id` - Group detail page with chat for approved members
+
+#### Community (/community/*)
+- `/community` - Community hub page
+- `/community/events` - Events and workshops
+- `/community/network` - Grow your network / find partners
+
+#### Insights (/insights/*)
+- `/insights` - Insights hub page
+- `/insights/podcast` - Podcast episodes
+- `/insights/blog` - Blog articles
+- `/insights/guides` - Educational guides and resources
+
+#### About (/about/*)
 - `/about` - Team bios and company information
+- `/about/shop` - Realist merchandise
+- `/about/contact` - Contact page
+
+#### Other Pages
 - `/admin` - Protected dashboard for lead and webhook management
 - `/privacy` and `/terms` - Legal pages
 - `/login` - User login page
@@ -49,15 +83,15 @@ Preferred communication style: Simple, everyday language.
 - `/forgot-password` - Password reset request
 - `/reset-password` - Password reset with token
 - `/set-password` - Account setup for auto-enrolled leads
-- `/buybox` - BuyBox mandate builder with Google Maps polygon drawing
-- `/buybox/agreement` - E-signature agreement page for buyer representation
-- `/buybox/confirmation/:id` - Confirmation page after mandate submission
 - `/realtor/buyboxes` - Realtor dashboard to view and respond to mandates
-- `/coinvesting` - Co-Investing landing page with feature overview
-- `/coinvesting/opportunities` - Browse and filter co-investing groups
-- `/coinvesting/checklist` - Interactive complexity assessment tool
-- `/coinvesting/groups/new` - Multi-step group creation wizard (requires auth)
-- `/coinvesting/groups/:id` - Group detail page with chat for approved members
+
+#### Redirects (Old Routes → New Routes)
+- `/buybox` → `/tools/buybox`
+- `/coinvesting` → `/tools/coinvest`
+- `/events` → `/community/events`
+- `/podcast` → `/insights/podcast`
+- `/blog` → `/insights/blog`
+- `/shop` → `/about/shop`
 
 ### Authentication System
 - **Type**: Custom email/password authentication (not Replit OAuth)

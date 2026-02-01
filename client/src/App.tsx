@@ -4,6 +4,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme";
+import { Redirect } from "@/components/Redirect";
+
+// Pages
 import Home from "@/pages/Home";
 import About from "@/pages/About";
 import Events from "@/pages/Events";
@@ -35,16 +38,66 @@ import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
 import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
 import NotFound from "@/pages/not-found";
 
+// Hub Pages
+import ToolsHub from "@/pages/ToolsHub";
+import CommunityHub from "@/pages/CommunityHub";
+import InsightsHub from "@/pages/InsightsHub";
+import GuidesHub from "@/pages/GuidesHub";
+import NetworkHub from "@/pages/NetworkHub";
+import ContactPage from "@/pages/ContactPage";
+
 function Router() {
   return (
     <Switch>
+      {/* Main entry - Deal Analyzer */}
       <Route path="/" component={Home} />
+      
+      {/* New Tools routes */}
+      <Route path="/tools" component={ToolsHub} />
+      <Route path="/tools/analyzer" component={Home} />
+      <Route path="/tools/buybox" component={BuyBox} />
+      <Route path="/tools/buybox/agreement" component={BuyBoxAgreement} />
+      <Route path="/tools/buybox/confirmation/:id" component={BuyBoxConfirmation} />
+      <Route path="/tools/coinvest" component={CoInvesting} />
+      <Route path="/tools/coinvest/opportunities" component={CoInvestingOpportunities} />
+      <Route path="/tools/coinvest/checklist" component={CoInvestingChecklist} />
+      <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
+      <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
+      
+      {/* New Community routes */}
+      <Route path="/community" component={CommunityHub} />
+      <Route path="/community/events" component={Events} />
+      <Route path="/community/network" component={NetworkHub} />
+      
+      {/* New Insights routes */}
+      <Route path="/insights" component={InsightsHub} />
+      <Route path="/insights/podcast" component={Podcast} />
+      <Route path="/insights/blog" component={Blog} />
+      <Route path="/insights/guides" component={GuidesHub} />
+      
+      {/* New About routes */}
       <Route path="/about" component={About} />
-      <Route path="/events" component={Events} />
-      <Route path="/blog" component={Blog} />
-      <Route path="/shop" component={Shop} />
+      <Route path="/about/team">{() => <Redirect to="/about" />}</Route>
+      <Route path="/about/programs">{() => <Redirect to="/about" />}</Route>
+      <Route path="/about/shop" component={Shop} />
+      <Route path="/about/contact" component={ContactPage} />
+      
+      {/* Redirects from old routes to new routes */}
+      <Route path="/buybox">{() => <Redirect to="/tools/buybox" />}</Route>
+      <Route path="/buybox/agreement">{() => <Redirect to="/tools/buybox/agreement" />}</Route>
+      <Route path="/buybox/confirmation/:id">{(props: any) => <Redirect to={`/tools/buybox/confirmation/${props.params?.id}`} />}</Route>
+      <Route path="/coinvesting">{() => <Redirect to="/tools/coinvest" />}</Route>
+      <Route path="/coinvesting/opportunities">{() => <Redirect to="/tools/coinvest/opportunities" />}</Route>
+      <Route path="/coinvesting/checklist">{() => <Redirect to="/tools/coinvest/checklist" />}</Route>
+      <Route path="/coinvesting/groups/new">{() => <Redirect to="/tools/coinvest/groups/new" />}</Route>
+      <Route path="/coinvesting/groups/:id">{(props: any) => <Redirect to={`/tools/coinvest/groups/${props.params?.id}`} />}</Route>
+      <Route path="/events">{() => <Redirect to="/community/events" />}</Route>
+      <Route path="/podcast">{() => <Redirect to="/insights/podcast" />}</Route>
+      <Route path="/blog">{() => <Redirect to="/insights/blog" />}</Route>
+      <Route path="/shop">{() => <Redirect to="/about/shop" />}</Route>
+      
+      {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />
-      <Route path="/podcast" component={Podcast} />
       <Route path="/admin" component={Admin} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/terms" component={Terms} />
@@ -59,15 +112,9 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/set-password" component={SetPassword} />
       <Route path="/verify-phone" component={VerifyPhone} />
-      <Route path="/buybox" component={BuyBox} />
-      <Route path="/buybox/agreement" component={BuyBoxAgreement} />
-      <Route path="/buybox/confirmation/:id" component={BuyBoxConfirmation} />
       <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
-      <Route path="/coinvesting" component={CoInvesting} />
-      <Route path="/coinvesting/opportunities" component={CoInvestingOpportunities} />
-      <Route path="/coinvesting/checklist" component={CoInvestingChecklist} />
-      <Route path="/coinvesting/groups/new" component={CoInvestingGroupNew} />
-      <Route path="/coinvesting/groups/:id" component={CoInvestingGroupDetail} />
+      
+      {/* 404 */}
       <Route component={NotFound} />
     </Switch>
   );

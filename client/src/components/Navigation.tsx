@@ -2,27 +2,70 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, X, User, LogOut, Briefcase, Building, Users } from "lucide-react";
+import { Menu, X, User, LogOut, Briefcase, Building, ChevronDown, Calculator, MapPin, Users, Handshake, Calendar, Radio, BookOpen, FileText, Info, Mail, ShoppingBag, GraduationCap } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { CoachingWaitlistDialog } from "@/components/CoachingWaitlistDialog";
 import logoImage from "@assets/Screenshot_2026-01-04_at_3.46.09_PM_1767559573207.png";
+
+interface NavItem {
+  href: string;
+  label: string;
+  description?: string;
+  icon?: React.ReactNode;
+  external?: boolean;
+}
+
+interface NavCategory {
+  label: string;
+  items: NavItem[];
+}
+
+const navCategories: NavCategory[] = [
+  {
+    label: "Tools",
+    items: [
+      { href: "/tools/analyzer", label: "Deal Analyzer", description: "Analyze any real estate deal", icon: <Calculator className="h-4 w-4" /> },
+      { href: "/tools/buybox", label: "BuyBox", description: "Define your investment criteria", icon: <MapPin className="h-4 w-4" /> },
+      { href: "/tools/coinvest", label: "Co-Invest", description: "Find investment partners", icon: <Handshake className="h-4 w-4" /> },
+      { href: "/tools", label: "All Tools", description: "Browse all calculators", icon: <Calculator className="h-4 w-4" /> },
+    ],
+  },
+  {
+    label: "Community",
+    items: [
+      { href: "/community/events", label: "Events", description: "Workshops and meetups", icon: <Calendar className="h-4 w-4" /> },
+      { href: "/community/network", label: "Grow Your Network", description: "Connect with investors", icon: <Users className="h-4 w-4" /> },
+      { href: "https://www.skool.com/realist", label: "Online Community", description: "Join on Skool", icon: <Users className="h-4 w-4" />, external: true },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { href: "/insights/podcast", label: "Podcast", description: "Real estate discussions", icon: <Radio className="h-4 w-4" /> },
+      { href: "/insights/blog", label: "Blog", description: "Articles and research", icon: <BookOpen className="h-4 w-4" /> },
+      { href: "/insights/guides", label: "Guides", description: "Educational resources", icon: <FileText className="h-4 w-4" /> },
+    ],
+  },
+  {
+    label: "About",
+    items: [
+      { href: "/about", label: "About Realist", description: "Our mission", icon: <Info className="h-4 w-4" /> },
+      { href: "/about/team", label: "Team", description: "Meet the founders", icon: <Users className="h-4 w-4" /> },
+      { href: "/about/programs", label: "Coaching", description: "Mentorship programs", icon: <GraduationCap className="h-4 w-4" /> },
+      { href: "/about/shop", label: "Shop", description: "Realist merchandise", icon: <ShoppingBag className="h-4 w-4" /> },
+      { href: "/about/contact", label: "Contact", description: "Get in touch", icon: <Mail className="h-4 w-4" /> },
+    ],
+  },
+];
 
 export function Navigation() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout, isLoading } = useAuth();
 
-  const navLinks = [
-    { href: "/", label: "Analyzer", external: false },
-    { href: "/buybox", label: "BuyBox", external: false },
-    { href: "/coinvesting", label: "Co-Invest", external: false },
-    { href: "/events", label: "Events", external: false },
-    { href: "/podcast", label: "Podcast", external: false },
-    { href: "/blog", label: "Blog", external: false },
-    { href: "https://shop.realist.ca/", label: "Shop", external: true },
-    { href: "/about", label: "About", external: false },
-  ];
+  const isActiveCategory = (category: NavCategory) => {
+    return category.items.some(item => !item.external && location.startsWith(item.href.split("?")[0]));
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/50 glass">
@@ -41,41 +84,69 @@ export function Navigation() {
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => 
-              link.external ? (
-                <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer">
+            {navCategories.map((category) => (
+              <DropdownMenu key={category.label}>
+                <DropdownMenuTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant={isActiveCategory(category) ? "secondary" : "ghost"}
                     size="sm"
-                    data-testid={`link-nav-${link.label.toLowerCase()}`}
+                    className="gap-1"
+                    data-testid={`nav-${category.label.toLowerCase()}`}
                   >
-                    {link.label}
+                    {category.label}
+                    <ChevronDown className="h-3 w-3 opacity-50" />
                   </Button>
-                </a>
-              ) : (
-                <Link key={link.href} href={link.href}>
-                  <Button
-                    variant={location === link.href ? "secondary" : "ghost"}
-                    size="sm"
-                    data-testid={`link-nav-${link.label.toLowerCase()}`}
-                  >
-                    {link.label}
-                  </Button>
-                </Link>
-              )
-            )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64">
+                  {category.items.map((item) => (
+                    item.external ? (
+                      <a
+                        key={item.href}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <DropdownMenuItem className="cursor-pointer py-3">
+                          <div className="flex items-start gap-3">
+                            <div className="text-muted-foreground mt-0.5">{item.icon}</div>
+                            <div>
+                              <div className="font-medium">{item.label}</div>
+                              {item.description && (
+                                <p className="text-sm text-muted-foreground">{item.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        </DropdownMenuItem>
+                      </a>
+                    ) : (
+                      <Link key={item.href} href={item.href}>
+                        <DropdownMenuItem className="cursor-pointer py-3">
+                          <div className="flex items-start gap-3">
+                            <div className="text-muted-foreground mt-0.5">{item.icon}</div>
+                            <div>
+                              <div className="font-medium">{item.label}</div>
+                              {item.description && (
+                                <p className="text-sm text-muted-foreground">{item.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        </DropdownMenuItem>
+                      </Link>
+                    )
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ))}
           </div>
 
           <div className="flex items-center gap-2">
             <div className="hidden md:block">
-              <CoachingWaitlistDialog 
-                trigger={
-                  <Button size="sm" data-testid="button-join-waitlist">
-                    <Users className="h-4 w-4 mr-2" />
-                    Join Coaching Waitlist
-                  </Button>
-                }
-              />
+              <Link href="/tools/analyzer">
+                <Button size="sm" data-testid="button-analyze-deal">
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Analyze a Deal
+                </Button>
+              </Link>
             </div>
 
             {!isLoading && (
@@ -149,51 +220,60 @@ export function Navigation() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border/50 glass">
-          <div className="px-4 py-4 space-y-2">
-            {navLinks.map((link) => 
-              link.external ? (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block"
-                >
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start"
-                    data-testid={`link-mobile-${link.label.toLowerCase()}`}
-                  >
-                    {link.label}
-                  </Button>
-                </a>
-              ) : (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Button
-                    variant={location === link.href ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                    data-testid={`link-mobile-${link.label.toLowerCase()}`}
-                  >
-                    {link.label}
-                  </Button>
-                </Link>
-              )
-            )}
-            <CoachingWaitlistDialog 
-              trigger={
-                <Button className="w-full" data-testid="button-mobile-join-waitlist">
-                  <Users className="h-4 w-4 mr-2" />
-                  Join Coaching Waitlist
-                </Button>
-              }
-            />
-            <div className="border-t border-border/50 pt-2 mt-2">
+        <div className="md:hidden border-t border-border/50 glass max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="px-4 py-4 space-y-4">
+            <Link href="/tools/analyzer" onClick={() => setMobileMenuOpen(false)}>
+              <Button className="w-full" data-testid="button-mobile-analyze">
+                <Calculator className="h-4 w-4 mr-2" />
+                Analyze a Deal
+              </Button>
+            </Link>
+
+            {navCategories.map((category) => (
+              <div key={category.label} className="space-y-1">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2">
+                  {category.label}
+                </div>
+                {category.items.map((item) => 
+                  item.external ? (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block"
+                    >
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-3"
+                        data-testid={`link-mobile-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </Button>
+                    </a>
+                  ) : (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button
+                        variant={location.startsWith(item.href.split("?")[0]) ? "secondary" : "ghost"}
+                        className="w-full justify-start gap-3"
+                        data-testid={`link-mobile-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </Button>
+                    </Link>
+                  )
+                )}
+              </div>
+            ))}
+
+            <div className="border-t border-border/50 pt-4 mt-4">
               {isAuthenticated ? (
                 <>
                   <Link href="/investor" onClick={() => setMobileMenuOpen(false)}>

@@ -1,0 +1,126 @@
+You are a senior full-stack engineer working inside an existing Replit-hosted Realist.ca codebase (Next.js + TypeScript + Tailwind). The current site nav is overloaded with top-level items (Analyzer, BuyBox, Co-Invest, Events, Podcast, Blog, Shop, About). Reorganize the information architecture to a minimal, category-based navigation:
+
+TOP NAV (max 4):
+- Tools
+- Community
+- Insights
+- About
+Plus right-side actions:
+- Primary CTA button: “Analyze a Deal”
+- Auth button: “Sign In” / user menu
+
+Do not remove features. Re-categorize and move routes so that all existing capabilities remain accessible with fewer top-level tabs. Keep the UI clean, calm, and consistent with the existing Realist styling.
+
+────────────────────────────────────────────────────────────
+GOALS / UX PRINCIPLES
+1) Reduce top-level nav clutter.
+2) Make “Deal” the primary object; show contextual actions (like co-investing) inside Deal/Tool flows instead of in global nav.
+3) Use dropdown menus and/or lightweight hub pages so users can still find everything fast.
+4) Preserve SEO for existing content (Blog/Podcast) using redirects and canonical tags.
+5) Mobile-first: add a clean hamburger menu with grouped sections.
+
+────────────────────────────────────────────────────────────
+NEW NAV + ROUTE PLAN
+
+A) TOOLS
+- Deal Analyzer (primary)  → /tools/analyzer
+- BuyBox                  → /tools/buybox
+- Calculators Hub          → /tools (hub page listing all calculators)
+- Co-Invest (as tool)      → /tools/coinvest  (but NOT top-level)
+- Any other calculators     → under /tools/*
+
+B) COMMUNITY
+- Events                   → /community/events
+- Online Community (Skool) → /community/skool (external link OK, but include an internal page explaining it)
+- Grow Your Network        → /community/network
+  - Professionals directory / matching
+  - Link: “Find co-investors” (routes to /tools/coinvest or /community/network?mode=coinvest)
+
+C) INSIGHTS
+- Podcast                  → /insights/podcast
+- Blog / Research          → /insights/blog
+- Optional “Data & Guides” → /insights/guides (if exists, otherwise create a placeholder page)
+
+D) ABOUT
+- About Realist            → /about
+- Team                     → /about/team
+- Programs / Coaching      → /about/programs (or /about/coaching)
+- Shop                     → /about/shop (or keep /shop but remove from top-nav; still link it here)
+- Contact                  → /about/contact
+
+IMPORTANT:
+- If the app already has pages at /analyzer, /buybox, /coinvest, /events, /podcast, /blog, /shop, /about,
+  keep them working via redirects (301 where possible) to the new canonical routes.
+- Add <link rel="canonical"> to the new pages, and ensure old pages either redirect server-side or render
+  a minimal “moved” component with canonical pointing to the new route.
+
+────────────────────────────────────────────────────────────
+IMPLEMENTATION REQUIREMENTS
+
+1) NAV COMPONENT
+- Replace current top nav with a grouped nav:
+  - Desktop: show Tools / Community / Insights / About as top items, each opens a dropdown.
+  - Dropdown items are links with short descriptions.
+  - Right side: “Analyze a Deal” primary button; “Sign In” button/user menu.
+- Mobile: hamburger menu opens a full-height panel with sections Tools/Community/Insights/About.
+
+2) HUB PAGES
+Create clean hub pages that explain each section and link to subpages:
+- /tools
+- /community
+- /insights
+- /about (already exists; enhance with clear tiles)
+
+Each hub page should have:
+- hero title + 1 sentence value prop
+- 2–6 tiles/cards to the major destinations
+- consistent breadcrumbs
+
+3) ROUTE MOVES + REDIRECTS
+- Move/duplicate existing pages into the new structure.
+- Create redirects:
+  /analyzer  → /tools/analyzer
+  /buybox    → /tools/buybox
+  /coinvest  → /tools/coinvest
+  /events    → /community/events
+  /podcast   → /insights/podcast
+  /blog      → /insights/blog
+  /shop      → /about/shop  (or keep /shop and redirect /about/shop → /shop; pick ONE canonical)
+- Use Next.js middleware or next.config redirects depending on repo setup.
+  Prefer next.config redirects if Pages Router; prefer middleware if App Router + edge.
+
+4) CO-INVEST POSITIONING CHANGE (CRITICAL)
+- Remove “Co-Invest” from top-level navigation.
+- Ensure co-investing remains discoverable via:
+  - Tools dropdown (secondary item)
+  - Community > Grow Your Network page (prominent “Find co-investors” CTA)
+  - Contextual CTA on Deal Analyzer results page: “Invite partners / Find co-investors”
+  - If Deal Analyzer page exists, add a sidebar card: “Co-Invest this Deal” linking to /tools/coinvest with prefill query params (address/city/strategy).
+
+5) SEO / ANALYTICS
+- Preserve existing slugs where possible with redirects.
+- Update sitemap if present.
+- Ensure page titles/meta descriptions reflect the new hierarchy.
+- Do not break existing tracking; if analytics code exists, keep it.
+
+6) VISUAL DESIGN
+- Keep current Realist logo + styling.
+- Dropdowns should be minimal: white background, subtle border/shadow, clear hover states.
+- Do not add new brand colors.
+- Keep nav height similar to current.
+
+7) OUTPUT
+- Implement all code changes directly in the repo.
+- No TODOs for core routing/nav changes.
+- At the end, print a short DEV NOTE:
+  - which files changed
+  - how redirects are implemented
+  - any new routes added
+
+Now:
+1) Inspect the existing codebase structure (App Router vs Pages Router).
+2) Implement the new navigation component.
+3) Add hub pages.
+4) Add redirects/canonicals.
+5) Update internal links across the app to use the new routes.
+6) Verify the build passes and no broken links remain.
