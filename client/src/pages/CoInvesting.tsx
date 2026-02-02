@@ -1,4 +1,5 @@
 import { Navigation } from "@/components/Navigation";
+import { RepresentationStatusBanner } from "@/components/RepresentationGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ export default function CoInvesting() {
       <Navigation />
       
       <main className="container mx-auto px-4 py-12 max-w-6xl">
+        {isAuthenticated && <RepresentationStatusBanner className="mb-8" />}
         <div className="text-center mb-12">
           <Badge className="mb-4" variant="secondary">Beta</Badge>
           <h1 className="text-4xl font-bold mb-4">Co-Investing</h1>

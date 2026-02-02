@@ -122,6 +122,17 @@ The navigation uses a category-based dropdown structure:
 
 ## Recent Changes
 
+### BRA Gating for Co-Investing (February 2026)
+- Buyer Representation Agreement (BRA) gating for Ontario users in Co-Investing
+- Ontario users must complete BRA signing flow before creating groups, joining groups, or messaging
+- Server-side authorization guards on protected routes with compliance logging
+- Frontend RepresentationGate component wraps group creation page
+- RepresentationStatusBanner shows compliance status on all Co-Invest pages
+- Proper error handling redirects users to representation flow when blocked
+- Other provinces have direct access without representation requirements
+- Database tables: coInvestUserProfiles (BRA fields), coInvestComplianceLogs
+- PROVINCES constant in client/src/lib/provinces.ts for jurisdiction dropdown
+
 ### Co-Investing Platform (February 2026)
 - Co-Investing feature for finding partners and pooling capital for real estate deals
 - Multi-step group creation wizard with complexity scoring system (0-100 score, 3-tier classification)

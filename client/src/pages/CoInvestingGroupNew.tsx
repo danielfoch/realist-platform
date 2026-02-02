@@ -1,4 +1,5 @@
 import { Navigation } from "@/components/Navigation";
+import { RepresentationGate, RepresentationStatusBanner } from "@/components/RepresentationGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +81,10 @@ export default function CoInvestingGroupNew() {
         checklistInputs,
         checklistResult,
       });
+      if (!response.ok) {
+        const data = await response.json();
+        throw { ...data, message: data.error || "Failed to create group" };
+      }
       return response.json();
     },
     onSuccess: (data: any) => {
@@ -89,7 +94,15 @@ export default function CoInvestingGroupNew() {
       });
       setLocation(`/coinvesting/groups/${data.group.id}`);
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      if (error?.requiresRepresentation) {
+        toast({
+          title: "Representation Required",
+          description: "You need to complete the representation agreement to access this feature.",
+        });
+        setLocation("/tools/coinvest/representation");
+        return;
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to create group",
@@ -527,63 +540,66 @@ export default function CoInvestingGroupNew() {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <main className="container mx-auto px-4 py-12 max-w-3xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-4">Create Co-Investing Group</h1>
-          <div className="flex items-center gap-2">
-            {STEPS.map((s, i) => (
-              <div key={s} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}>
-                  {i < step ? <Check className="h-4 w-4" /> : i + 1}
+      <RepresentationGate featureName="create a co-investing group">
+        <main className="container mx-auto px-4 py-12 max-w-3xl">
+          <RepresentationStatusBanner className="mb-6" />
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-4">Create Co-Investing Group</h1>
+            <div className="flex items-center gap-2">
+              {STEPS.map((s, i) => (
+                <div key={s} className="flex items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}>
+                    {i < step ? <Check className="h-4 w-4" /> : i + 1}
+                  </div>
+                  {i < STEPS.length - 1 && (
+                    <div className={`w-8 h-0.5 ${i < step ? "bg-primary" : "bg-muted"}`} />
+                  )}
                 </div>
-                {i < STEPS.length - 1 && (
-                  <div className={`w-8 h-0.5 ${i < step ? "bg-primary" : "bg-muted"}`} />
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {renderStep()}
+          {renderStep()}
 
-        <div className="flex justify-between mt-8">
-          <Button
-            variant="outline"
-            onClick={() => setStep(s => Math.max(0, s - 1))}
-            disabled={step === 0}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-
-          {step < STEPS.length - 1 ? (
+          <div className="flex justify-between mt-8">
             <Button
-              onClick={() => setStep(s => s + 1)}
-              disabled={!canProceed()}
-              data-testid="button-next"
+              variant="outline"
+              onClick={() => setStep(s => Math.max(0, s - 1))}
+              disabled={step === 0}
+              data-testid="button-back"
             >
-              Next
-              <ArrowRight className="h-4 w-4 ml-2" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
             </Button>
-          ) : (
-            <Button
-              onClick={() => createGroupMutation.mutate()}
-              disabled={createGroupMutation.isPending}
-              data-testid="button-create"
-            >
-              {createGroupMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4 mr-2" />
-              )}
-              Create Group
-            </Button>
-          )}
-        </div>
-      </main>
+
+            {step < STEPS.length - 1 ? (
+              <Button
+                onClick={() => setStep(s => s + 1)}
+                disabled={!canProceed()}
+                data-testid="button-next"
+              >
+                Next
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                onClick={() => createGroupMutation.mutate()}
+                disabled={createGroupMutation.isPending}
+                data-testid="button-create"
+              >
+                {createGroupMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4 mr-2" />
+                )}
+                Create Group
+              </Button>
+            )}
+          </div>
+        </main>
+      </RepresentationGate>
     </div>
   );
 }

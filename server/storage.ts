@@ -28,6 +28,7 @@ import {
   coInvestMemberships,
   coInvestChecklistResults,
   coInvestMessages,
+  coInvestComplianceLogs,
   type Lead, 
   type InsertLead,
   type Property,
@@ -85,6 +86,8 @@ import {
   type InsertCoInvestChecklistResult,
   type CoInvestMessage,
   type InsertCoInvestMessage,
+  type CoInvestComplianceLog,
+  type InsertCoInvestComplianceLog,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -261,6 +264,22 @@ export interface IStorage {
   // Co-Investing Messages
   createCoInvestMessage(message: InsertCoInvestMessage): Promise<CoInvestMessage>;
   getCoInvestMessagesByGroup(groupId: string): Promise<CoInvestMessage[]>;
+  
+  // Co-Invest Compliance
+  createCoInvestComplianceLog(log: InsertCoInvestComplianceLog): Promise<CoInvestComplianceLog>;
+  getCoInvestComplianceLogsByUser(userId: string): Promise<CoInvestComplianceLog[]>;
+  updateCoInvestProfileBraStatus(userId: string, data: {
+    braStatus?: string;
+    braSignedAt?: Date;
+    braDocumentId?: string;
+    braJurisdiction?: string;
+    coinvestAckStatus?: string;
+    coinvestAckSignedAt?: Date;
+    coinvestAckVersion?: string;
+    coinvestAckSignedName?: string;
+    coinvestAckSignatureDataUrl?: string;
+    selectedJurisdiction?: string;
+  }): Promise<CoInvestUserProfile | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1102,6 +1121,36 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(coInvestMessages)
       .where(eq(coInvestMessages.groupId, groupId))
       .orderBy(coInvestMessages.createdAt);
+  }
+
+  async createCoInvestComplianceLog(log: InsertCoInvestComplianceLog): Promise<CoInvestComplianceLog> {
+    const [result] = await db.insert(coInvestComplianceLogs).values(log).returning();
+    return result;
+  }
+
+  async getCoInvestComplianceLogsByUser(userId: string): Promise<CoInvestComplianceLog[]> {
+    return db.select().from(coInvestComplianceLogs)
+      .where(eq(coInvestComplianceLogs.userId, userId))
+      .orderBy(desc(coInvestComplianceLogs.createdAt));
+  }
+
+  async updateCoInvestProfileBraStatus(userId: string, data: {
+    braStatus?: string;
+    braSignedAt?: Date;
+    braDocumentId?: string;
+    braJurisdiction?: string;
+    coinvestAckStatus?: string;
+    coinvestAckSignedAt?: Date;
+    coinvestAckVersion?: string;
+    coinvestAckSignedName?: string;
+    coinvestAckSignatureDataUrl?: string;
+    selectedJurisdiction?: string;
+  }): Promise<CoInvestUserProfile | undefined> {
+    const [result] = await db.update(coInvestUserProfiles)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(coInvestUserProfiles.userId, userId))
+      .returning();
+    return result;
   }
 }
 

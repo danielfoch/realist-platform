@@ -1100,6 +1100,11 @@ export const coInvestMembershipStatuses = ["requested", "approved", "rejected", 
 export const coInvestMemberRoles = ["owner", "member"] as const;
 export const coInvestChecklistTiers = ["simple_coownership", "borderline", "likely_complex"] as const;
 
+// BRA (Buyer Representation Agreement) status types
+export const braStatusTypes = ["not_started", "pending", "signed", "declined"] as const;
+export const coinvestAckStatusTypes = ["not_started", "signed"] as const;
+export const complianceEventTypes = ["gate_shown", "bra_started", "bra_signed", "ack_signed", "access_denied", "jurisdiction_changed"] as const;
+
 // Extended user profile for co-investing
 export const coInvestUserProfiles = pgTable("coinvest_user_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1118,9 +1123,48 @@ export const coInvestUserProfiles = pgTable("coinvest_user_profiles", {
   riskTolerance: text("risk_tolerance"),
   contactPreference: text("contact_preference").default("in_app"),
   disclaimerAcceptedAt: timestamp("disclaimer_accepted_at"),
+  
+  // BRA (Buyer Representation Agreement) fields for Ontario
+  braStatus: text("bra_status").default("not_started"),
+  braSignedAt: timestamp("bra_signed_at"),
+  braDocumentId: varchar("bra_document_id"),
+  braJurisdiction: varchar("bra_jurisdiction"),
+  
+  // Co-Invest Acknowledgement fields
+  coinvestAckStatus: text("coinvest_ack_status").default("not_started"),
+  coinvestAckSignedAt: timestamp("coinvest_ack_signed_at"),
+  coinvestAckVersion: varchar("coinvest_ack_version"),
+  coinvestAckSignedName: text("coinvest_ack_signed_name"),
+  coinvestAckSignatureDataUrl: text("coinvest_ack_signature_data_url"),
+  
+  // Representation details
+  representationBrokerage: text("representation_brokerage").default("Valery Real Estate Inc."),
+  representationAgent: text("representation_agent").default("Daniel Foch"),
+  
+  // User's selected jurisdiction (for gating)
+  selectedJurisdiction: varchar("selected_jurisdiction"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Compliance audit log for Co-Investing
+export const coInvestComplianceLogs = pgTable("coinvest_compliance_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  eventType: text("event_type").notNull(),
+  metadata: jsonb("metadata"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const coInvestComplianceLogsRelations = relations(coInvestComplianceLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [coInvestComplianceLogs.userId],
+    references: [users.id],
+  }),
+}));
 
 // Co-invest groups (opportunities)
 export const coInvestGroups = pgTable("coinvest_groups", {
@@ -1273,9 +1317,21 @@ export const insertCoInvestMessageSchema = createInsertSchema(coInvestMessages).
   createdAt: true,
 });
 
+export const insertCoInvestComplianceLogSchema = createInsertSchema(coInvestComplianceLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertCoInvestUserProfile = z.infer<typeof insertCoInvestUserProfileSchema>;
 export type CoInvestUserProfile = typeof coInvestUserProfiles.$inferSelect;
+
+export type InsertCoInvestComplianceLog = z.infer<typeof insertCoInvestComplianceLogSchema>;
+export type CoInvestComplianceLog = typeof coInvestComplianceLogs.$inferSelect;
+
+export type BraStatus = (typeof braStatusTypes)[number];
+export type CoinvestAckStatus = (typeof coinvestAckStatusTypes)[number];
+export type ComplianceEventType = (typeof complianceEventTypes)[number];
 
 export type InsertCoInvestGroup = z.infer<typeof insertCoInvestGroupSchema>;
 export type CoInvestGroup = typeof coInvestGroups.$inferSelect;

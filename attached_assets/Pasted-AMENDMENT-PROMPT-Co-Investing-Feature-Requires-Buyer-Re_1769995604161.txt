@@ -1,0 +1,154 @@
+AMENDMENT PROMPT — Co-Investing Feature Requires Buyer Representation Agreement (Ontario)
+
+You are a senior full-stack engineer working inside the existing Replit-hosted Realist.ca codebase (Next.js + TS + Tailwind). The site already has a “BuyBox” workflow that requires users to sign a Buyer Representation Agreement (BRA) before accessing certain features. Implement the same gating pattern for the new Co-Investing Network Layer.
+
+IMPORTANT CONSTRAINTS (LEGAL/COMPLIANCE COPY)
+- This product is not legal advice. Do not claim that representation “avoids” securities law or guarantees any legal classification.
+- Use careful language: “This feature is offered as a real estate brokerage service under representation where applicable. If your arrangement looks like capital raising or includes passive investors, you may need securities-law compliant routes and professional advice.”
+- Gate this specifically for Ontario (and optionally allow other provinces to proceed without the BRA gate but show a warning + “not supported yet” state).
+- The goal is to require representation (BRA) to use Co-Investing features in Ontario so users are clients of Daniel Foch / Valery Real Estate Inc. This is a service gate, not a “legal shield”.
+
+OBJECTIVE
+Before a user can:
+- create a co-investing group
+- request to join a co-investing group
+- message within a co-investing group
+- access “Find co-investors” matching tools
+
+…they must complete and sign:
+1) Buyer Representation Agreement (BRA) AND
+2) A Co-Investing Disclosure / Acknowledgement (short, internal, not a substitute for legal advice)
+
+This is the same pattern that already exists for BuyBox. Reuse that exact signing infrastructure, storage, and verification logic.
+
+────────────────────────────────────────────────────────────
+1) UX FLOW (ONTARIO ONLY)
+
+A) Entry points to Co-Invest:
+- /tools/coinvest
+- /community/network?mode=coinvest
+- “Co-Invest this Deal” CTA in analyzer results
+- Any “Join group” / “Create group” actions
+
+B) If user is Ontario (by selection or inferred):
+- Show a blocking modal or full-page gate:
+  Title: “Representation required to co-invest in Ontario”
+  Body (concise):
+    “To use Co-Invest on Realist, you must be represented by Daniel Foch at Valery Real Estate Inc. This ensures your co-buying activity is handled as a real estate brokerage service and helps ensure clear duties, disclosures, and process under Ontario rules. If you are raising capital from passive investors or marketing to the public, you may require a securities-law compliant structure and professional advice.”
+  Buttons:
+    - “Review & Sign Agreement” (primary)
+    - “Not in Ontario” (secondary, takes them to jurisdiction selection)
+    - “Learn more” (opens FAQ accordion)
+
+C) Two-step signing:
+Step 1: Sign BRA (reuse existing BuyBox signing component + provider)
+Step 2: Sign “Co-Investing Acknowledgement” (lightweight e-sign, or checkbox + typed signature + timestamp; prefer same e-sign provider if available)
+
+D) On success:
+- Store signature status and timestamps on the user profile.
+- Unblock access immediately and send them to their prior intended action (deep link redirect).
+
+E) If they decline:
+- Deny access and show alternatives:
+  - “Browse educational content” (Insights)
+  - “Use the Analyzer” (Tools)
+  - “Contact us” (About/Contact)
+
+────────────────────────────────────────────────────────────
+2) DATA MODEL CHANGES
+
+Extend UserProfile (or existing auth profile table) with:
+- braStatus: "not_started" | "pending" | "signed" | "declined"
+- braSignedAt: datetime nullable
+- braDocumentId: string nullable (provider envelope ID / doc id)
+- braJurisdiction: string nullable (e.g., "ON")
+- coinvestAckStatus: "not_started" | "signed"
+- coinvestAckSignedAt: datetime nullable
+- coinvestAckVersion: string (e.g., "v1.0")
+- representationBrokerage: string default "Valery Real Estate Inc."
+- representationAgent: string default "Daniel Foch"
+
+Also add an audit log table if you already have one; otherwise create:
+CoInvestComplianceLog
+- id, userId, eventType, metadata json, createdAt
+Log: gate_shown, bra_started, bra_signed, ack_signed, access_denied
+
+────────────────────────────────────────────────────────────
+3) JURISDICTION DETECTION (NO HARD ASSUMPTIONS)
+Create a simple jurisdiction resolver:
+- Primary: user selects province/state in profile or in the gate screen
+- Secondary: infer from property location (if a deal/address is being used)
+- If unknown: prompt user to select jurisdiction before proceeding
+
+Store user’s chosen jurisdiction on profile for future gating.
+
+────────────────────────────────────────────────────────────
+4) AUTHORIZATION RULES (SERVER ENFORCED)
+Implement a server-side guard function used by:
+- createGroup
+- requestJoinGroup
+- postMessage
+- viewGroupMembers (if sensitive)
+- accessMatching
+
+Guard logic:
+IF user.jurisdiction === "ON":
+  require user.braStatus === "signed" AND user.coinvestAckStatus === "signed"
+ELSE:
+  allow read-only browsing OR show “coming soon / different rules” (configurable)
+
+Do not rely only on UI gating; block on API/server actions too.
+
+────────────────────────────────────────────────────────────
+5) REUSE EXISTING BUYBOX SIGNING SYSTEM
+You must:
+- Locate the existing BuyBox BRA workflow and reuse the same document template, signature provider integration, and status polling.
+- Use the same UI components if possible (e.g., <BRAStatusGate />, <SignDocumentFlow />).
+- Ensure Co-Invest gate points to the same underlying BRA record so a user only signs once for Ontario and it unlocks both BuyBox + Co-Invest.
+
+If BuyBox uses a dedicated route like /buybox/representation:
+- Create /tools/coinvest/representation that reuses the same component and on completion redirects back.
+
+────────────────────────────────────────────────────────────
+6) COPY / DISCLOSURES (MINIMAL, HIGH TRUST)
+Add a reusable component: <RepresentationRequiredCallout />
+
+Suggested copy blocks (edit for tone but keep legal-safe):
+- “Representation required (Ontario)”
+- “This feature is offered as a brokerage service. It is not legal or securities advice.”
+- “If your arrangement involves passive investors, public marketing, multiple properties, or promised returns, you may need a compliant structure and professional advice.”
+
+Add a short FAQ accordion:
+- “Why do I need to sign?”
+- “What if I’m not in Ontario?”
+- “What if we’re raising capital?”
+- “Does signing mean my deal is compliant?” (Answer: no, it depends; consult pros.)
+
+────────────────────────────────────────────────────────────
+7) UI PLACEMENT DETAILS
+- Tools > Co-Invest landing page: show a clear “Representation required in Ontario” banner at top, with status pill:
+  - Not started / Pending / Signed
+- On “Join group” CTA: if not signed, button opens gate modal instead of join form.
+- On “Create group” wizard: Step 0 “Representation” inserted for Ontario users.
+
+────────────────────────────────────────────────────────────
+8) CONFIG & ENV
+- Add env flags:
+  COINVEST_BRA_REQUIRED_ON=true
+  COINVEST_SUPPORTED_JURISDICTIONS=ON
+- If signature provider needs separate template IDs:
+  BRA_TEMPLATE_ID_ON=...
+  COINVEST_ACK_TEMPLATE_ID=... (optional)
+
+────────────────────────────────────────────────────────────
+9) DELIVERABLES
+- Implement all gating logic end-to-end (UI + server enforcement).
+- Confirm that a signed BRA in BuyBox unlocks Co-Invest without re-signing.
+- Add a small admin-only debug view (optional) to see a user’s compliance status.
+- No TODOs for core gating. Provide a short DEV NOTE listing files changed and how to test:
+  - create a user with ON jurisdiction
+  - attempt to create/join group -> blocked
+  - sign BRA + ack -> access granted
+  - switch jurisdiction -> behavior changes
+
+Build this now in the existing codebase, following current patterns.

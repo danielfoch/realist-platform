@@ -1,4 +1,5 @@
 import { Navigation } from "@/components/Navigation";
+import { RepresentationStatusBanner } from "@/components/RepresentationGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -32,10 +33,23 @@ export default function CoInvestingGroupDetail() {
   const groupId = params?.id;
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
   const [joinNote, setJoinNote] = useState("");
   const [pledgedCapital, setPledgedCapital] = useState("");
   const [newMessage, setNewMessage] = useState("");
+
+  const handleRepresentationError = (error: any) => {
+    if (error?.requiresRepresentation) {
+      toast({
+        title: "Representation Required",
+        description: "You need to complete the representation agreement to access this feature.",
+      });
+      setLocation("/tools/coinvest/representation");
+      return true;
+    }
+    return false;
+  };
 
   const { data, isLoading } = useQuery<{ 
     group: CoInvestGroup; 
@@ -67,14 +81,20 @@ export default function CoInvestingGroupDetail() {
         pledgedCapitalCad: pledgedCapital ? parseFloat(pledgedCapital) : undefined,
         note: joinNote,
       });
+      if (!response.ok) {
+        const data = await response.json();
+        throw { ...data, message: data.error || "Failed to join group" };
+      }
       return response.json();
     },
     onSuccess: () => {
       toast({ title: "Join Request Sent", description: "The group owner will review your request." });
       queryClient.invalidateQueries({ queryKey: ["/api/coinvesting/groups", groupId] });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    onError: (error: any) => {
+      if (!handleRepresentationError(error)) {
+        toast({ title: "Error", description: error.message || "Failed to join group", variant: "destructive" });
+      }
     },
   });
 
@@ -92,11 +112,20 @@ export default function CoInvestingGroupDetail() {
   const sendMessageMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", `/api/coinvesting/groups/${groupId}/messages`, { message: newMessage });
+      if (!response.ok) {
+        const data = await response.json();
+        throw { ...data, message: data.error || "Failed to send message" };
+      }
       return response.json();
     },
     onSuccess: () => {
       setNewMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/coinvesting/groups", groupId, "messages"] });
+    },
+    onError: (error: any) => {
+      if (!handleRepresentationError(error)) {
+        toast({ title: "Error", description: error.message || "Failed to send message", variant: "destructive" });
+      }
     },
   });
 
@@ -138,6 +167,7 @@ export default function CoInvestingGroupDetail() {
       <Navigation />
       
       <main className="container mx-auto px-4 py-12 max-w-5xl">
+        {isAuthenticated && <RepresentationStatusBanner className="mb-6" />}
         <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-2">

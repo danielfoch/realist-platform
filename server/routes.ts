@@ -2424,6 +2424,223 @@ export async function registerRoutes(
   });
 
   // ============================================
+  // CO-INVESTING COMPLIANCE ROUTES
+  // ============================================
+
+  // Get compliance status for current user
+  app.get("/api/coinvest/compliance-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const profile = await storage.getCoInvestUserProfile(userId);
+      
+      const jurisdiction = profile?.selectedJurisdiction || profile?.region || null;
+      const isOntario = jurisdiction === "ON";
+      const braStatus = profile?.braStatus || "not_started";
+      const coinvestAckStatus = profile?.coinvestAckStatus || "not_started";
+      const isRepresented = braStatus === "signed" && coinvestAckStatus === "signed";
+      
+      // For Ontario: require both BRA and acknowledgment
+      // For other jurisdictions: allow access (for now)
+      const canAccess = !isOntario || isRepresented;
+      
+      res.json({
+        jurisdiction,
+        braStatus,
+        braSignedAt: profile?.braSignedAt || null,
+        coinvestAckStatus,
+        coinvestAckSignedAt: profile?.coinvestAckSignedAt || null,
+        isOntario,
+        isRepresented,
+        canAccess,
+      });
+    } catch (error) {
+      console.error("Error fetching compliance status:", error);
+      res.status(500).json({ error: "Failed to fetch compliance status" });
+    }
+  });
+
+  // Set user's jurisdiction
+  app.post("/api/coinvest/set-jurisdiction", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { jurisdiction } = req.body;
+      
+      if (!jurisdiction) {
+        res.status(400).json({ error: "Jurisdiction is required" });
+        return;
+      }
+      
+      // Ensure profile exists and update jurisdiction
+      await storage.upsertCoInvestUserProfile({
+        userId,
+        selectedJurisdiction: jurisdiction,
+      });
+      
+      // Update BRA status fields separately
+      await storage.updateCoInvestProfileBraStatus(userId, {
+        selectedJurisdiction: jurisdiction,
+      });
+      
+      // Log the event
+      await storage.createCoInvestComplianceLog({
+        userId,
+        eventType: "jurisdiction_changed",
+        metadata: { jurisdiction },
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+      });
+      
+      res.json({ success: true, jurisdiction });
+    } catch (error) {
+      console.error("Error setting jurisdiction:", error);
+      res.status(500).json({ error: "Failed to set jurisdiction" });
+    }
+  });
+
+  // Sign BRA for co-investing
+  app.post("/api/coinvest/sign-bra", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { signedName, signatureDataUrl } = req.body;
+      
+      if (!signedName || !signatureDataUrl) {
+        res.status(400).json({ error: "Signed name and signature are required" });
+        return;
+      }
+      
+      // Ensure profile exists
+      let profile = await storage.getCoInvestUserProfile(userId);
+      if (!profile) {
+        profile = await storage.upsertCoInvestUserProfile({ userId });
+      }
+      
+      // Generate a unique document ID
+      const braDocumentId = `coinvest-bra-${userId}-${Date.now()}`;
+      
+      // Update profile with BRA status
+      await storage.updateCoInvestProfileBraStatus(userId, {
+        braStatus: "signed",
+        braSignedAt: new Date(),
+        braDocumentId,
+        braJurisdiction: profile?.selectedJurisdiction || "ON",
+      });
+      
+      // Log the signing event
+      await storage.createCoInvestComplianceLog({
+        userId,
+        eventType: "bra_signed",
+        metadata: { signedName, braDocumentId },
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+      });
+      
+      // Also create a BuyBox agreement record for unified tracking
+      try {
+        const termEndDate = new Date();
+        termEndDate.setFullYear(termEndDate.getFullYear() + 1);
+        
+        await storage.createBuyBoxAgreement({
+          userId,
+          agreementVersion: "coinvest-1.0",
+          agreementHtml: `Co-Investing Buyer Representation Agreement signed by ${signedName}`,
+          signedName,
+          signatureDataUrl,
+          termStartDate: new Date(),
+          termEndDate,
+          holdoverDays: 60,
+          commissionPercent: 2.5,
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+          signedAt: new Date(),
+        });
+      } catch (buyboxError) {
+        console.error("Error creating buybox agreement record:", buyboxError);
+        // Continue - the co-invest record is the primary one
+      }
+      
+      res.json({ success: true, braDocumentId });
+    } catch (error) {
+      console.error("Error signing BRA:", error);
+      res.status(500).json({ error: "Failed to sign BRA" });
+    }
+  });
+
+  // Sign Co-Invest Acknowledgement
+  app.post("/api/coinvest/sign-acknowledgement", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { signedName } = req.body;
+      
+      if (!signedName) {
+        res.status(400).json({ error: "Signed name is required" });
+        return;
+      }
+      
+      // Ensure profile exists
+      let profile = await storage.getCoInvestUserProfile(userId);
+      if (!profile) {
+        res.status(400).json({ error: "Profile not found. Please complete BRA first." });
+        return;
+      }
+      
+      // Verify BRA is signed first
+      if (profile.braStatus !== "signed") {
+        res.status(400).json({ error: "BRA must be signed before acknowledgement" });
+        return;
+      }
+      
+      // Update profile with acknowledgement
+      await storage.updateCoInvestProfileBraStatus(userId, {
+        coinvestAckStatus: "signed",
+        coinvestAckSignedAt: new Date(),
+        coinvestAckVersion: "1.0",
+        coinvestAckSignedName: signedName,
+      });
+      
+      // Log the event
+      await storage.createCoInvestComplianceLog({
+        userId,
+        eventType: "ack_signed",
+        metadata: { signedName, version: "1.0" },
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error signing acknowledgement:", error);
+      res.status(500).json({ error: "Failed to sign acknowledgement" });
+    }
+  });
+
+  // Helper function to check if user can access co-invest features
+  async function canAccessCoInvest(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const profile = await storage.getCoInvestUserProfile(userId);
+    if (!profile) {
+      return { allowed: true }; // New users go through onboarding
+    }
+    
+    const jurisdiction = profile.selectedJurisdiction || profile.region;
+    const isOntario = jurisdiction === "ON";
+    
+    if (!isOntario) {
+      return { allowed: true };
+    }
+    
+    const braOk = profile.braStatus === "signed";
+    const ackOk = profile.coinvestAckStatus === "signed";
+    
+    if (!braOk) {
+      return { allowed: false, reason: "BRA not signed" };
+    }
+    if (!ackOk) {
+      return { allowed: false, reason: "Acknowledgement not signed" };
+    }
+    
+    return { allowed: true };
+  }
+
+  // ============================================
   // CO-INVESTING ROUTES
   // ============================================
 
@@ -2477,10 +2694,29 @@ export async function registerRoutes(
     }
   });
 
-  // Create a new group
+  // Create a new group - REQUIRES REPRESENTATION FOR ONTARIO
   app.post("/api/coinvesting/groups", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      
+      // Check compliance status for Ontario users
+      const accessCheck = await canAccessCoInvest(userId);
+      if (!accessCheck.allowed) {
+        await storage.createCoInvestComplianceLog({
+          userId,
+          eventType: "access_denied",
+          metadata: { action: "create_group", reason: accessCheck.reason },
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+        });
+        res.status(403).json({ 
+          error: "Representation required", 
+          reason: accessCheck.reason,
+          requiresRepresentation: true,
+        });
+        return;
+      }
+      
       const group = await storage.createCoInvestGroup({
         ...req.body,
         ownerUserId: userId,
@@ -2579,10 +2815,29 @@ export async function registerRoutes(
   });
 
   // Request to join group
+  // Request to join a group - REQUIRES REPRESENTATION FOR ONTARIO
   app.post("/api/coinvesting/groups/:id/join", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const groupId = req.params.id;
+      
+      // Check compliance status for Ontario users
+      const accessCheck = await canAccessCoInvest(userId);
+      if (!accessCheck.allowed) {
+        await storage.createCoInvestComplianceLog({
+          userId,
+          eventType: "access_denied",
+          metadata: { action: "join_group", groupId, reason: accessCheck.reason },
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+        });
+        res.status(403).json({ 
+          error: "Representation required", 
+          reason: accessCheck.reason,
+          requiresRepresentation: true,
+        });
+        return;
+      }
       
       const group = await storage.getCoInvestGroup(groupId);
       if (!group) {
@@ -2681,10 +2936,29 @@ export async function registerRoutes(
   });
 
   // Post a message
+  // Post message to group - REQUIRES REPRESENTATION FOR ONTARIO
   app.post("/api/coinvesting/groups/:id/messages", isAuthenticated, async (req: any, res) => {
     try {
       const groupId = req.params.id;
       const userId = req.user.id;
+      
+      // Check compliance status for Ontario users
+      const accessCheck = await canAccessCoInvest(userId);
+      if (!accessCheck.allowed) {
+        await storage.createCoInvestComplianceLog({
+          userId,
+          eventType: "access_denied",
+          metadata: { action: "post_message", groupId, reason: accessCheck.reason },
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+        });
+        res.status(403).json({ 
+          error: "Representation required", 
+          reason: accessCheck.reason,
+          requiresRepresentation: true,
+        });
+        return;
+      }
       
       // Check membership
       const membership = await storage.getUserMembershipInGroup(userId, groupId);

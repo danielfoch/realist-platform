@@ -20,6 +20,22 @@ export const provinceCodeMap: Record<string, string> = {
   "Yukon": "YT",
 };
 
+export const PROVINCES: { value: string; label: string }[] = [
+  { value: "ON", label: "Ontario" },
+  { value: "BC", label: "British Columbia" },
+  { value: "AB", label: "Alberta" },
+  { value: "QC", label: "Quebec" },
+  { value: "NS", label: "Nova Scotia" },
+  { value: "NB", label: "New Brunswick" },
+  { value: "MB", label: "Manitoba" },
+  { value: "SK", label: "Saskatchewan" },
+  { value: "PE", label: "Prince Edward Island" },
+  { value: "NL", label: "Newfoundland and Labrador" },
+  { value: "YT", label: "Yukon" },
+  { value: "NT", label: "Northwest Territories" },
+  { value: "NU", label: "Nunavut" },
+];
+
 export function getProvinceCode(province: string): string {
   return provinceCodeMap[province] || province;
 }
