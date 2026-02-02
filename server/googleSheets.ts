@@ -774,3 +774,280 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
 
   return spreadsheetUrl;
 }
+
+// MLI Select Export Types
+interface MLIExportData {
+  projectName: string;
+  location: string;
+  userInfo?: UserInfo;
+  inputs: {
+    projectType: string;
+    totalUnits: number;
+    affordabilityTier: string;
+    extendedCommitment: boolean;
+    energyTier: string;
+    accessibilityTier: string;
+    marketRent: number;
+    rentGrowth: number;
+    otherIncome: number;
+    vacancyRate: number;
+    expenseRatio: number;
+    landCost: number;
+    hardCosts: number;
+    softCosts: number;
+    contingencyPercent: number;
+    financingFees: number;
+    constructionFinancing: string;
+    constructionRate: number;
+    takeoutRate: number;
+    ltv: number;
+  };
+  results: {
+    totalPoints: number;
+    tier: string;
+    totalProjectCost: number;
+    insurancePremium: number;
+    loanTermYears: number;
+    amortizationYears: number;
+    maxLTV: number;
+    premiumRate: number;
+    affordableUnits: number;
+    marketUnits: number;
+    medianIncome: number;
+    affordableRentThreshold: number;
+    base: {
+      egi: number;
+      vacancyLoss: number;
+      egiAfterVacancy: number;
+      opex: number;
+      noi: number;
+      loanAmount: number;
+      annualDebtService: number;
+      dscr: number;
+      cashFlow: number;
+      equityRequired: number;
+      ltv: number;
+    };
+    bear: {
+      noi: number;
+      dscr: number;
+      cashFlow: number;
+      equityRequired: number;
+    };
+    bull: {
+      noi: number;
+      dscr: number;
+      cashFlow: number;
+      equityRequired: number;
+    };
+  };
+}
+
+export async function exportMLIToGoogleSheets(data: MLIExportData, userTokens?: UserOAuthTokens): Promise<string> {
+  const sheets = userTokens 
+    ? getUserGoogleSheetClient(userTokens)
+    : await getUncachableGoogleSheetClient();
+  
+  const title = `Realist MLI Select - ${data.projectName || data.location || 'Project'} - ${new Date().toLocaleDateString()}`;
+  
+  const createResponse = await sheets.spreadsheets.create({
+    requestBody: {
+      properties: { title },
+      sheets: [
+        { properties: { title: 'Summary', sheetId: 0 } },
+        { properties: { title: 'Inputs', sheetId: 1 } },
+        { properties: { title: 'Stress Test', sheetId: 2 } },
+      ],
+    },
+  });
+
+  const spreadsheetId = createResponse.data.spreadsheetId!;
+  const spreadsheetUrl = createResponse.data.spreadsheetUrl!;
+
+  const formatCurrency = (val: number) => `$${val.toLocaleString('en-CA', { maximumFractionDigits: 0 })}`;
+  const formatPercent = (val: number) => `${(val * 100).toFixed(2)}%`;
+
+  // Summary Sheet
+  const summaryData = [
+    ['REALIST.CA MLI SELECT ANALYSIS'],
+    ['CMHC Multi-unit Mortgage Loan Insurance Calculator'],
+    [''],
+    ['PROJECT OVERVIEW'],
+    ['Project Name', data.projectName || 'Not specified'],
+    ['Location', data.location],
+    ['Project Type', data.inputs.projectType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Total Units', data.inputs.totalUnits],
+    ['Generated', new Date().toLocaleString()],
+    [''],
+    ['MLI SELECT POINTS & TIER'],
+    ['Total Points', data.results.totalPoints],
+    ['Tier', data.results.tier.toUpperCase()],
+    ['Affordable Units', data.results.affordableUnits],
+    ['Market Units', data.results.marketUnits],
+    [''],
+    ['LOAN TERMS'],
+    ['Max LTV', formatPercent(data.results.maxLTV / 100)],
+    ['Insurance Premium Rate', formatPercent(data.results.premiumRate / 100)],
+    ['Loan Term', `${data.results.loanTermYears} years`],
+    ['Amortization', `${data.results.amortizationYears} years`],
+    [''],
+    ['FINANCING SUMMARY'],
+    ['Total Project Cost', formatCurrency(data.results.totalProjectCost)],
+    ['Insurance Premium', formatCurrency(data.results.insurancePremium)],
+    ['Loan Amount', formatCurrency(data.results.base.loanAmount)],
+    ['Equity Required', formatCurrency(data.results.base.equityRequired)],
+    ['LTV', formatPercent(data.results.base.ltv / 100)],
+    [''],
+    ['OPERATING PERFORMANCE (BASE CASE)'],
+    ['Effective Gross Income', formatCurrency(data.results.base.egi)],
+    ['Less: Vacancy', formatCurrency(data.results.base.vacancyLoss)],
+    ['EGI After Vacancy', formatCurrency(data.results.base.egiAfterVacancy)],
+    ['Operating Expenses', formatCurrency(data.results.base.opex)],
+    ['Net Operating Income (NOI)', formatCurrency(data.results.base.noi)],
+    ['Annual Debt Service', formatCurrency(data.results.base.annualDebtService)],
+    ['DSCR', `${data.results.base.dscr.toFixed(2)}x`],
+    ['Annual Cash Flow', formatCurrency(data.results.base.cashFlow)],
+    [''],
+    ['AFFORDABILITY DETAILS'],
+    ['Median Income (Location)', formatCurrency(data.results.medianIncome)],
+    ['Affordable Rent Threshold', formatCurrency(data.results.affordableRentThreshold)],
+  ];
+
+  // Inputs Sheet
+  const inputsData = [
+    ['MLI SELECT INPUTS'],
+    [''],
+    ['PROJECT DETAILS'],
+    ['Project Type', data.inputs.projectType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Location', data.location],
+    ['Total Units', data.inputs.totalUnits],
+    [''],
+    ['AFFORDABILITY & SUSTAINABILITY'],
+    ['Affordability Tier', data.inputs.affordabilityTier.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Extended Commitment (10yr)', data.inputs.extendedCommitment ? 'Yes' : 'No'],
+    ['Energy Tier', data.inputs.energyTier.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Accessibility Tier', data.inputs.accessibilityTier.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    [''],
+    ['REVENUE ASSUMPTIONS'],
+    ['Market Rent (per unit/mo)', formatCurrency(data.inputs.marketRent)],
+    ['Rent Growth %', formatPercent(data.inputs.rentGrowth / 100)],
+    ['Other Income (annual)', formatCurrency(data.inputs.otherIncome)],
+    ['Vacancy Rate', formatPercent(data.inputs.vacancyRate)],
+    ['Expense Ratio', formatPercent(data.inputs.expenseRatio)],
+    [''],
+    ['PROJECT COSTS'],
+    ['Land Cost', formatCurrency(data.inputs.landCost)],
+    ['Hard Costs', formatCurrency(data.inputs.hardCosts)],
+    ['Soft Costs', formatCurrency(data.inputs.softCosts)],
+    ['Contingency %', formatPercent(data.inputs.contingencyPercent / 100)],
+    ['Financing Fees', formatCurrency(data.inputs.financingFees)],
+    [''],
+    ['FINANCING'],
+    ['Construction Financing', data.inputs.constructionFinancing.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Construction Rate', formatPercent(data.inputs.constructionRate)],
+    ['Takeout Rate', formatPercent(data.inputs.takeoutRate)],
+    ['LTV Target', formatPercent(data.inputs.ltv / 100)],
+  ];
+
+  // Stress Test Sheet
+  const stressTestData = [
+    ['MLI SELECT STRESS TEST'],
+    [''],
+    ['Scenario', 'Base Case', 'Bear Case', 'Bull Case'],
+    ['NOI', formatCurrency(data.results.base.noi), formatCurrency(data.results.bear.noi), formatCurrency(data.results.bull.noi)],
+    ['DSCR', `${data.results.base.dscr.toFixed(2)}x`, `${data.results.bear.dscr.toFixed(2)}x`, `${data.results.bull.dscr.toFixed(2)}x`],
+    ['Cash Flow', formatCurrency(data.results.base.cashFlow), formatCurrency(data.results.bear.cashFlow), formatCurrency(data.results.bull.cashFlow)],
+    ['Equity Required', formatCurrency(data.results.base.equityRequired), formatCurrency(data.results.bear.equityRequired), formatCurrency(data.results.bull.equityRequired)],
+    [''],
+    ['STRESS TEST ASSUMPTIONS'],
+    ['Bear Case:', 'Vacancy +3%, Expenses +5%, Interest +1%'],
+    ['Bull Case:', 'Rent +3%, Vacancy -1%, Expenses -2%'],
+  ];
+
+  // Write data to sheets
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: 'RAW',
+      data: [
+        { range: 'Summary!A1', values: summaryData },
+        { range: 'Inputs!A1', values: inputsData },
+        { range: 'Stress Test!A1', values: stressTestData },
+      ],
+    },
+  });
+
+  // Apply formatting
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        // Header formatting for Summary
+        {
+          repeatCell: {
+            range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 2 },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 0.0, green: 0.6, blue: 0.4 },
+                textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 }, fontSize: 14 },
+              },
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat)',
+          },
+        },
+        // Column widths
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 0, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 250 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 0, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 },
+            properties: { pixelSize: 180 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 1, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 250 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 1, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 },
+            properties: { pixelSize: 180 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 2, dimension: 'COLUMNS', startIndex: 0, endIndex: 4 },
+            properties: { pixelSize: 150 },
+            fields: 'pixelSize',
+          },
+        },
+      ],
+    },
+  });
+
+  // Make public
+  try {
+    const drive = userTokens 
+      ? getUserGoogleDriveClient(userTokens)
+      : await getUncachableGoogleDriveClient();
+    
+    await drive.permissions.create({
+      fileId: spreadsheetId,
+      requestBody: { role: 'reader', type: 'anyone' },
+    });
+  } catch (permError) {
+    console.error('Failed to set public access on MLI sheet:', permError);
+  }
+
+  return spreadsheetUrl;
+}
