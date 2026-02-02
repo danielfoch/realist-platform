@@ -248,32 +248,22 @@ export function MLISelectCalculator() {
 
   const leadMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/leads", {
-        lead: {
-          name: leadForm.name,
-          email: leadForm.email,
-          phone: leadForm.phone,
-          consent: true,
-          leadSource: "MLI Select Calculator",
-        },
-        analysis: {
-          address: inputs.location,
-          strategy: "mli_select",
-          inputs,
-          results: {
-            totalPoints: results.totalPoints,
-            tier: results.tier,
-            dscr: results.base.dscr,
-            equityRequired: results.base.equityRequired,
-            noi: results.base.noi,
-          },
-        },
-        webhookType: "MLISelect",
+      const response = await apiRequest("POST", "/api/leads/mli-quote", {
+        name: leadForm.name,
+        email: leadForm.email,
+        phone: leadForm.phone,
+        location: inputs.location,
+        inputs,
+        results,
       });
-      return response;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to submit quote request");
+      }
+      return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Quote Request Sent!", description: "Our team will contact you shortly." });
+      toast({ title: "Quote Request Sent!", description: "Our MLI financing specialist will contact you shortly." });
       setShowLeadForm(false);
       setLeadForm({ name: "", email: "", phone: "" });
     },

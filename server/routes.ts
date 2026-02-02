@@ -34,6 +34,7 @@ import {
   sendMarketExpertApplyNotification,
   sendCoachingWaitlistNotification,
   sendNotificationEmail,
+  sendMLIQuoteNotification,
 } from "./resend";
 import { authStorage } from "./replit_integrations/auth/storage";
 
@@ -227,6 +228,80 @@ export async function registerRoutes(
           error: "Failed to create lead" 
         });
       }
+    }
+  });
+
+  // MLI Select Quote Request endpoint
+  app.post("/api/leads/mli-quote", async (req, res) => {
+    try {
+      const { name, email, phone, location, inputs, results } = req.body;
+
+      if (!name || !email || !phone) {
+        res.status(400).json({ error: "Name, email, and phone are required" });
+        return;
+      }
+
+      // Create the lead
+      const lead = await storage.createLead({
+        name,
+        email,
+        phone,
+        consent: true,
+        leadSource: "MLI Select Calculator",
+      });
+
+      // Send email notification to nick@bldfinancial.ca
+      sendMLIQuoteNotification({
+        name,
+        email,
+        phone,
+        location: location || inputs?.location,
+        totalPoints: results?.totalPoints,
+        tier: results?.tier,
+        dscr: results?.base?.dscr,
+        equityRequired: results?.base?.equityRequired,
+        noi: results?.base?.noi,
+        purchasePrice: inputs?.purchasePrice,
+        loanAmount: inputs?.loanAmount || (inputs?.purchasePrice ? inputs.purchasePrice * (inputs.ltv || 75) / 100 : undefined),
+        interestRate: inputs?.interestRate,
+        stressTestResults: results ? { base: results.base, bear: results.bear, bull: results.bull } : undefined,
+      }).catch(err => console.error("MLI quote notification error:", err));
+
+      // Also send to GHL webhook
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName,
+        phone: formatPhoneE164(phone),
+        fullName: name,
+        consent: true,
+        leadSource: "MLI Select Calculator",
+        formTag: "mli_select_quote",
+        mliPoints: results?.totalPoints,
+        mliTier: results?.tier,
+        dscr: results?.base?.dscr,
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Webhook error:", err));
+
+      res.json({ success: true, data: { leadId: lead.id } });
+    } catch (error) {
+      console.error("Error creating MLI quote request:", error);
+      res.status(500).json({ error: "Failed to submit quote request" });
     }
   });
 

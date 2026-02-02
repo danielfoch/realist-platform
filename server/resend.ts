@@ -343,3 +343,116 @@ export async function sendNotificationEmail(params: {
 
   return data;
 }
+
+export async function sendMLIQuoteNotification(quote: {
+  name: string;
+  email: string;
+  phone: string;
+  location?: string;
+  totalPoints?: number;
+  tier?: string;
+  dscr?: number;
+  equityRequired?: number;
+  noi?: number;
+  purchasePrice?: number;
+  loanAmount?: number;
+  interestRate?: number;
+  stressTestResults?: any;
+}) {
+  const { client, fromEmail } = await getResendClient();
+  
+  const recipients = ['nick@bldfinancial.ca'];
+  
+  const ccEmails = getNotifyEmails();
+  
+  let dataRows = '';
+  const data: Record<string, any> = {
+    Name: quote.name,
+    Email: quote.email,
+    Phone: quote.phone,
+    Location: quote.location,
+    'Total Points': quote.totalPoints,
+    Tier: quote.tier,
+    DSCR: quote.dscr ? quote.dscr.toFixed(2) + 'x' : undefined,
+    'Equity Required': quote.equityRequired ? `$${quote.equityRequired.toLocaleString()}` : undefined,
+    NOI: quote.noi ? `$${quote.noi.toLocaleString()}` : undefined,
+    'Purchase Price': quote.purchasePrice ? `$${quote.purchasePrice.toLocaleString()}` : undefined,
+    'Loan Amount': quote.loanAmount ? `$${quote.loanAmount.toLocaleString()}` : undefined,
+    'Interest Rate': quote.interestRate ? `${quote.interestRate}%` : undefined,
+  };
+
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined && value !== null && value !== '') {
+      dataRows += formatRow(key, String(value));
+    }
+  }
+
+  if (quote.stressTestResults) {
+    dataRows += `
+      <tr>
+        <td colspan="2" style="padding: 16px 0 8px 0; color: #111827; font-size: 14px; font-weight: 600; border-bottom: 2px solid #e5e7eb;">Stress Test Results</td>
+      </tr>
+    `;
+    if (quote.stressTestResults.base) {
+      dataRows += formatRow('Base Case NOI', quote.stressTestResults.base.noi ? `$${quote.stressTestResults.base.noi.toLocaleString()}` : '-');
+      dataRows += formatRow('Base Case DSCR', quote.stressTestResults.base.dscr ? quote.stressTestResults.base.dscr.toFixed(2) + 'x' : '-');
+      dataRows += formatRow('Base Case Cash Flow', quote.stressTestResults.base.cashFlow ? `$${quote.stressTestResults.base.cashFlow.toLocaleString()}` : '-');
+    }
+    if (quote.stressTestResults.bear) {
+      dataRows += formatRow('Bear Case NOI', quote.stressTestResults.bear.noi ? `$${quote.stressTestResults.bear.noi.toLocaleString()}` : '-');
+      dataRows += formatRow('Bear Case DSCR', quote.stressTestResults.bear.dscr ? quote.stressTestResults.bear.dscr.toFixed(2) + 'x' : '-');
+    }
+    if (quote.stressTestResults.bull) {
+      dataRows += formatRow('Bull Case NOI', quote.stressTestResults.bull.noi ? `$${quote.stressTestResults.bull.noi.toLocaleString()}` : '-');
+      dataRows += formatRow('Bull Case DSCR', quote.stressTestResults.bull.dscr ? quote.stressTestResults.bull.dscr.toFixed(2) + 'x' : '-');
+    }
+  }
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      ${emailHeader('New MLI Select Quote Request', 'CMHC Multi-Unit Financing Inquiry')}
+      
+      <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          ${dataRows}
+        </table>
+        
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
+          <p style="margin: 0; color: #6b7280; font-size: 12px;">
+            Submitted on ${new Date().toLocaleString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </p>
+        </div>
+      </div>
+      
+      ${emailFooter()}
+    </div>
+  `;
+
+  const emailPayload: any = {
+    from: fromEmail,
+    to: recipients,
+    subject: `MLI Select Quote Request: ${quote.name}`,
+    html,
+  };
+  
+  if (ccEmails.length > 0) {
+    emailPayload.cc = ccEmails;
+  }
+
+  const { data: emailData, error } = await client.emails.send(emailPayload);
+
+  if (error) {
+    console.error('Failed to send MLI quote notification:', error);
+    throw error;
+  }
+
+  console.log(`MLI quote notification sent to: ${recipients.join(', ')}`);
+  return emailData;
+}
