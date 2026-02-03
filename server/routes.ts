@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import crypto from "crypto";
 import { google } from "googleapis";
 import { storage } from "./storage";
 import { db } from "./db";
@@ -380,6 +381,42 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error creating engagement lead:", error);
       res.status(500).json({ error: "Failed to submit request" });
+    }
+  });
+
+  // Test endpoint for Google Sheets webhook
+  app.post("/api/sheets/ping", async (req, res) => {
+    try {
+      const url = process.env.SHEETS_WEBHOOK_URL!;
+      const secret = process.env.WEBHOOK_SECRET!;
+      if (!url || !secret) throw new Error("Missing env vars");
+
+      const payload = {
+        event_id: crypto.randomUUID(),
+        event_ts: new Date().toISOString(),
+        event_type: "user_created",
+        email: `test+${Date.now()}@example.com`,
+        first_name: "Dan",
+        last_name: "Test",
+        source_primary: "realist",
+        source_detail: "ping",
+        tags: ["test"]
+      };
+
+      const body = JSON.stringify(payload);
+      const sig = crypto.createHmac("sha256", secret).update(body).digest("hex");
+      const webhookUrl = url.includes("?") ? `${url}&sig=${sig}` : `${url}?sig=${sig}`;
+
+      const r = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      });
+
+      const text = await r.text();
+      res.status(r.status).send(text);
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
 
