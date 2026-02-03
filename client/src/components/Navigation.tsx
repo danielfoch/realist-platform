@@ -52,7 +52,7 @@ const navCategories: NavCategory[] = [
       { href: "/about", label: "About Realist", description: "Our mission", icon: <Info className="h-4 w-4" /> },
       { href: "/about/team", label: "Team", description: "Meet the founders", icon: <Users className="h-4 w-4" /> },
       { href: "/about/programs", label: "Coaching", description: "Mentorship programs", icon: <GraduationCap className="h-4 w-4" /> },
-      { href: "/about/shop", label: "Shop", description: "Realist merchandise", icon: <ShoppingBag className="h-4 w-4" /> },
+      { href: "https://shop.realist.ca", label: "Shop", description: "Realist merchandise", icon: <ShoppingBag className="h-4 w-4" />, external: true },
       { href: "/about/contact", label: "Contact", description: "Get in touch", icon: <Mail className="h-4 w-4" /> },
     ],
   },
