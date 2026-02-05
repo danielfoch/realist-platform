@@ -3330,6 +3330,150 @@ export async function registerRoutes(
     }
   });
 
+  // Realtor.ca listing parser endpoint
+  app.post("/api/listings/parse-realtor-ca", async (req, res) => {
+    try {
+      const { url, html: providedHtml } = req.body;
+      
+      let html: string;
+      let sourceUrl = "";
+      
+      if (providedHtml && typeof providedHtml === "string") {
+        // User provided HTML source directly
+        html = providedHtml;
+        // Try to extract URL from the HTML
+        const canonicalMatch = html.match(/<link[^>]+rel="canonical"[^>]+href="([^"]+)"/i);
+        if (canonicalMatch) {
+          sourceUrl = canonicalMatch[1];
+        }
+      } else if (url && typeof url === "string") {
+        // Validate it's a realtor.ca URL
+        const realtorCaPattern = /^https?:\/\/(www\.)?realtor\.ca\/(real-estate|immobilier)\/\d+/;
+        if (!realtorCaPattern.test(url)) {
+          return res.status(400).json({ error: "Please provide a valid realtor.ca listing URL" });
+        }
+        
+        sourceUrl = url;
+        
+        // Fetch the page HTML
+        const response = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+          },
+        });
+        
+        if (!response.ok) {
+          return res.status(400).json({ error: "Failed to fetch listing. The URL may be invalid or the listing may no longer exist." });
+        }
+        
+        html = await response.text();
+      } else {
+        return res.status(400).json({ error: "URL or HTML source is required" });
+      }
+      
+      // Parse the dataLayer JavaScript object from the HTML
+      const dataLayerMatch = html.match(/dataLayer\.push\(\{[\s\S]*?property:\s*\{([\s\S]*?)\}\s*\}\);/);
+      
+      if (!dataLayerMatch) {
+        return res.status(400).json({ error: "Could not parse listing data. The page format may have changed." });
+      }
+      
+      const propertyBlock = dataLayerMatch[1];
+      
+      // Extract property details using regex
+      const extractField = (fieldName: string): string => {
+        const match = propertyBlock.match(new RegExp(`${fieldName}:\\s*['"]([^'"]*?)['"]`));
+        return match ? match[1] : "";
+      };
+      
+      const price = extractField("price");
+      const bedrooms = extractField("bedrooms");
+      const bathrooms = extractField("bathrooms");
+      const propertyType = extractField("propertyType");
+      const buildingType = extractField("buildingType");
+      const city = extractField("city");
+      const province = extractField("province");
+      const interiorFloorSpace = extractField("interiorFloorSpace");
+      const listingId = extractField("listingID");
+      const propertyId = extractField("propertyID");
+      const storeys = extractField("storeys");
+      const buildingStyle = extractField("buildingStyle");
+      const landSize = extractField("landSize");
+      
+      // Extract address from title tag
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      let address = "";
+      if (titleMatch) {
+        // Title format: "For sale: 4295 HORSESHOE VALLEY ROAD W, Springwater, Ontario L9X1G1 - S12360403 | REALTOR.ca"
+        const titleText = titleMatch[1];
+        const addressMatch = titleText.match(/For sale:\s*([^-|]+)/i);
+        if (addressMatch) {
+          // Get the street address part before the city
+          const fullAddress = addressMatch[1].trim();
+          const parts = fullAddress.split(",");
+          if (parts.length > 0) {
+            address = parts[0].trim();
+          }
+        }
+      }
+      
+      // Extract postal code from title or meta
+      let postalCode = "";
+      if (titleMatch) {
+        const postalMatch = titleMatch[1].match(/([A-Z]\d[A-Z]\s?\d[A-Z]\d)/i);
+        if (postalMatch) {
+          postalCode = postalMatch[1].replace(/\s/g, "").toUpperCase();
+        }
+      }
+      
+      // Convert square meters to square feet if needed
+      let squareFootage = 0;
+      if (interiorFloorSpace) {
+        const sqmMatch = interiorFloorSpace.match(/([\d.]+)\s*m2/i);
+        if (sqmMatch) {
+          squareFootage = Math.round(parseFloat(sqmMatch[1]) * 10.764);
+        }
+        const sqftMatch = interiorFloorSpace.match(/([\d,]+)\s*(sq\.?\s*ft|sqft)/i);
+        if (sqftMatch) {
+          squareFootage = parseInt(sqftMatch[1].replace(/,/g, ""));
+        }
+      }
+      
+      // Extract first image URL
+      const imageMatch = html.match(/og:image"\s+content="([^"]+)"/);
+      const imageUrl = imageMatch ? imageMatch[1] : "";
+      
+      res.json({
+        success: true,
+        listing: {
+          listingId,
+          propertyId,
+          address,
+          city,
+          province,
+          postalCode,
+          country: "canada",
+          price: price ? parseFloat(price) : 0,
+          bedrooms: bedrooms ? parseInt(bedrooms) : 0,
+          bathrooms: bathrooms ? parseInt(bathrooms) : 0,
+          squareFootage,
+          propertyType,
+          buildingType,
+          buildingStyle,
+          storeys: storeys ? parseInt(storeys) : 0,
+          landSize,
+          imageUrl,
+          sourceUrl,
+        },
+      });
+    } catch (error) {
+      console.error("Error parsing realtor.ca listing:", error);
+      res.status(500).json({ error: "Failed to parse listing. Please try again." });
+    }
+  });
+
   return httpServer;
 }
 

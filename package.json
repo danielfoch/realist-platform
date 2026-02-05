@@ -46,6 +46,7 @@
     "@types/memoizee": "^0.4.12",
     "@types/twilio": "^3.19.2",
     "bcryptjs": "^3.0.3",
+    "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

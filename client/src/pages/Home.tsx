@@ -19,10 +19,12 @@ import { LeadCaptureModal } from "@/components/LeadCaptureModal";
 import { RentVsBuyCalculator } from "@/components/RentVsBuyCalculator";
 import { RenoQuoteWizard } from "@/components/RenoQuoteWizard";
 import { MLISelectCalculator } from "@/components/MLISelectCalculator";
+import { ListingImport } from "@/components/ListingImport";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { calculateBuyHoldAnalysis, calculateStressTest, formatCurrency } from "@/lib/calculations";
@@ -124,6 +126,28 @@ export default function Home() {
   const stressTestResults = useMemo(() => {
     return calculateStressTest(inputs);
   }, [inputs]);
+
+  const handleListingImport = (listing: {
+    address: string;
+    city: string;
+    province: string;
+    postalCode: string;
+    country: "canada" | "usa";
+    price: number;
+  }) => {
+    setAddress(listing.address);
+    setCity(listing.city);
+    setRegion(listing.province);
+    setCountry(listing.country);
+    setPostalCode(listing.postalCode);
+    if (listing.price > 0) {
+      setInputs((prev) => ({
+        ...prev,
+        purchasePrice: listing.price,
+        closingCosts: Math.round(listing.price * 0.03),
+      }));
+    }
+  };
 
   const leadMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string; email: string; phone: string; consent: boolean }) => {
@@ -414,6 +438,10 @@ export default function Home() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    <ListingImport onImport={handleListingImport} />
+                    
+                    <Separator />
+                    
                     <AddressInput
                       address={address}
                       city={city}
