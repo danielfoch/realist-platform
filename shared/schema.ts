@@ -1429,3 +1429,145 @@ export const insertTrueCostInquirySchema = createInsertSchema(trueCostInquiries)
 export type InsertTrueCostInquiry = z.infer<typeof insertTrueCostInquirySchema>;
 export type TrueCostInquiry = typeof trueCostInquiries.$inferSelect;
 export type TrueCostBreakdown = typeof trueCostBreakdowns.$inferSelect;
+
+// Will It Plex - Capstone Projects
+export const capstoneProjects = pgTable("capstone_projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  title: text("title"),
+  strategy: text("strategy"), // "buy_and_hold" or "multiplex"
+  currentStep: integer("current_step").default(1),
+  status: text("status").default("draft"), // "draft", "in_progress", "completed"
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const capstoneProjectsRelations = relations(capstoneProjects, ({ one, many }) => ({
+  user: one(users, {
+    fields: [capstoneProjects.userId],
+    references: [users.id],
+  }),
+  property: one(capstoneProperties),
+  costModel: one(capstoneCostModels),
+  proforma: one(capstoneProformas),
+}));
+
+export const capstoneProperties = pgTable("capstone_properties", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").references(() => capstoneProjects.id).notNull(),
+  sourceUrl: text("source_url"),
+  listingId: text("listing_id"),
+  address: text("address"),
+  city: text("city"),
+  province: text("province"),
+  postalCode: text("postal_code"),
+  price: integer("price"),
+  annualTaxes: integer("annual_taxes"),
+  lotFrontage: real("lot_frontage"),
+  lotDepth: real("lot_depth"),
+  lotArea: real("lot_area"),
+  bedrooms: integer("bedrooms"),
+  bathrooms: integer("bathrooms"),
+  squareFootage: integer("square_footage"),
+  propertyType: text("property_type"),
+  buildingType: text("building_type"),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const capstonePropertiesRelations = relations(capstoneProperties, ({ one }) => ({
+  project: one(capstoneProjects, {
+    fields: [capstoneProperties.projectId],
+    references: [capstoneProjects.id],
+  }),
+}));
+
+export const capstoneCostModels = pgTable("capstone_cost_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").references(() => capstoneProjects.id).notNull(),
+  // Buy & Hold inputs
+  monthlyRent: integer("monthly_rent"),
+  downPaymentPercent: real("down_payment_percent"),
+  interestRate: real("interest_rate"),
+  amortizationYears: integer("amortization_years"),
+  // Multiplex inputs
+  zoningCode: text("zoning_code"),
+  lotCoverageRatio: real("lot_coverage_ratio"),
+  maxStories: integer("max_stories"),
+  maxUnits: integer("max_units"),
+  hasGardenSuite: boolean("has_garden_suite").default(false),
+  constructionCostPerSqft: integer("construction_cost_per_sqft"),
+  // MLI Select points
+  mliAccessibilityPoints: integer("mli_accessibility_points").default(0),
+  mliAffordabilityPoints: integer("mli_affordability_points").default(0),
+  mliEnergyPoints: integer("mli_energy_points").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const capstoneCostModelsRelations = relations(capstoneCostModels, ({ one }) => ({
+  project: one(capstoneProjects, {
+    fields: [capstoneCostModels.projectId],
+    references: [capstoneProjects.id],
+  }),
+}));
+
+export const capstoneProformas = pgTable("capstone_proformas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").references(() => capstoneProjects.id).notNull(),
+  // Calculated metrics
+  buildableGfa: real("buildable_gfa"),
+  totalConstructionCost: integer("total_construction_cost"),
+  totalProjectCost: integer("total_project_cost"),
+  noi: integer("noi"),
+  dscr: real("dscr"),
+  capRate: real("cap_rate"),
+  cashOnCashReturn: real("cash_on_cash_return"),
+  yieldOnCost: real("yield_on_cost"),
+  // Full results JSON
+  resultsJson: jsonb("results_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const capstoneProformasRelations = relations(capstoneProformas, ({ one }) => ({
+  project: one(capstoneProjects, {
+    fields: [capstoneProformas.projectId],
+    references: [capstoneProjects.id],
+  }),
+}));
+
+// Insert schemas
+export const insertCapstoneProjectSchema = createInsertSchema(capstoneProjects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCapstonePropertySchema = createInsertSchema(capstoneProperties).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCapstoneCostModelSchema = createInsertSchema(capstoneCostModels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCapstoneProformaSchema = createInsertSchema(capstoneProformas).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types
+export type InsertCapstoneProject = z.infer<typeof insertCapstoneProjectSchema>;
+export type CapstoneProject = typeof capstoneProjects.$inferSelect;
+export type InsertCapstoneProperty = z.infer<typeof insertCapstonePropertySchema>;
+export type CapstoneProperty = typeof capstoneProperties.$inferSelect;
+export type InsertCapstoneCostModel = z.infer<typeof insertCapstoneCostModelSchema>;
+export type CapstoneCostModel = typeof capstoneCostModels.$inferSelect;
+export type InsertCapstoneProforma = z.infer<typeof insertCapstoneProformaSchema>;
+export type CapstoneProforma = typeof capstoneProformas.$inferSelect;

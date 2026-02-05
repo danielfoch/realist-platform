@@ -21,8 +21,12 @@ import {
   type RenoQuoteAssumptions,
   trueCostInquiries,
   trueCostBreakdowns,
+  capstoneProjects,
+  capstoneProperties,
+  capstoneCostModels,
+  capstoneProformas,
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
@@ -3471,6 +3475,324 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error parsing realtor.ca listing:", error);
       res.status(500).json({ error: "Failed to parse listing. Please try again." });
+    }
+  });
+
+  // ==========================================
+  // Will It Plex - Capstone Project API Routes
+  // ==========================================
+
+  // Get all projects for current user
+  app.get("/api/capstone/projects", async (req, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const projects = await db
+        .select()
+        .from(capstoneProjects)
+        .where(eq(capstoneProjects.userId, req.user.id))
+        .orderBy(sql`${capstoneProjects.updatedAt} DESC`);
+      
+      // Fetch related data for each project
+      const projectsWithRelations = await Promise.all(
+        projects.map(async (project) => {
+          const [property] = await db
+            .select()
+            .from(capstoneProperties)
+            .where(eq(capstoneProperties.projectId, project.id));
+          
+          const [costModel] = await db
+            .select()
+            .from(capstoneCostModels)
+            .where(eq(capstoneCostModels.projectId, project.id));
+          
+          const [proforma] = await db
+            .select()
+            .from(capstoneProformas)
+            .where(eq(capstoneProformas.projectId, project.id));
+          
+          return {
+            ...project,
+            property: property || null,
+            costModel: costModel || null,
+            proforma: proforma || null,
+          };
+        })
+      );
+      
+      res.json(projectsWithRelations);
+    } catch (error) {
+      console.error("Error fetching capstone projects:", error);
+      res.status(500).json({ error: "Failed to fetch projects" });
+    }
+  });
+
+  // Get single project by ID
+  app.get("/api/capstone/projects/:id", async (req, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const { id } = req.params;
+      
+      const [project] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, req.user.id)
+        ));
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const [property] = await db
+        .select()
+        .from(capstoneProperties)
+        .where(eq(capstoneProperties.projectId, id));
+      
+      const [costModel] = await db
+        .select()
+        .from(capstoneCostModels)
+        .where(eq(capstoneCostModels.projectId, id));
+      
+      const [proforma] = await db
+        .select()
+        .from(capstoneProformas)
+        .where(eq(capstoneProformas.projectId, id));
+      
+      res.json({
+        ...project,
+        property: property || null,
+        costModel: costModel || null,
+        proforma: proforma || null,
+      });
+    } catch (error) {
+      console.error("Error fetching capstone project:", error);
+      res.status(500).json({ error: "Failed to fetch project" });
+    }
+  });
+
+  // Create new project
+  app.post("/api/capstone/projects", async (req, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const [project] = await db
+        .insert(capstoneProjects)
+        .values({
+          userId: req.user.id,
+          status: "draft",
+          currentStep: 1,
+        })
+        .returning();
+      
+      res.json({ project });
+    } catch (error) {
+      console.error("Error creating capstone project:", error);
+      res.status(500).json({ error: "Failed to create project" });
+    }
+  });
+
+  // Update project
+  app.patch("/api/capstone/projects/:id", async (req, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const { id } = req.params;
+      const { strategy, currentStep, status, completedAt, title } = req.body;
+      
+      // Verify ownership
+      const [existing] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, req.user.id)
+        ));
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const updateData: any = { updatedAt: new Date() };
+      if (strategy !== undefined) updateData.strategy = strategy;
+      if (currentStep !== undefined) updateData.currentStep = currentStep;
+      if (status !== undefined) updateData.status = status;
+      if (completedAt !== undefined) updateData.completedAt = new Date(completedAt);
+      if (title !== undefined) updateData.title = title;
+      
+      const [updated] = await db
+        .update(capstoneProjects)
+        .set(updateData)
+        .where(eq(capstoneProjects.id, id))
+        .returning();
+      
+      res.json({ project: updated });
+    } catch (error) {
+      console.error("Error updating capstone project:", error);
+      res.status(500).json({ error: "Failed to update project" });
+    }
+  });
+
+  // Save property to project
+  app.post("/api/capstone/projects/:id/property", async (req, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const { id } = req.params;
+      
+      // Verify ownership
+      const [project] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, req.user.id)
+        ));
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Delete existing property if any
+      await db
+        .delete(capstoneProperties)
+        .where(eq(capstoneProperties.projectId, id));
+      
+      // Insert new property
+      const [property] = await db
+        .insert(capstoneProperties)
+        .values({
+          projectId: id,
+          sourceUrl: req.body.sourceUrl,
+          listingId: req.body.listingId,
+          address: req.body.address,
+          city: req.body.city,
+          province: req.body.province,
+          postalCode: req.body.postalCode,
+          price: req.body.price,
+          annualTaxes: req.body.annualTaxes,
+          lotFrontage: req.body.lotFrontage,
+          lotDepth: req.body.lotDepth,
+          lotArea: req.body.lotArea,
+          bedrooms: req.body.bedrooms,
+          bathrooms: req.body.bathrooms,
+          squareFootage: req.body.squareFootage,
+          propertyType: req.body.propertyType,
+          buildingType: req.body.buildingType,
+          imageUrl: req.body.imageUrl,
+        })
+        .returning();
+      
+      // Update project title if not set
+      if (!project.title && req.body.address) {
+        await db
+          .update(capstoneProjects)
+          .set({ title: req.body.address, updatedAt: new Date() })
+          .where(eq(capstoneProjects.id, id));
+      }
+      
+      res.json({ property });
+    } catch (error) {
+      console.error("Error saving capstone property:", error);
+      res.status(500).json({ error: "Failed to save property" });
+    }
+  });
+
+  // Save cost model
+  app.post("/api/capstone/projects/:id/cost-model", async (req, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const { id } = req.params;
+      
+      // Verify ownership
+      const [project] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, req.user.id)
+        ));
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Delete existing cost model if any
+      await db
+        .delete(capstoneCostModels)
+        .where(eq(capstoneCostModels.projectId, id));
+      
+      // Insert new cost model
+      const [costModel] = await db
+        .insert(capstoneCostModels)
+        .values({
+          projectId: id,
+          ...req.body,
+        })
+        .returning();
+      
+      res.json({ costModel });
+    } catch (error) {
+      console.error("Error saving capstone cost model:", error);
+      res.status(500).json({ error: "Failed to save cost model" });
+    }
+  });
+
+  // Save proforma/results
+  app.post("/api/capstone/projects/:id/proforma", async (req, res) => {
+    if (!req.isAuthenticated?.() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const { id } = req.params;
+      
+      // Verify ownership
+      const [project] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, req.user.id)
+        ));
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Delete existing proforma if any
+      await db
+        .delete(capstoneProformas)
+        .where(eq(capstoneProformas.projectId, id));
+      
+      // Insert new proforma
+      const [proforma] = await db
+        .insert(capstoneProformas)
+        .values({
+          projectId: id,
+          ...req.body,
+        })
+        .returning();
+      
+      res.json({ proforma });
+    } catch (error) {
+      console.error("Error saving capstone proforma:", error);
+      res.status(500).json({ error: "Failed to save proforma" });
     }
   });
 
