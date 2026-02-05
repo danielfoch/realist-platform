@@ -128,6 +128,9 @@ The navigation uses a category-based dropdown structure:
 - Supports 6 Ontario cities (Toronto, Mississauga, Brampton, Ottawa, Hamilton, London)
 - Handles new construction vs resale, first-time vs repeat buyers, different home types
 - Pie chart visualization of cost breakdown
+- **Gated Experience**: Unauthenticated users see blurred results with signup CTA overlay
+- Authenticated users get full results and inquiries saved to database
+- Database tables: trueCostInquiries, trueCostBreakdowns
 - Data sources: BILD/Altus 2023, CRA, Ontario Government
 
 ### Lead Capture Improvements (February 2026)
