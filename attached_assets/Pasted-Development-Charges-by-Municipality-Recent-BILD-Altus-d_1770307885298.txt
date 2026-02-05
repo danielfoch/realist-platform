@@ -1,0 +1,106 @@
+Development Charges by Municipality
+
+Recent BILD/Altus data (2023) show DCs vary widely across Ontario cities. For example, per single-detached unit (SDU) in 2023: Toronto ~$97,041; Mississauga ~$124,025; Brampton ~$130,593; Ottawa ~$46,993; Hamilton ~$66,964; London ~$44,067. These figures reflect DC rates as of Sept 2023. The values rise with home size/type; the table below uses SDU for comparison.
+
+"developmentCharges": [
+  {"city":"Toronto","type":"singleDetached","value":97041},
+  {"city":"Mississauga","type":"singleDetached","value":124025},
+  {"city":"Brampton","type":"singleDetached","value":130593},
+  {"city":"Ottawa","type":"singleDetached","value":46993},
+  {"city":"Hamilton","type":"singleDetached","value":66964},
+  {"city":"London","type":"singleDetached","value":44067}
+]
+
+
+Sources: BILD “State of DCs in Ontario” (Jan 2025). (All DCs are 2023 rates per SDU.)
+
+HST/GST Rules on New Homes
+
+Ontario’s HST is 13% (5% federal + 8% provincial). Buyers of new homes pay HST on purchase price, but may claim GST/HST New Housing Rebates. The federal rebate covers 36% of the 5% GST (max $6,300); full federal rebate applies up to $350K purchase price, phased out to $450K. Ontario’s provincial rebate covers 75% of the 8% portion (max $24,000); effectively this covers all provincial tax on roughly the first $400K of value. In effect, combined rebates can total up to $30,300 on homes ≤ $450K.
+
+ 
+
+First-time-homebuyer (FTHB) rules are evolving. Proposed (not yet in force) federal and Ontario FTHB rebates would eliminate HST on homes up to $1 million (phase‐out to $1.5M), i.e. up to $50,000 federal + $80,000 provincial relief (total ~$130K). These supplements would stack on existing $30K New Home Rebate.
+
+ 
+
+Purpose-Built Rental (PBR) housing also has special rules. Under the new Residential Rental Property Rebate (NRRP), developers of new rental projects can recover 36% of the federal HST (max $6,300 per unit, phased out $350–$450K) and 75% of the provincial portion (max $24,000). From late 2023 (Bill C-56), qualifying purpose-built rental projects now get 100% rebate of both federal and Ontario HST (no $450K cap). Eligibility requires a multi-unit rental building (≥4 units, ≥90% rental occupancy) with construction started after Sept 2023.
+
+"hstGSTRules": {
+  "taxRates": {"GST":0.05,"PST":0.08,"HST":0.13},
+  "rebates": {
+    "federalNewHome": {"maxRebate":6300,"phaseOutStart":350000,"phaseOutEnd":450000},
+    "ontarioNewHome": {"maxRebate":24000,"maxValueForFullRebate":450000}
+  },
+  "firstTimeProposed": {
+    "federal": {"fullUpTo":1000000,"phaseOutEnd":1500000,"maxRebate":50000},
+    "ontario": {"fullUpTo":1000000,"phaseOutEnd":1500000,"maxRebate":80000}
+  },
+  "rentalRebates": {
+    "NRRP": {"federalPercent":36,"provincialPercent":75,"maxFederalRebate":6300,"maxProvincialRebate":24000},
+    "PBRH": {"federalPercent":100,"provincialPercent":100,"noValueCap":true}
+  }
+}
+
+
+Sources: CRA/CMHC guidance; Bateman Mackay (2026); CRA Notice/analysis of NRRP/PBR.
+
+Land Transfer Tax (LTT) Rules
+
+Ontario Provincial LTT: Progressive rates (2023): 0.50% on first $55K, 1.00% on $55K–$250K, 1.50% on $250K–$400K, 2.00% on $400K–$2,000K, and 2.50% on any excess. First-time buyers receive a rebate up to $4,000, covering the full LTT on homes up to ~$368,000.
+
+ 
+
+Toronto MLTT (Municipal LTT): In addition to provincial LTT, Toronto charges municipal tax on properties in city limits. (As of Sept 2023) rates are: 0.50% on first $55K, 1.00% on $55K–$250K, 1.50% on $250K–$400K, 2.00% on $400K–$2M, 2.50% on $2M–$3M, and higher brackets of 3.5–7.5% above $3M. First-time Toronto buyers get a full rebate up to $4,475 (full MLTT on prices to $400K).
+
+"landTransferTax": {
+  "ontarioBrackets":[
+    {"upTo":55000,"rate":0.005},
+    {"upTo":250000,"rate":0.01},
+    {"upTo":400000,"rate":0.015},
+    {"upTo":2000000,"rate":0.02},
+    {"above":2000000,"rate":0.025}
+  ],
+  "torontoBrackets":[
+    {"upTo":55000,"rate":0.005},
+    {"upTo":250000,"rate":0.01},
+    {"upTo":400000,"rate":0.015},
+    {"upTo":2000000,"rate":0.02},
+    {"upTo":3000000,"rate":0.025},
+    {"upTo":4000000,"rate":0.035},
+    {"upTo":5000000,"rate":0.045},
+    {"upTo":10000000,"rate":0.055},
+    {"upTo":20000000,"rate":0.065},
+    {"above":20000000,"rate":0.075}
+  ],
+  "firstTimeRebate": {"ontario":4000,"ontarioCoverage":368000,"toronto":4475,"torontoCoverage":400000}
+}
+
+
+Sources: Ontario gov’t (2023); City of Toronto (2023).
+
+Construction Cost Estimates (Ontario)
+
+Hard construction costs vary by housing type. Using industry data, approximate construction cost per ft² (hard costs only) are:
+
+Detached house (2-storey): about $172–215/ft².
+
+Townhouse (stacked 2½-storey, multi-unit): about $182–226/ft².
+
+Condominium (mid/high-rise): roughly $215–290/ft² hard cost (luxury towers ~$275–330).
+
+Purpose-Built Rental (high-rise apt): similar to condos (≈$200–300/ft²).
+
+"constructionCosts": {
+  "singleDetached": {"range_perSqFt":[172,215],"units":"CAD","source":"CMHC 2021"},
+  "townhouse": {"range_perSqFt":[182,226],"units":"CAD","source":"CMHC 2021"},
+  "condominium": {"range_perSqFt":[215,290],"units":"CAD","source":"GTA 2024 data"},
+  "purposeBuiltRental": {"range_perSqFt":[215,290],"units":"CAD","source":"GTA 2024 data"}
+}
+
+
+Notes: These figures are ballpark averages from CMHC and industry reports. For example, a 2021 CMHC study found national detached construction ~$172–215/ft² and townhouses ~$182–226/ft². Toronto condo hard costs were reported ~$215–290/ft². Actual costs depend on design, finishes and region.
+
+ 
+
+Sources: CMHC Cost of Delivering Housing in Canada (Sept 2021); Altus/industry data (2024).

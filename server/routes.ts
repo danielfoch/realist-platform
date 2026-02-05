@@ -38,6 +38,13 @@ import {
   sendMLIQuoteNotification,
 } from "./resend";
 import { authStorage } from "./replit_integrations/auth/storage";
+import { 
+  calculateTrueCost, 
+  cities, 
+  homeTypes, 
+  buyerTypes,
+  type TrueCostInput,
+} from "./costData";
 
 const rateLimit = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -3226,6 +3233,38 @@ export async function registerRoutes(
       console.error("Error posting message:", error);
       res.status(500).json({ error: "Failed to post message" });
     }
+  });
+
+  // True Cost of Homeownership Calculator
+  const trueCostInputSchema = z.object({
+    homeValue: z.number().min(50000).max(50000000),
+    city: z.enum(cities),
+    isNewConstruction: z.boolean(),
+    buyerType: z.enum(buyerTypes),
+    homeType: z.enum(homeTypes),
+    squareFootage: z.number().min(200).max(20000).optional(),
+  });
+
+  app.post("/api/true-cost/calculate", (req, res) => {
+    try {
+      const input = trueCostInputSchema.parse(req.body);
+      const breakdown = calculateTrueCost(input as TrueCostInput);
+      res.json(breakdown);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("True cost calculation error:", error);
+      res.status(500).json({ error: "Failed to calculate costs" });
+    }
+  });
+
+  app.get("/api/true-cost/options", (req, res) => {
+    res.json({
+      cities: cities,
+      homeTypes: homeTypes,
+      buyerTypes: buyerTypes,
+    });
   });
 
   return httpServer;
