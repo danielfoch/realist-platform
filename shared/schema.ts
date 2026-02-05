@@ -1386,3 +1386,46 @@ export const coInvestGroupFormSchema = z.object({
 });
 
 export type CoInvestGroupFormData = z.infer<typeof coInvestGroupFormSchema>;
+
+// True Cost of Homeownership tables
+export const trueCostInquiries = pgTable("true_cost_inquiries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  homeValue: integer("home_value").notNull(),
+  city: text("city").notNull(),
+  homeType: text("home_type").notNull(),
+  buyerType: text("buyer_type").notNull(),
+  isNewConstruction: boolean("is_new_construction").default(false),
+  squareFootage: integer("square_footage"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const trueCostInquiriesRelations = relations(trueCostInquiries, ({ one }) => ({
+  user: one(users, {
+    fields: [trueCostInquiries.userId],
+    references: [users.id],
+  }),
+}));
+
+export const trueCostBreakdowns = pgTable("true_cost_breakdowns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  inquiryId: varchar("inquiry_id").references(() => trueCostInquiries.id).notNull(),
+  breakdownJson: jsonb("breakdown_json").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const trueCostBreakdownsRelations = relations(trueCostBreakdowns, ({ one }) => ({
+  inquiry: one(trueCostInquiries, {
+    fields: [trueCostBreakdowns.inquiryId],
+    references: [trueCostInquiries.id],
+  }),
+}));
+
+export const insertTrueCostInquirySchema = createInsertSchema(trueCostInquiries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrueCostInquiry = z.infer<typeof insertTrueCostInquirySchema>;
+export type TrueCostInquiry = typeof trueCostInquiries.$inferSelect;
+export type TrueCostBreakdown = typeof trueCostBreakdowns.$inferSelect;

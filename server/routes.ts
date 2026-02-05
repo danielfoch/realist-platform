@@ -19,6 +19,8 @@ import {
   renoQuoteAssumptionsSchema,
   type RenoQuoteLineItem,
   type RenoQuoteAssumptions,
+  trueCostInquiries,
+  trueCostBreakdowns,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -3245,10 +3247,31 @@ export async function registerRoutes(
     squareFootage: z.number().min(200).max(20000).optional(),
   });
 
-  app.post("/api/true-cost/calculate", (req, res) => {
+  app.post("/api/true-cost/calculate", async (req, res) => {
     try {
       const input = trueCostInputSchema.parse(req.body);
       const breakdown = calculateTrueCost(input as TrueCostInput);
+      
+      // If user is authenticated, save inquiry and breakdown to database
+      if (req.isAuthenticated() && req.user) {
+        const [inquiry] = await db.insert(trueCostInquiries).values({
+          userId: req.user.id,
+          homeValue: input.homeValue,
+          city: input.city,
+          homeType: input.homeType,
+          buyerType: input.buyerType,
+          isNewConstruction: input.isNewConstruction,
+          squareFootage: input.squareFootage,
+        }).returning();
+        
+        await db.insert(trueCostBreakdowns).values({
+          inquiryId: inquiry.id,
+          breakdownJson: breakdown,
+        });
+        
+        return res.json({ ...breakdown, inquiryId: inquiry.id });
+      }
+      
       res.json(breakdown);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -3265,6 +3288,45 @@ export async function registerRoutes(
       homeTypes: homeTypes,
       buyerTypes: buyerTypes,
     });
+  });
+
+  app.get("/api/true-cost/breakdown/:inquiryId", async (req, res) => {
+    try {
+      const { inquiryId } = req.params;
+      
+      const [breakdown] = await db
+        .select()
+        .from(trueCostBreakdowns)
+        .where(eq(trueCostBreakdowns.inquiryId, inquiryId));
+      
+      if (!breakdown) {
+        return res.status(404).json({ error: "Breakdown not found" });
+      }
+      
+      res.json(breakdown.breakdownJson);
+    } catch (error) {
+      console.error("Error fetching breakdown:", error);
+      res.status(500).json({ error: "Failed to fetch breakdown" });
+    }
+  });
+
+  app.get("/api/true-cost/my-inquiries", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const inquiries = await db
+        .select()
+        .from(trueCostInquiries)
+        .where(eq(trueCostInquiries.userId, req.user.id))
+        .orderBy(sql`${trueCostInquiries.createdAt} DESC`);
+      
+      res.json(inquiries);
+    } catch (error) {
+      console.error("Error fetching inquiries:", error);
+      res.status(500).json({ error: "Failed to fetch inquiries" });
+    }
   });
 
   return httpServer;

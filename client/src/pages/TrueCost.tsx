@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Link } from "wouter";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import {
   Form,
@@ -24,8 +25,9 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Calculator, DollarSign, Home, MapPin, HelpCircle } from "lucide-react";
+import { Loader2, Calculator, DollarSign, Home, MapPin, HelpCircle, Lock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Tooltip as UITooltip,
   TooltipContent,
@@ -83,6 +85,8 @@ function formatCurrency(value: number): string {
 
 export default function TrueCost() {
   const [result, setResult] = useState<CostBreakdown | null>(null);
+  const [showTeaser, setShowTeaser] = useState(false);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const { data: options, isLoading: optionsLoading } = useQuery<{
     cities: string[];
@@ -106,6 +110,9 @@ export default function TrueCost() {
     },
     onSuccess: (data) => {
       setResult(data);
+      if (!isAuthenticated) {
+        setShowTeaser(true);
+      }
     },
   });
 
@@ -358,45 +365,72 @@ export default function TrueCost() {
           <div className="space-y-6">
             {result ? (
               <>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Cost Breakdown</CardTitle>
-                    <CardDescription>
-                      How your home price breaks down
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[280px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={result.breakdown}
-                            dataKey="amount"
-                            nameKey="category"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={100}
-                            paddingAngle={2}
-                          >
-                            {result.breakdown.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={CHART_COLORS[index % CHART_COLORS.length]}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            formatter={(value: number) => formatCurrency(value)}
-                          />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
+                <div className="relative">
+                  {showTeaser && !isAuthenticated && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+                      <Card className="max-w-sm mx-4">
+                        <CardContent className="pt-6 text-center">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                            <Lock className="h-6 w-6 text-primary" />
+                          </div>
+                          <h3 className="text-lg font-semibold mb-2">
+                            Unlock Full Results
+                          </h3>
+                          <p className="text-muted-foreground mb-4 text-sm">
+                            Create a free account to see your complete cost breakdown and save your calculations.
+                          </p>
+                          <div className="space-y-2">
+                            <Button asChild className="w-full" data-testid="button-signup-teaser">
+                              <Link href="/create-account">Create Free Account</Link>
+                            </Button>
+                            <Button variant="ghost" asChild className="w-full" data-testid="button-login-teaser">
+                              <Link href="/login">Already have an account? Log in</Link>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
-                  </CardContent>
-                </Card>
+                  )}
+                  <Card className={showTeaser && !isAuthenticated ? "blur-sm pointer-events-none" : ""}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Cost Breakdown</CardTitle>
+                      <CardDescription>
+                        How your home price breaks down
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={result.breakdown}
+                              dataKey="amount"
+                              nameKey="category"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={100}
+                              paddingAngle={2}
+                            >
+                              {result.breakdown.map((entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value: number) => formatCurrency(value)}
+                            />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
-                <Card>
+                <Card className={showTeaser && !isAuthenticated ? "blur-sm pointer-events-none" : ""}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Detailed Summary</CardTitle>
                   </CardHeader>
