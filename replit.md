@@ -133,6 +133,15 @@ The navigation uses a category-based dropdown structure:
 - Database tables: trueCostInquiries, trueCostBreakdowns
 - Data sources: BILD/Altus 2023, CRA, Ontario Government
 
+### Realtor.ca Listing Import (February 2026)
+- New feature to import property details from realtor.ca listings
+- Dual-mode support: URL fetch and HTML paste (fallback when URL blocked)
+- API endpoint: POST /api/listings/parse-realtor-ca
+- Parses dataLayer JavaScript from realtor.ca HTML for property details
+- Auto-populates deal analyzer fields: address, city, province, postal code, purchase price
+- Collapsible "Advanced Import" section with step-by-step instructions for HTML paste method
+- Handles Incapsula/Imperva anti-scraping by allowing users to paste page source directly
+
 ### Lead Capture Improvements (February 2026)
 - Google Sheets webhook backup for all lead creation endpoints (Deal Analyzer, MLI Select, engagement forms)
 - HMAC SHA-256 signature authentication for webhook security (WEBHOOK_SECRET)
