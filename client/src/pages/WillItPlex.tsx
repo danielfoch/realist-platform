@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation, Link } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,26 +14,13 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   Home, Building2, ArrowLeft, ArrowRight, Check, FileDown, 
   Search, MapPin, DollarSign, Percent, Calculator, Layers,
-  ChevronDown, ExternalLink, Loader2, Plus, RotateCcw, Code, LogIn
+  ChevronDown, ExternalLink, Loader2, Plus, RotateCcw, Code
 } from "lucide-react";
-import type { CapstoneProject, CapstoneProperty, CapstoneCostModel, CapstoneProforma } from "@shared/schema";
-
-interface User {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-interface ProjectWithRelations extends CapstoneProject {
-  property?: CapstoneProperty | null;
-  costModel?: CapstoneCostModel | null;
-  proforma?: CapstoneProforma | null;
-}
+import type { CapstoneProperty } from "@shared/schema";
 
 const STRATEGY_STEPS = {
   buy_and_hold: [
@@ -56,18 +42,11 @@ const STRATEGY_STEPS = {
 
 export default function WillItPlex() {
   const { toast } = useToast();
-  const [, navigate] = useLocation();
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [strategy, setStrategy] = useState<"buy_and_hold" | "multiplex" | null>(null);
   
-  // Fetch current user for auth gating
-  const { data: user, isLoading: userLoading } = useQuery<User | null>({
-    queryKey: ["/api/auth/user"],
-    retry: false,
-  });
-
-  const isAuthenticated = !!user;
+  // No auth required - tool works for everyone
   
   // Property import state
   const [listingUrl, setListingUrl] = useState("");
@@ -106,51 +85,6 @@ export default function WillItPlex() {
     totalConstructionCost?: number;
   } | null>(null);
 
-  // Fetch user's projects
-  const { data: projects, isLoading: projectsLoading } = useQuery<ProjectWithRelations[]>({
-    queryKey: ["/api/capstone/projects"],
-  });
-
-  // Fetch current project details
-  const { data: currentProject, refetch: refetchProject } = useQuery<ProjectWithRelations>({
-    queryKey: ["/api/capstone/projects", currentProjectId],
-    enabled: !!currentProjectId,
-  });
-
-  // Create new project mutation
-  const createProjectMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/capstone/projects");
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setCurrentProjectId(data.project.id);
-      setStep(1);
-      setStrategy(null);
-      setImportedProperty(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/capstone/projects"] });
-      toast({ title: "New project created", description: "Start by importing a property" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-
-  // Update project mutation
-  const updateProjectMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiRequest("PATCH", `/api/capstone/projects/${currentProjectId}`, data);
-      return res.json();
-    },
-    onSuccess: () => {
-      refetchProject();
-      queryClient.invalidateQueries({ queryKey: ["/api/capstone/projects"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error saving", description: error.message, variant: "destructive" });
-    },
-  });
-
   // Import property mutation
   const importPropertyMutation = useMutation({
     mutationFn: async (input: { url?: string; html?: string }) => {
@@ -188,21 +122,7 @@ export default function WillItPlex() {
     },
   });
 
-  // Save property to project
-  const savePropertyMutation = useMutation({
-    mutationFn: async (property: Partial<CapstoneProperty>) => {
-      const res = await apiRequest("POST", `/api/capstone/projects/${currentProjectId}/property`, property);
-      return res.json();
-    },
-    onSuccess: () => {
-      refetchProject();
-      toast({ title: "Property saved" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error saving property", description: error.message, variant: "destructive" });
-    },
-  });
-
+  
   // Calculate metrics
   const calculateMetrics = () => {
     if (!importedProperty?.price) return;
@@ -303,13 +223,7 @@ export default function WillItPlex() {
   const totalSteps = steps.length;
   const progress = ((step - 1) / (totalSteps - 1)) * 100;
 
-  const handleNext = async () => {
-    if (step === 1 && importedProperty) {
-      await savePropertyMutation.mutateAsync(importedProperty);
-    }
-    if (step === 2 && strategy) {
-      await updateProjectMutation.mutateAsync({ strategy, currentStep: 3 });
-    }
+  const handleNext = () => {
     setStep(Math.min(step + 1, totalSteps));
   };
 
@@ -1133,82 +1047,34 @@ export default function WillItPlex() {
                 Start Over
               </Button>
             )}
-            {isAuthenticated && (
-              <Button 
-                onClick={() => createProjectMutation.mutate()} 
-                disabled={createProjectMutation.isPending}
-                data-testid="button-new-project"
-              >
-                {createProjectMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                New Project
-              </Button>
-            )}
+            <Button 
+              onClick={() => {
+                setCurrentProjectId("local-" + Date.now());
+                setStep(1);
+                setStrategy(null);
+                setImportedProperty(null);
+              }}
+              data-testid="button-new-project"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Project
+            </Button>
           </div>
         </div>
 
         {!currentProjectId ? (
           <Card>
             <CardHeader>
-              <CardTitle>Your Capstone Projects</CardTitle>
+              <CardTitle>Get Started</CardTitle>
               <CardDescription>
-                Continue a previous project or start a new one
+                Analyze a property using the Buy & Hold or Multiplex strategy
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {userLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : !isAuthenticated ? (
-                <div className="text-center py-8">
-                  <LogIn className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground mb-4">Sign in to create and save your capstone projects</p>
-                  <Link href={`/login?returnUrl=${encodeURIComponent('/tools/will-it-plex')}`}>
-                    <Button data-testid="button-login-prompt">
-                      <LogIn className="h-4 w-4 mr-2" />
-                      Sign In to Continue
-                    </Button>
-                  </Link>
-                </div>
-              ) : projectsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : projects && projects.length > 0 ? (
-                <div className="space-y-3">
-                  {projects.map((project, index) => (
-                    <Card 
-                      key={project.id} 
-                      className="cursor-pointer hover-elevate" 
-                      data-testid={`card-project-${index}`}
-                      onClick={() => {
-                        setCurrentProjectId(project.id);
-                        setStep(project.currentStep || 1);
-                        setStrategy(project.strategy as "buy_and_hold" | "multiplex" | null);
-                        if (project.property) setImportedProperty(project.property);
-                      }}
-                    >
-                      <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="font-medium" data-testid={`text-project-address-${index}`}>{project.property?.address || "Untitled Project"}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {project.strategy === "buy_and_hold" ? "Buy & Hold" : project.strategy === "multiplex" ? "Multiplex" : "Not started"} 
-                            {" • "}Step {project.currentStep || 1}
-                          </p>
-                        </div>
-                        <Badge variant={project.status === "completed" ? "default" : "secondary"} data-testid={`badge-project-status-${index}`}>
-                          {project.status}
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">No projects yet. Click "New Project" to begin!</p>
-                </div>
-              )}
+              <div className="text-center py-8">
+                <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground mb-4">Click "New Project" above to start analyzing a property</p>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -1255,25 +1121,19 @@ export default function WillItPlex() {
                   onClick={handleNext}
                   disabled={
                     (step === 1 && !importedProperty) ||
-                    (step === 2 && !strategy) ||
-                    updateProjectMutation.isPending ||
-                    savePropertyMutation.isPending
+                    (step === 2 && !strategy)
                   }
                   data-testid="button-next"
                 >
-                  {(updateProjectMutation.isPending || savePropertyMutation.isPending) && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
                 <Button onClick={() => {
-                  updateProjectMutation.mutate({ status: "completed", completedAt: new Date().toISOString() });
-                  toast({ title: "Project completed!", description: "Your analysis has been saved." });
+                  toast({ title: "Analysis complete!", description: "You can export your results using the buttons above." });
                 }} data-testid="button-complete">
                   <Check className="h-4 w-4 mr-2" />
-                  Complete Project
+                  Done
                 </Button>
               )}
             </div>
