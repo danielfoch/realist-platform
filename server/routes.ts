@@ -3253,7 +3253,8 @@ export async function registerRoutes(
       const breakdown = calculateTrueCost(input as TrueCostInput);
       
       // If user is authenticated, save inquiry and breakdown to database
-      if (req.isAuthenticated() && req.user) {
+      const isLoggedIn = req.isAuthenticated?.() && req.user;
+      if (isLoggedIn && req.user) {
         const [inquiry] = await db.insert(trueCostInquiries).values({
           userId: req.user.id,
           homeValue: input.homeValue,
