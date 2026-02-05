@@ -63,7 +63,7 @@ export default function WillItPlex() {
   
   // Fetch current user for auth gating
   const { data: user, isLoading: userLoading } = useQuery<User | null>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/auth/user"],
     retry: false,
   });
 
