@@ -122,6 +122,13 @@ The navigation uses a category-based dropdown structure:
 
 ## Recent Changes
 
+### Lead Capture Improvements (February 2026)
+- Google Sheets webhook backup for all lead creation endpoints (Deal Analyzer, MLI Select, engagement forms)
+- HMAC SHA-256 signature authentication for webhook security (WEBHOOK_SECRET)
+- Auto-creation of user accounts when leads submit forms (passwordless, users can set password later)
+- Pre-fill Deal Analyzer form for logged-in users from their profile
+- Auto-submit lead data for authenticated users (skip modal display)
+
 ### BRA Gating for Co-Investing (February 2026)
 - Buyer Representation Agreement (BRA) gating for Ontario users in Co-Investing
 - Ontario users must complete BRA signing flow before creating groups, joining groups, or messaging
