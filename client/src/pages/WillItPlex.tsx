@@ -1163,7 +1163,7 @@ export default function WillItPlex() {
                 <div className="text-center py-8">
                   <LogIn className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
                   <p className="text-muted-foreground mb-4">Sign in to create and save your capstone projects</p>
-                  <Link href="/login">
+                  <Link href={`/login?returnUrl=${encodeURIComponent('/tools/will-it-plex')}`}>
                     <Button data-testid="button-login-prompt">
                       <LogIn className="h-4 w-4 mr-2" />
                       Sign In to Continue

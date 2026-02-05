@@ -13,7 +13,13 @@ export function GoogleSignInButton({
   disabled = false 
 }: GoogleSignInButtonProps) {
   const handleClick = () => {
-    window.location.href = "/api/auth/google/start";
+    // Pass current returnUrl to Google OAuth flow
+    const searchParams = new URLSearchParams(window.location.search);
+    const returnUrl = searchParams.get("returnUrl");
+    const googleUrl = returnUrl 
+      ? `/api/auth/google/start?returnUrl=${encodeURIComponent(returnUrl)}`
+      : "/api/auth/google/start";
+    window.location.href = googleUrl;
   };
 
   const buttonText = {

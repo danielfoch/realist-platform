@@ -29,6 +29,10 @@ export default function CreateAccount() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Get return URL from query params
+  const searchParams = new URLSearchParams(window.location.search);
+  const returnUrl = searchParams.get("returnUrl") || "/signup";
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -54,7 +58,7 @@ export default function CreateAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Account created!", description: "Welcome to Realist." });
-      setLocation("/signup"); // Go to role selection
+      setLocation(returnUrl);
     },
     onError: (error: any) => {
       toast({

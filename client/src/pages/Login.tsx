@@ -25,6 +25,10 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Get return URL from query params
+  const searchParams = new URLSearchParams(window.location.search);
+  const returnUrl = searchParams.get("returnUrl") || "/";
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -43,7 +47,7 @@ export default function Login() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Welcome back!", description: "You have been logged in successfully." });
-      setLocation("/");
+      setLocation(returnUrl);
     },
     onError: (error: any) => {
       toast({

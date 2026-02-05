@@ -24,6 +24,7 @@ declare module "express-session" {
   interface SessionData {
     userId?: string;
     googleAuthState?: string;
+    googleAuthReturnUrl?: string;
   }
 }
 
@@ -468,6 +469,12 @@ export function registerAuthRoutes(app: Express): void {
     // Generate a random state to prevent CSRF
     const state = crypto.randomBytes(32).toString("hex");
     req.session.googleAuthState = state;
+    
+    // Store return URL in session for redirect after OAuth
+    const returnUrl = req.query.returnUrl as string;
+    if (returnUrl) {
+      req.session.googleAuthReturnUrl = returnUrl;
+    }
 
     // Explicitly save session before redirect to ensure state persists
     await new Promise<void>((resolve, reject) => {
@@ -542,6 +549,10 @@ export function registerAuthRoutes(app: Express): void {
         // User has linked Google before - log them in
         req.session.userId = existingOAuthAccount.userId;
         
+        // Get return URL and clear from session
+        const returnUrl = req.session.googleAuthReturnUrl || "/investor";
+        delete req.session.googleAuthReturnUrl;
+        
         // Check if phone is verified
         const [user] = await db.select().from(users).where(eq(users.id, existingOAuthAccount.userId)).limit(1);
         if (user && !user.phoneVerified) {
@@ -549,7 +560,7 @@ export function registerAuthRoutes(app: Express): void {
           return;
         }
         
-        res.redirect("/investor");
+        res.redirect(returnUrl);
         return;
       }
 
@@ -575,13 +586,17 @@ export function registerAuthRoutes(app: Express): void {
         
         req.session.userId = existingUser.id;
         
+        // Get return URL and clear from session
+        const returnUrl = req.session.googleAuthReturnUrl || "/investor";
+        delete req.session.googleAuthReturnUrl;
+        
         // Check if phone is verified
         if (!existingUser.phoneVerified) {
           res.redirect("/verify-phone");
           return;
         }
         
-        res.redirect("/investor");
+        res.redirect(returnUrl);
         return;
       }
 

@@ -381,10 +381,10 @@ export default function TrueCost() {
                           </p>
                           <div className="space-y-2">
                             <Button asChild className="w-full" data-testid="button-signup-teaser">
-                              <Link href="/create-account">Create Free Account</Link>
+                              <Link href={`/create-account?returnUrl=${encodeURIComponent('/tools/true-cost')}`}>Create Free Account</Link>
                             </Button>
                             <Button variant="ghost" asChild className="w-full" data-testid="button-login-teaser">
-                              <Link href="/login">Already have an account? Log in</Link>
+                              <Link href={`/login?returnUrl=${encodeURIComponent('/tools/true-cost')}`}>Already have an account? Log in</Link>
                             </Button>
                           </div>
                         </CardContent>
