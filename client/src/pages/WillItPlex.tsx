@@ -22,6 +22,7 @@ import {
   ChevronDown, ExternalLink, Loader2, Plus, RotateCcw, Code
 } from "lucide-react";
 import type { CapstoneProperty } from "@shared/schema";
+import ohbaLogo from "@assets/image_1770326197705.png";
 
 const STRATEGY_STEPS = {
   buy_and_hold: [
@@ -1194,6 +1195,13 @@ export default function WillItPlex() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container max-w-4xl mx-auto py-8 px-4">
+        <div className="flex justify-center mb-6">
+          <img 
+            src={ohbaLogo} 
+            alt="OHBA Futures Faster" 
+            className="h-12 grayscale opacity-70"
+          />
+        </div>
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
