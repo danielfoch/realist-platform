@@ -135,6 +135,57 @@ async function sendWebhook(leadId: string, payload: object) {
   });
 }
 
+// Backup leads to Google Sheets via webhook
+async function sendToGoogleSheets(leadData: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  source: string;
+  tags?: string[];
+}) {
+  const url = process.env.SHEETS_WEBHOOK_URL;
+  const secret = process.env.WEBHOOK_SECRET;
+  
+  if (!url || !secret) {
+    console.log("Google Sheets webhook not configured, skipping backup");
+    return;
+  }
+
+  try {
+    const payload = {
+      event_id: crypto.randomUUID(),
+      event_ts: new Date().toISOString(),
+      event_type: "lead_created",
+      email: leadData.email,
+      first_name: leadData.firstName,
+      last_name: leadData.lastName,
+      phone: leadData.phone,
+      source_primary: "realist",
+      source_detail: leadData.source,
+      tags: leadData.tags || [],
+    };
+
+    const body = JSON.stringify(payload);
+    const sig = crypto.createHmac("sha256", secret).update(body).digest("hex");
+    const webhookUrl = url.includes("?") ? `${url}&sig=${sig}` : `${url}?sig=${sig}`;
+
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+
+    if (response.ok) {
+      console.log(`Lead backed up to Google Sheets: ${leadData.email}`);
+    } else {
+      console.error(`Google Sheets backup failed: ${response.status}`);
+    }
+  } catch (error) {
+    console.error("Google Sheets backup error:", error);
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -197,6 +248,16 @@ export async function registerRoutes(
         createdAt: lead.createdAt,
       }).catch(err => console.error("Webhook error:", err));
 
+      // Backup to Google Sheets
+      sendToGoogleSheets({
+        email: lead.email,
+        firstName,
+        lastName,
+        phone: lead.phone,
+        source: "Deal Analyzer",
+        tags: ["deal_analyzer", property.region || "unknown_region"],
+      }).catch(err => console.error("Google Sheets backup error:", err));
+
       // Send email notification
       sendLeadNotification({
         name: lead.name,
@@ -207,12 +268,35 @@ export async function registerRoutes(
         source: lead.leadSource || 'Deal Analyzer',
       }).catch(err => console.error("Email notification error:", err));
 
+      // Auto-create user account if email doesn't exist
+      let userId: string | null = null;
+      try {
+        const existingUser = await db.select().from(users).where(eq(users.email, lead.email.toLowerCase())).limit(1);
+        if (existingUser.length === 0) {
+          // Create new user account without password (they can set it later via Google or password reset)
+          const [newUser] = await db.insert(users).values({
+            email: lead.email.toLowerCase(),
+            firstName,
+            lastName,
+            phone: lead.phone,
+            role: "user",
+          }).returning();
+          userId = newUser.id;
+          console.log(`Auto-created user account for: ${lead.email}`);
+        } else {
+          userId = existingUser[0].id;
+        }
+      } catch (userError) {
+        console.error("Auto-create user error:", userError);
+      }
+
       res.json({
         success: true,
         data: {
           leadId: lead.id,
           propertyId: property.id,
           analysisId: analysis.id,
+          userId,
         },
       });
     } catch (error) {
@@ -299,6 +383,33 @@ export async function registerRoutes(
         createdAt: lead.createdAt,
       }).catch(err => console.error("Webhook error:", err));
 
+      // Backup to Google Sheets
+      sendToGoogleSheets({
+        email,
+        firstName,
+        lastName,
+        phone,
+        source: "MLI Select Calculator",
+        tags: ["mli_select", location || "unknown_location"],
+      }).catch(err => console.error("Google Sheets backup error:", err));
+
+      // Auto-create user account
+      try {
+        const existingUser = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+        if (existingUser.length === 0) {
+          await db.insert(users).values({
+            email: email.toLowerCase(),
+            firstName,
+            lastName,
+            phone,
+            role: "user",
+          });
+          console.log(`Auto-created user account for: ${email}`);
+        }
+      } catch (userError) {
+        console.error("Auto-create user error:", userError);
+      }
+
       res.json({ success: true, data: { leadId: lead.id } });
     } catch (error) {
       console.error("Error creating MLI quote request:", error);
@@ -368,6 +479,16 @@ export async function registerRoutes(
         createdAt: lead.createdAt,
       }).catch(err => console.error("Webhook error:", err));
 
+      // Backup to Google Sheets
+      sendToGoogleSheets({
+        email,
+        firstName,
+        lastName,
+        phone,
+        source: formType || "Deal Engagement",
+        tags: allTags,
+      }).catch(err => console.error("Google Sheets backup error:", err));
+
       // Send email notification
       sendLeadNotification({
         name,
@@ -376,6 +497,23 @@ export async function registerRoutes(
         strategy: formType,
         source: formTag || formType || 'Deal Engagement',
       }).catch(err => console.error("Email notification error:", err));
+
+      // Auto-create user account
+      try {
+        const existingUser = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+        if (existingUser.length === 0) {
+          await db.insert(users).values({
+            email: email.toLowerCase(),
+            firstName,
+            lastName,
+            phone,
+            role: "user",
+          });
+          console.log(`Auto-created user account for: ${email}`);
+        }
+      } catch (userError) {
+        console.error("Auto-create user error:", userError);
+      }
 
       res.json({ success: true, data: { leadId: lead.id } });
     } catch (error) {

@@ -96,10 +96,20 @@ export default function Home() {
   const [showProforma, setShowProforma] = useState(false);
   
   const getSavedLeadInfo = () => {
+    // If user is logged in, use their info
+    if (isAuthenticated && user) {
+      return {
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phone: user.phone || "",
+      };
+    }
+    // Otherwise check localStorage
     const saved = localStorage.getItem("realist_lead_info");
     if (saved) {
       try {
-        return JSON.parse(saved) as { name: string; email: string; phone: string };
+        return JSON.parse(saved) as { firstName?: string; lastName?: string; name?: string; email: string; phone: string };
       } catch {
         return null;
       }
@@ -213,10 +223,25 @@ export default function Home() {
     analyzerRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     if (!leadCaptured) {
       setLeadCaptureOpen(true);
     } else {
+      // If user is authenticated, auto-submit lead data to ensure they're captured
+      if (isAuthenticated && user && user.email) {
+        try {
+          await leadMutation.mutateAsync({
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
+            email: user.email,
+            phone: user.phone || "",
+            consent: true,
+          });
+        } catch (err) {
+          // Silently continue if lead capture fails - don't block the analysis
+          console.error("Auto lead capture error:", err);
+        }
+      }
       setShowResults(true);
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: "smooth" });
