@@ -133,6 +133,19 @@ The navigation uses a category-based dropdown structure:
 - Database tables: trueCostInquiries, trueCostBreakdowns
 - Data sources: BILD/Altus 2023, CRA, Ontario Government
 
+### Will It Plex? Capstone Tool (February 2026)
+- Interactive capstone analysis tool at `/tools/will-it-plex`
+- Two strategy paths: Buy & Hold (101) and Multiplex Masterclass
+- Stepper UI with progress tracking across 5-6 steps depending on strategy
+- Property import via realtor.ca URL or HTML paste (reuses existing import feature)
+- Buy & Hold path: rent analysis, mortgage calculator, DSCR/Cap Rate/Cash-on-Cash metrics
+- Multiplex path: zoning inputs, GFA calculation, construction cost slider, MLI Select integration
+- Authentication required: shows login prompt for unauthenticated users
+- Project persistence: save drafts, continue where you left off
+- Export options: JSON download and Google Sheets (planned)
+- Database tables: capstoneProjects, capstoneProperties, capstoneCostModels, capstoneProformas
+- Added to Tools Hub with "New" badge
+
 ### Realtor.ca Listing Import (February 2026)
 - New feature to import property details from realtor.ca listings
 - Dual-mode support: URL fetch and HTML paste (fallback when URL blocked)

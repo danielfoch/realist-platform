@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,9 +19,16 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Home, Building2, ArrowLeft, ArrowRight, Check, FileDown, 
   Search, MapPin, DollarSign, Percent, Calculator, Layers,
-  ChevronDown, ExternalLink, Loader2, Plus, RotateCcw, Code
+  ChevronDown, ExternalLink, Loader2, Plus, RotateCcw, Code, LogIn
 } from "lucide-react";
 import type { CapstoneProject, CapstoneProperty, CapstoneCostModel, CapstoneProforma } from "@shared/schema";
+
+interface User {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 interface ProjectWithRelations extends CapstoneProject {
   property?: CapstoneProperty | null;
@@ -52,6 +60,14 @@ export default function WillItPlex() {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [strategy, setStrategy] = useState<"buy_and_hold" | "multiplex" | null>(null);
+  
+  // Fetch current user for auth gating
+  const { data: user, isLoading: userLoading } = useQuery<User | null>({
+    queryKey: ["/api/user"],
+    retry: false,
+  });
+
+  const isAuthenticated = !!user;
   
   // Property import state
   const [listingUrl, setListingUrl] = useState("");
@@ -1112,19 +1128,21 @@ export default function WillItPlex() {
                 setStep(1);
                 setStrategy(null);
                 setImportedProperty(null);
-              }}>
+              }} data-testid="button-start-over">
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Start Over
               </Button>
             )}
-            <Button 
-              onClick={() => createProjectMutation.mutate()} 
-              disabled={createProjectMutation.isPending}
-              data-testid="button-new-project"
-            >
-              {createProjectMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              New Project
-            </Button>
+            {isAuthenticated && (
+              <Button 
+                onClick={() => createProjectMutation.mutate()} 
+                disabled={createProjectMutation.isPending}
+                data-testid="button-new-project"
+              >
+                {createProjectMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                New Project
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1137,28 +1155,48 @@ export default function WillItPlex() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {projectsLoading ? (
+              {userLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : !isAuthenticated ? (
+                <div className="text-center py-8">
+                  <LogIn className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground mb-4">Sign in to create and save your capstone projects</p>
+                  <Link href="/login">
+                    <Button data-testid="button-login-prompt">
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Sign In to Continue
+                    </Button>
+                  </Link>
+                </div>
+              ) : projectsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : projects && projects.length > 0 ? (
                 <div className="space-y-3">
-                  {projects.map((project) => (
-                    <Card key={project.id} className="cursor-pointer hover-elevate" onClick={() => {
-                      setCurrentProjectId(project.id);
-                      setStep(project.currentStep || 1);
-                      setStrategy(project.strategy as "buy_and_hold" | "multiplex" | null);
-                      if (project.property) setImportedProperty(project.property);
-                    }}>
+                  {projects.map((project, index) => (
+                    <Card 
+                      key={project.id} 
+                      className="cursor-pointer hover-elevate" 
+                      data-testid={`card-project-${index}`}
+                      onClick={() => {
+                        setCurrentProjectId(project.id);
+                        setStep(project.currentStep || 1);
+                        setStrategy(project.strategy as "buy_and_hold" | "multiplex" | null);
+                        if (project.property) setImportedProperty(project.property);
+                      }}
+                    >
                       <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{project.property?.address || "Untitled Project"}</p>
+                          <p className="font-medium" data-testid={`text-project-address-${index}`}>{project.property?.address || "Untitled Project"}</p>
                           <p className="text-sm text-muted-foreground">
                             {project.strategy === "buy_and_hold" ? "Buy & Hold" : project.strategy === "multiplex" ? "Multiplex" : "Not started"} 
                             {" • "}Step {project.currentStep || 1}
                           </p>
                         </div>
-                        <Badge variant={project.status === "completed" ? "default" : "secondary"}>
+                        <Badge variant={project.status === "completed" ? "default" : "secondary"} data-testid={`badge-project-status-${index}`}>
                           {project.status}
                         </Badge>
                       </CardContent>

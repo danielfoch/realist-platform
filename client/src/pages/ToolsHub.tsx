@@ -1,8 +1,9 @@
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign } from "lucide-react";
+import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2 } from "lucide-react";
 
 const tools = [
   {
@@ -11,6 +12,13 @@ const tools = [
     description: "Analyze any real estate deal with institutional-grade financial calculations. Get cap rates, IRR, cash-on-cash returns, and multi-year projections.",
     icon: Calculator,
     primary: true,
+  },
+  {
+    href: "/tools/will-it-plex",
+    title: "Will It Plex?",
+    description: "Interactive capstone tool to analyze Buy & Hold or Multiplex strategies. Import listings, configure financing, and export your analysis.",
+    icon: Building2,
+    badge: "New",
   },
   {
     href: "/tools/true-cost",
@@ -64,24 +72,30 @@ export default function ToolsHub() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tools.map((tool) => (
-            <Link key={tool.href} href={tool.href}>
-              <Card className={`h-full hover-elevate cursor-pointer transition-all ${tool.primary ? "border-primary/50 bg-primary/5" : ""}`}>
-                <CardHeader>
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${tool.primary ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                    <tool.icon className="h-6 w-6" />
-                  </div>
-                  <CardTitle className="text-xl">{tool.title}</CardTitle>
-                  <CardDescription className="text-sm">{tool.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant={tool.primary ? "default" : "outline"} className="w-full" data-testid={`button-${tool.title.toLowerCase().replace(/\s+/g, "-")}`}>
-                    {tool.primary ? "Get Started" : "Open Tool"}
-                  </Button>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {tools.map((tool) => {
+            const testIdBase = tool.title.toLowerCase().replace(/\s+/g, "-").replace(/\?/g, "");
+            return (
+              <Link key={tool.href} href={tool.href} data-testid={`link-${testIdBase}`}>
+                <Card className={`h-full hover-elevate cursor-pointer transition-all ${tool.primary ? "border-primary/50 bg-primary/5" : ""}`} data-testid={`card-${testIdBase}`}>
+                  <CardHeader>
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${tool.primary ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                      <tool.icon className="h-6 w-6" />
+                    </div>
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      <span data-testid={`text-title-${testIdBase}`}>{tool.title}</span>
+                      {tool.badge && <Badge variant="secondary" className="text-xs" data-testid={`badge-${testIdBase}`}>{tool.badge}</Badge>}
+                    </CardTitle>
+                    <CardDescription className="text-sm">{tool.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button variant={tool.primary ? "default" : "outline"} className="w-full" data-testid={`button-${testIdBase}`}>
+                      {tool.primary ? "Get Started" : "Open Tool"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       </main>
     </div>
