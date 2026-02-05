@@ -2,7 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet } from "lucide-react";
+import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign } from "lucide-react";
 
 const tools = [
   {
@@ -11,6 +11,12 @@ const tools = [
     description: "Analyze any real estate deal with institutional-grade financial calculations. Get cap rates, IRR, cash-on-cash returns, and multi-year projections.",
     icon: Calculator,
     primary: true,
+  },
+  {
+    href: "/tools/true-cost",
+    title: "True Cost Calculator",
+    description: "Discover all the hidden costs when buying a home in Ontario — development charges, land transfer taxes, HST rebates, and more.",
+    icon: DollarSign,
   },
   {
     href: "/tools/buybox",

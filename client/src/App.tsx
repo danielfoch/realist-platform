@@ -36,6 +36,7 @@ import CoInvestingOpportunities from "@/pages/CoInvestingOpportunities";
 import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
 import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
 import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
+import TrueCost from "@/pages/TrueCost";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -63,6 +64,7 @@ function Router() {
       <Route path="/tools/coinvest/checklist" component={CoInvestingChecklist} />
       <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
       <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
+      <Route path="/tools/true-cost" component={TrueCost} />
       
       {/* New Community routes */}
       <Route path="/community" component={CommunityHub} />
