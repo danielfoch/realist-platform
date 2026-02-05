@@ -3373,18 +3373,70 @@ export async function registerRoutes(
         }
         
         html = await response.text();
+        
+        // Check if we got blocked by Incapsula
+        if (html.includes("_Incapsula_Resource") || html.includes("noindex,nofollow")) {
+          return res.status(400).json({ 
+            error: "Realtor.ca blocked the request. Please use the 'Advanced Import' option to paste the page HTML instead.",
+            blocked: true
+          });
+        }
       } else {
         return res.status(400).json({ error: "URL or HTML source is required" });
       }
       
-      // Parse the dataLayer JavaScript object from the HTML
-      const dataLayerMatch = html.match(/dataLayer\.push\(\{[\s\S]*?property:\s*\{([\s\S]*?)\}\s*\}\);/);
+      // Try multiple patterns to find property data
+      let propertyBlock = "";
       
-      if (!dataLayerMatch) {
-        return res.status(400).json({ error: "Could not parse listing data. The page format may have changed." });
+      // Pattern 1: dataLayer.push with property block
+      const dataLayerMatch = html.match(/dataLayer\.push\(\{[\s\S]*?property:\s*\{([\s\S]*?)\}\s*\}\);/);
+      if (dataLayerMatch) {
+        propertyBlock = dataLayerMatch[1];
       }
       
-      const propertyBlock = dataLayerMatch[1];
+      // Pattern 2: Look for __NEXT_DATA__ JSON (newer realtor.ca format)
+      if (!propertyBlock) {
+        const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+        if (nextDataMatch) {
+          try {
+            const nextData = JSON.parse(nextDataMatch[1]);
+            const listing = nextData?.props?.pageProps?.listing || nextData?.props?.pageProps?.property;
+            if (listing) {
+              // Convert to property block format for extraction
+              propertyBlock = JSON.stringify(listing);
+            }
+          } catch (e) {
+            // JSON parse failed, continue to other patterns
+          }
+        }
+      }
+      
+      // Pattern 3: Look for listingData variable
+      if (!propertyBlock) {
+        const listingDataMatch = html.match(/listingData\s*=\s*(\{[\s\S]*?\});/);
+        if (listingDataMatch) {
+          propertyBlock = listingDataMatch[1];
+        }
+      }
+      
+      // Pattern 4: Look for window.__PRELOADED_STATE__
+      if (!propertyBlock) {
+        const preloadedMatch = html.match(/window\.__PRELOADED_STATE__\s*=\s*(\{[\s\S]*?\});/);
+        if (preloadedMatch) {
+          propertyBlock = preloadedMatch[1];
+        }
+      }
+      
+      if (!propertyBlock) {
+        // Check if it looks like a blocked page
+        if (html.includes("_Incapsula_Resource") || html.length < 1000) {
+          return res.status(400).json({ 
+            error: "The page source appears to be blocked or incomplete. Please make sure you copied the full page source after the page fully loaded.",
+            blocked: true
+          });
+        }
+        return res.status(400).json({ error: "Could not parse listing data. Please make sure you copied the full page source from a realtor.ca listing page." });
+      }
       
       // Extract property details using regex
       const extractField = (fieldName: string): string => {
