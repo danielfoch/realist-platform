@@ -122,6 +122,14 @@ The navigation uses a category-based dropdown structure:
 
 ## Recent Changes
 
+### True Cost of Homeownership Calculator (February 2026)
+- New tool at `/tools/true-cost` for Ontario homebuyers
+- Calculates all hidden costs: development charges, land transfer taxes, HST with rebates
+- Supports 6 Ontario cities (Toronto, Mississauga, Brampton, Ottawa, Hamilton, London)
+- Handles new construction vs resale, first-time vs repeat buyers, different home types
+- Pie chart visualization of cost breakdown
+- Data sources: BILD/Altus 2023, CRA, Ontario Government
+
 ### Lead Capture Improvements (February 2026)
 - Google Sheets webhook backup for all lead creation endpoints (Deal Analyzer, MLI Select, engagement forms)
 - HMAC SHA-256 signature authentication for webhook security (WEBHOOK_SECRET)
