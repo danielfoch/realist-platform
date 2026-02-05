@@ -1,0 +1,56 @@
+// Scaffold the "True Cost of Homeownership" tool for Ontario in Realist
+// Stack: Node.js + Express (TypeScript), PostgreSQL (Drizzle ORM), REST API under /api, esbuild bundling
+// Add frontend route for /true-cost to input address, home value, and show teaser pie chart
+// After signup, present full calculator with:
+//    - Address, home value
+//    - Is new construction? (yes/no)
+//    - Buyer type (First-time / Repeat / Investor)
+//    - Home type (Condo / Townhouse / Detached / PBR)
+//    - City (Toronto, Mississauga, Brampton, Ottawa, Hamilton, London)
+
+//// 1. 🧩 Add Drizzle Models (db/schema.ts)
+- Table: users (id, email, hashed_password)
+- Table: inquiries (id, user_id, address, home_value, city, is_new, buyer_type, home_type, created_at)
+- Table: cost_inputs (id, inquiry_id, raw_json, calculated_costs_json)
+
+//// 2. 🛠️ Add JSON constants (costData.ts) to backend for:
+- Development charges by city
+- HST/GST rebate rules:
+   → First-Time Buyers: full federal GST + provincial HST rebate on new builds up to $450K
+   → Owner-occupied (non-FTHB): partial HST rebate depending on home value
+   → Purpose-built rental: 36% federal and 75% Ontario HST rebate; 100% if built after Sept 2023
+- LTT & MLTT brackets + FTHB rebates
+- Construction cost per ft² by home type
+
+//// 3. 🧠 Add utility: calculateTrueCost(input): CostBreakdown
+- Land cost: 30% of home_value
+- Construction: use home_type × avg cost × assumed 1200 ft²
+- Dev Charges: lookup by city
+- LTT: use bracketed logic with FTHB rebates (provincial + Toronto MLTT)
+- HST/GST: apply 13% HST, then subtract rebates:
+   → If FTHB + new home: apply full GST + Ontario rebate
+   → If Owner-Occupied: partial HST rebate (phaseout from $350K–$450K)
+   → If Purpose-Built Rental (multi-unit, post-Sept 2023): 100% HST rebate
+   → If older rental: apply NRRP (36% federal + 75% provincial)
+- Margin: 10% of (land + construction + DCs)
+- Return full JSON breakdown with rebate line items shown
+
+//// 4. 🔐 Auth routes (/api/auth): signup, login, session (use bcrypt + connect-pg-simple)
+//// 5. 📡 API routes (/api/true-cost):
+- POST /submit → saves input & runs cost calculation
+- GET /breakdown/:inquiryId → returns cost breakdown JSON
+
+//// 6. 🌐 Frontend (React/TS):
+- Route: /true-cost
+- Form with fields above
+- After signup, show pie chart + table of cost breakdown
+- Store inquiryId in session
+- Optional download/export PDF
+
+//// 7. 🧪 Bonus:
+- Add DevTools toggle to simulate different cities or price ranges
+- Later: support Alberta, BC, Quebec (hook to province logic layer)
+
+// 👇 Final Touch
+Seed with example inquiry: $850K home, Toronto, new build, first-time buyer
+Add teaser pie chart preview before signup (blurred overlay with CTA)
