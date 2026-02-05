@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { 
@@ -24,14 +25,14 @@ import type { CapstoneProperty } from "@shared/schema";
 
 const STRATEGY_STEPS = {
   buy_and_hold: [
-    { id: 1, title: "Property Details", description: "Import from realtor.ca" },
+    { id: 1, title: "Property Details", description: "Import or enter manually" },
     { id: 2, title: "Choose Strategy", description: "Select your investment approach" },
     { id: 3, title: "Rent Analysis", description: "Research rental comps" },
     { id: 4, title: "Financing", description: "Configure mortgage terms" },
     { id: 5, title: "Results", description: "View metrics & export" },
   ],
   multiplex: [
-    { id: 1, title: "Property Details", description: "Import from realtor.ca" },
+    { id: 1, title: "Property Details", description: "Import or enter manually" },
     { id: 2, title: "Choose Strategy", description: "Select your investment approach" },
     { id: 3, title: "Zoning Analysis", description: "Enter zoning parameters" },
     { id: 4, title: "Construction", description: "Set build costs" },
@@ -53,6 +54,19 @@ export default function WillItPlex() {
   const [htmlSource, setHtmlSource] = useState("");
   const [showHtmlInput, setShowHtmlInput] = useState(false);
   const [importedProperty, setImportedProperty] = useState<CapstoneProperty | null>(null);
+  const [inputMode, setInputMode] = useState<"import" | "manual">("import");
+  
+  // Manual input state
+  const [manualAddress, setManualAddress] = useState("");
+  const [manualCity, setManualCity] = useState("");
+  const [manualProvince, setManualProvince] = useState("");
+  const [manualPrice, setManualPrice] = useState<number | "">("");
+  const [manualBedrooms, setManualBedrooms] = useState<number | "">(3);
+  const [manualBathrooms, setManualBathrooms] = useState<number | "">(2);
+  const [manualSquareFootage, setManualSquareFootage] = useState<number | "">("");
+  const [manualLotFrontage, setManualLotFrontage] = useState<number | "">("");
+  const [manualLotDepth, setManualLotDepth] = useState<number | "">("");
+  const [manualPropertyType, setManualPropertyType] = useState("Detached");
   
   // Buy & Hold state
   const [monthlyRent, setMonthlyRent] = useState(2500);
@@ -122,6 +136,36 @@ export default function WillItPlex() {
     },
   });
 
+  // Apply manual input to property state
+  const applyManualInput = () => {
+    if (!manualAddress || !manualCity || !manualPrice) {
+      toast({ title: "Missing fields", description: "Please fill in address, city, and price", variant: "destructive" });
+      return;
+    }
+    setImportedProperty({
+      id: "",
+      projectId: currentProjectId || "",
+      sourceUrl: null,
+      listingId: null,
+      address: manualAddress,
+      city: manualCity,
+      province: manualProvince || "Ontario",
+      postalCode: null,
+      price: typeof manualPrice === "number" ? manualPrice : 0,
+      bedrooms: typeof manualBedrooms === "number" ? manualBedrooms : null,
+      bathrooms: typeof manualBathrooms === "number" ? manualBathrooms : null,
+      squareFootage: typeof manualSquareFootage === "number" ? manualSquareFootage : null,
+      propertyType: manualPropertyType,
+      buildingType: null,
+      imageUrl: null,
+      lotFrontage: typeof manualLotFrontage === "number" ? manualLotFrontage : null,
+      lotDepth: typeof manualLotDepth === "number" ? manualLotDepth : null,
+      lotArea: null,
+      annualTaxes: null,
+      createdAt: new Date(),
+    });
+    toast({ title: "Property added", description: `${manualAddress}, ${manualCity}` });
+  };
   
   // Calculate metrics
   const calculateMetrics = () => {
@@ -244,68 +288,193 @@ export default function WillItPlex() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                Import Property from Realtor.ca
+                <Home className="h-5 w-5" />
+                Property Details
               </CardTitle>
               <CardDescription>
-                Paste a listing URL or HTML source to automatically extract property details
+                Import from realtor.ca or enter details manually
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="https://www.realtor.ca/real-estate/..."
-                  value={listingUrl}
-                  onChange={(e) => setListingUrl(e.target.value)}
-                  className="flex-1"
-                  data-testid="input-plex-listing-url"
-                />
-                <Button
-                  onClick={() => importPropertyMutation.mutate({ url: listingUrl })}
-                  disabled={importPropertyMutation.isPending || !listingUrl.trim()}
-                  data-testid="button-plex-import-url"
-                >
-                  {importPropertyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import"}
-                </Button>
-              </div>
-              
-              <Collapsible open={showHtmlInput} onOpenChange={setShowHtmlInput}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
-                    <Code className="h-3 w-3 mr-1" />
-                    {showHtmlInput ? "Hide" : "Show"} advanced import (paste HTML)
-                    <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showHtmlInput ? "rotate-180" : ""}`} />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-3 space-y-3">
-                  <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground">
-                    <p className="font-medium mb-1">If URL import is blocked:</p>
-                    <ol className="list-decimal list-inside space-y-1">
-                      <li>Open the listing in your browser</li>
-                      <li>Right-click → "View Page Source" (Ctrl+U)</li>
-                      <li>Select all (Ctrl+A) and copy (Ctrl+C)</li>
-                      <li>Paste the HTML below</li>
-                    </ol>
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as "import" | "manual")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="import" data-testid="tab-import">
+                    <Search className="h-4 w-4 mr-2" />
+                    Import
+                  </TabsTrigger>
+                  <TabsTrigger value="manual" data-testid="tab-manual">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Manual Entry
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="import" className="space-y-4 mt-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://www.realtor.ca/real-estate/..."
+                      value={listingUrl}
+                      onChange={(e) => setListingUrl(e.target.value)}
+                      className="flex-1"
+                      data-testid="input-plex-listing-url"
+                    />
+                    <Button
+                      onClick={() => importPropertyMutation.mutate({ url: listingUrl })}
+                      disabled={importPropertyMutation.isPending || !listingUrl.trim()}
+                      data-testid="button-plex-import-url"
+                    >
+                      {importPropertyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import"}
+                    </Button>
                   </div>
-                  <Textarea
-                    placeholder="Paste HTML source..."
-                    value={htmlSource}
-                    onChange={(e) => setHtmlSource(e.target.value)}
-                    className="min-h-[100px] font-mono text-xs"
-                    data-testid="input-plex-html-source"
-                  />
-                  <Button
-                    onClick={() => importPropertyMutation.mutate({ html: htmlSource })}
-                    disabled={importPropertyMutation.isPending || !htmlSource.trim()}
-                    variant="secondary"
+                  
+                  <Collapsible open={showHtmlInput} onOpenChange={setShowHtmlInput}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                        <Code className="h-3 w-3 mr-1" />
+                        {showHtmlInput ? "Hide" : "Show"} advanced import (paste HTML)
+                        <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showHtmlInput ? "rotate-180" : ""}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 space-y-3">
+                      <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground">
+                        <p className="font-medium mb-1">If URL import is blocked:</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li>Open the listing in your browser</li>
+                          <li>Right-click → "View Page Source" (Ctrl+U)</li>
+                          <li>Select all (Ctrl+A) and copy (Ctrl+C)</li>
+                          <li>Paste the HTML below</li>
+                        </ol>
+                      </div>
+                      <Textarea
+                        placeholder="Paste HTML source..."
+                        value={htmlSource}
+                        onChange={(e) => setHtmlSource(e.target.value)}
+                        className="min-h-[100px] font-mono text-xs"
+                        data-testid="input-plex-html-source"
+                      />
+                      <Button
+                        onClick={() => importPropertyMutation.mutate({ html: htmlSource })}
+                        disabled={importPropertyMutation.isPending || !htmlSource.trim()}
+                        variant="secondary"
+                        className="w-full"
+                        data-testid="button-plex-import-html"
+                      >
+                        {importPropertyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Code className="h-4 w-4 mr-2" />}
+                        Import from HTML
+                      </Button>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </TabsContent>
+                
+                <TabsContent value="manual" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label>Street Address *</Label>
+                      <Input
+                        placeholder="123 Main Street"
+                        value={manualAddress}
+                        onChange={(e) => setManualAddress(e.target.value)}
+                        data-testid="input-manual-address"
+                      />
+                    </div>
+                    <div>
+                      <Label>City *</Label>
+                      <Input
+                        placeholder="Toronto"
+                        value={manualCity}
+                        onChange={(e) => setManualCity(e.target.value)}
+                        data-testid="input-manual-city"
+                      />
+                    </div>
+                    <div>
+                      <Label>Province</Label>
+                      <Input
+                        placeholder="Ontario"
+                        value={manualProvince}
+                        onChange={(e) => setManualProvince(e.target.value)}
+                        data-testid="input-manual-province"
+                      />
+                    </div>
+                    <div>
+                      <Label>Purchase Price *</Label>
+                      <Input
+                        type="number"
+                        placeholder="500000"
+                        value={manualPrice}
+                        onChange={(e) => setManualPrice(e.target.value ? parseFloat(e.target.value) : "")}
+                        data-testid="input-manual-price"
+                      />
+                    </div>
+                    <div>
+                      <Label>Property Type</Label>
+                      <Input
+                        placeholder="Detached"
+                        value={manualPropertyType}
+                        onChange={(e) => setManualPropertyType(e.target.value)}
+                        data-testid="input-manual-property-type"
+                      />
+                    </div>
+                    <div>
+                      <Label>Bedrooms</Label>
+                      <Input
+                        type="number"
+                        placeholder="3"
+                        value={manualBedrooms}
+                        onChange={(e) => setManualBedrooms(e.target.value ? parseInt(e.target.value) : "")}
+                        data-testid="input-manual-bedrooms"
+                      />
+                    </div>
+                    <div>
+                      <Label>Bathrooms</Label>
+                      <Input
+                        type="number"
+                        placeholder="2"
+                        value={manualBathrooms}
+                        onChange={(e) => setManualBathrooms(e.target.value ? parseInt(e.target.value) : "")}
+                        data-testid="input-manual-bathrooms"
+                      />
+                    </div>
+                    <div>
+                      <Label>Square Footage</Label>
+                      <Input
+                        type="number"
+                        placeholder="1500"
+                        value={manualSquareFootage}
+                        onChange={(e) => setManualSquareFootage(e.target.value ? parseFloat(e.target.value) : "")}
+                        data-testid="input-manual-sqft"
+                      />
+                    </div>
+                    <div>
+                      <Label>Lot Frontage (ft)</Label>
+                      <Input
+                        type="number"
+                        placeholder="50"
+                        value={manualLotFrontage}
+                        onChange={(e) => setManualLotFrontage(e.target.value ? parseFloat(e.target.value) : "")}
+                        data-testid="input-manual-lot-frontage"
+                      />
+                    </div>
+                    <div>
+                      <Label>Lot Depth (ft)</Label>
+                      <Input
+                        type="number"
+                        placeholder="120"
+                        value={manualLotDepth}
+                        onChange={(e) => setManualLotDepth(e.target.value ? parseFloat(e.target.value) : "")}
+                        data-testid="input-manual-lot-depth"
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={applyManualInput}
+                    disabled={!manualAddress || !manualCity || !manualPrice}
                     className="w-full"
-                    data-testid="button-plex-import-html"
+                    data-testid="button-apply-manual"
                   >
-                    {importPropertyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Code className="h-4 w-4 mr-2" />}
-                    Import from HTML
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Property
                   </Button>
-                </CollapsibleContent>
-              </Collapsible>
+                </TabsContent>
+              </Tabs>
 
               {importedProperty && (
                 <Card className="bg-accent/30 border-accent/50">
