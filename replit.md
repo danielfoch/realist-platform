@@ -122,6 +122,15 @@ The navigation uses a category-based dropdown structure:
 
 ## Recent Changes
 
+### Rent Pulse API (February 2026)
+- Scraper-fed rent data pipeline for aggregated median rents and individual listings
+- Three API endpoints:
+  - `POST /api/rents/ingest` — scraper pushes data (API key auth via `RENT_INGEST_KEY`)
+  - `GET /api/rents/pulse` — frontend queries rent data (filterable by city/province/bedrooms)
+  - `GET /api/rents/cities` — lists all scraped cities for dropdowns/map
+- Batch insert support for listings (500 per batch)
+- Database tables: rentPulse (aggregated medians), rentListings (individual scraped listings with lat/lng)
+
 ### True Cost of Homeownership Calculator (February 2026)
 - New tool at `/tools/true-cost` for Ontario homebuyers
 - Calculates all hidden costs: development charges, land transfer taxes, HST with rebates

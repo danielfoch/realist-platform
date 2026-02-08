@@ -1571,3 +1571,57 @@ export type InsertCapstoneCostModel = z.infer<typeof insertCapstoneCostModelSche
 export type CapstoneCostModel = typeof capstoneCostModels.$inferSelect;
 export type InsertCapstoneProforma = z.infer<typeof insertCapstoneProformaSchema>;
 export type CapstoneProforma = typeof capstoneProformas.$inferSelect;
+
+// ============================================
+// Rent Pulse — aggregated median rents per city
+// ============================================
+export const rentPulse = pgTable("rent_pulse", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  city: text("city").notNull(),
+  province: text("province").notNull(),
+  bedrooms: text("bedrooms").notNull(),
+  medianRent: integer("median_rent").notNull(),
+  averageRent: integer("average_rent"),
+  sampleSize: integer("sample_size").notNull(),
+  minRent: integer("min_rent"),
+  maxRent: integer("max_rent"),
+  scrapedAt: timestamp("scraped_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ============================================
+// Rent Listings — individual scraped listings
+// ============================================
+export const rentListings = pgTable("rent_listings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  externalId: text("external_id"),
+  city: text("city").notNull(),
+  province: text("province").notNull(),
+  address: text("address"),
+  bedrooms: text("bedrooms").notNull(),
+  bathrooms: text("bathrooms"),
+  rent: integer("rent").notNull(),
+  squareFootage: integer("square_footage"),
+  lat: real("lat"),
+  lng: real("lng"),
+  sourceUrl: text("source_url"),
+  sourcePlatform: text("source_platform"),
+  listingDate: timestamp("listing_date"),
+  scrapedAt: timestamp("scraped_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRentPulseSchema = createInsertSchema(rentPulse).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRentListingSchema = createInsertSchema(rentListings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRentPulse = z.infer<typeof insertRentPulseSchema>;
+export type RentPulse = typeof rentPulse.$inferSelect;
+export type InsertRentListing = z.infer<typeof insertRentListingSchema>;
+export type RentListing = typeof rentListings.$inferSelect;

@@ -25,8 +25,10 @@ import {
   capstoneProperties,
   capstoneCostModels,
   capstoneProformas,
+  rentPulse,
+  rentListings,
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
@@ -3875,6 +3877,151 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error saving capstone proforma:", error);
       res.status(500).json({ error: "Failed to save proforma" });
+    }
+  });
+
+  // ============================================
+  // RENT PULSE API ROUTES
+  // ============================================
+
+  const rentIngestItemSchema = z.object({
+    city: z.string().min(1),
+    province: z.string().min(1),
+    bedrooms: z.string().min(1),
+    medianRent: z.number().int().positive(),
+    averageRent: z.number().int().positive().optional(),
+    sampleSize: z.number().int().positive(),
+    minRent: z.number().int().positive().optional(),
+    maxRent: z.number().int().positive().optional(),
+    scrapedAt: z.string(),
+  });
+
+  const rentListingItemSchema = z.object({
+    externalId: z.string().optional(),
+    city: z.string().min(1),
+    province: z.string().min(1),
+    address: z.string().optional(),
+    bedrooms: z.string().min(1),
+    bathrooms: z.string().optional(),
+    rent: z.number().int().positive(),
+    squareFootage: z.number().int().positive().optional(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
+    sourceUrl: z.string().optional(),
+    sourcePlatform: z.string().optional(),
+    listingDate: z.string().optional(),
+    scrapedAt: z.string(),
+  });
+
+  const rentIngestSchema = z.object({
+    pulse: z.array(rentIngestItemSchema).optional(),
+    listings: z.array(rentListingItemSchema).optional(),
+  });
+
+  app.post("/api/rents/ingest", async (req, res) => {
+    try {
+      const apiKey = req.headers["x-api-key"] || req.headers["authorization"]?.replace("Bearer ", "");
+      const expectedKey = process.env.RENT_INGEST_KEY;
+      if (!expectedKey || apiKey !== expectedKey) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const parsed = rentIngestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.errors });
+      }
+
+      const { pulse, listings } = parsed.data;
+      let pulseInserted = 0;
+      let listingsInserted = 0;
+
+      if (pulse && pulse.length > 0) {
+        const rows = pulse.map(p => ({
+          city: p.city,
+          province: p.province,
+          bedrooms: p.bedrooms,
+          medianRent: p.medianRent,
+          averageRent: p.averageRent ?? null,
+          sampleSize: p.sampleSize,
+          minRent: p.minRent ?? null,
+          maxRent: p.maxRent ?? null,
+          scrapedAt: new Date(p.scrapedAt),
+        }));
+        await db.insert(rentPulse).values(rows);
+        pulseInserted = rows.length;
+      }
+
+      if (listings && listings.length > 0) {
+        const rows = listings.map(l => ({
+          externalId: l.externalId ?? null,
+          city: l.city,
+          province: l.province,
+          address: l.address ?? null,
+          bedrooms: l.bedrooms,
+          bathrooms: l.bathrooms ?? null,
+          rent: l.rent,
+          squareFootage: l.squareFootage ?? null,
+          lat: l.lat ?? null,
+          lng: l.lng ?? null,
+          sourceUrl: l.sourceUrl ?? null,
+          sourcePlatform: l.sourcePlatform ?? null,
+          listingDate: l.listingDate ? new Date(l.listingDate) : null,
+          scrapedAt: new Date(l.scrapedAt),
+        }));
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+          await db.insert(rentListings).values(rows.slice(i, i + BATCH_SIZE));
+        }
+        listingsInserted = rows.length;
+      }
+
+      res.json({ success: true, pulseInserted, listingsInserted });
+    } catch (error) {
+      console.error("Error ingesting rent data:", error);
+      res.status(500).json({ error: "Failed to ingest rent data" });
+    }
+  });
+
+  app.get("/api/rents/pulse", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const bedrooms = req.query.bedrooms as string | undefined;
+
+      let query = db
+        .select()
+        .from(rentPulse)
+        .orderBy(desc(rentPulse.scrapedAt))
+        .$dynamic();
+
+      const conditions = [];
+      if (city) conditions.push(eq(rentPulse.city, city));
+      if (province) conditions.push(eq(rentPulse.province, province));
+      if (bedrooms) conditions.push(eq(rentPulse.bedrooms, bedrooms));
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      const results = await query.limit(500);
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching rent pulse:", error);
+      res.status(500).json({ error: "Failed to fetch rent data" });
+    }
+  });
+
+  app.get("/api/rents/cities", async (_req, res) => {
+    try {
+      const results = await db
+        .selectDistinct({ city: rentPulse.city, province: rentPulse.province })
+        .from(rentPulse)
+        .orderBy(rentPulse.province, rentPulse.city);
+
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching rent cities:", error);
+      res.status(500).json({ error: "Failed to fetch cities" });
     }
   });
 
