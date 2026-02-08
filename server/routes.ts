@@ -49,6 +49,8 @@ import {
   cities, 
   homeTypes, 
   buyerTypes,
+  municipalities,
+  matchMunicipality,
   type TrueCostInput,
 } from "./costData";
 
@@ -3244,7 +3246,7 @@ export async function registerRoutes(
   // True Cost of Homeownership Calculator
   const trueCostInputSchema = z.object({
     homeValue: z.number().min(50000).max(50000000),
-    city: z.enum(cities),
+    city: z.string().min(1),
     isNewConstruction: z.boolean(),
     buyerType: z.enum(buyerTypes),
     homeType: z.enum(homeTypes),
@@ -3290,9 +3292,37 @@ export async function registerRoutes(
   app.get("/api/true-cost/options", (req, res) => {
     res.json({
       cities: cities,
+      municipalities: Object.values(municipalities).map(m => ({
+        name: m.name,
+        region: m.region,
+        developmentCharge: m.developmentCharge,
+      })),
       homeTypes: homeTypes,
       buyerTypes: buyerTypes,
     });
+  });
+
+  app.get("/api/true-cost/match-city", (req, res) => {
+    const input = req.query.q as string;
+    if (!input || input.length < 2) {
+      return res.json({ matches: [] });
+    }
+    const matched = matchMunicipality(input);
+    if (matched) {
+      return res.json({ 
+        matches: [{ name: matched.name, region: matched.region, developmentCharge: matched.developmentCharge }] 
+      });
+    }
+    // Return partial matches for autocomplete
+    const normalized = input.toLowerCase().trim();
+    const partialMatches = Object.values(municipalities)
+      .filter(m => 
+        m.name.toLowerCase().includes(normalized) || 
+        m.aliases.some(a => a.includes(normalized))
+      )
+      .slice(0, 5)
+      .map(m => ({ name: m.name, region: m.region, developmentCharge: m.developmentCharge }));
+    res.json({ matches: partialMatches });
   });
 
   app.get("/api/true-cost/breakdown/:inquiryId", async (req, res) => {

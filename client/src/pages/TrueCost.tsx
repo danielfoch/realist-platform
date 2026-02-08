@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +25,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Calculator, DollarSign, Home, MapPin, HelpCircle, Lock } from "lucide-react";
+import { Loader2, Calculator, DollarSign, Home, MapPin, HelpCircle, Lock, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -34,9 +34,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+interface MunicipalityMatch {
+  name: string;
+  region?: string;
+  developmentCharge: number;
+}
+
 const formSchema = z.object({
   homeValue: z.string().min(1, "Home value is required"),
-  city: z.string().min(1, "City is required"),
   isNewConstruction: z.boolean(),
   buyerType: z.string().min(1, "Buyer type is required"),
   homeType: z.string().min(1, "Home type is required"),
@@ -59,6 +64,7 @@ interface CostBreakdown {
   netHST: number;
   developerMargin: number;
   totalCosts: number;
+  matchedMunicipality: string | null;
   breakdown: {
     category: string;
     amount: number;
@@ -87,14 +93,69 @@ export default function TrueCost() {
   const [result, setResult] = useState<CostBreakdown | null>(null);
   const [showTeaser, setShowTeaser] = useState(false);
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [cityInput, setCityInput] = useState("Toronto");
+  const [suggestions, setSuggestions] = useState<MunicipalityMatch[]>([]);
+  const [matchedMunicipality, setMatchedMunicipality] = useState<MunicipalityMatch | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: options, isLoading: optionsLoading } = useQuery<{
     cities: string[];
+    municipalities: MunicipalityMatch[];
     homeTypes: string[];
     buyerTypes: string[];
   }>({
     queryKey: ["/api/true-cost/options"],
   });
+
+  // Set initial match on options load
+  useEffect(() => {
+    if (options?.municipalities) {
+      const toronto = options.municipalities.find(m => m.name === "Toronto");
+      if (toronto) setMatchedMunicipality(toronto);
+    }
+  }, [options]);
+
+  const handleCityInputChange = useCallback((value: string) => {
+    setCityInput(value);
+    setMatchedMunicipality(null);
+    
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    
+    if (value.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      if (!options?.municipalities) return;
+      const normalized = value.toLowerCase().trim();
+      const matches = options.municipalities.filter(m => 
+        m.name.toLowerCase().includes(normalized)
+      ).slice(0, 6);
+      setSuggestions(matches);
+      setShowSuggestions(matches.length > 0);
+    }, 150);
+  }, [options]);
+
+  const selectMunicipality = useCallback((muni: MunicipalityMatch) => {
+    setCityInput(muni.name);
+    setMatchedMunicipality(muni);
+    setShowSuggestions(false);
+  }, []);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const calculateMutation = useMutation({
     mutationFn: async (data: {
@@ -120,7 +181,6 @@ export default function TrueCost() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       homeValue: "850000",
-      city: "Toronto",
       isNewConstruction: true,
       buyerType: "First-Time",
       homeType: "Detached",
@@ -136,7 +196,7 @@ export default function TrueCost() {
 
     calculateMutation.mutate({
       homeValue,
-      city: data.city,
+      city: cityInput,
       isNewConstruction: data.isNewConstruction,
       buyerType: data.buyerType,
       homeType: data.homeType,
@@ -205,33 +265,53 @@ export default function TrueCost() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          City
-                        </FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-12" data-testid="select-city">
-                              <SelectValue placeholder="Select city" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {options?.cities.map((city) => (
-                              <SelectItem key={city} value={city}>
-                                {city}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="space-y-2">
+                    <FormLabel className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      City or Address
+                    </FormLabel>
+                    <div className="relative" ref={suggestionsRef}>
+                      <Input
+                        placeholder="Type a city name or address..."
+                        className="h-12"
+                        data-testid="input-city"
+                        value={cityInput}
+                        onChange={(e) => handleCityInputChange(e.target.value)}
+                        onFocus={() => {
+                          if (suggestions.length > 0 && !matchedMunicipality) setShowSuggestions(true);
+                        }}
+                      />
+                      {matchedMunicipality && (
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                          <span className="text-xs text-green-600 dark:text-green-400">
+                            Matched: <span className="font-medium">{matchedMunicipality.name}</span>
+                            {matchedMunicipality.region && <span className="text-muted-foreground"> ({matchedMunicipality.region})</span>}
+                          </span>
+                        </div>
+                      )}
+                      {showSuggestions && suggestions.length > 0 && (
+                        <div className="absolute z-50 top-full mt-1 w-full border rounded-md bg-popover shadow-md">
+                          {suggestions.map((muni) => (
+                            <button
+                              key={muni.name}
+                              type="button"
+                              className="w-full text-left px-3 py-2.5 text-sm hover-elevate flex items-center justify-between gap-2"
+                              onClick={() => selectMunicipality(muni)}
+                              data-testid={`suggestion-${muni.name.toLowerCase().replace(/\s/g, '-')}`}
+                            >
+                              <div>
+                                <span className="font-medium">{muni.name}</span>
+                                {muni.region && (
+                                  <span className="text-muted-foreground text-xs ml-2">{muni.region}</span>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   <FormField
                     control={form.control}
@@ -532,8 +612,14 @@ export default function TrueCost() {
                   </CardContent>
                 </Card>
 
+                {result.matchedMunicipality && (
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    Calculated for <span className="font-medium">{result.matchedMunicipality}</span>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground text-center">
-                  Estimates based on 2023 Ontario rates. Actual costs may vary. 
+                  Estimates based on 2024-2025 Ontario rates (BILD/Altus, CMHC, CRA). Actual costs may vary. 
                   This is for educational purposes only and not financial advice.
                 </p>
               </>
