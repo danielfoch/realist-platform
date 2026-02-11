@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2 } from "lucide-react";
+import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2, Scale } from "lucide-react";
 
 const tools = [
   {
@@ -25,6 +25,12 @@ const tools = [
     title: "True Cost Calculator",
     description: "Discover all the hidden costs when buying a home in Ontario — development charges, land transfer taxes, HST rebates, and more.",
     icon: DollarSign,
+  },
+  {
+    href: "/tools/rent-vs-buy",
+    title: "Rent vs Buy",
+    description: "Compare the true financial impact of renting versus buying over time. Factor in appreciation, opportunity cost, maintenance, and more.",
+    icon: Scale,
   },
   {
     href: "/tools/buybox",

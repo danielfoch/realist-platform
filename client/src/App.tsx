@@ -37,6 +37,7 @@ import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
 import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
 import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
 import TrueCost from "@/pages/TrueCost";
+import RentVsBuy from "@/pages/RentVsBuy";
 import WillItPlex from "@/pages/WillItPlex";
 import NotFound from "@/pages/not-found";
 
@@ -66,6 +67,7 @@ function Router() {
       <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
       <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
       <Route path="/tools/true-cost" component={TrueCost} />
+      <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
       <Route path="/tools/will-it-plex" component={WillItPlex} />
       
       {/* New Community routes */}
