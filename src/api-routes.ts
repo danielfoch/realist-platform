@@ -31,6 +31,8 @@ interface ListingQuery {
   page?: number;
   limit?: number;
   investmentFocus?: boolean | string;
+  minCapRate?: number;
+  maxCapRate?: number;
 }
 
 export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
@@ -51,6 +53,8 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
       page = 1,
       limit = 20,
       investmentFocus = false,
+      minCapRate,
+      maxCapRate,
     } = req.query;
 
     const conditions: string[] = [];
@@ -108,6 +112,18 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
     const investmentEnabled = investmentFocus === true || investmentFocus === 'true';
     if (investmentEnabled) {
       conditions.push('cap_rate IS NOT NULL');
+    }
+
+    if (typeof minCapRate === 'number') {
+      conditions.push(`cap_rate >= $${paramCount}`);
+      params.push(minCapRate);
+      paramCount += 1;
+    }
+
+    if (typeof maxCapRate === 'number') {
+      conditions.push(`cap_rate <= $${paramCount}`);
+      params.push(maxCapRate);
+      paramCount += 1;
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

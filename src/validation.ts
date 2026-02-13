@@ -15,6 +15,8 @@ const listingQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
   investmentFocus: z.union([z.boolean(), z.string()]).optional(),
+  minCapRate: z.coerce.number().min(0).max(100).optional(),
+  maxCapRate: z.coerce.number().min(0).max(100).optional(),
 });
 
 const investmentTopSchema = z.object({
@@ -32,6 +34,8 @@ const mapSchema = z.object({
   maxPrice: z.coerce.number().min(0).optional(),
   propertyType: z.string().trim().max(50).optional(),
   status: z.string().trim().max(20).optional(),
+  minCapRate: z.coerce.number().min(0).max(100).optional(),
+  maxCapRate: z.coerce.number().min(0).max(100).optional(),
 });
 
 const statsSchema = z.object({

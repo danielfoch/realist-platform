@@ -38,6 +38,8 @@ export interface SearchFiltersState {
   sortBy?: string;
   sortOrder?: 'ASC' | 'DESC';
   investmentFocus?: boolean;
+  minCapRate?: number;
+  maxCapRate?: number;
 }
 
 interface SearchFiltersProps {
@@ -85,6 +87,11 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({
     filters.maxPrice || 5000000,
   ]);
 
+  const [capRateRange, setCapRateRange] = React.useState<number[]>([
+    filters.minCapRate || 0,
+    filters.maxCapRate || 20,
+  ]);
+
   const updateFilter = (key: keyof SearchFiltersState, value: any) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -98,6 +105,15 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({
     });
   };
 
+  const handleCapRateRangeChange = (values: number[]) => {
+    setCapRateRange(values);
+    onFiltersChange({
+      ...filters,
+      minCapRate: values[0] === 0 ? undefined : values[0],
+      maxCapRate: values[1] === 20 ? undefined : values[1],
+    });
+  };
+
   const clearFilters = () => {
     onFiltersChange({
       status: 'Active',
@@ -105,6 +121,7 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({
       sortOrder: 'DESC',
     });
     setPriceRange([0, 5000000]);
+    setCapRateRange([0, 20]);
   };
 
   return (
@@ -239,6 +256,28 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({
                     {priceRange[1] >= 5000000
                       ? '$5M+'
                       : `$${(priceRange[1] / 1000).toFixed(0)}K`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Cap Rate range */}
+              <div>
+                <Label>Cap Rate Range (%)</Label>
+                <div className="pt-4 pb-2">
+                  <Slider
+                    min={0}
+                    max={20}
+                    step={0.5}
+                    value={capRateRange}
+                    onValueChange={handleCapRateRangeChange}
+                  />
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>{capRateRange[0]}%</span>
+                  <span>
+                    {capRateRange[1] >= 20
+                      ? '20%+'
+                      : `${capRateRange[1]}%`}
                   </span>
                 </div>
               </div>
