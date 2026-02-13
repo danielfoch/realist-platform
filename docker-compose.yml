@@ -1,0 +1,42 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: realist_idx
+      POSTGRES_USER: realist
+      POSTGRES_PASSWORD: realist
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U realist -d realist_idx']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgres://realist:realist@postgres:5432/realist_idx
+      DDF_USERNAME: ${DDF_USERNAME:-}
+      DDF_PASSWORD: ${DDF_PASSWORD:-}
+      LOG_LEVEL: info
+    ports:
+      - '3000:3000'
+    command: sh -c "npm run migrate && npm run dev"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+
+volumes:
+  pgdata:
