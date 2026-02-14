@@ -2,7 +2,12 @@ export interface InvestmentMetricInput {
   listPrice: number;
   monthlyRent: number;
   maintenanceFee?: number;
-  operatingExpenseRatio?: number;
+  /**
+   * NOI ratio - percentage of rent that becomes net operating income
+   * Default: 0.6 (60%) = 40% operating expenses
+   * This accounts for: property management, maintenance, vacancy, insurance, taxes, utilities
+   */
+  noiRatio?: number;
   downPaymentRatio?: number;
   annualInterestRate?: number;
   amortizationYears?: number;
@@ -24,7 +29,8 @@ export function calculateInvestmentMetrics(input: InvestmentMetricInput): Invest
     listPrice,
     monthlyRent,
     maintenanceFee = 0,
-    operatingExpenseRatio = 0.28,
+    // NOI ratio - default 0.6 means 60% of rent = NOI, 40% = expenses
+    noiRatio = 0.6,
     downPaymentRatio = 0.2,
     annualInterestRate = 0.05,
     amortizationYears = 25,
@@ -35,11 +41,13 @@ export function calculateInvestmentMetrics(input: InvestmentMetricInput): Invest
   }
 
   const annualRent = monthlyRent * 12;
-  const annualOperatingExpenses = annualRent * operatingExpenseRatio;
+  // NOI = Annual Rent × NOI Ratio
+  const noi = annualRent * noiRatio;
+  // Operating expenses = Annual Rent - NOI
+  const annualExpenses = annualRent - noi;
   const annualMaintenanceFee = maintenanceFee * 12;
-  const totalExpenses = annualOperatingExpenses + annualMaintenanceFee;
+  const totalExpenses = annualExpenses + annualMaintenanceFee;
 
-  const noi = annualRent - totalExpenses;
   const capRate = (noi / listPrice) * 100;
   const grossYield = (annualRent / listPrice) * 100;
 
