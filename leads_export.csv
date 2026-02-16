@@ -1,0 +1,13 @@
+id,name,email,phone,lead_source,created_at
+3e2c0fec-a781-4d4b-b900-20e66533d8c2,Test User,testuser_A3BK-C@example.com,4165550123,Deal Analyzer,2026-02-05 15:24:39
+ae941087-accf-46cd-8d66-45d12fead670,Test User,test_sVGh7J@example.com,4165551234,Deal Analyzer,2026-02-05 15:18:34
+597238b0-6eea-40dc-94ec-c91416c14509,Test MLI User,test-mli@example.com,9051234567,MLI Select Calculator,2026-02-02 13:31:37
+295d807f-b026-4d41-9245-892b5d96a23a,Daniel Foch,danielfoch@gmail.com,9052515483,Deal Analyzer,2026-01-07 22:40:11
+d4cd472f-53bb-4304-a835-0cb8a698e563,Daniel Foch,daniel@fochfamily.com,9052515483,Deal Analyzer,2026-01-05 22:29:17
+8b864c2b-be33-4a9a-8caf-a48eb5b25311,Daniel Foch,danielfoch@gmail.com,9052515483,Deal Analyzer,2026-01-05 22:28:38
+0bab146f-8d47-430f-b7bb-f7a705849de2,Dan Test,daniel+test@realist.ca,+14165551234,Deal Analyzer,2026-01-05 21:36:31
+cce3e09f-6ed2-47e1-900b-3570f7ba98e0,John Smith,john.smith@example.com,4165551234,Deal Analyzer,2026-01-05 21:34:07
+99b6df5b-7357-4459-8df1-daa9b6001104,Test Lead,test@example.com,4165551234,Deal Analyzer,2026-01-05 21:28:14
+33153b37-d097-4bb8-aab9-3e1bdf002519,Daniel Foch,daniel@fochfamily.com,9052515483,Deal Analyzer,2026-01-05 03:14:55
+b6b46980-1743-4eea-a126-b26aba481a4b,Daniel Foch,daniel@fochfamily.com,9052515483,Deal Analyzer,2026-01-04 19:39:56
+b46b120f-0d1e-4831-9d3a-7e2cefebe467,Test User -2KaCz,test_KMdJlZ@example.com,4165551234,Deal Analyzer,2026-01-04 19:24:59
