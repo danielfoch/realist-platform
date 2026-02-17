@@ -2429,6 +2429,144 @@ export async function registerRoutes(
 
 
   // ============================================
+  // REPLIERS API PROXY ROUTES
+  // ============================================
+
+  app.post("/api/repliers/listings", async (req: any, res) => {
+    try {
+      const apiKey = process.env.REPLIERS_API_KEY;
+      if (!apiKey) {
+        res.status(500).json({ error: "Repliers API key not configured" });
+        return;
+      }
+
+      const {
+        map,
+        minPrice, maxPrice,
+        minBeds, maxBeds,
+        minBaths, maxBaths,
+        propertyType,
+        status,
+        pageNum,
+        resultsPerPage,
+        class: propClass,
+        type: listingType,
+        sortBy,
+        city,
+        area,
+      } = req.body;
+
+      const queryParams = new URLSearchParams();
+      if (minPrice) queryParams.set("minPrice", String(minPrice));
+      if (maxPrice) queryParams.set("maxPrice", String(maxPrice));
+      if (minBeds) queryParams.set("minBeds", String(minBeds));
+      if (maxBeds) queryParams.set("maxBeds", String(maxBeds));
+      if (minBaths) queryParams.set("minBaths", String(minBaths));
+      if (maxBaths) queryParams.set("maxBaths", String(maxBaths));
+      if (propertyType) queryParams.set("propertyType", propertyType);
+      if (status) queryParams.set("status", status);
+      if (propClass) queryParams.set("class", propClass);
+      if (listingType) queryParams.set("type", listingType);
+      if (sortBy) queryParams.set("sortBy", sortBy);
+      if (city) queryParams.set("city", city);
+      if (area) queryParams.set("area", area);
+      queryParams.set("pageNum", String(pageNum || 1));
+      queryParams.set("resultsPerPage", String(resultsPerPage || 50));
+
+      const body: Record<string, any> = {};
+      if (map) {
+        body.map = map;
+      }
+
+      const qs = queryParams.toString();
+      const url = `https://api.repliers.io/listings${qs ? `?${qs}` : ""}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "REPLIERS-API-KEY": apiKey,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Repliers API error:", response.status, errorText);
+        res.status(response.status).json({ error: "Repliers API error", details: errorText });
+        return;
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error proxying Repliers listings:", error);
+      res.status(500).json({ error: "Failed to fetch listings" });
+    }
+  });
+
+  app.get("/api/repliers/listings/:mlsNumber", async (req: any, res) => {
+    try {
+      const apiKey = process.env.REPLIERS_API_KEY;
+      if (!apiKey) {
+        res.status(500).json({ error: "Repliers API key not configured" });
+        return;
+      }
+
+      const { mlsNumber } = req.params;
+      const response = await fetch(`https://api.repliers.io/listings/${encodeURIComponent(mlsNumber)}`, {
+        method: "GET",
+        headers: {
+          "REPLIERS-API-KEY": apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Repliers API detail error:", response.status, errorText);
+        res.status(response.status).json({ error: "Repliers API error", details: errorText });
+        return;
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching listing detail:", error);
+      res.status(500).json({ error: "Failed to fetch listing detail" });
+    }
+  });
+
+  app.get("/api/repliers/listings/:mlsNumber/similar", async (req: any, res) => {
+    try {
+      const apiKey = process.env.REPLIERS_API_KEY;
+      if (!apiKey) {
+        res.status(500).json({ error: "Repliers API key not configured" });
+        return;
+      }
+
+      const { mlsNumber } = req.params;
+      const response = await fetch(`https://api.repliers.io/listings/${encodeURIComponent(mlsNumber)}/similar`, {
+        method: "GET",
+        headers: {
+          "REPLIERS-API-KEY": apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        res.status(response.status).json({ error: "Repliers API error", details: errorText });
+        return;
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching similar listings:", error);
+      res.status(500).json({ error: "Failed to fetch similar listings" });
+    }
+  });
+
+  // ============================================
   // MARKET EXPERT ROUTES
   // ============================================
 
