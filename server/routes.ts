@@ -3588,6 +3588,200 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/listings/parse-zillow", async (req, res) => {
+    try {
+      const { url, html: providedHtml } = req.body;
+      
+      let html: string;
+      let sourceUrl = "";
+      
+      if (providedHtml && typeof providedHtml === "string") {
+        html = providedHtml;
+        const canonicalMatch = html.match(/<link[^>]+rel="canonical"[^>]+href="([^"]+)"/i);
+        if (canonicalMatch) {
+          sourceUrl = canonicalMatch[1];
+        }
+      } else if (url && typeof url === "string") {
+        const zillowPattern = /^https?:\/\/(www\.)?zillow\.com\/homedetails\//;
+        if (!zillowPattern.test(url)) {
+          return res.status(400).json({ error: "Please provide a valid Zillow listing URL (zillow.com/homedetails/...)" });
+        }
+        
+        sourceUrl = url;
+        
+        const response = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate",
+          },
+        });
+        
+        if (!response.ok) {
+          return res.status(400).json({ error: "Failed to fetch listing. The URL may be invalid or the listing may no longer exist." });
+        }
+        
+        html = await response.text();
+        
+        if (html.includes("captcha") && html.length < 5000) {
+          return res.status(400).json({ 
+            error: "Zillow blocked the request. Please use the 'Advanced Import' option to paste the page HTML instead.",
+            blocked: true,
+          });
+        }
+      } else {
+        return res.status(400).json({ error: "URL or HTML source is required" });
+      }
+      
+      let listingData: any = null;
+      
+      const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+      if (nextDataMatch) {
+        try {
+          const nextData = JSON.parse(nextDataMatch[1]);
+          const propertyData = nextData?.props?.pageProps?.componentProps?.gdpClientCache;
+          if (propertyData) {
+            const cacheKey = Object.keys(propertyData)[0];
+            if (cacheKey) {
+              const parsed = JSON.parse(propertyData[cacheKey]);
+              listingData = parsed?.property;
+            }
+          }
+          if (!listingData) {
+            listingData = nextData?.props?.pageProps?.property;
+          }
+        } catch (e) {
+          // continue to other patterns
+        }
+      }
+      
+      if (!listingData) {
+        const ldJsonMatches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
+        for (const match of ldJsonMatches) {
+          try {
+            const jsonData = JSON.parse(match[1]);
+            if (jsonData["@type"] === "SingleFamilyResidence" || jsonData["@type"] === "Product" || jsonData["@type"] === "RealEstateListing") {
+              listingData = jsonData;
+              break;
+            }
+          } catch (e) {
+            // continue
+          }
+        }
+      }
+      
+      let address = "";
+      let city = "";
+      let state = "";
+      let zipCode = "";
+      let price = 0;
+      let bedrooms = 0;
+      let bathrooms = 0;
+      let squareFootage = 0;
+      let propertyType = "";
+      let yearBuilt = "";
+      let lotSize = "";
+      let imageUrl = "";
+      let zpid = "";
+      
+      if (listingData) {
+        address = listingData.streetAddress || listingData.address?.streetAddress || "";
+        city = listingData.city || listingData.address?.addressLocality || "";
+        state = listingData.state || listingData.address?.addressRegion || "";
+        zipCode = listingData.zipcode || listingData.address?.postalCode || "";
+        price = listingData.price || listingData.offers?.price || 0;
+        bedrooms = listingData.bedrooms || 0;
+        bathrooms = listingData.bathrooms || 0;
+        squareFootage = listingData.livingArea || listingData.floorSize?.value || 0;
+        propertyType = listingData.homeType || listingData["@type"] || "";
+        yearBuilt = listingData.yearBuilt || "";
+        lotSize = listingData.lotSize || listingData.lotAreaValue || "";
+        zpid = listingData.zpid || "";
+      }
+      
+      if (!address) {
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) {
+          const parts = titleMatch[1].split("|")[0].split("-")[0].trim().split(",");
+          if (parts.length > 0) address = parts[0].trim();
+          if (parts.length > 1) city = parts[1].trim();
+          if (parts.length > 2) {
+            const stateZip = parts[2].trim().split(" ");
+            state = stateZip[0] || "";
+            zipCode = stateZip[1] || "";
+          }
+        }
+      }
+      
+      if (!price) {
+        const priceMatch = html.match(/\$[\d,]+(?:\.\d{2})?/);
+        if (priceMatch) {
+          price = parseFloat(priceMatch[0].replace(/[$,]/g, ""));
+        }
+      }
+      
+      const metaPriceMatch = html.match(/property="product:price:amount"\s+content="([\d.]+)"/);
+      if (metaPriceMatch && !price) {
+        price = parseFloat(metaPriceMatch[1]);
+      }
+      
+      if (!bedrooms) {
+        const bedMatch = html.match(/(\d+)\s*(?:bed|bd)/i);
+        if (bedMatch) bedrooms = parseInt(bedMatch[1]);
+      }
+      if (!bathrooms) {
+        const bathMatch = html.match(/(\d+)\s*(?:bath|ba)/i);
+        if (bathMatch) bathrooms = parseInt(bathMatch[1]);
+      }
+      if (!squareFootage) {
+        const sqftMatch = html.match(/([\d,]+)\s*(?:sqft|sq\s*ft)/i);
+        if (sqftMatch) squareFootage = parseInt(sqftMatch[1].replace(/,/g, ""));
+      }
+      
+      const ogImageMatch = html.match(/og:image"\s+content="([^"]+)"/);
+      if (ogImageMatch) imageUrl = ogImageMatch[1];
+      
+      if (!address && !city) {
+        if (html.includes("captcha") || html.length < 2000) {
+          return res.status(400).json({
+            error: "The page source appears to be blocked. Please paste the full page source after the page fully loads.",
+            blocked: true,
+          });
+        }
+        return res.status(400).json({ error: "Could not parse listing data. Please make sure you copied the full page source from a Zillow listing page." });
+      }
+      
+      res.json({
+        success: true,
+        listing: {
+          listingId: zpid,
+          propertyId: zpid,
+          address,
+          city,
+          province: state,
+          postalCode: zipCode,
+          country: "usa",
+          price,
+          bedrooms,
+          bathrooms,
+          squareFootage,
+          propertyType,
+          buildingType: propertyType,
+          buildingStyle: "",
+          storeys: 0,
+          landSize: typeof lotSize === "number" ? `${lotSize} sqft` : lotSize,
+          yearBuilt,
+          imageUrl,
+          sourceUrl,
+        },
+      });
+    } catch (error) {
+      console.error("Error parsing Zillow listing:", error);
+      res.status(500).json({ error: "Failed to parse listing. Please try again." });
+    }
+  });
+
   // ==========================================
   // Will It Plex - Capstone Project API Routes
   // ==========================================
@@ -4053,33 +4247,100 @@ export async function registerRoutes(
 
   app.get("/api/leaderboard", async (_req, res) => {
     try {
-      const results = await db
+      const analystResults = await db
         .select({
           userId: analyses.userId,
           firstName: users.firstName,
           lastName: users.lastName,
           profileImageUrl: users.profileImageUrl,
           dealCount: count(analyses.id),
+          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
-        .where(sql`${analyses.userId} IS NOT NULL`)
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`)
         .groupBy(analyses.userId, users.firstName, users.lastName, users.profileImageUrl)
         .orderBy(desc(count(analyses.id)))
         .limit(25);
 
-      const leaderboard = results.map((row, index) => ({
+      const leaderboard = analystResults.map((row, index) => ({
         rank: index + 1,
         userId: row.userId,
         name: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
         profileImageUrl: row.profileImageUrl,
         dealCount: Number(row.dealCount),
+        avgDscr: row.avgDscr != null ? Math.round(Number(row.avgDscr) * 100) / 100 : null,
+        avgCashOnCash: row.avgCashOnCash != null ? Math.round(Number(row.avgCashOnCash) * 100) / 100 : null,
+        avgCapRate: row.avgCapRate != null ? Math.round(Number(row.avgCapRate) * 100) / 100 : null,
       }));
 
-      res.json(leaderboard);
+      const [aggregates] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgOfferRatio: sql<number>`AVG(
+            CASE WHEN (${analyses.inputsJson}->>'purchasePrice')::numeric > 0 
+                  AND (${analyses.inputsJson}->>'listingPrice')::numeric > 0
+            THEN (${analyses.inputsJson}->>'purchasePrice')::numeric / (${analyses.inputsJson}->>'listingPrice')::numeric
+            ELSE NULL END
+          )`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL`);
+
+      res.json({
+        analysts: leaderboard,
+        aggregates: {
+          totalDeals: Number(aggregates?.totalDeals || 0),
+          avgDscr: aggregates?.avgDscr != null ? Math.round(Number(aggregates.avgDscr) * 100) / 100 : null,
+          avgCashOnCash: aggregates?.avgCashOnCash != null ? Math.round(Number(aggregates.avgCashOnCash) * 100) / 100 : null,
+          avgCapRate: aggregates?.avgCapRate != null ? Math.round(Number(aggregates.avgCapRate) * 100) / 100 : null,
+          avgOfferRatio: aggregates?.avgOfferRatio != null ? Math.round(Number(aggregates.avgOfferRatio) * 100) : null,
+        },
+      });
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
       res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/leaderboard/top-cities", async (_req, res) => {
+    try {
+      const results = await db
+        .select({
+          city: analyses.city,
+          province: analyses.province,
+          dealCount: count(analyses.id),
+          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
+        .groupBy(analyses.city, analyses.province)
+        .orderBy(desc(count(analyses.id)))
+        .limit(25);
+
+      const topCities = results.map((row, index) => ({
+        rank: index + 1,
+        city: row.city,
+        province: row.province,
+        dealCount: Number(row.dealCount),
+        avgCashOnCash: row.avgCashOnCash != null ? Math.round(Number(row.avgCashOnCash) * 100) / 100 : null,
+        avgCapRate: row.avgCapRate != null ? Math.round(Number(row.avgCapRate) * 100) / 100 : null,
+        avgDscr: row.avgDscr != null ? Math.round(Number(row.avgDscr) * 100) / 100 : null,
+        avgPurchasePrice: row.avgPurchasePrice != null ? Math.round(Number(row.avgPurchasePrice)) : null,
+      }));
+
+      res.json(topCities);
+    } catch (error) {
+      console.error("Error fetching top cities:", error);
+      res.status(500).json({ error: "Failed to fetch top cities" });
     }
   });
 

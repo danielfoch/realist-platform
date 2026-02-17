@@ -127,6 +127,8 @@ export default function Home() {
     return calculateStressTest(inputs);
   }, [inputs]);
 
+  const [listingPrice, setListingPrice] = useState<number | null>(null);
+
   const handleListingImport = (listing: {
     address: string;
     city: string;
@@ -141,6 +143,7 @@ export default function Home() {
     setCountry(listing.country);
     setPostalCode(listing.postalCode);
     if (listing.price > 0) {
+      setListingPrice(listing.price);
       setInputs((prev) => ({
         ...prev,
         purchasePrice: listing.price,
@@ -178,7 +181,7 @@ export default function Home() {
         analysis: {
           countryMode: country,
           strategyType: strategy,
-          inputsJson: inputs,
+          inputsJson: { ...inputs, listingPrice: listingPrice },
           resultsJson: results,
         },
       });

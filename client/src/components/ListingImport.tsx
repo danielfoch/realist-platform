@@ -33,6 +33,12 @@ interface ListingImportProps {
   onImport: (listing: ParsedListing) => void;
 }
 
+function detectSource(input: string): "realtor" | "zillow" | "unknown" {
+  if (input.includes("realtor.ca")) return "realtor";
+  if (input.includes("zillow.com") || input.includes("Zillow")) return "zillow";
+  return "unknown";
+}
+
 export function ListingImport({ onImport }: ListingImportProps) {
   const { toast } = useToast();
   const [url, setUrl] = useState("");
@@ -47,16 +53,22 @@ export function ListingImport({ onImport }: ListingImportProps) {
       toast({
         title: useHtml ? "HTML Source Required" : "URL Required",
         description: useHtml 
-          ? "Please paste the page source from realtor.ca." 
-          : "Please paste a realtor.ca listing URL.",
+          ? "Please paste the page source from a listing site." 
+          : "Please paste a listing URL from realtor.ca or zillow.com.",
         variant: "destructive",
       });
       return;
     }
 
+    const source = detectSource(inputValue);
+    let endpoint = "/api/listings/parse-realtor-ca";
+    if (source === "zillow") {
+      endpoint = "/api/listings/parse-zillow";
+    }
+
     setIsLoading(true);
     try {
-      const response = await apiRequest("POST", "/api/listings/parse-realtor-ca", { 
+      const response = await apiRequest("POST", endpoint, { 
         url: useHtml ? undefined : url,
         html: useHtml ? htmlSource : undefined,
       });
@@ -87,9 +99,10 @@ export function ListingImport({ onImport }: ListingImportProps) {
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-CA", {
+    const country = importedListing?.country;
+    return new Intl.NumberFormat(country === "usa" ? "en-US" : "en-CA", {
       style: "currency",
-      currency: "CAD",
+      currency: country === "usa" ? "USD" : "CAD",
       maximumFractionDigits: 0,
     }).format(value);
   };
@@ -98,13 +111,13 @@ export function ListingImport({ onImport }: ListingImportProps) {
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Link2 className="h-4 w-4" />
-        Import from Realtor.ca
+        Import from Realtor.ca or Zillow
       </div>
 
       <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
         <div className="flex gap-2">
           <Input
-            placeholder="Paste realtor.ca listing URL..."
+            placeholder="Paste realtor.ca or zillow.com listing URL..."
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="flex-1"
@@ -135,7 +148,7 @@ export function ListingImport({ onImport }: ListingImportProps) {
           <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground">
             <p className="font-medium mb-1">If the URL import doesn't work:</p>
             <ol className="list-decimal list-inside space-y-1">
-              <li>Open the realtor.ca listing in your browser</li>
+              <li>Open the listing page in your browser</li>
               <li>Right-click and select "View Page Source" (or press Ctrl+U)</li>
               <li>Select all (Ctrl+A) and copy (Ctrl+C)</li>
               <li>Paste the HTML below and click "Import from HTML"</li>
@@ -177,7 +190,7 @@ export function ListingImport({ onImport }: ListingImportProps) {
                 />
               )}
               <div className="flex-1 space-y-2">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2 flex-wrap">
                   <div>
                     <div className="font-semibold flex items-center gap-1">
                       <Home className="h-4 w-4" />
@@ -188,14 +201,16 @@ export function ListingImport({ onImport }: ListingImportProps) {
                       {importedListing.city}, {importedListing.province} {importedListing.postalCode}
                     </div>
                   </div>
-                  <a
-                    href={importedListing.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline text-sm flex items-center gap-1"
-                  >
-                    View <ExternalLink className="h-3 w-3" />
-                  </a>
+                  {importedListing.sourceUrl && (
+                    <a
+                      href={importedListing.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline text-sm flex items-center gap-1"
+                    >
+                      View <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                 </div>
                 <div className="text-lg font-bold text-primary">
                   {formatCurrency(importedListing.price)}
@@ -229,7 +244,7 @@ export function ListingImport({ onImport }: ListingImportProps) {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Paste a realtor.ca property listing URL to auto-fill address, price, and property details.
+        Paste a realtor.ca or zillow.com property listing URL to auto-fill address, price, and property details.
       </p>
     </div>
   );
