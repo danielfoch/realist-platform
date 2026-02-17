@@ -190,7 +190,7 @@ export default function VerifyPhone() {
             </Form>
           ) : (
             <Form {...codeForm}>
-              <form onSubmit={codeForm.handleSubmit((data) => verifyCodeMutation.mutate(data))} className="space-y-4">
+              <form onSubmit={codeForm.handleSubmit((data) => verifyCodeMutation.mutate(data))} className="space-y-4" autoComplete="off">
                 <FormField
                   control={codeForm.control}
                   name="code"
@@ -202,9 +202,12 @@ export default function VerifyPhone() {
                           maxLength={6} 
                           value={field.value}
                           onChange={field.onChange}
-                          autoComplete="off"
+                          autoComplete="one-time-code"
                           inputMode="numeric"
+                          name="otp-verification-code"
                           data-testid="input-otp"
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                         >
                           <InputOTPGroup>
                             <InputOTPSlot index={0} />
