@@ -25,6 +25,7 @@ const navCategories: NavCategory[] = [
     label: "Tools",
     items: [
       { href: "/tools/analyzer", label: "Deal Analyzer", description: "Analyze any real estate deal", icon: <Calculator className="h-4 w-4" /> },
+      { href: "/tools/cap-rates", label: "Cap Rates", description: "Browse properties by cap rate", icon: <TrendingUp className="h-4 w-4" /> },
       { href: "/tools/true-cost", label: "True Cost", description: "Hidden costs of homeownership", icon: <DollarSign className="h-4 w-4" /> },
       { href: "/tools/buybox", label: "BuyBox", description: "Define your investment criteria", icon: <MapPin className="h-4 w-4" /> },
       { href: "/tools/coinvest", label: "Co-Invest", description: "Find investment partners", icon: <Handshake className="h-4 w-4" /> },

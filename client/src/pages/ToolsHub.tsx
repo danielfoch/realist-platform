@@ -14,6 +14,13 @@ const tools = [
     primary: true,
   },
   {
+    href: "/tools/cap-rates",
+    title: "Cap Rates Explorer",
+    description: "Browse MLS listings by cap rate. Find the highest-returning properties across markets with pre-calculated returns using market rent data.",
+    icon: TrendingUp,
+    badge: "New",
+  },
+  {
     href: "/tools/will-it-plex",
     title: "Will It Plex?",
     description: "Interactive capstone tool to analyze Buy & Hold or Multiplex strategies. Import listings, configure financing, and export your analysis.",
