@@ -10,9 +10,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { PenTool, FileText, MapPin, Calendar, Shield, AlertTriangle, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { PenTool, FileText, MapPin, Calendar, Shield, AlertTriangle, Loader2, Check } from "lucide-react";
 import { format, addDays } from "date-fns";
 
 export default function BuyBoxAgreement() {
@@ -20,8 +21,16 @@ export default function BuyBoxAgreement() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   
+  const { data: premiumStatus } = useQuery<{
+    isPremium: boolean;
+    hasBraSigned?: boolean;
+    premiumSource?: string;
+  }>({
+    queryKey: ["/api/subscription/status"],
+  });
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const submittedRef = useRef(false); // Track if submission was successful
+  const submittedRef = useRef(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string>("");
   
@@ -210,32 +219,36 @@ export default function BuyBoxAgreement() {
     },
   });
 
+  const hasBraAlready = premiumStatus?.hasBraSigned === true;
+
   const handleSubmit = () => {
-    if (!formData.signedName.trim()) {
-      toast({
-        title: "Name Required",
-        description: "Please enter your full legal name.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!signatureDataUrl) {
-      toast({
-        title: "Signature Required",
-        description: "Please sign in the signature box.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!formData.agreedToTerms) {
-      toast({
-        title: "Agreement Required",
-        description: "Please agree to the terms and conditions.",
-        variant: "destructive",
-      });
-      return;
+    if (!hasBraAlready) {
+      if (!formData.signedName.trim()) {
+        toast({
+          title: "Name Required",
+          description: "Please enter your full legal name.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!signatureDataUrl) {
+        toast({
+          title: "Signature Required",
+          description: "Please sign in the signature box.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!formData.agreedToTerms) {
+        toast({
+          title: "Agreement Required",
+          description: "Please agree to the terms and conditions.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     if (formData.termDays > 180 && !formData.extendedTermConsent) {
@@ -271,6 +284,24 @@ export default function BuyBoxAgreement() {
             Review and sign the agreement to submit your BuyBox mandate
           </p>
         </div>
+
+        {premiumStatus?.hasBraSigned && (
+          <Card className="mb-6 border-primary/30">
+            <CardContent className="flex items-center gap-3 py-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Check className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">BRA Already Signed</p>
+                <p className="text-xs text-muted-foreground">
+                  You already signed a Buyer Representation Agreement through your Premium membership.
+                  Your BuyBox mandate will use your existing agreement.
+                </p>
+              </div>
+              <Badge variant="secondary">Active</Badge>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="space-y-6">
           <Card>

@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, X, User, LogOut, Briefcase, Building, ChevronDown, Calculator, MapPin, Users, Handshake, Calendar, Radio, BookOpen, FileText, Info, Mail, ShoppingBag, GraduationCap, DollarSign, TrendingUp } from "lucide-react";
+import { Menu, X, User, LogOut, Briefcase, Building, ChevronDown, Calculator, MapPin, Users, Handshake, Calendar, Radio, BookOpen, FileText, Info, Mail, ShoppingBag, GraduationCap, DollarSign, TrendingUp, Crown } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/Screenshot_2026-01-04_at_3.46.09_PM_1767559573207.png";
@@ -204,6 +204,12 @@ export function Navigation() {
                     Sign In
                   </Button>
                 )}
+                <Link href="/premium">
+                  <Button variant="default" size="sm" data-testid="button-nav-premium">
+                    <Crown className="mr-2 h-4 w-4" />
+                    Premium
+                  </Button>
+                </Link>
               </div>
             )}
 

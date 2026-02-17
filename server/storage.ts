@@ -29,6 +29,7 @@ import {
   coInvestChecklistResults,
   coInvestMessages,
   coInvestComplianceLogs,
+  experimentAssignments,
   type Lead, 
   type InsertLead,
   type Property,
@@ -88,6 +89,8 @@ import {
   type InsertCoInvestMessage,
   type CoInvestComplianceLog,
   type InsertCoInvestComplianceLog,
+  type ExperimentAssignment,
+  type InsertExperimentAssignment,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -280,6 +283,12 @@ export interface IStorage {
     coinvestAckSignatureDataUrl?: string;
     selectedJurisdiction?: string;
   }): Promise<CoInvestUserProfile | undefined>;
+
+  // Experiment Assignments
+  getExperimentAssignment(visitorId: string, experimentKey: string): Promise<ExperimentAssignment | undefined>;
+  createExperimentAssignment(assignment: InsertExperimentAssignment): Promise<ExperimentAssignment>;
+  markExperimentConverted(visitorId: string, experimentKey: string): Promise<void>;
+  getExperimentStats(experimentKey: string): Promise<{ variant: string; total: number; converted: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1151,6 +1160,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(coInvestUserProfiles.userId, userId))
       .returning();
     return result;
+  }
+
+  async getExperimentAssignment(visitorId: string, experimentKey: string): Promise<ExperimentAssignment | undefined> {
+    const [result] = await db.select().from(experimentAssignments)
+      .where(and(
+        eq(experimentAssignments.visitorId, visitorId),
+        eq(experimentAssignments.experimentKey, experimentKey)
+      ));
+    return result;
+  }
+
+  async createExperimentAssignment(assignment: InsertExperimentAssignment): Promise<ExperimentAssignment> {
+    const [result] = await db.insert(experimentAssignments).values(assignment).returning();
+    return result;
+  }
+
+  async markExperimentConverted(visitorId: string, experimentKey: string): Promise<void> {
+    await db.update(experimentAssignments)
+      .set({ convertedAt: new Date() })
+      .where(and(
+        eq(experimentAssignments.visitorId, visitorId),
+        eq(experimentAssignments.experimentKey, experimentKey)
+      ));
+  }
+
+  async getExperimentStats(experimentKey: string): Promise<{ variant: string; total: number; converted: number }[]> {
+    const results = await db.select({
+      variant: experimentAssignments.variant,
+      total: sql<number>`count(*)::int`,
+      converted: sql<number>`count(${experimentAssignments.convertedAt})::int`,
+    }).from(experimentAssignments)
+      .where(eq(experimentAssignments.experimentKey, experimentKey))
+      .groupBy(experimentAssignments.variant);
+    return results;
   }
 }
 

@@ -2174,17 +2174,15 @@ export async function registerRoutes(
     }
   });
 
-  // Create checkout session for subscription
+  // Create checkout session for premium subscription ($10/mo)
   app.post("/api/subscription/checkout", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const { tier } = req.body;
       
       const { stripeService } = await import("./stripeService");
       const { getUncachableStripeClient } = await import("./stripeClient");
       const stripe = await getUncachableStripeClient();
       
-      // Get or create Stripe customer
       let subscription = await storage.getProfessionalSubscription(userId);
       let customerId = subscription?.stripeCustomerId;
       
@@ -2202,17 +2200,7 @@ export async function registerRoutes(
         });
       }
       
-      // Define price IDs for each tier
-      const priceIds: Record<string, string> = {
-        starter: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter',
-        pro: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
-      };
-      
-      const priceId = priceIds[tier];
-      if (!priceId) {
-        res.status(400).json({ error: "Invalid tier" });
-        return;
-      }
+      const priceId = process.env.STRIPE_PREMIUM_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID || 'price_premium';
       
       const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
       const session = await stripe.checkout.sessions.create({
@@ -2220,15 +2208,197 @@ export async function registerRoutes(
         payment_method_types: ['card'],
         line_items: [{ price: priceId, quantity: 1 }],
         mode: 'subscription',
-        success_url: `${baseUrl}/professional/dashboard?success=true`,
-        cancel_url: `${baseUrl}/professional/dashboard?canceled=true`,
-        metadata: { userId, tier },
+        success_url: `${baseUrl}/premium?success=true`,
+        cancel_url: `${baseUrl}/premium?canceled=true`,
+        metadata: { userId, tier: 'premium' },
       });
       
       res.json({ sessionId: session.id, url: session.url });
     } catch (error) {
       console.error("Error creating checkout session:", error);
       res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  // Claim premium via BRA (buyer representation agreement) - free for 3 months
+  app.post("/api/subscription/claim-bra-premium", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { signedName, signatureDataUrl } = req.body;
+
+      if (!signedName || !signatureDataUrl) {
+        res.status(400).json({ error: "Signed name and signature are required" });
+        return;
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(now);
+      expiresAt.setMonth(expiresAt.getMonth() + 3);
+
+      await storage.upsertProfessionalSubscription({
+        userId,
+        tier: 'premium',
+        premiumSource: 'bra',
+        braSignedAt: now,
+        braExpiresAt: expiresAt,
+        braSignedName: signedName,
+        braSignatureDataUrl: signatureDataUrl,
+        status: 'active',
+      });
+
+      res.json({ 
+        success: true, 
+        tier: 'premium',
+        premiumSource: 'bra',
+        braExpiresAt: expiresAt.toISOString(),
+        redirectTo: '/tools/buybox',
+      });
+    } catch (error) {
+      console.error("Error claiming BRA premium:", error);
+      res.status(500).json({ error: "Failed to activate premium" });
+    }
+  });
+
+  // Get premium status (enhanced subscription endpoint)
+  app.get("/api/subscription/status", async (req: any, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        res.json({ tier: 'free', isPremium: false });
+        return;
+      }
+
+      const subscription = await storage.getProfessionalSubscription(userId);
+      if (!subscription || subscription.tier === 'free') {
+        res.json({ tier: 'free', isPremium: false });
+        return;
+      }
+
+      // Check if BRA-based premium has expired
+      if (subscription.premiumSource === 'bra' && subscription.braExpiresAt) {
+        if (new Date() > new Date(subscription.braExpiresAt)) {
+          await storage.updateProfessionalSubscription(userId, {
+            tier: 'free',
+            status: 'expired',
+          });
+          res.json({ 
+            tier: 'free', 
+            isPremium: false, 
+            braExpired: true,
+            message: 'Your BRA-based premium has expired. Renew or subscribe to continue.',
+          });
+          return;
+        }
+      }
+
+      res.json({
+        tier: subscription.tier,
+        isPremium: subscription.tier === 'premium',
+        premiumSource: subscription.premiumSource,
+        braExpiresAt: subscription.braExpiresAt,
+        braSignedAt: subscription.braSignedAt,
+        hasBraSigned: !!subscription.braSignedAt,
+      });
+    } catch (error) {
+      console.error("Error fetching premium status:", error);
+      res.status(500).json({ error: "Failed to fetch status" });
+    }
+  });
+
+  // Experiment endpoints
+  app.post("/api/experiments/assign", async (req: any, res) => {
+    try {
+      const { visitorId, experimentKey } = req.body;
+      if (!visitorId || !experimentKey) {
+        res.status(400).json({ error: "visitorId and experimentKey required" });
+        return;
+      }
+
+      let assignment = await storage.getExperimentAssignment(visitorId, experimentKey);
+      if (!assignment) {
+        const variants = ['A', 'B', 'C'];
+        const variant = variants[Math.floor(Math.random() * variants.length)];
+        assignment = await storage.createExperimentAssignment({
+          visitorId,
+          userId: req.session?.userId || null,
+          experimentKey,
+          variant,
+        });
+      }
+
+      res.json({ variant: assignment.variant, experimentKey });
+    } catch (error) {
+      console.error("Error assigning experiment:", error);
+      res.status(500).json({ error: "Failed to assign experiment" });
+    }
+  });
+
+  app.post("/api/experiments/convert", async (req: any, res) => {
+    try {
+      const { visitorId, experimentKey } = req.body;
+      if (!visitorId || !experimentKey) {
+        res.status(400).json({ error: "visitorId and experimentKey required" });
+        return;
+      }
+      await storage.markExperimentConverted(visitorId, experimentKey);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error converting experiment:", error);
+      res.status(500).json({ error: "Failed to record conversion" });
+    }
+  });
+
+  app.get("/api/experiments/stats/:key", isAuthenticated, async (req: any, res) => {
+    try {
+      const stats = await storage.getExperimentStats(req.params.key);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching experiment stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Branding assets CRUD
+  app.get("/api/branding", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const branding = await storage.getBrandingAssets(userId);
+      res.json(branding || null);
+    } catch (error) {
+      console.error("Error fetching branding:", error);
+      res.status(500).json({ error: "Failed to fetch branding" });
+    }
+  });
+
+  app.put("/api/branding", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // Check premium status
+      const subscription = await storage.getProfessionalSubscription(userId);
+      const isPremium = subscription?.tier === 'premium' && subscription?.status === 'active';
+      if (!isPremium) {
+        res.status(403).json({ error: "Premium subscription required for custom branding" });
+        return;
+      }
+
+      const { companyName, primaryColor, secondaryColor, contactEmail, contactPhone, website, disclaimerText, logoUrl } = req.body;
+      const branding = await storage.upsertBrandingAssets({
+        userId,
+        companyName: companyName || null,
+        primaryColor: primaryColor || null,
+        secondaryColor: secondaryColor || null,
+        contactEmail: contactEmail || null,
+        contactPhone: contactPhone || null,
+        website: website || null,
+        disclaimerText: disclaimerText || null,
+        logoUrl: logoUrl || null,
+      });
+
+      res.json(branding);
+    } catch (error) {
+      console.error("Error updating branding:", error);
+      res.status(500).json({ error: "Failed to update branding" });
     }
   });
 
@@ -2257,39 +2427,6 @@ export async function registerRoutes(
     }
   });
 
-  // ============================================
-  // BRANDING ASSETS ROUTES
-  // ============================================
-
-  app.get("/api/branding", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.userId;
-      const branding = await storage.getBrandingAssets(userId);
-      res.json(branding || {});
-    } catch (error) {
-      console.error("Error fetching branding:", error);
-      res.status(500).json({ error: "Failed to fetch branding" });
-    }
-  });
-
-  app.put("/api/branding", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.userId;
-      
-      // Check if user has starter or pro tier
-      const subscription = await storage.getProfessionalSubscription(userId);
-      if (!subscription || subscription.tier === 'free') {
-        res.status(403).json({ error: "Branding requires a paid subscription" });
-        return;
-      }
-      
-      const branding = await storage.upsertBrandingAssets({ ...req.body, userId });
-      res.json(branding);
-    } catch (error) {
-      console.error("Error updating branding:", error);
-      res.status(500).json({ error: "Failed to update branding" });
-    }
-  });
 
   // ============================================
   // MARKET EXPERT ROUTES

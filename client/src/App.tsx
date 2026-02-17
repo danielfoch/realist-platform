@@ -40,6 +40,8 @@ import TrueCost from "@/pages/TrueCost";
 import RentVsBuy from "@/pages/RentVsBuy";
 import WillItPlex from "@/pages/WillItPlex";
 import Leaderboard from "@/pages/Leaderboard";
+import Premium from "@/pages/Premium";
+import PremiumBranding from "@/pages/PremiumBranding";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -71,6 +73,8 @@ function Router() {
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
       <Route path="/tools/will-it-plex" component={WillItPlex} />
       <Route path="/community/leaderboard" component={Leaderboard} />
+      <Route path="/premium" component={Premium} />
+      <Route path="/premium/branding" component={PremiumBranding} />
       
       {/* New Community routes */}
       <Route path="/community" component={CommunityHub} />

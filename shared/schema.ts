@@ -529,13 +529,17 @@ export type UserRole = "investor" | "partner" | "admin";
 // PROFESSIONAL SUBSCRIPTIONS & BILLING
 // ============================================
 
-export const subscriptionTiers = ["free", "starter", "pro"] as const;
+export const subscriptionTiers = ["free", "premium"] as const;
 export type SubscriptionTier = (typeof subscriptionTiers)[number];
+
+export const premiumSources = ["stripe", "bra"] as const;
+export type PremiumSource = (typeof premiumSources)[number];
 
 export const professionalSubscriptions = pgTable("professional_subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull().unique(),
   tier: text("tier").default("free").notNull(),
+  premiumSource: text("premium_source"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   monthlyPullLimit: integer("monthly_pull_limit").default(5),
@@ -543,6 +547,10 @@ export const professionalSubscriptions = pgTable("professional_subscriptions", {
   periodStart: timestamp("period_start").defaultNow(),
   periodEnd: timestamp("period_end"),
   status: text("status").default("active"),
+  braSignedAt: timestamp("bra_signed_at"),
+  braExpiresAt: timestamp("bra_expires_at"),
+  braSignatureDataUrl: text("bra_signature_data_url"),
+  braSignedName: text("bra_signed_name"),
   brokerageName: text("brokerage_name"),
   brokerageCity: text("brokerage_city"),
   brokerageProvince: text("brokerage_province"),
@@ -659,6 +667,31 @@ export type BrandingAssets = typeof brandingAssets.$inferSelect;
 
 export type InsertMarketExpertApplication = z.infer<typeof insertMarketExpertApplicationSchema>;
 export type MarketExpertApplication = typeof marketExpertApplications.$inferSelect;
+
+// ============================================
+// A/B/C EXPERIMENT ASSIGNMENTS
+// ============================================
+
+export const experimentVariants = ["A", "B", "C"] as const;
+export type ExperimentVariant = (typeof experimentVariants)[number];
+
+export const experimentAssignments = pgTable("experiment_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitorId: varchar("visitor_id").notNull(),
+  userId: varchar("user_id"),
+  experimentKey: text("experiment_key").notNull(),
+  variant: text("variant").notNull(),
+  convertedAt: timestamp("converted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertExperimentAssignmentSchema = createInsertSchema(experimentAssignments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertExperimentAssignment = z.infer<typeof insertExperimentAssignmentSchema>;
+export type ExperimentAssignment = typeof experimentAssignments.$inferSelect;
 
 export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSchema>;
 export type VerificationToken = typeof verificationTokens.$inferSelect;
