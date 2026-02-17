@@ -3409,7 +3409,6 @@ export async function registerRoutes(
           sourceUrl = canonicalMatch[1];
         }
       } else if (url && typeof url === "string") {
-        // Validate it's a realtor.ca URL
         const realtorCaPattern = /^https?:\/\/(www\.)?realtor\.ca\/(real-estate|immobilier)\/\d+/;
         if (!realtorCaPattern.test(url)) {
           return res.status(400).json({ error: "Please provide a valid realtor.ca listing URL" });
@@ -3417,27 +3416,58 @@ export async function registerRoutes(
         
         sourceUrl = url;
         
-        // Fetch the page HTML
-        const response = await fetch(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-          },
-        });
+        const puppeteerExtra = await import("puppeteer-extra");
+        const StealthPlugin = await import("puppeteer-extra-plugin-stealth");
+        puppeteerExtra.default.use(StealthPlugin.default());
         
-        if (!response.ok) {
-          return res.status(400).json({ error: "Failed to fetch listing. The URL may be invalid or the listing may no longer exist." });
-        }
-        
-        html = await response.text();
-        
-        // Check if we got blocked by Incapsula
-        if (html.includes("_Incapsula_Resource") || html.includes("noindex,nofollow")) {
+        let browser;
+        try {
+          browser = await puppeteerExtra.default.launch({
+            executablePath: process.env.CHROMIUM_PATH || "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium",
+            headless: "new",
+            args: [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+              "--single-process",
+              "--disable-blink-features=AutomationControlled",
+            ],
+          });
+          const page = await browser.newPage();
+          await page.setViewport({ width: 1280, height: 800 });
+          
+          await page.goto(url, { waitUntil: "networkidle2", timeout: 25000 });
+          
+          await page.waitForFunction(() => {
+            return document.body.innerHTML.length > 10000;
+          }, { timeout: 15000 }).catch(() => {});
+          
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          html = await page.content();
+          
+          const hasListingData = html.includes('dataLayer') && (html.includes('property:') || html.includes('propertyType'))
+            || html.includes('__NEXT_DATA__')
+            || html.includes('listingData');
+          const isBlocked = (html.includes('_Incapsula_Resource') && !hasListingData) || html.length < 3000;
+          
+          if (isBlocked) {
+            return res.status(400).json({ 
+              error: "Realtor.ca blocked the automated request. Please use the quick paste method below instead — it only takes 30 seconds.",
+              blocked: true
+            });
+          }
+        } catch (browserError: any) {
+          console.error("Puppeteer error:", browserError.message);
           return res.status(400).json({ 
-            error: "Realtor.ca blocked the request. Please use the 'Advanced Import' option to paste the page HTML instead.",
+            error: "Could not load the listing page. Please try the paste method below instead.",
             blocked: true
           });
+        } finally {
+          if (browser) {
+            await browser.close().catch(() => {});
+          }
         }
       } else {
         return res.status(400).json({ error: "URL or HTML source is required" });
@@ -3609,22 +3639,42 @@ export async function registerRoutes(
         
         sourceUrl = url;
         
-        const response = await fetch(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate",
-          },
-        });
+        const puppeteerExtra = await import("puppeteer-extra");
+        const StealthPlugin = await import("puppeteer-extra-plugin-stealth");
+        puppeteerExtra.default.use(StealthPlugin.default());
         
-        if (!response.ok) {
-          return res.status(400).json({ error: "Failed to fetch listing. The URL may be invalid or the listing may no longer exist." });
+        let browser;
+        try {
+          browser = await puppeteerExtra.default.launch({
+            executablePath: process.env.CHROMIUM_PATH || "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium",
+            headless: "new",
+            args: [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+              "--single-process",
+              "--disable-blink-features=AutomationControlled",
+            ],
+          });
+          const page = await browser.newPage();
+          await page.setViewport({ width: 1280, height: 800 });
+          await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          html = await page.content();
+        } catch (browserError: any) {
+          console.error("Zillow Puppeteer error:", browserError.message);
+          return res.status(400).json({ 
+            error: "Could not load the Zillow page. Please try the HTML paste method instead.",
+            blocked: true,
+          });
+        } finally {
+          if (browser) {
+            await browser.close().catch(() => {});
+          }
         }
         
-        html = await response.text();
-        
-        if (html.includes("captcha") && html.length < 5000) {
+        if ((html.includes("captcha") || html.includes("px-captcha")) && html.length < 5000) {
           return res.status(400).json({ 
             error: "Zillow blocked the request. Please use the 'Advanced Import' option to paste the page HTML instead.",
             blocked: true,

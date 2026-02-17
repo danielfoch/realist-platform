@@ -5,8 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { Link2, Loader2, ExternalLink, Home, MapPin, Bed, Bath, Square, Building, ChevronDown, Code } from "lucide-react";
+import { Link2, Loader2, ExternalLink, Home, MapPin, Bed, Bath, Square, Building, ChevronDown, Code, Search } from "lucide-react";
 
 interface ParsedListing {
   listingId: string;
@@ -46,8 +45,10 @@ export function ListingImport({ onImport }: ListingImportProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [importedListing, setImportedListing] = useState<ParsedListing | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   const handleImport = async (useHtml = false) => {
+    if (isLoading) return;
     const inputValue = useHtml ? htmlSource : url;
     if (!inputValue.trim()) {
       toast({
@@ -67,19 +68,33 @@ export function ListingImport({ onImport }: ListingImportProps) {
     }
 
     setIsLoading(true);
+    setLoadingMessage(useHtml ? "Parsing listing data..." : "Loading listing page...");
+    
+    const loadingTimer = !useHtml ? setTimeout(() => {
+      setLoadingMessage("Analyzing property details...");
+    }, 5000) : undefined;
+    const loadingTimer2 = !useHtml ? setTimeout(() => {
+      setLoadingMessage("Almost there...");
+    }, 15000) : undefined;
+    
     try {
-      const response = await apiRequest("POST", endpoint, { 
-        url: useHtml ? undefined : url,
-        html: useHtml ? htmlSource : undefined,
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          url: useHtml ? undefined : url,
+          html: useHtml ? htmlSource : undefined,
+        }),
+        credentials: "include",
       });
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.blocked && source === "realtor") {
+        if (data.blocked) {
           setShowAdvanced(true);
           toast({
-            title: "URL import blocked by realtor.ca",
-            description: "No worries — just use the HTML paste method below. It takes 30 seconds and works every time.",
+            title: "Direct import blocked",
+            description: "No worries — just use the quick paste method below. It takes 30 seconds and works every time.",
           });
           return;
         }
@@ -102,7 +117,10 @@ export function ListingImport({ onImport }: ListingImportProps) {
         variant: "destructive",
       });
     } finally {
+      if (loadingTimer) clearTimeout(loadingTimer);
+      if (loadingTimer2) clearTimeout(loadingTimer2);
       setIsLoading(false);
+      setLoadingMessage("");
     }
   };
 
@@ -129,6 +147,7 @@ export function ListingImport({ onImport }: ListingImportProps) {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="flex-1"
+            disabled={isLoading}
             data-testid="input-listing-url"
           />
           <Button
@@ -137,12 +156,25 @@ export function ListingImport({ onImport }: ListingImportProps) {
             data-testid="button-import-listing"
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                Import
+              </>
             ) : (
-              "Import"
+              <>
+                <Search className="h-4 w-4 mr-1" />
+                Import
+              </>
             )}
           </Button>
         </div>
+        
+        {isLoading && loadingMessage && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-2" data-testid="text-loading-message">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>{loadingMessage}</span>
+          </div>
+        )}
         
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="mt-2 text-xs text-muted-foreground">
@@ -167,6 +199,7 @@ export function ListingImport({ onImport }: ListingImportProps) {
             value={htmlSource}
             onChange={(e) => setHtmlSource(e.target.value)}
             className="min-h-[100px] font-mono text-xs"
+            disabled={isLoading}
             data-testid="input-html-source"
           />
           <Button
