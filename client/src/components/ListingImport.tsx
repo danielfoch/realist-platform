@@ -75,6 +75,14 @@ export function ListingImport({ onImport }: ListingImportProps) {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.blocked && source === "realtor") {
+          setShowAdvanced(true);
+          toast({
+            title: "URL import blocked by realtor.ca",
+            description: "No worries — just use the HTML paste method below. It takes 30 seconds and works every time.",
+          });
+          return;
+        }
         throw new Error(data.error || "Failed to parse listing");
       }
 
