@@ -39,6 +39,7 @@ import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
 import TrueCost from "@/pages/TrueCost";
 import RentVsBuy from "@/pages/RentVsBuy";
 import WillItPlex from "@/pages/WillItPlex";
+import Leaderboard from "@/pages/Leaderboard";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -69,6 +70,7 @@ function Router() {
       <Route path="/tools/true-cost" component={TrueCost} />
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
       <Route path="/tools/will-it-plex" component={WillItPlex} />
+      <Route path="/community/leaderboard" component={Leaderboard} />
       
       {/* New Community routes */}
       <Route path="/community" component={CommunityHub} />

@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, X, User, LogOut, Briefcase, Building, ChevronDown, Calculator, MapPin, Users, Handshake, Calendar, Radio, BookOpen, FileText, Info, Mail, ShoppingBag, GraduationCap, DollarSign } from "lucide-react";
+import { Menu, X, User, LogOut, Briefcase, Building, ChevronDown, Calculator, MapPin, Users, Handshake, Calendar, Radio, BookOpen, FileText, Info, Mail, ShoppingBag, GraduationCap, DollarSign, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/Screenshot_2026-01-04_at_3.46.09_PM_1767559573207.png";
@@ -36,6 +36,7 @@ const navCategories: NavCategory[] = [
     items: [
       { href: "/community/events", label: "Events", description: "Workshops and meetups", icon: <Calendar className="h-4 w-4" /> },
       { href: "/community/network", label: "Grow Your Network", description: "Connect with investors", icon: <Users className="h-4 w-4" /> },
+      { href: "/community/leaderboard", label: "Leaderboard", description: "Top deal analysts", icon: <TrendingUp className="h-4 w-4" /> },
       { href: "https://www.skool.com/realist", label: "Online Community", description: "Join on Skool", icon: <Users className="h-4 w-4" />, external: true },
     ],
   },
