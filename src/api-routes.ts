@@ -461,6 +461,140 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
     }
   });
 
+  // Rent data ingestion endpoint - receives rent data from scraper and calculates cap rates
+  // POST /api/rents/ingest
+  router.post('/rents/ingest', async (req: Request, res: Response) => {
+    try {
+      // Validate API key
+      const apiKey = req.headers['x-api-key'] as string;
+      const expectedApiKey = process.env.RENT_API_KEY;
+      
+      if (expectedApiKey && apiKey !== expectedApiKey) {
+        res.status(401).json({ success: false, error: 'Invalid API key' });
+        return;
+      }
+
+      const { rents, source = 'scraper' } = req.body;
+      
+      if (!rents || !Array.isArray(rents)) {
+        res.status(400).json({ success: false, error: 'Expected rents array in request body' });
+        return;
+      }
+
+      const results = {
+        matched: 0,
+        updated: 0,
+        created: 0,
+        errors: 0,
+        details: [] as { address: string; status: string; error?: string }[],
+      };
+
+      for (const rent of rents) {
+        try {
+          const { 
+            mlsNumber, 
+            address, 
+            city, 
+            province, 
+            monthlyRent, 
+            bedrooms,
+            source: rentSource 
+          } = rent;
+
+          if (!monthlyRent || monthlyRent <= 0) {
+            results.errors++;
+            results.details.push({ address: address || mlsNumber || 'unknown', status: 'error', error: 'Invalid rent amount' });
+            continue;
+          }
+
+          // Try to find matching listing by MLS number first, then by address
+          let listingQuery: { rows: QueryResultRow[] };
+          
+          if (mlsNumber) {
+            listingQuery = await database.query(
+              'SELECT id, list_price, address_street, address_city, address_province FROM listings WHERE mls_number = $1',
+              [mlsNumber]
+            );
+          } else if (address && city) {
+            listingQuery = await database.query(
+              `SELECT id, list_price, address_street, address_city, address_province 
+               FROM listings 
+               WHERE LOWER(address_street) = LOWER($1) AND LOWER(address_city) = LOWER($2)`,
+              [address, city]
+            );
+          } else {
+            results.errors++;
+            results.details.push({ address: address || 'unknown', status: 'error', error: 'No MLS number or address provided' });
+            continue;
+          }
+
+          if (listingQuery.rows.length === 0) {
+            // No matching listing found - could create a pending record or just skip
+            results.details.push({ 
+              address: address || mlsNumber || 'unknown', 
+              status: 'no_match',
+              error: 'No matching listing found in database'
+            });
+            continue;
+          }
+
+          const listing = listingQuery.rows[0] as { id: number; list_price: number; address_street: string; address_city: string; address_province: string };
+          const listPrice = Number(listing.list_price);
+
+          if (!listPrice || listPrice <= 0) {
+            results.errors++;
+            results.details.push({ 
+              address: listing.address_street, 
+              status: 'error', 
+              error: 'Listing has no valid price' 
+            });
+            continue;
+          }
+
+          // Calculate cap rate using the formula: (Monthly Rent × 12 × 0.6) / Listing Price
+          const annualRent = monthlyRent * 12;
+          const noi = annualRent * 0.6; // 60% NOI ratio
+          const capRate = (noi / listPrice) * 100;
+          const grossYield = (annualRent / listPrice) * 100;
+
+          // Update the listing with rent data and calculated cap rate
+          await database.query(
+            `UPDATE listings 
+             SET estimated_monthly_rent = $1,
+                 cap_rate = $2,
+                 gross_yield = $3,
+                 rent_data_source = $4,
+                 rent_data_updated_at = CURRENT_TIMESTAMP,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $5`,
+            [monthlyRent, Math.round(capRate * 100) / 100, Math.round(grossYield * 100) / 100, rentSource || source, listing.id]
+          );
+
+          results.matched++;
+          results.updated++;
+          results.details.push({ 
+            address: listing.address_street, 
+            status: 'updated',
+          });
+
+        } catch (rentError) {
+          results.errors++;
+          const addr = rent?.address || 'unknown';
+          results.details.push({ address: addr, status: 'error', error: String(rentError) });
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        data: results,
+        message: `Processed ${rents.length} rent records: ${results.updated} updated, ${results.errors} errors`
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
   return router;
 }
 
