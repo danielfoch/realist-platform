@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
@@ -9,14 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   TrendingUp, Search, Building, BedDouble, Bath, Maximize,
   DollarSign, MapPin, ChevronRight, ChevronLeft, ArrowUpDown,
-  Calculator, X, Loader2, ArrowRight, Filter,
+  Calculator, X, Loader2, ArrowRight, Filter, Map, LayoutGrid,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 interface RepliersListing {
   mlsNumber: string;
@@ -174,6 +176,48 @@ function getCapRateBadgeVariant(rate: number): "default" | "secondary" | "outlin
   return "outline";
 }
 
+function getCapRateMarkerColor(rate: number): string {
+  if (rate >= 8) return "#16a34a";
+  if (rate >= 6) return "#059669";
+  if (rate >= 4) return "#ca8a04";
+  if (rate >= 2) return "#ea580c";
+  return "#dc2626";
+}
+
+function createCapRateIcon(capRate: number, isSelected: boolean): L.DivIcon {
+  const color = getCapRateMarkerColor(capRate);
+  const size = isSelected ? 44 : 36;
+  const fontSize = isSelected ? 13 : 11;
+  const border = isSelected ? "3px solid #2563eb" : "2px solid white";
+  const shadow = isSelected ? "0 0 0 2px #2563eb, 0 2px 8px rgba(0,0,0,0.3)" : "0 2px 6px rgba(0,0,0,0.3)";
+  const zIndex = isSelected ? 1000 : 1;
+
+  return L.divIcon({
+    className: "cap-rate-marker",
+    html: `<div style="
+      background: ${color};
+      color: white;
+      font-weight: 700;
+      font-size: ${fontSize}px;
+      width: ${size}px;
+      height: ${size}px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: ${border};
+      box-shadow: ${shadow};
+      z-index: ${zIndex};
+      cursor: pointer;
+      transition: transform 0.15s ease;
+      line-height: 1;
+      font-family: system-ui, -apple-system, sans-serif;
+    ">${capRate.toFixed(1)}%</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
 function estimateMonthlyRent(
   bedrooms: number,
   city: string | undefined,
@@ -216,6 +260,21 @@ function calculateCapRate(
   return { capRate: Math.max(0, capRate), annualNOI };
 }
 
+function MapBoundsUpdater({ listings }: { listings: ListingWithCapRate[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const mapped = listings.filter((l) => l.map?.latitude && l.map?.longitude);
+    if (mapped.length === 0) return;
+    const bounds = L.latLngBounds(
+      mapped.map((l) => [l.map!.latitude, l.map!.longitude] as [number, number])
+    );
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+  }, [listings, map]);
+
+  return null;
+}
+
 export default function CapRates() {
   const [, setLocation] = useLocation();
   const [searchCity, setSearchCity] = useState("all");
@@ -233,6 +292,8 @@ export default function CapRates() {
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedListing, setSelectedListing] = useState<ListingWithCapRate | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<"map" | "grid">("map");
+  const listingRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const { data: rentData = [] } = useQuery<RentPulseData[]>({
     queryKey: ["/api/rents/pulse"],
@@ -242,7 +303,7 @@ export default function CapRates() {
     setIsSearching(true);
     try {
       const body: Record<string, any> = {
-        resultsPerPage: 24,
+        resultsPerPage: 48,
         pageNum: pageNum,
         status: "A",
         class: "ResidentialProperty",
@@ -314,14 +375,19 @@ export default function CapRates() {
       });
   }, [listings, rentData, minCapRate, sortBy]);
 
+  const mappableListings = useMemo(
+    () => listingsWithCapRates.filter((l) => l.map?.latitude && l.map?.longitude),
+    [listingsWithCapRates]
+  );
+
   const handleSearch = () => {
     setPage(1);
+    setSelectedListing(null);
     fetchListings(1);
   };
 
   const handlePageChange = (newPage: number) => {
     fetchListings(newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleAnalyzeListing = (listing: ListingWithCapRate) => {
@@ -341,31 +407,451 @@ export default function CapRates() {
     setLocation(`/tools/analyzer?${params.toString()}`);
   };
 
+  const handleSelectListing = (listing: ListingWithCapRate) => {
+    setSelectedListing(listing);
+    if (viewMode === "map") {
+      const ref = listingRefs.current[listing.mlsNumber];
+      if (ref) {
+        ref.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  };
+
   useEffect(() => {
     fetchListings(1);
   }, []);
+
+  const renderListingCard = (listing: ListingWithCapRate, compact = false) => {
+    const imgUrl = getImageUrl(listing.images);
+    const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+    const isSelected = selectedListing?.mlsNumber === listing.mlsNumber;
+
+    return (
+      <div
+        key={listing.mlsNumber}
+        ref={(el) => { listingRefs.current[listing.mlsNumber] = el; }}
+        className={`rounded-lg border cursor-pointer transition-colors ${
+          isSelected
+            ? "border-primary bg-primary/5 ring-1 ring-primary"
+            : "border-border hover-elevate"
+        }`}
+        onClick={() => handleSelectListing(listing)}
+        data-testid={`card-listing-${listing.mlsNumber}`}
+      >
+        <div className="flex gap-3 p-2">
+          <div className="relative flex-shrink-0">
+            {imgUrl ? (
+              <img
+                src={imgUrl}
+                alt={formatShortAddress(listing.address)}
+                className={`object-cover rounded-md ${compact ? "w-20 h-20" : "w-24 h-24"}`}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              <div className={`bg-muted rounded-md flex items-center justify-center ${compact ? "w-20 h-20" : "w-24 h-24"}`}>
+                <Building className="h-6 w-6 text-muted-foreground" />
+              </div>
+            )}
+            {listing.rentSource === "estimated" && (
+              <Badge variant="outline" className="absolute top-1 left-1 text-[8px] px-1 py-0 bg-background/80 backdrop-blur-sm">
+                Est.
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-1 mb-0.5">
+              <span className="text-sm font-bold" data-testid={`text-price-${listing.mlsNumber}`}>
+                {formatPrice(price)}
+              </span>
+              <Badge
+                variant={getCapRateBadgeVariant(listing.capRate)}
+                className="text-[10px] flex-shrink-0"
+                data-testid={`badge-cap-rate-${listing.mlsNumber}`}
+              >
+                {listing.capRate.toFixed(1)}%
+              </Badge>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground truncate mb-1" data-testid={`text-address-${listing.mlsNumber}`}>
+              {formatShortAddress(listing.address)}, {listing.address?.city}
+            </p>
+
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              {listing.details?.numBedrooms != null && (
+                <span className="flex items-center gap-0.5">
+                  <BedDouble className="h-3 w-3" />
+                  {listing.details.numBedrooms}
+                </span>
+              )}
+              {listing.details?.numBathrooms != null && (
+                <span className="flex items-center gap-0.5">
+                  <Bath className="h-3 w-3" />
+                  {listing.details.numBathrooms}
+                </span>
+              )}
+              {listing.details?.sqft && (
+                <span className="flex items-center gap-0.5">
+                  <Maximize className="h-3 w-3" />
+                  {listing.details.sqft}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between mt-1 text-[10px] text-muted-foreground">
+              <span>Rent: {formatPrice(listing.estimatedMonthlyRent)}/mo</span>
+              <span>NOI: {formatPrice(listing.annualNOI)}/yr</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderGridCard = (listing: ListingWithCapRate) => {
+    const imgUrl = getImageUrl(listing.images);
+    const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+    const isSelected = selectedListing?.mlsNumber === listing.mlsNumber;
+
+    return (
+      <Card
+        key={listing.mlsNumber}
+        className={`overflow-visible cursor-pointer ${isSelected ? "ring-2 ring-primary" : "hover-elevate"}`}
+        onClick={() => handleSelectListing(listing)}
+        data-testid={`card-listing-${listing.mlsNumber}`}
+      >
+        <CardContent className="p-0">
+          <div className="relative">
+            {imgUrl ? (
+              <img
+                src={imgUrl}
+                alt={formatShortAddress(listing.address)}
+                className="w-full h-40 object-cover rounded-t-lg"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "";
+                  (e.target as HTMLImageElement).className = "w-full h-40 bg-muted rounded-t-lg flex items-center justify-center";
+                }}
+              />
+            ) : (
+              <div className="w-full h-40 bg-muted rounded-t-lg flex items-center justify-center">
+                <Building className="h-8 w-8 text-muted-foreground" />
+              </div>
+            )}
+
+            <div className="absolute top-2 right-2">
+              <Badge
+                variant={getCapRateBadgeVariant(listing.capRate)}
+                data-testid={`badge-cap-rate-${listing.mlsNumber}`}
+              >
+                {listing.capRate.toFixed(1)}% cap
+              </Badge>
+            </div>
+
+            {listing.rentSource === "estimated" && (
+              <div className="absolute top-2 left-2">
+                <Badge variant="outline" className="text-[10px] bg-background/80 backdrop-blur-sm">
+                  Est. rent
+                </Badge>
+              </div>
+            )}
+          </div>
+
+          <div className="p-3">
+            <div className="flex items-baseline justify-between gap-2 mb-1">
+              <span className="text-lg font-bold" data-testid={`text-price-${listing.mlsNumber}`}>
+                {formatPrice(price)}
+              </span>
+              <span className={`text-sm font-semibold ${getCapRateColor(listing.capRate)}`}>
+                {listing.capRate.toFixed(1)}%
+              </span>
+            </div>
+
+            <p className="text-xs text-muted-foreground truncate mb-2" data-testid={`text-address-${listing.mlsNumber}`}>
+              {formatShortAddress(listing.address)}, {listing.address?.city}
+            </p>
+
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {listing.details?.numBedrooms != null && (
+                <span className="flex items-center gap-1">
+                  <BedDouble className="h-3 w-3" />
+                  {listing.details.numBedrooms}
+                </span>
+              )}
+              {listing.details?.numBathrooms != null && (
+                <span className="flex items-center gap-1">
+                  <Bath className="h-3 w-3" />
+                  {listing.details.numBathrooms}
+                </span>
+              )}
+              {listing.details?.sqft && (
+                <span className="flex items-center gap-1">
+                  <Maximize className="h-3 w-3" />
+                  {listing.details.sqft}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between mt-2 pt-2 border-t text-xs">
+              <span className="text-muted-foreground">
+                Rent: {formatPrice(listing.estimatedMonthlyRent)}/mo
+              </span>
+              <span className="text-muted-foreground">
+                NOI: {formatPrice(listing.annualNOI)}/yr
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderDetailPanel = () => {
+    if (!selectedListing) return null;
+
+    return (
+      <div className="sticky top-4" data-testid="panel-listing-detail">
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <CardTitle className="text-xl">
+                    {formatPriceFull(selectedListing.listPrice)}
+                  </CardTitle>
+                  <Badge variant={getCapRateBadgeVariant(selectedListing.capRate)} data-testid="badge-detail-cap-rate">
+                    {selectedListing.capRate.toFixed(1)}% cap
+                  </Badge>
+                </div>
+                <CardDescription className="text-xs">
+                  {formatAddress(selectedListing.address)}
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSelectedListing(null)}
+                data-testid="button-close-detail"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedListing.images && selectedListing.images.length > 0 && (
+              <div className="grid grid-cols-2 gap-1.5">
+                {selectedListing.images.slice(0, 4).map((img, idx) => {
+                  const url = img.startsWith("http") ? img : `https://cdn.repliers.io/${img}`;
+                  return (
+                    <img
+                      key={idx}
+                      src={url}
+                      alt={`Photo ${idx + 1}`}
+                      className={`rounded-md object-cover w-full ${idx === 0 ? "col-span-2 h-[160px]" : "h-[80px]"}`}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      data-testid={`img-detail-${idx}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3">
+              {selectedListing.details?.numBedrooms != null && (
+                <div className="flex items-center gap-1">
+                  <BedDouble className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{selectedListing.details.numBedrooms}</span>
+                  <span className="text-xs text-muted-foreground">beds</span>
+                </div>
+              )}
+              {selectedListing.details?.numBathrooms != null && (
+                <div className="flex items-center gap-1">
+                  <Bath className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{selectedListing.details.numBathrooms}</span>
+                  <span className="text-xs text-muted-foreground">baths</span>
+                </div>
+              )}
+              {selectedListing.details?.sqft && (
+                <div className="flex items-center gap-1">
+                  <Maximize className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{selectedListing.details.sqft}</span>
+                  <span className="text-xs text-muted-foreground">sqft</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {selectedListing.details?.propertyType && (
+                <Badge variant="outline" className="text-xs">{selectedListing.details.propertyType}</Badge>
+              )}
+              {selectedListing.details?.style && (
+                <Badge variant="outline" className="text-xs">{selectedListing.details.style}</Badge>
+              )}
+              {selectedListing.details?.yearBuilt && (
+                <Badge variant="outline" className="text-xs">Built {selectedListing.details.yearBuilt}</Badge>
+              )}
+            </div>
+
+            <Separator />
+
+            <div>
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Cap Rate Breakdown
+              </h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Monthly Rent</span>
+                  <span className="font-medium">
+                    {formatPriceFull(selectedListing.estimatedMonthlyRent)}
+                    {selectedListing.rentSource === "estimated" && (
+                      <span className="text-[10px] text-muted-foreground ml-1">(est.)</span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Gross Annual Rent</span>
+                  <span className="font-medium">{formatPriceFull(selectedListing.estimatedMonthlyRent * 12)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Vacancy ({EXPENSE_ASSUMPTIONS.vacancyPercent}%)</span>
+                  <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.vacancyPercent / 100)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Maintenance ({EXPENSE_ASSUMPTIONS.maintenancePercent}%)</span>
+                  <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.maintenancePercent / 100)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Management ({EXPENSE_ASSUMPTIONS.managementPercent}%)</span>
+                  <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.managementPercent / 100)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Insurance</span>
+                  <span className="text-red-500">-{formatPriceFull(EXPENSE_ASSUMPTIONS.insurancePerUnit * 12)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Property Tax</span>
+                  <span className="text-red-500">
+                    -{formatPriceFull(
+                      selectedListing.taxes?.annualAmount ||
+                      (typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice) * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100
+                    )}
+                  </span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-semibold">
+                  <span>Annual NOI</span>
+                  <span className={selectedListing.annualNOI >= 0 ? "text-green-600" : "text-red-600"}>
+                    {formatPriceFull(selectedListing.annualNOI)}
+                  </span>
+                </div>
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Cap Rate</span>
+                  <span className={getCapRateColor(selectedListing.capRate)}>
+                    {selectedListing.capRate.toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <p className="text-muted-foreground">MLS#</p>
+                <p className="font-medium">{selectedListing.mlsNumber}</p>
+              </div>
+              {selectedListing.address?.neighborhood && (
+                <div>
+                  <p className="text-muted-foreground">Neighborhood</p>
+                  <p className="font-medium">{selectedListing.address.neighborhood}</p>
+                </div>
+              )}
+              {selectedListing.daysOnMarket != null && (
+                <div>
+                  <p className="text-muted-foreground">Days on Market</p>
+                  <p className="font-medium">{selectedListing.daysOnMarket}</p>
+                </div>
+              )}
+              {selectedListing.details?.numParkingSpaces != null && (
+                <div>
+                  <p className="text-muted-foreground">Parking</p>
+                  <p className="font-medium">{selectedListing.details.numParkingSpaces} spaces</p>
+                </div>
+              )}
+            </div>
+
+            {selectedListing.details?.description && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-xs font-medium mb-1">Description</p>
+                  <p className="text-xs text-muted-foreground line-clamp-4">
+                    {selectedListing.details.description}
+                  </p>
+                </div>
+              </>
+            )}
+
+            <Button
+              className="w-full"
+              onClick={() => handleAnalyzeListing(selectedListing)}
+              data-testid="button-analyze-listing"
+            >
+              <Calculator className="h-4 w-4 mr-2" />
+              Analyze in Deal Analyzer
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-primary-foreground" />
+      <main className="max-w-[1600px] mx-auto px-4 py-6">
+        <div className="mb-6">
+          <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold" data-testid="text-page-title">Cap Rates Explorer</h1>
+                <p className="text-muted-foreground" data-testid="text-page-subtitle">
+                  Browse MLS listings by cap rate. Find the best returns across markets.
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold" data-testid="text-page-title">Cap Rates Explorer</h1>
-              <p className="text-muted-foreground" data-testid="text-page-subtitle">
-                Browse properties by cap rate. Find the best returns across markets.
-              </p>
+
+            <div className="flex items-center gap-1 border rounded-lg p-0.5">
+              <Button
+                variant={viewMode === "map" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("map")}
+                data-testid="button-view-map"
+              >
+                <Map className="h-4 w-4 mr-1" />
+                Map
+              </Button>
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                data-testid="button-view-grid"
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" />
+                Grid
+              </Button>
             </div>
           </div>
         </div>
 
-        <Card className="mb-6">
-          <CardContent className="pt-6">
+        <Card className="mb-4">
+          <CardContent className="pt-4 pb-4">
             <div className="flex flex-wrap gap-3 items-end">
               <div className="flex-1 min-w-[200px]">
                 <Label htmlFor="search-city" className="text-xs text-muted-foreground mb-1 block">Market</Label>
@@ -510,419 +996,284 @@ export default function CapRates() {
         </Card>
 
         {hasSearched && !isSearching && (
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-muted-foreground" data-testid="text-results-count">
               {listingsWithCapRates.length > 0
-                ? `Showing ${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
+                ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
                 : `No properties found`}
               {searchCity && searchCity !== "all" ? ` in ${searchCity}` : ""}
+              {viewMode === "map" && mappableListings.length < listingsWithCapRates.length
+                ? ` (${mappableListings.length} mapped)`
+                : ""}
             </p>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <ArrowUpDown className="h-3 w-3" />
-              {sortBy === "capRate" ? "Sorted by cap rate" : sortBy === "priceAsc" ? "Price: low to high" : "Price: high to low"}
+              {sortBy === "capRate" ? "By cap rate" : sortBy === "priceAsc" ? "Price: low-high" : "Price: high-low"}
             </div>
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className={selectedListing ? "lg:col-span-2" : "lg:col-span-3"}>
-            {isSearching && !hasSearched ? (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-0">
-                      <Skeleton className="h-40 w-full rounded-t-lg" />
-                      <div className="p-4 space-y-2">
-                        <Skeleton className="h-6 w-24" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-2/3" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : listingsWithCapRates.length > 0 ? (
-              <>
-                <div className={`grid gap-4 ${selectedListing ? "sm:grid-cols-1 md:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
-                  {listingsWithCapRates.map((listing) => {
-                    const imgUrl = getImageUrl(listing.images);
-                    const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
-                    return (
-                      <Card
-                        key={listing.mlsNumber}
-                        className="overflow-visible hover-elevate cursor-pointer group"
-                        onClick={() => setSelectedListing(listing)}
-                        data-testid={`card-listing-${listing.mlsNumber}`}
-                      >
-                        <CardContent className="p-0">
-                          <div className="relative">
-                            {imgUrl ? (
-                              <img
-                                src={imgUrl}
-                                alt={formatShortAddress(listing.address)}
-                                className="w-full h-40 object-cover rounded-t-lg"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = "";
-                                  (e.target as HTMLImageElement).className = "w-full h-40 bg-muted rounded-t-lg flex items-center justify-center";
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-40 bg-muted rounded-t-lg flex items-center justify-center">
-                                <Building className="h-8 w-8 text-muted-foreground" />
-                              </div>
-                            )}
-
-                            <div className="absolute top-2 right-2">
-                              <Badge
-                                variant={getCapRateBadgeVariant(listing.capRate)}
-                                data-testid={`badge-cap-rate-${listing.mlsNumber}`}
-                              >
-                                {listing.capRate.toFixed(1)}% cap
-                              </Badge>
-                            </div>
-
-                            {listing.rentSource === "estimated" && (
-                              <div className="absolute top-2 left-2">
-                                <Badge variant="outline" className="text-[10px] bg-background/80 backdrop-blur-sm">
-                                  Est. rent
-                                </Badge>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="p-3">
-                            <div className="flex items-baseline justify-between gap-2 mb-1">
-                              <span className="text-lg font-bold" data-testid={`text-price-${listing.mlsNumber}`}>
-                                {formatPrice(price)}
-                              </span>
-                              <span className={`text-sm font-semibold ${getCapRateColor(listing.capRate)}`}>
-                                {listing.capRate.toFixed(1)}%
-                              </span>
-                            </div>
-
-                            <p className="text-xs text-muted-foreground truncate mb-2" data-testid={`text-address-${listing.mlsNumber}`}>
-                              {formatShortAddress(listing.address)}, {listing.address?.city}
-                            </p>
-
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              {listing.details?.numBedrooms != null && (
-                                <span className="flex items-center gap-1">
-                                  <BedDouble className="h-3 w-3" />
-                                  {listing.details.numBedrooms}
-                                </span>
-                              )}
-                              {listing.details?.numBathrooms != null && (
-                                <span className="flex items-center gap-1">
-                                  <Bath className="h-3 w-3" />
-                                  {listing.details.numBathrooms}
-                                </span>
-                              )}
-                              {listing.details?.sqft && (
-                                <span className="flex items-center gap-1">
-                                  <Maximize className="h-3 w-3" />
-                                  {listing.details.sqft}
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center justify-between mt-2 pt-2 border-t text-xs">
-                              <span className="text-muted-foreground">
-                                Rent: {formatPrice(listing.estimatedMonthlyRent)}/mo
-                              </span>
-                              <span className="text-muted-foreground">
-                                NOI: {formatPrice(listing.annualNOI)}/yr
-                              </span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+        {viewMode === "map" ? (
+          <div className="flex gap-4" style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}>
+            <div className="flex-1 rounded-lg overflow-hidden border" data-testid="map-container">
+              {isSearching && !hasSearched ? (
+                <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Loading listings...</p>
+                  </div>
                 </div>
-
-                {numPages > 1 && (
-                  <div className="flex items-center justify-between mt-6">
-                    <p className="text-sm text-muted-foreground">
-                      Page {page} of {numPages}
-                    </p>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(page - 1)}
-                        disabled={page <= 1 || isSearching}
-                        data-testid="button-prev-page"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(page + 1)}
-                        disabled={page >= numPages || isSearching}
-                        data-testid="button-next-page"
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                <Card className="mt-8">
-                  <CardContent className="py-8 text-center">
-                    <MapPin className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                    <h3 className="text-lg font-semibold mb-2">Can't find what you're looking for?</h3>
-                    <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-                      Create a BuyBox with your specific investment criteria and let our network of realtors find matching properties for you.
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={() => setLocation("/tools/buybox")}
-                      data-testid="button-goto-buybox"
+              ) : (
+                <MapContainer
+                  center={[43.65, -79.38]}
+                  zoom={10}
+                  style={{ width: "100%", height: "100%" }}
+                  zoomControl={true}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  {mappableListings.map((listing) => (
+                    <Marker
+                      key={listing.mlsNumber}
+                      position={[listing.map!.latitude, listing.map!.longitude]}
+                      icon={createCapRateIcon(
+                        listing.capRate,
+                        selectedListing?.mlsNumber === listing.mlsNumber
+                      )}
+                      eventHandlers={{
+                        click: () => handleSelectListing(listing),
+                      }}
                     >
-                      <MapPin className="h-4 w-4 mr-2" />
-                      Create Your BuyBox
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              </>
-            ) : hasSearched ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Search className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Properties Found</h3>
-                  <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                    Try adjusting your filters or searching in a different market. You can also create a BuyBox to get notified when matching properties become available.
-                  </p>
-                  <div className="flex flex-wrap gap-3 justify-center">
-                    <Button variant="outline" onClick={() => {
-                      setSearchCity("");
-                      setMinPrice("");
-                      setMaxPrice("");
-                      setMinBeds("");
-                      setPropertyType("");
-                      setMinCapRate("");
-                      fetchListings(1);
-                    }} data-testid="button-clear-filters">
-                      Clear Filters
-                    </Button>
-                    <Button
-                      onClick={() => setLocation("/tools/buybox")}
-                      data-testid="button-goto-buybox-empty"
-                    >
-                      <MapPin className="h-4 w-4 mr-2" />
-                      Create BuyBox
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : null}
-          </div>
-
-          {selectedListing && (
-            <div className="lg:col-span-1" data-testid="panel-listing-detail">
-              <div className="sticky top-4">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <CardTitle className="text-xl">
-                            {formatPriceFull(selectedListing.listPrice)}
-                          </CardTitle>
-                          <Badge variant={getCapRateBadgeVariant(selectedListing.capRate)} data-testid="badge-detail-cap-rate">
-                            {selectedListing.capRate.toFixed(1)}% cap
-                          </Badge>
-                        </div>
-                        <CardDescription className="text-xs">
-                          {formatAddress(selectedListing.address)}
-                        </CardDescription>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setSelectedListing(null)}
-                        data-testid="button-close-detail"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {selectedListing.images && selectedListing.images.length > 0 && (
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {selectedListing.images.slice(0, 4).map((img, idx) => {
-                          const url = img.startsWith("http") ? img : `https://cdn.repliers.io/${img}`;
-                          return (
-                            <img
-                              key={idx}
-                              src={url}
-                              alt={`Photo ${idx + 1}`}
-                              className={`rounded-md object-cover w-full ${idx === 0 ? "col-span-2 h-[160px]" : "h-[80px]"}`}
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                              data-testid={`img-detail-${idx}`}
-                            />
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-3">
-                      {selectedListing.details?.numBedrooms != null && (
-                        <div className="flex items-center gap-1">
-                          <BedDouble className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{selectedListing.details.numBedrooms}</span>
-                          <span className="text-xs text-muted-foreground">beds</span>
-                        </div>
-                      )}
-                      {selectedListing.details?.numBathrooms != null && (
-                        <div className="flex items-center gap-1">
-                          <Bath className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{selectedListing.details.numBathrooms}</span>
-                          <span className="text-xs text-muted-foreground">baths</span>
-                        </div>
-                      )}
-                      {selectedListing.details?.sqft && (
-                        <div className="flex items-center gap-1">
-                          <Maximize className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{selectedListing.details.sqft}</span>
-                          <span className="text-xs text-muted-foreground">sqft</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedListing.details?.propertyType && (
-                        <Badge variant="outline" className="text-xs">{selectedListing.details.propertyType}</Badge>
-                      )}
-                      {selectedListing.details?.style && (
-                        <Badge variant="outline" className="text-xs">{selectedListing.details.style}</Badge>
-                      )}
-                      {selectedListing.details?.yearBuilt && (
-                        <Badge variant="outline" className="text-xs">Built {selectedListing.details.yearBuilt}</Badge>
-                      )}
-                    </div>
-
-                    <Separator />
-
-                    <div>
-                      <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4" />
-                        Cap Rate Breakdown
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Monthly Rent</span>
-                          <span className="font-medium">
-                            {formatPriceFull(selectedListing.estimatedMonthlyRent)}
-                            {selectedListing.rentSource === "estimated" && (
-                              <span className="text-[10px] text-muted-foreground ml-1">(est.)</span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Gross Annual Rent</span>
-                          <span className="font-medium">{formatPriceFull(selectedListing.estimatedMonthlyRent * 12)}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Vacancy ({EXPENSE_ASSUMPTIONS.vacancyPercent}%)</span>
-                          <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.vacancyPercent / 100)}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Maintenance ({EXPENSE_ASSUMPTIONS.maintenancePercent}%)</span>
-                          <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.maintenancePercent / 100)}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Management ({EXPENSE_ASSUMPTIONS.managementPercent}%)</span>
-                          <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.managementPercent / 100)}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Insurance</span>
-                          <span className="text-red-500">-{formatPriceFull(EXPENSE_ASSUMPTIONS.insurancePerUnit * 12)}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Property Tax</span>
-                          <span className="text-red-500">
-                            -{formatPriceFull(
-                              selectedListing.taxes?.annualAmount ||
-                              (typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice) * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100
-                            )}
-                          </span>
-                        </div>
-                        <Separator />
-                        <div className="flex justify-between font-semibold">
-                          <span>Annual NOI</span>
-                          <span className={selectedListing.annualNOI >= 0 ? "text-green-600" : "text-red-600"}>
-                            {formatPriceFull(selectedListing.annualNOI)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between font-bold text-lg">
-                          <span>Cap Rate</span>
-                          <span className={getCapRateColor(selectedListing.capRate)}>
-                            {selectedListing.capRate.toFixed(2)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <p className="text-muted-foreground">MLS#</p>
-                        <p className="font-medium">{selectedListing.mlsNumber}</p>
-                      </div>
-                      {selectedListing.address?.neighborhood && (
-                        <div>
-                          <p className="text-muted-foreground">Neighborhood</p>
-                          <p className="font-medium">{selectedListing.address.neighborhood}</p>
-                        </div>
-                      )}
-                      {selectedListing.daysOnMarket != null && (
-                        <div>
-                          <p className="text-muted-foreground">Days on Market</p>
-                          <p className="font-medium">{selectedListing.daysOnMarket}</p>
-                        </div>
-                      )}
-                      {selectedListing.details?.numParkingSpaces != null && (
-                        <div>
-                          <p className="text-muted-foreground">Parking</p>
-                          <p className="font-medium">{selectedListing.details.numParkingSpaces} spaces</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {selectedListing.details?.description && (
-                      <>
-                        <Separator />
-                        <div>
-                          <p className="text-xs font-medium mb-1">Description</p>
-                          <p className="text-xs text-muted-foreground line-clamp-4">
-                            {selectedListing.details.description}
+                      <Popup>
+                        <div className="min-w-[200px]">
+                          <p className="font-bold text-sm">{formatPrice(listing.listPrice)}</p>
+                          <p className="text-xs text-gray-600">{formatShortAddress(listing.address)}, {listing.address?.city}</p>
+                          <p className="text-xs font-semibold mt-1" style={{ color: getCapRateMarkerColor(listing.capRate) }}>
+                            {listing.capRate.toFixed(1)}% Cap Rate
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {listing.details?.numBedrooms || "?"} bed / {listing.details?.numBathrooms || "?"} bath
+                            {listing.details?.sqft ? ` / ${listing.details.sqft} sqft` : ""}
                           </p>
                         </div>
-                      </>
-                    )}
+                      </Popup>
+                    </Marker>
+                  ))}
+                  <MapBoundsUpdater listings={mappableListings} />
+                </MapContainer>
+              )}
+            </div>
 
-                    <Button
-                      className="w-full"
-                      onClick={() => handleAnalyzeListing(selectedListing)}
-                      data-testid="button-analyze-listing"
-                    >
-                      <Calculator className="h-4 w-4 mr-2" />
-                      Analyze in Deal Analyzer
-                    </Button>
+            <div className="w-[380px] flex-shrink-0 flex flex-col gap-3 overflow-hidden">
+              {selectedListing ? (
+                <div className="overflow-y-auto flex-1 pr-1">
+                  {renderDetailPanel()}
+                </div>
+              ) : (
+                <div className="overflow-y-auto flex-1 space-y-2 pr-1">
+                  {isSearching ? (
+                    Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="rounded-lg border p-2">
+                        <div className="flex gap-3">
+                          <Skeleton className="w-20 h-20 rounded-md flex-shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-20" />
+                            <Skeleton className="h-3 w-full" />
+                            <Skeleton className="h-3 w-2/3" />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : listingsWithCapRates.length > 0 ? (
+                    <>
+                      {listingsWithCapRates.map((listing) => renderListingCard(listing, true))}
+
+                      {numPages > 1 && (
+                        <div className="flex items-center justify-between pt-2">
+                          <span className="text-xs text-muted-foreground">Page {page}/{numPages}</span>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(page - 1)}
+                              disabled={page <= 1 || isSearching}
+                              data-testid="button-prev-page"
+                            >
+                              <ChevronLeft className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(page + 1)}
+                              disabled={page >= numPages || isSearching}
+                              data-testid="button-next-page"
+                            >
+                              <ChevronRight className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="rounded-lg border p-3 text-center mt-2">
+                        <MapPin className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+                        <p className="text-xs font-medium mb-1">Can't find what you're looking for?</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setLocation("/tools/buybox")}
+                          data-testid="button-goto-buybox"
+                        >
+                          Create Your BuyBox
+                          <ArrowRight className="h-3 w-3 ml-1" />
+                        </Button>
+                      </div>
+                    </>
+                  ) : hasSearched ? (
+                    <div className="rounded-lg border p-6 text-center">
+                      <Search className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+                      <h3 className="text-sm font-semibold mb-2">No Properties Found</h3>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Try adjusting your filters or searching in a different market.
+                      </p>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Button variant="outline" size="sm" onClick={() => {
+                          setSearchCity("all");
+                          setMinPrice("");
+                          setMaxPrice("");
+                          setMinBeds("any");
+                          setPropertyType("all");
+                          setMinCapRate("any");
+                          fetchListings(1);
+                        }} data-testid="button-clear-filters">
+                          Clear Filters
+                        </Button>
+                        <Button size="sm" onClick={() => setLocation("/tools/buybox")} data-testid="button-goto-buybox-empty">
+                          Create BuyBox
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className={selectedListing ? "lg:col-span-2" : "lg:col-span-3"}>
+              {isSearching && !hasSearched ? (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-0">
+                        <Skeleton className="h-40 w-full rounded-t-lg" />
+                        <div className="p-4 space-y-2">
+                          <Skeleton className="h-6 w-24" />
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-2/3" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : listingsWithCapRates.length > 0 ? (
+                <>
+                  <div className={`grid gap-4 ${selectedListing ? "sm:grid-cols-1 md:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
+                    {listingsWithCapRates.map((listing) => renderGridCard(listing))}
+                  </div>
+
+                  {numPages > 1 && (
+                    <div className="flex items-center justify-between mt-6">
+                      <p className="text-sm text-muted-foreground">
+                        Page {page} of {numPages}
+                      </p>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(page - 1)}
+                          disabled={page <= 1 || isSearching}
+                          data-testid="button-prev-page"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(page + 1)}
+                          disabled={page >= numPages || isSearching}
+                          data-testid="button-next-page"
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <Card className="mt-8">
+                    <CardContent className="py-8 text-center">
+                      <MapPin className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+                      <h3 className="text-lg font-semibold mb-2">Can't find what you're looking for?</h3>
+                      <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+                        Create a BuyBox with your specific investment criteria and let our network of realtors find matching properties for you.
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => setLocation("/tools/buybox")}
+                        data-testid="button-goto-buybox"
+                      >
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Create Your BuyBox
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : hasSearched ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Search className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No Properties Found</h3>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                      Try adjusting your filters or searching in a different market. You can also create a BuyBox to get notified when matching properties become available.
+                    </p>
+                    <div className="flex flex-wrap gap-3 justify-center">
+                      <Button variant="outline" onClick={() => {
+                        setSearchCity("all");
+                        setMinPrice("");
+                        setMaxPrice("");
+                        setMinBeds("any");
+                        setPropertyType("all");
+                        setMinCapRate("any");
+                        fetchListings(1);
+                      }} data-testid="button-clear-filters">
+                        Clear Filters
+                      </Button>
+                      <Button
+                        onClick={() => setLocation("/tools/buybox")}
+                        data-testid="button-goto-buybox-empty"
+                      >
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Create BuyBox
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
-              </div>
+              ) : null}
             </div>
-          )}
-        </div>
 
-        <div className="mt-8 text-center text-xs text-muted-foreground">
+            {selectedListing && (
+              <div className="lg:col-span-1">
+                {renderDetailPanel()}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mt-6 text-center text-xs text-muted-foreground">
           <p>
             Cap rates are estimated using {rentData.length > 0 ? "market rent data" : "estimated market rents"} and standard expense assumptions
             (vacancy {EXPENSE_ASSUMPTIONS.vacancyPercent}%, maintenance {EXPENSE_ASSUMPTIONS.maintenancePercent}%, management {EXPENSE_ASSUMPTIONS.managementPercent}%, property tax {EXPENSE_ASSUMPTIONS.propertyTaxPercent}%).

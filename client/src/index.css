@@ -241,3 +241,17 @@
     @apply bg-gradient-to-r from-red-500 via-rose-400 to-orange-400 bg-clip-text text-transparent;
   }
 }
+
+.cap-rate-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px !important;
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px !important;
+  font-family: inherit !important;
+}
