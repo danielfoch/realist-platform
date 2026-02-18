@@ -595,6 +595,66 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
     }
   });
 
+  // Cap rate preview endpoint - calculate cap rate without storing
+  // GET /api/cap-rate/preview?price=500000&rent=2500
+  router.get('/cap-rate/preview', async (req: Request, res: Response) => {
+    try {
+      const { price, rent, maintenanceFee } = req.query;
+      
+      const listPrice = Number(price);
+      const monthlyRent = Number(rent);
+      const maintenance = maintenanceFee ? Number(maintenanceFee) : 0;
+      
+      if (!listPrice || listPrice <= 0) {
+        res.status(400).json({ success: false, error: 'Invalid or missing price parameter' });
+        return;
+      }
+      
+      if (!monthlyRent || monthlyRent <= 0) {
+        res.status(400).json({ success: false, error: 'Invalid or missing rent parameter' });
+        return;
+      }
+
+      // Calculate cap rate: (Monthly Rent × 12 × 0.6) / Listing Price
+      const annualRent = monthlyRent * 12;
+      const noi = annualRent * 0.6; // 60% NOI ratio
+      const capRate = (noi / listPrice) * 100;
+      const grossYield = (annualRent / listPrice) * 100;
+      
+      // Cash flow with mortgage estimate (20% down, 5% rate, 25yr amort)
+      const downPayment = listPrice * 0.2;
+      const loanAmount = listPrice - downPayment;
+      const monthlyRate = 0.05 / 12;
+      const payments = 25 * 12;
+      const monthlyMortgage = (loanAmount * (monthlyRate * (1 + monthlyRate) ** payments)) / ((1 + monthlyRate) ** payments - 1);
+      const monthlyExpenses = (annualRent - noi) / 12 + maintenance + monthlyMortgage;
+      const cashFlow = monthlyRent - monthlyExpenses;
+
+      res.json({
+        success: true,
+        data: {
+          listPrice,
+          monthlyRent,
+          maintenanceFee: maintenance,
+          annualRent,
+          noi,
+          capRate: Math.round(capRate * 100) / 100,
+          grossYield: Math.round(grossYield * 100) / 100,
+          cashFlowMonthly: Math.round(cashFlow * 100) / 100,
+          assumptions: {
+            noiRatio: '60%',
+            downPayment: '20%',
+            interestRate: '5%',
+            amortizationYears: 25,
+          }
+        }
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
   return router;
 }
 
