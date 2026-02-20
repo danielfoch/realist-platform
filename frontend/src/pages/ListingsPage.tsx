@@ -207,7 +207,10 @@ export const ListingsPage: React.FC = () => {
                     <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
                   </div>
                 ) : (
-                  <ListingsMap listings={listings} onListingClick={handleListingClick} />
+                  <ListingsMap 
+                    listings={listings as any} 
+                    onListingClick={(listing: any) => window.location.href = `/listings/${listing.mls_number}`}
+                  />
                 )}
               </div>
             </TabsContent>

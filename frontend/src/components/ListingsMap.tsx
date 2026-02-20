@@ -18,7 +18,8 @@ interface MapListing {
   bathrooms_full: number;
   address_street: string;
   address_city: string;
-  property_type: string;
+  property_type?: string;
+  structure_type?: string;
   cap_rate?: number;
   photo?: string;
 }

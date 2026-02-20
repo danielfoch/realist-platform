@@ -1,17 +1,31 @@
 /**
- * RealtorImport Component
- * Add this to your Realist deal analyzer page
+ * Realt * Add this toorImport Component
+ your Realist deal analyzer page
  * 
  * Copy this into your frontend components folder
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 
-export function RealtorImport({ onImport }) {
+interface RealtorImportProps {
+  onImport?: (data: {
+    address: string;
+    city: string;
+    province: string;
+    postalCode: string;
+    price: number;
+    bedrooms: number;
+    bathrooms: number;
+    squareFootage: number;
+    propertyType: string;
+  }) => void;
+}
+
+export function RealtorImport({ onImport }: RealtorImportProps) {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleImport = async () => {
     if (!url.trim()) return;
@@ -45,14 +59,15 @@ export function RealtorImport({ onImport }) {
       } else {
         setError(response.data.error || 'Import failed');
       }
-    } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Import failed');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(error.response?.data?.error || error.message || 'Import failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleImport();
     }
