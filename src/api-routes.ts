@@ -5,6 +5,7 @@
 import { Router, Request, Response } from 'express';
 import { QueryResultRow } from 'pg';
 import { db as defaultDb } from './db';
+import { isDemoMode, getDemoListings, getDemoListingByMls, filterDemoListings } from './demo-data';
 import {
   validateListingParams,
   validateListingQuery,
@@ -39,6 +40,56 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   const router = Router();
 
   router.get('/listings', validateListingQuery, async (req: Request<unknown, unknown, unknown, ListingQuery>, res: Response) => {
+    // Demo mode - return mock data without database
+    if (isDemoMode()) {
+      const {
+        city,
+        province,
+        minPrice,
+        maxPrice,
+        minBedrooms,
+        maxBedrooms,
+        propertyType,
+        status = 'Active',
+        sortBy = 'list_date',
+        sortOrder = 'DESC',
+        page = 1,
+        limit = 20,
+        investmentFocus = false,
+        minCapRate,
+        maxCapRate,
+      } = req.query;
+
+      const result = filterDemoListings({
+        city,
+        province,
+        minPrice: typeof minPrice === 'number' ? minPrice : undefined,
+        maxPrice: typeof maxPrice === 'number' ? maxPrice : undefined,
+        minBedrooms: typeof minBedrooms === 'number' ? minBedrooms : undefined,
+        maxBedrooms: typeof maxBedrooms === 'number' ? maxBedrooms : undefined,
+        propertyType,
+        status: status as string,
+        sortBy: sortBy as string,
+        sortOrder: sortOrder as 'ASC' | 'DESC',
+        page: typeof page === 'number' ? page : 1,
+        limit: typeof limit === 'number' ? limit : 20,
+        investmentFocus: investmentFocus === true || investmentFocus === 'true',
+        minCapRate: typeof minCapRate === 'number' ? minCapRate : undefined,
+        maxCapRate: typeof maxCapRate === 'number' ? maxCapRate : undefined,
+      });
+
+      return res.json({
+        success: true,
+        data: result.data,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: result.totalPages,
+        },
+      });
+    }
+
     const {
       city,
       province,
@@ -211,6 +262,15 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   });
 
   router.get('/listings/:mlsNumber', validateListingParams, async (req: Request<{ mlsNumber: string }>, res: Response) => {
+    // Demo mode
+    if (isDemoMode()) {
+      const listing = getDemoListingByMls(req.params.mlsNumber);
+      if (!listing) {
+        return res.status(404).json({ success: false, error: 'Listing not found' });
+      }
+      return res.json({ success: true, data: listing });
+    }
+
     try {
       const result = await database.query(
         `
@@ -286,6 +346,21 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   });
 
   router.get('/listings/investment/top', validateTopInvestmentQuery, async (req: Request, res: Response) => {
+    // Demo mode
+    if (isDemoMode()) {
+      const { limit = 50, city, province } = req.query as { limit?: number; city?: string; province?: string };
+      const result = filterDemoListings({
+        status: 'Active',
+        investmentFocus: true,
+        sortBy: 'cap_rate',
+        sortOrder: 'DESC',
+        limit: limit || 50,
+        city,
+        province,
+      });
+      return res.json({ success: true, data: result.data });
+    }
+
     try {
       const { limit = 50, city, province } = req.query as { limit?: number; city?: string; province?: string };
       const conditions: string[] = ['status = $1', 'cap_rate IS NOT NULL'];
@@ -338,6 +413,29 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   });
 
   router.get('/listings/map', validateMapQuery, async (req: Request, res: Response) => {
+    // Demo mode
+    if (isDemoMode()) {
+      const { bounds, minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
+        bounds?: string;
+        minPrice?: number;
+        maxPrice?: number;
+        propertyType?: string;
+        status?: string;
+      };
+
+      const result = filterDemoListings({
+        status,
+        propertyType,
+        minPrice: typeof minPrice === 'number' ? minPrice : undefined,
+        maxPrice: typeof maxPrice === 'number' ? maxPrice : undefined,
+        sortBy: 'cap_rate',
+        sortOrder: 'DESC',
+        limit: 100,
+      });
+
+      return res.json({ success: true, data: result.data });
+    }
+
     try {
       const { bounds, minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
         bounds?: string;
@@ -418,6 +516,29 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   });
 
   router.get('/stats', validateStatsQuery, async (req: Request, res: Response) => {
+    // Demo mode
+    if (isDemoMode()) {
+      const listings = getDemoListings();
+      const prices = listings.map(l => l.list_price);
+      const capRates = listings.map(l => l.cap_rate).filter(c => c != null);
+      const sqfts = listings.map(l => l.square_footage).filter(s => s != null);
+
+      return res.json({
+        success: true,
+        data: {
+          total_listings: listings.length,
+          avg_price: prices.reduce((a, b) => a + b, 0) / prices.length,
+          min_price: Math.min(...prices),
+          max_price: Math.max(...prices),
+          avg_cap_rate: capRates.length > 0 ? capRates.reduce((a, b) => a + b, 0) / capRates.length : null,
+          investment_listings: capRates.length,
+          avg_sqft: sqfts.length > 0 ? sqfts.reduce((a, b) => a + b, 0) / sqfts.length : null,
+          avg_rent: listings.reduce((a, b) => a + (b.estimated_monthly_rent || 0), 0) / listings.length,
+          cities: [...new Set(listings.map(l => l.address_city))],
+        },
+      });
+    }
+
     try {
       const { city, province } = req.query as { city?: string; province?: string };
       const conditions: string[] = ['status = $1'];

@@ -65,6 +65,17 @@ app.use('/api', apiRoutes);
 app.use('/monitoring', express.static(path.resolve(process.cwd(), 'monitoring')));
 
 app.get('/health', async (_req: Request, res: Response) => {
+  // Check for demo mode
+  if (process.env.DEMO_MODE === 'true') {
+    return res.json({
+      status: 'ok',
+      service: 'realist-idx-api',
+      timestamp: new Date().toISOString(),
+      mode: 'demo',
+      database: 'mock',
+    });
+  }
+
   try {
     await db.query('SELECT 1');
     res.json({
