@@ -1,8 +1,8 @@
 # Realist.ca IDX Integration - Project Status
 
-## Last Updated: 2026-02-22
+## Last Updated: 2026-02-23
 
-## Tonight's Review (2026-02-22)
+## Tonight's Review (2026-02-23)
 - Verified TypeScript builds without errors ✅
 - Verified frontend (React/Vite) builds successfully ✅
 - Tested DDF connection - endpoints returning DNS errors (CREA account still not activated)
@@ -10,10 +10,28 @@
 - No TODOs or FIXMEs found in codebase
 - Rent ingestion endpoint verified in api-routes.ts
 - Investment metrics calculation verified (60% NOI ratio)
+- **NEW**: Added demo mode for development without database
+
+## Demo Mode
+Set `DEMO_MODE=true` in `.env` to run the API with mock data - no database required!
+
+Demo listings include 8 sample investment properties across Ontario:
+- Properties in Toronto, Hamilton, Kitchener, Ottawa, Windsor, London, Mississauga
+- Cap rates ranging from 5.36% to 8.12%
+- Prices from $385K to $850K
+- Various property types (House, Condo, Townhouse, Duplex)
+
+To test:
+```bash
+npm run dev  # Server starts in demo mode automatically
+curl http://localhost:3000/api/listings
+curl http://localhost:3000/api/listings/investment/top
+```
 
 ## Build Status
 - ✅ Backend TypeScript: No errors
 - ✅ Frontend build: Successful
+- ✅ Demo mode: Working
 
 ## Implementation Status
 
@@ -71,34 +89,39 @@
 
 ## What's Needed to Run
 
-### 1. Database Setup
+### Quick Start (Demo Mode - No Database)
 ```bash
+# Already configured with DEMO_MODE=true
+npm run dev
+# API runs at http://localhost:3000
+# Demo data available at /api/listings, /api/listings/investment/top
+```
+
+### Full Production Setup
+```bash
+# 1. Database Setup
 # Option A: Docker (provided)
 docker-compose up -d postgres
-
 # Option B: Neon (cloud)
 # Add to .env:
 # DATABASE_URL=postgres://user:pass@host.neon.tech/realist?sslmode=require
-```
 
-### 2. Environment Variables
+# 2. Environment Variables
 Update `.env` with:
+- `DEMO_MODE=false` (or remove)
 - `DATABASE_URL` - PostgreSQL connection string
 - `VITE_MAPBOX_TOKEN` - Get free at https://mapbox.com
 
-### 3. Run Migrations
-```bash
+# 3. Run Migrations
 npm run migrate
-```
 
-### 4. Start Development
-```bash
+# 4. Start Development
 npm run dev
 ```
 
 ## Current Blockers
 1. **CREA DDF Account**: Not activated - returns 401
-2. **Database**: No DATABASE_URL configured
+2. **Database**: Not configured (use demo mode for development)
 3. **Mapbox Token**: Not configured
 
 ## Next Steps (When Ready)
