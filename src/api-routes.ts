@@ -585,6 +585,29 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   // Rent data ingestion endpoint - receives rent data from scraper and calculates cap rates
   // POST /api/rents/ingest
   router.post('/rents/ingest', async (req: Request, res: Response) => {
+    // Demo mode - return mock success without database
+    if (isDemoMode()) {
+      const { rents } = req.body;
+      if (!rents || !Array.isArray(rents)) {
+        return res.status(400).json({ success: false, error: 'Expected rents array in request body' });
+      }
+      return res.json({
+        success: true,
+        data: {
+          matched: 0,
+          updated: 0,
+          created: 0,
+          errors: 0,
+          details: rents.map((r: any) => ({ 
+            address: r.address || r.mlsNumber || 'demo', 
+            status: 'demo_mode',
+            message: 'Demo mode - rent data not stored'
+          }))
+        },
+        message: `Demo mode: Processed ${rents.length} rent records (not stored)`
+      });
+    }
+
     try {
       // Validate API key
       const apiKey = req.headers['x-api-key'] as string;
