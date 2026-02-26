@@ -1,14 +1,15 @@
 # Realist.ca IDX Integration - Project Status
 
-## Last Updated: 2026-02-23
+## Last Updated: 2026-02-26
 
-## Tonight's Review (2026-02-23)
+## Tonight's Review (2026-02-26)
 - Verified TypeScript builds without errors ✅
 - Verified frontend (React/Vite) builds successfully ✅
 - Tested DDF connection - endpoints returning DNS errors (CREA account still not activated)
 - Code is production-ready, awaiting external configuration
 - No TODOs or FIXMEs found in codebase
 - Rent ingestion endpoint verified in api-routes.ts
+- Cap rate filtering and calculations tested ✅
 - Investment metrics calculation verified (60% NOI ratio)
 - **NEW**: Added demo mode for development without database
 
@@ -39,7 +40,7 @@ curl http://localhost:3000/api/listings/investment/top
 - **Status**: Code complete, awaiting CREA account activation
 - **Location**: `src/ddf-client.ts`
 - **Credentials**: Configured in `.env` (DDF_USERNAME, DDF_PASSWORD)
-- **Issue**: Account returns 401 - needs activation from CREA
+- **Issue**: DNS errors for replication.crea.ca, data.crea.ca returns 404 (account likely not activated). Need to follow up with CREA support.
 - **Test Script**: `npm run test:ddf`
 
 ### 2. Cap Rate Calculations ✅
