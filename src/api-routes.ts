@@ -261,6 +261,109 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
     }
   });
 
+  router.get('/listings/map', validateMapQuery, async (req: Request, res: Response) => {
+    // Demo mode
+    if (isDemoMode()) {
+      const { bounds, minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
+        bounds?: string;
+        minPrice?: number;
+        maxPrice?: number;
+        propertyType?: string;
+        status?: string;
+      };
+
+      const result = filterDemoListings({
+        status,
+        propertyType,
+        minPrice: typeof minPrice === 'number' ? minPrice : undefined,
+        maxPrice: typeof maxPrice === 'number' ? maxPrice : undefined,
+        sortBy: 'cap_rate',
+        sortOrder: 'DESC',
+        limit: 100,
+      });
+
+      return res.json({ success: true, data: result.data });
+    }
+
+    try {
+      const { bounds, minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
+        bounds?: string;
+        minPrice?: number;
+        maxPrice?: number;
+        propertyType?: string;
+        status?: string;
+      };
+
+      const conditions: string[] = ['latitude IS NOT NULL', 'longitude IS NOT NULL'];
+      const params: unknown[] = [];
+      let paramCount = 1;
+
+      if (status) {
+        conditions.push(`status = $${paramCount}`);
+        params.push(status);
+        paramCount += 1;
+      }
+
+      if (bounds) {
+        const [minLat, minLng, maxLat, maxLng] = bounds.split(',').map((value) => Number.parseFloat(value));
+        conditions.push(`latitude BETWEEN $${paramCount} AND $${paramCount + 1}`);
+        conditions.push(`longitude BETWEEN $${paramCount + 2} AND $${paramCount + 3}`);
+        params.push(minLat, maxLat, minLng, maxLng);
+        paramCount += 4;
+      }
+
+      if (typeof minPrice === 'number') {
+        conditions.push(`list_price >= $${paramCount}`);
+        params.push(minPrice);
+        paramCount += 1;
+      }
+
+      if (typeof maxPrice === 'number') {
+        conditions.push(`list_price <= $${paramCount}`);
+        params.push(maxPrice);
+        paramCount += 1;
+      }
+
+      if (propertyType) {
+        conditions.push(`property_type = $${paramCount}`);
+        params.push(propertyType);
+        paramCount += 1;
+      }
+
+      const result = await database.query(
+        `
+          SELECT
+            id,
+            mls_number,
+            latitude,
+            longitude,
+            list_price,
+            bedrooms,
+            bathrooms_full,
+            address_street,
+            address_city,
+            property_type,
+            structure_type,
+            cap_rate,
+            (
+              SELECT photo_url FROM listing_photos
+              WHERE listing_id = listings.id AND is_primary = true
+              LIMIT 1
+            ) AS photo
+          FROM listings
+          WHERE ${conditions.join(' AND ')}
+          LIMIT 500
+        `,
+        params,
+      );
+
+      res.json({ success: true, data: result.rows });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
   router.get('/listings/:mlsNumber', validateListingParams, async (req: Request<{ mlsNumber: string }>, res: Response) => {
     // Demo mode
     if (isDemoMode()) {
@@ -405,109 +508,6 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
       `;
 
       const result = await database.query(query, [...params, limit]);
-      res.json({ success: true, data: result.rows });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      res.status(500).json({ success: false, error: message });
-    }
-  });
-
-  router.get('/listings/map', validateMapQuery, async (req: Request, res: Response) => {
-    // Demo mode
-    if (isDemoMode()) {
-      const { bounds, minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
-        bounds?: string;
-        minPrice?: number;
-        maxPrice?: number;
-        propertyType?: string;
-        status?: string;
-      };
-
-      const result = filterDemoListings({
-        status,
-        propertyType,
-        minPrice: typeof minPrice === 'number' ? minPrice : undefined,
-        maxPrice: typeof maxPrice === 'number' ? maxPrice : undefined,
-        sortBy: 'cap_rate',
-        sortOrder: 'DESC',
-        limit: 100,
-      });
-
-      return res.json({ success: true, data: result.data });
-    }
-
-    try {
-      const { bounds, minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
-        bounds?: string;
-        minPrice?: number;
-        maxPrice?: number;
-        propertyType?: string;
-        status?: string;
-      };
-
-      const conditions: string[] = ['latitude IS NOT NULL', 'longitude IS NOT NULL'];
-      const params: unknown[] = [];
-      let paramCount = 1;
-
-      if (status) {
-        conditions.push(`status = $${paramCount}`);
-        params.push(status);
-        paramCount += 1;
-      }
-
-      if (bounds) {
-        const [minLat, minLng, maxLat, maxLng] = bounds.split(',').map((value) => Number.parseFloat(value));
-        conditions.push(`latitude BETWEEN $${paramCount} AND $${paramCount + 1}`);
-        conditions.push(`longitude BETWEEN $${paramCount + 2} AND $${paramCount + 3}`);
-        params.push(minLat, maxLat, minLng, maxLng);
-        paramCount += 4;
-      }
-
-      if (typeof minPrice === 'number') {
-        conditions.push(`list_price >= $${paramCount}`);
-        params.push(minPrice);
-        paramCount += 1;
-      }
-
-      if (typeof maxPrice === 'number') {
-        conditions.push(`list_price <= $${paramCount}`);
-        params.push(maxPrice);
-        paramCount += 1;
-      }
-
-      if (propertyType) {
-        conditions.push(`property_type = $${paramCount}`);
-        params.push(propertyType);
-        paramCount += 1;
-      }
-
-      const result = await database.query(
-        `
-          SELECT
-            id,
-            mls_number,
-            latitude,
-            longitude,
-            list_price,
-            bedrooms,
-            bathrooms_full,
-            address_street,
-            address_city,
-            property_type,
-            structure_type,
-            cap_rate,
-            (
-              SELECT photo_url FROM listing_photos
-              WHERE listing_id = listings.id AND is_primary = true
-              LIMIT 1
-            ) AS photo
-          FROM listings
-          WHERE ${conditions.join(' AND ')}
-          LIMIT 500
-        `,
-        params,
-      );
-
       res.json({ success: true, data: result.rows });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
