@@ -30,6 +30,9 @@ import {
   coInvestMessages,
   coInvestComplianceLogs,
   experimentAssignments,
+  realtorMarketClaims,
+  realtorLeadNotifications,
+  realtorIntroductions,
   type Lead, 
   type InsertLead,
   type Property,
@@ -91,6 +94,12 @@ import {
   type InsertCoInvestComplianceLog,
   type ExperimentAssignment,
   type InsertExperimentAssignment,
+  type RealtorMarketClaim,
+  type InsertRealtorMarketClaim,
+  type RealtorLeadNotification,
+  type InsertRealtorLeadNotification,
+  type RealtorIntroduction,
+  type InsertRealtorIntroduction,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -289,6 +298,23 @@ export interface IStorage {
   createExperimentAssignment(assignment: InsertExperimentAssignment): Promise<ExperimentAssignment>;
   markExperimentConverted(visitorId: string, experimentKey: string): Promise<void>;
   getExperimentStats(experimentKey: string): Promise<{ variant: string; total: number; converted: number }[]>;
+
+  // Realtor Partner Network
+  createRealtorMarketClaim(claim: InsertRealtorMarketClaim): Promise<RealtorMarketClaim>;
+  getRealtorMarketClaim(id: string): Promise<RealtorMarketClaim | undefined>;
+  getRealtorMarketClaimsByUser(userId: string): Promise<RealtorMarketClaim[]>;
+  getActiveClaimsForMarket(city: string, region: string): Promise<RealtorMarketClaim[]>;
+  updateRealtorMarketClaim(id: string, updates: Partial<RealtorMarketClaim>): Promise<RealtorMarketClaim | undefined>;
+
+  createRealtorLeadNotification(notification: InsertRealtorLeadNotification): Promise<RealtorLeadNotification>;
+  getRealtorLeadNotification(id: string): Promise<RealtorLeadNotification | undefined>;
+  getRealtorLeadNotificationsByClaim(claimId: string): Promise<RealtorLeadNotification[]>;
+  getPendingNotificationsForRealtor(userId: string): Promise<(RealtorLeadNotification & { lead: Lead })[]>;
+  updateRealtorLeadNotification(id: string, updates: Partial<RealtorLeadNotification>): Promise<RealtorLeadNotification | undefined>;
+
+  createRealtorIntroduction(intro: InsertRealtorIntroduction): Promise<RealtorIntroduction>;
+  getRealtorIntroductionsByRealtor(userId: string): Promise<RealtorIntroduction[]>;
+  getRealtorIntroduction(id: string): Promise<RealtorIntroduction | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1194,6 +1220,90 @@ export class DatabaseStorage implements IStorage {
       .where(eq(experimentAssignments.experimentKey, experimentKey))
       .groupBy(experimentAssignments.variant);
     return results;
+  }
+
+  async createRealtorMarketClaim(claim: InsertRealtorMarketClaim): Promise<RealtorMarketClaim> {
+    const [result] = await db.insert(realtorMarketClaims).values(claim).returning();
+    return result;
+  }
+
+  async getRealtorMarketClaim(id: string): Promise<RealtorMarketClaim | undefined> {
+    const [result] = await db.select().from(realtorMarketClaims).where(eq(realtorMarketClaims.id, id));
+    return result;
+  }
+
+  async getRealtorMarketClaimsByUser(userId: string): Promise<RealtorMarketClaim[]> {
+    return db.select().from(realtorMarketClaims)
+      .where(eq(realtorMarketClaims.userId, userId))
+      .orderBy(desc(realtorMarketClaims.createdAt));
+  }
+
+  async getActiveClaimsForMarket(city: string, region: string): Promise<RealtorMarketClaim[]> {
+    return db.select().from(realtorMarketClaims)
+      .where(and(
+        sql`LOWER(${realtorMarketClaims.marketCity}) = LOWER(${city})`,
+        sql`LOWER(${realtorMarketClaims.marketRegion}) = LOWER(${region})`,
+        eq(realtorMarketClaims.status, "active")
+      ));
+  }
+
+  async updateRealtorMarketClaim(id: string, updates: Partial<RealtorMarketClaim>): Promise<RealtorMarketClaim | undefined> {
+    const [result] = await db.update(realtorMarketClaims)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(realtorMarketClaims.id, id))
+      .returning();
+    return result;
+  }
+
+  async createRealtorLeadNotification(notification: InsertRealtorLeadNotification): Promise<RealtorLeadNotification> {
+    const [result] = await db.insert(realtorLeadNotifications).values(notification).returning();
+    return result;
+  }
+
+  async getRealtorLeadNotification(id: string): Promise<RealtorLeadNotification | undefined> {
+    const [result] = await db.select().from(realtorLeadNotifications).where(eq(realtorLeadNotifications.id, id));
+    return result;
+  }
+
+  async getRealtorLeadNotificationsByClaim(claimId: string): Promise<RealtorLeadNotification[]> {
+    return db.select().from(realtorLeadNotifications)
+      .where(eq(realtorLeadNotifications.realtorClaimId, claimId))
+      .orderBy(desc(realtorLeadNotifications.createdAt));
+  }
+
+  async getPendingNotificationsForRealtor(userId: string): Promise<(RealtorLeadNotification & { lead: Lead })[]> {
+    const results = await db.select({
+      notification: realtorLeadNotifications,
+      lead: leads,
+    }).from(realtorLeadNotifications)
+      .innerJoin(leads, eq(realtorLeadNotifications.leadId, leads.id))
+      .where(eq(realtorLeadNotifications.realtorUserId, userId))
+      .orderBy(desc(realtorLeadNotifications.createdAt));
+    return results.map(r => ({ ...r.notification, lead: r.lead }));
+  }
+
+  async updateRealtorLeadNotification(id: string, updates: Partial<RealtorLeadNotification>): Promise<RealtorLeadNotification | undefined> {
+    const [result] = await db.update(realtorLeadNotifications)
+      .set(updates)
+      .where(eq(realtorLeadNotifications.id, id))
+      .returning();
+    return result;
+  }
+
+  async createRealtorIntroduction(intro: InsertRealtorIntroduction): Promise<RealtorIntroduction> {
+    const [result] = await db.insert(realtorIntroductions).values(intro).returning();
+    return result;
+  }
+
+  async getRealtorIntroductionsByRealtor(userId: string): Promise<RealtorIntroduction[]> {
+    return db.select().from(realtorIntroductions)
+      .where(eq(realtorIntroductions.realtorUserId, userId))
+      .orderBy(desc(realtorIntroductions.createdAt));
+  }
+
+  async getRealtorIntroduction(id: string): Promise<RealtorIntroduction | undefined> {
+    const [result] = await db.select().from(realtorIntroductions).where(eq(realtorIntroductions.id, id));
+    return result;
   }
 }
 

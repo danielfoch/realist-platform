@@ -53,6 +53,7 @@ The application features a category-based dropdown navigation:
 - **Admin Dashboard**: Protected area for lead and webhook management.
 - **Authentication**: Custom email/password system with PostgreSQL-backed sessions, bcrypt hashing, and secure token management for resets/account setup. Supports lead auto-enrollment.
 - **Leaderboard & Analytics**: Displays top analysts and city insights based on deal data and aggregate metrics.
+- **Realtor Partner Network**: Realtors can claim a market, sign a 25% referral agreement (with e-signature canvas), receive lead notifications when deals are analyzed in their market, and claim leads via a formal logged introduction email. Route: `/partner/network`. Tables: `realtor_market_claims`, `realtor_lead_notifications`, `realtor_introductions`. API prefix: `/api/realtor-network/`.
 
 ## External Dependencies
 

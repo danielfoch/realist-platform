@@ -43,6 +43,7 @@ import Leaderboard from "@/pages/Leaderboard";
 import Premium from "@/pages/Premium";
 import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
+import RealtorNetwork from "@/pages/RealtorNetwork";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -127,6 +128,7 @@ function Router() {
       <Route path="/set-password" component={SetPassword} />
       <Route path="/verify-phone" component={VerifyPhone} />
       <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
+      <Route path="/partner/network" component={RealtorNetwork} />
       
       {/* 404 */}
       <Route component={NotFound} />

@@ -45,6 +45,7 @@ import {
   sendCoachingWaitlistNotification,
   sendNotificationEmail,
   sendMLIQuoteNotification,
+  sendRealtorIntroEmail,
 } from "./resend";
 import { authStorage } from "./replit_integrations/auth/storage";
 import { 
@@ -310,6 +311,35 @@ export async function registerRoutes(
         strategy: analysis.strategyType,
         source: lead.leadSource || 'Deal Analyzer',
       }).catch(err => console.error("Email notification error:", err));
+
+      // Notify realtors who have claimed this market
+      if (property.city && property.region) {
+        (async () => {
+          try {
+            const activeClaims = await storage.getActiveClaimsForMarket(property.city!, property.region!);
+            for (const claim of activeClaims) {
+              await storage.createRealtorLeadNotification({
+                realtorClaimId: claim.id,
+                realtorUserId: claim.userId,
+                leadId: lead.id,
+                propertyId: property.id,
+                analysisId: analysis.id,
+                dealAddress: property.formattedAddress,
+                dealCity: property.city,
+                dealRegion: property.region,
+                dealStrategy: analysis.strategyType,
+                status: "new",
+                notifiedAt: new Date(),
+              });
+            }
+            if (activeClaims.length > 0) {
+              console.log(`Notified ${activeClaims.length} realtor(s) for market: ${property.city}, ${property.region}`);
+            }
+          } catch (notifyErr) {
+            console.error("Realtor notification error:", notifyErr);
+          }
+        })();
+      }
 
       // Auto-create user account if email doesn't exist
       let userId: string | null = null;
@@ -2078,6 +2108,163 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching public partners:", error);
       res.status(500).json({ error: "Failed to fetch partners" });
+    }
+  });
+
+  // ============================================
+  // REALTOR PARTNER NETWORK ROUTES
+  // ============================================
+
+  const claimMarketSchema = z.object({
+    marketCity: z.string().min(1, "Market city is required"),
+    marketRegion: z.string().min(1, "Market region is required"),
+    signedName: z.string().min(1, "Full legal name is required"),
+    signatureDataUrl: z.string().min(1, "Signature is required"),
+  });
+
+  app.post("/api/realtor-network/claim-market", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const parsed = claimMarketSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid request" });
+      }
+      const { marketCity, marketRegion, signedName, signatureDataUrl } = parsed.data;
+
+      const existingClaims = await storage.getRealtorMarketClaimsByUser(userId);
+      const alreadyClaimed = existingClaims.find(
+        c => c.marketCity.toLowerCase() === marketCity.toLowerCase() && 
+             c.marketRegion.toLowerCase() === marketRegion.toLowerCase() && 
+             c.status === "active"
+      );
+      if (alreadyClaimed) {
+        return res.status(400).json({ error: "You already have an active claim for this market" });
+      }
+
+      const partner = await storage.getIndustryPartner(userId);
+
+      const claim = await storage.createRealtorMarketClaim({
+        userId,
+        partnerId: partner?.id || null,
+        marketCity,
+        marketRegion,
+        status: "active",
+        referralFeePercent: 25,
+        referralAgreementSignedAt: new Date(),
+        referralAgreementSignature: signatureDataUrl,
+        referralAgreementSignedName: signedName,
+      });
+
+      res.json(claim);
+    } catch (error) {
+      console.error("Error claiming market:", error);
+      res.status(500).json({ error: "Failed to claim market" });
+    }
+  });
+
+  app.get("/api/realtor-network/my-claims", isAuthenticated, async (req: any, res) => {
+    try {
+      const claims = await storage.getRealtorMarketClaimsByUser(req.session.userId);
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching market claims:", error);
+      res.status(500).json({ error: "Failed to fetch market claims" });
+    }
+  });
+
+  app.get("/api/realtor-network/my-leads", isAuthenticated, async (req: any, res) => {
+    try {
+      const notifications = await storage.getPendingNotificationsForRealtor(req.session.userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching realtor lead notifications:", error);
+      res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  app.post("/api/realtor-network/claim-lead/:notificationId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { notificationId } = req.params;
+
+      const notification = await storage.getRealtorLeadNotification(notificationId);
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      if (notification.realtorUserId !== userId) {
+        return res.status(403).json({ error: "Not your notification" });
+      }
+      if (notification.status === "claimed") {
+        return res.status(400).json({ error: "Lead already claimed" });
+      }
+
+      const lead = await storage.getLead(notification.leadId);
+      if (!lead) {
+        return res.status(404).json({ error: "Lead not found" });
+      }
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const partner = await storage.getIndustryPartner(userId);
+      const realtorName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      const realtorEmail = partner?.publicEmail || user.email;
+      const realtorPhone = partner?.phone || user.phone || undefined;
+      const realtorCompany = partner?.companyName || undefined;
+
+      let introResult;
+      try {
+        introResult = await sendRealtorIntroEmail({
+          leadName: lead.name,
+          leadEmail: lead.email,
+          realtorName,
+          realtorEmail,
+          realtorPhone,
+          realtorCompany,
+          dealAddress: notification.dealAddress || undefined,
+          dealCity: notification.dealCity || undefined,
+          dealStrategy: notification.dealStrategy || undefined,
+        });
+      } catch (emailErr) {
+        console.error("Failed to send intro email:", emailErr);
+        return res.status(500).json({ error: "Failed to send introduction email" });
+      }
+
+      await storage.updateRealtorLeadNotification(notificationId, {
+        status: "claimed",
+        claimedAt: new Date(),
+      });
+
+      const introduction = await storage.createRealtorIntroduction({
+        notificationId,
+        realtorUserId: userId,
+        leadName: lead.name,
+        leadEmail: lead.email,
+        realtorName,
+        realtorEmail,
+        realtorPhone: realtorPhone || null,
+        realtorCompany: realtorCompany || null,
+        introEmailSubject: introResult.subject,
+        introEmailHtml: introResult.html,
+        sentAt: new Date(),
+      });
+
+      res.json({ success: true, introduction });
+    } catch (error) {
+      console.error("Error claiming lead:", error);
+      res.status(500).json({ error: "Failed to claim lead" });
+    }
+  });
+
+  app.get("/api/realtor-network/introductions", isAuthenticated, async (req: any, res) => {
+    try {
+      const intros = await storage.getRealtorIntroductionsByRealtor(req.session.userId);
+      res.json(intros);
+    } catch (error) {
+      console.error("Error fetching introductions:", error);
+      res.status(500).json({ error: "Failed to fetch introductions" });
     }
   });
 

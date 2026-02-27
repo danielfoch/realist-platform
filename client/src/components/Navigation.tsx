@@ -183,6 +183,12 @@ export function Navigation() {
                           Partner Portal
                         </DropdownMenuItem>
                       </Link>
+                      <Link href="/partner/network">
+                        <DropdownMenuItem className="cursor-pointer" data-testid="link-realtor-network">
+                          <Users className="mr-2 h-4 w-4" />
+                          Realtor Network
+                        </DropdownMenuItem>
+                      </Link>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         className="cursor-pointer text-destructive" 
@@ -295,6 +301,12 @@ export function Navigation() {
                     <Button variant="ghost" className="w-full justify-start" data-testid="link-mobile-partner">
                       <Briefcase className="mr-2 h-4 w-4" />
                       Partner Portal
+                    </Button>
+                  </Link>
+                  <Link href="/partner/network" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start" data-testid="link-mobile-realtor-network">
+                      <Users className="mr-2 h-4 w-4" />
+                      Realtor Network
                     </Button>
                   </Link>
                   <Button 

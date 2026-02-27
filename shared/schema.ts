@@ -1665,3 +1665,98 @@ export type InsertRentPulse = z.infer<typeof insertRentPulseSchema>;
 export type RentPulse = typeof rentPulse.$inferSelect;
 export type InsertRentListing = z.infer<typeof insertRentListingSchema>;
 export type RentListing = typeof rentListings.$inferSelect;
+
+// ============================================
+// REALTOR PARTNER NETWORK
+// ============================================
+
+export const realtorMarketClaims = pgTable("realtor_market_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  partnerId: varchar("partner_id").references(() => industryPartners.id),
+  marketCity: text("market_city").notNull(),
+  marketRegion: text("market_region").notNull(),
+  status: text("status").default("active").notNull(),
+  referralFeePercent: real("referral_fee_percent").default(25).notNull(),
+  referralAgreementSignedAt: timestamp("referral_agreement_signed_at"),
+  referralAgreementSignature: text("referral_agreement_signature"),
+  referralAgreementSignedName: text("referral_agreement_signed_name"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  monthlyFee: real("monthly_fee").default(49.99),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const realtorLeadNotifications = pgTable("realtor_lead_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  realtorClaimId: varchar("realtor_claim_id").references(() => realtorMarketClaims.id).notNull(),
+  realtorUserId: varchar("realtor_user_id").references(() => users.id).notNull(),
+  leadId: varchar("lead_id").references(() => leads.id).notNull(),
+  propertyId: varchar("property_id").references(() => properties.id),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  dealAddress: text("deal_address"),
+  dealCity: text("deal_city"),
+  dealRegion: text("deal_region"),
+  dealStrategy: text("deal_strategy"),
+  status: text("status").default("new").notNull(),
+  notifiedAt: timestamp("notified_at").defaultNow().notNull(),
+  viewedAt: timestamp("viewed_at"),
+  claimedAt: timestamp("claimed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const realtorIntroductions = pgTable("realtor_introductions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  notificationId: varchar("notification_id").references(() => realtorLeadNotifications.id).notNull(),
+  realtorUserId: varchar("realtor_user_id").references(() => users.id).notNull(),
+  leadName: text("lead_name").notNull(),
+  leadEmail: text("lead_email").notNull(),
+  realtorName: text("realtor_name").notNull(),
+  realtorEmail: text("realtor_email").notNull(),
+  realtorPhone: text("realtor_phone"),
+  realtorCompany: text("realtor_company"),
+  introEmailSubject: text("intro_email_subject").notNull(),
+  introEmailHtml: text("intro_email_html").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const realtorMarketClaimsRelations = relations(realtorMarketClaims, ({ one, many }) => ({
+  user: one(users, { fields: [realtorMarketClaims.userId], references: [users.id] }),
+  partner: one(industryPartners, { fields: [realtorMarketClaims.partnerId], references: [industryPartners.id] }),
+  notifications: many(realtorLeadNotifications),
+}));
+
+export const realtorLeadNotificationsRelations = relations(realtorLeadNotifications, ({ one }) => ({
+  claim: one(realtorMarketClaims, { fields: [realtorLeadNotifications.realtorClaimId], references: [realtorMarketClaims.id] }),
+  lead: one(leads, { fields: [realtorLeadNotifications.leadId], references: [leads.id] }),
+  realtorUser: one(users, { fields: [realtorLeadNotifications.realtorUserId], references: [users.id] }),
+}));
+
+export const realtorIntroductionsRelations = relations(realtorIntroductions, ({ one }) => ({
+  notification: one(realtorLeadNotifications, { fields: [realtorIntroductions.notificationId], references: [realtorLeadNotifications.id] }),
+  realtorUser: one(users, { fields: [realtorIntroductions.realtorUserId], references: [users.id] }),
+}));
+
+export const insertRealtorMarketClaimSchema = createInsertSchema(realtorMarketClaims).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRealtorLeadNotificationSchema = createInsertSchema(realtorLeadNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRealtorIntroductionSchema = createInsertSchema(realtorIntroductions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRealtorMarketClaim = z.infer<typeof insertRealtorMarketClaimSchema>;
+export type RealtorMarketClaim = typeof realtorMarketClaims.$inferSelect;
+export type InsertRealtorLeadNotification = z.infer<typeof insertRealtorLeadNotificationSchema>;
+export type RealtorLeadNotification = typeof realtorLeadNotifications.$inferSelect;
+export type InsertRealtorIntroduction = z.infer<typeof insertRealtorIntroductionSchema>;
+export type RealtorIntroduction = typeof realtorIntroductions.$inferSelect;

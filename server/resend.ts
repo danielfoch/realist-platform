@@ -321,6 +321,75 @@ export async function sendMarketExpertApplyNotification(application: {
   });
 }
 
+export async function sendRealtorIntroEmail(params: {
+  leadName: string;
+  leadEmail: string;
+  realtorName: string;
+  realtorEmail: string;
+  realtorPhone?: string;
+  realtorCompany?: string;
+  dealAddress?: string;
+  dealCity?: string;
+  dealStrategy?: string;
+}) {
+  const { client, fromEmail } = await getResendClient();
+
+  const subject = `Introduction: ${params.leadName}, meet ${params.realtorName} — Your Local Real Estate Expert`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      ${emailHeader('Realist — Local Expert Introduction', 'Connecting you with your area specialist')}
+      
+      <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <p style="color: #111827; font-size: 15px; line-height: 1.6;">
+          Hi ${params.leadName},
+        </p>
+        <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+          I wanted to connect you with <strong>${params.realtorName}</strong>${params.realtorCompany ? ` from <strong>${params.realtorCompany}</strong>` : ''}, a trusted real estate expert in ${params.dealCity || 'your market'}.
+        </p>
+        ${params.dealAddress ? `
+        <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+          I noticed you were analyzing a deal at <strong>${params.dealAddress}</strong>${params.dealStrategy ? ` (${params.dealStrategy.replace(/_/g, ' ')})` : ''}. ${params.realtorName} is well-versed in this market and can help you with your investment goals.
+        </p>
+        ` : ''}
+        
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0 0 4px 0; font-weight: 600; color: #111827; font-size: 14px;">${params.realtorName}</p>
+          ${params.realtorCompany ? `<p style="margin: 0 0 4px 0; color: #6b7280; font-size: 13px;">${params.realtorCompany}</p>` : ''}
+          <p style="margin: 0 0 4px 0; color: #374151; font-size: 13px;">📧 ${params.realtorEmail}</p>
+          ${params.realtorPhone ? `<p style="margin: 0; color: #374151; font-size: 13px;">📱 ${params.realtorPhone}</p>` : ''}
+        </div>
+
+        <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+          I've CC'd ${params.realtorName} on this email so you can connect directly. They're expecting your message!
+        </p>
+        <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+          Best,<br/>
+          <strong>The Realist Team</strong>
+        </p>
+      </div>
+      
+      ${emailFooter()}
+    </div>
+  `;
+
+  const { data, error } = await client.emails.send({
+    from: fromEmail,
+    to: params.leadEmail,
+    cc: [params.realtorEmail],
+    subject,
+    html,
+  });
+
+  if (error) {
+    console.error('Failed to send realtor intro email:', error);
+    throw error;
+  }
+
+  console.log(`Realtor intro email sent: ${params.leadName} <-> ${params.realtorName}`);
+  return { data, subject, html };
+}
+
 // Send a generic notification email (backwards compatible)
 export async function sendNotificationEmail(params: {
   to: string;
