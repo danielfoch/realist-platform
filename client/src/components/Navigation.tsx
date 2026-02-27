@@ -143,15 +143,6 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="hidden md:block">
-              <Link href="/tools/analyzer">
-                <Button size="sm" data-testid="button-analyze-deal">
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Analyze a Deal
-                </Button>
-              </Link>
-            </div>
-
             {!isLoading && (
               <div className="hidden md:block">
                 {isAuthenticated ? (
@@ -237,13 +228,6 @@ export function Navigation() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border/50 glass max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="px-4 py-4 space-y-4">
-            <Link href="/tools/analyzer" onClick={() => setMobileMenuOpen(false)}>
-              <Button className="w-full" data-testid="button-mobile-analyze">
-                <Calculator className="h-4 w-4 mr-2" />
-                Analyze a Deal
-              </Button>
-            </Link>
-
             {navCategories.map((category) => (
               <div key={category.label} className="space-y-1">
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2">
