@@ -11,6 +11,9 @@ import apiRoutes from './api-routes';
 import { db } from './db';
 import { errorTrackingMiddleware, getRecentErrors } from './error-tracking';
 import { logger } from './logger';
+import authRouter from './auth-routes';
+import leadRouter from './lead-routes';
+import { handleStripeWebhook } from './stripe-integration';
 
 dotenv.config();
 
@@ -43,6 +46,8 @@ const syncDurationGauge = new Gauge({
 app.use(helmet());
 app.use(cors());
 app.use(compression());
+// Stripe webhook requires raw body for signature verification
+app.use('/api/webhook/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(limiter);
 app.use(
@@ -62,6 +67,28 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use('/api', apiRoutes);
+app.use('/api/auth', authRouter);
+app.use('/api/leads', leadRouter);
+
+// Stripe webhook endpoint (must be after raw body middleware)
+app.post('/api/webhook/stripe', async (req: Request, res: Response) => {
+  const signature = req.headers['stripe-signature'] as string;
+  
+  if (!signature) {
+    res.status(400).json({ error: 'Missing stripe-signature header' });
+    return;
+  }
+
+  try {
+    const event = await handleStripeWebhook(req.body, signature);
+    res.json({ received: true, eventId: event.id });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error('Stripe webhook error', { error: message });
+    res.status(400).json({ error: message });
+  }
+});
+
 app.use('/monitoring', express.static(path.resolve(process.cwd(), 'monitoring')));
 
 app.get('/health', async (_req: Request, res: Response) => {
