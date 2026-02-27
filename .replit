@@ -47,3 +47,4 @@ integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:2.0.
 [userenv.shared]
 PODCAST_NOTIFY_EMAIL = "danielfoch@gmail.com"
 NOTIFY_CC_EMAIL = "Nick@bldfinancial.ca"
+CREA_DDF_API_URL = "http://data.crea.ca/Search.svc"
