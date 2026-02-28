@@ -14,9 +14,10 @@ import {
   TrendingUp, Search, Building, BedDouble, Bath, Maximize,
   DollarSign, MapPin, ChevronRight, ChevronLeft, ArrowUpDown,
   Calculator, X, Loader2, ArrowRight, Filter, Map, LayoutGrid,
+  RefreshCw, ChevronDown, ChevronUp, List,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -85,6 +86,13 @@ interface RentPulseData {
   sampleSize: number;
 }
 
+interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
 const DEFAULT_RENTS: Record<string, Record<string, number>> = {
   "1": { default: 1400, CA: 1500, US: 1200 },
   "2": { default: 1800, CA: 2000, US: 1500 },
@@ -101,22 +109,8 @@ const EXPENSE_ASSUMPTIONS = {
   propertyTaxPercent: 1.0,
 };
 
-const POPULAR_MARKETS = [
-  { label: "All Markets", value: "all" },
-  { label: "Toronto, ON", value: "Toronto" },
-  { label: "Vancouver, BC", value: "Vancouver" },
-  { label: "Calgary, AB", value: "Calgary" },
-  { label: "Ottawa, ON", value: "Ottawa" },
-  { label: "Montreal, QC", value: "Montreal" },
-  { label: "Edmonton, AB", value: "Edmonton" },
-  { label: "Winnipeg, MB", value: "Winnipeg" },
-  { label: "Hamilton, ON", value: "Hamilton" },
-  { label: "Kitchener, ON", value: "Kitchener" },
-  { label: "London, ON", value: "London" },
-  { label: "Halifax, NS", value: "Halifax" },
-  { label: "Gig Harbor, WA", value: "Gig Harbor" },
-  { label: "Fox Island, WA", value: "Fox Island" },
-];
+const TORONTO_CENTER: [number, number] = [43.65, -79.38];
+const DEFAULT_ZOOM = 11;
 
 function formatPrice(price: number | string): string {
   const num = typeof price === "string" ? parseFloat(price) : price;
@@ -159,9 +153,13 @@ function formatShortAddress(addr: RepliersListing["address"]): string {
 
 function getImageUrl(images: string[] | undefined): string | null {
   if (!images || images.length === 0) return null;
-  const img = images[0];
-  if (img.startsWith("http")) return img;
-  return `https://cdn.repliers.io/${img}`;
+  const img = images.find(i => i.startsWith("http") && !i.includes("youriguide") && !i.includes("virtualtour"));
+  if (!img) {
+    const first = images[0];
+    if (first.startsWith("http")) return first;
+    return `https://cdn.repliers.io/${first}`;
+  }
+  return img;
 }
 
 function getCapRateColor(rate: number): string {
@@ -262,24 +260,55 @@ function calculateCapRate(
   return { capRate: Math.max(0, capRate), annualNOI };
 }
 
-function MapBoundsUpdater({ listings }: { listings: ListingWithCapRate[] }) {
+function MapEventHandler({
+  onBoundsChange,
+}: {
+  onBoundsChange: (bounds: MapBounds) => void;
+}) {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useMapEvents({
+    moveend: (e) => {
+      const map = e.target;
+      const b = map.getBounds();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        onBoundsChange({
+          north: b.getNorth(),
+          south: b.getSouth(),
+          east: b.getEast(),
+          west: b.getWest(),
+        });
+      }, 600);
+    },
+    zoomend: (e) => {
+      const map = e.target;
+      const b = map.getBounds();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        onBoundsChange({
+          north: b.getNorth(),
+          south: b.getSouth(),
+          east: b.getEast(),
+          west: b.getWest(),
+        });
+      }, 600);
+    },
+  });
+
+  return null;
+}
+
+function FlyToLocation({ lat, lng, zoom }: { lat: number; lng: number; zoom?: number }) {
   const map = useMap();
-
   useEffect(() => {
-    const mapped = listings.filter((l) => l.map?.latitude && l.map?.longitude);
-    if (mapped.length === 0) return;
-    const bounds = L.latLngBounds(
-      mapped.map((l) => [l.map!.latitude, l.map!.longitude] as [number, number])
-    );
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-  }, [listings, map]);
-
+    map.flyTo([lat, lng], zoom || map.getZoom(), { duration: 1.2 });
+  }, [lat, lng, zoom, map]);
   return null;
 }
 
 export default function CapRates() {
   const [, setLocation] = useLocation();
-  const [searchCity, setSearchCity] = useState("all");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minBeds, setMinBeds] = useState("any");
@@ -294,9 +323,12 @@ export default function CapRates() {
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedListing, setSelectedListing] = useState<ListingWithCapRate | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<"map" | "grid">("map");
   const [dataSource, setDataSource] = useState<"crea_ddf" | "repliers" | null>(null);
+  const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
+  const [showMobileList, setShowMobileList] = useState(false);
+  const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | null>(null);
   const listingRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const searchInProgress = useRef(false);
 
   const { data: rentData = [] } = useQuery<RentPulseData[]>({
     queryKey: ["/api/rents/pulse"],
@@ -306,18 +338,23 @@ export default function CapRates() {
     queryKey: ["/api/ddf/status"],
   });
 
-  const fetchListings = useCallback(async (pageNum = 1) => {
+  const fetchListingsForBounds = useCallback(async (bounds: MapBounds, pageNum = 1) => {
+    if (searchInProgress.current) return;
+    searchInProgress.current = true;
     setIsSearching(true);
     try {
       const useDdf = ddfStatus?.configured && ddfStatus?.authenticated;
 
       if (useDdf) {
         const ddfBody: Record<string, any> = {
-          resultsPerPage: 48,
-          pageNum: pageNum,
+          resultsPerPage: 50,
+          pageNum,
+          latitudeMin: bounds.south,
+          latitudeMax: bounds.north,
+          longitudeMin: bounds.west,
+          longitudeMax: bounds.east,
         };
 
-        if (searchCity && searchCity !== "all") ddfBody.city = searchCity;
         if (minPrice) ddfBody.minPrice = parseInt(minPrice);
         if (maxPrice) ddfBody.maxPrice = parseInt(maxPrice);
         if (minBeds && minBeds !== "any") ddfBody.minBeds = parseInt(minBeds);
@@ -327,7 +364,7 @@ export default function CapRates() {
           const response = await apiRequest("POST", "/api/ddf/listings", ddfBody);
           const data = await response.json();
 
-          if (data.listings && data.listings.length > 0) {
+          if (data.listings) {
             setListings(data.listings);
             setTotalCount(data.count || 0);
             setNumPages(data.numPages || 0);
@@ -342,13 +379,13 @@ export default function CapRates() {
       }
 
       const body: Record<string, any> = {
-        resultsPerPage: 48,
-        pageNum: pageNum,
+        resultsPerPage: 50,
+        pageNum,
         status: "A",
         class: "ResidentialProperty",
+        map: `${bounds.south},${bounds.west}|${bounds.north},${bounds.east}`,
       };
 
-      if (searchCity && searchCity !== "all") body.city = searchCity;
       if (minPrice) body.minPrice = parseInt(minPrice);
       if (maxPrice) body.maxPrice = parseInt(maxPrice);
       if (minBeds && minBeds !== "any") body.minBeds = parseInt(minBeds);
@@ -375,8 +412,15 @@ export default function CapRates() {
       setTotalCount(0);
     } finally {
       setIsSearching(false);
+      searchInProgress.current = false;
     }
-  }, [searchCity, minPrice, maxPrice, minBeds, propertyType, ddfStatus]);
+  }, [minPrice, maxPrice, minBeds, propertyType, ddfStatus]);
+
+  const handleBoundsChange = useCallback((bounds: MapBounds) => {
+    setMapBounds(bounds);
+    setSelectedListing(null);
+    fetchListingsForBounds(bounds, 1);
+  }, [fetchListingsForBounds]);
 
   const listingsWithCapRates = useMemo((): ListingWithCapRate[] => {
     return listings
@@ -431,14 +475,16 @@ export default function CapRates() {
     [listingsWithCapRates]
   );
 
-  const handleSearch = () => {
-    setPage(1);
-    setSelectedListing(null);
-    fetchListings(1);
+  const handleRefresh = () => {
+    if (mapBounds) {
+      fetchListingsForBounds(mapBounds, 1);
+    }
   };
 
   const handlePageChange = (newPage: number) => {
-    fetchListings(newPage);
+    if (mapBounds) {
+      fetchListingsForBounds(mapBounds, newPage);
+    }
   };
 
   const handleAnalyzeListing = (listing: ListingWithCapRate) => {
@@ -460,19 +506,16 @@ export default function CapRates() {
 
   const handleSelectListing = (listing: ListingWithCapRate) => {
     setSelectedListing(listing);
-    if (viewMode === "map") {
-      const ref = listingRefs.current[listing.mlsNumber];
-      if (ref) {
-        ref.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
+    if (listing.map?.latitude && listing.map?.longitude) {
+      setFlyTo({ lat: listing.map.latitude, lng: listing.map.longitude });
+    }
+    const ref = listingRefs.current[listing.mlsNumber];
+    if (ref) {
+      ref.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   };
 
-  useEffect(() => {
-    fetchListings(1);
-  }, []);
-
-  const renderListingCard = (listing: ListingWithCapRate, compact = false) => {
+  const renderListingCard = (listing: ListingWithCapRate) => {
     const imgUrl = getImageUrl(listing.images);
     const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
     const isSelected = selectedListing?.mlsNumber === listing.mlsNumber;
@@ -481,34 +524,29 @@ export default function CapRates() {
       <div
         key={listing.mlsNumber}
         ref={(el) => { listingRefs.current[listing.mlsNumber] = el; }}
-        className={`rounded-lg border cursor-pointer transition-colors ${
+        className={`rounded-lg border cursor-pointer transition-all ${
           isSelected
             ? "border-primary bg-primary/5 ring-1 ring-primary"
-            : "border-border hover-elevate"
+            : "border-border hover:border-primary/50 hover:shadow-sm"
         }`}
         onClick={() => handleSelectListing(listing)}
         data-testid={`card-listing-${listing.mlsNumber}`}
       >
-        <div className="flex gap-3 p-2">
+        <div className="flex gap-3 p-2.5">
           <div className="relative flex-shrink-0">
             {imgUrl ? (
               <img
                 src={imgUrl}
                 alt={formatShortAddress(listing.address)}
-                className={`object-cover rounded-md ${compact ? "w-20 h-20" : "w-24 h-24"}`}
+                className="w-24 h-20 object-cover rounded-md"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
             ) : (
-              <div className={`bg-muted rounded-md flex items-center justify-center ${compact ? "w-20 h-20" : "w-24 h-24"}`}>
+              <div className="w-24 h-20 bg-muted rounded-md flex items-center justify-center">
                 <Building className="h-6 w-6 text-muted-foreground" />
               </div>
-            )}
-            {listing.rentSource === "estimated" && (
-              <Badge variant="outline" className="absolute top-1 left-1 text-[8px] px-1 py-0 bg-background/80 backdrop-blur-sm">
-                Est.
-              </Badge>
             )}
           </div>
 
@@ -561,108 +599,11 @@ export default function CapRates() {
     );
   };
 
-  const renderGridCard = (listing: ListingWithCapRate) => {
-    const imgUrl = getImageUrl(listing.images);
-    const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
-    const isSelected = selectedListing?.mlsNumber === listing.mlsNumber;
-
-    return (
-      <Card
-        key={listing.mlsNumber}
-        className={`overflow-visible cursor-pointer ${isSelected ? "ring-2 ring-primary" : "hover-elevate"}`}
-        onClick={() => handleSelectListing(listing)}
-        data-testid={`card-listing-${listing.mlsNumber}`}
-      >
-        <CardContent className="p-0">
-          <div className="relative">
-            {imgUrl ? (
-              <img
-                src={imgUrl}
-                alt={formatShortAddress(listing.address)}
-                className="w-full h-40 object-cover rounded-t-lg"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "";
-                  (e.target as HTMLImageElement).className = "w-full h-40 bg-muted rounded-t-lg flex items-center justify-center";
-                }}
-              />
-            ) : (
-              <div className="w-full h-40 bg-muted rounded-t-lg flex items-center justify-center">
-                <Building className="h-8 w-8 text-muted-foreground" />
-              </div>
-            )}
-
-            <div className="absolute top-2 right-2">
-              <Badge
-                variant={getCapRateBadgeVariant(listing.capRate)}
-                data-testid={`badge-cap-rate-${listing.mlsNumber}`}
-              >
-                {listing.capRate.toFixed(1)}% cap
-              </Badge>
-            </div>
-
-            {listing.rentSource === "estimated" && (
-              <div className="absolute top-2 left-2">
-                <Badge variant="outline" className="text-[10px] bg-background/80 backdrop-blur-sm">
-                  Est. rent
-                </Badge>
-              </div>
-            )}
-          </div>
-
-          <div className="p-3">
-            <div className="flex items-baseline justify-between gap-2 mb-1">
-              <span className="text-lg font-bold" data-testid={`text-price-${listing.mlsNumber}`}>
-                {formatPrice(price)}
-              </span>
-              <span className={`text-sm font-semibold ${getCapRateColor(listing.capRate)}`}>
-                {listing.capRate.toFixed(1)}%
-              </span>
-            </div>
-
-            <p className="text-xs text-muted-foreground truncate mb-2" data-testid={`text-address-${listing.mlsNumber}`}>
-              {formatShortAddress(listing.address)}, {listing.address?.city}
-            </p>
-
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              {listing.details?.numBedrooms != null && (
-                <span className="flex items-center gap-1">
-                  <BedDouble className="h-3 w-3" />
-                  {listing.details.numBedrooms}
-                </span>
-              )}
-              {listing.details?.numBathrooms != null && (
-                <span className="flex items-center gap-1">
-                  <Bath className="h-3 w-3" />
-                  {listing.details.numBathrooms}
-                </span>
-              )}
-              {listing.details?.sqft && (
-                <span className="flex items-center gap-1">
-                  <Maximize className="h-3 w-3" />
-                  {listing.details.sqft}
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between mt-2 pt-2 border-t text-xs">
-              <span className="text-muted-foreground">
-                Rent: {formatPrice(listing.estimatedMonthlyRent)}/mo
-              </span>
-              <span className="text-muted-foreground">
-                NOI: {formatPrice(listing.annualNOI)}/yr
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   const renderDetailPanel = () => {
     if (!selectedListing) return null;
 
     return (
-      <div className="sticky top-4" data-testid="panel-listing-detail">
+      <div data-testid="panel-listing-detail">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-2">
@@ -682,6 +623,7 @@ export default function CapRates() {
               <Button
                 variant="outline"
                 size="icon"
+                className="h-7 w-7"
                 onClick={() => setSelectedListing(null)}
                 data-testid="button-close-detail"
               >
@@ -692,7 +634,7 @@ export default function CapRates() {
           <CardContent className="space-y-4">
             {selectedListing.images && selectedListing.images.length > 0 && (
               <div className="grid grid-cols-2 gap-1.5">
-                {selectedListing.images.slice(0, 4).map((img, idx) => {
+                {selectedListing.images.filter(img => img.startsWith("http") && !img.includes("youriguide") && !img.includes("virtualtour")).slice(0, 4).map((img, idx) => {
                   const url = img.startsWith("http") ? img : `https://cdn.repliers.io/${img}`;
                   return (
                     <img
@@ -758,6 +700,9 @@ export default function CapRates() {
                     {formatPriceFull(selectedListing.estimatedMonthlyRent)}
                     {selectedListing.rentSource === "estimated" && (
                       <span className="text-[10px] text-muted-foreground ml-1">(est.)</span>
+                    )}
+                    {selectedListing.rentSource === "actual" && (
+                      <span className="text-[10px] text-green-600 ml-1">(actual)</span>
                     )}
                   </span>
                 </div>
@@ -859,96 +804,153 @@ export default function CapRates() {
     );
   };
 
+  const sidebarContent = (
+    <>
+      {selectedListing ? (
+        <div className="overflow-y-auto flex-1 p-3">
+          {renderDetailPanel()}
+        </div>
+      ) : (
+        <div className="overflow-y-auto flex-1 space-y-2 p-3">
+          {isSearching ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-lg border p-2">
+                <div className="flex gap-3">
+                  <Skeleton className="w-24 h-20 rounded-md flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : listingsWithCapRates.length > 0 ? (
+            <>
+              {listingsWithCapRates.map((listing) => renderListingCard(listing))}
+
+              {numPages > 1 && (
+                <div className="flex items-center justify-between pt-2 pb-1">
+                  <span className="text-xs text-muted-foreground">Page {page}/{numPages}</span>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(page - 1)}
+                      disabled={page <= 1 || isSearching}
+                      data-testid="button-prev-page"
+                    >
+                      <ChevronLeft className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(page + 1)}
+                      disabled={page >= numPages || isSearching}
+                      data-testid="button-next-page"
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : hasSearched ? (
+            <div className="rounded-lg border p-6 text-center">
+              <Search className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+              <h3 className="text-sm font-semibold mb-2">No Properties Found</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Try zooming out or adjusting your filters.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border p-6 text-center">
+              <Map className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+              <h3 className="text-sm font-semibold mb-2">Pan & Zoom to Search</h3>
+              <p className="text-xs text-muted-foreground">
+                Move the map to any area to see listings and cap rates.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
 
-      <main className="max-w-[1600px] mx-auto px-4 py-6">
-        <div className="mb-6">
-          <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-primary-foreground" />
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
+        <div className="px-3 py-2">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold" data-testid="text-page-title">Cap Rates Explorer</h1>
-                <p className="text-muted-foreground" data-testid="text-page-subtitle">
-                  Browse MLS listings by cap rate. Find the best returns across markets.
-                </p>
+                <h1 className="text-lg font-bold leading-tight" data-testid="text-page-title">Cap Rates Explorer</h1>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 border rounded-lg p-0.5">
+            <div className="flex items-center gap-2">
+              {hasSearched && (
+                <div className="hidden sm:flex items-center gap-1.5">
+                  <p className="text-xs text-muted-foreground" data-testid="text-results-count">
+                    {totalCount > 0
+                      ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()}`
+                      : "No results"}
+                  </p>
+                  {dataSource && (
+                    <Badge variant="outline" className="text-[9px] px-1 py-0" data-testid="badge-data-source">
+                      {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
+                    </Badge>
+                  )}
+                </div>
+              )}
               <Button
-                variant={viewMode === "map" ? "default" : "ghost"}
+                variant="outline"
                 size="sm"
-                onClick={() => setViewMode("map")}
-                data-testid="button-view-map"
+                onClick={() => setShowFilters(!showFilters)}
+                className="h-8"
+                data-testid="button-toggle-filters"
               >
-                <Map className="h-4 w-4 mr-1" />
-                Map
+                <Filter className="h-3.5 w-3.5 mr-1" />
+                Filters
+                {showFilters ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
               </Button>
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-                data-testid="button-view-grid"
-              >
-                <LayoutGrid className="h-4 w-4 mr-1" />
-                Grid
-              </Button>
+              {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
           </div>
-        </div>
 
-        <Card className="mb-4">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex flex-wrap gap-3 items-end">
-              <div className="flex-1 min-w-[200px]">
-                <Label htmlFor="search-city" className="text-xs text-muted-foreground mb-1 block">Market</Label>
-                <Select
-                  value={searchCity}
-                  onValueChange={(v) => setSearchCity(v)}
-                >
-                  <SelectTrigger data-testid="select-market">
-                    <SelectValue placeholder="Select market" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {POPULAR_MARKETS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="min-w-[120px]">
-                <Label className="text-xs text-muted-foreground mb-1 block">Min Price</Label>
+          {showFilters && (
+            <div className="flex flex-wrap gap-2 items-end pb-1">
+              <div className="min-w-[100px]">
+                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Price</Label>
                 <Input
                   type="number"
                   placeholder="$0"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
+                  className="h-8 text-xs"
                   data-testid="input-min-price"
                 />
               </div>
-
-              <div className="min-w-[120px]">
-                <Label className="text-xs text-muted-foreground mb-1 block">Max Price</Label>
+              <div className="min-w-[100px]">
+                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Max Price</Label>
                 <Input
                   type="number"
                   placeholder="Any"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
+                  className="h-8 text-xs"
                   data-testid="input-max-price"
                 />
               </div>
-
-              <div className="min-w-[90px]">
-                <Label className="text-xs text-muted-foreground mb-1 block">Beds</Label>
+              <div className="min-w-[75px]">
+                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Beds</Label>
                 <Select value={minBeds} onValueChange={setMinBeds}>
-                  <SelectTrigger data-testid="select-beds">
+                  <SelectTrigger className="h-8 text-xs" data-testid="select-beds">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
@@ -961,384 +963,177 @@ export default function CapRates() {
                   </SelectContent>
                 </Select>
               </div>
-
+              <div className="min-w-[100px]">
+                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Type</Label>
+                <Select value={propertyType} onValueChange={setPropertyType}>
+                  <SelectTrigger className="h-8 text-xs" data-testid="select-property-type">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="Detached">Detached</SelectItem>
+                    <SelectItem value="Semi-Detached">Semi</SelectItem>
+                    <SelectItem value="Townhouse">Townhouse</SelectItem>
+                    <SelectItem value="Condo">Condo</SelectItem>
+                    <SelectItem value="Duplex">Duplex</SelectItem>
+                    <SelectItem value="Triplex">Triplex</SelectItem>
+                    <SelectItem value="Multiplex">Multiplex</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-[90px]">
+                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Cap</Label>
+                <Select value={minCapRate} onValueChange={setMinCapRate}>
+                  <SelectTrigger className="h-8 text-xs" data-testid="select-min-cap-rate">
+                    <SelectValue placeholder="Any" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any</SelectItem>
+                    <SelectItem value="2">2%+</SelectItem>
+                    <SelectItem value="4">4%+</SelectItem>
+                    <SelectItem value="6">6%+</SelectItem>
+                    <SelectItem value="8">8%+</SelectItem>
+                    <SelectItem value="10">10%+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-[110px]">
+                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Sort</Label>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                  <SelectTrigger className="h-8 text-xs" data-testid="select-sort">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="capRate">Cap Rate</SelectItem>
+                    <SelectItem value="priceAsc">Price ↑</SelectItem>
+                    <SelectItem value="priceDesc">Price ↓</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
-                variant="outline"
                 size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                data-testid="button-more-filters"
+                className="h-8"
+                onClick={handleRefresh}
+                disabled={isSearching || !mapBounds}
+                data-testid="button-apply-filters"
               >
-                <Filter className="h-4 w-4 mr-1" />
-                More
-              </Button>
-
-              <Button
-                onClick={handleSearch}
-                disabled={isSearching}
-                data-testid="button-search"
-              >
-                {isSearching ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4 mr-2" />
-                )}
-                Search
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                Apply
               </Button>
             </div>
+          )}
+        </div>
+      </div>
 
-            {showFilters && (
-              <div className="flex flex-wrap gap-3 items-end mt-4 pt-4 border-t">
-                <div className="min-w-[140px]">
-                  <Label className="text-xs text-muted-foreground mb-1 block">Property Type</Label>
-                  <Select value={propertyType} onValueChange={setPropertyType}>
-                    <SelectTrigger data-testid="select-property-type">
-                      <SelectValue placeholder="All types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="Detached">Detached</SelectItem>
-                      <SelectItem value="Semi-Detached">Semi-Detached</SelectItem>
-                      <SelectItem value="Townhouse">Townhouse</SelectItem>
-                      <SelectItem value="Condo">Condo</SelectItem>
-                      <SelectItem value="Duplex">Duplex</SelectItem>
-                      <SelectItem value="Triplex">Triplex</SelectItem>
-                      <SelectItem value="Multiplex">Multiplex</SelectItem>
-                      <SelectItem value="Residential">Residential</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <div className="flex-1 relative" data-testid="map-container">
+          <MapContainer
+            center={TORONTO_CENTER}
+            zoom={DEFAULT_ZOOM}
+            style={{ width: "100%", height: "100%" }}
+            className="h-[50vh] lg:h-full"
+            zoomControl={true}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {mappableListings.map((listing) => (
+              <Marker
+                key={listing.mlsNumber}
+                position={[listing.map!.latitude, listing.map!.longitude]}
+                icon={createCapRateIcon(
+                  listing.capRate,
+                  selectedListing?.mlsNumber === listing.mlsNumber
+                )}
+                eventHandlers={{
+                  click: () => handleSelectListing(listing),
+                }}
+              >
+                <Popup>
+                  <div className="min-w-[200px]">
+                    <p className="font-bold text-sm">{formatPrice(listing.listPrice)}</p>
+                    <p className="text-xs text-gray-600">{formatShortAddress(listing.address)}, {listing.address?.city}</p>
+                    <p className="text-xs font-semibold mt-1" style={{ color: getCapRateMarkerColor(listing.capRate) }}>
+                      {listing.capRate.toFixed(1)}% Cap Rate
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {listing.details?.numBedrooms || "?"} bed / {listing.details?.numBathrooms || "?"} bath
+                      {listing.details?.sqft ? ` / ${listing.details.sqft} sqft` : ""}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+            <MapEventHandler onBoundsChange={handleBoundsChange} />
+            {flyTo && <FlyToLocation lat={flyTo.lat} lng={flyTo.lng} />}
+          </MapContainer>
 
-                <div className="min-w-[120px]">
-                  <Label className="text-xs text-muted-foreground mb-1 block">Min Cap Rate</Label>
-                  <Select value={minCapRate} onValueChange={setMinCapRate}>
-                    <SelectTrigger data-testid="select-min-cap-rate">
-                      <SelectValue placeholder="Any" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any</SelectItem>
-                      <SelectItem value="2">2%+</SelectItem>
-                      <SelectItem value="4">4%+</SelectItem>
-                      <SelectItem value="6">6%+</SelectItem>
-                      <SelectItem value="8">8%+</SelectItem>
-                      <SelectItem value="10">10%+</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="lg:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000]">
+            <Button
+              size="sm"
+              className="shadow-lg rounded-full px-4"
+              onClick={() => setShowMobileList(!showMobileList)}
+              data-testid="button-toggle-mobile-list"
+            >
+              <List className="h-4 w-4 mr-1.5" />
+              {listingsWithCapRates.length > 0 ? `${listingsWithCapRates.length} listings` : "Listings"}
+              {showMobileList ? <ChevronDown className="h-3 w-3 ml-1" /> : <ChevronUp className="h-3 w-3 ml-1" />}
+            </Button>
+          </div>
+        </div>
 
-                <div className="min-w-[160px]">
-                  <Label className="text-xs text-muted-foreground mb-1 block">Sort By</Label>
-                  <Select
-                    value={sortBy}
-                    onValueChange={(v) => setSortBy(v as any)}
-                  >
-                    <SelectTrigger data-testid="select-sort">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="capRate">Highest Cap Rate</SelectItem>
-                      <SelectItem value="priceAsc">Price: Low to High</SelectItem>
-                      <SelectItem value="priceDesc">Price: High to Low</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {hasSearched && !isSearching && (
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-muted-foreground" data-testid="text-results-count">
-                {listingsWithCapRates.length > 0
-                  ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
-                  : `No properties found`}
-                {searchCity && searchCity !== "all" ? ` in ${searchCity}` : ""}
-                {viewMode === "map" && mappableListings.length < listingsWithCapRates.length
-                  ? ` (${mappableListings.length} mapped)`
-                  : ""}
+        <div className="hidden lg:flex lg:w-[380px] xl:w-[420px] flex-shrink-0 flex-col border-l bg-background overflow-hidden">
+          <div className="px-3 py-2 border-b flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-medium" data-testid="text-sidebar-count">
+                {hasSearched
+                  ? totalCount > 0
+                    ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
+                    : "No properties"
+                  : "Move map to search"}
               </p>
               {dataSource && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0" data-testid="badge-data-source">
-                  {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
+                <Badge variant="outline" className="text-[9px] px-1 py-0">
+                  {dataSource === "crea_ddf" ? "DDF" : "Repliers"}
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <ArrowUpDown className="h-3 w-3" />
-              {sortBy === "capRate" ? "By cap rate" : sortBy === "priceAsc" ? "Price: low-high" : "Price: high-low"}
-            </div>
+            {isSearching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           </div>
-        )}
-
-        {viewMode === "map" ? (
-          <div className="flex gap-4" style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}>
-            <div className="flex-1 rounded-lg overflow-hidden border" data-testid="map-container">
-              {isSearching && !hasSearched ? (
-                <div className="w-full h-full flex items-center justify-center bg-muted">
-                  <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Loading listings...</p>
-                  </div>
-                </div>
-              ) : (
-                <MapContainer
-                  center={[43.65, -79.38]}
-                  zoom={10}
-                  style={{ width: "100%", height: "100%" }}
-                  zoomControl={true}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  {mappableListings.map((listing) => (
-                    <Marker
-                      key={listing.mlsNumber}
-                      position={[listing.map!.latitude, listing.map!.longitude]}
-                      icon={createCapRateIcon(
-                        listing.capRate,
-                        selectedListing?.mlsNumber === listing.mlsNumber
-                      )}
-                      eventHandlers={{
-                        click: () => handleSelectListing(listing),
-                      }}
-                    >
-                      <Popup>
-                        <div className="min-w-[200px]">
-                          <p className="font-bold text-sm">{formatPrice(listing.listPrice)}</p>
-                          <p className="text-xs text-gray-600">{formatShortAddress(listing.address)}, {listing.address?.city}</p>
-                          <p className="text-xs font-semibold mt-1" style={{ color: getCapRateMarkerColor(listing.capRate) }}>
-                            {listing.capRate.toFixed(1)}% Cap Rate
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {listing.details?.numBedrooms || "?"} bed / {listing.details?.numBathrooms || "?"} bath
-                            {listing.details?.sqft ? ` / ${listing.details.sqft} sqft` : ""}
-                          </p>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
-                  <MapBoundsUpdater listings={mappableListings} />
-                </MapContainer>
-              )}
-            </div>
-
-            <div className="w-[380px] flex-shrink-0 flex flex-col gap-3 overflow-hidden">
-              {selectedListing ? (
-                <div className="overflow-y-auto flex-1 pr-1">
-                  {renderDetailPanel()}
-                </div>
-              ) : (
-                <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-                  {isSearching ? (
-                    Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="rounded-lg border p-2">
-                        <div className="flex gap-3">
-                          <Skeleton className="w-20 h-20 rounded-md flex-shrink-0" />
-                          <div className="flex-1 space-y-2">
-                            <Skeleton className="h-4 w-20" />
-                            <Skeleton className="h-3 w-full" />
-                            <Skeleton className="h-3 w-2/3" />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : listingsWithCapRates.length > 0 ? (
-                    <>
-                      {listingsWithCapRates.map((listing) => renderListingCard(listing, true))}
-
-                      {numPages > 1 && (
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="text-xs text-muted-foreground">Page {page}/{numPages}</span>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePageChange(page - 1)}
-                              disabled={page <= 1 || isSearching}
-                              data-testid="button-prev-page"
-                            >
-                              <ChevronLeft className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePageChange(page + 1)}
-                              disabled={page >= numPages || isSearching}
-                              data-testid="button-next-page"
-                            >
-                              <ChevronRight className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="rounded-lg border p-3 text-center mt-2">
-                        <MapPin className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                        <p className="text-xs font-medium mb-1">Can't find what you're looking for?</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setLocation("/tools/buybox")}
-                          data-testid="button-goto-buybox"
-                        >
-                          Create Your BuyBox
-                          <ArrowRight className="h-3 w-3 ml-1" />
-                        </Button>
-                      </div>
-                    </>
-                  ) : hasSearched ? (
-                    <div className="rounded-lg border p-6 text-center">
-                      <Search className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                      <h3 className="text-sm font-semibold mb-2">No Properties Found</h3>
-                      <p className="text-xs text-muted-foreground mb-3">
-                        Try adjusting your filters or searching in a different market.
-                      </p>
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        <Button variant="outline" size="sm" onClick={() => {
-                          setSearchCity("all");
-                          setMinPrice("");
-                          setMaxPrice("");
-                          setMinBeds("any");
-                          setPropertyType("all");
-                          setMinCapRate("any");
-                          fetchListings(1);
-                        }} data-testid="button-clear-filters">
-                          Clear Filters
-                        </Button>
-                        <Button size="sm" onClick={() => setLocation("/tools/buybox")} data-testid="button-goto-buybox-empty">
-                          Create BuyBox
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className={selectedListing ? "lg:col-span-2" : "lg:col-span-3"}>
-              {isSearching && !hasSearched ? (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <Card key={i}>
-                      <CardContent className="p-0">
-                        <Skeleton className="h-40 w-full rounded-t-lg" />
-                        <div className="p-4 space-y-2">
-                          <Skeleton className="h-6 w-24" />
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-2/3" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : listingsWithCapRates.length > 0 ? (
-                <>
-                  <div className={`grid gap-4 ${selectedListing ? "sm:grid-cols-1 md:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
-                    {listingsWithCapRates.map((listing) => renderGridCard(listing))}
-                  </div>
-
-                  {numPages > 1 && (
-                    <div className="flex items-center justify-between mt-6">
-                      <p className="text-sm text-muted-foreground">
-                        Page {page} of {numPages}
-                      </p>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(page - 1)}
-                          disabled={page <= 1 || isSearching}
-                          data-testid="button-prev-page"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Previous
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(page + 1)}
-                          disabled={page >= numPages || isSearching}
-                          data-testid="button-next-page"
-                        >
-                          Next
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  <Card className="mt-8">
-                    <CardContent className="py-8 text-center">
-                      <MapPin className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                      <h3 className="text-lg font-semibold mb-2">Can't find what you're looking for?</h3>
-                      <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-                        Create a BuyBox with your specific investment criteria and let our network of realtors find matching properties for you.
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => setLocation("/tools/buybox")}
-                        data-testid="button-goto-buybox"
-                      >
-                        <MapPin className="h-4 w-4 mr-2" />
-                        Create Your BuyBox
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </>
-              ) : hasSearched ? (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <Search className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Properties Found</h3>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                      Try adjusting your filters or searching in a different market. You can also create a BuyBox to get notified when matching properties become available.
-                    </p>
-                    <div className="flex flex-wrap gap-3 justify-center">
-                      <Button variant="outline" onClick={() => {
-                        setSearchCity("all");
-                        setMinPrice("");
-                        setMaxPrice("");
-                        setMinBeds("any");
-                        setPropertyType("all");
-                        setMinCapRate("any");
-                        fetchListings(1);
-                      }} data-testid="button-clear-filters">
-                        Clear Filters
-                      </Button>
-                      <Button
-                        onClick={() => setLocation("/tools/buybox")}
-                        data-testid="button-goto-buybox-empty"
-                      >
-                        <MapPin className="h-4 w-4 mr-2" />
-                        Create BuyBox
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : null}
-            </div>
-
-            {selectedListing && (
-              <div className="lg:col-span-1">
-                {renderDetailPanel()}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="mt-6 text-center text-xs text-muted-foreground">
-          <p>
-            Cap rates are estimated using {rentData.length > 0 ? "market rent data" : "estimated market rents"} and standard expense assumptions
-            (vacancy {EXPENSE_ASSUMPTIONS.vacancyPercent}%, maintenance {EXPENSE_ASSUMPTIONS.maintenancePercent}%, management {EXPENSE_ASSUMPTIONS.managementPercent}%, property tax {EXPENSE_ASSUMPTIONS.propertyTaxPercent}%).
-            Actual returns may vary. Always perform your own due diligence.
-          </p>
+          {sidebarContent}
         </div>
-      </main>
+
+        {showMobileList && (
+          <div className="lg:hidden fixed inset-x-0 bottom-0 z-[1000] bg-background border-t rounded-t-2xl shadow-2xl max-h-[60vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-2 border-b">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-medium">
+                  {totalCount > 0
+                    ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()}`
+                    : "No properties"}
+                </p>
+                {dataSource && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0">
+                    {dataSource === "crea_ddf" ? "DDF" : "Repliers"}
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowMobileList(false)}
+                data-testid="button-close-mobile-list"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {sidebarContent}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

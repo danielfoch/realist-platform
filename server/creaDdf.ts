@@ -134,6 +134,10 @@ export async function searchDdfListings(params: {
   minBeds?: number;
   maxBeds?: number;
   propertySubType?: string;
+  latitudeMin?: number;
+  latitudeMax?: number;
+  longitudeMin?: number;
+  longitudeMax?: number;
   top?: number;
   skip?: number;
 }): Promise<{ listings: DdfListing[]; count: number; numPages: number; page: number }> {
@@ -162,6 +166,12 @@ export async function searchDdfListings(params: {
   }
   if (params.propertySubType) {
     filters.push(`PropertySubType eq '${params.propertySubType.replace(/'/g, "''")}'`);
+  }
+  if (params.latitudeMin != null && params.latitudeMax != null) {
+    filters.push(`Latitude ge ${params.latitudeMin} and Latitude le ${params.latitudeMax}`);
+  }
+  if (params.longitudeMin != null && params.longitudeMax != null) {
+    filters.push(`Longitude ge ${params.longitudeMin} and Longitude le ${params.longitudeMax}`);
   }
 
   const top = params.top || 48;

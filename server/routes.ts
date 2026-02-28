@@ -2638,12 +2638,16 @@ export async function registerRoutes(
         propertySubType,
         pageNum,
         resultsPerPage,
+        latitudeMin,
+        latitudeMax,
+        longitudeMin,
+        longitudeMax,
       } = req.body;
 
       const sanitizedCity = typeof city === "string" ? city.slice(0, 100) : undefined;
       const sanitizedProvince = typeof stateOrProvince === "string" ? stateOrProvince.slice(0, 100) : undefined;
       const sanitizedSubType = typeof propertySubType === "string" ? propertySubType.slice(0, 100) : undefined;
-      const top = Math.min(Math.max(Number(resultsPerPage) || 48, 1), 100);
+      const top = Math.min(Math.max(Number(resultsPerPage) || 50, 1), 100);
       const pg = Math.max(Number(pageNum) || 1, 1);
       const skip = (pg - 1) * top;
 
@@ -2655,6 +2659,10 @@ export async function registerRoutes(
         minBeds: minBeds ? Math.max(0, Number(minBeds)) : undefined,
         maxBeds: maxBeds ? Math.max(0, Number(maxBeds)) : undefined,
         propertySubType: sanitizedSubType || undefined,
+        latitudeMin: latitudeMin ? Number(latitudeMin) : undefined,
+        latitudeMax: latitudeMax ? Number(latitudeMax) : undefined,
+        longitudeMin: longitudeMin ? Number(longitudeMin) : undefined,
+        longitudeMax: longitudeMax ? Number(longitudeMax) : undefined,
         top,
         skip,
       });
