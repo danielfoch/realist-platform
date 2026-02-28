@@ -38,7 +38,7 @@ Preferred communication style: Simple, everyday language.
 The application features a category-based dropdown navigation:
 - **Tools**: Deal Analyzer, BuyBox, Co-Invest, Calculators.
 - **Community**: Events, Network, Online Community.
-- **Insights**: Podcast, Blog, Guides.
+- **Insights**: Market Report, Podcast, Blog, Guides.
 - **About**: Company information, Team, Programs, Shop, Contact.
 
 ### Core Features and Pages
@@ -56,6 +56,7 @@ The application features a category-based dropdown navigation:
 - **Authentication**: Custom email/password system with PostgreSQL-backed sessions, bcrypt hashing, and secure token management for resets/account setup. Supports lead auto-enrollment.
 - **Leaderboard & Analytics**: Dual-tab leaderboard with "Deal Analysis" and "Community Contributions" tabs, monthly/all-time toggle, user role badges. Route: `/leaderboard`. API: `/api/leaderboard`, `/api/leaderboard/contributions`, `/api/leaderboard/top-cities`.
 - **Realtor Partner Network**: Realtors can claim a market, sign a 25% referral agreement (with e-signature canvas), receive lead notifications when deals are analyzed in their market, and claim leads via a formal logged introduction email. Route: `/partner/network`. Tables: `realtor_market_claims`, `realtor_lead_notifications`, `realtor_introductions`. API prefix: `/api/realtor-network/`.
+- **Monthly Market Report**: Auto-generated monthly report covering 30 major Canadian cities. Shows CMHC rent benchmarks, community yield data, DSCR, cash-on-cash, and purchase price averages. Features bar charts (rents by city, yields by city), historical trend line charts, city-by-city breakdown table, province filtering, and auto-generated written commentary. Data snapshots are stored monthly for historical trend tracking. Route: `/insights/market-report`. Table: `market_snapshots`. API: `GET /api/market-report/latest`, `GET /api/market-report/history`, `GET /api/market-report/all`, `POST /api/market-report/compute-snapshot` (admin). Auto-computes on server start if current month not yet snapshotted.
 
 ### Community Underwriting System
 - **Tables**: `underwriting_notes`, `listing_comments`, `votes`, `contribution_events`, `listing_analysis_aggregates`

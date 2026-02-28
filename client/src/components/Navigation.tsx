@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, X, User, LogOut, Briefcase, Building, ChevronDown, Calculator, MapPin, Users, Handshake, Calendar, Radio, BookOpen, FileText, Info, Mail, ShoppingBag, GraduationCap, DollarSign, TrendingUp, Crown } from "lucide-react";
+import { Menu, X, User, LogOut, Briefcase, Building, ChevronDown, Calculator, MapPin, Users, Handshake, Calendar, Radio, BookOpen, FileText, Info, Mail, ShoppingBag, GraduationCap, DollarSign, TrendingUp, Crown, BarChart3 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import logoImage from "@assets/Screenshot_2026-01-04_at_3.46.09_PM_1767559573207.png";
@@ -44,6 +44,7 @@ const navCategories: NavCategory[] = [
   {
     label: "Insights",
     items: [
+      { href: "/insights/market-report", label: "Market Report", description: "Monthly yield & rent data", icon: <BarChart3 className="h-4 w-4" /> },
       { href: "/insights/podcast", label: "Podcast", description: "Real estate discussions", icon: <Radio className="h-4 w-4" /> },
       { href: "/insights/blog", label: "Blog", description: "Articles and research", icon: <BookOpen className="h-4 w-4" /> },
       { href: "/insights/guides", label: "Guides", description: "Educational resources", icon: <FileText className="h-4 w-4" /> },
