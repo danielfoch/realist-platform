@@ -42,9 +42,9 @@ The application features a category-based dropdown navigation:
 - **About**: Company information, Team, Programs, Shop, Contact.
 
 ### Core Features and Pages
-- **Map-First Homepage**: `/` renders `MapHomepage.tsx` with a Leaflet cap rate map as subdued background, glass overlay with CTAs, stats strip, "As seen on" logos, and below-fold community underwriting explainer. Controlled by `VITE_HOME_VARIANT` env var ("map" default, "deal" for original). Original deal analyzer homepage at `/deal-analyzer` and `/tools/analyzer`.
+- **Map-First Homepage**: `/` renders `MapHomepage.tsx` with a Leaflet cap rate map as subdued background, glass overlay with CTAs, stats strip, "As seen on" logos, embedded deal analyzer (via `<Home embedded />`), community underwriting explainer, and live leaderboard preview (fetches from `/api/leaderboard` and `/api/leaderboard/contributions`). Controlled by `VITE_HOME_VARIANT` env var ("map" default, "deal" for original). Original deal analyzer homepage at `/deal-analyzer` and `/tools/analyzer`.
 - **Deal Analyzer**: Main product with calculator and analysis tools. Supports MLS# import via DDF (`GET /api/ddf/mls/:mlsNumber`) and URL/HTML paste import.
-- **Cap Rates Explorer**: Realtor.ca-style map-driven search powered by CREA DDF. Features community underwriting with tabbed detail panel (Overview | Underwrite | Community), community cap rate badges on listing cards, batch aggregates, voting, and comments.
+- **Cap Rates Explorer**: Realtor.ca-style map-driven search powered by CREA DDF. Default filters: minimum 4% cap rate, minimum 2 units, excludes parking/locker/storage and business sales/commercial. Features community underwriting with tabbed detail panel (Overview | Underwrite | Community), community cap rate badges on listing cards, batch aggregates, voting, and comments.
 - **BuyBox**: Mandate builder with Google Maps integration and e-signature for buyer representation agreements.
 - **Co-Investing Platform**: Tools for finding partners, pooling capital, group creation wizard, complexity assessment, and in-group chat. Includes BRA (Buyer Representation Agreement) gating for Ontario users.
 - **Calculators Hub**: Includes various tools like "True Cost of Homeownership" and "Will It Plex?".

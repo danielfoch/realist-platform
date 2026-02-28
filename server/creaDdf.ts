@@ -133,7 +133,10 @@ export async function searchDdfListings(params: {
   maxPrice?: number;
   minBeds?: number;
   maxBeds?: number;
+  minUnits?: number;
   propertySubType?: string;
+  excludeBusinessSales?: boolean;
+  excludeParking?: boolean;
   latitudeMin?: number;
   latitudeMax?: number;
   longitudeMin?: number;
@@ -164,8 +167,21 @@ export async function searchDdfListings(params: {
   if (params.maxBeds) {
     filters.push(`BedroomsTotal le ${params.maxBeds}`);
   }
+  if (params.minUnits && params.minUnits > 1) {
+    filters.push(`NumberOfUnitsTotal ge ${params.minUnits}`);
+  }
   if (params.propertySubType) {
     filters.push(`PropertySubType eq '${params.propertySubType.replace(/'/g, "''")}'`);
+  }
+  if (params.excludeParking) {
+    filters.push("PropertySubType ne 'Parking Space'");
+    filters.push("PropertySubType ne 'Locker'");
+    filters.push("PropertySubType ne 'Storage'");
+  }
+  if (params.excludeBusinessSales) {
+    filters.push("PropertySubType ne 'Sale Of Business'");
+    filters.push("PropertySubType ne 'Business'");
+    filters.push("PropertySubType ne 'Commercial'");
   }
   if (params.latitudeMin != null && params.latitudeMax != null) {
     filters.push(`Latitude ge ${params.latitudeMin} and Latitude le ${params.latitudeMax}`);
