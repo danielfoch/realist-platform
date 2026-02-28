@@ -4975,7 +4975,7 @@ export async function registerRoutes(
         .where(dateFilter)
         .groupBy(analyses.userId, users.firstName, users.lastName, users.profileImageUrl, users.role)
         .orderBy(desc(count(analyses.id)))
-        .limit(25);
+        .limit(Math.min(Number(req.query.limit) || 25, 50));
 
       const leaderboard = analystResults.map((row, index) => ({
         rank: index + 1,

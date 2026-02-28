@@ -1,16 +1,21 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, lazy, Suspense } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowRight, Users, MapPin, TrendingUp, GraduationCap,
-  Calculator, Map, Eye, MessageSquare, Award,
+  Calculator, Map, Eye, MessageSquare, Award, Trophy, BarChart3, Crown, Medal,
 } from "lucide-react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+
+const Home = lazy(() => import("@/pages/Home"));
 
 import reutersLogo from "@assets/image_1767559636706.png";
 import wsjLogo from "@assets/image_1767563210169.png";
@@ -88,6 +93,158 @@ const howItWorksSteps = [
     description: "Climb the leaderboard by contributing quality underwriting notes and comments. Top analysts earn badges and community credibility.",
   },
 ];
+
+type LeaderboardEntry = {
+  rank: number;
+  userId: number;
+  name: string;
+  profileImageUrl: string | null;
+  role: string;
+  dealCount?: number;
+  avgCapRate?: number | null;
+  totalPoints?: number;
+};
+
+function getRankIcon(rank: number) {
+  if (rank === 1) return <Crown className="h-4 w-4 text-yellow-500" />;
+  if (rank === 2) return <Medal className="h-4 w-4 text-gray-400" />;
+  if (rank === 3) return <Medal className="h-4 w-4 text-amber-600" />;
+  return <span className="text-xs font-mono text-muted-foreground w-4 text-center">{rank}</span>;
+}
+
+function LeaderboardPreview() {
+  const [tab, setTab] = useState<"deals" | "contributions">("deals");
+
+  const { data: dealData, isLoading: dealsLoading } = useQuery<{ analysts: LeaderboardEntry[] }>({
+    queryKey: ["/api/leaderboard", "preview"],
+    queryFn: async () => {
+      const res = await fetch("/api/leaderboard?limit=5", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch leaderboard");
+      return res.json();
+    },
+  });
+
+  const { data: contribLeaders, isLoading: contribLoading } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/leaderboard/contributions", "preview"],
+    queryFn: async () => {
+      const res = await fetch("/api/leaderboard/contributions?limit=5", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch contributions leaderboard");
+      return res.json();
+    },
+  });
+
+  const leaders = tab === "deals" ? (dealData?.analysts || []) : (contribLeaders || []);
+  const isLoading = tab === "deals" ? dealsLoading : contribLoading;
+
+  return (
+    <section className="py-16 md:py-24 border-t border-border/50 bg-muted/30" data-testid="section-leaderboard-preview">
+      <div className="max-w-3xl mx-auto px-4 md:px-6">
+        <div className="text-center mb-8">
+          <h2
+            className="text-3xl md:text-4xl font-bold mb-4"
+            data-testid="text-leaderboard-preview-title"
+          >
+            <Trophy className="inline-block h-8 w-8 mr-2 text-yellow-500 -mt-1" />
+            Leaderboard
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Top analysts earning recognition for quality underwriting and deal analysis.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <Button
+            variant={tab === "deals" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTab("deals")}
+            className="gap-1.5"
+            data-testid="button-tab-deals"
+          >
+            <BarChart3 className="h-3.5 w-3.5" />
+            Deal Analysis
+          </Button>
+          <Button
+            variant={tab === "contributions" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTab("contributions")}
+            className="gap-1.5"
+            data-testid="button-tab-contributions"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Community
+          </Button>
+        </div>
+
+        <Card>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-6 space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-16 ml-auto" />
+                  </div>
+                ))}
+              </div>
+            ) : leaders.length > 0 ? (
+              <div className="divide-y divide-border">
+                {leaders.slice(0, 5).map((entry) => (
+                  <div
+                    key={entry.userId}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+                    data-testid={`leaderboard-row-${entry.rank}`}
+                  >
+                    <div className="flex items-center justify-center w-6">
+                      {getRankIcon(entry.rank)}
+                    </div>
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={entry.profileImageUrl || undefined} alt={entry.name} />
+                      <AvatarFallback className="text-xs">
+                        {entry.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{entry.name}</p>
+                      {entry.role && entry.role !== "investor" && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0">{entry.role}</Badge>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {tab === "deals" ? (
+                        <p className="text-sm font-mono font-medium" data-testid={`text-deals-${entry.rank}`}>
+                          {entry.dealCount} {entry.dealCount === 1 ? "deal" : "deals"}
+                        </p>
+                      ) : (
+                        <p className="text-sm font-mono font-medium" data-testid={`text-points-${entry.rank}`}>
+                          {entry.totalPoints} pts
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-muted-foreground">
+                <Trophy className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No entries yet. Be the first to contribute!</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="text-center mt-6">
+          <Link href="/community/leaderboard">
+            <Button variant="outline" size="lg" className="gap-2" data-testid="button-view-leaderboard">
+              View Full Leaderboard
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function MapHomepage() {
   const combinedSchema = {
@@ -245,6 +402,29 @@ export default function MapHomepage() {
             </div>
           </section>
 
+          <section className="py-16 md:py-24 border-t border-border/50" data-testid="section-deal-analyzer-embed">
+            <div className="max-w-7xl mx-auto px-4 md:px-6">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4" data-testid="text-analyzer-section-title">
+                  Analyze Any Deal
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  Underwrite buy & hold, BRRR, flip, Airbnb, and multiplex strategies with institutional-grade financial projections.
+                </p>
+              </div>
+              <Suspense fallback={
+                <div className="flex items-center justify-center py-20">
+                  <div className="text-center space-y-3">
+                    <Calculator className="h-8 w-8 mx-auto text-muted-foreground animate-pulse" />
+                    <p className="text-sm text-muted-foreground">Loading Deal Analyzer...</p>
+                  </div>
+                </div>
+              }>
+                <Home embedded />
+              </Suspense>
+            </div>
+          </section>
+
           <section className="py-16 md:py-24 border-t border-border/50">
             <div className="max-w-5xl mx-auto px-4 md:px-6">
               <div className="text-center mb-12">
@@ -280,66 +460,7 @@ export default function MapHomepage() {
             </div>
           </section>
 
-          <section className="py-16 md:py-24 border-t border-border/50 bg-muted/30">
-            <div className="max-w-5xl mx-auto px-4 md:px-6">
-              <div className="text-center mb-12">
-                <h2
-                  className="text-3xl md:text-4xl font-bold mb-4"
-                  data-testid="text-leaderboard-preview-title"
-                >
-                  Top Community Contributors
-                </h2>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Analysts earning recognition for quality underwriting and insights.
-                </p>
-              </div>
-
-              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
-                <Card>
-                  <CardContent className="p-6 text-center space-y-2">
-                    <div className="mx-auto w-10 h-10 rounded-md bg-muted flex items-center justify-center">
-                      <Calculator className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <p className="text-2xl font-bold font-mono" data-testid="text-preview-deals">
-                      $2.6B
-                    </p>
-                    <p className="text-sm text-muted-foreground">Deals Analyzed</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6 text-center space-y-2">
-                    <div className="mx-auto w-10 h-10 rounded-md bg-muted flex items-center justify-center">
-                      <MapPin className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <p className="text-2xl font-bold font-mono" data-testid="text-preview-cities">
-                      26
-                    </p>
-                    <p className="text-sm text-muted-foreground">Cities Covered</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6 text-center space-y-2">
-                    <div className="mx-auto w-10 h-10 rounded-md bg-muted flex items-center justify-center">
-                      <Users className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <p className="text-2xl font-bold font-mono" data-testid="text-preview-members">
-                      11,000+
-                    </p>
-                    <p className="text-sm text-muted-foreground">Community Members</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="text-center">
-                <Link href="/community/leaderboard">
-                  <Button variant="outline" size="lg" className="gap-2" data-testid="button-view-leaderboard">
-                    View Full Leaderboard
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </section>
+          <LeaderboardPreview />
 
           <footer className="py-12 border-t border-border/50">
             <div className="max-w-7xl mx-auto px-4 md:px-6">

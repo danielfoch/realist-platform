@@ -68,7 +68,7 @@ const defaultInputs: BuyHoldInputs = {
   cmhcMliPoints: 0,
 };
 
-export default function Home() {
+export default function Home({ embedded }: { embedded?: boolean }) {
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
   const analyzerRef = useRef<HTMLDivElement>(null);
@@ -386,6 +386,72 @@ export default function Home() {
     "@context": "https://schema.org",
     "@graph": [organizationSchema, websiteSchema, softwareSchema]
   };
+
+  if (embedded) {
+    return (
+      <div className="overflow-x-hidden" data-testid="embedded-deal-analyzer">
+        <div className="flex justify-center mb-8">
+          <CalculatorSelector
+            selected={calculatorType}
+            onSelect={setCalculatorType}
+          />
+        </div>
+
+        {calculatorType === "rent_vs_buy" ? (
+          <RentVsBuyCalculator country={country} />
+        ) : calculatorType === "mli_select" ? (
+          <MLISelectCalculator />
+        ) : calculatorType === "reno_quote" ? (
+          <RenoQuoteWizard />
+        ) : (
+          <>
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-1 space-y-6">
+                <ListingImport onImport={handleListingImport} />
+                <AddressInput
+                  value={address}
+                  onChange={setAddress}
+                  onCityChange={setCity}
+                  onRegionChange={setRegion}
+                  onCountryChange={setCountry}
+                  onPostalCodeChange={setPostalCode}
+                  country={country}
+                />
+                <StrategySelector selected={strategy} onSelect={setStrategy} />
+                <DealInputs
+                  inputs={inputs}
+                  onChange={setInputs}
+                  strategy={strategy}
+                  country={country}
+                  city={city}
+                  region={region}
+                  listingPrice={listingPrice || undefined}
+                />
+              </div>
+              <div className="lg:col-span-2 space-y-6">
+                <MetricCards
+                  capRate={results.capRate}
+                  cashOnCash={results.cashOnCash}
+                  dscr={results.dscr}
+                  irr={results.irr}
+                  monthlyCashFlow={results.monthlyCashFlow}
+                />
+                <AnalysisCharts results={results} inputs={inputs} />
+              </div>
+            </div>
+          </>
+        )}
+
+        <LeadCaptureModal
+          open={leadCaptureOpen}
+          onOpenChange={setLeadCaptureOpen}
+          onSubmit={handleLeadSubmit}
+          isSubmitting={leadMutation.isPending}
+          defaultValues={getSavedLeadInfo() || undefined}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
