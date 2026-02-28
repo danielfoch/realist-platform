@@ -309,6 +309,24 @@ function FlyToLocation({ lat, lng, zoom }: { lat: number; lng: number; zoom?: nu
   return null;
 }
 
+function GeolocateOnMount() {
+  const map = useMap();
+  const attempted = useRef(false);
+  useEffect(() => {
+    if (attempted.current) return;
+    attempted.current = true;
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        map.flyTo([pos.coords.latitude, pos.coords.longitude], DEFAULT_ZOOM, { duration: 1.5 });
+      },
+      () => {},
+      { timeout: 5000, maximumAge: 300000 }
+    );
+  }, [map]);
+  return null;
+}
+
 export default function CapRates() {
   const [, setLocation] = useLocation();
   const { user, isAuthenticated } = useAuth();
@@ -1569,6 +1587,7 @@ export default function CapRates() {
               </Marker>
             ))}
             <MapEventHandler onBoundsChange={handleBoundsChange} />
+            <GeolocateOnMount />
             {flyTo && <FlyToLocation lat={flyTo.lat} lng={flyTo.lng} />}
           </MapContainer>
 

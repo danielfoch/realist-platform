@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "wouter";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
@@ -9,7 +9,7 @@ import {
   ArrowRight, Users, MapPin, TrendingUp, GraduationCap,
   Calculator, Map, Eye, MessageSquare, Award,
 } from "lucide-react";
-import { MapContainer, TileLayer } from "react-leaflet";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 import reutersLogo from "@assets/image_1767559636706.png";
@@ -28,6 +28,24 @@ import nationalPostLogo from "@assets/image_1767559826327.png";
 import storeysLogo from "@assets/image_1767562262018.png";
 
 const TORONTO_CENTER: [number, number] = [43.65, -79.38];
+
+function GeolocateOnMount() {
+  const map = useMap();
+  const attempted = useRef(false);
+  useEffect(() => {
+    if (attempted.current) return;
+    attempted.current = true;
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        map.flyTo([pos.coords.latitude, pos.coords.longitude], 8, { duration: 1.5 });
+      },
+      () => {},
+      { timeout: 5000, maximumAge: 300000 }
+    );
+  }, [map]);
+  return null;
+}
 
 const stats = [
   { icon: Users, value: "11,000+", label: "meetup members" },
@@ -117,6 +135,7 @@ export default function MapHomepage() {
               style={{ width: "100%", height: "100%", minHeight: "80vh" }}
               attributionControl={false}
             >
+              <GeolocateOnMount />
               <TileLayer
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                 attribution=""
