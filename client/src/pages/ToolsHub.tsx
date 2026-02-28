@@ -15,7 +15,7 @@ const tools = [
   },
   {
     href: "/tools/cap-rates",
-    title: "Cap Rates Explorer",
+    title: "Cap Rate Map",
     description: "Browse MLS listings by cap rate. Find the highest-returning properties across markets with pre-calculated returns using market rent data.",
     icon: TrendingUp,
     badge: "New",

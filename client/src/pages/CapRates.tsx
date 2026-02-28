@@ -1415,12 +1415,6 @@ export default function CapRates() {
         <div className="px-3 py-2">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold leading-tight" data-testid="text-page-title">Cap Rates Explorer</h1>
-              </div>
             </div>
 
             <div className="flex items-center gap-2">
