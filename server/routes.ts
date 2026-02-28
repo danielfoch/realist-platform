@@ -5064,6 +5064,211 @@ export async function registerRoutes(
   });
 
   // ============================================
+  // MARKET REPORT ROUTES
+  // ============================================
+
+  const MAJOR_CANADIAN_CITIES = [
+    { city: "Toronto", province: "ON" },
+    { city: "Vancouver", province: "BC" },
+    { city: "Calgary", province: "AB" },
+    { city: "Edmonton", province: "AB" },
+    { city: "Ottawa", province: "ON" },
+    { city: "Montreal", province: "QC" },
+    { city: "Winnipeg", province: "MB" },
+    { city: "Hamilton", province: "ON" },
+    { city: "Kitchener", province: "ON" },
+    { city: "London", province: "ON" },
+    { city: "Halifax", province: "NS" },
+    { city: "Victoria", province: "BC" },
+    { city: "Oshawa", province: "ON" },
+    { city: "Windsor", province: "ON" },
+    { city: "Saskatoon", province: "SK" },
+    { city: "Regina", province: "SK" },
+    { city: "St. Catharines", province: "ON" },
+    { city: "Barrie", province: "ON" },
+    { city: "Kelowna", province: "BC" },
+    { city: "Guelph", province: "ON" },
+    { city: "Moncton", province: "NB" },
+    { city: "Brantford", province: "ON" },
+    { city: "Fredericton", province: "NB" },
+    { city: "Saint John", province: "NB" },
+    { city: "Sudbury", province: "ON" },
+    { city: "Kingston", province: "ON" },
+    { city: "Waterloo", province: "ON" },
+    { city: "Cambridge", province: "ON" },
+    { city: "Mississauga", province: "ON" },
+    { city: "Brampton", province: "ON" },
+  ];
+
+  app.post("/api/market-report/compute-snapshot", isAdmin, async (_req, res) => {
+    try {
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
+
+      const cityResults = await db
+        .select({
+          city: analyses.city,
+          province: analyses.province,
+          dealCount: count(analyses.id),
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+          avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+          avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= DATE_TRUNC('month', CURRENT_DATE)`)
+        .groupBy(analyses.city, analyses.province);
+
+      const allTimeResults = await db
+        .select({
+          city: analyses.city,
+          province: analyses.province,
+          dealCount: count(analyses.id),
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+          avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+          avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
+        .groupBy(analyses.city, analyses.province);
+
+      const cityMap = new Map(cityResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+      const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+
+      let snapshotCount = 0;
+      for (const { city, province } of MAJOR_CANADIAN_CITIES) {
+        const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
+        const current = cityMap.get(key);
+        const allTime = allTimeMap.get(key);
+        const data = current || allTime;
+        
+        const cmhcRents = CMHC_CITY_RENTS[city];
+
+        await storage.upsertMarketSnapshot({
+          city,
+          province,
+          month,
+          dealCount: data ? Number(data.dealCount) : 0,
+          avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
+          avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
+          avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
+          avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
+          avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
+          medianCapRate: null,
+          medianPurchasePrice: null,
+          avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
+          cmhcOneBed: cmhcRents?.oneBed ?? null,
+          cmhcTwoBed: cmhcRents?.twoBed ?? null,
+        });
+        snapshotCount++;
+      }
+
+      res.json({ success: true, month, snapshotCount });
+    } catch (error) {
+      console.error("Error computing market snapshot:", error);
+      res.status(500).json({ error: "Failed to compute market snapshot" });
+    }
+  });
+
+  app.get("/api/market-report/latest", async (_req, res) => {
+    try {
+      const snapshots = await storage.getLatestMarketSnapshots();
+      const months = await storage.getMarketSnapshotMonths();
+      res.json({ snapshots, months, reportMonth: months[0] || null });
+    } catch (error) {
+      console.error("Error fetching market report:", error);
+      res.status(500).json({ error: "Failed to fetch market report" });
+    }
+  });
+
+  app.get("/api/market-report/history", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const snapshots = await storage.getMarketSnapshots(city, province);
+      res.json(snapshots);
+    } catch (error) {
+      console.error("Error fetching market history:", error);
+      res.status(500).json({ error: "Failed to fetch market history" });
+    }
+  });
+
+  app.get("/api/market-report/all", async (_req, res) => {
+    try {
+      const snapshots = await storage.getMarketSnapshots();
+      const months = await storage.getMarketSnapshotMonths();
+      res.json({ snapshots, months });
+    } catch (error) {
+      console.error("Error fetching all market data:", error);
+      res.status(500).json({ error: "Failed to fetch market data" });
+    }
+  });
+
+  // Auto-compute snapshots on server start and monthly
+  (async () => {
+    try {
+      const months = await storage.getMarketSnapshotMonths();
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      if (!months.includes(currentMonth)) {
+        console.log("[market-report] Computing initial snapshot for", currentMonth);
+        const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
+        
+        const allTimeResults = await db
+          .select({
+            city: analyses.city,
+            province: analyses.province,
+            dealCount: count(analyses.id),
+            avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+            avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+            avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+            avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+            avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+            avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+          })
+          .from(analyses)
+          .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
+          .groupBy(analyses.city, analyses.province);
+
+        const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+
+        for (const { city, province } of MAJOR_CANADIAN_CITIES) {
+          const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
+          const data = allTimeMap.get(key);
+          const cmhcRents = CMHC_CITY_RENTS[city];
+
+          await storage.upsertMarketSnapshot({
+            city,
+            province,
+            month: currentMonth,
+            dealCount: data ? Number(data.dealCount) : 0,
+            avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
+            avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
+            avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
+            avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
+            avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
+            medianCapRate: null,
+            medianPurchasePrice: null,
+            avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
+            cmhcOneBed: cmhcRents?.oneBed ?? null,
+            cmhcTwoBed: cmhcRents?.twoBed ?? null,
+          });
+        }
+        console.log("[market-report] Initial snapshot computed for", currentMonth);
+      }
+    } catch (error) {
+      console.error("[market-report] Failed to compute initial snapshot:", error);
+    }
+  })();
+
+  // ============================================
   // COMMUNITY UNDERWRITING ROUTES
   // ============================================
 

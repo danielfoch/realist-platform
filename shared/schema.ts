@@ -1882,3 +1882,32 @@ export type ContributionEvent = typeof contributionEvents.$inferSelect;
 
 export type InsertListingAnalysisAggregate = z.infer<typeof insertListingAnalysisAggregateSchema>;
 export type ListingAnalysisAggregate = typeof listingAnalysisAggregates.$inferSelect;
+
+export const marketSnapshots = pgTable("market_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  city: text("city").notNull(),
+  province: text("province").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  dealCount: integer("deal_count").default(0).notNull(),
+  avgCapRate: real("avg_cap_rate"),
+  avgCashOnCash: real("avg_cash_on_cash"),
+  avgDscr: real("avg_dscr"),
+  avgPurchasePrice: real("avg_purchase_price"),
+  avgRentPerUnit: real("avg_rent_per_unit"),
+  medianCapRate: real("median_cap_rate"),
+  medianPurchasePrice: real("median_purchase_price"),
+  avgVacancyRate: real("avg_vacancy_rate"),
+  cmhcOneBed: real("cmhc_one_bed"),
+  cmhcTwoBed: real("cmhc_two_bed"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS market_snapshots_city_month_idx ON market_snapshots(city, province, month)`
+]);
+
+export const insertMarketSnapshotSchema = createInsertSchema(marketSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMarketSnapshot = z.infer<typeof insertMarketSnapshotSchema>;
+export type MarketSnapshot = typeof marketSnapshots.$inferSelect;

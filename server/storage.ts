@@ -115,6 +115,9 @@ import {
   type InsertContributionEvent,
   type ListingAnalysisAggregate,
   type InsertListingAnalysisAggregate,
+  marketSnapshots,
+  type MarketSnapshot,
+  type InsertMarketSnapshot,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -351,6 +354,11 @@ export interface IStorage {
   getListingAggregate(mlsNumber: string): Promise<ListingAnalysisAggregate | undefined>;
   getListingAggregatesBatch(mlsNumbers: string[]): Promise<ListingAnalysisAggregate[]>;
   upsertListingAggregate(data: InsertListingAnalysisAggregate): Promise<ListingAnalysisAggregate>;
+
+  upsertMarketSnapshot(data: InsertMarketSnapshot): Promise<MarketSnapshot>;
+  getMarketSnapshots(city?: string, province?: string): Promise<MarketSnapshot[]>;
+  getLatestMarketSnapshots(): Promise<MarketSnapshot[]>;
+  getMarketSnapshotMonths(): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1485,6 +1493,51 @@ export class DatabaseStorage implements IStorage {
     }
     const [result] = await db.insert(listingAnalysisAggregates).values(data).returning();
     return result;
+  }
+
+  async upsertMarketSnapshot(data: InsertMarketSnapshot): Promise<MarketSnapshot> {
+    const [existing] = await db.select().from(marketSnapshots)
+      .where(and(
+        eq(marketSnapshots.city, data.city),
+        eq(marketSnapshots.province, data.province),
+        eq(marketSnapshots.month, data.month),
+      ));
+    if (existing) {
+      const [result] = await db.update(marketSnapshots)
+        .set(data)
+        .where(eq(marketSnapshots.id, existing.id))
+        .returning();
+      return result;
+    }
+    const [result] = await db.insert(marketSnapshots).values(data).returning();
+    return result;
+  }
+
+  async getMarketSnapshots(city?: string, province?: string): Promise<MarketSnapshot[]> {
+    const conditions = [];
+    if (city) conditions.push(eq(marketSnapshots.city, city));
+    if (province) conditions.push(eq(marketSnapshots.province, province));
+    return db.select().from(marketSnapshots)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(marketSnapshots.month), asc(marketSnapshots.city));
+  }
+
+  async getLatestMarketSnapshots(): Promise<MarketSnapshot[]> {
+    const [latest] = await db.select({ month: marketSnapshots.month })
+      .from(marketSnapshots)
+      .orderBy(desc(marketSnapshots.month))
+      .limit(1);
+    if (!latest) return [];
+    return db.select().from(marketSnapshots)
+      .where(eq(marketSnapshots.month, latest.month))
+      .orderBy(desc(marketSnapshots.dealCount));
+  }
+
+  async getMarketSnapshotMonths(): Promise<string[]> {
+    const results = await db.selectDistinct({ month: marketSnapshots.month })
+      .from(marketSnapshots)
+      .orderBy(desc(marketSnapshots.month));
+    return results.map(r => r.month);
   }
 }
 
