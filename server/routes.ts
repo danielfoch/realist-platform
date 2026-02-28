@@ -5102,75 +5102,8 @@ export async function registerRoutes(
 
   app.post("/api/market-report/compute-snapshot", isAdmin, async (_req, res) => {
     try {
-      const now = new Date();
-      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-      const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
-
-      const cityResults = await db
-        .select({
-          city: analyses.city,
-          province: analyses.province,
-          dealCount: count(analyses.id),
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
-          avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
-          avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
-        })
-        .from(analyses)
-        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= DATE_TRUNC('month', CURRENT_DATE)`)
-        .groupBy(analyses.city, analyses.province);
-
-      const allTimeResults = await db
-        .select({
-          city: analyses.city,
-          province: analyses.province,
-          dealCount: count(analyses.id),
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
-          avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
-          avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
-        })
-        .from(analyses)
-        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
-        .groupBy(analyses.city, analyses.province);
-
-      const cityMap = new Map(cityResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
-      const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
-
-      let snapshotCount = 0;
-      for (const { city, province } of MAJOR_CANADIAN_CITIES) {
-        const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
-        const current = cityMap.get(key);
-        const allTime = allTimeMap.get(key);
-        const data = current || allTime;
-        
-        const cmhcRents = CMHC_CITY_RENTS[city];
-
-        await storage.upsertMarketSnapshot({
-          city,
-          province,
-          month,
-          dealCount: data ? Number(data.dealCount) : 0,
-          avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
-          avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
-          avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
-          avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
-          avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
-          medianCapRate: null,
-          medianPurchasePrice: null,
-          avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
-          cmhcOneBed: cmhcRents?.oneBed ?? null,
-          cmhcTwoBed: cmhcRents?.twoBed ?? null,
-        });
-        snapshotCount++;
-      }
-
-      res.json({ success: true, month, snapshotCount });
+      const result = await computeMonthlySnapshot();
+      res.json({ success: true, month: result.month, snapshotCount: result.count });
     } catch (error) {
       console.error("Error computing market snapshot:", error);
       res.status(500).json({ error: "Failed to compute market snapshot" });
@@ -5211,7 +5144,80 @@ export async function registerRoutes(
     }
   });
 
-  // Auto-compute snapshots on server start and monthly
+  async function computeMonthlySnapshot(targetMonth?: string) {
+    const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
+    const now = new Date();
+    const month = targetMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const [year, m] = month.split("-").map(Number);
+    const monthStart = new Date(year, m - 1, 1);
+    const monthEnd = new Date(year, m, 1);
+
+    const monthResults = await db
+      .select({
+        city: analyses.city,
+        province: analyses.province,
+        dealCount: count(analyses.id),
+        avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+        avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+        avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+        avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+        avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+        avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+      })
+      .from(analyses)
+      .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${monthStart} AND ${analyses.createdAt} < ${monthEnd}`)
+      .groupBy(analyses.city, analyses.province);
+
+    const allTimeResults = await db
+      .select({
+        city: analyses.city,
+        province: analyses.province,
+        dealCount: count(analyses.id),
+        avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+        avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+        avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+        avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+        avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+        avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+      })
+      .from(analyses)
+      .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
+      .groupBy(analyses.city, analyses.province);
+
+    const monthMap = new Map(monthResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+    const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+
+    let count_saved = 0;
+    for (const { city, province } of MAJOR_CANADIAN_CITIES) {
+      const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
+      const current = monthMap.get(key);
+      const allTime = allTimeMap.get(key);
+      const data = current || allTime;
+      const cmhcRents = CMHC_CITY_RENTS[city];
+
+      await storage.upsertMarketSnapshot({
+        city,
+        province,
+        month,
+        dealCount: data ? Number(data.dealCount) : 0,
+        avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
+        avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
+        avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
+        avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
+        avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
+        medianCapRate: null,
+        medianPurchasePrice: null,
+        avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
+        cmhcOneBed: cmhcRents?.oneBed ?? null,
+        cmhcTwoBed: cmhcRents?.twoBed ?? null,
+      });
+      count_saved++;
+    }
+    return { month, count: count_saved };
+  }
+
+  // Run on server start if current month not yet snapshotted
   (async () => {
     try {
       const months = await storage.getMarketSnapshotMonths();
@@ -5219,54 +5225,31 @@ export async function registerRoutes(
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       if (!months.includes(currentMonth)) {
         console.log("[market-report] Computing initial snapshot for", currentMonth);
-        const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
-        
-        const allTimeResults = await db
-          .select({
-            city: analyses.city,
-            province: analyses.province,
-            dealCount: count(analyses.id),
-            avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-            avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-            avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-            avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
-            avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
-            avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
-          })
-          .from(analyses)
-          .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
-          .groupBy(analyses.city, analyses.province);
-
-        const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
-
-        for (const { city, province } of MAJOR_CANADIAN_CITIES) {
-          const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
-          const data = allTimeMap.get(key);
-          const cmhcRents = CMHC_CITY_RENTS[city];
-
-          await storage.upsertMarketSnapshot({
-            city,
-            province,
-            month: currentMonth,
-            dealCount: data ? Number(data.dealCount) : 0,
-            avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
-            avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
-            avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
-            avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
-            avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
-            medianCapRate: null,
-            medianPurchasePrice: null,
-            avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
-            cmhcOneBed: cmhcRents?.oneBed ?? null,
-            cmhcTwoBed: cmhcRents?.twoBed ?? null,
-          });
-        }
+        await computeMonthlySnapshot(currentMonth);
         console.log("[market-report] Initial snapshot computed for", currentMonth);
+      } else {
+        console.log("[market-report] Snapshot already exists for", currentMonth);
       }
     } catch (error) {
       console.error("[market-report] Failed to compute initial snapshot:", error);
     }
   })();
+
+  // Cron: check every hour, auto-compute on the 1st of each month
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const months = await storage.getMarketSnapshotMonths();
+      if (!months.includes(currentMonth)) {
+        console.log("[market-report] Monthly cron: computing snapshot for", currentMonth);
+        await computeMonthlySnapshot(currentMonth);
+        console.log("[market-report] Monthly cron: snapshot complete for", currentMonth);
+      }
+    } catch (error) {
+      console.error("[market-report] Monthly cron failed:", error);
+    }
+  }, 60 * 60 * 1000);
 
   // ============================================
   // COMMUNITY UNDERWRITING ROUTES
