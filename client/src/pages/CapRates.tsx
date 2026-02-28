@@ -334,6 +334,7 @@ export default function CapRates() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minBeds, setMinBeds] = useState("any");
+  const [minUnits, setMinUnits] = useState("2");
   const [propertyType, setPropertyType] = useState("all");
   const [minCapRate, setMinCapRate] = useState("any");
   const [sortBy, setSortBy] = useState<"capRate" | "priceAsc" | "priceDesc">("capRate");
@@ -482,6 +483,7 @@ export default function CapRates() {
         if (minPrice) ddfBody.minPrice = parseInt(minPrice);
         if (maxPrice) ddfBody.maxPrice = parseInt(maxPrice);
         if (minBeds && minBeds !== "any") ddfBody.minBeds = parseInt(minBeds);
+        if (minUnits && minUnits !== "any") ddfBody.minUnits = parseInt(minUnits);
         if (propertyType && propertyType !== "all") ddfBody.propertySubType = propertyType;
 
         try {
@@ -538,7 +540,7 @@ export default function CapRates() {
       setIsSearching(false);
       searchInProgress.current = false;
     }
-  }, [minPrice, maxPrice, minBeds, propertyType, ddfStatus]);
+  }, [minPrice, maxPrice, minBeds, minUnits, propertyType, ddfStatus]);
 
   const handleBoundsChange = useCallback((bounds: MapBounds) => {
     setMapBounds(bounds);
@@ -1447,6 +1449,21 @@ export default function CapRates() {
                   <SelectItem value="3">3+</SelectItem>
                   <SelectItem value="4">4+</SelectItem>
                   <SelectItem value="5">5+</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[75px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Units</Label>
+              <Select value={minUnits} onValueChange={setMinUnits}>
+                <SelectTrigger className="h-8 text-xs" data-testid="select-units">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="2">2+</SelectItem>
+                  <SelectItem value="3">3+</SelectItem>
+                  <SelectItem value="4">4+</SelectItem>
+                  <SelectItem value="6">6+</SelectItem>
                 </SelectContent>
               </Select>
             </div>
