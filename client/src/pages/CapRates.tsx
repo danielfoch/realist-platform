@@ -81,6 +81,8 @@ interface ListingWithCapRate extends RepliersListing {
   annualNOI: number;
   rentSource: "market" | "estimated" | "actual" | "cmhc_city" | "cmhc_province";
   totalActualRent?: number;
+  numberOfUnitsTotal?: number;
+  unitCount: number;
   dataSource?: "crea_ddf" | "repliers";
 }
 
@@ -553,6 +555,7 @@ export default function CapRates() {
       .map((listing: any) => {
         const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
         const bedrooms = listing.details?.numBedrooms || 2;
+        const units = listing.numberOfUnitsTotal || 1;
 
         let rent: number;
         let source: "market" | "estimated" | "actual" | "cmhc_city" | "cmhc_province";
@@ -567,7 +570,7 @@ export default function CapRates() {
             rentData,
             listing.address?.state
           );
-          rent = estimated.rent;
+          rent = estimated.rent * units;
           source = estimated.source;
         }
 
@@ -582,6 +585,7 @@ export default function CapRates() {
           estimatedMonthlyRent: rent,
           annualNOI,
           rentSource: source,
+          unitCount: units,
         };
       })
       .filter((l) => {
@@ -640,6 +644,11 @@ export default function CapRates() {
   const handleSelectListing = (listing: ListingWithCapRate) => {
     setSelectedListing(listing);
     setDetailTab("overview");
+    setUwUnitCount(String(listing.unitCount || 1));
+    const perUnitRent = listing.unitCount > 1
+      ? Math.round(listing.estimatedMonthlyRent / listing.unitCount)
+      : Math.round(listing.estimatedMonthlyRent);
+    setUwRentPerUnit(String(perUnitRent));
     if (listing.map?.latitude && listing.map?.longitude) {
       setFlyTo({ lat: listing.map.latitude, lng: listing.map.longitude });
     }
@@ -703,6 +712,12 @@ export default function CapRates() {
             </p>
 
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              {listing.unitCount > 1 && (
+                <span className="flex items-center gap-0.5 font-medium text-primary">
+                  <Building className="h-3 w-3" />
+                  {listing.unitCount}u
+                </span>
+              )}
               {listing.details?.numBedrooms != null && (
                 <span className="flex items-center gap-0.5">
                   <BedDouble className="h-3 w-3" />
@@ -724,7 +739,7 @@ export default function CapRates() {
             </div>
 
             <div className="flex items-center justify-between mt-1 text-[10px] text-muted-foreground">
-              <span>Rent: {formatPrice(listing.estimatedMonthlyRent)}/mo</span>
+              <span>Rent: {formatPrice(listing.estimatedMonthlyRent)}/mo{listing.unitCount > 1 ? ` (${listing.unitCount}×${formatPrice(Math.round(listing.estimatedMonthlyRent / listing.unitCount))})` : ""}</span>
               <span>NOI: {formatPrice(listing.annualNOI)}/yr</span>
             </div>
 
@@ -932,10 +947,21 @@ export default function CapRates() {
                     Yield Breakdown
                   </h4>
                   <div className="space-y-2 text-sm">
+                    {selectedListing.unitCount > 1 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Units</span>
+                        <span className="font-medium">{selectedListing.unitCount}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Monthly Rent</span>
+                      <span className="text-muted-foreground">Monthly Rent{selectedListing.unitCount > 1 ? " (total)" : ""}</span>
                       <span className="font-medium">
                         {formatPriceFull(selectedListing.estimatedMonthlyRent)}
+                        {selectedListing.unitCount > 1 && (
+                          <span className="text-[10px] text-muted-foreground ml-1">
+                            ({selectedListing.unitCount}×{formatPriceFull(Math.round(selectedListing.estimatedMonthlyRent / selectedListing.unitCount))})
+                          </span>
+                        )}
                         {selectedListing.rentSource === "estimated" && (
                           <span className="text-[10px] text-muted-foreground ml-1">(est.)</span>
                         )}

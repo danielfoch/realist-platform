@@ -317,6 +317,7 @@ export function normalizeDdfToRepliersFormat(ddf: DdfListing): any {
       : undefined,
     listDate: ddf.OriginalEntryTimestamp || undefined,
     totalActualRent: ddf.TotalActualRent || undefined,
+    numberOfUnitsTotal: ddf.NumberOfUnitsTotal || undefined,
     dataSource: "crea_ddf" as const,
   };
 }
