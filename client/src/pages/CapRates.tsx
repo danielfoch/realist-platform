@@ -628,6 +628,12 @@ export default function CapRates() {
     if (listing.address?.city) params.set("city", listing.address.city);
     if (listing.address?.state) params.set("state", listing.address.state);
     if (listing.estimatedMonthlyRent) params.set("rent", String(listing.estimatedMonthlyRent));
+    params.set("vacancy", String(EXPENSE_ASSUMPTIONS.vacancyPercent));
+    params.set("maintenance", String(EXPENSE_ASSUMPTIONS.maintenancePercent));
+    params.set("management", String(EXPENSE_ASSUMPTIONS.managementPercent));
+    params.set("insurance", String(EXPENSE_ASSUMPTIONS.insurancePerUnit * 12));
+    const tax = listing.taxes?.annualAmount || (price ? price * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100 : 0);
+    if (tax) params.set("propertyTax", String(Math.round(tax)));
     setLocation(`/tools/analyzer?${params.toString()}`);
   };
 

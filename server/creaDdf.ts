@@ -173,16 +173,7 @@ export async function searchDdfListings(params: {
   if (params.propertySubType) {
     filters.push(`PropertySubType eq '${params.propertySubType.replace(/'/g, "''")}'`);
   }
-  if (params.excludeParking) {
-    filters.push("PropertySubType ne 'Parking Space'");
-    filters.push("PropertySubType ne 'Locker'");
-    filters.push("PropertySubType ne 'Storage'");
-  }
-  if (params.excludeBusinessSales) {
-    filters.push("PropertySubType ne 'Sale Of Business'");
-    filters.push("PropertySubType ne 'Business'");
-    filters.push("PropertySubType ne 'Commercial'");
-  }
+  // PropertySubType exclusions applied post-fetch (OData enum filtering not supported)
   if (params.latitudeMin != null && params.latitudeMax != null) {
     filters.push(`Latitude ge ${params.latitudeMin} and Latitude le ${params.latitudeMax}`);
   }
@@ -217,12 +208,36 @@ export async function searchDdfListings(params: {
   }
 
   const data: DdfSearchResponse = await response.json();
-  const totalCount = data["@odata.count"] || data.value?.length || 0;
+  let listings = data.value || [];
+
+  const EXCLUDED_SUBTYPES = new Set<string>();
+  if (params.excludeParking) {
+    EXCLUDED_SUBTYPES.add("parking");
+    EXCLUDED_SUBTYPES.add("locker");
+    EXCLUDED_SUBTYPES.add("storage");
+  }
+  if (params.excludeBusinessSales) {
+    EXCLUDED_SUBTYPES.add("business");
+    EXCLUDED_SUBTYPES.add("commercial");
+    EXCLUDED_SUBTYPES.add("sale of business");
+  }
+  if (EXCLUDED_SUBTYPES.size > 0) {
+    listings = listings.filter((l) => {
+      const sub = (l.PropertySubType || "").toLowerCase();
+      for (const ex of EXCLUDED_SUBTYPES) {
+        if (sub.includes(ex)) return false;
+      }
+      return true;
+    });
+  }
+
+  const rawCount = data["@odata.count"] || listings.length;
+  const totalCount = EXCLUDED_SUBTYPES.size > 0 ? listings.length : rawCount;
   const currentPage = Math.floor(skip / top) + 1;
-  const totalPages = Math.ceil(totalCount / top);
+  const totalPages = EXCLUDED_SUBTYPES.size > 0 ? 1 : Math.ceil(rawCount / top);
 
   return {
-    listings: data.value || [],
+    listings,
     count: totalCount,
     numPages: totalPages,
     page: currentPage,

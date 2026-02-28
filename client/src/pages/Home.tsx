@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
@@ -23,6 +23,7 @@ import { ListingImport } from "@/components/ListingImport";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -71,6 +72,7 @@ const defaultInputs: BuyHoldInputs = {
 export default function Home({ embedded }: { embedded?: boolean }) {
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
+  const searchString = useSearch();
   const analyzerRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -89,13 +91,55 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     return !!savedLead;
   });
   
-  // User is considered "captured" if they're logged in OR have submitted lead info
   const leadCaptured = isAuthenticated || leadCapturedLocal;
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [dealName, setDealName] = useState("");
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingSheets, setIsExportingSheets] = useState(false);
   const [showProforma, setShowProforma] = useState(false);
+  const [mlsNumber, setMlsNumber] = useState("");
+  const [shareWithCommunity, setShareWithCommunity] = useState(true);
+
+  useEffect(() => {
+    if (!searchString) return;
+    const params = new URLSearchParams(searchString);
+    const addr = params.get("address");
+    const price = params.get("price");
+    const rent = params.get("rent");
+    const mls = params.get("mls");
+    const cityParam = params.get("city");
+    const stateParam = params.get("state");
+    const vacancy = params.get("vacancy");
+    const maintenance = params.get("maintenance");
+    const management = params.get("management");
+    const insurance = params.get("insurance");
+    const propertyTax = params.get("propertyTax");
+
+    if (!addr && !price) return;
+
+    if (addr) setAddress(addr);
+    if (cityParam) setCity(cityParam);
+    if (stateParam) setRegion(stateParam);
+    if (mls) setMlsNumber(mls);
+
+    const priceNum = price ? parseFloat(price) : 0;
+    const rentNum = rent ? parseFloat(rent) : 0;
+
+    if (priceNum > 0) {
+      setListingPrice(priceNum);
+      setInputs((prev) => ({
+        ...prev,
+        purchasePrice: priceNum,
+        closingCosts: Math.round(priceNum * 0.03),
+        monthlyRent: rentNum > 0 ? rentNum : prev.monthlyRent,
+        vacancyPercent: vacancy ? parseFloat(vacancy) : prev.vacancyPercent,
+        maintenancePercent: maintenance ? parseFloat(maintenance) : prev.maintenancePercent,
+        managementPercent: management ? parseFloat(management) : prev.managementPercent,
+        insurance: insurance ? parseFloat(insurance) : prev.insurance,
+        propertyTax: propertyTax ? parseFloat(propertyTax) : prev.propertyTax,
+      }));
+    }
+  }, []);
   
   const getSavedLeadInfo = () => {
     // If user is logged in, use their info
@@ -286,10 +330,14 @@ export default function Home({ embedded }: { embedded?: boolean }) {
       const response = await apiRequest("POST", "/api/saved-deals", {
         name,
         address: formattedAddress,
+        city: city || undefined,
+        province: region || undefined,
         countryMode: country,
         strategyType: strategy,
+        mlsNumber: mlsNumber || undefined,
         inputsJson: inputs,
         resultsJson: results,
+        shareWithCommunity,
         sessionId: getSessionId(),
       });
       return response;
@@ -299,7 +347,9 @@ export default function Home({ embedded }: { embedded?: boolean }) {
       setDealName("");
       toast({
         title: "Deal Saved!",
-        description: "You can now compare this deal with others.",
+        description: shareWithCommunity && mlsNumber
+          ? "Your analysis has been shared with the community."
+          : "You can now compare this deal with others.",
       });
     },
     onError: () => {
@@ -832,14 +882,34 @@ export default function Home({ embedded }: { embedded?: boolean }) {
           <DialogHeader>
             <DialogTitle>Save Deal for Comparison</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <label className="text-sm font-medium mb-2 block">Deal Name</label>
-            <Input
-              value={dealName}
-              onChange={(e) => setDealName(e.target.value)}
-              placeholder="Enter a name for this deal"
-              data-testid="input-deal-name"
-            />
+          <div className="py-4 space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Deal Name</label>
+              <Input
+                value={dealName}
+                onChange={(e) => setDealName(e.target.value)}
+                placeholder="Enter a name for this deal"
+                data-testid="input-deal-name"
+              />
+            </div>
+            {mlsNumber && (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border/50">
+                <Checkbox
+                  id="share-community"
+                  checked={shareWithCommunity}
+                  onCheckedChange={(checked) => setShareWithCommunity(!!checked)}
+                  data-testid="checkbox-share-community"
+                />
+                <div className="grid gap-1">
+                  <label htmlFor="share-community" className="text-sm font-medium cursor-pointer">
+                    Share analysis with community
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Your analysis will appear on the Cap Rate Map for MLS# {mlsNumber}, helping other investors evaluate this property.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
