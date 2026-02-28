@@ -335,7 +335,7 @@ export default function CapRates() {
   const [maxPrice, setMaxPrice] = useState("");
   const [minBeds, setMinBeds] = useState("any");
   const [propertyType, setPropertyType] = useState("all");
-  const [minCapRate, setMinCapRate] = useState("4");
+  const [minCapRate, setMinCapRate] = useState("any");
   const [sortBy, setSortBy] = useState<"capRate" | "priceAsc" | "priceDesc">("capRate");
   const [page, setPage] = useState(1);
   const [listings, setListings] = useState<RepliersListing[]>([]);
@@ -476,7 +476,6 @@ export default function CapRates() {
           latitudeMax: bounds.north,
           longitudeMin: bounds.west,
           longitudeMax: bounds.east,
-          minUnits: 2,
           excludeBusinessSales: true,
           excludeParking: true,
         };
