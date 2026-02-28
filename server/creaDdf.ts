@@ -4,16 +4,28 @@ interface DdfTokenResponse {
   expires_in: number;
 }
 
+interface DdfMediaItem {
+  MediaKey?: string;
+  MediaURL?: string;
+  Order?: number;
+  PreferredPhotoYN?: boolean;
+  MediaCategory?: string;
+}
+
 interface DdfListing {
   ListingKey: string;
-  MlsNumber?: string;
+  ListingId?: string;
   ListPrice?: number;
   StandardStatus?: string;
-  PropertyType?: string;
   PropertySubType?: string;
+  StructureType?: string;
   BedroomsTotal?: number;
   BathroomsTotalInteger?: number;
+  BathroomsPartial?: number;
   LivingArea?: number;
+  LivingAreaUnits?: string;
+  BuildingAreaTotal?: number;
+  BuildingAreaUnits?: string;
   YearBuilt?: number;
   UnparsedAddress?: string;
   StreetNumber?: string;
@@ -23,20 +35,26 @@ interface DdfListing {
   StreetDirSuffix?: string;
   UnitNumber?: string;
   City?: string;
+  CityRegion?: string;
   StateOrProvince?: string;
   PostalCode?: string;
   Country?: string;
   Latitude?: number;
   Longitude?: number;
-  ListingId?: string;
   PublicRemarks?: string;
   TaxAnnualAmount?: number;
-  ListOfficeName?: string;
-  ListAgentFullName?: string;
-  Media?: Array<{ MediaURL?: string; Order?: number }>;
+  TotalActualRent?: number;
+  Stories?: number;
+  ParkingTotal?: number;
+  ArchitecturalStyle?: string[];
+  Basement?: string[];
+  PhotosCount?: number;
+  Media?: DdfMediaItem[];
   ModificationTimestamp?: string;
-  ListingContractDate?: string;
-  DaysOnMarket?: number;
+  OriginalEntryTimestamp?: string;
+  NumberOfUnitsTotal?: number;
+  AssociationFee?: number;
+  AssociationFeeFrequency?: string;
   [key: string]: any;
 }
 
@@ -49,7 +67,24 @@ interface DdfSearchResponse {
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 const DDF_AUTH_URL = "https://identity.crea.ca/connect/token";
-const DDF_API_BASE = "https://data.crea.ca/reso/odata";
+const DDF_API_BASE = "https://ddfapi.realtor.ca/odata/v1";
+
+const DDF_SELECT_FIELDS = [
+  "ListingKey", "ListingId", "ListPrice", "StandardStatus",
+  "PropertySubType", "StructureType",
+  "BedroomsTotal", "BathroomsTotalInteger", "BathroomsPartial",
+  "LivingArea", "LivingAreaUnits", "BuildingAreaTotal", "BuildingAreaUnits",
+  "YearBuilt", "Stories",
+  "UnparsedAddress", "StreetNumber", "StreetName", "StreetSuffix",
+  "StreetDirPrefix", "StreetDirSuffix", "UnitNumber",
+  "City", "CityRegion", "StateOrProvince", "PostalCode", "Country",
+  "Latitude", "Longitude",
+  "PublicRemarks", "TaxAnnualAmount", "TotalActualRent",
+  "ParkingTotal", "NumberOfUnitsTotal",
+  "AssociationFee", "AssociationFeeFrequency",
+  "PhotosCount", "Media",
+  "ModificationTimestamp", "OriginalEntryTimestamp",
+].join(",");
 
 export async function getDdfToken(): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expiresAt - 60000) {
@@ -98,10 +133,10 @@ export async function searchDdfListings(params: {
   maxPrice?: number;
   minBeds?: number;
   maxBeds?: number;
-  propertyType?: string;
+  propertySubType?: string;
   top?: number;
   skip?: number;
-}): Promise<{ listings: DdfListing[]; count: number; nextLink?: string }> {
+}): Promise<{ listings: DdfListing[]; count: number; numPages: number; page: number }> {
   const token = await getDdfToken();
 
   const filters: string[] = [];
@@ -125,31 +160,20 @@ export async function searchDdfListings(params: {
   if (params.maxBeds) {
     filters.push(`BedroomsTotal le ${params.maxBeds}`);
   }
-  if (params.propertyType) {
-    filters.push(`PropertyType eq '${params.propertyType.replace(/'/g, "''")}'`);
+  if (params.propertySubType) {
+    filters.push(`PropertySubType eq '${params.propertySubType.replace(/'/g, "''")}'`);
   }
+
+  const top = params.top || 48;
+  const skip = params.skip || 0;
 
   const queryParams = new URLSearchParams();
   queryParams.set("$filter", filters.join(" and "));
   queryParams.set("$count", "true");
-  queryParams.set("$top", String(params.top || 48));
-  if (params.skip) queryParams.set("$skip", String(params.skip));
+  queryParams.set("$top", String(top));
+  if (skip > 0) queryParams.set("$skip", String(skip));
   queryParams.set("$orderby", "ModificationTimestamp desc");
-  queryParams.set(
-    "$select",
-    [
-      "ListingKey", "MlsNumber", "ListPrice", "StandardStatus",
-      "PropertyType", "PropertySubType",
-      "BedroomsTotal", "BathroomsTotalInteger", "LivingArea", "YearBuilt",
-      "UnparsedAddress", "StreetNumber", "StreetName", "StreetSuffix",
-      "StreetDirPrefix", "StreetDirSuffix", "UnitNumber",
-      "City", "StateOrProvince", "PostalCode", "Country",
-      "Latitude", "Longitude",
-      "PublicRemarks", "TaxAnnualAmount",
-      "ListOfficeName", "ListAgentFullName",
-      "ModificationTimestamp", "ListingContractDate", "DaysOnMarket",
-    ].join(",")
-  );
+  queryParams.set("$select", DDF_SELECT_FIELDS);
 
   const url = `${DDF_API_BASE}/Property?${queryParams.toString()}`;
 
@@ -163,15 +187,19 @@ export async function searchDdfListings(params: {
   if (!response.ok) {
     const errorText = await response.text();
     console.error("DDF search error:", response.status, errorText);
-    throw new Error(`DDF search failed: ${response.status}`);
+    throw new Error(`DDF search failed: ${response.status} - ${errorText}`);
   }
 
   const data: DdfSearchResponse = await response.json();
+  const totalCount = data["@odata.count"] || data.value?.length || 0;
+  const currentPage = Math.floor(skip / top) + 1;
+  const totalPages = Math.ceil(totalCount / top);
 
   return {
     listings: data.value || [],
-    count: data["@odata.count"] || data.value?.length || 0,
-    nextLink: data["@odata.nextLink"],
+    count: totalCount,
+    numPages: totalPages,
+    page: currentPage,
   };
 }
 
@@ -196,8 +224,19 @@ export async function getDdfListing(listingKey: string): Promise<DdfListing | nu
 }
 
 export function normalizeDdfToRepliersFormat(ddf: DdfListing): any {
+  const images = (ddf.Media || [])
+    .sort((a, b) => (a.Order || 0) - (b.Order || 0))
+    .map(m => m.MediaURL || "")
+    .filter(Boolean);
+
+  const sqft = ddf.LivingArea
+    ? String(ddf.LivingArea)
+    : ddf.BuildingAreaTotal
+      ? String(ddf.BuildingAreaTotal)
+      : undefined;
+
   return {
-    mlsNumber: ddf.MlsNumber || ddf.ListingKey,
+    mlsNumber: ddf.ListingId || ddf.ListingKey,
     listPrice: ddf.ListPrice || 0,
     address: {
       streetNumber: ddf.StreetNumber || "",
@@ -207,10 +246,11 @@ export function normalizeDdfToRepliersFormat(ddf: DdfListing): any {
       streetDirection: ddf.StreetDirSuffix || "",
       unitNumber: ddf.UnitNumber || "",
       city: ddf.City || "",
+      neighborhood: ddf.CityRegion || "",
       state: ddf.StateOrProvince || "",
       zip: ddf.PostalCode || "",
-      country: ddf.Country || "CA",
-      area: ddf.City || "",
+      country: (ddf.Country === "Canada" || ddf.Country === "CAN") ? "CA" : ddf.Country || "CA",
+      area: ddf.CityRegion || ddf.City || "",
     },
     map: ddf.Latitude && ddf.Longitude
       ? { latitude: ddf.Latitude, longitude: ddf.Longitude }
@@ -218,18 +258,24 @@ export function normalizeDdfToRepliersFormat(ddf: DdfListing): any {
     details: {
       numBedrooms: ddf.BedroomsTotal || undefined,
       numBathrooms: ddf.BathroomsTotalInteger || undefined,
-      sqft: ddf.LivingArea ? String(ddf.LivingArea) : undefined,
-      propertyType: ddf.PropertySubType || ddf.PropertyType || undefined,
+      numBathroomsPlus: ddf.BathroomsPartial || undefined,
+      sqft,
+      propertyType: ddf.PropertySubType || ddf.StructureType || undefined,
       yearBuilt: ddf.YearBuilt ? String(ddf.YearBuilt) : undefined,
       description: ddf.PublicRemarks || undefined,
+      numParkingSpaces: ddf.ParkingTotal || undefined,
+      basement1: ddf.Basement?.join(", ") || undefined,
     },
-    type: ddf.PropertyType || "Residential",
+    type: ddf.PropertySubType || "Residential",
     class: "ResidentialProperty",
     status: ddf.StandardStatus === "Active" ? "A" : ddf.StandardStatus,
-    images: ddf.Media?.sort((a, b) => (a.Order || 0) - (b.Order || 0)).map(m => m.MediaURL || "").filter(Boolean) || [],
+    images,
     taxes: ddf.TaxAnnualAmount ? { annualAmount: ddf.TaxAnnualAmount } : undefined,
-    daysOnMarket: ddf.DaysOnMarket || undefined,
-    listDate: ddf.ListingContractDate || undefined,
+    daysOnMarket: ddf.OriginalEntryTimestamp
+      ? Math.floor((Date.now() - new Date(ddf.OriginalEntryTimestamp).getTime()) / 86400000)
+      : undefined,
+    listDate: ddf.OriginalEntryTimestamp || undefined,
+    totalActualRent: ddf.TotalActualRent || undefined,
     dataSource: "crea_ddf" as const,
   };
 }

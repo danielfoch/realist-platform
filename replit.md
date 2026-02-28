@@ -63,3 +63,4 @@ The application features a category-based dropdown navigation:
 - **Mapping**: Google Maps Places API (for address autocomplete and geocoding).
 - **PDF Export**: html-to-image and jsPDF (for analysis exports).
 - **Google Sheets**: Webhook backup for all lead creation endpoints.
+- **CREA DDF**: Official Canadian MLS data feed via RESO Web API (OData v4). Auth: OAuth2 client_credentials grant at `identity.crea.ca`. API base: `https://ddfapi.realtor.ca/odata/v1`. Secrets: `CREA_DDF_USERNAME`, `CREA_DDF_PASSWORD`. Client module: `server/creaDdf.ts`. Routes: `GET /api/ddf/status`, `POST /api/ddf/listings`, `GET /api/ddf/listing/:listingKey`. Data is normalized to Repliers format for the Cap Rates Explorer. DDF is used as primary data source with Repliers as fallback.

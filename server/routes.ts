@@ -2616,6 +2616,126 @@ export async function registerRoutes(
 
 
   // ============================================
+  // CREA DDF API ROUTES
+  // ============================================
+
+  app.post("/api/ddf/listings", async (req: any, res) => {
+    try {
+      const { isDdfConfigured, searchDdfListings, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "CREA DDF not configured", available: false });
+        return;
+      }
+
+      const {
+        city,
+        stateOrProvince,
+        minPrice,
+        maxPrice,
+        minBeds,
+        maxBeds,
+        propertySubType,
+        pageNum,
+        resultsPerPage,
+      } = req.body;
+
+      const sanitizedCity = typeof city === "string" ? city.slice(0, 100) : undefined;
+      const sanitizedProvince = typeof stateOrProvince === "string" ? stateOrProvince.slice(0, 100) : undefined;
+      const sanitizedSubType = typeof propertySubType === "string" ? propertySubType.slice(0, 100) : undefined;
+      const top = Math.min(Math.max(Number(resultsPerPage) || 48, 1), 100);
+      const pg = Math.max(Number(pageNum) || 1, 1);
+      const skip = (pg - 1) * top;
+
+      const result = await searchDdfListings({
+        city: sanitizedCity || undefined,
+        stateOrProvince: sanitizedProvince || undefined,
+        minPrice: minPrice ? Math.max(0, Number(minPrice)) : undefined,
+        maxPrice: maxPrice ? Math.max(0, Number(maxPrice)) : undefined,
+        minBeds: minBeds ? Math.max(0, Number(minBeds)) : undefined,
+        maxBeds: maxBeds ? Math.max(0, Number(maxBeds)) : undefined,
+        propertySubType: sanitizedSubType || undefined,
+        top,
+        skip,
+      });
+
+      const normalizedListings = result.listings.map(normalizeDdfToRepliersFormat);
+
+      res.json({
+        listings: normalizedListings,
+        count: result.count,
+        numPages: result.numPages,
+        page: result.page,
+        source: "crea_ddf",
+      });
+    } catch (error: any) {
+      console.error("DDF listings error:", error);
+      res.status(500).json({ error: "Failed to fetch DDF listings" });
+    }
+  });
+
+  app.get("/api/ddf/listing/:listingKey", async (req: any, res) => {
+    try {
+      const { isDdfConfigured, getDdfListing, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "CREA DDF not configured" });
+        return;
+      }
+
+      const listingKey = req.params.listingKey?.replace(/[^a-zA-Z0-9_-]/g, "");
+      if (!listingKey) {
+        res.status(400).json({ error: "Invalid listing key" });
+        return;
+      }
+
+      const listing = await getDdfListing(listingKey);
+      if (!listing) {
+        res.status(404).json({ error: "Listing not found" });
+        return;
+      }
+
+      res.json({ listing: normalizeDdfToRepliersFormat(listing), source: "crea_ddf" });
+    } catch (error: any) {
+      console.error("DDF listing error:", error);
+      res.status(500).json({ error: "Failed to fetch DDF listing" });
+    }
+  });
+
+  let ddfStatusCache: { result: any; expiresAt: number } | null = null;
+
+  app.get("/api/ddf/status", async (_req: any, res) => {
+    try {
+      if (ddfStatusCache && Date.now() < ddfStatusCache.expiresAt) {
+        res.json(ddfStatusCache.result);
+        return;
+      }
+
+      const { isDdfConfigured, getDdfToken } = await import("./creaDdf");
+
+      if (!isDdfConfigured()) {
+        const result = { configured: false, authenticated: false };
+        ddfStatusCache = { result, expiresAt: Date.now() + 60000 };
+        res.json(result);
+        return;
+      }
+
+      try {
+        await getDdfToken();
+        const result = { configured: true, authenticated: true };
+        ddfStatusCache = { result, expiresAt: Date.now() + 300000 };
+        res.json(result);
+      } catch {
+        const result = { configured: true, authenticated: false };
+        ddfStatusCache = { result, expiresAt: Date.now() + 30000 };
+        res.json(result);
+      }
+    } catch {
+      res.json({ configured: false, authenticated: false });
+    }
+  });
+
+  // ============================================
   // REPLIERS API PROXY ROUTES
   // ============================================
 

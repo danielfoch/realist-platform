@@ -71,7 +71,9 @@ interface ListingWithCapRate extends RepliersListing {
   capRate: number;
   estimatedMonthlyRent: number;
   annualNOI: number;
-  rentSource: "market" | "estimated";
+  rentSource: "market" | "estimated" | "actual";
+  totalActualRent?: number;
+  dataSource?: "crea_ddf" | "repliers";
 }
 
 interface RentPulseData {
@@ -293,15 +295,52 @@ export default function CapRates() {
   const [selectedListing, setSelectedListing] = useState<ListingWithCapRate | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"map" | "grid">("map");
+  const [dataSource, setDataSource] = useState<"crea_ddf" | "repliers" | null>(null);
   const listingRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const { data: rentData = [] } = useQuery<RentPulseData[]>({
     queryKey: ["/api/rents/pulse"],
   });
 
+  const { data: ddfStatus } = useQuery<{ configured: boolean; authenticated: boolean }>({
+    queryKey: ["/api/ddf/status"],
+  });
+
   const fetchListings = useCallback(async (pageNum = 1) => {
     setIsSearching(true);
     try {
+      const useDdf = ddfStatus?.configured && ddfStatus?.authenticated;
+
+      if (useDdf) {
+        const ddfBody: Record<string, any> = {
+          resultsPerPage: 48,
+          pageNum: pageNum,
+        };
+
+        if (searchCity && searchCity !== "all") ddfBody.city = searchCity;
+        if (minPrice) ddfBody.minPrice = parseInt(minPrice);
+        if (maxPrice) ddfBody.maxPrice = parseInt(maxPrice);
+        if (minBeds && minBeds !== "any") ddfBody.minBeds = parseInt(minBeds);
+        if (propertyType && propertyType !== "all") ddfBody.propertySubType = propertyType;
+
+        try {
+          const response = await apiRequest("POST", "/api/ddf/listings", ddfBody);
+          const data = await response.json();
+
+          if (data.listings && data.listings.length > 0) {
+            setListings(data.listings);
+            setTotalCount(data.count || 0);
+            setNumPages(data.numPages || 0);
+            setPage(data.page || 1);
+            setDataSource("crea_ddf");
+            setHasSearched(true);
+            return;
+          }
+        } catch (ddfError) {
+          console.warn("DDF search failed, falling back to Repliers:", ddfError);
+        }
+      }
+
       const body: Record<string, any> = {
         resultsPerPage: 48,
         pageNum: pageNum,
@@ -323,6 +362,7 @@ export default function CapRates() {
         setTotalCount(data.count || 0);
         setNumPages(data.numPages || 0);
         setPage(data.page || 1);
+        setDataSource("repliers");
       } else {
         setListings([]);
         setTotalCount(0);
@@ -336,19 +376,30 @@ export default function CapRates() {
     } finally {
       setIsSearching(false);
     }
-  }, [searchCity, minPrice, maxPrice, minBeds, propertyType]);
+  }, [searchCity, minPrice, maxPrice, minBeds, propertyType, ddfStatus]);
 
   const listingsWithCapRates = useMemo((): ListingWithCapRate[] => {
     return listings
-      .map((listing) => {
+      .map((listing: any) => {
         const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
         const bedrooms = listing.details?.numBedrooms || 2;
-        const { rent, source } = estimateMonthlyRent(
-          bedrooms,
-          listing.address?.city,
-          listing.address?.country,
-          rentData
-        );
+
+        let rent: number;
+        let source: "market" | "estimated" | "actual";
+        if (listing.totalActualRent && listing.totalActualRent > 0) {
+          rent = listing.totalActualRent / 12;
+          source = "actual";
+        } else {
+          const estimated = estimateMonthlyRent(
+            bedrooms,
+            listing.address?.city,
+            listing.address?.country,
+            rentData
+          );
+          rent = estimated.rent;
+          source = estimated.source;
+        }
+
         const { capRate, annualNOI } = calculateCapRate(
           price,
           rent,
@@ -997,15 +1048,22 @@ export default function CapRates() {
 
         {hasSearched && !isSearching && (
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-muted-foreground" data-testid="text-results-count">
-              {listingsWithCapRates.length > 0
-                ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
-                : `No properties found`}
-              {searchCity && searchCity !== "all" ? ` in ${searchCity}` : ""}
-              {viewMode === "map" && mappableListings.length < listingsWithCapRates.length
-                ? ` (${mappableListings.length} mapped)`
-                : ""}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground" data-testid="text-results-count">
+                {listingsWithCapRates.length > 0
+                  ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
+                  : `No properties found`}
+                {searchCity && searchCity !== "all" ? ` in ${searchCity}` : ""}
+                {viewMode === "map" && mappableListings.length < listingsWithCapRates.length
+                  ? ` (${mappableListings.length} mapped)`
+                  : ""}
+              </p>
+              {dataSource && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0" data-testid="badge-data-source">
+                  {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <ArrowUpDown className="h-3 w-3" />
               {sortBy === "capRate" ? "By cap rate" : sortBy === "priceAsc" ? "Price: low-high" : "Price: high-low"}
