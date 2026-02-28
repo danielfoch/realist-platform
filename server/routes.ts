@@ -5144,6 +5144,76 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/yield-history", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const data = await storage.getCityYieldHistory(city, province);
+      const months = await storage.getAllCityYieldHistoryMonths();
+      res.json({ data, months });
+    } catch (error) {
+      console.error("Error fetching yield history:", error);
+      res.status(500).json({ error: "Failed to fetch yield history" });
+    }
+  });
+
+  app.post("/api/yield-history/compare", async (req, res) => {
+    try {
+      const { cities } = req.body;
+      if (!Array.isArray(cities) || cities.length === 0 || cities.length > 10) {
+        return res.status(400).json({ error: "cities array required (1-10 items)" });
+      }
+      const validCities = cities
+        .filter((c: any) => typeof c?.city === "string" && typeof c?.province === "string" && c.city.length > 0 && c.province.length > 0)
+        .map((c: any) => ({ city: String(c.city).trim(), province: String(c.province).trim() }));
+      if (validCities.length === 0) {
+        return res.status(400).json({ error: "No valid city entries" });
+      }
+      const data = await storage.getMultiCityYieldHistory(validCities);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching yield comparison:", error);
+      res.status(500).json({ error: "Failed to fetch yield comparison" });
+    }
+  });
+
+  app.post("/api/ddf-crawl/trigger", isAdmin, async (_req, res) => {
+    try {
+      const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
+      res.json({ status: "started", message: "DDF yield crawl initiated in background" });
+      runDdfYieldCrawl().then(result => {
+        console.log("[ddf-crawler] Manual trigger complete:", result);
+      }).catch(err => {
+        console.error("[ddf-crawler] Manual trigger failed:", err);
+      });
+    } catch (error) {
+      console.error("Error triggering DDF crawl:", error);
+      res.status(500).json({ error: "Failed to trigger crawl" });
+    }
+  });
+
+  app.get("/api/ddf-crawl/status", isAdmin, async (_req, res) => {
+    try {
+      const months = await storage.getAllCityYieldHistoryMonths();
+      const latestMonth = months[0];
+      let cityCounts: any[] = [];
+      if (latestMonth) {
+        const data = await storage.getCityYieldHistory(undefined, undefined);
+        cityCounts = data
+          .filter(d => d.month === latestMonth)
+          .map(d => ({
+            city: d.city,
+            province: d.province,
+            listings: d.listingCount,
+            avgGrossYield: d.avgGrossYield,
+          }));
+      }
+      res.json({ months, latestMonth, cities: cityCounts });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch crawl status" });
+    }
+  });
+
   async function computeMonthlySnapshot(targetMonth?: string) {
     const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
     const now = new Date();
@@ -5235,7 +5305,7 @@ export async function registerRoutes(
     }
   })();
 
-  // Cron: check every hour, auto-compute on the 1st of each month
+  // Cron: check every hour, auto-compute snapshots + DDF yield crawl on the 1st of each month
   setInterval(async () => {
     try {
       const now = new Date();
@@ -5245,6 +5315,17 @@ export async function registerRoutes(
         console.log("[market-report] Monthly cron: computing snapshot for", currentMonth);
         await computeMonthlySnapshot(currentMonth);
         console.log("[market-report] Monthly cron: snapshot complete for", currentMonth);
+      }
+
+      const yieldMonths = await storage.getAllCityYieldHistoryMonths();
+      if (!yieldMonths.includes(currentMonth)) {
+        console.log("[ddf-crawler] Monthly cron: starting yield crawl for", currentMonth);
+        const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
+        runDdfYieldCrawl(currentMonth).then(result => {
+          console.log("[ddf-crawler] Monthly cron complete:", result);
+        }).catch(err => {
+          console.error("[ddf-crawler] Monthly cron failed:", err);
+        });
       }
     } catch (error) {
       console.error("[market-report] Monthly cron failed:", error);

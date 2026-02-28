@@ -1911,3 +1911,74 @@ export const insertMarketSnapshotSchema = createInsertSchema(marketSnapshots).om
 
 export type InsertMarketSnapshot = z.infer<typeof insertMarketSnapshotSchema>;
 export type MarketSnapshot = typeof marketSnapshots.$inferSelect;
+
+export const ddfListingSnapshots = pgTable("ddf_listing_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingKey: varchar("listing_key").notNull(),
+  mlsNumber: varchar("mls_number"),
+  city: text("city"),
+  province: text("province"),
+  postalCode: varchar("postal_code"),
+  listPrice: real("list_price"),
+  bedroomsTotal: integer("bedrooms_total"),
+  bathroomsTotal: integer("bathrooms_total"),
+  numberOfUnits: integer("number_of_units"),
+  livingArea: real("living_area"),
+  yearBuilt: integer("year_built"),
+  propertySubType: text("property_sub_type"),
+  structureType: text("structure_type"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  totalActualRent: real("total_actual_rent"),
+  taxAnnualAmount: real("tax_annual_amount"),
+  associationFee: real("association_fee"),
+  estimatedMonthlyRent: real("estimated_monthly_rent"),
+  grossYield: real("gross_yield"),
+  estimatedExpenses: real("estimated_expenses"),
+  estimatedNoi: real("estimated_noi"),
+  netYield: real("net_yield"),
+  daysOnMarket: integer("days_on_market"),
+  rentSource: text("rent_source"),
+  rawJson: jsonb("raw_json"),
+  snapshotMonth: varchar("snapshot_month", { length: 7 }).notNull(),
+  capturedAt: timestamp("captured_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE INDEX IF NOT EXISTS ddf_snapshots_city_month_idx ON ddf_listing_snapshots(city, snapshot_month)`,
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS ddf_snapshots_listing_month_idx ON ddf_listing_snapshots(listing_key, snapshot_month)`,
+]);
+
+export const insertDdfListingSnapshotSchema = createInsertSchema(ddfListingSnapshots).omit({
+  id: true,
+  capturedAt: true,
+});
+export type InsertDdfListingSnapshot = z.infer<typeof insertDdfListingSnapshotSchema>;
+export type DdfListingSnapshot = typeof ddfListingSnapshots.$inferSelect;
+
+export const cityYieldHistory = pgTable("city_yield_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  city: text("city").notNull(),
+  province: text("province").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  listingCount: integer("listing_count").default(0).notNull(),
+  avgGrossYield: real("avg_gross_yield"),
+  medianGrossYield: real("median_gross_yield"),
+  avgNetYield: real("avg_net_yield"),
+  avgListPrice: real("avg_list_price"),
+  medianListPrice: real("median_list_price"),
+  avgRentPerUnit: real("avg_rent_per_unit"),
+  avgDaysOnMarket: real("avg_days_on_market"),
+  avgPricePerSqft: real("avg_price_per_sqft"),
+  inventoryCount: integer("inventory_count").default(0),
+  avgBedsPerListing: real("avg_beds_per_listing"),
+  yieldTrend: real("yield_trend"),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS city_yield_history_city_month_idx ON city_yield_history(city, province, month)`,
+]);
+
+export const insertCityYieldHistorySchema = createInsertSchema(cityYieldHistory).omit({
+  id: true,
+  computedAt: true,
+});
+export type InsertCityYieldHistory = z.infer<typeof insertCityYieldHistorySchema>;
+export type CityYieldHistory = typeof cityYieldHistory.$inferSelect;

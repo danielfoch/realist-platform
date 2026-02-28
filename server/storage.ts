@@ -118,6 +118,12 @@ import {
   marketSnapshots,
   type MarketSnapshot,
   type InsertMarketSnapshot,
+  ddfListingSnapshots,
+  type DdfListingSnapshot,
+  type InsertDdfListingSnapshot,
+  cityYieldHistory,
+  type CityYieldHistory,
+  type InsertCityYieldHistory,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -359,6 +365,15 @@ export interface IStorage {
   getMarketSnapshots(city?: string, province?: string): Promise<MarketSnapshot[]>;
   getLatestMarketSnapshots(): Promise<MarketSnapshot[]>;
   getMarketSnapshotMonths(): Promise<string[]>;
+
+  insertDdfListingSnapshot(data: InsertDdfListingSnapshot): Promise<DdfListingSnapshot>;
+  insertDdfListingSnapshotsBatch(data: InsertDdfListingSnapshot[]): Promise<number>;
+  getDdfSnapshotsByCity(city: string, month: string): Promise<DdfListingSnapshot[]>;
+
+  upsertCityYieldHistory(data: InsertCityYieldHistory): Promise<CityYieldHistory>;
+  getCityYieldHistory(city?: string, province?: string): Promise<CityYieldHistory[]>;
+  getAllCityYieldHistoryMonths(): Promise<string[]>;
+  getMultiCityYieldHistory(cities: { city: string; province: string }[]): Promise<CityYieldHistory[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1538,6 +1553,77 @@ export class DatabaseStorage implements IStorage {
       .from(marketSnapshots)
       .orderBy(desc(marketSnapshots.month));
     return results.map(r => r.month);
+  }
+
+  async insertDdfListingSnapshot(data: InsertDdfListingSnapshot): Promise<DdfListingSnapshot> {
+    const [result] = await db.insert(ddfListingSnapshots).values(data).returning();
+    return result;
+  }
+
+  async insertDdfListingSnapshotsBatch(data: InsertDdfListingSnapshot[]): Promise<number> {
+    if (data.length === 0) return 0;
+    const batchSize = 100;
+    let inserted = 0;
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+      await db.insert(ddfListingSnapshots).values(batch).onConflictDoNothing();
+      inserted += batch.length;
+    }
+    return inserted;
+  }
+
+  async getDdfSnapshotsByCity(city: string, month: string): Promise<DdfListingSnapshot[]> {
+    return db.select().from(ddfListingSnapshots)
+      .where(and(
+        eq(ddfListingSnapshots.city, city),
+        eq(ddfListingSnapshots.snapshotMonth, month),
+      ));
+  }
+
+  async upsertCityYieldHistory(data: InsertCityYieldHistory): Promise<CityYieldHistory> {
+    const [existing] = await db.select().from(cityYieldHistory)
+      .where(and(
+        eq(cityYieldHistory.city, data.city),
+        eq(cityYieldHistory.province, data.province),
+        eq(cityYieldHistory.month, data.month),
+      ));
+    if (existing) {
+      const [result] = await db.update(cityYieldHistory)
+        .set(data)
+        .where(eq(cityYieldHistory.id, existing.id))
+        .returning();
+      return result;
+    }
+    const [result] = await db.insert(cityYieldHistory).values(data).returning();
+    return result;
+  }
+
+  async getCityYieldHistory(city?: string, province?: string): Promise<CityYieldHistory[]> {
+    const conditions = [];
+    if (city) conditions.push(eq(cityYieldHistory.city, city));
+    if (province) conditions.push(eq(cityYieldHistory.province, province));
+    return db.select().from(cityYieldHistory)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(cityYieldHistory.month), asc(cityYieldHistory.city));
+  }
+
+  async getAllCityYieldHistoryMonths(): Promise<string[]> {
+    const results = await db.selectDistinct({ month: cityYieldHistory.month })
+      .from(cityYieldHistory)
+      .orderBy(desc(cityYieldHistory.month));
+    return results.map(r => r.month);
+  }
+
+  async getMultiCityYieldHistory(cities: { city: string; province: string }[]): Promise<CityYieldHistory[]> {
+    if (cities.length === 0) return [];
+    const conditions = cities.map(c => and(
+      eq(cityYieldHistory.city, c.city),
+      eq(cityYieldHistory.province, c.province),
+    ));
+    const orCondition = sql`(${sql.join(conditions.map(c => sql`(${c})`), sql` OR `)})`;
+    return db.select().from(cityYieldHistory)
+      .where(orCondition)
+      .orderBy(asc(cityYieldHistory.month), asc(cityYieldHistory.city));
   }
 }
 
