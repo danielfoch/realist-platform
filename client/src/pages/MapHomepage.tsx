@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
@@ -90,16 +90,6 @@ const howItWorksSteps = [
 ];
 
 export default function MapHomepage() {
-  const [mapActivated, setMapActivated] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
-
-  const handleOpenMap = useCallback(() => {
-    setMapActivated(true);
-    if (heroRef.current) {
-      heroRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, []);
-
   const combinedSchema = {
     "@context": "https://schema.org",
     "@graph": [organizationSchema, websiteSchema, softwareSchema],
@@ -116,22 +106,17 @@ export default function MapHomepage() {
       />
       <Navigation />
 
-      <section ref={heroRef} className="relative" style={{ minHeight: "80vh" }}>
+      <section className="relative" style={{ minHeight: "80vh" }}>
         <div className="absolute inset-0 z-0">
-          <div
-            className={`w-full h-full transition-all duration-700 ${
-              mapActivated ? "" : "saturate-[0.3] blur-[2px]"
-            }`}
-            style={{ pointerEvents: mapActivated ? "auto" : "none" }}
-          >
+          <div className="w-full h-full saturate-[0.3] blur-[2px]" style={{ pointerEvents: "none" }}>
             <MapContainer
               center={TORONTO_CENTER}
               zoom={6}
-              scrollWheelZoom={mapActivated}
-              dragging={mapActivated}
-              zoomControl={mapActivated}
-              doubleClickZoom={mapActivated}
-              touchZoom={mapActivated}
+              scrollWheelZoom={false}
+              dragging={false}
+              zoomControl={false}
+              doubleClickZoom={false}
+              touchZoom={false}
               style={{ width: "100%", height: "100%", minHeight: "80vh" }}
               attributionControl={false}
             >
@@ -144,104 +129,71 @@ export default function MapHomepage() {
           </div>
         </div>
 
-        {!mapActivated && (
-          <div className="absolute inset-0 z-10 bg-gradient-to-b from-background/70 via-background/50 to-background/80 dark:from-background/80 dark:via-background/60 dark:to-background/90" />
-        )}
+        <div className="absolute inset-0 z-10 bg-gradient-to-b from-background/70 via-background/50 to-background/80 dark:from-background/80 dark:via-background/60 dark:to-background/90" />
 
-        {!mapActivated && (
-          <div className="relative z-20 flex items-center justify-center px-4" style={{ minHeight: "80vh" }}>
-            <div className="max-w-2xl w-full">
-              <Card className="backdrop-blur-md bg-card/80 dark:bg-card/70 border-border/60">
-                <CardContent className="p-8 md:p-12 text-center space-y-6">
-                  <h1
-                    className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight"
-                    data-testid="text-map-hero-headline"
-                  >
-                    Browse Canadian listings with{" "}
-                    <span className="text-gradient">community cap rates.</span>
-                  </h1>
-                  <p
-                    className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto"
-                    data-testid="text-map-hero-subhead"
-                  >
-                    Real-time cap rate estimates powered by CMHC data and community underwriting.
-                    See what investors are really paying attention to.
-                  </p>
+        <div className="relative z-20 flex items-center justify-center px-4" style={{ minHeight: "80vh" }}>
+          <div className="max-w-2xl w-full">
+            <Card className="backdrop-blur-md bg-card/80 dark:bg-card/70 border-border/60">
+              <CardContent className="p-8 md:p-12 text-center space-y-6">
+                <h1
+                  className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight"
+                  data-testid="text-map-hero-headline"
+                >
+                  Browse Canadian listings with{" "}
+                  <span className="text-gradient">community cap rates.</span>
+                </h1>
+                <p
+                  className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto"
+                  data-testid="text-map-hero-subhead"
+                >
+                  Real-time cap rate estimates powered by CMHC data and community underwriting.
+                  See what investors are really paying attention to.
+                </p>
 
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
+                  <Link href="/tools/cap-rates">
                     <Button
                       size="lg"
                       className="gap-2 px-8"
-                      onClick={handleOpenMap}
                       data-testid="button-open-map"
                     >
                       <Map className="h-5 w-5" />
                       Open Cap Rate Map
                     </Button>
-                    <Link href="/deal-analyzer">
-                      <Button
-                        variant="secondary"
-                        size="lg"
-                        className="gap-2 px-8"
-                        data-testid="button-analyze-deal"
-                      >
-                        <Calculator className="h-5 w-5" />
-                        Analyze a Deal
-                      </Button>
-                    </Link>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
-                    <Link href="/tools/cap-rates" className="underline underline-offset-2">
-                      <span data-testid="link-full-explorer">Full Cap Rate Explorer</span>
-                    </Link>
-                    <Link href="/community/leaderboard" className="underline underline-offset-2">
-                      <span data-testid="link-leaderboard">Leaderboard</span>
-                    </Link>
-                    <a
-                      href="https://www.skool.com/realistgroup"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2"
+                  </Link>
+                  <Link href="/deal-analyzer">
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      className="gap-2 px-8"
+                      data-testid="button-analyze-deal"
                     >
-                      <span data-testid="link-join-community">Join Community</span>
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
+                      <Calculator className="h-5 w-5" />
+                      Analyze a Deal
+                    </Button>
+                  </Link>
+                </div>
 
-        {mapActivated && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000]">
-            <Card className="backdrop-blur-md bg-card/90 dark:bg-card/80 border-border/60">
-              <CardContent className="p-3 flex items-center gap-3 flex-wrap">
-                <p className="text-sm text-muted-foreground">
-                  Explore the map or
-                </p>
-                <Link href="/tools/cap-rates">
-                  <Button size="sm" className="gap-1" data-testid="button-full-explorer">
-                    Open Full Explorer
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMapActivated(false)}
-                  data-testid="button-close-map"
-                >
-                  Back
-                </Button>
+                <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
+                  <Link href="/community/leaderboard" className="underline underline-offset-2">
+                    <span data-testid="link-leaderboard">Leaderboard</span>
+                  </Link>
+                  <a
+                    href="https://www.skool.com/realistgroup"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2"
+                  >
+                    <span data-testid="link-join-community">Join Community</span>
+                  </a>
+                </div>
               </CardContent>
             </Card>
           </div>
-        )}
+        </div>
       </section>
 
-      {!mapActivated && (
-        <>
+      <>
           <section className="py-12 border-t border-border/50">
             <div className="max-w-7xl mx-auto px-4 md:px-6">
               <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
@@ -407,8 +359,7 @@ export default function MapHomepage() {
               </div>
             </div>
           </footer>
-        </>
-      )}
+      </>
     </div>
   );
 }
