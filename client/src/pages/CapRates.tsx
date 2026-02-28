@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,14 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   TrendingUp, Search, Building, BedDouble, Bath, Maximize,
   DollarSign, MapPin, ChevronRight, ChevronLeft, ArrowUpDown,
   Calculator, X, Loader2, ArrowRight, Filter, Map, LayoutGrid,
-  RefreshCw, ChevronDown, ChevronUp, List,
+  RefreshCw, ChevronDown, ChevronUp, List, Users, MessageSquare,
+  ThumbsUp, ThumbsDown, Send, PenLine,
 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { getCmhcRent } from "@shared/cmhcRents";
+import type { ListingAnalysisAggregate, UnderwritingNote, ListingComment } from "@shared/schema";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -305,6 +311,8 @@ function FlyToLocation({ lat, lng, zoom }: { lat: number; lng: number; zoom?: nu
 
 export default function CapRates() {
   const [, setLocation] = useLocation();
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minBeds, setMinBeds] = useState("any");
@@ -323,8 +331,18 @@ export default function CapRates() {
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [showMobileList, setShowMobileList] = useState(false);
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | null>(null);
+  const [detailTab, setDetailTab] = useState<string>("overview");
+  const [aggregatesMap, setAggregatesMap] = useState<Record<string, ListingAnalysisAggregate>>({});
   const listingRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const searchInProgress = useRef(false);
+
+  const [uwUnitCount, setUwUnitCount] = useState("1");
+  const [uwRentPerUnit, setUwRentPerUnit] = useState("");
+  const [uwVacancy, setUwVacancy] = useState("5");
+  const [uwExpenseRatio, setUwExpenseRatio] = useState("35");
+  const [uwNoteText, setUwNoteText] = useState("");
+  const [commentBody, setCommentBody] = useState("");
+  const [communitySortBy, setCommunitySortBy] = useState<"top" | "new">("top");
 
   const { data: rentData = [] } = useQuery<RentPulseData[]>({
     queryKey: ["/api/rents/pulse"],
@@ -332,6 +350,97 @@ export default function CapRates() {
 
   const { data: ddfStatus } = useQuery<{ configured: boolean; authenticated: boolean }>({
     queryKey: ["/api/ddf/status"],
+  });
+
+  const selectedMls = selectedListing?.mlsNumber;
+
+  const { data: communityNotes = [], refetch: refetchNotes } = useQuery<(UnderwritingNote & { userName?: string })[]>({
+    queryKey: ["/api/community/notes", selectedMls],
+    queryFn: async () => {
+      if (!selectedMls) return [];
+      const res = await fetch(`/api/community/notes/${selectedMls}`);
+      return res.json();
+    },
+    enabled: !!selectedMls,
+  });
+
+  const { data: communityComments = [], refetch: refetchComments } = useQuery<(ListingComment & { userName?: string })[]>({
+    queryKey: ["/api/community/comments", selectedMls],
+    queryFn: async () => {
+      if (!selectedMls) return [];
+      const res = await fetch(`/api/community/comments/${selectedMls}`);
+      return res.json();
+    },
+    enabled: !!selectedMls,
+  });
+
+  const fetchAggregatesBatch = useCallback(async (mlsNumbers: string[]) => {
+    if (mlsNumbers.length === 0) return;
+    try {
+      const res = await apiRequest("POST", "/api/community/aggregates", { mlsNumbers });
+      const data: ListingAnalysisAggregate[] = await res.json();
+      const map: Record<string, ListingAnalysisAggregate> = {};
+      data.forEach((agg) => { map[agg.listingMlsNumber] = agg; });
+      setAggregatesMap((prev) => ({ ...prev, ...map }));
+    } catch {
+    }
+  }, []);
+
+  useEffect(() => {
+    const mlsNumbers = listings.map((l) => l.mlsNumber).filter(Boolean);
+    if (mlsNumbers.length > 0) {
+      fetchAggregatesBatch(mlsNumbers);
+    }
+  }, [listings, fetchAggregatesBatch]);
+
+  const submitNoteMutation = useMutation({
+    mutationFn: async (data: {
+      listingMlsNumber: string;
+      unitCount: number;
+      rentsJson: number[];
+      vacancy: number;
+      expenseRatio: number;
+      noteText: string;
+    }) => {
+      const res = await apiRequest("POST", "/api/community/notes", data);
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      toast({ title: "Underwriting note submitted", description: "+5 contribution points" });
+      refetchNotes();
+      setUwNoteText("");
+      fetchAggregatesBatch([variables.listingMlsNumber]);
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Failed to submit note", variant: "destructive" });
+    },
+  });
+
+  const submitCommentMutation = useMutation({
+    mutationFn: async (data: { listingMlsNumber: string; body: string }) => {
+      const res = await apiRequest("POST", "/api/community/comments", data);
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      toast({ title: "Comment posted", description: "+1 contribution point" });
+      refetchComments();
+      setCommentBody("");
+      fetchAggregatesBatch([variables.listingMlsNumber]);
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Failed to post comment", variant: "destructive" });
+    },
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: async (data: { targetType: string; targetId: string; value: number }) => {
+      const res = await apiRequest("POST", "/api/community/vote", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchNotes();
+      refetchComments();
+    },
   });
 
   const fetchListingsForBounds = useCallback(async (bounds: MapBounds, pageNum = 1) => {
@@ -503,6 +612,7 @@ export default function CapRates() {
 
   const handleSelectListing = (listing: ListingWithCapRate) => {
     setSelectedListing(listing);
+    setDetailTab("overview");
     if (listing.map?.latitude && listing.map?.longitude) {
       setFlyTo({ lat: listing.map.latitude, lng: listing.map.longitude });
     }
@@ -590,19 +700,97 @@ export default function CapRates() {
               <span>Rent: {formatPrice(listing.estimatedMonthlyRent)}/mo</span>
               <span>NOI: {formatPrice(listing.annualNOI)}/yr</span>
             </div>
+
+            {(() => {
+              const agg = aggregatesMap[listing.mlsNumber];
+              if (agg && ((agg.analysisCount ?? 0) > 0 || (agg.commentCount ?? 0) > 0)) {
+                const ac = agg.analysisCount ?? 0;
+                const cc = agg.commentCount ?? 0;
+                return (
+                  <div className="flex items-center gap-2 mt-1">
+                    {agg.communityCapRate != null && (
+                      <Badge variant="secondary" className="text-[9px] px-1 py-0" data-testid={`badge-community-cap-${listing.mlsNumber}`}>
+                        <Users className="h-2.5 w-2.5 mr-0.5" />
+                        {agg.communityCapRate.toFixed(1)}%
+                      </Badge>
+                    )}
+                    <span className="text-[9px] text-muted-foreground" data-testid={`text-community-stats-${listing.mlsNumber}`}>
+                      {ac} {ac === 1 ? "analysis" : "analyses"} · {cc} {cc === 1 ? "note" : "notes"}
+                    </span>
+                  </div>
+                );
+              }
+              return (
+                <div className="mt-1">
+                  <span className="text-[9px] text-primary cursor-pointer" data-testid={`link-first-analyze-${listing.mlsNumber}`}>
+                    Be first to analyze
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
     );
   };
 
+  const handleSubmitUnderwriting = () => {
+    if (!selectedListing || !isAuthenticated) return;
+    const unitCount = parseInt(uwUnitCount) || 1;
+    const rentPerUnit = parseFloat(uwRentPerUnit) || selectedListing.estimatedMonthlyRent;
+    const rents = Array(unitCount).fill(rentPerUnit);
+    submitNoteMutation.mutate({
+      listingMlsNumber: selectedListing.mlsNumber,
+      unitCount,
+      rentsJson: rents,
+      vacancy: parseFloat(uwVacancy) || 5,
+      expenseRatio: parseFloat(uwExpenseRatio) || 35,
+      noteText: uwNoteText,
+    });
+  };
+
+  const handleSubmitComment = () => {
+    if (!selectedListing || !isAuthenticated || !commentBody.trim()) return;
+    submitCommentMutation.mutate({
+      listingMlsNumber: selectedListing.mlsNumber,
+      body: commentBody.trim(),
+    });
+  };
+
+  const computeUwCapRate = () => {
+    if (!selectedListing) return { capRate: 0, noi: 0, grossRent: 0 };
+    const unitCount = parseInt(uwUnitCount) || 1;
+    const rentPerUnit = parseFloat(uwRentPerUnit) || selectedListing.estimatedMonthlyRent;
+    const vacancy = parseFloat(uwVacancy) || 5;
+    const expenseRatio = parseFloat(uwExpenseRatio) || 35;
+    const price = typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice;
+    const grossRent = unitCount * rentPerUnit * 12;
+    const effectiveRent = grossRent * (1 - vacancy / 100);
+    const expenses = grossRent * (expenseRatio / 100);
+    const noi = effectiveRent - expenses;
+    const capRate = price > 0 ? (noi / price) * 100 : 0;
+    return { capRate: Math.max(0, capRate), noi, grossRent };
+  };
+
   const renderDetailPanel = () => {
     if (!selectedListing) return null;
+    const agg = aggregatesMap[selectedListing.mlsNumber];
+    const uwCalc = computeUwCapRate();
+
+    const sortedNotes = [...communityNotes].sort((a, b) => {
+      if (communitySortBy === "top") return (b.score || 0) - (a.score || 0);
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    const sortedComments = [...communityComments].sort((a, b) => {
+      if (communitySortBy === "top") return (b.score || 0) - (a.score || 0);
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
     return (
       <div data-testid="panel-listing-detail">
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -612,6 +800,12 @@ export default function CapRates() {
                   <Badge variant={getCapRateBadgeVariant(selectedListing.capRate)} data-testid="badge-detail-cap-rate">
                     {selectedListing.capRate.toFixed(1)}% cap
                   </Badge>
+                  {agg?.communityCapRate != null && (
+                    <Badge variant="secondary" className="text-[10px]" data-testid="badge-detail-community-cap">
+                      <Users className="h-3 w-3 mr-0.5" />
+                      {agg.communityCapRate.toFixed(1)}%
+                    </Badge>
+                  )}
                 </div>
                 <CardDescription className="text-xs">
                   {formatAddress(selectedListing.address)}
@@ -620,7 +814,6 @@ export default function CapRates() {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
                 onClick={() => setSelectedListing(null)}
                 data-testid="button-close-detail"
               >
@@ -628,182 +821,486 @@ export default function CapRates() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {selectedListing.images && selectedListing.images.length > 0 && (
-              <div className="grid grid-cols-2 gap-1.5">
-                {selectedListing.images.filter(img => img.startsWith("http") && !img.includes("youriguide") && !img.includes("virtualtour")).slice(0, 4).map((img, idx) => {
-                  const url = img.startsWith("http") ? img : `https://cdn.repliers.io/${img}`;
-                  return (
-                    <img
-                      key={idx}
-                      src={url}
-                      alt={`Photo ${idx + 1}`}
-                      className={`rounded-md object-cover w-full ${idx === 0 ? "col-span-2 h-[160px]" : "h-[80px]"}`}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      data-testid={`img-detail-${idx}`}
-                    />
-                  );
-                })}
-              </div>
-            )}
+          <CardContent className="p-0">
+            <Tabs value={detailTab} onValueChange={setDetailTab} className="w-full">
+              <TabsList className="w-full rounded-none border-b bg-transparent h-auto p-0">
+                <TabsTrigger value="overview" className="flex-1 rounded-none text-xs py-2" data-testid="tab-overview">
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="underwrite" className="flex-1 rounded-none text-xs py-2" data-testid="tab-underwrite">
+                  <PenLine className="h-3 w-3 mr-1" />
+                  Underwrite
+                </TabsTrigger>
+                <TabsTrigger value="community" className="flex-1 rounded-none text-xs py-2" data-testid="tab-community">
+                  <MessageSquare className="h-3 w-3 mr-1" />
+                  Community
+                  {agg && ((agg.analysisCount ?? 0) > 0 || (agg.commentCount ?? 0) > 0) && (
+                    <Badge variant="secondary" className="ml-1 text-[9px] px-1 py-0">
+                      {(agg.analysisCount ?? 0) + (agg.commentCount ?? 0)}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
 
-            <div className="flex flex-wrap gap-3">
-              {selectedListing.details?.numBedrooms != null && (
-                <div className="flex items-center gap-1">
-                  <BedDouble className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{selectedListing.details.numBedrooms}</span>
-                  <span className="text-xs text-muted-foreground">beds</span>
-                </div>
-              )}
-              {selectedListing.details?.numBathrooms != null && (
-                <div className="flex items-center gap-1">
-                  <Bath className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{selectedListing.details.numBathrooms}</span>
-                  <span className="text-xs text-muted-foreground">baths</span>
-                </div>
-              )}
-              {selectedListing.details?.sqft && (
-                <div className="flex items-center gap-1">
-                  <Maximize className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{selectedListing.details.sqft}</span>
-                  <span className="text-xs text-muted-foreground">sqft</span>
-                </div>
-              )}
-            </div>
+              <TabsContent value="overview" className="p-4 space-y-4 mt-0">
+                {selectedListing.images && selectedListing.images.length > 0 && (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {selectedListing.images.filter(img => img.startsWith("http") && !img.includes("youriguide") && !img.includes("virtualtour")).slice(0, 4).map((img, idx) => {
+                      const url = img.startsWith("http") ? img : `https://cdn.repliers.io/${img}`;
+                      return (
+                        <img
+                          key={idx}
+                          src={url}
+                          alt={`Photo ${idx + 1}`}
+                          className={`rounded-md object-cover w-full ${idx === 0 ? "col-span-2 h-[160px]" : "h-[80px]"}`}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          data-testid={`img-detail-${idx}`}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
 
-            <div className="flex flex-wrap gap-1.5">
-              {selectedListing.details?.propertyType && (
-                <Badge variant="outline" className="text-xs">{selectedListing.details.propertyType}</Badge>
-              )}
-              {selectedListing.details?.style && (
-                <Badge variant="outline" className="text-xs">{selectedListing.details.style}</Badge>
-              )}
-              {selectedListing.details?.yearBuilt && (
-                <Badge variant="outline" className="text-xs">Built {selectedListing.details.yearBuilt}</Badge>
-              )}
-            </div>
+                <div className="flex flex-wrap gap-3">
+                  {selectedListing.details?.numBedrooms != null && (
+                    <div className="flex items-center gap-1">
+                      <BedDouble className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">{selectedListing.details.numBedrooms}</span>
+                      <span className="text-xs text-muted-foreground">beds</span>
+                    </div>
+                  )}
+                  {selectedListing.details?.numBathrooms != null && (
+                    <div className="flex items-center gap-1">
+                      <Bath className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">{selectedListing.details.numBathrooms}</span>
+                      <span className="text-xs text-muted-foreground">baths</span>
+                    </div>
+                  )}
+                  {selectedListing.details?.sqft && (
+                    <div className="flex items-center gap-1">
+                      <Maximize className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">{selectedListing.details.sqft}</span>
+                      <span className="text-xs text-muted-foreground">sqft</span>
+                    </div>
+                  )}
+                </div>
 
-            <Separator />
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedListing.details?.propertyType && (
+                    <Badge variant="outline" className="text-xs">{selectedListing.details.propertyType}</Badge>
+                  )}
+                  {selectedListing.details?.style && (
+                    <Badge variant="outline" className="text-xs">{selectedListing.details.style}</Badge>
+                  )}
+                  {selectedListing.details?.yearBuilt && (
+                    <Badge variant="outline" className="text-xs">Built {selectedListing.details.yearBuilt}</Badge>
+                  )}
+                </div>
 
-            <div>
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Cap Rate Breakdown
-              </h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Monthly Rent</span>
-                  <span className="font-medium">
-                    {formatPriceFull(selectedListing.estimatedMonthlyRent)}
-                    {selectedListing.rentSource === "estimated" && (
-                      <span className="text-[10px] text-muted-foreground ml-1">(est.)</span>
-                    )}
-                    {selectedListing.rentSource === "actual" && (
-                      <span className="text-[10px] text-green-600 ml-1">(actual)</span>
-                    )}
-                    {selectedListing.rentSource === "market" && (
-                      <span className="text-[10px] text-blue-600 ml-1">(scraped)</span>
-                    )}
-                    {selectedListing.rentSource === "cmhc_city" && (
-                      <span className="text-[10px] text-cyan-600 ml-1">(CMHC city)</span>
-                    )}
-                    {selectedListing.rentSource === "cmhc_province" && (
-                      <span className="text-[10px] text-amber-600 ml-1">(CMHC prov.)</span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Gross Annual Rent</span>
-                  <span className="font-medium">{formatPriceFull(selectedListing.estimatedMonthlyRent * 12)}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Vacancy ({EXPENSE_ASSUMPTIONS.vacancyPercent}%)</span>
-                  <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.vacancyPercent / 100)}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Maintenance ({EXPENSE_ASSUMPTIONS.maintenancePercent}%)</span>
-                  <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.maintenancePercent / 100)}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Management ({EXPENSE_ASSUMPTIONS.managementPercent}%)</span>
-                  <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.managementPercent / 100)}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Insurance</span>
-                  <span className="text-red-500">-{formatPriceFull(EXPENSE_ASSUMPTIONS.insurancePerUnit * 12)}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Property Tax</span>
-                  <span className="text-red-500">
-                    -{formatPriceFull(
-                      selectedListing.taxes?.annualAmount ||
-                      (typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice) * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100
-                    )}
-                  </span>
-                </div>
                 <Separator />
-                <div className="flex justify-between font-semibold">
-                  <span>Annual NOI</span>
-                  <span className={selectedListing.annualNOI >= 0 ? "text-green-600" : "text-red-600"}>
-                    {formatPriceFull(selectedListing.annualNOI)}
-                  </span>
-                </div>
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Cap Rate</span>
-                  <span className={getCapRateColor(selectedListing.capRate)}>
-                    {selectedListing.capRate.toFixed(2)}%
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            <Separator />
+                <div>
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Cap Rate Breakdown
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Monthly Rent</span>
+                      <span className="font-medium">
+                        {formatPriceFull(selectedListing.estimatedMonthlyRent)}
+                        {selectedListing.rentSource === "estimated" && (
+                          <span className="text-[10px] text-muted-foreground ml-1">(est.)</span>
+                        )}
+                        {selectedListing.rentSource === "actual" && (
+                          <span className="text-[10px] text-green-600 ml-1">(actual)</span>
+                        )}
+                        {selectedListing.rentSource === "market" && (
+                          <span className="text-[10px] text-blue-600 ml-1">(scraped)</span>
+                        )}
+                        {selectedListing.rentSource === "cmhc_city" && (
+                          <span className="text-[10px] text-cyan-600 ml-1">(CMHC city)</span>
+                        )}
+                        {selectedListing.rentSource === "cmhc_province" && (
+                          <span className="text-[10px] text-amber-600 ml-1">(CMHC prov.)</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Gross Annual Rent</span>
+                      <span className="font-medium">{formatPriceFull(selectedListing.estimatedMonthlyRent * 12)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Vacancy ({EXPENSE_ASSUMPTIONS.vacancyPercent}%)</span>
+                      <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.vacancyPercent / 100)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Maintenance ({EXPENSE_ASSUMPTIONS.maintenancePercent}%)</span>
+                      <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.maintenancePercent / 100)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Management ({EXPENSE_ASSUMPTIONS.managementPercent}%)</span>
+                      <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.managementPercent / 100)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Insurance</span>
+                      <span className="text-red-500">-{formatPriceFull(EXPENSE_ASSUMPTIONS.insurancePerUnit * 12)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Property Tax</span>
+                      <span className="text-red-500">
+                        -{formatPriceFull(
+                          selectedListing.taxes?.annualAmount ||
+                          (typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice) * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100
+                        )}
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-semibold">
+                      <span>Annual NOI</span>
+                      <span className={selectedListing.annualNOI >= 0 ? "text-green-600" : "text-red-600"}>
+                        {formatPriceFull(selectedListing.annualNOI)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-bold text-lg">
+                      <span>Cap Rate</span>
+                      <span className={getCapRateColor(selectedListing.capRate)}>
+                        {selectedListing.capRate.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <p className="text-muted-foreground">MLS#</p>
-                <p className="font-medium">{selectedListing.mlsNumber}</p>
-              </div>
-              {selectedListing.address?.neighborhood && (
-                <div>
-                  <p className="text-muted-foreground">Neighborhood</p>
-                  <p className="font-medium">{selectedListing.address.neighborhood}</p>
-                </div>
-              )}
-              {selectedListing.daysOnMarket != null && (
-                <div>
-                  <p className="text-muted-foreground">Days on Market</p>
-                  <p className="font-medium">{selectedListing.daysOnMarket}</p>
-                </div>
-              )}
-              {selectedListing.details?.numParkingSpaces != null && (
-                <div>
-                  <p className="text-muted-foreground">Parking</p>
-                  <p className="font-medium">{selectedListing.details.numParkingSpaces} spaces</p>
-                </div>
-              )}
-            </div>
-
-            {selectedListing.details?.description && (
-              <>
                 <Separator />
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-muted-foreground">MLS#</p>
+                    <p className="font-medium">{selectedListing.mlsNumber}</p>
+                  </div>
+                  {selectedListing.address?.neighborhood && (
+                    <div>
+                      <p className="text-muted-foreground">Neighborhood</p>
+                      <p className="font-medium">{selectedListing.address.neighborhood}</p>
+                    </div>
+                  )}
+                  {selectedListing.daysOnMarket != null && (
+                    <div>
+                      <p className="text-muted-foreground">Days on Market</p>
+                      <p className="font-medium">{selectedListing.daysOnMarket}</p>
+                    </div>
+                  )}
+                  {selectedListing.details?.numParkingSpaces != null && (
+                    <div>
+                      <p className="text-muted-foreground">Parking</p>
+                      <p className="font-medium">{selectedListing.details.numParkingSpaces} spaces</p>
+                    </div>
+                  )}
+                </div>
+
+                {selectedListing.details?.description && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-xs font-medium mb-1">Description</p>
+                      <p className="text-xs text-muted-foreground line-clamp-4">
+                        {selectedListing.details.description}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                <Button
+                  className="w-full"
+                  onClick={() => handleAnalyzeListing(selectedListing)}
+                  data-testid="button-analyze-listing"
+                >
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Analyze in Deal Analyzer
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="underwrite" className="p-4 space-y-4 mt-0">
                 <div>
-                  <p className="text-xs font-medium mb-1">Description</p>
-                  <p className="text-xs text-muted-foreground line-clamp-4">
-                    {selectedListing.details.description}
+                  <h4 className="text-sm font-semibold mb-1 flex items-center gap-2">
+                    <PenLine className="h-4 w-4" />
+                    Community Underwriting
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Submit your analysis to help the community value this listing.
                   </p>
                 </div>
-              </>
-            )}
 
-            <Button
-              className="w-full"
-              onClick={() => handleAnalyzeListing(selectedListing)}
-              data-testid="button-analyze-listing"
-            >
-              <Calculator className="h-4 w-4 mr-2" />
-              Analyze in Deal Analyzer
-            </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Unit Count</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={uwUnitCount}
+                      onChange={(e) => setUwUnitCount(e.target.value)}
+                      className="mt-1"
+                      data-testid="input-uw-unit-count"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Rent / Unit ($/mo)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder={String(Math.round(selectedListing.estimatedMonthlyRent))}
+                      value={uwRentPerUnit}
+                      onChange={(e) => setUwRentPerUnit(e.target.value)}
+                      className="mt-1"
+                      data-testid="input-uw-rent"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Vacancy (%)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={uwVacancy}
+                      onChange={(e) => setUwVacancy(e.target.value)}
+                      className="mt-1"
+                      data-testid="input-uw-vacancy"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Expense Ratio (%)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={uwExpenseRatio}
+                      onChange={(e) => setUwExpenseRatio(e.target.value)}
+                      className="mt-1"
+                      data-testid="input-uw-expense-ratio"
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Gross Annual Rent</span>
+                    <span className="font-medium">{formatPriceFull(uwCalc.grossRent)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Vacancy ({uwVacancy || "5"}%)</span>
+                    <span className="text-red-500">-{formatPriceFull(uwCalc.grossRent * (parseFloat(uwVacancy) || 5) / 100)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Expenses ({uwExpenseRatio || "35"}%)</span>
+                    <span className="text-red-500">-{formatPriceFull(uwCalc.grossRent * (parseFloat(uwExpenseRatio) || 35) / 100)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-semibold">
+                    <span>NOI</span>
+                    <span className={uwCalc.noi >= 0 ? "text-green-600" : "text-red-600"}>
+                      {formatPriceFull(uwCalc.noi)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-bold text-lg">
+                    <span>Your Cap Rate</span>
+                    <span className={getCapRateColor(uwCalc.capRate)}>
+                      {uwCalc.capRate.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs">Notes (optional)</Label>
+                  <Textarea
+                    value={uwNoteText}
+                    onChange={(e) => setUwNoteText(e.target.value)}
+                    placeholder="Any context about your analysis..."
+                    className="mt-1 text-xs resize-none"
+                    rows={3}
+                    data-testid="input-uw-note"
+                  />
+                </div>
+
+                {isAuthenticated ? (
+                  <Button
+                    className="w-full"
+                    onClick={handleSubmitUnderwriting}
+                    disabled={submitNoteMutation.isPending}
+                    data-testid="button-submit-underwriting"
+                  >
+                    {submitNoteMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
+                    Submit Correction
+                  </Button>
+                ) : (
+                  <div className="text-center text-xs text-muted-foreground p-3 border rounded-md">
+                    <a href="/login" className="text-primary underline" data-testid="link-login-underwrite">Sign in</a> to submit your underwriting analysis
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="community" className="p-4 space-y-4 mt-0">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Community ({(communityNotes.length || 0) + (communityComments.length || 0)})
+                  </h4>
+                  <Select value={communitySortBy} onValueChange={(v) => setCommunitySortBy(v as "top" | "new")}>
+                    <SelectTrigger className="h-7 w-[80px] text-[10px]" data-testid="select-community-sort">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="top">Top</SelectItem>
+                      <SelectItem value="new">New</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {sortedNotes.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Underwriting Notes</p>
+                    {sortedNotes.map((note) => {
+                      const rents = Array.isArray(note.rentsJson) ? (note.rentsJson as number[]) : [];
+                      const totalRent = rents.reduce((a, b) => a + b, 0);
+                      return (
+                        <div key={note.id} className="border rounded-md p-2.5 space-y-1.5" data-testid={`card-note-${note.id}`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium" data-testid={`text-note-user-${note.id}`}>
+                              {(note as any).userName || "Investor"}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => isAuthenticated && voteMutation.mutate({ targetType: "underwriting_note", targetId: note.id, value: 1 })}
+                                data-testid={`button-upvote-note-${note.id}`}
+                              >
+                                <ThumbsUp className="h-3 w-3" />
+                              </Button>
+                              <span className="text-xs font-medium min-w-[16px] text-center" data-testid={`text-note-score-${note.id}`}>
+                                {note.score || 0}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => isAuthenticated && voteMutation.mutate({ targetType: "underwriting_note", targetId: note.id, value: -1 })}
+                                data-testid={`button-downvote-note-${note.id}`}
+                              >
+                                <ThumbsDown className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                            {note.unitCount && <span>{note.unitCount} units</span>}
+                            {totalRent > 0 && <span>${totalRent.toLocaleString()}/mo total rent</span>}
+                            {note.vacancy != null && <span>{note.vacancy}% vacancy</span>}
+                            {note.expenseRatio != null && <span>{note.expenseRatio}% expenses</span>}
+                          </div>
+                          {note.noteText && (
+                            <p className="text-xs text-muted-foreground">{note.noteText}</p>
+                          )}
+                          <p className="text-[9px] text-muted-foreground">
+                            {new Date(note.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {sortedComments.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Comments</p>
+                    {sortedComments.map((comment) => (
+                      <div key={comment.id} className="border rounded-md p-2.5 space-y-1" data-testid={`card-comment-${comment.id}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium" data-testid={`text-comment-user-${comment.id}`}>
+                            {(comment as any).userName || "Investor"}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => isAuthenticated && voteMutation.mutate({ targetType: "listing_comment", targetId: comment.id, value: 1 })}
+                              data-testid={`button-upvote-comment-${comment.id}`}
+                            >
+                              <ThumbsUp className="h-3 w-3" />
+                            </Button>
+                            <span className="text-xs font-medium min-w-[16px] text-center" data-testid={`text-comment-score-${comment.id}`}>
+                              {comment.score || 0}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => isAuthenticated && voteMutation.mutate({ targetType: "listing_comment", targetId: comment.id, value: -1 })}
+                              data-testid={`button-downvote-comment-${comment.id}`}
+                            >
+                              <ThumbsDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-xs">{comment.body}</p>
+                        <p className="text-[9px] text-muted-foreground">
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {sortedNotes.length === 0 && sortedComments.length === 0 && (
+                  <div className="text-center py-6">
+                    <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm font-medium mb-1">No community data yet</p>
+                    <p className="text-xs text-muted-foreground">Be the first to underwrite or comment on this listing.</p>
+                  </div>
+                )}
+
+                <Separator />
+
+                {isAuthenticated ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Add a comment</Label>
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={commentBody}
+                        onChange={(e) => setCommentBody(e.target.value)}
+                        placeholder="Share your thoughts on this listing..."
+                        className="text-xs resize-none flex-1"
+                        rows={2}
+                        data-testid="input-comment"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={handleSubmitComment}
+                      disabled={!commentBody.trim() || submitCommentMutation.isPending}
+                      data-testid="button-submit-comment"
+                    >
+                      {submitCommentMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Send className="h-3 w-3 mr-1" />
+                      )}
+                      Post Comment
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center text-xs text-muted-foreground p-3 border rounded-md">
+                    <a href="/login" className="text-primary underline" data-testid="link-login-comment">Sign in</a> to join the discussion
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>

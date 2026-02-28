@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1760,3 +1760,121 @@ export type InsertRealtorLeadNotification = z.infer<typeof insertRealtorLeadNoti
 export type RealtorLeadNotification = typeof realtorLeadNotifications.$inferSelect;
 export type InsertRealtorIntroduction = z.infer<typeof insertRealtorIntroductionSchema>;
 export type RealtorIntroduction = typeof realtorIntroductions.$inferSelect;
+
+// ============================================
+// COMMUNITY UNDERWRITING TABLES
+// ============================================
+
+export const underwritingNotes = pgTable("underwriting_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  unitCount: integer("unit_count"),
+  rentsJson: jsonb("rents_json"),
+  vacancy: real("vacancy"),
+  expenseRatio: real("expense_ratio"),
+  noteText: text("note_text"),
+  score: integer("score").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const listingComments = pgTable("listing_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  body: text("body").notNull(),
+  score: integer("score").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const votes = pgTable("votes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: varchar("target_id").notNull(),
+  value: integer("value").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueUserTarget: uniqueIndex("votes_user_target_idx").on(table.userId, table.targetType, table.targetId),
+}));
+
+export const contributionEvents = pgTable("contribution_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  points: integer("points").notNull(),
+  targetType: text("target_type"),
+  targetId: varchar("target_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const listingAnalysisAggregates = pgTable("listing_analysis_aggregates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull().unique(),
+  communityCapRate: real("community_cap_rate"),
+  rentsUsedJson: jsonb("rents_used_json"),
+  analysisCount: integer("analysis_count").default(0),
+  commentCount: integer("comment_count").default(0),
+  lastAnalysisAt: timestamp("last_analysis_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const underwritingNotesRelations = relations(underwritingNotes, ({ one }) => ({
+  user: one(users, { fields: [underwritingNotes.userId], references: [users.id] }),
+}));
+
+export const listingCommentsRelations = relations(listingComments, ({ one }) => ({
+  user: one(users, { fields: [listingComments.userId], references: [users.id] }),
+}));
+
+export const votesRelations = relations(votes, ({ one }) => ({
+  user: one(users, { fields: [votes.userId], references: [users.id] }),
+}));
+
+export const contributionEventsRelations = relations(contributionEvents, ({ one }) => ({
+  user: one(users, { fields: [contributionEvents.userId], references: [users.id] }),
+}));
+
+export const insertUnderwritingNoteSchema = createInsertSchema(underwritingNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  score: true,
+});
+
+export const insertListingCommentSchema = createInsertSchema(listingComments).omit({
+  id: true,
+  createdAt: true,
+  score: true,
+});
+
+export const insertVoteSchema = createInsertSchema(votes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertContributionEventSchema = createInsertSchema(contributionEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertListingAnalysisAggregateSchema = createInsertSchema(listingAnalysisAggregates).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertUnderwritingNote = z.infer<typeof insertUnderwritingNoteSchema>;
+export type UnderwritingNote = typeof underwritingNotes.$inferSelect;
+
+export type InsertListingComment = z.infer<typeof insertListingCommentSchema>;
+export type ListingComment = typeof listingComments.$inferSelect;
+
+export type InsertVote = z.infer<typeof insertVoteSchema>;
+export type Vote = typeof votes.$inferSelect;
+
+export type InsertContributionEvent = z.infer<typeof insertContributionEventSchema>;
+export type ContributionEvent = typeof contributionEvents.$inferSelect;
+
+export type InsertListingAnalysisAggregate = z.infer<typeof insertListingAnalysisAggregateSchema>;
+export type ListingAnalysisAggregate = typeof listingAnalysisAggregates.$inferSelect;

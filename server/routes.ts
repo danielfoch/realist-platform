@@ -14,6 +14,9 @@ import {
   insertPortfolioPropertySchema,
   insertIndustryPartnerSchema,
   insertCoachingWaitlistSchema,
+  insertUnderwritingNoteSchema,
+  insertListingCommentSchema,
+  insertVoteSchema,
   users,
   renoQuoteLineItemSchema,
   renoQuoteAssumptionsSchema,
@@ -28,6 +31,8 @@ import {
   analyses,
   rentPulse,
   rentListings,
+  underwritingNotes,
+  listingComments,
 } from "@shared/schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
@@ -2710,6 +2715,60 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/ddf/mls/:mlsNumber", async (req: any, res) => {
+    try {
+      const { isDdfConfigured, searchDdfByMlsNumber, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "CREA DDF not configured", available: false });
+        return;
+      }
+
+      const mlsNumber = req.params.mlsNumber?.replace(/[^a-zA-Z0-9]/g, "");
+      if (!mlsNumber) {
+        res.status(400).json({ error: "Invalid MLS number" });
+        return;
+      }
+
+      const listing = await searchDdfByMlsNumber(mlsNumber);
+      if (!listing) {
+        res.status(404).json({ error: "No listing found for that MLS number" });
+        return;
+      }
+
+      const normalized = normalizeDdfToRepliersFormat(listing);
+
+      const parsedListing = {
+        listingId: normalized.mlsNumber || mlsNumber,
+        propertyId: listing.ListingKey || "",
+        address: [listing.StreetNumber, listing.StreetName, listing.StreetSuffix].filter(Boolean).join(" ") || listing.UnparsedAddress || "",
+        city: listing.City || "",
+        province: listing.StateOrProvince || "",
+        postalCode: listing.PostalCode || "",
+        country: "canada" as const,
+        price: listing.ListPrice || 0,
+        bedrooms: listing.BedroomsTotal || 0,
+        bathrooms: (listing.BathroomsTotalInteger || 0) + (listing.BathroomsPartial || 0),
+        squareFootage: listing.LivingArea || listing.BuildingAreaTotal || 0,
+        propertyType: listing.PropertySubType || listing.StructureType || "",
+        buildingType: listing.StructureType || listing.PropertySubType || "",
+        buildingStyle: (listing.ArchitecturalStyle || []).join(", "),
+        storeys: listing.Stories || 0,
+        landSize: "",
+        imageUrl: normalized.images?.[0] || "",
+        sourceUrl: `https://www.realtor.ca/real-estate/${listing.ListingKey}`,
+        numberOfUnits: listing.NumberOfUnitsTotal || 0,
+        totalActualRent: listing.TotalActualRent || 0,
+        taxAnnualAmount: listing.TaxAnnualAmount || 0,
+      };
+
+      res.json({ listing: parsedListing, source: "crea_ddf" });
+    } catch (error: any) {
+      console.error("DDF MLS search error:", error);
+      res.status(500).json({ error: "Failed to search by MLS number" });
+    }
+  });
+
   let ddfStatusCache: { result: any; expiresAt: number } | null = null;
 
   app.get("/api/ddf/status", async (_req: any, res) => {
@@ -4885,14 +4944,27 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/leaderboard", async (_req, res) => {
+  app.get("/api/leaderboard", async (req, res) => {
     try {
+      const period = req.query.period as string;
+      let dateFilter = sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`;
+      let aggregateDateFilter = sql`${analyses.resultsJson} IS NOT NULL`;
+      if (period === 'monthly') {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const monthStr = startOfMonth.toISOString();
+        dateFilter = sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${monthStr}`;
+        aggregateDateFilter = sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${monthStr}`;
+      }
+
       const analystResults = await db
         .select({
           userId: analyses.userId,
           firstName: users.firstName,
           lastName: users.lastName,
           profileImageUrl: users.profileImageUrl,
+          role: users.role,
           dealCount: count(analyses.id),
           avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
           avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
@@ -4900,8 +4972,8 @@ export async function registerRoutes(
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
-        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`)
-        .groupBy(analyses.userId, users.firstName, users.lastName, users.profileImageUrl)
+        .where(dateFilter)
+        .groupBy(analyses.userId, users.firstName, users.lastName, users.profileImageUrl, users.role)
         .orderBy(desc(count(analyses.id)))
         .limit(25);
 
@@ -4910,6 +4982,7 @@ export async function registerRoutes(
         userId: row.userId,
         name: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
         profileImageUrl: row.profileImageUrl,
+        role: row.role || "investor",
         dealCount: Number(row.dealCount),
         avgDscr: row.avgDscr != null ? Math.round(Number(row.avgDscr) * 100) / 100 : null,
         avgCashOnCash: row.avgCashOnCash != null ? Math.round(Number(row.avgCashOnCash) * 100) / 100 : null,
@@ -4930,7 +5003,7 @@ export async function registerRoutes(
           )`,
         })
         .from(analyses)
-        .where(sql`${analyses.resultsJson} IS NOT NULL`);
+        .where(aggregateDateFilter);
 
       res.json({
         analysts: leaderboard,
@@ -4983,6 +5056,217 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to fetch top cities" });
     }
   });
+
+  // ============================================
+  // COMMUNITY UNDERWRITING ROUTES
+  // ============================================
+
+  app.post("/api/community/notes", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const parsed = insertUnderwritingNoteSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) return res.status(400).json({ error: "Invalid data", details: parsed.error.issues });
+
+      const todayCount = await storage.getUserNotesCountForListingToday(userId, parsed.data.listingMlsNumber);
+      if (todayCount >= 3) return res.status(429).json({ error: "Rate limit: max 3 notes per listing per day" });
+
+      const note = await storage.createUnderwritingNote(parsed.data);
+
+      await storage.createContributionEvent({
+        userId,
+        type: "note",
+        points: 5,
+        targetType: "underwriting_note",
+        targetId: note.id,
+      });
+
+      await recomputeListingAggregate(parsed.data.listingMlsNumber);
+
+      res.json(note);
+    } catch (error) {
+      console.error("Error creating underwriting note:", error);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
+  app.get("/api/community/notes/:mlsNumber", async (req, res) => {
+    try {
+      const notes = await storage.getUnderwritingNotesByListing(req.params.mlsNumber);
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+      res.status(500).json({ error: "Failed to fetch notes" });
+    }
+  });
+
+  app.post("/api/community/comments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const parsed = insertListingCommentSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) return res.status(400).json({ error: "Invalid data", details: parsed.error.issues });
+
+      const comment = await storage.createListingComment(parsed.data);
+
+      await storage.createContributionEvent({
+        userId,
+        type: "comment",
+        points: 1,
+        targetType: "listing_comment",
+        targetId: comment.id,
+      });
+
+      await recomputeListingAggregate(parsed.data.listingMlsNumber);
+
+      res.json(comment);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
+  app.get("/api/community/comments/:mlsNumber", async (req, res) => {
+    try {
+      const comments = await storage.getListingCommentsByListing(req.params.mlsNumber);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  });
+
+  app.post("/api/community/vote", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const parsed = insertVoteSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) return res.status(400).json({ error: "Invalid data", details: parsed.error.issues });
+
+      const existingVote = await storage.getVote(userId, parsed.data.targetType, parsed.data.targetId);
+      const oldValue = existingVote?.value || 0;
+      const newValue = parsed.data.value;
+
+      const vote = await storage.upsertVote(parsed.data);
+
+      const delta = newValue - oldValue;
+      if (delta !== 0) {
+        let targetAuthorId: string | null = null;
+
+        if (parsed.data.targetType === "underwriting_note") {
+          await storage.updateUnderwritingNoteScore(parsed.data.targetId, delta);
+          const allNotes = await db.select({ userId: underwritingNotes.userId }).from(underwritingNotes).where(eq(underwritingNotes.id, parsed.data.targetId));
+          targetAuthorId = allNotes[0]?.userId || null;
+        } else if (parsed.data.targetType === "listing_comment") {
+          await storage.updateListingCommentScore(parsed.data.targetId, delta);
+          const allComments = await db.select({ userId: listingComments.userId }).from(listingComments).where(eq(listingComments.id, parsed.data.targetId));
+          targetAuthorId = allComments[0]?.userId || null;
+        }
+
+        if (targetAuthorId && targetAuthorId !== userId) {
+          if (newValue === 1 && oldValue !== 1) {
+            await storage.createContributionEvent({
+              userId: targetAuthorId,
+              type: "upvote_received",
+              points: 2,
+              targetType: parsed.data.targetType,
+              targetId: parsed.data.targetId,
+            });
+          } else if (newValue === -1 && oldValue !== -1) {
+            await storage.createContributionEvent({
+              userId: targetAuthorId,
+              type: "downvote_received",
+              points: -1,
+              targetType: parsed.data.targetType,
+              targetId: parsed.data.targetId,
+            });
+          }
+        }
+      }
+
+      res.json(vote);
+    } catch (error) {
+      console.error("Error voting:", error);
+      res.status(500).json({ error: "Failed to vote" });
+    }
+  });
+
+  app.get("/api/community/aggregate/:mlsNumber", async (req, res) => {
+    try {
+      const aggregate = await storage.getListingAggregate(req.params.mlsNumber);
+      res.json(aggregate || null);
+    } catch (error) {
+      console.error("Error fetching aggregate:", error);
+      res.status(500).json({ error: "Failed to fetch aggregate" });
+    }
+  });
+
+  app.post("/api/community/aggregates", async (req, res) => {
+    try {
+      const { mlsNumbers } = req.body;
+      if (!Array.isArray(mlsNumbers) || mlsNumbers.length === 0) {
+        return res.json([]);
+      }
+      const aggregates = await storage.getListingAggregatesBatch(mlsNumbers.slice(0, 100));
+      res.json(aggregates);
+    } catch (error) {
+      console.error("Error fetching aggregates:", error);
+      res.status(500).json({ error: "Failed to fetch aggregates" });
+    }
+  });
+
+  app.get("/api/leaderboard/contributions", async (req, res) => {
+    try {
+      const period = (req.query.period as string) === 'monthly' ? 'monthly' : 'all-time';
+      const limit = Math.min(Number(req.query.limit) || 20, 50);
+      const leaderboard = await storage.getContributionLeaderboard(period, limit);
+      res.json(leaderboard.map((row, index) => ({
+        rank: index + 1,
+        userId: row.userId,
+        name: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
+        totalPoints: Number(row.totalPoints),
+        role: row.role || "investor",
+        profileImageUrl: row.profileImageUrl || null,
+      })));
+    } catch (error) {
+      console.error("Error fetching contribution leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  async function recomputeListingAggregate(mlsNumber: string) {
+    try {
+      const notes = await storage.getUnderwritingNotesByListing(mlsNumber);
+      const comments = await storage.getListingCommentsByListing(mlsNumber);
+
+      let communityCapRate: number | null = null;
+      let rentsUsedJson: any = null;
+
+      if (notes.length > 0) {
+        const bestNote = notes[0];
+        if (bestNote.rentsJson && bestNote.expenseRatio !== null && bestNote.vacancy !== null) {
+          const rents = bestNote.rentsJson as number[];
+          const totalRent = Array.isArray(rents) ? rents.reduce((a: number, b: number) => a + b, 0) : 0;
+          rentsUsedJson = bestNote.rentsJson;
+          communityCapRate = null;
+        }
+      }
+
+      await storage.upsertListingAggregate({
+        listingMlsNumber: mlsNumber,
+        communityCapRate,
+        rentsUsedJson,
+        analysisCount: notes.length,
+        commentCount: comments.length,
+        lastAnalysisAt: notes.length > 0 ? notes[0].createdAt : null,
+      });
+    } catch (error) {
+      console.error("Error recomputing listing aggregate:", error);
+    }
+  }
 
   return httpServer;
 }

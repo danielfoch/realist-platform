@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { Link2, Loader2, ExternalLink, Home, MapPin, Bed, Bath, Square, Building, ChevronDown, Code, Search } from "lucide-react";
+import { Link2, Loader2, ExternalLink, Home, MapPin, Bed, Bath, Square, Building, ChevronDown, Code, Search, Hash } from "lucide-react";
 
 interface ParsedListing {
   listingId: string;
@@ -38,9 +38,13 @@ function detectSource(input: string): "realtor" | "zillow" | "unknown" {
   return "unknown";
 }
 
+type ImportMode = "url" | "mls";
+
 export function ListingImport({ onImport }: ListingImportProps) {
   const { toast } = useToast();
+  const [importMode, setImportMode] = useState<ImportMode>("url");
   const [url, setUrl] = useState("");
+  const [mlsNumber, setMlsNumber] = useState("");
   const [htmlSource, setHtmlSource] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [importedListing, setImportedListing] = useState<ParsedListing | null>(null);
@@ -124,6 +128,52 @@ export function ListingImport({ onImport }: ListingImportProps) {
     }
   };
 
+  const handleMlsImport = async () => {
+    if (isLoading) return;
+    const cleaned = mlsNumber.trim();
+    if (!cleaned) {
+      toast({
+        title: "MLS # Required",
+        description: "Please enter an MLS number to search.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingMessage("Searching CREA DDF for MLS #" + cleaned + "...");
+
+    try {
+      const response = await fetch(`/api/ddf/mls/${encodeURIComponent(cleaned)}`, {
+        credentials: "include",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to find listing");
+      }
+
+      const listing = data.listing as ParsedListing;
+      setImportedListing(listing);
+      onImport(listing);
+
+      toast({
+        title: "Listing Found",
+        description: `Successfully imported ${listing.address}, ${listing.city} via MLS #${cleaned}`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to search MLS number";
+      toast({
+        title: "MLS Search Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage("");
+    }
+  };
+
   const formatCurrency = (value: number) => {
     const country = importedListing?.country;
     return new Intl.NumberFormat(country === "usa" ? "en-US" : "en-CA", {
@@ -135,89 +185,151 @@ export function ListingImport({ onImport }: ListingImportProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <Link2 className="h-4 w-4" />
-        Import from Realtor.ca or Zillow
+      <div className="flex items-center gap-3">
+        <Button
+          variant={importMode === "url" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setImportMode("url")}
+          data-testid="button-import-mode-url"
+        >
+          <Link2 className="h-4 w-4 mr-1" />
+          URL Import
+        </Button>
+        <Button
+          variant={importMode === "mls" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setImportMode("mls")}
+          data-testid="button-import-mode-mls"
+        >
+          <Hash className="h-4 w-4 mr-1" />
+          MLS # Import
+        </Button>
       </div>
 
-      <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Paste realtor.ca or zillow.com listing URL..."
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="flex-1"
-            disabled={isLoading}
-            data-testid="input-listing-url"
-          />
-          <Button
-            onClick={() => handleImport(false)}
-            disabled={isLoading || !url.trim()}
-            data-testid="button-import-listing"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                Import
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4 mr-1" />
-                Import
-              </>
-            )}
-          </Button>
+      {importMode === "url" && (
+        <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Paste realtor.ca or zillow.com listing URL..."
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="flex-1"
+              disabled={isLoading}
+              data-testid="input-listing-url"
+            />
+            <Button
+              onClick={() => handleImport(false)}
+              disabled={isLoading || !url.trim()}
+              data-testid="button-import-listing"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  Import
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-1" />
+                  Import
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {isLoading && loadingMessage && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2" data-testid="text-loading-message">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span>{loadingMessage}</span>
+            </div>
+          )}
+          
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="mt-2 text-xs text-muted-foreground">
+              <Code className="h-3 w-3 mr-1" />
+              {showAdvanced ? "Hide" : "Show"} advanced import (paste HTML source)
+              <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+            </Button>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-3 space-y-3">
+            <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground">
+              <p className="font-medium mb-1">If the URL import doesn't work:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Open the listing page in your browser</li>
+                <li>Right-click and select "View Page Source" (or press Ctrl+U)</li>
+                <li>Select all (Ctrl+A) and copy (Ctrl+C)</li>
+                <li>Paste the HTML below and click "Import from HTML"</li>
+              </ol>
+            </div>
+            <Textarea
+              placeholder="Paste the full HTML source code here..."
+              value={htmlSource}
+              onChange={(e) => setHtmlSource(e.target.value)}
+              className="min-h-[100px] font-mono text-xs"
+              disabled={isLoading}
+              data-testid="input-html-source"
+            />
+            <Button
+              onClick={() => handleImport(true)}
+              disabled={isLoading || !htmlSource.trim()}
+              variant="secondary"
+              className="w-full"
+              data-testid="button-import-html"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Code className="h-4 w-4 mr-2" />
+              )}
+              Import from HTML
+            </Button>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {importMode === "mls" && (
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter MLS # (e.g. W1234567)"
+              value={mlsNumber}
+              onChange={(e) => setMlsNumber(e.target.value)}
+              className="flex-1"
+              disabled={isLoading}
+              onKeyDown={(e) => { if (e.key === "Enter") handleMlsImport(); }}
+              data-testid="input-mls-number"
+            />
+            <Button
+              onClick={handleMlsImport}
+              disabled={isLoading || !mlsNumber.trim()}
+              data-testid="button-import-mls"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  Search
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-1" />
+                  Search
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {isLoading && loadingMessage && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2" data-testid="text-mls-loading-message">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span>{loadingMessage}</span>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Enter the MLS number from any Canadian listing to auto-fill property details from CREA DDF.
+          </p>
         </div>
-        
-        {isLoading && loadingMessage && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-2" data-testid="text-loading-message">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            <span>{loadingMessage}</span>
-          </div>
-        )}
-        
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="mt-2 text-xs text-muted-foreground">
-            <Code className="h-3 w-3 mr-1" />
-            {showAdvanced ? "Hide" : "Show"} advanced import (paste HTML source)
-            <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
-          </Button>
-        </CollapsibleTrigger>
-        
-        <CollapsibleContent className="mt-3 space-y-3">
-          <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground">
-            <p className="font-medium mb-1">If the URL import doesn't work:</p>
-            <ol className="list-decimal list-inside space-y-1">
-              <li>Open the listing page in your browser</li>
-              <li>Right-click and select "View Page Source" (or press Ctrl+U)</li>
-              <li>Select all (Ctrl+A) and copy (Ctrl+C)</li>
-              <li>Paste the HTML below and click "Import from HTML"</li>
-            </ol>
-          </div>
-          <Textarea
-            placeholder="Paste the full HTML source code here..."
-            value={htmlSource}
-            onChange={(e) => setHtmlSource(e.target.value)}
-            className="min-h-[100px] font-mono text-xs"
-            disabled={isLoading}
-            data-testid="input-html-source"
-          />
-          <Button
-            onClick={() => handleImport(true)}
-            disabled={isLoading || !htmlSource.trim()}
-            variant="secondary"
-            className="w-full"
-            data-testid="button-import-html"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Code className="h-4 w-4 mr-2" />
-            )}
-            Import from HTML
-          </Button>
-        </CollapsibleContent>
-      </Collapsible>
+      )}
 
       {importedListing && (
         <Card className="bg-accent/30 border-accent/50">
@@ -284,9 +396,11 @@ export function ListingImport({ onImport }: ListingImportProps) {
         </Card>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        Paste a realtor.ca or zillow.com property listing URL to auto-fill address, price, and property details.
-      </p>
+      {importMode === "url" && (
+        <p className="text-xs text-muted-foreground">
+          Paste a realtor.ca or zillow.com property listing URL to auto-fill address, price, and property details.
+        </p>
+      )}
     </div>
   );
 }

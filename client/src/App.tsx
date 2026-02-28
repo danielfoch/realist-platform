@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { Redirect } from "@/components/Redirect";
 
 // Pages
+import MapHomepage from "@/pages/MapHomepage";
 import Home from "@/pages/Home";
 import About from "@/pages/About";
 import Events from "@/pages/Events";
@@ -57,8 +58,9 @@ import ContactPage from "@/pages/ContactPage";
 function Router() {
   return (
     <Switch>
-      {/* Main entry - Deal Analyzer */}
-      <Route path="/" component={Home} />
+      {/* Main entry - Map or Deal Analyzer based on env var */}
+      <Route path="/" component={import.meta.env.VITE_HOME_VARIANT === "deal" ? Home : MapHomepage} />
+      <Route path="/deal-analyzer" component={Home} />
       
       {/* New Tools routes */}
       <Route path="/tools" component={ToolsHub} />

@@ -7,33 +7,31 @@ export interface CmhcRentData {
 
 export const CMHC_PROVINCIAL_RENTS: Record<string, CmhcRentData> = {
   "British Columbia": { bachelor: 1198, oneBed: 1459, twoBed: 1807, threeBed: 2168 },
-  "Alberta": { bachelor: 950, oneBed: 1150, twoBed: 1410, threeBed: 1580 },
-  "Saskatchewan": { bachelor: 700, oneBed: 870, twoBed: 1100, threeBed: 1250 },
-  "Manitoba": { bachelor: 720, oneBed: 920, twoBed: 1170, threeBed: 1350 },
-  "Ontario": { bachelor: 1150, oneBed: 1400, twoBed: 1700, threeBed: 1950 },
-  "Quebec": { bachelor: 720, oneBed: 900, twoBed: 1100, threeBed: 1280 },
-  "New Brunswick": { bachelor: 650, oneBed: 820, twoBed: 1000, threeBed: 1120 },
-  "Nova Scotia": { bachelor: 850, oneBed: 1050, twoBed: 1350, threeBed: 1520 },
-  "Prince Edward Island": { bachelor: 700, oneBed: 880, twoBed: 1100, threeBed: 1250 },
-  "Newfoundland and Labrador": { bachelor: 600, oneBed: 780, twoBed: 950, threeBed: 1080 },
-  "Northwest Territories": { bachelor: 1100, oneBed: 1350, twoBed: 1700, threeBed: 2000 },
-  "Yukon": { bachelor: 1000, oneBed: 1250, twoBed: 1550, threeBed: 1800 },
-  "Nunavut": { bachelor: 1200, oneBed: 1500, twoBed: 1900, threeBed: 2200 },
-};
-
-export const CMHC_PROVINCIAL_RENTS_ABBREV: Record<string, CmhcRentData> = {
   "BC": { bachelor: 1198, oneBed: 1459, twoBed: 1807, threeBed: 2168 },
+  "Alberta": { bachelor: 950, oneBed: 1150, twoBed: 1410, threeBed: 1580 },
   "AB": { bachelor: 950, oneBed: 1150, twoBed: 1410, threeBed: 1580 },
+  "Saskatchewan": { bachelor: 700, oneBed: 870, twoBed: 1100, threeBed: 1250 },
   "SK": { bachelor: 700, oneBed: 870, twoBed: 1100, threeBed: 1250 },
+  "Manitoba": { bachelor: 720, oneBed: 920, twoBed: 1170, threeBed: 1350 },
   "MB": { bachelor: 720, oneBed: 920, twoBed: 1170, threeBed: 1350 },
+  "Ontario": { bachelor: 1150, oneBed: 1400, twoBed: 1700, threeBed: 1950 },
   "ON": { bachelor: 1150, oneBed: 1400, twoBed: 1700, threeBed: 1950 },
+  "Quebec": { bachelor: 720, oneBed: 900, twoBed: 1100, threeBed: 1280 },
   "QC": { bachelor: 720, oneBed: 900, twoBed: 1100, threeBed: 1280 },
+  "New Brunswick": { bachelor: 650, oneBed: 820, twoBed: 1000, threeBed: 1120 },
   "NB": { bachelor: 650, oneBed: 820, twoBed: 1000, threeBed: 1120 },
+  "Nova Scotia": { bachelor: 850, oneBed: 1050, twoBed: 1350, threeBed: 1520 },
   "NS": { bachelor: 850, oneBed: 1050, twoBed: 1350, threeBed: 1520 },
+  "Prince Edward Island": { bachelor: 700, oneBed: 880, twoBed: 1100, threeBed: 1250 },
   "PE": { bachelor: 700, oneBed: 880, twoBed: 1100, threeBed: 1250 },
+  "PEI": { bachelor: 700, oneBed: 880, twoBed: 1100, threeBed: 1250 },
+  "Newfoundland and Labrador": { bachelor: 600, oneBed: 780, twoBed: 950, threeBed: 1080 },
   "NL": { bachelor: 600, oneBed: 780, twoBed: 950, threeBed: 1080 },
+  "Northwest Territories": { bachelor: 1100, oneBed: 1350, twoBed: 1700, threeBed: 2000 },
   "NT": { bachelor: 1100, oneBed: 1350, twoBed: 1700, threeBed: 2000 },
+  "Yukon": { bachelor: 1000, oneBed: 1250, twoBed: 1550, threeBed: 1800 },
   "YT": { bachelor: 1000, oneBed: 1250, twoBed: 1550, threeBed: 1800 },
+  "Nunavut": { bachelor: 1200, oneBed: 1500, twoBed: 1900, threeBed: 2200 },
   "NU": { bachelor: 1200, oneBed: 1500, twoBed: 1900, threeBed: 2200 },
 };
 
@@ -187,98 +185,13 @@ export const CMHC_CITY_RENTS: Record<string, CmhcRentData> = {
   "Iqaluit": { bachelor: 1300, oneBed: 1600, twoBed: 2000, threeBed: 2300 },
 };
 
-export const US_STATE_RENTS: Record<string, CmhcRentData> = {
-  "Washington": { bachelor: 1200, oneBed: 1400, twoBed: 1700, threeBed: 2000 },
-  "WA": { bachelor: 1200, oneBed: 1400, twoBed: 1700, threeBed: 2000 },
-  "Oregon": { bachelor: 1100, oneBed: 1300, twoBed: 1550, threeBed: 1850 },
-  "OR": { bachelor: 1100, oneBed: 1300, twoBed: 1550, threeBed: 1850 },
-  "California": { bachelor: 1500, oneBed: 1800, twoBed: 2300, threeBed: 2800 },
-  "New York": { bachelor: 1400, oneBed: 1700, twoBed: 2100, threeBed: 2500 },
-  "NY": { bachelor: 1400, oneBed: 1700, twoBed: 2100, threeBed: 2500 },
-  "Florida": { bachelor: 1100, oneBed: 1350, twoBed: 1650, threeBed: 1950 },
-  "FL": { bachelor: 1100, oneBed: 1350, twoBed: 1650, threeBed: 1950 },
-  "Texas": { bachelor: 950, oneBed: 1150, twoBed: 1400, threeBed: 1700 },
-  "TX": { bachelor: 950, oneBed: 1150, twoBed: 1400, threeBed: 1700 },
-  "Illinois": { bachelor: 1000, oneBed: 1200, twoBed: 1500, threeBed: 1800 },
-  "IL": { bachelor: 1000, oneBed: 1200, twoBed: 1500, threeBed: 1800 },
-  "Pennsylvania": { bachelor: 900, oneBed: 1100, twoBed: 1350, threeBed: 1600 },
-  "PA": { bachelor: 900, oneBed: 1100, twoBed: 1350, threeBed: 1600 },
-  "Ohio": { bachelor: 700, oneBed: 850, twoBed: 1050, threeBed: 1250 },
-  "OH": { bachelor: 700, oneBed: 850, twoBed: 1050, threeBed: 1250 },
-  "Michigan": { bachelor: 750, oneBed: 900, twoBed: 1100, threeBed: 1300 },
-  "MI": { bachelor: 750, oneBed: 900, twoBed: 1100, threeBed: 1300 },
-  "Georgia": { bachelor: 1000, oneBed: 1200, twoBed: 1450, threeBed: 1750 },
-  "GA": { bachelor: 1000, oneBed: 1200, twoBed: 1450, threeBed: 1750 },
-  "North Carolina": { bachelor: 900, oneBed: 1100, twoBed: 1350, threeBed: 1600 },
-  "NC": { bachelor: 900, oneBed: 1100, twoBed: 1350, threeBed: 1600 },
-  "Arizona": { bachelor: 950, oneBed: 1150, twoBed: 1400, threeBed: 1700 },
-  "AZ": { bachelor: 950, oneBed: 1150, twoBed: 1400, threeBed: 1700 },
-  "Colorado": { bachelor: 1100, oneBed: 1350, twoBed: 1650, threeBed: 2000 },
-  "CO": { bachelor: 1100, oneBed: 1350, twoBed: 1650, threeBed: 2000 },
-  "Massachusetts": { bachelor: 1400, oneBed: 1700, twoBed: 2100, threeBed: 2500 },
-  "MA": { bachelor: 1400, oneBed: 1700, twoBed: 2100, threeBed: 2500 },
-  "Tennessee": { bachelor: 850, oneBed: 1050, twoBed: 1300, threeBed: 1550 },
-  "TN": { bachelor: 850, oneBed: 1050, twoBed: 1300, threeBed: 1550 },
-  "Virginia": { bachelor: 1050, oneBed: 1250, twoBed: 1550, threeBed: 1850 },
-  "VA": { bachelor: 1050, oneBed: 1250, twoBed: 1550, threeBed: 1850 },
-  "New Jersey": { bachelor: 1200, oneBed: 1450, twoBed: 1800, threeBed: 2150 },
-  "NJ": { bachelor: 1200, oneBed: 1450, twoBed: 1800, threeBed: 2150 },
-  "Maryland": { bachelor: 1050, oneBed: 1300, twoBed: 1600, threeBed: 1900 },
-  "MD": { bachelor: 1050, oneBed: 1300, twoBed: 1600, threeBed: 1900 },
-  "Minnesota": { bachelor: 900, oneBed: 1100, twoBed: 1350, threeBed: 1600 },
-  "MN": { bachelor: 900, oneBed: 1100, twoBed: 1350, threeBed: 1600 },
-  "Indiana": { bachelor: 700, oneBed: 850, twoBed: 1050, threeBed: 1250 },
-  "IN": { bachelor: 700, oneBed: 850, twoBed: 1050, threeBed: 1250 },
-  "Wisconsin": { bachelor: 750, oneBed: 900, twoBed: 1100, threeBed: 1350 },
-  "WI": { bachelor: 750, oneBed: 900, twoBed: 1100, threeBed: 1350 },
-  "Missouri": { bachelor: 700, oneBed: 850, twoBed: 1050, threeBed: 1300 },
-  "MO": { bachelor: 700, oneBed: 850, twoBed: 1050, threeBed: 1300 },
-  "Connecticut": { bachelor: 1100, oneBed: 1350, twoBed: 1650, threeBed: 2000 },
-  "CT": { bachelor: 1100, oneBed: 1350, twoBed: 1650, threeBed: 2000 },
-  "Nevada": { bachelor: 950, oneBed: 1150, twoBed: 1400, threeBed: 1700 },
-  "NV": { bachelor: 950, oneBed: 1150, twoBed: 1400, threeBed: 1700 },
-  "Utah": { bachelor: 900, oneBed: 1100, twoBed: 1350, threeBed: 1650 },
-  "UT": { bachelor: 900, oneBed: 1100, twoBed: 1350, threeBed: 1650 },
-  "Hawaii": { bachelor: 1400, oneBed: 1700, twoBed: 2100, threeBed: 2500 },
-  "HI": { bachelor: 1400, oneBed: 1700, twoBed: 2100, threeBed: 2500 },
-};
-
-export const US_CITY_RENTS: Record<string, CmhcRentData> = {
-  "Seattle": { bachelor: 1500, oneBed: 1800, twoBed: 2300, threeBed: 2800 },
-  "Tacoma": { bachelor: 1050, oneBed: 1300, twoBed: 1600, threeBed: 1900 },
-  "Gig Harbor": { bachelor: 1200, oneBed: 1450, twoBed: 1750, threeBed: 2100 },
-  "Fox Island": { bachelor: 1300, oneBed: 1550, twoBed: 1900, threeBed: 2250 },
-  "Portland": { bachelor: 1150, oneBed: 1400, twoBed: 1700, threeBed: 2000 },
-  "San Francisco": { bachelor: 2000, oneBed: 2500, twoBed: 3200, threeBed: 3800 },
-  "Los Angeles": { bachelor: 1500, oneBed: 1850, twoBed: 2400, threeBed: 2900 },
-  "San Diego": { bachelor: 1400, oneBed: 1750, twoBed: 2250, threeBed: 2700 },
-  "New York City": { bachelor: 2200, oneBed: 2800, twoBed: 3500, threeBed: 4200 },
-  "Miami": { bachelor: 1400, oneBed: 1750, twoBed: 2200, threeBed: 2650 },
-  "Chicago": { bachelor: 1150, oneBed: 1400, twoBed: 1750, threeBed: 2100 },
-  "Dallas": { bachelor: 1050, oneBed: 1250, twoBed: 1550, threeBed: 1850 },
-  "Houston": { bachelor: 950, oneBed: 1150, twoBed: 1400, threeBed: 1700 },
-  "Austin": { bachelor: 1150, oneBed: 1400, twoBed: 1700, threeBed: 2050 },
-  "Denver": { bachelor: 1200, oneBed: 1450, twoBed: 1800, threeBed: 2150 },
-  "Boston": { bachelor: 1700, oneBed: 2100, twoBed: 2700, threeBed: 3200 },
-  "Atlanta": { bachelor: 1100, oneBed: 1350, twoBed: 1650, threeBed: 2000 },
-  "Phoenix": { bachelor: 1000, oneBed: 1200, twoBed: 1500, threeBed: 1800 },
-  "Las Vegas": { bachelor: 950, oneBed: 1150, twoBed: 1400, threeBed: 1700 },
-  "Nashville": { bachelor: 1100, oneBed: 1350, twoBed: 1700, threeBed: 2050 },
-  "Charlotte": { bachelor: 1000, oneBed: 1200, twoBed: 1500, threeBed: 1800 },
-  "Raleigh": { bachelor: 1000, oneBed: 1200, twoBed: 1500, threeBed: 1800 },
-  "Minneapolis": { bachelor: 1000, oneBed: 1200, twoBed: 1500, threeBed: 1800 },
-  "Salt Lake City": { bachelor: 950, oneBed: 1150, twoBed: 1400, threeBed: 1700 },
-};
-
-const CA_ABBREVIATION_RENTS: CmhcRentData = { bachelor: 1500, oneBed: 1800, twoBed: 2300, threeBed: 2800 };
-
 function normalizeStr(s: string): string {
   return s.trim().toLowerCase()
     .replace(/[.''\u2019\u2018]/g, "")
     .replace(/\s+/g, " ");
 }
 
-export function getCmhcRent(bedrooms: number, city?: string, province?: string, country?: string): { rent: number; source: "cmhc_city" | "cmhc_province" | "default" } {
+export function getCmhcRent(bedrooms: number, city?: string, province?: string, _country?: string): { rent: number; source: "cmhc_city" | "cmhc_province" | "default" } {
   const bedKey = Math.max(0, Math.min(bedrooms, 4));
 
   function pickRent(data: CmhcRentData): number {
@@ -288,15 +201,10 @@ export function getCmhcRent(bedrooms: number, city?: string, province?: string, 
     return data.threeBed;
   }
 
-  const isUS = country === "US" || country === "USA";
-
   if (city) {
     const cityNorm = normalizeStr(city);
 
     for (const [key, data] of Object.entries(CMHC_CITY_RENTS)) {
-      if (normalizeStr(key) === cityNorm) return { rent: pickRent(data), source: "cmhc_city" };
-    }
-    for (const [key, data] of Object.entries(US_CITY_RENTS)) {
       if (normalizeStr(key) === cityNorm) return { rent: pickRent(data), source: "cmhc_city" };
     }
 
@@ -310,31 +218,15 @@ export function getCmhcRent(bedrooms: number, city?: string, province?: string, 
 
   if (province) {
     const provNorm = province.trim();
-
-    if (provNorm === "CA" || provNorm === "ca") {
-      if (isUS) {
-        return { rent: pickRent(CA_ABBREVIATION_RENTS), source: "cmhc_province" };
-      }
-    }
-
-    const caMatch = CMHC_PROVINCIAL_RENTS[provNorm] || CMHC_PROVINCIAL_RENTS_ABBREV[provNorm];
-    if (caMatch) return { rent: pickRent(caMatch), source: "cmhc_province" };
-
-    const usMatch = US_STATE_RENTS[provNorm];
-    if (usMatch) return { rent: pickRent(usMatch), source: "cmhc_province" };
+    const match = CMHC_PROVINCIAL_RENTS[provNorm];
+    if (match) return { rent: pickRent(match), source: "cmhc_province" };
 
     const provLower = normalizeStr(provNorm);
     for (const [key, data] of Object.entries(CMHC_PROVINCIAL_RENTS)) {
       if (normalizeStr(key) === provLower) return { rent: pickRent(data), source: "cmhc_province" };
     }
-    for (const [key, data] of Object.entries(US_STATE_RENTS)) {
-      if (normalizeStr(key) === provLower) return { rent: pickRent(data), source: "cmhc_province" };
-    }
   }
 
-  const fallback: CmhcRentData = isUS
-    ? { bachelor: 1100, oneBed: 1300, twoBed: 1600, threeBed: 1900 }
-    : { bachelor: 950, oneBed: 1200, twoBed: 1500, threeBed: 1750 };
-
+  const fallback: CmhcRentData = { bachelor: 950, oneBed: 1200, twoBed: 1500, threeBed: 1750 };
   return { rent: pickRent(fallback), source: "default" };
 }

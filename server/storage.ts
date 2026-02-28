@@ -33,6 +33,11 @@ import {
   realtorMarketClaims,
   realtorLeadNotifications,
   realtorIntroductions,
+  underwritingNotes,
+  listingComments,
+  votes,
+  contributionEvents,
+  listingAnalysisAggregates,
   type Lead, 
   type InsertLead,
   type Property,
@@ -100,10 +105,20 @@ import {
   type InsertRealtorLeadNotification,
   type RealtorIntroduction,
   type InsertRealtorIntroduction,
+  type UnderwritingNote,
+  type InsertUnderwritingNote,
+  type ListingComment,
+  type InsertListingComment,
+  type Vote,
+  type InsertVote,
+  type ContributionEvent,
+  type InsertContributionEvent,
+  type ListingAnalysisAggregate,
+  type InsertListingAnalysisAggregate,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
-import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte, inArray, asc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -315,6 +330,27 @@ export interface IStorage {
   createRealtorIntroduction(intro: InsertRealtorIntroduction): Promise<RealtorIntroduction>;
   getRealtorIntroductionsByRealtor(userId: string): Promise<RealtorIntroduction[]>;
   getRealtorIntroduction(id: string): Promise<RealtorIntroduction | undefined>;
+
+  // Community Underwriting
+  createUnderwritingNote(note: InsertUnderwritingNote): Promise<UnderwritingNote>;
+  getUnderwritingNotesByListing(mlsNumber: string): Promise<(UnderwritingNote & { user: { id: string; name: string | null } })[]>;
+  getUserNotesCountForListingToday(userId: string, mlsNumber: string): Promise<number>;
+  updateUnderwritingNoteScore(id: string, delta: number): Promise<void>;
+
+  createListingComment(comment: InsertListingComment): Promise<ListingComment>;
+  getListingCommentsByListing(mlsNumber: string): Promise<(ListingComment & { user: { id: string; name: string | null } })[]>;
+  updateListingCommentScore(id: string, delta: number): Promise<void>;
+
+  upsertVote(vote: InsertVote): Promise<Vote>;
+  getVote(userId: string, targetType: string, targetId: string): Promise<Vote | undefined>;
+  getUserVotesForTargets(userId: string, targetType: string, targetIds: string[]): Promise<Vote[]>;
+
+  createContributionEvent(event: InsertContributionEvent): Promise<ContributionEvent>;
+  getContributionLeaderboard(period: 'monthly' | 'all-time', limit?: number): Promise<{ userId: string; firstName: string | null; lastName: string | null; totalPoints: number; role: string | null; profileImageUrl: string | null }[]>;
+
+  getListingAggregate(mlsNumber: string): Promise<ListingAnalysisAggregate | undefined>;
+  getListingAggregatesBatch(mlsNumbers: string[]): Promise<ListingAnalysisAggregate[]>;
+  upsertListingAggregate(data: InsertListingAnalysisAggregate): Promise<ListingAnalysisAggregate>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1303,6 +1339,151 @@ export class DatabaseStorage implements IStorage {
 
   async getRealtorIntroduction(id: string): Promise<RealtorIntroduction | undefined> {
     const [result] = await db.select().from(realtorIntroductions).where(eq(realtorIntroductions.id, id));
+    return result;
+  }
+
+  // Community Underwriting
+  async createUnderwritingNote(note: InsertUnderwritingNote): Promise<UnderwritingNote> {
+    const [result] = await db.insert(underwritingNotes).values(note).returning();
+    return result;
+  }
+
+  async getUnderwritingNotesByListing(mlsNumber: string): Promise<(UnderwritingNote & { user: { id: string; name: string | null } })[]> {
+    const results = await db.select({
+      note: underwritingNotes,
+      user: { id: users.id, name: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.firstName}, 'Anonymous')` },
+    }).from(underwritingNotes)
+      .innerJoin(users, eq(underwritingNotes.userId, users.id))
+      .where(eq(underwritingNotes.listingMlsNumber, mlsNumber))
+      .orderBy(desc(underwritingNotes.score), desc(underwritingNotes.createdAt));
+    return results.map(r => ({ ...r.note, user: r.user }));
+  }
+
+  async getUserNotesCountForListingToday(userId: string, mlsNumber: string): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [result] = await db.select({ count: sql<number>`count(*)` })
+      .from(underwritingNotes)
+      .where(and(
+        eq(underwritingNotes.userId, userId),
+        eq(underwritingNotes.listingMlsNumber, mlsNumber),
+        gte(underwritingNotes.createdAt, today)
+      ));
+    return Number(result?.count || 0);
+  }
+
+  async updateUnderwritingNoteScore(id: string, delta: number): Promise<void> {
+    await db.update(underwritingNotes)
+      .set({ score: sql`GREATEST(0, COALESCE(${underwritingNotes.score}, 0) + ${delta})` })
+      .where(eq(underwritingNotes.id, id));
+  }
+
+  async createListingComment(comment: InsertListingComment): Promise<ListingComment> {
+    const [result] = await db.insert(listingComments).values(comment).returning();
+    return result;
+  }
+
+  async getListingCommentsByListing(mlsNumber: string): Promise<(ListingComment & { user: { id: string; name: string | null } })[]> {
+    const results = await db.select({
+      comment: listingComments,
+      user: { id: users.id, name: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.firstName}, 'Anonymous')` },
+    }).from(listingComments)
+      .innerJoin(users, eq(listingComments.userId, users.id))
+      .where(eq(listingComments.listingMlsNumber, mlsNumber))
+      .orderBy(desc(listingComments.score), desc(listingComments.createdAt));
+    return results.map(r => ({ ...r.comment, user: r.user }));
+  }
+
+  async updateListingCommentScore(id: string, delta: number): Promise<void> {
+    await db.update(listingComments)
+      .set({ score: sql`GREATEST(0, COALESCE(${listingComments.score}, 0) + ${delta})` })
+      .where(eq(listingComments.id, id));
+  }
+
+  async upsertVote(vote: InsertVote): Promise<Vote> {
+    const existing = await this.getVote(vote.userId, vote.targetType, vote.targetId);
+    if (existing) {
+      const [result] = await db.update(votes)
+        .set({ value: vote.value })
+        .where(eq(votes.id, existing.id))
+        .returning();
+      return result;
+    }
+    const [result] = await db.insert(votes).values(vote).returning();
+    return result;
+  }
+
+  async getVote(userId: string, targetType: string, targetId: string): Promise<Vote | undefined> {
+    const [result] = await db.select().from(votes)
+      .where(and(
+        eq(votes.userId, userId),
+        eq(votes.targetType, targetType),
+        eq(votes.targetId, targetId)
+      ));
+    return result;
+  }
+
+  async getUserVotesForTargets(userId: string, targetType: string, targetIds: string[]): Promise<Vote[]> {
+    if (targetIds.length === 0) return [];
+    return db.select().from(votes)
+      .where(and(
+        eq(votes.userId, userId),
+        eq(votes.targetType, targetType),
+        inArray(votes.targetId, targetIds)
+      ));
+  }
+
+  async createContributionEvent(event: InsertContributionEvent): Promise<ContributionEvent> {
+    const [result] = await db.insert(contributionEvents).values(event).returning();
+    return result;
+  }
+
+  async getContributionLeaderboard(period: 'monthly' | 'all-time', limit: number = 20): Promise<{ userId: string; firstName: string | null; lastName: string | null; totalPoints: number; role: string | null; profileImageUrl: string | null }[]> {
+    let query = db.select({
+      userId: contributionEvents.userId,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      totalPoints: sql<number>`COALESCE(SUM(${contributionEvents.points}), 0)`,
+      role: users.role,
+      profileImageUrl: users.profileImageUrl,
+    }).from(contributionEvents)
+      .innerJoin(users, eq(contributionEvents.userId, users.id));
+
+    if (period === 'monthly') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      query = query.where(gte(contributionEvents.createdAt, startOfMonth)) as any;
+    }
+
+    return (query as any)
+      .groupBy(contributionEvents.userId, users.firstName, users.lastName, users.role, users.profileImageUrl)
+      .orderBy(desc(sql`COALESCE(SUM(${contributionEvents.points}), 0)`))
+      .limit(limit);
+  }
+
+  async getListingAggregate(mlsNumber: string): Promise<ListingAnalysisAggregate | undefined> {
+    const [result] = await db.select().from(listingAnalysisAggregates)
+      .where(eq(listingAnalysisAggregates.listingMlsNumber, mlsNumber));
+    return result;
+  }
+
+  async getListingAggregatesBatch(mlsNumbers: string[]): Promise<ListingAnalysisAggregate[]> {
+    if (mlsNumbers.length === 0) return [];
+    return db.select().from(listingAnalysisAggregates)
+      .where(inArray(listingAnalysisAggregates.listingMlsNumber, mlsNumbers));
+  }
+
+  async upsertListingAggregate(data: InsertListingAnalysisAggregate): Promise<ListingAnalysisAggregate> {
+    const existing = await this.getListingAggregate(data.listingMlsNumber);
+    if (existing) {
+      const [result] = await db.update(listingAnalysisAggregates)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(listingAnalysisAggregates.id, existing.id))
+        .returning();
+      return result;
+    }
+    const [result] = await db.insert(listingAnalysisAggregates).values(data).returning();
     return result;
   }
 }

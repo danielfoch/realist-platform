@@ -290,6 +290,33 @@ export function normalizeDdfToRepliersFormat(ddf: DdfListing): any {
   };
 }
 
+export async function searchDdfByMlsNumber(mlsNumber: string): Promise<DdfListing | null> {
+  const token = await getDdfToken();
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("$filter", `ListingId eq '${mlsNumber.replace(/'/g, "''")}'`);
+  queryParams.set("$top", "1");
+  queryParams.set("$select", DDF_SELECT_FIELDS);
+
+  const url = `${DDF_API_BASE}/Property?${queryParams.toString()}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("DDF MLS search error:", response.status, errorText);
+    throw new Error(`DDF MLS search failed: ${response.status} - ${errorText}`);
+  }
+
+  const data: DdfSearchResponse = await response.json();
+  return data.value?.[0] || null;
+}
+
 export function isDdfConfigured(): boolean {
   return !!(process.env.CREA_DDF_USERNAME && process.env.CREA_DDF_PASSWORD);
 }
