@@ -13,6 +13,8 @@ import { errorTrackingMiddleware, getRecentErrors } from './error-tracking';
 import { logger } from './logger';
 import authRouter from './auth-routes';
 import leadRouter from './lead-routes';
+import realtorRouter from './realtor-routes';
+import investorLeadRouter from './investor-lead-routes';
 import { handleStripeWebhook } from './stripe-integration';
 
 dotenv.config();
@@ -69,6 +71,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRouter);
 app.use('/api/leads', leadRouter);
+app.use('/api/realtor', realtorRouter);
+app.use('/api/investor', investorLeadRouter);
 
 // Stripe webhook endpoint (must be after raw body middleware)
 app.post('/api/webhook/stripe', async (req: Request, res: Response) => {
