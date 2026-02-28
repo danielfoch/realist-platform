@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   TrendingUp, Search, Building, BedDouble, Bath, Maximize,
   DollarSign, MapPin, ChevronRight, ChevronLeft, ArrowUpDown,
-  Calculator, X, Loader2, ArrowRight, Filter, Map, LayoutGrid,
+  Calculator, X, Loader2, ArrowRight, Map, LayoutGrid,
   RefreshCw, ChevronDown, ChevronUp, List, Users, MessageSquare,
   ThumbsUp, ThumbsDown, Send, PenLine,
 } from "lucide-react";
@@ -344,7 +344,6 @@ export default function CapRates() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedListing, setSelectedListing] = useState<ListingWithCapRate | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
   const [dataSource, setDataSource] = useState<"crea_ddf" | "repliers" | null>(null);
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [showMobileList, setShowMobileList] = useState(false);
@@ -1410,141 +1409,120 @@ export default function CapRates() {
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
 
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-[1000] relative">
         <div className="px-3 py-2">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="min-w-[100px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Price</Label>
+              <Input
+                type="number"
+                placeholder="$0"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                className="h-8 text-xs"
+                data-testid="input-min-price"
+              />
             </div>
-
-            <div className="flex items-center gap-2">
-              {hasSearched && (
-                <div className="hidden sm:flex items-center gap-1.5">
-                  <p className="text-xs text-muted-foreground" data-testid="text-results-count">
-                    {totalCount > 0
-                      ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()}`
-                      : "No results"}
-                  </p>
-                  {dataSource && (
-                    <Badge variant="outline" className="text-[9px] px-1 py-0" data-testid="badge-data-source">
-                      {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
-                    </Badge>
-                  )}
-                </div>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="h-8"
-                data-testid="button-toggle-filters"
-              >
-                <Filter className="h-3.5 w-3.5 mr-1" />
-                Filters
-                {showFilters ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
-              </Button>
-              {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <div className="min-w-[100px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Max Price</Label>
+              <Input
+                type="number"
+                placeholder="Any"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                className="h-8 text-xs"
+                data-testid="input-max-price"
+              />
             </div>
+            <div className="min-w-[75px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Beds</Label>
+              <Select value={minBeds} onValueChange={setMinBeds}>
+                <SelectTrigger className="h-8 text-xs" data-testid="select-beds">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="1">1+</SelectItem>
+                  <SelectItem value="2">2+</SelectItem>
+                  <SelectItem value="3">3+</SelectItem>
+                  <SelectItem value="4">4+</SelectItem>
+                  <SelectItem value="5">5+</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[100px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Type</Label>
+              <Select value={propertyType} onValueChange={setPropertyType}>
+                <SelectTrigger className="h-8 text-xs" data-testid="select-property-type">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="Detached">Detached</SelectItem>
+                  <SelectItem value="Semi-Detached">Semi</SelectItem>
+                  <SelectItem value="Townhouse">Townhouse</SelectItem>
+                  <SelectItem value="Condo">Condo</SelectItem>
+                  <SelectItem value="Duplex">Duplex</SelectItem>
+                  <SelectItem value="Triplex">Triplex</SelectItem>
+                  <SelectItem value="Multiplex">Multiplex</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[90px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Cap</Label>
+              <Select value={minCapRate} onValueChange={setMinCapRate}>
+                <SelectTrigger className="h-8 text-xs" data-testid="select-min-cap-rate">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="2">2%+</SelectItem>
+                  <SelectItem value="4">4%+</SelectItem>
+                  <SelectItem value="6">6%+</SelectItem>
+                  <SelectItem value="8">8%+</SelectItem>
+                  <SelectItem value="10">10%+</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[110px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Sort</Label>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                <SelectTrigger className="h-8 text-xs" data-testid="select-sort">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="capRate">Cap Rate</SelectItem>
+                  <SelectItem value="priceAsc">Price ↑</SelectItem>
+                  <SelectItem value="priceDesc">Price ↓</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={handleRefresh}
+              disabled={isSearching || !mapBounds}
+              data-testid="button-apply-filters"
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              Apply
+            </Button>
+            {hasSearched && (
+              <div className="flex items-center gap-1.5 ml-auto">
+                <p className="text-xs text-muted-foreground" data-testid="text-results-count">
+                  {totalCount > 0
+                    ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()}`
+                    : "No results"}
+                </p>
+                {dataSource && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0" data-testid="badge-data-source">
+                    {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
+                  </Badge>
+                )}
+                {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
+            )}
           </div>
-
-          {showFilters && (
-            <div className="flex flex-wrap gap-2 items-end pb-1">
-              <div className="min-w-[100px]">
-                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Price</Label>
-                <Input
-                  type="number"
-                  placeholder="$0"
-                  value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
-                  className="h-8 text-xs"
-                  data-testid="input-min-price"
-                />
-              </div>
-              <div className="min-w-[100px]">
-                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Max Price</Label>
-                <Input
-                  type="number"
-                  placeholder="Any"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                  className="h-8 text-xs"
-                  data-testid="input-max-price"
-                />
-              </div>
-              <div className="min-w-[75px]">
-                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Beds</Label>
-                <Select value={minBeds} onValueChange={setMinBeds}>
-                  <SelectTrigger className="h-8 text-xs" data-testid="select-beds">
-                    <SelectValue placeholder="Any" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">Any</SelectItem>
-                    <SelectItem value="1">1+</SelectItem>
-                    <SelectItem value="2">2+</SelectItem>
-                    <SelectItem value="3">3+</SelectItem>
-                    <SelectItem value="4">4+</SelectItem>
-                    <SelectItem value="5">5+</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="min-w-[100px]">
-                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Type</Label>
-                <Select value={propertyType} onValueChange={setPropertyType}>
-                  <SelectTrigger className="h-8 text-xs" data-testid="select-property-type">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="Detached">Detached</SelectItem>
-                    <SelectItem value="Semi-Detached">Semi</SelectItem>
-                    <SelectItem value="Townhouse">Townhouse</SelectItem>
-                    <SelectItem value="Condo">Condo</SelectItem>
-                    <SelectItem value="Duplex">Duplex</SelectItem>
-                    <SelectItem value="Triplex">Triplex</SelectItem>
-                    <SelectItem value="Multiplex">Multiplex</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="min-w-[90px]">
-                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Cap</Label>
-                <Select value={minCapRate} onValueChange={setMinCapRate}>
-                  <SelectTrigger className="h-8 text-xs" data-testid="select-min-cap-rate">
-                    <SelectValue placeholder="Any" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">Any</SelectItem>
-                    <SelectItem value="2">2%+</SelectItem>
-                    <SelectItem value="4">4%+</SelectItem>
-                    <SelectItem value="6">6%+</SelectItem>
-                    <SelectItem value="8">8%+</SelectItem>
-                    <SelectItem value="10">10%+</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="min-w-[110px]">
-                <Label className="text-[10px] text-muted-foreground mb-0.5 block">Sort</Label>
-                <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-                  <SelectTrigger className="h-8 text-xs" data-testid="select-sort">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="capRate">Cap Rate</SelectItem>
-                    <SelectItem value="priceAsc">Price ↑</SelectItem>
-                    <SelectItem value="priceDesc">Price ↓</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                size="sm"
-                className="h-8"
-                onClick={handleRefresh}
-                disabled={isSearching || !mapBounds}
-                data-testid="button-apply-filters"
-              >
-                <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                Apply
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 
