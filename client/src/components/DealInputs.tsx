@@ -415,51 +415,53 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Income
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <CurrencyInput id="monthlyRent" label="Monthly Rent" value={inputs.monthlyRent} onChange={(v) => updateInput("monthlyRent", v)} testId="input-monthly-rent" />
-          <PercentInput id="vacancy" label="Vacancy Rate" value={inputs.vacancyPercent} onChange={(v) => updateInput("vacancyPercent", v)} testId="slider-vacancy" min={0} max={20} step={0.5} />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="h-fit">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Income
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <CurrencyInput id="monthlyRent" label="Monthly Rent" value={inputs.monthlyRent} onChange={(v) => updateInput("monthlyRent", v)} testId="input-monthly-rent" />
+            <PercentInput id="vacancy" label="Vacancy Rate" value={inputs.vacancyPercent} onChange={(v) => updateInput("vacancyPercent", v)} testId="slider-vacancy" min={0} max={20} step={0.5} />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Percent className="h-5 w-5" />
-            Operating Expenses
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <CurrencyInput id="propertyTax" label="Annual Property Tax" value={inputs.propertyTax} onChange={(v) => updateInput("propertyTax", v)} testId="input-property-tax" />
-          <CurrencyInput id="insurance" label="Annual Insurance" value={inputs.insurance} onChange={(v) => updateInput("insurance", v)} testId="input-insurance" />
-          <CurrencyInput id="utilities" label="Monthly Utilities" value={inputs.utilities} onChange={(v) => updateInput("utilities", v)} testId="input-utilities" />
-          <PercentInput id="maintenance" label="Maintenance (% of Rent)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-maintenance" min={0} max={15} step={0.5} />
-          <PercentInput id="capex" label="CapEx Reserve (% of Rent)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-capex" min={0} max={15} step={0.5} />
-          <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
-          
-          {country === "canada" && (
-            <PropertyManagerPanel
-              region={region}
-              city={city}
-              country="canada"
-              dealInfo={{
-                address: address || "",
-                purchasePrice: inputs.purchasePrice,
-                monthlyRent: inputs.monthlyRent,
-                cashFlow: 0,
-                capRate: 0,
-              }}
-              defaultValues={defaultLeadInfo}
-            />
-          )}
-        </CardContent>
-      </Card>
+        <Card className="h-fit">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Percent className="h-5 w-5" />
+              Operating Expenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <CurrencyInput id="propertyTax" label="Annual Property Tax" value={inputs.propertyTax} onChange={(v) => updateInput("propertyTax", v)} testId="input-property-tax" />
+            <CurrencyInput id="insurance" label="Annual Insurance" value={inputs.insurance} onChange={(v) => updateInput("insurance", v)} testId="input-insurance" />
+            <CurrencyInput id="utilities" label="Monthly Utilities" value={inputs.utilities} onChange={(v) => updateInput("utilities", v)} testId="input-utilities" />
+            <PercentInput id="maintenance" label="Maintenance (% of Rent)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-maintenance" min={0} max={15} step={0.5} />
+            <PercentInput id="capex" label="CapEx Reserve (% of Rent)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-capex" min={0} max={15} step={0.5} />
+            <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
+            
+            {country === "canada" && (
+              <PropertyManagerPanel
+                region={region}
+                city={city}
+                country="canada"
+                dealInfo={{
+                  address: address || "",
+                  purchasePrice: inputs.purchasePrice,
+                  monthlyRent: inputs.monthlyRent,
+                  cashFlow: 0,
+                  capRate: 0,
+                }}
+                defaultValues={defaultLeadInfo}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
         <CollapsibleTrigger asChild>
@@ -830,41 +832,43 @@ function AirbnbInputs({ inputs, onChange, region, city, address, defaultLeadInfo
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Bed className="h-5 w-5" />
-            Short-Term Rental Income
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <CurrencyInput id="adr" label="Average Daily Rate (ADR)" value={adr} onChange={setAdr} testId="input-adr" />
-          <PercentInput id="occupancy" label="Occupancy Rate" value={occupancyRate} onChange={setOccupancyRate} testId="slider-occupancy" min={20} max={100} step={1} />
-          <div className="p-4 bg-muted/50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Estimated Monthly Revenue</span>
-              <span className="font-mono font-semibold text-lg">${estimatedMonthlyRevenue.toLocaleString()}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="h-fit">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Bed className="h-5 w-5" />
+              Short-Term Rental Income
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <CurrencyInput id="adr" label="Average Daily Rate (ADR)" value={adr} onChange={setAdr} testId="input-adr" />
+            <PercentInput id="occupancy" label="Occupancy Rate" value={occupancyRate} onChange={setOccupancyRate} testId="slider-occupancy" min={20} max={100} step={1} />
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Estimated Monthly Revenue</span>
+                <span className="font-mono font-semibold text-lg">${estimatedMonthlyRevenue.toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Percent className="h-5 w-5" />
-            Operating Expenses
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <CurrencyInput id="propertyTax" label="Annual Property Tax" value={inputs.propertyTax} onChange={(v) => updateInput("propertyTax", v)} testId="input-property-tax" />
-          <CurrencyInput id="insurance" label="Annual Insurance" value={inputs.insurance} onChange={(v) => updateInput("insurance", v)} testId="input-insurance" />
-          <CurrencyInput id="utilities" label="Monthly Utilities" value={inputs.utilities} onChange={(v) => updateInput("utilities", v)} testId="input-utilities" />
-          <PercentInput id="management" label="Property Management (% of Revenue)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={30} step={1} />
-          <PercentInput id="cleaning" label="Cleaning & Turnover (% of Revenue)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-cleaning" min={0} max={20} step={1} />
-          <PercentInput id="platformFees" label="Platform Fees (Airbnb/VRBO)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-platform-fees" min={0} max={20} step={0.5} />
-        </CardContent>
-      </Card>
+        <Card className="h-fit">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Percent className="h-5 w-5" />
+              Operating Expenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <CurrencyInput id="propertyTax" label="Annual Property Tax" value={inputs.propertyTax} onChange={(v) => updateInput("propertyTax", v)} testId="input-property-tax" />
+            <CurrencyInput id="insurance" label="Annual Insurance" value={inputs.insurance} onChange={(v) => updateInput("insurance", v)} testId="input-insurance" />
+            <CurrencyInput id="utilities" label="Monthly Utilities" value={inputs.utilities} onChange={(v) => updateInput("utilities", v)} testId="input-utilities" />
+            <PercentInput id="management" label="Property Management (% of Revenue)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={30} step={1} />
+            <PercentInput id="cleaning" label="Cleaning & Turnover (% of Revenue)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-cleaning" min={0} max={20} step={1} />
+            <PercentInput id="platformFees" label="Platform Fees (Airbnb/VRBO)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-platform-fees" min={0} max={20} step={0.5} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -1011,54 +1015,56 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Income
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <CurrencyInput id="monthlyRent" label={`Total Monthly Rent (${numUnits} units)`} value={inputs.monthlyRent} onChange={(v) => updateInput("monthlyRent", v)} testId="input-monthly-rent" />
-          <div className="p-3 bg-muted/50 rounded-lg">
-            <span className="text-sm text-muted-foreground">Average rent per unit: ${Math.round(inputs.monthlyRent / numUnits).toLocaleString()}/mo</span>
-          </div>
-          <PercentInput id="vacancy" label="Vacancy Rate" value={inputs.vacancyPercent} onChange={(v) => updateInput("vacancyPercent", v)} testId="slider-vacancy" min={0} max={20} step={0.5} />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="h-fit">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Income
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <CurrencyInput id="monthlyRent" label={`Total Monthly Rent (${numUnits} units)`} value={inputs.monthlyRent} onChange={(v) => updateInput("monthlyRent", v)} testId="input-monthly-rent" />
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <span className="text-sm text-muted-foreground">Average rent per unit: ${Math.round(inputs.monthlyRent / numUnits).toLocaleString()}/mo</span>
+            </div>
+            <PercentInput id="vacancy" label="Vacancy Rate" value={inputs.vacancyPercent} onChange={(v) => updateInput("vacancyPercent", v)} testId="slider-vacancy" min={0} max={20} step={0.5} />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Percent className="h-5 w-5" />
-            Operating Expenses
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <CurrencyInput id="propertyTax" label="Annual Property Tax" value={inputs.propertyTax} onChange={(v) => updateInput("propertyTax", v)} testId="input-property-tax" />
-          <CurrencyInput id="insurance" label="Annual Insurance" value={inputs.insurance} onChange={(v) => updateInput("insurance", v)} testId="input-insurance" />
-          <CurrencyInput id="utilities" label="Monthly Utilities (common areas)" value={inputs.utilities} onChange={(v) => updateInput("utilities", v)} testId="input-utilities" />
-          <PercentInput id="maintenance" label="Maintenance (% of Rent)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-maintenance" min={0} max={15} step={0.5} />
-          <PercentInput id="capex" label="CapEx Reserve (% of Rent)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-capex" min={0} max={15} step={0.5} />
-          <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
-          
-          {country === "canada" && (
-            <PropertyManagerPanel
-              region={region}
-              city={city}
-              country="canada"
-              dealInfo={{
-                address: address || "",
-                purchasePrice: inputs.purchasePrice,
-                monthlyRent: inputs.monthlyRent,
-                cashFlow: 0,
-                capRate: 0,
-              }}
-              defaultValues={defaultLeadInfo}
-            />
-          )}
-        </CardContent>
-      </Card>
+        <Card className="h-fit">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Percent className="h-5 w-5" />
+              Operating Expenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <CurrencyInput id="propertyTax" label="Annual Property Tax" value={inputs.propertyTax} onChange={(v) => updateInput("propertyTax", v)} testId="input-property-tax" />
+            <CurrencyInput id="insurance" label="Annual Insurance" value={inputs.insurance} onChange={(v) => updateInput("insurance", v)} testId="input-insurance" />
+            <CurrencyInput id="utilities" label="Monthly Utilities (common areas)" value={inputs.utilities} onChange={(v) => updateInput("utilities", v)} testId="input-utilities" />
+            <PercentInput id="maintenance" label="Maintenance (% of Rent)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-maintenance" min={0} max={15} step={0.5} />
+            <PercentInput id="capex" label="CapEx Reserve (% of Rent)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-capex" min={0} max={15} step={0.5} />
+            <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
+            
+            {country === "canada" && (
+              <PropertyManagerPanel
+                region={region}
+                city={city}
+                country="canada"
+                dealInfo={{
+                  address: address || "",
+                  purchasePrice: inputs.purchasePrice,
+                  monthlyRent: inputs.monthlyRent,
+                  cashFlow: 0,
+                  capRate: 0,
+                }}
+                defaultValues={defaultLeadInfo}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
