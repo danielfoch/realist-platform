@@ -825,7 +825,7 @@ export default function CapRates() {
                     {formatPriceFull(selectedListing.listPrice)}
                   </CardTitle>
                   <Badge variant={getCapRateBadgeVariant(selectedListing.capRate)} data-testid="badge-detail-cap-rate">
-                    {selectedListing.capRate.toFixed(1)}% cap
+                    {selectedListing.capRate.toFixed(1)}% yield
                   </Badge>
                   {agg?.communityCapRate != null && (
                     <Badge variant="secondary" className="text-[10px]" data-testid="badge-detail-community-cap">
@@ -929,7 +929,7 @@ export default function CapRates() {
                 <div>
                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
-                    Cap Rate Breakdown
+                    Yield Breakdown
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
@@ -990,7 +990,7 @@ export default function CapRates() {
                       </span>
                     </div>
                     <div className="flex justify-between font-bold text-lg">
-                      <span>Cap Rate</span>
+                      <span>Gross Yield</span>
                       <span className={getCapRateColor(selectedListing.capRate)}>
                         {selectedListing.capRate.toFixed(2)}%
                       </span>
@@ -1131,7 +1131,7 @@ export default function CapRates() {
                     </span>
                   </div>
                   <div className="flex justify-between font-bold text-lg">
-                    <span>Your Cap Rate</span>
+                    <span>Your Yield</span>
                     <span className={getCapRateColor(uwCalc.capRate)}>
                       {uwCalc.capRate.toFixed(2)}%
                     </span>
@@ -1398,7 +1398,7 @@ export default function CapRates() {
               <Map className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
               <h3 className="text-sm font-semibold mb-2">Pan & Zoom to Search</h3>
               <p className="text-xs text-muted-foreground">
-                Move the map to any area to see listings and cap rates.
+                Move the map to any area to see listings and yields.
               </p>
             </div>
           )}
@@ -1486,7 +1486,7 @@ export default function CapRates() {
               </Select>
             </div>
             <div className="min-w-[90px]">
-              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Cap</Label>
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Yield</Label>
               <Select value={minCapRate} onValueChange={setMinCapRate}>
                 <SelectTrigger className="h-8 text-xs" data-testid="select-min-cap-rate">
                   <SelectValue placeholder="Any" />
@@ -1508,7 +1508,7 @@ export default function CapRates() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="capRate">Cap Rate</SelectItem>
+                  <SelectItem value="capRate">Yield</SelectItem>
                   <SelectItem value="priceAsc">Price ↑</SelectItem>
                   <SelectItem value="priceDesc">Price ↓</SelectItem>
                 </SelectContent>
@@ -1554,7 +1554,7 @@ export default function CapRates() {
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
             {mappableListings.map((listing) => (
               <Marker
@@ -1573,7 +1573,7 @@ export default function CapRates() {
                     <p className="font-bold text-sm">{formatPrice(listing.listPrice)}</p>
                     <p className="text-xs text-gray-600">{formatShortAddress(listing.address)}, {listing.address?.city}</p>
                     <p className="text-xs font-semibold mt-1" style={{ color: getCapRateMarkerColor(listing.capRate) }}>
-                      {listing.capRate.toFixed(1)}% Cap Rate
+                      {listing.capRate.toFixed(1)}% Yield
                     </p>
                     <p className="text-xs text-gray-500">
                       {listing.details?.numBedrooms || "?"} bed / {listing.details?.numBathrooms || "?"} bath

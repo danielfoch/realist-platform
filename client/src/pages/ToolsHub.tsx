@@ -9,14 +9,14 @@ const tools = [
   {
     href: "/tools/analyzer",
     title: "Deal Analyzer",
-    description: "Analyze any real estate deal with institutional-grade financial calculations. Get cap rates, IRR, cash-on-cash returns, and multi-year projections.",
+    description: "Analyze any real estate deal with institutional-grade financial calculations. Get yields, IRR, cash-on-cash returns, and multi-year projections.",
     icon: Calculator,
     primary: true,
   },
   {
     href: "/tools/cap-rates",
-    title: "Cap Rate Map",
-    description: "Browse MLS listings by cap rate. Find the highest-returning properties across markets with pre-calculated returns using market rent data.",
+    title: "Yield Map",
+    description: "Browse MLS listings by gross yield. Find the highest-returning properties across markets with pre-calculated returns using market rent data.",
     icon: TrendingUp,
     badge: "New",
   },

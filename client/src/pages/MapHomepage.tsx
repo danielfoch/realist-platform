@@ -80,12 +80,12 @@ const howItWorksSteps = [
   {
     icon: Eye,
     title: "Browse Listings",
-    description: "Explore active Canadian listings on an interactive cap rate map. Every property shows estimated cap rates using CMHC and market rent data.",
+    description: "Explore active Canadian listings on an interactive yield map. Every property shows estimated gross yields using CMHC and market rent data.",
   },
   {
     icon: MessageSquare,
     title: "Underwrite & Comment",
-    description: "Submit your own rent estimates, vacancy rates, and expense ratios. The community votes on the best analyses to surface consensus cap rates.",
+    description: "Submit your own rent estimates, vacancy rates, and expense ratios. The community votes on the best analyses to surface consensus yields.",
   },
   {
     icon: Award,
@@ -255,9 +255,9 @@ export default function MapHomepage() {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <SEO
-        title="Realist.ca - Browse Canadian Listings with Community Cap Rates"
-        description="Canada's most researched real estate program. Browse listings with community-sourced cap rates, analyze deals, and connect with 11,000+ investors."
-        keywords="canadian real estate, cap rate map, real estate investing in canada, community underwriting, toronto real estate, daniel foch"
+        title="Realist.ca - Browse Canadian Listings with Community Yield Estimates"
+        description="Canada's most researched real estate program. Browse listings with community-sourced yield estimates, analyze deals, and connect with 11,000+ investors."
+        keywords="canadian real estate, yield map, real estate investing in canada, community underwriting, toronto real estate, daniel foch"
         canonicalUrl="/"
         structuredData={combinedSchema}
       />
@@ -297,13 +297,13 @@ export default function MapHomepage() {
                   data-testid="text-map-hero-headline"
                 >
                   Browse Canadian listings with{" "}
-                  <span className="text-gradient">community cap rates.</span>
+                  <span className="text-gradient">community yield estimates.</span>
                 </h1>
                 <p
                   className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto"
                   data-testid="text-map-hero-subhead"
                 >
-                  Real-time cap rate estimates powered by CMHC data and community underwriting.
+                  Real-time yield estimates powered by CMHC data and community underwriting.
                   See what investors are really paying attention to.
                 </p>
 
@@ -315,7 +315,7 @@ export default function MapHomepage() {
                       data-testid="button-open-map"
                     >
                       <Map className="h-5 w-5" />
-                      Open Cap Rate Map
+                      Open Yield Map
                     </Button>
                   </Link>
                   <Link href="/deal-analyzer">
@@ -435,7 +435,7 @@ export default function MapHomepage() {
                   How community underwriting works
                 </h2>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Combine public data with investor expertise to surface the most accurate cap rates in Canada.
+                  Combine public data with investor expertise to surface the most accurate yields in Canada.
                 </p>
               </div>
 

@@ -507,8 +507,8 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <SEO
         title="Canadian Real Estate Deal Analyzer - Toronto Property Calculator"
-        description="Free real estate analyzer for Canadian investors. Calculate cap rates, IRR, cash-on-cash for Toronto, Vancouver, Calgary. Home of Daniel Foch's podcast."
-        keywords="canadian real estate, toronto real estate, real estate investing in canada, daniel foch, cap rate calculator canada, BRRR strategy, multiplex investing"
+        description="Free real estate analyzer for Canadian investors. Calculate yields, IRR, cash-on-cash for Toronto, Vancouver, Calgary. Home of Daniel Foch's podcast."
+        keywords="canadian real estate, toronto real estate, real estate investing in canada, daniel foch, yield calculator canada, BRRR strategy, multiplex investing"
         canonicalUrl="/"
         structuredData={combinedSchema}
       />
@@ -652,7 +652,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Cap Rate</span>
+                          <span className="text-sm text-muted-foreground">Gross Yield</span>
                           <span className="font-mono font-bold">{results.capRate.toFixed(1)}%</span>
                         </div>
                       </div>
@@ -905,7 +905,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                     Share analysis with community
                   </label>
                   <p className="text-xs text-muted-foreground">
-                    Your analysis will appear on the Cap Rate Map for MLS# {mlsNumber}, helping other investors evaluate this property.
+                    Your analysis will appear on the Yield Map for MLS# {mlsNumber}, helping other investors evaluate this property.
                   </p>
                 </div>
               </div>

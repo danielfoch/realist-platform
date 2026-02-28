@@ -231,7 +231,7 @@ export default function Leaderboard() {
                 <StatCard label="Total Deals" value={String(aggregates.totalDeals)} icon={BarChart3} />
                 <StatCard label="Avg DSCR" value={formatDscr(aggregates.avgDscr)} icon={Activity} />
                 <StatCard label="Avg Cash-on-Cash" value={formatPercent(aggregates.avgCashOnCash)} icon={DollarSign} />
-                <StatCard label="Avg Cap Rate" value={formatPercent(aggregates.avgCapRate)} icon={Target} />
+                <StatCard label="Avg Yield" value={formatPercent(aggregates.avgCapRate)} icon={Target} />
               </div>
             ) : null}
 
