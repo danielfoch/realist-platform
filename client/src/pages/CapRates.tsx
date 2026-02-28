@@ -334,7 +334,7 @@ export default function CapRates() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minBeds, setMinBeds] = useState("any");
-  const [minUnits, setMinUnits] = useState("2");
+  const [minUnits, setMinUnits] = useState("any");
   const [propertyType, setPropertyType] = useState("all");
   const [minCapRate, setMinCapRate] = useState("any");
   const [sortBy, setSortBy] = useState<"capRate" | "priceAsc" | "priceDesc">("capRate");
@@ -1442,7 +1442,7 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-beds">
                   <SelectValue placeholder="Any" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1100]">
                   <SelectItem value="any">Any</SelectItem>
                   <SelectItem value="1">1+</SelectItem>
                   <SelectItem value="2">2+</SelectItem>
@@ -1458,8 +1458,9 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-units">
                   <SelectValue placeholder="Any" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1100]">
                   <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="1">1+</SelectItem>
                   <SelectItem value="2">2+</SelectItem>
                   <SelectItem value="3">3+</SelectItem>
                   <SelectItem value="4">4+</SelectItem>
@@ -1473,7 +1474,7 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-property-type">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1100]">
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="Detached">Detached</SelectItem>
                   <SelectItem value="Semi-Detached">Semi</SelectItem>
@@ -1491,7 +1492,7 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-min-cap-rate">
                   <SelectValue placeholder="Any" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1100]">
                   <SelectItem value="any">Any</SelectItem>
                   <SelectItem value="2">2%+</SelectItem>
                   <SelectItem value="4">4%+</SelectItem>
@@ -1507,7 +1508,7 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-sort">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1100]">
                   <SelectItem value="capRate">Yield</SelectItem>
                   <SelectItem value="priceAsc">Price ↑</SelectItem>
                   <SelectItem value="priceDesc">Price ↓</SelectItem>
