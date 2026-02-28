@@ -1,0 +1,154 @@
+You are the lead engineer for realist.ca (Next.js + React + TS). We have:
+- An existing homepage (sales/calculator-forward)
+- A Deal Analyzer calculator page
+- A Cap Rate Map “browse listings” feature (cards + map pins)
+- Auth + user profiles + an existing “deals analyzed” leaderboard
+
+GOAL: Make the site map-first (Option A), while preserving the original homepage as an alternate lander.
+
+HARD REQUIREMENTS
+
+0) HOMEPAGE ROUTING (TWO HOMEPAGES)
+1) Keep the CURRENT homepage design/content intact, but move it to a new route:
+   - New canonical route: /deal-analyzer (or /lander/deal-analyzer if that fits the routing better)
+   - Ensure all its internal links, CTAs, and imports still work after the move.
+2) Create a NEW homepage at / that is “Map-first (Option A)” with the Cap Rate Map embedded behind the hero.
+3) Add a simple way to A/B switch later:
+   - Add env var: NEXT_PUBLIC_HOME_VARIANT = "map" | "deal"
+   - If set to "deal", / should render the old homepage component; if "map", / renders the new map-first homepage.
+   - Default to "map" if env var is missing.
+
+1) MAP-FIRST HOMEPAGE (OPTION A) SPEC
+Hero layout:
+- Full-width, full-height section (min-h: 80vh) with the interactive Cap Rate Map as the BACKGROUND.
+- The map should be visually subdued behind the hero using a “glass” treatment:
+  - desaturate + slight blur + reduced contrast
+  - prevent accidental scroll-zoom hijacking: disable map scroll-zoom until user clicks “Activate Map” or scrolls past hero
+  - keep panning disabled until activation OR allow panning but keep UI controls hidden until activation (choose the cleanest UX)
+- Centered hero overlay card (2xl rounded, subtle shadow, translucent background) with:
+  H1: “Browse Canadian listings with community cap rates.”
+  Subhead: “Realist turns MLS data into transparent underwriting — then lets investors and realtors improve it together.”
+  Primary CTA: “Open Cap Rate Map” (scrolls/focuses map and activates full interactivity)
+  Secondary CTA: “Analyze a Deal” (links to /deal-analyzer)
+  Tertiary links: “Join the Community” “Attend an Event” (keep existing destinations)
+
+Credibility components MUST remain on /:
+- Keep “membership stats” strip (11,000+ meetup, 1,200+ skool, 26 cities, $2.6B analyzed) directly below the hero (or inside hero under CTAs if it fits).
+- Keep “As seen on” logo bar below stats (same logos, same order). Ensure it’s visible above-the-fold on most desktop screens (or at least within the first scroll).
+- Do not clutter the hero with additional paragraphs.
+
+Below-the-fold structure:
+Section 1: “How community underwriting works” (3 steps, simple icons)
+  1) Import MLS data
+  2) See transparent cap rate logic
+  3) Correct assumptions, earn reputation
+Section 2: “Latest community insights” (top 6 listings by most recent community analysis)
+Section 3: Leaderboards preview with toggle: Monthly | All-time
+  - Deals analyzed (existing)
+  - Community contributions (new)
+
+2) DEAL ANALYZER IMPORT: REPLACE SCRAPER WITH DDF MLS LOOKUP
+A) Replace realtor.ca scraping with CREA DDF MLS lookup:
+1) On the Deal Analyzer import box, add a mode switch: [URL Import] [MLS # Import]
+2) MLS import: user enters MLS number -> backend fetches listing details from DDF -> normalizes to our internal Listing model -> auto-fills Deal Analyzer fields.
+3) Remove realtor.ca scraper from the default path. Keep it behind a feature flag ONLY for fallback testing.
+
+3) AI-ASSISTED UNIT DETECTION + TRANSPARENT UNDERWRITING LOGIC
+1) For each listing (map cards + detail modal), infer “unit count” and “rent per unit” using hybrid approach:
+   - Rules/regex (duplex/triplex/fourplex/2 kitchens/secondary suite/in-law/coach house/“legal basement” etc.)
+   - AND an AI call that reads structured listing + description and returns:
+     - inferredUnitCount (1,2,3,4+)
+     - unitBreakdown (if possible)
+     - confidence (0-1)
+     - explanation (short bullets citing phrases found in listing text)
+2) When user clicks a listing, show underwriting logic:
+   - “Assumptions” section: unit count, market rent per unit, vacancy, op-ex ratio (or existing inputs), cap rate calc
+   - Display: (NOI / Price) with clear breakdown (Gross rent -> vacancy -> expenses -> NOI)
+3) Let users correct assumptions inline and submit “Community Notes”:
+   - editable unit count
+   - editable rent per unit (multi-field if multiple units)
+   - optional note per edit (“why I changed this”)
+4) Use community notes to improve defaults (simple MVP):
+   - prefer highest-scoring recent note as “Suggested by community”
+   - do not auto-override user’s own latest saved inputs without confirmation
+
+4) COMMUNITY CONTRIBUTIONS + LEADERBOARDS (MONTHLY + ALL-TIME)
+1) Add Community Contributions points:
+   - +X for structured underwriting correction submission
+   - +Y for upvoted qualitative comments
+   - -Z for downvotes (floor at 0)
+2) Add two leaderboards:
+   - Deals analyzed (existing) — keep
+   - Community contributions (NEW): monthly + all-time
+3) User role labeling:
+   - Add profile field role = "investor" | "realtor" | "other"
+   - Default "investor" but editable in profile settings
+4) Anti-spam:
+   - One vote per user per note/comment
+   - Rate limit note creation per listing per user (e.g., 3/day)
+   - Report button + auto-hide at threshold (admin review later)
+
+5) SHOW HISTORIC COMMUNITY ANALYSES ON LISTING CARDS
+1) On each listing card in map browse:
+   - If community analysis exists: show “Community Cap Rate: 4.5%” and “Rents used: $X / $Y / …”
+   - DO NOT show price used by other users (hide it)
+   - Show count of analyses + comments (e.g., “12 analyses • 7 notes”)
+2) If no community analysis exists:
+   - Show CTA: “Be the first to analyze this deal”
+3) Add a comment section in listing detail:
+   - Quantitative: underwriting notes
+   - Qualitative: discussion comments
+   - Upvote/downvote both
+   - Sorting: Top, New
+
+IMPLEMENTATION DETAILS
+1) Data models (use existing DB approach: Postgres + Prisma/Drizzle already in repo):
+   - Listing (id, mlsNumber, address, geo, description, structuredFields, source="DDF", updatedAt)
+   - ListingAnalysisAggregate (listingId, communityCapRate, rentsUsedJSON, lastAnalysisAt, analysisCount, commentCount)
+   - UnderwritingNote (id, listingId, userId, unitCount, rentsJSON, vacancy, expenseRatio, noteText, aiConfidenceAtTime, createdAt, updatedAt)
+   - Comment (id, listingId, userId, body, createdAt)
+   - Vote (id, userId, targetType="note"|"comment", targetId, value=+1|-1, createdAt) unique(userId,targetType,targetId)
+   - ContributionEvent (id, userId, type, points, targetType, targetId, createdAt)
+   - UserProfile (userId, role, displayName, etc.)
+2) Aggregation:
+   - On new note or vote, recompute listing aggregate:
+     - select “best” underwriting note by score (sum votes) with recency tie-breaker
+     - compute community cap rate using that note’s rents/assumptions and CURRENT listing price ONLY for internal calc
+     - store capRate + rentsUsed in ListingAnalysisAggregate for card display
+3) DDF integration:
+   - Backend endpoint /api/ddf/mls/[mlsNumber]
+   - Server-side fetch with env vars:
+     - DDF_BASE_URL
+     - DDF_TOKEN (or OAuth creds)
+   - Normalize into internal Listing
+   - Cache for 10–30 minutes
+   - Handle invalid MLS, expired listings, rate limits gracefully
+4) AI inference:
+   - Endpoint /api/ai/infer-units
+   - Return strict JSON schema validated with zod
+   - Fallback rules if AI fails
+   - Store AI result on Listing (inferredUnitCount, confidence, explanation, updatedAt)
+5) UI/UX:
+   - Map listing card: badges for Community Cap Rate or CTA
+   - Listing detail modal tabs: Overview | Underwrite | Community
+   - Underwrite tab: transparent calc + editable fields + “Submit correction”
+   - Community tab: notes + comments with voting
+   - Add “Top Contributors” widget on the map page + homepage leaderboard preview
+6) Performance:
+   - Virtualize listing card list
+   - Prefetch aggregates in listing search response
+7) Testing:
+   - Unit tests for aggregation and vote uniqueness
+   - Integration tests for DDF MLS endpoint with mocks
+8) Keep existing paywall/premium logic intact:
+   - Viewing community notes/comments is public
+   - Posting requires login
+   - If underwriting exports are premium today, keep premium gating
+
+DELIVERABLE
+- Implement changes in-repo end-to-end
+- Output a concise changelog + file list
+- List env vars needed and where to set them in Replit
+- Include a short manual QA checklist
+
+Start by inspecting the codebase (Next.js router type, ORM, auth, map lib, existing homepage component location) and then implement.

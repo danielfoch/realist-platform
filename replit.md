@@ -47,7 +47,7 @@ The application features a category-based dropdown navigation:
 - **Co-Investing Platform**: Tools for finding partners, pooling capital, group creation wizard, complexity assessment, and in-group chat. Includes BRA (Buyer Representation Agreement) gating for Ontario users.
 - **Calculators Hub**: Includes various tools like "True Cost of Homeownership" and "Will It Plex?".
 - **Listing Import**: Supports property detail import from realtor.ca and zillow.com via URL or HTML paste.
-- **Rent Pulse API**: Integrates scraped rent data for market insights.
+- **Rent Pulse API**: Integrates scraped rent data for market insights. Cascading rent estimation: 1) Rent Pulse scraped data (by city+bedrooms), 2) CMHC city-level benchmarks (`shared/cmhcRents.ts` — 150+ Canadian cities, 25+ US cities), 3) CMHC provincial/state averages (all 13 provinces/territories + 20+ US states), 4) Country-level defaults. Source is labeled in the Cap Rates Explorer detail panel.
 - **Stress Test Analysis**: Provides Base/Bear/Bull scenarios for financial projections within the Deal Analyzer.
 - **MLI Select Calculator**: Standalone CMHC MLI Select points calculator with underwriting and stress testing.
 - **Admin Dashboard**: Protected area for lead and webhook management.

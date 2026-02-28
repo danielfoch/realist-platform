@@ -17,6 +17,7 @@ import {
   RefreshCw, ChevronDown, ChevronUp, List,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { getCmhcRent } from "@shared/cmhcRents";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -72,7 +73,7 @@ interface ListingWithCapRate extends RepliersListing {
   capRate: number;
   estimatedMonthlyRent: number;
   annualNOI: number;
-  rentSource: "market" | "estimated" | "actual";
+  rentSource: "market" | "estimated" | "actual" | "cmhc_city" | "cmhc_province";
   totalActualRent?: number;
   dataSource?: "crea_ddf" | "repliers";
 }
@@ -92,14 +93,6 @@ interface MapBounds {
   east: number;
   west: number;
 }
-
-const DEFAULT_RENTS: Record<string, Record<string, number>> = {
-  "1": { default: 1400, CA: 1500, US: 1200 },
-  "2": { default: 1800, CA: 2000, US: 1500 },
-  "3": { default: 2200, CA: 2500, US: 1800 },
-  "4": { default: 2600, CA: 3000, US: 2200 },
-  "5": { default: 3000, CA: 3500, US: 2600 },
-};
 
 const EXPENSE_ASSUMPTIONS = {
   vacancyPercent: 5,
@@ -222,8 +215,9 @@ function estimateMonthlyRent(
   bedrooms: number,
   city: string | undefined,
   country: string | undefined,
-  rentData: RentPulseData[]
-): { rent: number; source: "market" | "estimated" } {
+  rentData: RentPulseData[],
+  province?: string
+): { rent: number; source: "market" | "estimated" | "cmhc_city" | "cmhc_province" } {
   const bedroomStr = String(Math.max(1, bedrooms || 2));
 
   if (rentData.length > 0 && city) {
@@ -235,9 +229,11 @@ function estimateMonthlyRent(
     }
   }
 
-  const countryKey = country === "CA" ? "CA" : country === "US" ? "US" : "default";
-  const defaults = DEFAULT_RENTS[bedroomStr] || DEFAULT_RENTS["2"];
-  return { rent: defaults[countryKey] || defaults.default, source: "estimated" };
+  const cmhc = getCmhcRent(bedrooms, city, province, country);
+  if (cmhc.source === "cmhc_city") return { rent: cmhc.rent, source: "cmhc_city" };
+  if (cmhc.source === "cmhc_province") return { rent: cmhc.rent, source: "cmhc_province" };
+
+  return { rent: cmhc.rent, source: "estimated" };
 }
 
 function calculateCapRate(
@@ -429,7 +425,7 @@ export default function CapRates() {
         const bedrooms = listing.details?.numBedrooms || 2;
 
         let rent: number;
-        let source: "market" | "estimated" | "actual";
+        let source: "market" | "estimated" | "actual" | "cmhc_city" | "cmhc_province";
         if (listing.totalActualRent && listing.totalActualRent > 0) {
           rent = listing.totalActualRent / 12;
           source = "actual";
@@ -438,7 +434,8 @@ export default function CapRates() {
             bedrooms,
             listing.address?.city,
             listing.address?.country,
-            rentData
+            rentData,
+            listing.address?.state
           );
           rent = estimated.rent;
           source = estimated.source;
@@ -703,6 +700,15 @@ export default function CapRates() {
                     )}
                     {selectedListing.rentSource === "actual" && (
                       <span className="text-[10px] text-green-600 ml-1">(actual)</span>
+                    )}
+                    {selectedListing.rentSource === "market" && (
+                      <span className="text-[10px] text-blue-600 ml-1">(scraped)</span>
+                    )}
+                    {selectedListing.rentSource === "cmhc_city" && (
+                      <span className="text-[10px] text-cyan-600 ml-1">(CMHC city)</span>
+                    )}
+                    {selectedListing.rentSource === "cmhc_province" && (
+                      <span className="text-[10px] text-amber-600 ml-1">(CMHC prov.)</span>
                     )}
                   </span>
                 </div>
