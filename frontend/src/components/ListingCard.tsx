@@ -1,8 +1,9 @@
 import React from 'react';
-import { MapPin, Bed, Bath, Square, Heart } from 'lucide-react';
+import { MapPin, Bed, Bath, Square, Heart, Building2 } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { InvestorLeadForm } from '@/components/monetization/InvestorLeadForm';
 
 export interface Listing {
   id: number;
@@ -155,7 +156,26 @@ export const ListingCard: React.FC<ListingCardProps> = ({
         )}
       </CardContent>
 
-      <CardFooter className="pt-0 text-xs text-gray-500">MLS® #{listing.mls_number}</CardFooter>
+      {/* Get Matched with Investor Realtor Button */}
+      <CardFooter 
+        className="pt-2 pb-4" 
+        onClick={(e) => e.stopPropagation()}
+      >
+        <InvestorLeadForm
+          listingId={listing.id}
+          listingAddress={`${listing.address_street}, ${listing.address_city}`}
+          targetCities={[listing.address_city]}
+          targetProvinces={[listing.address_province]}
+          trigger={
+            <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary hover:text-white">
+              <Building2 className="mr-2 h-4 w-4" />
+              Get Matched with Investor Realtor
+            </Button>
+          }
+        />
+      </CardFooter>
+
+      <div className="px-6 pb-4 text-xs text-gray-500">MLS® #{listing.mls_number}</div>
     </Card>
   );
 };
