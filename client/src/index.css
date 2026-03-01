@@ -255,3 +255,11 @@
   margin: 10px 12px !important;
   font-family: inherit !important;
 }
+
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+[data-radix-select-viewport] {
+  z-index: 9999 !important;
+}

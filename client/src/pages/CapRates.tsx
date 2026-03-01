@@ -1468,7 +1468,7 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-beds">
                   <SelectValue placeholder="Any" />
                 </SelectTrigger>
-                <SelectContent className="z-[1100]">
+                <SelectContent>
                   <SelectItem value="any">Any</SelectItem>
                   <SelectItem value="1">1+</SelectItem>
                   <SelectItem value="2">2+</SelectItem>
@@ -1484,7 +1484,7 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-units">
                   <SelectValue placeholder="Any" />
                 </SelectTrigger>
-                <SelectContent className="z-[1100]">
+                <SelectContent>
                   <SelectItem value="any">Any</SelectItem>
                   <SelectItem value="1">1+</SelectItem>
                   <SelectItem value="2">2+</SelectItem>
@@ -1500,7 +1500,7 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-property-type">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
-                <SelectContent className="z-[1100]">
+                <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="Detached">Detached</SelectItem>
                   <SelectItem value="Semi-Detached">Semi</SelectItem>
@@ -1518,7 +1518,7 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-min-cap-rate">
                   <SelectValue placeholder="Any" />
                 </SelectTrigger>
-                <SelectContent className="z-[1100]">
+                <SelectContent>
                   <SelectItem value="any">Any</SelectItem>
                   <SelectItem value="2">2%+</SelectItem>
                   <SelectItem value="4">4%+</SelectItem>
@@ -1534,7 +1534,7 @@ export default function CapRates() {
                 <SelectTrigger className="h-8 text-xs" data-testid="select-sort">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="z-[1100]">
+                <SelectContent>
                   <SelectItem value="capRate">Yield</SelectItem>
                   <SelectItem value="priceAsc">Price ↑</SelectItem>
                   <SelectItem value="priceDesc">Price ↓</SelectItem>
