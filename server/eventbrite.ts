@@ -16,7 +16,7 @@ export interface EventbriteEvent {
 
 const ORGANIZER_ID = "87580319633";
 const CACHE_KEY = "eventbrite:events";
-const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 1 day
+const CACHE_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 // In-memory cache as primary cache (works in production without database)
 let memoryCache: {
@@ -25,48 +25,62 @@ let memoryCache: {
   source: string;
 } | null = null;
 
+function mapEventbriteEvent(e: any): EventbriteEvent {
+  return {
+    id: e.id,
+    name: e.name?.text || "Untitled Event",
+    description: e.description?.text?.substring(0, 300) || "",
+    startDate: e.start?.utc || "",
+    endDate: e.end?.utc || "",
+    timezone: e.start?.timezone || "America/Toronto",
+    venueName: e.venue?.name || "Online",
+    venueAddress: e.venue?.address?.localized_address_display || "",
+    imageUrl: e.logo?.url || "",
+    eventUrl: e.url || `https://www.eventbrite.ca/e/${e.id}`,
+    status: e.status || "live",
+  };
+}
+
 async function fetchEventsFromAPI(): Promise<EventbriteEvent[]> {
   const token = process.env.EVENTBRITE_TOKEN;
   if (!token) {
     console.log("No EVENTBRITE_TOKEN configured, will use placeholder events");
-    console.log("Available env vars:", Object.keys(process.env).filter(k => !k.includes('PASSWORD') && !k.includes('SECRET') && !k.includes('TOKEN')).join(', '));
     return [];
   }
 
-  console.log("Fetching events from Eventbrite API with token present...");
+  console.log("Fetching events from Eventbrite API...");
 
   try {
-    const response = await fetch(
-      `https://www.eventbriteapi.com/v3/organizers/${ORGANIZER_ID}/events/?status=live,started,ended&order_by=start_desc&expand=venue`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const allEvents: EventbriteEvent[] = [];
+    let page = 1;
+    let hasMore = true;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Eventbrite API error: ${response.status}`, errorText);
-      return [];
+    while (hasMore && page <= 10) {
+      const response = await fetch(
+        `https://www.eventbriteapi.com/v3/organizers/${ORGANIZER_ID}/events/?status=live,started,ended&order_by=start_desc&expand=venue&page=${page}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Eventbrite API error on page ${page}: ${response.status}`, errorText);
+        break;
+      }
+
+      const data = await response.json();
+      const pageEvents = (data.events || []).map(mapEventbriteEvent);
+      allEvents.push(...pageEvents);
+
+      hasMore = data.pagination?.has_more_items === true;
+      page++;
     }
 
-    const data = await response.json();
-    console.log(`Fetched ${data.events?.length || 0} events from Eventbrite`);
-    
-    return (data.events || []).map((e: any) => ({
-      id: e.id,
-      name: e.name?.text || "Untitled Event",
-      description: e.description?.text?.substring(0, 300) || "",
-      startDate: e.start?.utc || "",
-      endDate: e.end?.utc || "",
-      timezone: e.start?.timezone || "America/Toronto",
-      venueName: e.venue?.name || "Online",
-      venueAddress: e.venue?.address?.localized_address_display || "",
-      imageUrl: e.logo?.url || "",
-      eventUrl: e.url || `https://www.eventbrite.ca/e/${e.id}`,
-      status: e.status || "live",
-    }));
+    console.log(`Fetched ${allEvents.length} total events from Eventbrite (${page - 1} pages)`);
+    return allEvents;
   } catch (error) {
     console.error("Eventbrite API error:", error);
     return [];
