@@ -9,6 +9,7 @@ import { users, passwordResetTokens, signupSchema, loginSchema, forgotPasswordSc
 import { eq, and, gt } from "drizzle-orm";
 import { storage } from "./storage";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
+import { sendWelcomeAccountEmail } from "./resend";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -339,10 +340,17 @@ export function registerAuthRoutes(app: Express): void {
             expiresAt,
           });
           
-          // TODO: Send email with setup link in production
-          if (process.env.NODE_ENV !== "production") {
-            console.log(`[DEV] Password setup link for ${existingUser.email}: /set-password?token=${rawToken}`);
-          }
+          const baseUrl = process.env.REPLIT_DEV_DOMAIN
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : process.env.REPL_SLUG
+              ? `https://${process.env.REPL_SLUG}.replit.app`
+              : "https://realist.ca";
+          const setupLink = `${baseUrl}/set-password?token=${rawToken}`;
+          sendWelcomeAccountEmail({
+            toEmail: existingUser.email,
+            firstName: existingUser.firstName || "there",
+            setupLink,
+          }).catch(err => console.error("Welcome email error:", err));
         }
         
         return res.json({ 
@@ -353,7 +361,6 @@ export function registerAuthRoutes(app: Express): void {
         });
       }
       
-      // Create new user (without password for now - they can set it later via email token)
       const nameParts = (firstName || "").split(" ");
       const [newUser] = await db.insert(users).values({
         email: email.toLowerCase(),
@@ -361,10 +368,9 @@ export function registerAuthRoutes(app: Express): void {
         lastName: lastName || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : null),
       }).returning();
       
-      // Generate setup token for new user (sent via email, not in response)
       const rawToken = crypto.randomBytes(32).toString("hex");
       const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       
       await db.insert(passwordResetTokens).values({
         userId: newUser.id,
@@ -372,10 +378,17 @@ export function registerAuthRoutes(app: Express): void {
         expiresAt,
       });
       
-      // TODO: Send email with setup link in production
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`[DEV] Password setup link for ${newUser.email}: /set-password?token=${rawToken}`);
-      }
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.REPL_SLUG
+          ? `https://${process.env.REPL_SLUG}.replit.app`
+          : "https://realist.ca";
+      const setupLink = `${baseUrl}/set-password?token=${rawToken}`;
+      sendWelcomeAccountEmail({
+        toEmail: newUser.email,
+        firstName: newUser.firstName || firstName || "there",
+        setupLink,
+      }).catch(err => console.error("Welcome email error:", err));
       
       res.json({
         user: { id: newUser.id, email: newUser.email, firstName: newUser.firstName, lastName: newUser.lastName },

@@ -40,6 +40,7 @@ import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
+import { passwordResetTokens } from "@shared/models/auth";
 import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
 import { 
@@ -53,6 +54,7 @@ import {
   sendNotificationEmail,
   sendMLIQuoteNotification,
   sendRealtorIntroEmail,
+  sendWelcomeAccountEmail,
 } from "./resend";
 import { authStorage } from "./replit_integrations/auth/storage";
 import { 
@@ -212,6 +214,73 @@ async function sendToGoogleSheets(leadData: {
   }
 }
 
+async function autoEnrollLeadAsUser(params: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  leadSource?: string;
+}): Promise<{ userId: string; isNew: boolean }> {
+  const emailLower = params.email.toLowerCase();
+
+  const existingUser = await db.select().from(users).where(eq(users.email, emailLower)).limit(1);
+  if (existingUser.length > 0) {
+    return { userId: existingUser[0].id, isNew: false };
+  }
+
+  let newUser;
+  try {
+    const [inserted] = await db.insert(users).values({
+      email: emailLower,
+      firstName: params.firstName || null,
+      lastName: params.lastName || null,
+      phone: params.phone || null,
+      role: "user",
+    }).returning();
+    newUser = inserted;
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      const [existing] = await db.select().from(users).where(eq(users.email, emailLower)).limit(1);
+      if (existing) return { userId: existing.id, isNew: false };
+    }
+    throw err;
+  }
+
+  await db.update(passwordResetTokens)
+    .set({ usedAt: new Date() })
+    .where(and(
+      eq(passwordResetTokens.userId, newUser.id),
+      sql`${passwordResetTokens.usedAt} IS NULL`
+    ));
+
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  await db.insert(passwordResetTokens).values({
+    userId: newUser.id,
+    token: tokenHash,
+    expiresAt,
+  });
+
+  const baseUrl = process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : process.env.REPL_SLUG
+      ? `https://${process.env.REPL_SLUG}.replit.app`
+      : "https://realist.ca";
+  const setupLink = `${baseUrl}/set-password?token=${rawToken}`;
+
+  sendWelcomeAccountEmail({
+    toEmail: emailLower,
+    firstName: params.firstName || "there",
+    setupLink,
+    leadSource: params.leadSource,
+  }).catch(err => console.error("Welcome email error:", err));
+
+  console.log(`Auto-enrolled user for: ${emailLower} (setup link generated)`);
+  return { userId: newUser.id, isNew: true };
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -348,26 +417,18 @@ export async function registerRoutes(
         })();
       }
 
-      // Auto-create user account if email doesn't exist
       let userId: string | null = null;
       try {
-        const existingUser = await db.select().from(users).where(eq(users.email, lead.email.toLowerCase())).limit(1);
-        if (existingUser.length === 0) {
-          // Create new user account without password (they can set it later via Google or password reset)
-          const [newUser] = await db.insert(users).values({
-            email: lead.email.toLowerCase(),
-            firstName,
-            lastName,
-            phone: lead.phone,
-            role: "user",
-          }).returning();
-          userId = newUser.id;
-          console.log(`Auto-created user account for: ${lead.email}`);
-        } else {
-          userId = existingUser[0].id;
-        }
+        const enrollment = await autoEnrollLeadAsUser({
+          email: lead.email,
+          firstName,
+          lastName,
+          phone: lead.phone,
+          leadSource: lead.leadSource || "Deal Analyzer",
+        });
+        userId = enrollment.userId;
       } catch (userError) {
-        console.error("Auto-create user error:", userError);
+        console.error("Auto-enroll user error:", userError);
       }
 
       res.json({
@@ -473,22 +534,13 @@ export async function registerRoutes(
         tags: ["mli_select", location || "unknown_location"],
       }).catch(err => console.error("Google Sheets backup error:", err));
 
-      // Auto-create user account
-      try {
-        const existingUser = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
-        if (existingUser.length === 0) {
-          await db.insert(users).values({
-            email: email.toLowerCase(),
-            firstName,
-            lastName,
-            phone,
-            role: "user",
-          });
-          console.log(`Auto-created user account for: ${email}`);
-        }
-      } catch (userError) {
-        console.error("Auto-create user error:", userError);
-      }
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName,
+        phone,
+        leadSource: "MLI Select Calculator",
+      }).catch(err => console.error("Auto-enroll user error:", err));
 
       res.json({ success: true, data: { leadId: lead.id } });
     } catch (error) {
@@ -578,22 +630,13 @@ export async function registerRoutes(
         source: formTag || formType || 'Deal Engagement',
       }).catch(err => console.error("Email notification error:", err));
 
-      // Auto-create user account
-      try {
-        const existingUser = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
-        if (existingUser.length === 0) {
-          await db.insert(users).values({
-            email: email.toLowerCase(),
-            firstName,
-            lastName,
-            phone,
-            role: "user",
-          });
-          console.log(`Auto-created user account for: ${email}`);
-        }
-      } catch (userError) {
-        console.error("Auto-create user error:", userError);
-      }
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName,
+        phone,
+        leadSource: formType || "Deal Engagement",
+      }).catch(err => console.error("Auto-enroll user error:", err));
 
       res.json({ success: true, data: { leadId: lead.id } });
     } catch (error) {
@@ -760,6 +803,41 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/backfill-lead-accounts", isAdmin, async (req, res) => {
+    try {
+      const leadRows = await storage.getAllLeads();
+      const results = { created: 0, existing: 0, failed: 0, emails: [] as string[] };
+
+      for (const lead of leadRows) {
+        try {
+          const nameParts = (lead.name || "").trim().split(' ');
+          const enrollment = await autoEnrollLeadAsUser({
+            email: lead.email,
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            phone: lead.phone || undefined,
+            leadSource: lead.leadSource || "Backfill",
+          });
+          if (enrollment.isNew) {
+            results.created++;
+            results.emails.push(lead.email);
+          } else {
+            results.existing++;
+          }
+        } catch (err) {
+          results.failed++;
+          console.error(`Backfill failed for ${lead.email}:`, err);
+        }
+      }
+
+      console.log(`Backfill complete: ${results.created} created, ${results.existing} existing, ${results.failed} failed`);
+      res.json({ success: true, ...results });
+    } catch (error) {
+      console.error("Error backfilling lead accounts:", error);
+      res.status(500).json({ error: "Failed to backfill accounts" });
+    }
+  });
+
   // ============================================
   // RENOQUOTE API ROUTES
   // ============================================
@@ -881,6 +959,15 @@ export async function registerRoutes(
           squareFootage: propertyData.existingSqft,
           estimatedTotal: pricingResult.totalBase,
         }).catch(err => console.error("Reno quote email error:", err));
+
+        const renoNameParts = leadName.trim().split(' ');
+        autoEnrollLeadAsUser({
+          email: leadEmail,
+          firstName: renoNameParts[0] || '',
+          lastName: renoNameParts.slice(1).join(' ') || '',
+          phone: leadPhone,
+          leadSource: "RenoQuote Calculator",
+        }).catch(err => console.error("Auto-enroll user error:", err));
       }
       
       const renoQuote = await storage.createRenoQuote({
@@ -1148,6 +1235,15 @@ export async function registerRoutes(
         hostName: data.hostName,
       }).catch(err => console.error("Contact host email error:", err));
 
+      const contactNameParts = data.name.trim().split(' ');
+      autoEnrollLeadAsUser({
+        email: data.email,
+        firstName: contactNameParts[0] || '',
+        lastName: contactNameParts.slice(1).join(' ') || '',
+        phone: data.phone,
+        leadSource: "Meetup Contact",
+      }).catch(err => console.error("Auto-enroll user error:", err));
+
       console.log(`Meetup contact request: ${data.name} wants to contact ${data.hostName} (${data.hostEmail}) about ${data.eventName}`);
 
       res.json({ success: true, message: "Message sent to host" });
@@ -1237,6 +1333,14 @@ export async function registerRoutes(
         website: data.website,
         message: data.bio,
       }).catch(err => console.error("Expert application email error:", err));
+
+      autoEnrollLeadAsUser({
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        leadSource: "Market Expert Application",
+      }).catch(err => console.error("Auto-enroll user error:", err));
 
       console.log(`Market Expert Application received: ${data.firstName} ${data.lastName} from ${data.city}, ${data.province}`);
 

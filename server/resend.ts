@@ -525,3 +525,66 @@ export async function sendMLIQuoteNotification(quote: {
   console.log(`MLI quote notification sent to: ${recipients.join(', ')}`);
   return emailData;
 }
+
+export async function sendWelcomeAccountEmail(params: {
+  toEmail: string;
+  firstName: string;
+  setupLink: string;
+  leadSource?: string;
+}) {
+  try {
+    const { client, fromEmail } = await getResendClient();
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${emailHeader('Welcome to Realist.ca', 'Your account is ready')}
+        
+        <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="color: #111827; font-size: 16px; margin: 0 0 16px 0;">
+            Hi ${params.firstName || 'there'},
+          </p>
+          
+          <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
+            Thanks for using Realist.ca${params.leadSource ? ` (${params.leadSource})` : ''}! We've created an account for you so you can save your analyses, track deals, and access all our tools without filling out forms again.
+          </p>
+          
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${params.setupLink}" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              Set Your Password
+            </a>
+          </div>
+          
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0 0 8px 0;">
+            This link expires in 7 days. If you didn't use Realist.ca, you can safely ignore this email.
+          </p>
+
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              You're receiving this because you used a tool on Realist.ca
+            </p>
+          </div>
+        </div>
+        
+        ${emailFooter()}
+      </div>
+    `;
+
+    const { data: emailData, error } = await client.emails.send({
+      from: fromEmail,
+      to: [params.toEmail],
+      subject: `Welcome to Realist.ca — Set Your Password`,
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send welcome email:', error);
+      throw error;
+    }
+
+    console.log(`Welcome email sent to: ${params.toEmail}`);
+    return emailData;
+  } catch (error) {
+    console.error(`Error sending welcome email to ${params.toEmail}:`, error);
+    return null;
+  }
+}
