@@ -1982,3 +1982,67 @@ export const insertCityYieldHistorySchema = createInsertSchema(cityYieldHistory)
 });
 export type InsertCityYieldHistory = z.infer<typeof insertCityYieldHistorySchema>;
 export type CityYieldHistory = typeof cityYieldHistory.$inferSelect;
+
+export const blogPosts = pgTable("blog_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  excerpt: text("excerpt").notNull(),
+  content: text("content").notNull(),
+  coverImage: text("cover_image"),
+  authorId: varchar("author_id").references(() => users.id),
+  authorName: text("author_name").notNull().default("Realist Team"),
+  category: text("category").notNull().default("market-analysis"),
+  tags: text("tags").array().default(sql`'{}'::text[]`),
+  status: text("status").notNull().default("draft"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  readTimeMinutes: integer("read_time_minutes"),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const blogPostsRelations = relations(blogPosts, ({ one }) => ({
+  author: one(users, {
+    fields: [blogPosts.authorId],
+    references: [users.id],
+  }),
+}));
+
+export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
+export type BlogPost = typeof blogPosts.$inferSelect;
+
+export const guides = pgTable("guides", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  excerpt: text("excerpt").notNull(),
+  content: text("content").notNull(),
+  coverImage: text("cover_image"),
+  icon: text("icon").default("BookOpen"),
+  category: text("category").notNull().default("getting-started"),
+  difficulty: text("difficulty").notNull().default("beginner"),
+  authorName: text("author_name").notNull().default("Realist Team"),
+  status: text("status").notNull().default("draft"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  readTimeMinutes: integer("read_time_minutes"),
+  sortOrder: integer("sort_order").default(0),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGuideSchema = createInsertSchema(guides).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGuide = z.infer<typeof insertGuideSchema>;
+export type Guide = typeof guides.$inferSelect;

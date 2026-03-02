@@ -124,6 +124,12 @@ import {
   cityYieldHistory,
   type CityYieldHistory,
   type InsertCityYieldHistory,
+  blogPosts,
+  type BlogPost,
+  type InsertBlogPost,
+  guides,
+  type Guide,
+  type InsertGuide,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -374,6 +380,20 @@ export interface IStorage {
   getCityYieldHistory(city?: string, province?: string): Promise<CityYieldHistory[]>;
   getAllCityYieldHistoryMonths(): Promise<string[]>;
   getMultiCityYieldHistory(cities: { city: string; province: string }[]): Promise<CityYieldHistory[]>;
+
+  createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
+  updateBlogPost(id: string, updates: Partial<InsertBlogPost>): Promise<BlogPost | undefined>;
+  deleteBlogPost(id: string): Promise<void>;
+  getBlogPost(id: string): Promise<BlogPost | undefined>;
+  getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
+  getBlogPosts(opts?: { status?: string; category?: string; limit?: number }): Promise<BlogPost[]>;
+
+  createGuide(guide: InsertGuide): Promise<Guide>;
+  updateGuide(id: string, updates: Partial<InsertGuide>): Promise<Guide | undefined>;
+  deleteGuide(id: string): Promise<void>;
+  getGuide(id: string): Promise<Guide | undefined>;
+  getGuideBySlug(slug: string): Promise<Guide | undefined>;
+  getGuides(opts?: { status?: string; category?: string }): Promise<Guide[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1624,6 +1644,80 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(cityYieldHistory)
       .where(orCondition)
       .orderBy(asc(cityYieldHistory.month), asc(cityYieldHistory.city));
+  }
+
+  async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
+    const [result] = await db.insert(blogPosts).values(post).returning();
+    return result;
+  }
+
+  async updateBlogPost(id: string, updates: Partial<InsertBlogPost>): Promise<BlogPost | undefined> {
+    const [result] = await db.update(blogPosts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(blogPosts.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteBlogPost(id: string): Promise<void> {
+    await db.delete(blogPosts).where(eq(blogPosts.id, id));
+  }
+
+  async getBlogPost(id: string): Promise<BlogPost | undefined> {
+    const [result] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+    return result;
+  }
+
+  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+    const [result] = await db.select().from(blogPosts).where(eq(blogPosts.slug, slug));
+    return result;
+  }
+
+  async getBlogPosts(opts?: { status?: string; category?: string; limit?: number }): Promise<BlogPost[]> {
+    const conditions: any[] = [];
+    if (opts?.status) conditions.push(eq(blogPosts.status, opts.status));
+    if (opts?.category) conditions.push(eq(blogPosts.category, opts.category));
+    let query = db.select().from(blogPosts)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(blogPosts.publishedAt));
+    if (opts?.limit) query = query.limit(opts.limit) as any;
+    return query;
+  }
+
+  async createGuide(guide: InsertGuide): Promise<Guide> {
+    const [result] = await db.insert(guides).values(guide).returning();
+    return result;
+  }
+
+  async updateGuide(id: string, updates: Partial<InsertGuide>): Promise<Guide | undefined> {
+    const [result] = await db.update(guides)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(guides.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteGuide(id: string): Promise<void> {
+    await db.delete(guides).where(eq(guides.id, id));
+  }
+
+  async getGuide(id: string): Promise<Guide | undefined> {
+    const [result] = await db.select().from(guides).where(eq(guides.id, id));
+    return result;
+  }
+
+  async getGuideBySlug(slug: string): Promise<Guide | undefined> {
+    const [result] = await db.select().from(guides).where(eq(guides.slug, slug));
+    return result;
+  }
+
+  async getGuides(opts?: { status?: string; category?: string }): Promise<Guide[]> {
+    const conditions: any[] = [];
+    if (opts?.status) conditions.push(eq(guides.status, opts.status));
+    if (opts?.category) conditions.push(eq(guides.category, opts.category));
+    return db.select().from(guides)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(guides.sortOrder), desc(guides.publishedAt));
   }
 }
 

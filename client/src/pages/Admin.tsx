@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +14,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer, GraduationCap, Phone, Mail, MessageSquare } from "lucide-react";
-import type { Lead, MarketExpertApplication, RenoQuote, CoachingWaitlist } from "@shared/schema";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer, GraduationCap, Phone, Mail, MessageSquare, PenLine, BookOpen, Plus, Pencil, Trash2 } from "lucide-react";
+import type { Lead, MarketExpertApplication, RenoQuote, CoachingWaitlist, BlogPost, Guide } from "@shared/schema";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -72,6 +78,260 @@ export default function Admin() {
     queryKey: ["/api/coaching-waitlist"],
     retry: false,
   });
+
+  const { data: blogPosts, isLoading: blogLoading, refetch: refetchBlog } = useQuery<BlogPost[]>({
+    queryKey: ["/api/blog/posts/admin/all"],
+    retry: false,
+  });
+
+  const { data: guidesList, isLoading: guidesLoading, refetch: refetchGuides } = useQuery<Guide[]>({
+    queryKey: ["/api/guides/admin/all"],
+    retry: false,
+  });
+
+  const [blogDialogOpen, setBlogDialogOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [blogForm, setBlogForm] = useState({
+    title: "",
+    slug: "",
+    excerpt: "",
+    content: "",
+    coverImage: "",
+    authorName: "Realist Team",
+    category: "market-analysis",
+    tags: "",
+    status: "draft",
+    metaTitle: "",
+    metaDescription: "",
+  });
+
+  const [guideDialogOpen, setGuideDialogOpen] = useState(false);
+  const [editingGuide, setEditingGuide] = useState<Guide | null>(null);
+  const [guideForm, setGuideForm] = useState({
+    title: "",
+    slug: "",
+    excerpt: "",
+    content: "",
+    coverImage: "",
+    icon: "BookOpen",
+    category: "getting-started",
+    difficulty: "beginner",
+    authorName: "Realist Team",
+    status: "draft",
+    metaTitle: "",
+    metaDescription: "",
+    sortOrder: "0",
+  });
+
+  const resetBlogForm = () => {
+    setBlogForm({
+      title: "",
+      slug: "",
+      excerpt: "",
+      content: "",
+      coverImage: "",
+      authorName: "Realist Team",
+      category: "market-analysis",
+      tags: "",
+      status: "draft",
+      metaTitle: "",
+      metaDescription: "",
+    });
+    setEditingPost(null);
+  };
+
+  const resetGuideForm = () => {
+    setGuideForm({
+      title: "",
+      slug: "",
+      excerpt: "",
+      content: "",
+      coverImage: "",
+      icon: "BookOpen",
+      category: "getting-started",
+      difficulty: "beginner",
+      authorName: "Realist Team",
+      status: "draft",
+      metaTitle: "",
+      metaDescription: "",
+      sortOrder: "0",
+    });
+    setEditingGuide(null);
+  };
+
+  const openEditPost = (post: BlogPost) => {
+    setEditingPost(post);
+    setBlogForm({
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt,
+      content: post.content,
+      coverImage: post.coverImage || "",
+      authorName: post.authorName,
+      category: post.category,
+      tags: post.tags?.join(", ") || "",
+      status: post.status,
+      metaTitle: post.metaTitle || "",
+      metaDescription: post.metaDescription || "",
+    });
+    setBlogDialogOpen(true);
+  };
+
+  const openEditGuide = (guide: Guide) => {
+    setEditingGuide(guide);
+    setGuideForm({
+      title: guide.title,
+      slug: guide.slug,
+      excerpt: guide.excerpt,
+      content: guide.content,
+      coverImage: guide.coverImage || "",
+      icon: guide.icon || "BookOpen",
+      category: guide.category,
+      difficulty: guide.difficulty,
+      authorName: guide.authorName,
+      status: guide.status,
+      metaTitle: guide.metaTitle || "",
+      metaDescription: guide.metaDescription || "",
+      sortOrder: String(guide.sortOrder || 0),
+    });
+    setGuideDialogOpen(true);
+  };
+
+  const createBlogMutation = useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      return apiRequest("POST", "/api/blog/posts", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blog/posts/admin/all"] });
+      toast({ title: "Blog post created" });
+      setBlogDialogOpen(false);
+      resetBlogForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to create blog post", variant: "destructive" });
+    },
+  });
+
+  const updateBlogMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
+      return apiRequest("PATCH", `/api/blog/posts/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blog/posts/admin/all"] });
+      toast({ title: "Blog post updated" });
+      setBlogDialogOpen(false);
+      resetBlogForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to update blog post", variant: "destructive" });
+    },
+  });
+
+  const deleteBlogMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/blog/posts/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blog/posts/admin/all"] });
+      toast({ title: "Blog post deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete blog post", variant: "destructive" });
+    },
+  });
+
+  const createGuideMutation = useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      return apiRequest("POST", "/api/guides", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/guides/admin/all"] });
+      toast({ title: "Guide created" });
+      setGuideDialogOpen(false);
+      resetGuideForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to create guide", variant: "destructive" });
+    },
+  });
+
+  const updateGuideMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
+      return apiRequest("PATCH", `/api/guides/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/guides/admin/all"] });
+      toast({ title: "Guide updated" });
+      setGuideDialogOpen(false);
+      resetGuideForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to update guide", variant: "destructive" });
+    },
+  });
+
+  const deleteGuideMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/guides/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/guides/admin/all"] });
+      toast({ title: "Guide deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete guide", variant: "destructive" });
+    },
+  });
+
+  const handleBlogSubmit = () => {
+    const payload: Record<string, unknown> = {
+      title: blogForm.title,
+      slug: blogForm.slug || undefined,
+      excerpt: blogForm.excerpt,
+      content: blogForm.content,
+      coverImage: blogForm.coverImage || undefined,
+      authorName: blogForm.authorName,
+      category: blogForm.category,
+      tags: blogForm.tags ? blogForm.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+      status: blogForm.status,
+      metaTitle: blogForm.metaTitle || undefined,
+      metaDescription: blogForm.metaDescription || undefined,
+    };
+    if (blogForm.status === "published" && !editingPost?.publishedAt) {
+      payload.publishedAt = new Date().toISOString();
+    }
+    if (editingPost) {
+      updateBlogMutation.mutate({ id: editingPost.id, data: payload });
+    } else {
+      createBlogMutation.mutate(payload);
+    }
+  };
+
+  const handleGuideSubmit = () => {
+    const payload: Record<string, unknown> = {
+      title: guideForm.title,
+      slug: guideForm.slug || undefined,
+      excerpt: guideForm.excerpt,
+      content: guideForm.content,
+      coverImage: guideForm.coverImage || undefined,
+      icon: guideForm.icon,
+      category: guideForm.category,
+      difficulty: guideForm.difficulty,
+      authorName: guideForm.authorName,
+      status: guideForm.status,
+      metaTitle: guideForm.metaTitle || undefined,
+      metaDescription: guideForm.metaDescription || undefined,
+      sortOrder: parseInt(guideForm.sortOrder) || 0,
+    };
+    if (guideForm.status === "published" && !editingGuide?.publishedAt) {
+      payload.publishedAt = new Date().toISOString();
+    }
+    if (editingGuide) {
+      updateGuideMutation.mutate({ id: editingGuide.id, data: payload });
+    } else {
+      createGuideMutation.mutate(payload);
+    }
+  };
 
   const updateCoachingMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -259,6 +519,8 @@ export default function Admin() {
                   <Badge variant="destructive" className="ml-2">{pendingCoaching.length}</Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="blog" data-testid="tab-blog">Blog</TabsTrigger>
+              <TabsTrigger value="guides" data-testid="tab-guides">Guides</TabsTrigger>
             </TabsList>
 
             <TabsContent value="applications">
@@ -712,7 +974,611 @@ export default function Admin() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="blog">
+              <Card data-testid="card-blog-table">
+                <CardHeader className="flex flex-row items-center justify-between gap-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <PenLine className="h-5 w-5" />
+                    Blog Posts
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchBlog()}
+                      className="gap-2"
+                      data-testid="button-refresh-blog"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Refresh
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        resetBlogForm();
+                        setBlogDialogOpen(true);
+                      }}
+                      className="gap-2"
+                      data-testid="button-new-post"
+                    >
+                      <Plus className="h-4 w-4" />
+                      New Post
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {blogLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                    </div>
+                  ) : blogPosts && blogPosts.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {blogPosts.map((post) => (
+                          <TableRow key={post.id} data-testid={`row-blog-${post.id}`}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{post.title}</p>
+                                <p className="text-sm text-muted-foreground truncate max-w-xs">{post.slug}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={post.status === "published" ? "default" : "outline"}>
+                                {post.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{post.category}</Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {post.publishedAt
+                                ? format(new Date(post.publishedAt), "MMM d, yyyy")
+                                : post.createdAt
+                                ? format(new Date(post.createdAt), "MMM d, yyyy")
+                                : "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => openEditPost(post)}
+                                  data-testid={`button-edit-post-${post.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                {post.status === "draft" && (
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => updateBlogMutation.mutate({
+                                      id: post.id,
+                                      data: { status: "published", publishedAt: new Date().toISOString() },
+                                    })}
+                                    disabled={updateBlogMutation.isPending}
+                                    data-testid={`button-publish-post-${post.id}`}
+                                  >
+                                    Publish
+                                  </Button>
+                                )}
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm("Delete this blog post?")) {
+                                      deleteBlogMutation.mutate(post.id);
+                                    }
+                                  }}
+                                  disabled={deleteBlogMutation.isPending}
+                                  data-testid={`button-delete-post-${post.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-12">
+                      <PenLine className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No blog posts yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Create your first post to get started.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="guides">
+              <Card data-testid="card-guides-table">
+                <CardHeader className="flex flex-row items-center justify-between gap-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5" />
+                    Guides
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchGuides()}
+                      className="gap-2"
+                      data-testid="button-refresh-guides"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Refresh
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        resetGuideForm();
+                        setGuideDialogOpen(true);
+                      }}
+                      className="gap-2"
+                      data-testid="button-new-guide"
+                    >
+                      <Plus className="h-4 w-4" />
+                      New Guide
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {guidesLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                    </div>
+                  ) : guidesList && guidesList.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Difficulty</TableHead>
+                          <TableHead>Order</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {guidesList.map((guide) => (
+                          <TableRow key={guide.id} data-testid={`row-guide-${guide.id}`}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{guide.title}</p>
+                                <p className="text-sm text-muted-foreground truncate max-w-xs">{guide.slug}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={guide.status === "published" ? "default" : "outline"}>
+                                {guide.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{guide.category}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                guide.difficulty === "beginner" ? "outline" :
+                                guide.difficulty === "intermediate" ? "secondary" :
+                                "default"
+                              }>
+                                {guide.difficulty}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-muted-foreground">
+                              {guide.sortOrder}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => openEditGuide(guide)}
+                                  data-testid={`button-edit-guide-${guide.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                {guide.status === "draft" && (
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => updateGuideMutation.mutate({
+                                      id: guide.id,
+                                      data: { status: "published", publishedAt: new Date().toISOString() },
+                                    })}
+                                    disabled={updateGuideMutation.isPending}
+                                    data-testid={`button-publish-guide-${guide.id}`}
+                                  >
+                                    Publish
+                                  </Button>
+                                )}
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm("Delete this guide?")) {
+                                      deleteGuideMutation.mutate(guide.id);
+                                    }
+                                  }}
+                                  disabled={deleteGuideMutation.isPending}
+                                  data-testid={`button-delete-guide-${guide.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-12">
+                      <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No guides yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Create your first guide to get started.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
+
+          <Dialog open={blogDialogOpen} onOpenChange={(open) => {
+            setBlogDialogOpen(open);
+            if (!open) resetBlogForm();
+          }}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle data-testid="text-blog-dialog-title">
+                  {editingPost ? "Edit Blog Post" : "New Blog Post"}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="blog-title">Title</Label>
+                  <Input
+                    id="blog-title"
+                    value={blogForm.title}
+                    onChange={(e) => setBlogForm({ ...blogForm, title: e.target.value })}
+                    data-testid="input-blog-title"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blog-slug">Slug (auto-generated if empty)</Label>
+                  <Input
+                    id="blog-slug"
+                    value={blogForm.slug}
+                    onChange={(e) => setBlogForm({ ...blogForm, slug: e.target.value })}
+                    data-testid="input-blog-slug"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blog-excerpt">Excerpt</Label>
+                  <Textarea
+                    id="blog-excerpt"
+                    value={blogForm.excerpt}
+                    onChange={(e) => setBlogForm({ ...blogForm, excerpt: e.target.value })}
+                    className="resize-none"
+                    rows={2}
+                    data-testid="input-blog-excerpt"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blog-content">Content (HTML)</Label>
+                  <Textarea
+                    id="blog-content"
+                    value={blogForm.content}
+                    onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
+                    rows={10}
+                    data-testid="input-blog-content"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="blog-category">Category</Label>
+                    <Select
+                      value={blogForm.category}
+                      onValueChange={(val) => setBlogForm({ ...blogForm, category: val })}
+                    >
+                      <SelectTrigger data-testid="select-blog-category">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="market-analysis">Market Analysis</SelectItem>
+                        <SelectItem value="strategy">Strategy</SelectItem>
+                        <SelectItem value="deal-breakdown">Deal Breakdown</SelectItem>
+                        <SelectItem value="news">News</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="blog-status">Status</Label>
+                    <Select
+                      value={blogForm.status}
+                      onValueChange={(val) => setBlogForm({ ...blogForm, status: val })}
+                    >
+                      <SelectTrigger data-testid="select-blog-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="published">Published</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blog-cover">Cover Image URL</Label>
+                  <Input
+                    id="blog-cover"
+                    value={blogForm.coverImage}
+                    onChange={(e) => setBlogForm({ ...blogForm, coverImage: e.target.value })}
+                    data-testid="input-blog-cover"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blog-author">Author Name</Label>
+                  <Input
+                    id="blog-author"
+                    value={blogForm.authorName}
+                    onChange={(e) => setBlogForm({ ...blogForm, authorName: e.target.value })}
+                    data-testid="input-blog-author"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blog-tags">Tags (comma-separated)</Label>
+                  <Input
+                    id="blog-tags"
+                    value={blogForm.tags}
+                    onChange={(e) => setBlogForm({ ...blogForm, tags: e.target.value })}
+                    data-testid="input-blog-tags"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="blog-meta-title">Meta Title</Label>
+                    <Input
+                      id="blog-meta-title"
+                      value={blogForm.metaTitle}
+                      onChange={(e) => setBlogForm({ ...blogForm, metaTitle: e.target.value })}
+                      data-testid="input-blog-meta-title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="blog-meta-desc">Meta Description</Label>
+                    <Input
+                      id="blog-meta-desc"
+                      value={blogForm.metaDescription}
+                      onChange={(e) => setBlogForm({ ...blogForm, metaDescription: e.target.value })}
+                      data-testid="input-blog-meta-desc"
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setBlogDialogOpen(false);
+                    resetBlogForm();
+                  }}
+                  data-testid="button-blog-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleBlogSubmit}
+                  disabled={createBlogMutation.isPending || updateBlogMutation.isPending || !blogForm.title || !blogForm.excerpt || !blogForm.content}
+                  data-testid="button-blog-submit"
+                >
+                  {editingPost ? "Update" : "Create"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={guideDialogOpen} onOpenChange={(open) => {
+            setGuideDialogOpen(open);
+            if (!open) resetGuideForm();
+          }}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle data-testid="text-guide-dialog-title">
+                  {editingGuide ? "Edit Guide" : "New Guide"}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="guide-title">Title</Label>
+                  <Input
+                    id="guide-title"
+                    value={guideForm.title}
+                    onChange={(e) => setGuideForm({ ...guideForm, title: e.target.value })}
+                    data-testid="input-guide-title"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guide-slug">Slug (auto-generated if empty)</Label>
+                  <Input
+                    id="guide-slug"
+                    value={guideForm.slug}
+                    onChange={(e) => setGuideForm({ ...guideForm, slug: e.target.value })}
+                    data-testid="input-guide-slug"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guide-excerpt">Excerpt</Label>
+                  <Textarea
+                    id="guide-excerpt"
+                    value={guideForm.excerpt}
+                    onChange={(e) => setGuideForm({ ...guideForm, excerpt: e.target.value })}
+                    className="resize-none"
+                    rows={2}
+                    data-testid="input-guide-excerpt"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guide-content">Content (HTML)</Label>
+                  <Textarea
+                    id="guide-content"
+                    value={guideForm.content}
+                    onChange={(e) => setGuideForm({ ...guideForm, content: e.target.value })}
+                    rows={10}
+                    data-testid="input-guide-content"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="guide-category">Category</Label>
+                    <Select
+                      value={guideForm.category}
+                      onValueChange={(val) => setGuideForm({ ...guideForm, category: val })}
+                    >
+                      <SelectTrigger data-testid="select-guide-category">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="getting-started">Getting Started</SelectItem>
+                        <SelectItem value="strategy">Strategy</SelectItem>
+                        <SelectItem value="analysis">Analysis</SelectItem>
+                        <SelectItem value="advanced">Advanced</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="guide-difficulty">Difficulty</Label>
+                    <Select
+                      value={guideForm.difficulty}
+                      onValueChange={(val) => setGuideForm({ ...guideForm, difficulty: val })}
+                    >
+                      <SelectTrigger data-testid="select-guide-difficulty">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="beginner">Beginner</SelectItem>
+                        <SelectItem value="intermediate">Intermediate</SelectItem>
+                        <SelectItem value="advanced">Advanced</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="guide-status">Status</Label>
+                    <Select
+                      value={guideForm.status}
+                      onValueChange={(val) => setGuideForm({ ...guideForm, status: val })}
+                    >
+                      <SelectTrigger data-testid="select-guide-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="published">Published</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="guide-cover">Cover Image URL</Label>
+                    <Input
+                      id="guide-cover"
+                      value={guideForm.coverImage}
+                      onChange={(e) => setGuideForm({ ...guideForm, coverImage: e.target.value })}
+                      data-testid="input-guide-cover"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="guide-icon">Icon Name</Label>
+                    <Input
+                      id="guide-icon"
+                      value={guideForm.icon}
+                      onChange={(e) => setGuideForm({ ...guideForm, icon: e.target.value })}
+                      data-testid="input-guide-icon"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="guide-author">Author Name</Label>
+                    <Input
+                      id="guide-author"
+                      value={guideForm.authorName}
+                      onChange={(e) => setGuideForm({ ...guideForm, authorName: e.target.value })}
+                      data-testid="input-guide-author"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="guide-sort">Sort Order</Label>
+                    <Input
+                      id="guide-sort"
+                      type="number"
+                      value={guideForm.sortOrder}
+                      onChange={(e) => setGuideForm({ ...guideForm, sortOrder: e.target.value })}
+                      data-testid="input-guide-sort"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="guide-meta-title">Meta Title</Label>
+                    <Input
+                      id="guide-meta-title"
+                      value={guideForm.metaTitle}
+                      onChange={(e) => setGuideForm({ ...guideForm, metaTitle: e.target.value })}
+                      data-testid="input-guide-meta-title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="guide-meta-desc">Meta Description</Label>
+                    <Input
+                      id="guide-meta-desc"
+                      value={guideForm.metaDescription}
+                      onChange={(e) => setGuideForm({ ...guideForm, metaDescription: e.target.value })}
+                      data-testid="input-guide-meta-desc"
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setGuideDialogOpen(false);
+                    resetGuideForm();
+                  }}
+                  data-testid="button-guide-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleGuideSubmit}
+                  disabled={createGuideMutation.isPending || updateGuideMutation.isPending || !guideForm.title || !guideForm.excerpt || !guideForm.content}
+                  data-testid="button-guide-submit"
+                >
+                  {editingGuide ? "Update" : "Create"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
     </div>

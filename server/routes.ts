@@ -33,6 +33,8 @@ import {
   rentListings,
   underwritingNotes,
   listingComments,
+  insertBlogPostSchema,
+  insertGuideSchema,
 } from "@shared/schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
@@ -1297,6 +1299,199 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching blog posts:", error);
       res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.get("/api/blog/posts/db", async (req, res) => {
+    try {
+      const { category, limit } = req.query;
+      const posts = await storage.getBlogPosts({
+        status: "published",
+        category: category as string | undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+      });
+      res.json(posts);
+    } catch (error) {
+      console.error("Error fetching blog posts:", error);
+      res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.get("/api/blog/posts/admin/all", isAdmin, async (req, res) => {
+    try {
+      const posts = await storage.getBlogPosts();
+      res.json(posts);
+    } catch (error) {
+      console.error("Error fetching all blog posts:", error);
+      res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.get("/api/blog/posts/db/:slug", async (req, res) => {
+    try {
+      const post = await storage.getBlogPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ error: "Post not found" });
+      if (post.status !== "published") return res.status(404).json({ error: "Post not found" });
+      res.json(post);
+    } catch (error) {
+      console.error("Error fetching blog post:", error);
+      res.status(500).json({ error: "Failed to fetch blog post" });
+    }
+  });
+
+  app.post("/api/blog/posts", isAdmin, async (req, res) => {
+    try {
+      const data = req.body;
+      if (!data.slug && data.title) {
+        data.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      }
+      if (data.content && !data.readTimeMinutes) {
+        const words = data.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+        data.readTimeMinutes = Math.max(1, Math.ceil(words / 200));
+      }
+      if (data.status === "published" && !data.publishedAt) {
+        data.publishedAt = new Date().toISOString();
+      }
+      const parsed = insertBlogPostSchema.parse(data);
+      const existing = await storage.getBlogPostBySlug(parsed.slug || "");
+      if (existing) return res.status(409).json({ error: "A post with this slug already exists" });
+      const post = await storage.createBlogPost(parsed);
+      res.status(201).json(post);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Validation failed", details: error.issues });
+      console.error("Error creating blog post:", error);
+      res.status(500).json({ error: "Failed to create blog post" });
+    }
+  });
+
+  app.patch("/api/blog/posts/:id", isAdmin, async (req, res) => {
+    try {
+      const data = req.body;
+      if (data.content && !data.readTimeMinutes) {
+        const words = data.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+        data.readTimeMinutes = Math.max(1, Math.ceil(words / 200));
+      }
+      if (data.status === "published" && !data.publishedAt) {
+        data.publishedAt = new Date().toISOString();
+      }
+      const parsed = insertBlogPostSchema.partial().parse(data);
+      if (parsed.slug) {
+        const existing = await storage.getBlogPostBySlug(parsed.slug);
+        if (existing && existing.id !== req.params.id) return res.status(409).json({ error: "A post with this slug already exists" });
+      }
+      const post = await storage.updateBlogPost(req.params.id, parsed);
+      if (!post) return res.status(404).json({ error: "Post not found" });
+      res.json(post);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Validation failed", details: error.issues });
+      console.error("Error updating blog post:", error);
+      res.status(500).json({ error: "Failed to update blog post" });
+    }
+  });
+
+  app.delete("/api/blog/posts/:id", isAdmin, async (req, res) => {
+    try {
+      await storage.deleteBlogPost(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting blog post:", error);
+      res.status(500).json({ error: "Failed to delete blog post" });
+    }
+  });
+
+  app.get("/api/guides/published", async (req, res) => {
+    try {
+      const { category } = req.query;
+      const allGuides = await storage.getGuides({
+        status: "published",
+        category: category as string | undefined,
+      });
+      res.json(allGuides);
+    } catch (error) {
+      console.error("Error fetching guides:", error);
+      res.status(500).json({ error: "Failed to fetch guides" });
+    }
+  });
+
+  app.get("/api/guides/admin/all", isAdmin, async (req, res) => {
+    try {
+      const allGuides = await storage.getGuides();
+      res.json(allGuides);
+    } catch (error) {
+      console.error("Error fetching all guides:", error);
+      res.status(500).json({ error: "Failed to fetch guides" });
+    }
+  });
+
+  app.get("/api/guides/by-slug/:slug", async (req, res) => {
+    try {
+      const guide = await storage.getGuideBySlug(req.params.slug);
+      if (!guide) return res.status(404).json({ error: "Guide not found" });
+      if (guide.status !== "published") return res.status(404).json({ error: "Guide not found" });
+      res.json(guide);
+    } catch (error) {
+      console.error("Error fetching guide:", error);
+      res.status(500).json({ error: "Failed to fetch guide" });
+    }
+  });
+
+  app.post("/api/guides", isAdmin, async (req, res) => {
+    try {
+      const data = req.body;
+      if (!data.slug && data.title) {
+        data.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      }
+      if (data.content && !data.readTimeMinutes) {
+        const words = data.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+        data.readTimeMinutes = Math.max(1, Math.ceil(words / 200));
+      }
+      if (data.status === "published" && !data.publishedAt) {
+        data.publishedAt = new Date().toISOString();
+      }
+      const parsed = insertGuideSchema.parse(data);
+      const existing = await storage.getGuideBySlug(parsed.slug || "");
+      if (existing) return res.status(409).json({ error: "A guide with this slug already exists" });
+      const guide = await storage.createGuide(parsed);
+      res.status(201).json(guide);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Validation failed", details: error.issues });
+      console.error("Error creating guide:", error);
+      res.status(500).json({ error: "Failed to create guide" });
+    }
+  });
+
+  app.patch("/api/guides/:id", isAdmin, async (req, res) => {
+    try {
+      const data = req.body;
+      if (data.content && !data.readTimeMinutes) {
+        const words = data.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+        data.readTimeMinutes = Math.max(1, Math.ceil(words / 200));
+      }
+      if (data.status === "published" && !data.publishedAt) {
+        data.publishedAt = new Date().toISOString();
+      }
+      const parsed = insertGuideSchema.partial().parse(data);
+      if (parsed.slug) {
+        const existing = await storage.getGuideBySlug(parsed.slug);
+        if (existing && existing.id !== req.params.id) return res.status(409).json({ error: "A guide with this slug already exists" });
+      }
+      const guide = await storage.updateGuide(req.params.id, parsed);
+      if (!guide) return res.status(404).json({ error: "Guide not found" });
+      res.json(guide);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Validation failed", details: error.issues });
+      console.error("Error updating guide:", error);
+      res.status(500).json({ error: "Failed to update guide" });
+    }
+  });
+
+  app.delete("/api/guides/:id", isAdmin, async (req, res) => {
+    try {
+      await storage.deleteGuide(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting guide:", error);
+      res.status(500).json({ error: "Failed to delete guide" });
     }
   });
 

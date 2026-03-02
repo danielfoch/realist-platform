@@ -12,6 +12,7 @@ import Home from "@/pages/Home";
 import About from "@/pages/About";
 import Events from "@/pages/Events";
 import Blog from "@/pages/Blog";
+import BlogPost from "@/pages/BlogPost";
 import Shop from "@/pages/Shop";
 import Compare from "@/pages/Compare";
 import Podcast from "@/pages/Podcast";
@@ -53,6 +54,7 @@ import ToolsHub from "@/pages/ToolsHub";
 import CommunityHub from "@/pages/CommunityHub";
 import InsightsHub from "@/pages/InsightsHub";
 import GuidesHub from "@/pages/GuidesHub";
+import GuidePage from "@/pages/GuidePage";
 import NetworkHub from "@/pages/NetworkHub";
 import ContactPage from "@/pages/ContactPage";
 
@@ -92,7 +94,9 @@ function Router() {
       <Route path="/insights" component={InsightsHub} />
       <Route path="/insights/podcast" component={Podcast} />
       <Route path="/insights/blog" component={Blog} />
+      <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />
+      <Route path="/insights/guides/:slug" component={GuidePage} />
       
       {/* New About routes */}
       <Route path="/about" component={About} />
