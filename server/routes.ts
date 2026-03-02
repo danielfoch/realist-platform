@@ -803,6 +803,107 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/import-csv-users", isAdmin, async (req, res) => {
+    try {
+      const { users: csvUsers, sendEmails } = req.body;
+      if (!Array.isArray(csvUsers) || csvUsers.length === 0) {
+        return res.status(400).json({ error: "No users provided" });
+      }
+      const results = { imported: 0, existing: 0, failed: 0, details: [] as string[] };
+
+      for (const row of csvUsers) {
+        try {
+          const email = (row.email || "").toLowerCase().trim();
+          if (!email) { results.failed++; continue; }
+
+          const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+          if (existing) {
+            results.existing++;
+            continue;
+          }
+
+          const [newUser] = await db.insert(users).values({
+            email,
+            firstName: row.first_name || row.firstName || null,
+            lastName: row.last_name || row.lastName || null,
+            phone: row.phone || null,
+            role: row.role || "user",
+          }).returning();
+
+          const rawToken = crypto.randomBytes(32).toString("hex");
+          const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          await db.insert(passwordResetTokens).values({
+            userId: newUser.id,
+            token: tokenHash,
+            expiresAt,
+          });
+
+          if (sendEmails !== false) {
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN
+              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+              : process.env.REPL_SLUG
+                ? `https://${process.env.REPL_SLUG}.replit.app`
+                : "https://realist.ca";
+            sendWelcomeAccountEmail({
+              toEmail: email,
+              firstName: row.first_name || row.firstName || "there",
+              setupLink: `${baseUrl}/set-password?token=${rawToken}`,
+              leadSource: "Account Recovery",
+            }).catch(err => console.error(`Welcome email error for ${email}:`, err));
+          }
+
+          results.imported++;
+          results.details.push(email);
+        } catch (err: any) {
+          if (err?.code === "23505") { results.existing++; }
+          else { results.failed++; console.error(`Import failed for ${row.email}:`, err); }
+        }
+      }
+
+      console.log(`CSV import: ${results.imported} imported, ${results.existing} existing, ${results.failed} failed`);
+      res.json({ success: true, ...results });
+    } catch (error) {
+      console.error("Error importing CSV users:", error);
+      res.status(500).json({ error: "Failed to import users" });
+    }
+  });
+
+  app.post("/api/admin/import-csv-leads", isAdmin, async (req, res) => {
+    try {
+      const { leads: csvLeads } = req.body;
+      if (!Array.isArray(csvLeads) || csvLeads.length === 0) {
+        return res.status(400).json({ error: "No leads provided" });
+      }
+      const results = { imported: 0, duplicate: 0, failed: 0 };
+
+      for (const row of csvLeads) {
+        try {
+          const email = (row.email || "").trim();
+          if (!email) { results.failed++; continue; }
+
+          await storage.createLead({
+            name: row.name || "",
+            email,
+            phone: row.phone || "",
+            consent: row.consent === "true" || row.consent === true,
+            leadSource: row.lead_source || row.leadSource || "Import",
+          });
+          results.imported++;
+        } catch (err: any) {
+          if (err?.code === "23505") { results.duplicate++; }
+          else { results.failed++; }
+        }
+      }
+
+      console.log(`CSV lead import: ${results.imported} imported, ${results.duplicate} duplicate, ${results.failed} failed`);
+      res.json({ success: true, ...results });
+    } catch (error) {
+      console.error("Error importing CSV leads:", error);
+      res.status(500).json({ error: "Failed to import leads" });
+    }
+  });
+
   app.post("/api/admin/backfill-lead-accounts", isAdmin, async (req, res) => {
     try {
       const leadRows = await storage.getAllLeads();
