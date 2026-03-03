@@ -939,6 +939,65 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/send-welcome-emails", isAdmin, async (req, res) => {
+    try {
+      const usersWithoutPasswords = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+      }).from(users).where(sql`${users.passwordHash} IS NULL`);
+
+      const results = { sent: 0, failed: 0, emails: [] as string[] };
+
+      for (const user of usersWithoutPasswords) {
+        try {
+          await db.update(passwordResetTokens)
+            .set({ usedAt: new Date() })
+            .where(and(
+              eq(passwordResetTokens.userId, user.id),
+              sql`${passwordResetTokens.usedAt} IS NULL`
+            ));
+
+          const rawToken = crypto.randomBytes(32).toString("hex");
+          const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          await db.insert(passwordResetTokens).values({
+            userId: user.id,
+            token: tokenHash,
+            expiresAt,
+          });
+
+          const baseUrl = process.env.REPLIT_DEV_DOMAIN
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : process.env.REPL_SLUG
+              ? `https://${process.env.REPL_SLUG}.replit.app`
+              : "https://realist.ca";
+
+          await sendWelcomeAccountEmail({
+            toEmail: user.email,
+            firstName: user.firstName || "there",
+            setupLink: `${baseUrl}/set-password?token=${rawToken}`,
+            leadSource: "Account Recovery",
+          });
+
+          results.sent++;
+          results.emails.push(user.email);
+
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (err) {
+          results.failed++;
+          console.error(`Welcome email failed for ${user.email}:`, err);
+        }
+      }
+
+      console.log(`Welcome email blast: ${results.sent} sent, ${results.failed} failed`);
+      res.json({ success: true, ...results });
+    } catch (error) {
+      console.error("Error sending welcome emails:", error);
+      res.status(500).json({ error: "Failed to send welcome emails" });
+    }
+  });
+
   // ============================================
   // RENOQUOTE API ROUTES
   // ============================================
