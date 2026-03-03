@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import { ListingsPage } from './pages/ListingsPage'
 import { RealtorAuthPage } from './pages/RealtorAuthPage'
 import { RealtorDashboard } from './pages/RealtorDashboard'
+import { BlogListPage, BlogPostPage } from './pages/BlogPage'
+import { GuidesListPage, GuidePage } from './pages/GuidesPage'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -17,6 +19,12 @@ function App() {
               <Link to="/" className="text-sm font-medium hover:text-primary">
                 Browse Listings
               </Link>
+              <Link to="/insights/blog" className="text-sm font-medium hover:text-primary">
+                Blog
+              </Link>
+              <Link to="/insights/guides" className="text-sm font-medium hover:text-primary">
+                Guides
+              </Link>
               <Link to="/realtor" className="text-sm font-medium hover:text-primary">
                 Realtor Portal
               </Link>
@@ -30,6 +38,14 @@ function App() {
             <Route path="/realtor" element={<RealtorAuthPage />} />
             <Route path="/realtor/login" element={<RealtorAuthPage />} />
             <Route path="/realtor/dashboard" element={<RealtorDashboard />} />
+            
+            {/* Blog Routes */}
+            <Route path="/insights/blog" element={<BlogListPage />} />
+            <Route path="/insights/blog/:slug" element={<BlogPostPage />} />
+            
+            {/* Guides Routes */}
+            <Route path="/insights/guides" element={<GuidesListPage />} />
+            <Route path="/insights/guides/:slug" element={<GuidePage />} />
           </Routes>
         </main>
         

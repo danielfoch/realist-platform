@@ -8,6 +8,7 @@ import morgan from 'morgan';
 import path from 'path';
 import { collectDefaultMetrics, Counter, Gauge, Registry } from 'prom-client';
 import apiRoutes from './api-routes';
+import { createContentRouter } from './content-routes';
 import { db } from './db';
 import { errorTrackingMiddleware, getRecentErrors } from './error-tracking';
 import { logger } from './logger';
@@ -73,6 +74,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/leads', leadRouter);
 app.use('/api/realtor', realtorRouter);
 app.use('/api/investor', investorLeadRouter);
+app.use('/api', createContentRouter());
 
 // Stripe webhook endpoint (must be after raw body middleware)
 app.post('/api/webhook/stripe', async (req: Request, res: Response) => {
