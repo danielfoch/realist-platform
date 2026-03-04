@@ -390,6 +390,73 @@ export async function sendRealtorIntroEmail(params: {
   return { data, subject, html };
 }
 
+export async function sendRealtorLeadAlert(params: {
+  realtorEmail: string;
+  realtorName: string;
+  leadName: string;
+  dealAddress?: string;
+  dealCity?: string;
+  dealStrategy?: string;
+  claimUrl: string;
+}) {
+  const { client, fromEmail } = await getResendClient();
+
+  const subject = `New Lead in Your Market: ${params.dealCity || 'Your Area'} — ${params.dealAddress || 'Property Analysis'}`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      ${emailHeader('New Lead Available', 'Someone is analyzing a deal in your market')}
+      
+      <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <p style="color: #111827; font-size: 15px; line-height: 1.6;">
+          Hi ${params.realtorName},
+        </p>
+        <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+          A potential client just analyzed a deal in your claimed market. Here are the details:
+        </p>
+        
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          ${params.dealAddress ? `<p style="margin: 0 0 8px 0; color: #111827; font-size: 14px;"><strong>Property:</strong> ${params.dealAddress}</p>` : ''}
+          ${params.dealCity ? `<p style="margin: 0 0 8px 0; color: #111827; font-size: 14px;"><strong>Market:</strong> ${params.dealCity}</p>` : ''}
+          ${params.dealStrategy ? `<p style="margin: 0 0 8px 0; color: #111827; font-size: 14px;"><strong>Strategy:</strong> ${params.dealStrategy.replace(/_/g, ' ')}</p>` : ''}
+          <p style="margin: 0; color: #111827; font-size: 14px;"><strong>Lead:</strong> ${params.leadName}</p>
+        </div>
+
+        <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+          Log in to your Realtor Portal to review this lead and send an introduction. First to claim gets the connection!
+        </p>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${params.claimUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">
+            View & Claim This Lead
+          </a>
+        </div>
+
+        <p style="color: #6b7280; font-size: 12px; line-height: 1.5; margin-top: 16px;">
+          You're receiving this because you've claimed ${params.dealCity || 'this market'} as your service area on Realist.ca. To stop receiving these, you can release your market claim in the partner portal.
+        </p>
+      </div>
+      
+      ${emailFooter()}
+    </div>
+  `;
+
+  const { data, error } = await client.emails.send({
+    from: fromEmail,
+    to: params.realtorEmail,
+    subject,
+    html,
+  });
+
+  if (error) {
+    console.error('Failed to send realtor lead alert:', error);
+    return null;
+  }
+
+  console.log(`Realtor lead alert sent to ${params.realtorEmail} for ${params.dealCity}`);
+  return data;
+}
+
 // Send a generic notification email (backwards compatible)
 export async function sendNotificationEmail(params: {
   to: string;

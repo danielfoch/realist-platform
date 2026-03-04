@@ -393,6 +393,12 @@ export async function registerRoutes(
         (async () => {
           try {
             const activeClaims = await storage.getActiveClaimsForMarket(property.city!, property.region!);
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN
+              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+              : process.env.REPL_SLUG
+                ? `https://${process.env.REPL_SLUG}.replit.app`
+                : "https://realist.ca";
+
             for (const claim of activeClaims) {
               await storage.createRealtorLeadNotification({
                 realtorClaimId: claim.id,
@@ -407,6 +413,26 @@ export async function registerRoutes(
                 status: "new",
                 notifiedAt: new Date(),
               });
+
+              // Send email alert to the realtor
+              try {
+                const [realtorUser] = await db.select().from(users).where(eq(users.id, claim.userId));
+                if (realtorUser) {
+                  const realtorName = `${realtorUser.firstName || ''} ${realtorUser.lastName || ''}`.trim() || realtorUser.email;
+                  const { sendRealtorLeadAlert } = await import("./resend");
+                  sendRealtorLeadAlert({
+                    realtorEmail: realtorUser.email,
+                    realtorName,
+                    leadName: lead.name,
+                    dealAddress: property.formattedAddress || undefined,
+                    dealCity: property.city || undefined,
+                    dealStrategy: analysis.strategyType,
+                    claimUrl: `${baseUrl}/partner/network`,
+                  }).catch(err => console.error("Realtor lead alert email error:", err));
+                }
+              } catch (emailErr) {
+                console.error("Realtor alert email lookup error:", emailErr);
+              }
             }
             if (activeClaims.length > 0) {
               console.log(`Notified ${activeClaims.length} realtor(s) for market: ${property.city}, ${property.region}`);
