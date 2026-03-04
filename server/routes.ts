@@ -1050,6 +1050,67 @@ export async function registerRoutes(
   });
 
   // ============================================
+  // MORTGAGE RATES API ROUTES
+  // ============================================
+
+  app.get("/api/mortgage-rates", async (req, res) => {
+    try {
+      const { getAllCurrentRates } = await import("./rateScraper");
+      const rates = await getAllCurrentRates();
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching mortgage rates:", error);
+      res.status(500).json({ error: "Failed to fetch rates" });
+    }
+  });
+
+  app.get("/api/mortgage-rates/history", async (req, res) => {
+    try {
+      const { getRateHistory } = await import("./rateScraper");
+      const rates = await getRateHistory(
+        req.query.rateType as string | undefined,
+        req.query.term as string | undefined,
+      );
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching rate history:", error);
+      res.status(500).json({ error: "Failed to fetch rate history" });
+    }
+  });
+
+  app.post("/api/admin/mortgage-rates/scrape", isAdmin, async (req, res) => {
+    try {
+      const { runRateScrape } = await import("./rateScraper");
+      const result = await runRateScrape();
+      res.json(result);
+    } catch (error) {
+      console.error("Error running rate scrape:", error);
+      res.status(500).json({ error: "Failed to scrape rates" });
+    }
+  });
+
+  app.post("/api/admin/mortgage-rates", isAdmin, async (req, res) => {
+    try {
+      const { rateType, term, rate, provider, source, category, isInsured } = req.body;
+      if (!rateType || !term || !rate || !provider) {
+        return res.status(400).json({ error: "rateType, term, rate, provider required" });
+      }
+      const { mortgageRates: ratesTable } = await import("@shared/schema");
+      const [result] = await db.insert(ratesTable).values({
+        rateType, term, rate: parseFloat(rate), provider,
+        source: source || "manual",
+        category: category || "custom",
+        isInsured: isInsured ?? false,
+        lastUpdated: new Date(),
+      }).returning();
+      res.json(result);
+    } catch (error) {
+      console.error("Error adding rate:", error);
+      res.status(500).json({ error: "Failed to add rate" });
+    }
+  });
+
+  // ============================================
   // RENOQUOTE API ROUTES
   // ============================================
 
@@ -5876,6 +5937,54 @@ export async function registerRoutes(
       console.error("[city-report] Startup check failed:", error);
     }
   })();
+
+  // Weekly mortgage rate scrape: check every 6 hours, run if >7 days since last update
+  (async () => {
+    try {
+      const { runRateScrape, getAllCurrentRates } = await import("./rateScraper");
+      const existing = await getAllCurrentRates();
+      if (existing.length === 0) {
+        console.log("[rate-scraper] No rates in DB, running initial scrape...");
+        const result = await runRateScrape();
+        console.log(`[rate-scraper] Initial scrape: ${result.updated} rates from ${result.sources.join(", ")}`);
+      } else {
+        const oldest = existing.reduce((min, r) => {
+          const t = new Date(r.lastUpdated).getTime();
+          return t < min ? t : min;
+        }, Date.now());
+        const daysSinceUpdate = (Date.now() - oldest) / (1000 * 60 * 60 * 24);
+        if (daysSinceUpdate > 7) {
+          console.log("[rate-scraper] Rates older than 7 days, refreshing...");
+          const result = await runRateScrape();
+          console.log(`[rate-scraper] Refresh: ${result.updated} rates updated`);
+        } else {
+          console.log(`[rate-scraper] Rates are ${daysSinceUpdate.toFixed(1)} days old, skipping`);
+        }
+      }
+    } catch (error) {
+      console.error("[rate-scraper] Startup check failed:", error);
+    }
+  })();
+
+  setInterval(async () => {
+    try {
+      const { getAllCurrentRates, runRateScrape } = await import("./rateScraper");
+      const rates = await getAllCurrentRates();
+      if (rates.length === 0) return;
+      const oldest = rates.reduce((min, r) => {
+        const t = new Date(r.lastUpdated).getTime();
+        return t < min ? t : min;
+      }, Date.now());
+      const daysSinceUpdate = (Date.now() - oldest) / (1000 * 60 * 60 * 24);
+      if (daysSinceUpdate > 7) {
+        console.log("[rate-scraper] Weekly cron: refreshing rates...");
+        const result = await runRateScrape();
+        console.log(`[rate-scraper] Weekly cron: ${result.updated} rates updated`);
+      }
+    } catch (error) {
+      console.error("[rate-scraper] Weekly cron failed:", error);
+    }
+  }, 6 * 60 * 60 * 1000);
 
   // ============================================
   // COMMUNITY UNDERWRITING ROUTES

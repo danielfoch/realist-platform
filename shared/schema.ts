@@ -2046,3 +2046,38 @@ export const insertGuideSchema = createInsertSchema(guides).omit({
 });
 export type InsertGuide = z.infer<typeof insertGuideSchema>;
 export type Guide = typeof guides.$inferSelect;
+
+export const mortgageRates = pgTable("mortgage_rates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rateType: text("rate_type").notNull(),
+  term: text("term").notNull(),
+  rate: real("rate").notNull(),
+  provider: text("provider").notNull(),
+  source: text("source").notNull(),
+  category: text("category").notNull().default("posted"),
+  province: text("province"),
+  isInsured: boolean("is_insured").default(false),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS mortgage_rates_type_term_provider_idx ON mortgage_rates(rate_type, term, provider, category)`,
+]);
+
+export const mortgageRateHistory = pgTable("mortgage_rate_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rateType: text("rate_type").notNull(),
+  term: text("term").notNull(),
+  rate: real("rate").notNull(),
+  provider: text("provider").notNull(),
+  source: text("source").notNull(),
+  category: text("category").notNull().default("posted"),
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+});
+
+export const insertMortgageRateSchema = createInsertSchema(mortgageRates).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertMortgageRate = z.infer<typeof insertMortgageRateSchema>;
+export type MortgageRate = typeof mortgageRates.$inferSelect;
+export type MortgageRateHistory = typeof mortgageRateHistory.$inferSelect;

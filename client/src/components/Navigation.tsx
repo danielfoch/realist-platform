@@ -45,6 +45,7 @@ const navCategories: NavCategory[] = [
     label: "Insights",
     items: [
       { href: "/insights/market-report", label: "Market Report", description: "Monthly yield & rent data", icon: <BarChart3 className="h-4 w-4" /> },
+      { href: "/insights/mortgage-rates", label: "Mortgage Rates", description: "Best rates in Canada", icon: <TrendingUp className="h-4 w-4" /> },
       { href: "/insights/podcast", label: "Podcast", description: "Real estate discussions", icon: <Radio className="h-4 w-4" /> },
       { href: "/insights/blog", label: "Blog", description: "Articles and research", icon: <BookOpen className="h-4 w-4" /> },
       { href: "/insights/guides", label: "Guides", description: "Educational resources", icon: <FileText className="h-4 w-4" /> },

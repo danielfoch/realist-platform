@@ -47,6 +47,7 @@ import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
 import RealtorNetwork from "@/pages/RealtorNetwork";
 import MarketReport from "@/pages/MarketReport";
+import MortgageRates from "@/pages/MortgageRates";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -82,6 +83,7 @@ function Router() {
       <Route path="/tools/will-it-plex" component={WillItPlex} />
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/insights/market-report" component={MarketReport} />
+      <Route path="/insights/mortgage-rates" component={MortgageRates} />
       <Route path="/premium" component={Premium} />
       <Route path="/premium/branding" component={PremiumBranding} />
       
