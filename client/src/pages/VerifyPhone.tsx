@@ -56,8 +56,9 @@ export default function VerifyPhone() {
     },
     onSuccess: (_, variables) => {
       setSubmittedPhone(variables.phone);
+      phoneForm.reset({ phone: "" });
       codeForm.reset({ code: "" });
-      setStep("code");
+      setTimeout(() => setStep("code"), 50);
       toast({ title: "Code sent!", description: "Check your phone for the verification code." });
     },
     onError: (error: any) => {
@@ -144,7 +145,7 @@ export default function VerifyPhone() {
         <CardContent>
           {step === "phone" ? (
             <Form {...phoneForm}>
-              <form onSubmit={phoneForm.handleSubmit((data) => sendCodeMutation.mutate(data))} className="space-y-4">
+              <form onSubmit={phoneForm.handleSubmit((data) => sendCodeMutation.mutate(data))} className="space-y-4" autoComplete="off">
                 <FormField
                   control={phoneForm.control}
                   name="phone"
@@ -158,6 +159,7 @@ export default function VerifyPhone() {
                             type="tel" 
                             placeholder="(555) 123-4567" 
                             className="pl-10 h-11" 
+                            autoComplete="off"
                             data-testid="input-phone"
                             {...field} 
                           />
@@ -190,7 +192,8 @@ export default function VerifyPhone() {
             </Form>
           ) : (
             <Form {...codeForm}>
-              <form onSubmit={codeForm.handleSubmit((data) => verifyCodeMutation.mutate(data))} className="space-y-4" autoComplete="off">
+              <form onSubmit={codeForm.handleSubmit((data) => verifyCodeMutation.mutate(data))} className="space-y-4" autoComplete="off" data-form-type="other" data-lpignore="true">
+                <input type="text" name="prevent-autofill" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
                 <FormField
                   control={codeForm.control}
                   name="code"
@@ -202,12 +205,13 @@ export default function VerifyPhone() {
                           maxLength={6} 
                           value={field.value}
                           onChange={field.onChange}
-                          autoComplete="one-time-code"
+                          autoComplete="off"
                           inputMode="numeric"
-                          name="otp-verification-code"
+                          name="verification-token-input"
                           data-testid="input-otp"
                           data-lpignore="true"
                           data-1p-ignore="true"
+                          data-form-type="other"
                         >
                           <InputOTPGroup>
                             <InputOTPSlot index={0} />
