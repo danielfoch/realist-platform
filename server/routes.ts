@@ -939,6 +939,57 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/city-reports/generate", isAdmin, async (req, res) => {
+    try {
+      const { city, province, month } = req.body;
+      if (!city || !province) return res.status(400).json({ error: "city and province required" });
+      const now = new Date();
+      const targetMonth = month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const { generateCityReport } = await import("./cityReportGenerator");
+      const result = await generateCityReport(city, province, targetMonth);
+      res.json(result);
+    } catch (error) {
+      console.error("Error generating city report:", error);
+      res.status(500).json({ error: "Failed to generate report" });
+    }
+  });
+
+  app.post("/api/admin/city-reports/generate-all", isAdmin, async (req, res) => {
+    try {
+      const now = new Date();
+      const targetMonth = req.body.month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const { TOP_30_CITIES, generateCityReport } = await import("./cityReportGenerator");
+      const results = { published: 0, existing: 0, failed: 0, details: [] as string[] };
+      for (const entry of TOP_30_CITIES) {
+        try {
+          const result = await generateCityReport(entry.city, entry.province, targetMonth);
+          if (result.created) { results.published++; } else { results.existing++; }
+          results.details.push(`${entry.city}: ${result.message}`);
+        } catch (err: any) {
+          results.failed++;
+          results.details.push(`${entry.city}: FAILED — ${err.message}`);
+        }
+      }
+      res.json(results);
+    } catch (error) {
+      console.error("Error generating all city reports:", error);
+      res.status(500).json({ error: "Failed to generate reports" });
+    }
+  });
+
+  app.get("/api/admin/city-reports/schedule", isAdmin, async (req, res) => {
+    try {
+      const now = new Date();
+      const year = parseInt(req.query.year as string) || now.getFullYear();
+      const month = parseInt(req.query.month as string) || (now.getMonth() + 1);
+      const { getCityScheduleForMonth } = await import("./cityReportGenerator");
+      const schedule = getCityScheduleForMonth(year, month);
+      res.json({ year, month, daysInMonth: new Date(year, month, 0).getDate(), schedule });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get schedule" });
+    }
+  });
+
   app.post("/api/admin/send-welcome-emails", isAdmin, async (req, res) => {
     try {
       const usersWithoutPasswords = await db.select({
@@ -5790,6 +5841,41 @@ export async function registerRoutes(
       console.error("[market-report] Monthly cron failed:", error);
     }
   }, 60 * 60 * 1000);
+
+  // Daily city report cron: check every hour, publish one city report per day
+  let lastCityReportDate = "";
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      if (todayStr === lastCityReportDate) return;
+
+      const hour = now.getHours();
+      if (hour < 8) return;
+
+      console.log("[city-report] Daily cron: checking for today's report...");
+      const { runDailyCityReport } = await import("./cityReportGenerator");
+      const result = await runDailyCityReport();
+      console.log(`[city-report] Daily cron result: ${result.action} — ${result.details}`);
+      lastCityReportDate = todayStr;
+    } catch (error) {
+      console.error("[city-report] Daily cron failed:", error);
+    }
+  }, 60 * 60 * 1000);
+
+  // Startup: generate today's city report if not yet published
+  (async () => {
+    try {
+      const now = new Date();
+      if (now.getHours() >= 8) {
+        const { runDailyCityReport } = await import("./cityReportGenerator");
+        const result = await runDailyCityReport();
+        console.log(`[city-report] Startup check: ${result.action} — ${result.details}`);
+      }
+    } catch (error) {
+      console.error("[city-report] Startup check failed:", error);
+    }
+  })();
 
   // ============================================
   // COMMUNITY UNDERWRITING ROUTES
