@@ -163,7 +163,7 @@ export default function RealtorNetwork() {
 function HeroSection({ onCTA }: { onCTA: () => void }) {
   const benefits = [
     { icon: Users, title: "Get matched with investors in your market", description: "Investors using Realist.ca in your city are automatically routed to you." },
-    { icon: Handshake, title: "25% referral fee on closed deals", description: "Simple, transparent compensation. No upfront costs to join." },
+    { icon: Handshake, title: "25% referral fee on closed deals", description: "Standard OREA Form 641 referral terms with Realist Inc. Personal Real Estate Corporation. No upfront costs." },
     { icon: Send, title: "Formal introductions\u2014no cold calling", description: "We send a warm email introduction between you and the investor." },
   ];
 
@@ -355,10 +355,16 @@ function ClaimMarketForm() {
               <FileText className="h-4 w-4" />
               Referral Agreement
             </CardTitle>
+            <CardDescription className="text-xs">
+              Based on OREA Form 641 — Referral Agreement
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground" data-testid="text-referral-agreement">
-              I agree to pay a 25% referral fee to Realist.ca on all transactions that result from leads received through this platform.
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-referral-agreement">
+              The Receiving Brokerage acknowledges receipt of the referral information provided by <strong>Realist Inc. Personal Real Estate Corporation</strong> (the "Referring Brokerage") and agrees to offer service to the referred Seller/Buyer. The Receiving Brokerage agrees to inform the Referring Brokerage of the results of this referral and provide documentation of the results including the Listing Agreement, Agreement of Purchase and Sale, and a statement of commission earnings or a copy of the Trade Record Sheet.
+            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              The Receiving Brokerage agrees to pay <strong>Realist Inc. Personal Real Estate Corporation</strong> upon receipt of commission resulting from this referral, a fee of <strong>25%</strong> of the gross commission earned on any transaction that results from leads received through this platform.
             </p>
           </CardContent>
         </Card>
