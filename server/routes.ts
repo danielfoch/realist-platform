@@ -1110,6 +1110,57 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/rates/mortgage", async (req, res) => {
+    try {
+      const { getAllCurrentRates } = await import("./rateScraper");
+      const rates = await getAllCurrentRates();
+      const termYears = req.query.termYears as string || "5";
+      const type = req.query.type as string || "fixed";
+      const termLabel = `${termYears}-year`;
+
+      const matching = rates.filter((r: any) => {
+        if (type === "variable") {
+          return r.rateType === "variable" && r.category === "best";
+        }
+        return r.rateType === "fixed" && r.term === termLabel && r.category === "best";
+      });
+
+      if (matching.length === 0) {
+        const fallback = rates.filter((r: any) => r.rateType === type);
+        if (fallback.length > 0) {
+          const best = fallback.reduce((a: any, b: any) => a.rate < b.rate ? a : b);
+          return res.json({ bestRate: best.rate, source: best.source, timestamp: best.lastUpdated, count: fallback.length });
+        }
+        return res.json({ bestRate: null, source: null, timestamp: null, count: 0 });
+      }
+
+      const best = matching.reduce((a: any, b: any) => a.rate < b.rate ? a : b);
+      res.json({ bestRate: best.rate, source: best.source, timestamp: best.lastUpdated, count: matching.length });
+    } catch (error) {
+      console.error("Error fetching rate:", error);
+      res.status(500).json({ error: "Failed to fetch rate" });
+    }
+  });
+
+  app.get("/api/rate-forecast/latest", async (req, res) => {
+    try {
+      const { rateForecasts } = await import("@shared/schema");
+      const forecasts = await db.select().from(rateForecasts).orderBy(sql`created_at DESC`).limit(1);
+      if (forecasts.length === 0) {
+        return res.json(null);
+      }
+      const f = forecasts[0];
+      res.json({
+        ...f,
+        path: JSON.parse(f.pathJson),
+        assumptions: f.assumptionsJson ? JSON.parse(f.assumptionsJson) : null,
+      });
+    } catch (error) {
+      console.error("Error fetching forecast:", error);
+      res.json(null);
+    }
+  });
+
   // ============================================
   // RENOQUOTE API ROUTES
   // ============================================

@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, Home, TrendingUp, Hammer, Building2 } from "lucide-react";
+import { Calculator, Home, TrendingUp, Building2, ArrowLeftRight } from "lucide-react";
+import { useLocation } from "wouter";
 
-export type CalculatorType = "deal_analyzer" | "mli_select" | "rent_vs_buy" | "reno_quote" | "real_estate_vs_stocks";
+export type CalculatorType = "deal_analyzer" | "mli_select" | "rent_vs_buy" | "reno_quote" | "fixed_vs_variable" | "real_estate_vs_stocks";
 
 interface CalculatorSelectorProps {
   selected: CalculatorType;
@@ -32,11 +33,12 @@ const calculators = [
     comingSoon: false 
   },
   { 
-    id: "reno_quote" as CalculatorType, 
-    label: "RenoQuote", 
-    icon: Hammer, 
-    description: "Estimate renovation costs with detailed line items",
-    comingSoon: true 
+    id: "fixed_vs_variable" as CalculatorType, 
+    label: "Fixed vs Variable", 
+    icon: ArrowLeftRight, 
+    description: "Compare total interest costs for fixed vs variable mortgages",
+    comingSoon: false,
+    href: "/tools/fixed-vs-variable"
   },
   { 
     id: "real_estate_vs_stocks" as CalculatorType, 
@@ -48,6 +50,7 @@ const calculators = [
 ];
 
 export function CalculatorSelector({ selected, onSelect }: CalculatorSelectorProps) {
+  const [, setLocation] = useLocation();
   return (
     <div className="space-y-3">
       <label className="text-sm font-medium">Select a Calculator</label>
@@ -62,7 +65,14 @@ export function CalculatorSelector({ selected, onSelect }: CalculatorSelectorPro
               variant={isSelected ? "default" : "outline"}
               size="sm"
               className="gap-2"
-              onClick={() => !calc.comingSoon && onSelect(calc.id)}
+              onClick={() => {
+                if (calc.comingSoon) return;
+                if ((calc as any).href) {
+                  setLocation((calc as any).href);
+                  return;
+                }
+                onSelect(calc.id);
+              }}
               disabled={calc.comingSoon}
               data-testid={`button-calculator-${calc.id}`}
             >

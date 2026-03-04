@@ -2081,3 +2081,19 @@ export const insertMortgageRateSchema = createInsertSchema(mortgageRates).omit({
 export type InsertMortgageRate = z.infer<typeof insertMortgageRateSchema>;
 export type MortgageRate = typeof mortgageRates.$inferSelect;
 export type MortgageRateHistory = typeof mortgageRateHistory.$inferSelect;
+
+export const rateForecasts = pgTable("rate_forecasts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastType: text("forecast_type").notNull().default("ca10y_simple"),
+  termMonths: integer("term_months").notNull().default(300),
+  pathJson: text("path_json").notNull(),
+  assumptionsJson: text("assumptions_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRateForecastSchema = createInsertSchema(rateForecasts).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertRateForecast = z.infer<typeof insertRateForecastSchema>;
+export type RateForecast = typeof rateForecasts.$inferSelect;

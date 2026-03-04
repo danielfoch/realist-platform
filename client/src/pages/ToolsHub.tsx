@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2, Scale } from "lucide-react";
+import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2, Scale, ArrowLeftRight } from "lucide-react";
 
 const tools = [
   {
@@ -50,6 +50,13 @@ const tools = [
     title: "Co-Invest Finder",
     description: "Find investment partners to pool capital and share expertise on real estate deals.",
     icon: Handshake,
+  },
+  {
+    href: "/tools/fixed-vs-variable",
+    title: "Fixed vs Variable",
+    description: "Compare total interest costs for fixed vs variable mortgages over 5, 10, and 25 years with stress-test scenarios.",
+    icon: ArrowLeftRight,
+    badge: "New",
   },
   {
     href: "/tools/analyzer?calc=mli",

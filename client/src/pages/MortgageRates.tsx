@@ -333,7 +333,37 @@ export default function MortgageRates() {
           </TabsContent>
         </Tabs>
 
-        <div className="mt-12 grid md:grid-cols-2 gap-6">
+        <Card className="mt-12 border-primary/20 bg-primary/5" data-testid="card-fixed-vs-variable-promo">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-center gap-6">
+              <div className="flex-1">
+                <h3 className="font-bold text-xl mb-2">Compare Fixed vs Variable</h3>
+                <p className="text-muted-foreground mb-4">
+                  See the total interest cost difference over 5, 10, and 25 years with best/worst case scenarios.
+                  Uses the live rates shown above as defaults.
+                </p>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Landmark className="h-4 w-4 text-blue-600" />
+                    <span><strong>Fixed:</strong> Constant rate for your term</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                    <span><strong>Variable:</strong> Moves with prime — stress-test scenarios</span>
+                  </div>
+                </div>
+              </div>
+              <a href="/tools/fixed-vs-variable" data-testid="link-open-calculator">
+                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8">
+                  <ArrowRight className="h-4 w-4" />
+                  Open Full Calculator
+                </button>
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="mt-8 grid md:grid-cols-2 gap-6">
           <Card className="border-0 shadow-md">
             <CardContent className="p-6">
               <h3 className="font-semibold text-lg mb-3">How to Get the Best Rate</h3>
@@ -360,7 +390,7 @@ export default function MortgageRates() {
 
           <Card className="border-0 shadow-md">
             <CardContent className="p-6">
-              <h3 className="font-semibold text-lg mb-3">Fixed vs Variable</h3>
+              <h3 className="font-semibold text-lg mb-3">Fixed vs Variable Basics</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <Landmark className="h-4 w-4 mt-0.5 text-primary shrink-0" />
@@ -372,7 +402,7 @@ export default function MortgageRates() {
                 </li>
                 <li className="flex items-start gap-2">
                   <Shield className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                  <span>Use the <a href="/tools/analyzer" className="text-primary underline">Deal Analyzer</a> to stress-test both scenarios on any property.</span>
+                  <span>Use the <a href="/tools/fixed-vs-variable" className="text-primary underline">Fixed vs Variable Calculator</a> to compare scenarios on any deal.</span>
                 </li>
               </ul>
             </CardContent>
