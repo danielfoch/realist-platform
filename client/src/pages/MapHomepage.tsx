@@ -481,10 +481,11 @@ export default function MapHomepage() {
               <div className="mt-6 pt-4 border-t border-border/30 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-muted-foreground/70">
                 <p>© {new Date().getFullYear()} Realist Inc. All rights reserved.</p>
                 <p>
-                  Powered by{" "}
+                  Real estate listings powered by{" "}
                   <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
-                    Valery.ca
+                    valery.ca
                   </a>
+                  {" / Valery Real Estate Inc."}
                 </p>
               </div>
             </div>

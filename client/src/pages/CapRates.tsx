@@ -1563,12 +1563,6 @@ export default function CapRates() {
                     {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
                   </Badge>
                 )}
-                <span className="text-[9px] text-muted-foreground/60">
-                  Powered by{" "}
-                  <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
-                    Valery.ca
-                  </a>
-                </span>
                 {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
             )}
@@ -1578,6 +1572,15 @@ export default function CapRates() {
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         <div className="flex-1 relative" data-testid="map-container">
+          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto">
+            <p className="text-[10px] text-muted-foreground/70 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded">
+              Real estate listings powered by{" "}
+              <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+                valery.ca
+              </a>
+              {" / Valery Real Estate Inc."}
+            </p>
+          </div>
           <MapContainer
             center={TORONTO_CENTER}
             zoom={DEFAULT_ZOOM}
