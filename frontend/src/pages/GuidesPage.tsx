@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { SEO } from '../components/SEO';
 
 interface Guide {
   id: number;
@@ -79,92 +80,113 @@ export function GuidesListPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">Loading...</div>
-      </div>
+      <>
+        <SEO
+          title="Guides"
+          description="Educational content to help you become a better real estate investor."
+          type="website"
+        />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">Loading...</div>
+        </div>
+      </>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12 text-red-500">{error}</div>
-      </div>
+      <>
+        <SEO
+          title="Guides"
+          description="Educational content to help you become a better real estate investor."
+          type="website"
+        />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12 text-red-500">{error}</div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Guides & Resources</h1>
-        <p className="text-gray-600">
-          Educational content to help you become a better real estate investor.
-        </p>
-      </div>
-
-      {/* Category Filter */}
-      <div className="mb-8">
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="px-4 py-2 border rounded-lg"
-        >
-          {CATEGORIES.map((cat) => (
-            <option key={cat.value} value={cat.value}>
-              {cat.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {guides.map((guide) => (
-          <article key={guide.id} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-            {guide.featured_image && (
-              <img 
-                src={guide.featured_image} 
-                alt={guide.title}
-                className="w-full h-48 object-cover"
-              />
-            )}
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                {guide.category && (
-                  <span className="text-xs font-medium text-blue-600 uppercase">
-                    {CATEGORY_LABELS[guide.category] || guide.category}
-                  </span>
-                )}
-                {guide.difficulty && (
-                  <span className="text-xs font-medium text-gray-500">
-                    {DIFFICULTY_LABELS[guide.difficulty]}
-                  </span>
-                )}
-              </div>
-              <h2 className="text-xl font-bold mt-2 mb-2">
-                <Link to={`/insights/guides/${guide.slug}`} className="hover:text-blue-600">
-                  {guide.title}
-                </Link>
-              </h2>
-              <p className="text-gray-600 text-sm mb-3">{guide.excerpt}</p>
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>{guide.author}</span>
-                <span>
-                  {guide.estimated_read_time_minutes 
-                    ? `${guide.estimated_read_time_minutes} min read`
-                    : formatDate(guide.published_at)}
-                </span>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      {guides.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No guides found. Check back soon!
+    <>
+      <SEO
+        title="Guides & Resources"
+        description="Educational guides to help you become a better Canadian real estate investor. Learn about market analysis, tax strategies, financing options, and more."
+        type="website"
+      />
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Guides & Resources</h1>
+          <p className="text-gray-600">
+            Educational content to help you become a better real estate investor.
+          </p>
         </div>
-      )}
-    </div>
+
+        {/* Category Filter */}
+        <div className="mb-8">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="px-4 py-2 border rounded-lg"
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat.value} value={cat.value}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {guides.map((guide) => (
+            <article key={guide.id} className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+              {guide.featured_image && (
+                <img 
+                  src={guide.featured_image} 
+                  alt={guide.title}
+                  className="w-full h-48 object-cover"
+                />
+              )}
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  {guide.category && (
+                    <span className="text-xs font-medium text-blue-600 uppercase">
+                      {CATEGORY_LABELS[guide.category] || guide.category}
+                    </span>
+                  )}
+                  {guide.difficulty && (
+                    <span className="text-xs font-medium text-gray-500">
+                      {DIFFICULTY_LABELS[guide.difficulty]}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-xl font-bold mt-2 mb-2">
+                  <Link to={`/insights/guides/${guide.slug}`} className="hover:text-blue-600">
+                    {guide.title}
+                  </Link>
+                </h2>
+                <p className="text-gray-600 text-sm mb-3">{guide.excerpt}</p>
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span>{guide.author}</span>
+                  <span>
+                    {guide.estimated_read_time_minutes 
+                      ? `${guide.estimated_read_time_minutes} min read`
+                      : formatDate(guide.published_at)}
+                  </span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {guides.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            No guides found. Check back soon!
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -208,91 +230,116 @@ export function GuidePage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">Loading...</div>
-      </div>
+      <>
+        <SEO
+          title="Loading..."
+          description="Loading guide..."
+          type="article"
+        />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">Loading...</div>
+        </div>
+      </>
     );
   }
 
   if (error || !guide) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold mb-4">Guide not found</h1>
-          <Link to="/insights/guides" className="text-blue-600 hover:underline">
-            Back to guides
-          </Link>
+      <>
+        <SEO
+          title="Guide Not Found"
+          description="The requested guide could not be found."
+          type="article"
+        />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <h1 className="text-2xl font-bold mb-4">Guide not found</h1>
+            <Link to="/insights/guides" className="text-blue-600 hover:underline">
+              Back to guides
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <article>
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-3">
-            {guide.category && (
-              <span className="text-sm font-medium text-blue-600 uppercase">
-                {CATEGORY_LABELS[guide.category] || guide.category}
-              </span>
-            )}
-            {guide.difficulty && (
-              <span className="text-sm font-medium text-gray-500">
-                {DIFFICULTY_LABELS[guide.difficulty]}
-              </span>
-            )}
-          </div>
-          <h1 className="text-4xl font-bold mt-2 mb-4">{guide.title}</h1>
-          <div className="flex items-center gap-4 text-gray-600">
-            <span>{guide.author}</span>
-            <span>•</span>
-            <span>{formatDate(guide.published_at)}</span>
-            {guide.estimated_read_time_minutes && (
-              <>
-                <span>•</span>
-                <span>{guide.estimated_read_time_minutes} min read</span>
-              </>
-            )}
-          </div>
-        </header>
+    <>
+      <SEO
+        title={guide.meta_title || guide.title}
+        description={guide.meta_description || guide.excerpt}
+        image={guide.featured_image || undefined}
+        url={`/insights/guides/${guide.slug}`}
+        type="article"
+        publishedTime={guide.published_at}
+        author={guide.author || 'Realist Team'}
+      />
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <article>
+          <header className="mb-8">
+            <div className="flex items-center gap-3 mb-3">
+              {guide.category && (
+                <span className="text-sm font-medium text-blue-600 uppercase">
+                  {CATEGORY_LABELS[guide.category] || guide.category}
+                </span>
+              )}
+              {guide.difficulty && (
+                <span className="text-sm font-medium text-gray-500">
+                  {DIFFICULTY_LABELS[guide.difficulty]}
+                </span>
+              )}
+            </div>
+            <h1 className="text-4xl font-bold mt-2 mb-4">{guide.title}</h1>
+            <div className="flex items-center gap-4 text-gray-600">
+              <span>{guide.author}</span>
+              <span>•</span>
+              <span>{formatDate(guide.published_at)}</span>
+              {guide.estimated_read_time_minutes && (
+                <>
+                  <span>•</span>
+                  <span>{guide.estimated_read_time_minutes} min read</span>
+                </>
+              )}
+            </div>
+          </header>
 
-        {guide.featured_image && (
-          <img 
-            src={guide.featured_image} 
-            alt={guide.title}
-            className="w-full h-64 object-cover rounded-lg mb-8"
-          />
-        )}
+          {guide.featured_image && (
+            <img 
+              src={guide.featured_image} 
+              alt={guide.title}
+              className="w-full h-64 object-cover rounded-lg mb-8"
+            />
+          )}
 
-        <div className="prose max-w-none">
-          {/* Render markdown as simple HTML for now */}
-          {guide.content.split('\n').map((line, i) => {
-            if (line.startsWith('# ')) {
-              return <h1 key={i} className="text-3xl font-bold mt-8 mb-4">{line.slice(2)}</h1>;
-            }
-            if (line.startsWith('## ')) {
-              return <h2 key={i} className="text-2xl font-bold mt-6 mb-3">{line.slice(3)}</h2>;
-            }
-            if (line.startsWith('### ')) {
-              return <h3 key={i} className="text-xl font-bold mt-4 mb-2">{line.slice(4)}</h3>;
-            }
-            if (line.startsWith('- ')) {
-              return <li key={i} className="ml-4">{line.slice(2)}</li>;
-            }
-            if (line.trim() === '') {
-              return <br key={i} />;
-            }
-            return <p key={i} className="my-2">{line}</p>;
-          })}
+          <div className="prose max-w-none">
+            {/* Render markdown as simple HTML for now */}
+            {guide.content.split('\n').map((line, i) => {
+              if (line.startsWith('# ')) {
+                return <h1 key={i} className="text-3xl font-bold mt-8 mb-4">{line.slice(2)}</h1>;
+              }
+              if (line.startsWith('## ')) {
+                return <h2 key={i} className="text-2xl font-bold mt-6 mb-3">{line.slice(3)}</h2>;
+              }
+              if (line.startsWith('### ')) {
+                return <h3 key={i} className="text-xl font-bold mt-4 mb-2">{line.slice(4)}</h3>;
+              }
+              if (line.startsWith('- ')) {
+                return <li key={i} className="ml-4">{line.slice(2)}</li>;
+              }
+              if (line.trim() === '') {
+                return <br key={i} />;
+              }
+              return <p key={i} className="my-2">{line}</p>;
+            })}
+          </div>
+        </article>
+
+        <div className="mt-12 pt-8 border-t">
+          <Link to="/insights/guides" className="text-blue-600 hover:underline">
+            ← Back to guides
+          </Link>
         </div>
-      </article>
-
-      <div className="mt-12 pt-8 border-t">
-        <Link to="/insights/guides" className="text-blue-600 hover:underline">
-          ← Back to guides
-        </Link>
       </div>
-    </div>
+    </>
   );
 }
