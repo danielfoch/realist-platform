@@ -1572,15 +1572,6 @@ export default function CapRates() {
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         <div className="flex-1 relative" data-testid="map-container">
-          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto">
-            <p className="text-[10px] text-muted-foreground/70 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded">
-              Real estate listings powered by{" "}
-              <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
-                valery.ca
-              </a>
-              {" / Valery Real Estate Inc."}
-            </p>
-          </div>
           <MapContainer
             center={TORONTO_CENTER}
             zoom={DEFAULT_ZOOM}
@@ -1589,7 +1580,7 @@ export default function CapRates() {
             zoomControl={true}
           >
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | Real estate listings powered by <a href="https://valery.ca" target="_blank" rel="noopener noreferrer">valery.ca</a> / Valery Real Estate Inc.'
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
             {mappableListings.map((listing) => (
