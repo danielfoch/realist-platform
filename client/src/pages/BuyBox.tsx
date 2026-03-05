@@ -8,17 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { MapPin, PenTool, Trash2, ArrowRight, Home, DollarSign, Calendar, FileText, AlertCircle } from "lucide-react";
+import { MapPin, Trash2, ArrowRight, ArrowLeft, Home, DollarSign, Calendar, FileText, AlertCircle, Mail, Phone, Voicemail, ShoppingCart, Check } from "lucide-react";
 import { buyBoxBuildingTypes, buyBoxOccupancyTypes, type BuyBoxMandateFormData } from "@shared/schema";
-
-declare global {
-  interface Window {
-    google: typeof google;
-    initBuyBoxMap: () => void;
-  }
-}
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet-draw";
+import "leaflet-draw/dist/leaflet.draw.css";
 
 const OFFER_CONDITIONS = [
   { id: "financing", label: "Financing" },
@@ -30,19 +29,134 @@ const OFFER_CONDITIONS = [
   { id: "other", label: "Other" },
 ];
 
+const SERVICES = [
+  {
+    id: "direct_mail",
+    title: "Direct Mail Campaign",
+    description: "Professionally designed mailers sent to property owners in your target area via PostGrid. Includes design, printing, and postage.",
+    icon: Mail,
+    pricePerUnit: 2.50,
+    unitLabel: "per mailer",
+    minQty: 100,
+    maxQty: 5000,
+    defaultQty: 250,
+    provider: "PostGrid",
+  },
+  {
+    id: "ai_phone_calls",
+    title: "AI Phone Outreach",
+    description: "AI-powered phone calls to property owners using natural-sounding voice agents. Each call follows a custom script tailored to your criteria.",
+    icon: Phone,
+    pricePerUnit: 1.00,
+    unitLabel: "per call",
+    minQty: 50,
+    maxQty: 2000,
+    defaultQty: 100,
+    provider: "ElevenLabs",
+  },
+  {
+    id: "voicemail_drops",
+    title: "Voicemail Drops",
+    description: "Ringless voicemail drops delivered directly to property owners' voicemail boxes. High open rates without interrupting their day.",
+    icon: Voicemail,
+    pricePerUnit: 0.15,
+    unitLabel: "per drop",
+    minQty: 100,
+    maxQty: 10000,
+    defaultQty: 500,
+    provider: "SlyBroadcast",
+  },
+];
+
+const TORONTO_CENTER: [number, number] = [43.6532, -79.3832];
+
+function DrawControl({ onCreated, onDeleted }: { onCreated: (e: any) => void; onDeleted: (e: any) => void }) {
+  const map = useMap();
+  const controlRef = useRef<any>(null);
+  const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
+
+  useEffect(() => {
+    if (controlRef.current) return;
+
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+    drawnItemsRef.current = drawnItems;
+
+    const drawControl = new (L as any).Control.Draw({
+      position: "topright",
+      draw: {
+        rectangle: false,
+        circle: false,
+        circlemarker: false,
+        marker: false,
+        polyline: false,
+        polygon: {
+          allowIntersection: false,
+          shapeOptions: {
+            color: "#22c55e",
+            fillColor: "#22c55e",
+            fillOpacity: 0.3,
+            weight: 2,
+          },
+        },
+      },
+      edit: {
+        featureGroup: drawnItems,
+      },
+    });
+
+    map.addControl(drawControl);
+    controlRef.current = drawControl;
+
+    map.on("draw:created" as any, (e: any) => {
+      drawnItems.clearLayers();
+      drawnItems.addLayer(e.layer);
+      onCreated(e);
+    });
+
+    map.on("draw:edited" as any, (e: any) => {
+      const layers = e.layers;
+      layers.eachLayer((layer: any) => {
+        onCreated({ layer });
+      });
+    });
+
+    map.on("draw:deleted" as any, () => {
+      onDeleted();
+    });
+
+    return () => {
+      map.removeControl(drawControl);
+      map.removeLayer(drawnItems);
+      controlRef.current = null;
+    };
+  }, [map]);
+
+  return null;
+}
+
 export default function BuyBox() {
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
-  const polygonRef = useRef<google.maps.Polygon | null>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [step, setStep] = useState<"draw" | "details" | "services">("draw");
   const [hasPolygon, setHasPolygon] = useState(false);
-  const [step, setStep] = useState<"draw" | "details" | "agreement">("draw");
+  const [polygonGeoJson, setPolygonGeoJson] = useState<any>(null);
+  const [centroid, setCentroid] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Clear any stale sessionStorage data when starting fresh (draw step)
+  const [mandateData, setMandateData] = useState<Partial<BuyBoxMandateFormData>>({
+    lotFrontageUnit: "ft",
+    lotDepthUnit: "ft",
+    totalLotAreaUnit: "sqft",
+    offerConditions: [],
+  });
+
+  const [selectedServices, setSelectedServices] = useState<Record<string, { enabled: boolean; qty: number }>>({
+    direct_mail: { enabled: false, qty: 250 },
+    ai_phone_calls: { enabled: false, qty: 100 },
+    voicemail_drops: { enabled: false, qty: 500 },
+  });
+
   useEffect(() => {
     if (step === "draw") {
       sessionStorage.removeItem("buybox_polygon");
@@ -50,122 +164,33 @@ export default function BuyBox() {
       sessionStorage.removeItem("buybox_mandate");
     }
   }, [step]);
-  
-  const [mandateData, setMandateData] = useState<Partial<BuyBoxMandateFormData>>({
-    lotFrontageUnit: "ft",
-    lotDepthUnit: "ft",
-    totalLotAreaUnit: "sqft",
-    offerConditions: [],
-  });
-  const [polygonGeoJson, setPolygonGeoJson] = useState<any>(null);
-  const [centroid, setCentroid] = useState<{ lat: number; lng: number } | null>(null);
 
-  const loadGoogleMaps = useCallback(() => {
-    if (window.google && window.google.maps) {
-      initMap();
-      return;
-    }
+  const handlePolygonCreated = useCallback((e: any) => {
+    const layer = e.layer;
+    const latlngs = layer.getLatLngs()[0];
 
-    window.initBuyBoxMap = () => {
-      initMap();
-    };
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""}&libraries=drawing,places&callback=initBuyBoxMap`;
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-  }, []);
-
-  const initMap = useCallback(() => {
-    if (!mapRef.current) return;
-
-    const map = new google.maps.Map(mapRef.current, {
-      center: { lat: 43.6532, lng: -79.3832 },
-      zoom: 11,
-      mapTypeControl: true,
-      streetViewControl: false,
-      fullscreenControl: true,
-    });
-    mapInstanceRef.current = map;
-
-    const drawingManager = new google.maps.drawing.DrawingManager({
-      drawingMode: google.maps.drawing.OverlayType.POLYGON,
-      drawingControl: true,
-      drawingControlOptions: {
-        position: google.maps.ControlPosition.TOP_CENTER,
-        drawingModes: [google.maps.drawing.OverlayType.POLYGON],
-      },
-      polygonOptions: {
-        fillColor: "#22c55e",
-        fillOpacity: 0.3,
-        strokeColor: "#16a34a",
-        strokeWeight: 2,
-        editable: true,
-        draggable: true,
-      },
-    });
-    drawingManager.setMap(map);
-    drawingManagerRef.current = drawingManager;
-
-    google.maps.event.addListener(drawingManager, "polygoncomplete", (polygon: google.maps.Polygon) => {
-      if (polygonRef.current) {
-        polygonRef.current.setMap(null);
-      }
-      polygonRef.current = polygon;
-      setHasPolygon(true);
-      drawingManager.setDrawingMode(null);
-      
-      updatePolygonData(polygon);
-
-      google.maps.event.addListener(polygon.getPath(), "set_at", () => updatePolygonData(polygon));
-      google.maps.event.addListener(polygon.getPath(), "insert_at", () => updatePolygonData(polygon));
-    });
-
-    setMapLoaded(true);
-  }, []);
-
-  const updatePolygonData = (polygon: google.maps.Polygon) => {
-    const path = polygon.getPath();
-    const coordinates: [number, number][] = [];
-    let totalLat = 0;
-    let totalLng = 0;
-
-    for (let i = 0; i < path.getLength(); i++) {
-      const point = path.getAt(i);
-      coordinates.push([point.lng(), point.lat()]);
-      totalLat += point.lat();
-      totalLng += point.lng();
-    }
-    
+    const coordinates: [number, number][] = latlngs.map((ll: L.LatLng) => [ll.lng, ll.lat]);
     if (coordinates.length > 0) {
       coordinates.push(coordinates[0]);
     }
 
-    const geoJson = {
-      type: "Polygon",
-      coordinates: [coordinates],
-    };
-
+    const geoJson = { type: "Polygon", coordinates: [coordinates] };
     setPolygonGeoJson(geoJson);
-    setCentroid({
-      lat: totalLat / (path.getLength() || 1),
-      lng: totalLng / (path.getLength() || 1),
-    });
-  };
 
-  const clearPolygon = () => {
-    if (polygonRef.current) {
-      polygonRef.current.setMap(null);
-      polygonRef.current = null;
-    }
+    const totalLat = latlngs.reduce((sum: number, ll: L.LatLng) => sum + ll.lat, 0);
+    const totalLng = latlngs.reduce((sum: number, ll: L.LatLng) => sum + ll.lng, 0);
+    setCentroid({
+      lat: totalLat / latlngs.length,
+      lng: totalLng / latlngs.length,
+    });
+    setHasPolygon(true);
+  }, []);
+
+  const handlePolygonDeleted = useCallback(() => {
     setHasPolygon(false);
     setPolygonGeoJson(null);
     setCentroid(null);
-    if (drawingManagerRef.current) {
-      drawingManagerRef.current.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
-    }
-  };
+  }, []);
 
   const handleConditionChange = (conditionId: string, checked: boolean) => {
     setMandateData(prev => ({
@@ -188,7 +213,7 @@ export default function BuyBox() {
     setStep("details");
   };
 
-  const handleContinueToAgreement = () => {
+  const handleContinueToServices = () => {
     if (!isAuthenticated) {
       toast({
         title: "Sign In Required",
@@ -198,17 +223,67 @@ export default function BuyBox() {
       setLocation("/login");
       return;
     }
-    // Store data in sessionStorage to avoid URL length limits
     sessionStorage.setItem("buybox_polygon", JSON.stringify(polygonGeoJson));
     sessionStorage.setItem("buybox_centroid", JSON.stringify(centroid));
     sessionStorage.setItem("buybox_mandate", JSON.stringify(mandateData));
-    setStep("agreement");
-    setLocation("/buybox/agreement");
+    setStep("services");
   };
 
-  useEffect(() => {
-    loadGoogleMaps();
-  }, [loadGoogleMaps]);
+  const toggleService = (serviceId: string) => {
+    setSelectedServices(prev => ({
+      ...prev,
+      [serviceId]: { ...prev[serviceId], enabled: !prev[serviceId].enabled },
+    }));
+  };
+
+  const updateServiceQty = (serviceId: string, qty: number) => {
+    const service = SERVICES.find(s => s.id === serviceId);
+    if (!service) return;
+    const clamped = Math.max(service.minQty, Math.min(service.maxQty, qty));
+    setSelectedServices(prev => ({
+      ...prev,
+      [serviceId]: { ...prev[serviceId], qty: clamped },
+    }));
+  };
+
+  const getTotal = () => {
+    return SERVICES.reduce((total, service) => {
+      const sel = selectedServices[service.id];
+      if (sel?.enabled) {
+        return total + service.pricePerUnit * sel.qty;
+      }
+      return total;
+    }, 0);
+  };
+
+  const getSelectedCount = () => SERVICES.filter(s => selectedServices[s.id]?.enabled).length;
+
+  const handleCheckout = async () => {
+    if (getSelectedCount() === 0) {
+      toast({
+        title: "Select at least one service",
+        description: "Choose the outreach services you'd like to run in your target area.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const servicesPayload = SERVICES
+      .filter(s => selectedServices[s.id]?.enabled)
+      .map(s => ({
+        serviceId: s.id,
+        qty: selectedServices[s.id].qty,
+        unitPrice: s.pricePerUnit,
+        total: s.pricePerUnit * selectedServices[s.id].qty,
+      }));
+
+    sessionStorage.setItem("buybox_services", JSON.stringify(servicesPayload));
+    sessionStorage.setItem("buybox_polygon", JSON.stringify(polygonGeoJson));
+    sessionStorage.setItem("buybox_centroid", JSON.stringify(centroid));
+    sessionStorage.setItem("buybox_mandate", JSON.stringify(mandateData));
+
+    setLocation("/buybox/checkout");
+  };
 
   if (isLoading) {
     return (
@@ -224,9 +299,9 @@ export default function BuyBox() {
       
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Create Your BuyBox</h1>
+          <h1 className="text-3xl font-bold mb-2" data-testid="text-buybox-title">Create Your BuyBox</h1>
           <p className="text-muted-foreground">
-            Define your target investment area and property criteria. Our network of realtors will help you find matching opportunities.
+            Define your target investment area, set your criteria, and choose outreach services to connect with property owners directly.
           </p>
         </div>
 
@@ -251,13 +326,14 @@ export default function BuyBox() {
             2. Add Details
           </Button>
           <Button
-            variant={step === "agreement" ? "default" : "outline"}
+            variant={step === "services" ? "default" : "outline"}
             size="sm"
-            disabled
-            data-testid="button-step-agreement"
+            disabled={!hasPolygon}
+            onClick={() => hasPolygon && isAuthenticated && setStep("services")}
+            data-testid="button-step-services"
           >
-            <PenTool className="h-4 w-4 mr-2" />
-            3. Sign & Submit
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            3. Select Services
           </Button>
         </div>
 
@@ -275,22 +351,25 @@ export default function BuyBox() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div
-                    ref={mapRef}
-                    className="w-full h-[500px] rounded-lg border"
-                    data-testid="map-container"
-                  />
+                  <div className="w-full h-[500px] rounded-lg border overflow-hidden" data-testid="map-container">
+                    <MapContainer
+                      center={TORONTO_CENTER}
+                      zoom={11}
+                      style={{ width: "100%", height: "100%" }}
+                      zoomControl={true}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                      />
+                      <DrawControl
+                        onCreated={handlePolygonCreated}
+                        onDeleted={handlePolygonDeleted}
+                      />
+                    </MapContainer>
+                  </div>
                   
                   <div className="flex gap-2 mt-4">
-                    <Button
-                      variant="outline"
-                      onClick={clearPolygon}
-                      disabled={!hasPolygon}
-                      data-testid="button-clear-polygon"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Clear & Redraw
-                    </Button>
                     <Button
                       onClick={handleContinueToDetails}
                       disabled={!hasPolygon}
@@ -312,19 +391,19 @@ export default function BuyBox() {
                 <CardContent className="space-y-4 text-sm text-muted-foreground">
                   <div className="flex gap-3">
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium">1</div>
-                    <p>Click on the map to start drawing your target area</p>
+                    <p>Click the polygon icon on the map toolbar (top right)</p>
                   </div>
                   <div className="flex gap-3">
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium">2</div>
-                    <p>Continue clicking to add points and form a polygon</p>
+                    <p>Click on the map to add points and form your target area</p>
                   </div>
                   <div className="flex gap-3">
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium">3</div>
-                    <p>Click on the first point to close the polygon</p>
+                    <p>Click the first point again to close the polygon</p>
                   </div>
                   <div className="flex gap-3">
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium">4</div>
-                    <p>Drag points to adjust, or clear and redraw</p>
+                    <p>Use the edit/delete tools to adjust or redraw</p>
                   </div>
                 </CardContent>
               </Card>
@@ -333,7 +412,7 @@ export default function BuyBox() {
                 <Card className="mt-4">
                   <CardHeader>
                     <CardTitle className="text-green-600 flex items-center gap-2">
-                      <MapPin className="h-5 w-5" />
+                      <Check className="h-5 w-5" />
                       Area Selected
                     </CardTitle>
                   </CardHeader>
@@ -633,14 +712,15 @@ export default function BuyBox() {
                       onClick={() => setStep("draw")}
                       data-testid="button-back-to-map"
                     >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
                       Back to Map
                     </Button>
                     <Button
                       className="w-full"
-                      onClick={handleContinueToAgreement}
-                      data-testid="button-continue-agreement"
+                      onClick={handleContinueToServices}
+                      data-testid="button-continue-services"
                     >
-                      Continue to Agreement
+                      Continue to Services
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>
@@ -648,9 +728,160 @@ export default function BuyBox() {
                   {!isAuthenticated && (
                     <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg text-amber-800 dark:text-amber-200">
                       <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs">You'll need to sign in before submitting your BuyBox.</p>
+                      <p className="text-xs">You'll need to sign in before selecting services.</p>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {step === "services" && (
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="mb-2">
+                <h2 className="text-xl font-semibold" data-testid="text-services-heading">Choose Your Outreach Services</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Select the services you'd like to run in your target area. We'll handle everything — you just wait for responses.
+                </p>
+              </div>
+
+              {SERVICES.map(service => {
+                const sel = selectedServices[service.id];
+                const isEnabled = sel?.enabled;
+                const Icon = service.icon;
+
+                return (
+                  <Card
+                    key={service.id}
+                    className={`transition-all cursor-pointer ${isEnabled ? "ring-2 ring-primary border-primary" : "hover:border-primary/50"}`}
+                    onClick={() => toggleService(service.id)}
+                    data-testid={`card-service-${service.id}`}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${isEnabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                          <Icon className="h-6 w-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold">{service.title}</h3>
+                            <Badge variant="secondary" className="text-[10px]">
+                              {service.provider}
+                            </Badge>
+                            {isEnabled && (
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-[10px]">
+                                Selected
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="font-medium">${service.pricePerUnit.toFixed(2)} {service.unitLabel}</span>
+                            <span className="text-muted-foreground">Min: {service.minQty} · Max: {service.maxQty.toLocaleString()}</span>
+                          </div>
+
+                          {isEnabled && (
+                            <div className="mt-4 flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                              <Label className="text-sm whitespace-nowrap">Quantity:</Label>
+                              <Input
+                                type="number"
+                                value={sel.qty}
+                                min={service.minQty}
+                                max={service.maxQty}
+                                onChange={(e) => updateServiceQty(service.id, parseInt(e.target.value) || service.minQty)}
+                                className="w-28 h-9"
+                                data-testid={`input-qty-${service.id}`}
+                              />
+                              <span className="text-sm font-semibold text-primary">
+                                = ${(service.pricePerUnit * sel.qty).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-shrink-0">
+                          <Checkbox
+                            checked={isEnabled}
+                            onCheckedChange={() => toggleService(service.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            data-testid={`checkbox-service-${service.id}`}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            <div>
+              <Card className="sticky top-24">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5" />
+                    Order Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  {centroid && (
+                    <div>
+                      <p className="text-muted-foreground">Target Area</p>
+                      <p className="font-medium text-green-600">Area defined on map</p>
+                    </div>
+                  )}
+
+                  {(mandateData.targetPrice || mandateData.maxPrice) && (
+                    <div>
+                      <p className="text-muted-foreground">Budget</p>
+                      <p className="font-medium">
+                        {mandateData.targetPrice ? `$${mandateData.targetPrice.toLocaleString()}` : ""}
+                        {mandateData.targetPrice && mandateData.maxPrice ? " - " : ""}
+                        {mandateData.maxPrice ? `$${mandateData.maxPrice.toLocaleString()}` : ""}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t space-y-2">
+                    <p className="font-medium text-muted-foreground">Selected Services</p>
+                    {SERVICES.filter(s => selectedServices[s.id]?.enabled).map(s => (
+                      <div key={s.id} className="flex justify-between items-center">
+                        <span>{s.title}</span>
+                        <span className="font-medium">${(s.pricePerUnit * selectedServices[s.id].qty).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    {getSelectedCount() === 0 && (
+                      <p className="text-muted-foreground italic">No services selected</p>
+                    )}
+                  </div>
+
+                  <div className="pt-3 border-t">
+                    <div className="flex justify-between items-center text-base font-semibold">
+                      <span>Total</span>
+                      <span className="text-primary">${getTotal().toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 space-y-3">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setStep("details")}
+                      data-testid="button-back-to-details"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back to Details
+                    </Button>
+                    <Button
+                      className="w-full"
+                      onClick={handleCheckout}
+                      disabled={getSelectedCount() === 0}
+                      data-testid="button-checkout"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Proceed to Checkout — ${getTotal().toFixed(2)}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>

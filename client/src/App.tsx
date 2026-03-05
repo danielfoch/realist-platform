@@ -31,6 +31,7 @@ import SetPassword from "@/pages/SetPassword";
 import VerifyPhone from "@/pages/VerifyPhone";
 import BuyBox from "@/pages/BuyBox";
 import BuyBoxAgreement from "@/pages/BuyBoxAgreement";
+import BuyBoxCheckout from "@/pages/BuyBoxCheckout";
 import BuyBoxConfirmation from "@/pages/BuyBoxConfirmation";
 import RealtorBuyBoxes from "@/pages/RealtorBuyBoxes";
 import CoInvesting from "@/pages/CoInvesting";
@@ -72,6 +73,7 @@ function Router() {
       <Route path="/tools/analyzer" component={Home} />
       <Route path="/tools/buybox" component={BuyBox} />
       <Route path="/tools/buybox/agreement" component={BuyBoxAgreement} />
+      <Route path="/tools/buybox/checkout" component={BuyBoxCheckout} />
       <Route path="/tools/buybox/confirmation/:id" component={BuyBoxConfirmation} />
       <Route path="/tools/coinvest" component={CoInvesting} />
       <Route path="/tools/coinvest/opportunities" component={CoInvestingOpportunities} />
@@ -112,6 +114,7 @@ function Router() {
       {/* Redirects from old routes to new routes */}
       <Route path="/buybox">{() => <Redirect to="/tools/buybox" />}</Route>
       <Route path="/buybox/agreement">{() => <Redirect to="/tools/buybox/agreement" />}</Route>
+      <Route path="/buybox/checkout">{() => <Redirect to="/tools/buybox/checkout" />}</Route>
       <Route path="/buybox/confirmation/:id">{(props: any) => <Redirect to={`/tools/buybox/confirmation/${props.params?.id}`} />}</Route>
       <Route path="/coinvesting">{() => <Redirect to="/tools/coinvest" />}</Route>
       <Route path="/coinvesting/opportunities">{() => <Redirect to="/tools/coinvest/opportunities" />}</Route>

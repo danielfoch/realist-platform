@@ -3870,6 +3870,106 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/buybox/submit-services", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { mandate, polygon, centroid, services } = req.body;
+
+      if (!polygon || !services || !Array.isArray(services) || services.length === 0) {
+        res.status(400).json({ error: "Polygon and at least one service are required" });
+        return;
+      }
+
+      const CANONICAL_PRICING: Record<string, { pricePerUnit: number; minQty: number; maxQty: number }> = {
+        direct_mail: { pricePerUnit: 2.50, minQty: 100, maxQty: 5000 },
+        ai_phone_calls: { pricePerUnit: 1.00, minQty: 50, maxQty: 2000 },
+        voicemail_drops: { pricePerUnit: 0.15, minQty: 100, maxQty: 10000 },
+      };
+
+      let totalAmount = 0;
+      const validatedServices: { serviceId: string; qty: number; unitPrice: number; total: number }[] = [];
+
+      for (const svc of services) {
+        const pricing = CANONICAL_PRICING[svc.serviceId];
+        if (!pricing) {
+          res.status(400).json({ error: `Invalid service: ${svc.serviceId}` });
+          return;
+        }
+        const qty = Math.max(pricing.minQty, Math.min(pricing.maxQty, parseInt(svc.qty) || pricing.minQty));
+        const lineTotal = pricing.pricePerUnit * qty;
+        totalAmount += lineTotal;
+        validatedServices.push({
+          serviceId: svc.serviceId,
+          qty,
+          unitPrice: pricing.pricePerUnit,
+          total: lineTotal,
+        });
+      }
+
+      const normalizedMandate = {
+        userId,
+        agreementId: null,
+        status: "new" as const,
+        polygonGeoJson: polygon,
+        centroidLat: centroid?.lat ?? null,
+        centroidLng: centroid?.lng ?? null,
+        areaName: null,
+        targetPrice: mandate?.targetPrice ?? null,
+        maxPrice: mandate?.maxPrice ?? null,
+        lotFrontage: mandate?.lotFrontage ?? null,
+        lotFrontageUnit: mandate?.lotFrontageUnit ?? null,
+        lotDepth: mandate?.lotDepth ?? null,
+        lotDepthUnit: mandate?.lotDepthUnit ?? null,
+        totalLotArea: mandate?.totalLotArea ?? null,
+        totalLotAreaUnit: mandate?.totalLotAreaUnit ?? null,
+        zoningPlanningStatus: mandate?.zoningPlanningStatus ?? null,
+        buildingType: mandate?.buildingType ?? null,
+        occupancy: mandate?.occupancy ?? null,
+        targetClosingDate: mandate?.targetClosingDate ? new Date(mandate.targetClosingDate) : null,
+        possessionDate: mandate?.possessionDate ? new Date(mandate.possessionDate) : null,
+        offerConditions: mandate?.offerConditions ?? null,
+        additionalNotes: mandate?.additionalNotes ?? null,
+      };
+
+      const mandateRecord = await storage.createBuyBoxMandate(normalizedMandate);
+
+      try {
+        const user = await authStorage.getUser(userId);
+        const servicesSummary = services.map((s: any) =>
+          `<li>${s.serviceId.replace(/_/g, ' ')}: ${s.qty} units × $${s.unitPrice.toFixed(2)} = $${s.total.toFixed(2)}</li>`
+        ).join("");
+
+        await sendNotificationEmail({
+          to: "danielfoch@gmail.com",
+          subject: `New BuyBox Services Order — $${totalAmount?.toFixed(2) || '0.00'}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+              <h2 style="color: #22c55e;">New BuyBox Services Order</h2>
+              <p><strong>From:</strong> ${user?.firstName || ""} ${user?.lastName || ""} (${user?.email})</p>
+              <p><strong>Mandate ID:</strong> ${mandateRecord.id}</p>
+              <p><strong>Budget:</strong> ${mandate?.targetPrice ? `$${mandate.targetPrice.toLocaleString()}` : "N/A"} - ${mandate?.maxPrice ? `$${mandate.maxPrice.toLocaleString()}` : "N/A"}</p>
+              <p><strong>Building Type:</strong> ${mandate?.buildingType || "N/A"}</p>
+              <h3>Services Ordered:</h3>
+              <ul>${servicesSummary}</ul>
+              <p style="font-size: 18px; font-weight: bold; color: #22c55e;">Total: $${totalAmount?.toFixed(2) || '0.00'}</p>
+            </div>
+          `,
+        });
+      } catch (emailError) {
+        console.error("[BuyBox] Failed to send services notification email:", emailError);
+      }
+
+      res.json({
+        success: true,
+        mandateId: mandateRecord.id,
+        services: services.map((s: any) => s.serviceId),
+      });
+    } catch (error) {
+      console.error("Error submitting BuyBox services:", error);
+      res.status(500).json({ error: "Failed to submit BuyBox services order" });
+    }
+  });
+
   // Get a specific BuyBox mandate (requires authentication and ownership/role check)
   app.get("/api/buybox/:id", isAuthenticated, async (req: any, res) => {
     try {
