@@ -1563,6 +1563,12 @@ export default function CapRates() {
                     {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
                   </Badge>
                 )}
+                <span className="text-[9px] text-muted-foreground/60">
+                  Powered by{" "}
+                  <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+                    Valery.ca
+                  </a>
+                </span>
                 {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
             )}
