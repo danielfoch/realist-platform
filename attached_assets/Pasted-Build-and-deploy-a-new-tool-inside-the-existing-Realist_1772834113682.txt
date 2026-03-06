@@ -1,0 +1,267 @@
+Build and deploy a new tool inside the existing Realist platform called:
+
+“Indigenous Land Claim / Treaty Area Screener”
+Internal route: /tools/land-claim-screener
+Nav label: “Land Claim Screener”
+
+GOAL
+Create a map-based screening tool that lets a user enter a Canadian property address and quickly see whether the parcel / point is:
+1) inside or near a historic treaty area,
+2) inside or near a modern treaty / Indigenous agreement area,
+3) inside or near a known Indigenous rights / claims / assertions geography,
+4) inside or near other relevant consultation-related map layers,
+5) potentially subject to additional review.
+
+IMPORTANT POSITIONING
+Do NOT market this as legal advice or a definitive determination of land claim status.
+This is a screening and research tool only.
+Use language like:
+“Potential overlap detected”
+“Further legal / title / Indigenous relations review may be warranted”
+“Informational screening only”
+
+CORE UX
+1. Add a search bar for:
+   - civic address
+   - postal code
+   - lat/lng
+   - parcel centroid if available
+2. Geocode the address and drop a marker on the map.
+3. Show the following outputs:
+   - Screening result banner:
+     - No overlap found in current datasets
+     - Overlap found
+     - Near overlap found (within configurable buffer)
+     - Data unavailable / incomplete for this area
+   - Confidence / completeness badge:
+     - Basic
+     - Enhanced
+     - Limited
+   - Layers hit table:
+     - Layer name
+     - Source
+     - overlap type (inside / intersects / within X km)
+     - nation / treaty / agreement / claim name
+     - province / region
+     - source link
+     - last updated if available
+4. Show map with toggleable polygon overlays:
+   - historic treaties
+   - modern treaties / Indigenous agreements
+   - claims and assertions
+   - consultation-related layers
+   - reserve lands / communities where legally and technically appropriate from public data
+5. Add a right-side results drawer with:
+   - summary
+   - impacted layers
+   - notes / caveats
+   - source citations
+   - export to PDF / share link / copy summary
+6. Add a “buffer search” control:
+   - parcel/point only
+   - 250m
+   - 500m
+   - 1km
+   - 5km
+7. Add a “research mode” expandable section:
+   - show all nearby Indigenous-related layers
+   - show raw polygon ids / attributes
+   - show bounding boxes
+   - show source dataset metadata
+
+MAP / SPATIAL LOGIC
+- Use Mapbox GL JS or Leaflet depending on what is already used in Realist.
+- Use PostGIS if the app already has PostgreSQL; if not, create a spatially indexed datastore appropriate for Replit.
+- Spatial checks:
+  - ST_Contains / point-in-polygon
+  - ST_Intersects
+  - ST_DWithin for buffer-based warnings
+- If parcel boundary data is available for the province, use parcel polygon intersection.
+- If parcel boundary is NOT available, fall back to geocoded address point + configurable buffer.
+- Clearly label which method was used:
+  - “Point-based screening”
+  - “Parcel-based screening”
+
+DATA ARCHITECTURE
+Create a data ingestion pipeline and normalized spatial tables.
+
+Recommended tables:
+1. indigenous_layers
+   - id
+   - slug
+   - layer_name
+   - layer_group
+   - jurisdiction
+   - source_name
+   - source_url
+   - source_dataset_id
+   - licence
+   - update_frequency
+   - last_checked_at
+   - last_imported_at
+   - active
+
+2. indigenous_features
+   - id
+   - layer_id
+   - feature_external_id
+   - feature_name
+   - nation_name
+   - treaty_name
+   - agreement_name
+   - claim_name
+   - province
+   - category
+   - status
+   - metadata_json
+   - geometry (MULTIPOLYGON / POLYGON / POINT as needed)
+   - centroid
+   - bbox
+
+3. screenings
+   - id
+   - user_id nullable
+   - searched_address
+   - normalized_address
+   - lat
+   - lng
+   - screening_method
+   - buffer_meters
+   - result_status
+   - completeness_status
+   - summary_json
+   - created_at
+
+4. screening_hits
+   - id
+   - screening_id
+   - feature_id
+   - hit_type
+   - distance_meters nullable
+   - overlap_area nullable
+   - notes
+
+DATA SOURCES
+Build adapters/importers for public Canadian sources. Start with the highest-value sources first.
+
+PRIORITY 1
+A. Federal treaty boundary polygons
+B. Federal Indigenous agreements / modern treaty polygons
+C. Federal ATRIS-adjacent public geographies or importable public geospatial layers that reflect:
+   - treaties and agreements
+   - claims and assertions
+   - consultation-related information
+D. Provincial treaty / Indigenous boundary layers where publicly available
+
+IMPORTANT
+Do not hardcode one province only.
+Design the system so each source is a pluggable adapter.
+
+INGESTION / SCRAPER DESIGN
+Create /admin/data-sources for admins only.
+
+Each source adapter should support:
+- fetch metadata
+- download file or query service
+- detect format (GeoJSON, SHP zip, KML, ArcGIS REST, WMS/WFS if feasible)
+- transform fields into normalized schema
+- import geometry
+- log import status
+- diff old vs new
+- re-run scheduled sync
+
+Support these common formats:
+- GeoJSON
+- zipped shapefile
+- KML
+- ArcGIS REST features if available
+
+If a source is only available as a viewer and not a clean download:
+- add a source notes record
+- do NOT do brittle scraping first if a structured public dataset exists
+- prefer official machine-readable open data over HTML scraping
+
+AUTOMATION
+- Add a scheduled job to refresh datasets weekly
+- Add manual “sync now” button in admin
+- Add import logs and failure alerts
+- Cache geocoding + screening results for speed
+
+RESULTS LOGIC
+Return a top-level result object like:
+
+{
+  "status": "overlap_found | near_overlap | no_overlap_found | limited_data",
+  "screening_method": "parcel | point_plus_buffer",
+  "buffer_meters": 500,
+  "hits_count": 3,
+  "summary": "This property intersects a historic treaty area and lies within 1 km of an Indigenous agreement boundary. This is an informational screening result only and may warrant further title, legal, and Indigenous relations review.",
+  "hits": [...]
+}
+
+COPY / DISCLAIMERS
+Every results page must include:
+“This tool is for informational screening only and does not determine legal title, rights, obligations, or whether a property is definitively subject to a land claim. Data coverage varies by jurisdiction and source. Users should obtain legal, title, and Indigenous relations advice before relying on results.”
+
+UI DETAILS
+- Match existing Realist design system
+- Make it feel like a premium GIS-lite tool
+- Fast load
+- Mobile responsive
+- Save search history for signed-in users
+- Add export options:
+  - PDF summary
+  - CSV of hits
+  - shareable permalink
+
+REALIST PLATFORM INTEGRATION
+- Add this tool to the existing tools page
+- Add a homepage tile/card
+- Add simple SEO landing page copy
+- Add analytics events:
+  - search_submitted
+  - result_overlap_found
+  - layer_toggled
+  - export_clicked
+
+TECH STACK PREFERENCE
+- Reuse existing Realist stack first
+- TypeScript end to end if possible
+- Postgres + PostGIS preferred
+- Background jobs via existing scheduler / cron
+- Geocoding: whichever provider is already in use, otherwise Mapbox or Google if already configured
+
+DELIVERABLES
+1. Working tool page
+2. Spatial schema + migrations
+3. Import pipeline for initial datasets
+4. Admin source management page
+5. Seed import script
+6. Public result summary + map
+7. Clear disclaimer UX
+8. Tests for:
+   - address geocoding
+   - point-in-polygon
+   - buffer detection
+   - result classification
+9. README explaining:
+   - data sources
+   - update cadence
+   - known limitations
+   - how to add a new province or source
+
+NICE TO HAVE
+- “Nearby communities / nations” info panel where permitted by source data
+- property parcel overlay where available
+- title-search handoff CTA
+- “book consultation / research” CTA for monetization
+- confidence scoring based on source coverage by province
+
+DO NOT
+- do not claim definitive legal conclusions
+- do not fabricate parcel boundaries if unavailable
+- do not rely on a brittle scraper when official geospatial downloads or services exist
+- do not hide source limitations
+
+SUCCESS CRITERIA
+A user can type an address, see it on a map, view all intersecting or nearby Indigenous-related polygons from official public datasets, understand what was matched, and export a clean screening summary in under 10 seconds.
