@@ -2097,3 +2097,90 @@ export const insertRateForecastSchema = createInsertSchema(rateForecasts).omit({
 });
 export type InsertRateForecast = z.infer<typeof insertRateForecastSchema>;
 export type RateForecast = typeof rateForecasts.$inferSelect;
+
+export const indigenousLayers = pgTable("indigenous_layers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  layerName: text("layer_name").notNull(),
+  layerGroup: text("layer_group").notNull().default("historic_treaty"),
+  jurisdiction: text("jurisdiction").default("federal"),
+  sourceName: text("source_name").notNull(),
+  sourceUrl: text("source_url"),
+  sourceDatasetId: text("source_dataset_id"),
+  licence: text("licence"),
+  updateFrequency: text("update_frequency"),
+  active: boolean("active").default(true).notNull(),
+  featureCount: integer("feature_count").default(0),
+  lastCheckedAt: timestamp("last_checked_at"),
+  lastImportedAt: timestamp("last_imported_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertIndigenousLayerSchema = createInsertSchema(indigenousLayers).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertIndigenousLayer = z.infer<typeof insertIndigenousLayerSchema>;
+export type IndigenousLayer = typeof indigenousLayers.$inferSelect;
+
+export const indigenousFeatures = pgTable("indigenous_features", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  layerId: varchar("layer_id").notNull(),
+  featureExternalId: text("feature_external_id"),
+  featureName: text("feature_name"),
+  nationName: text("nation_name"),
+  treatyName: text("treaty_name"),
+  agreementName: text("agreement_name"),
+  claimName: text("claim_name"),
+  province: text("province"),
+  category: text("category"),
+  status: text("status"),
+  metadataJson: text("metadata_json"),
+  bbox: text("bbox"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertIndigenousFeatureSchema = createInsertSchema(indigenousFeatures).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertIndigenousFeature = z.infer<typeof insertIndigenousFeatureSchema>;
+export type IndigenousFeature = typeof indigenousFeatures.$inferSelect;
+
+export const screenings = pgTable("screenings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  searchedAddress: text("searched_address"),
+  normalizedAddress: text("normalized_address"),
+  lat: real("lat").notNull(),
+  lng: real("lng").notNull(),
+  screeningMethod: text("screening_method").notNull().default("point_plus_buffer"),
+  bufferMeters: integer("buffer_meters").default(0),
+  resultStatus: text("result_status").notNull(),
+  completenessStatus: text("completeness_status").default("basic"),
+  summaryJson: text("summary_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertScreeningSchema = createInsertSchema(screenings).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertScreening = z.infer<typeof insertScreeningSchema>;
+export type Screening = typeof screenings.$inferSelect;
+
+export const screeningHits = pgTable("screening_hits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  screeningId: varchar("screening_id").notNull(),
+  featureId: varchar("feature_id").notNull(),
+  hitType: text("hit_type").notNull(),
+  distanceMeters: real("distance_meters"),
+  overlapArea: real("overlap_area"),
+  notes: text("notes"),
+});
+
+export const insertScreeningHitSchema = createInsertSchema(screeningHits).omit({
+  id: true,
+});
+export type InsertScreeningHit = z.infer<typeof insertScreeningHitSchema>;
+export type ScreeningHit = typeof screeningHits.$inferSelect;

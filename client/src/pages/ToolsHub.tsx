@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2, Scale, ArrowLeftRight } from "lucide-react";
+import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2, Scale, ArrowLeftRight, Shield } from "lucide-react";
 
 const tools = [
   {
@@ -69,6 +69,13 @@ const tools = [
     title: "Renovation Estimator",
     description: "Get accurate renovation cost estimates for your real estate projects.",
     icon: Home,
+  },
+  {
+    href: "/tools/land-claim-screener",
+    title: "Land Claim Screener",
+    description: "Screen properties for potential overlap with historic treaties, modern treaties, and Indigenous agreement areas using official federal data.",
+    icon: Shield,
+    badge: "New",
   },
   {
     href: "/compare",

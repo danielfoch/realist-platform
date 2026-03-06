@@ -130,6 +130,18 @@ import {
   guides,
   type Guide,
   type InsertGuide,
+  indigenousLayers,
+  indigenousFeatures,
+  screenings,
+  screeningHits,
+  type IndigenousLayer,
+  type InsertIndigenousLayer,
+  type IndigenousFeature,
+  type InsertIndigenousFeature,
+  type Screening,
+  type InsertScreening,
+  type ScreeningHit,
+  type InsertScreeningHit,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -394,6 +406,16 @@ export interface IStorage {
   getGuide(id: string): Promise<Guide | undefined>;
   getGuideBySlug(slug: string): Promise<Guide | undefined>;
   getGuides(opts?: { status?: string; category?: string }): Promise<Guide[]>;
+
+  createIndigenousLayer(layer: InsertIndigenousLayer): Promise<IndigenousLayer>;
+  getIndigenousLayers(): Promise<IndigenousLayer[]>;
+  getIndigenousLayerBySlug(slug: string): Promise<IndigenousLayer | undefined>;
+  updateIndigenousLayer(id: string, updates: Partial<IndigenousLayer>): Promise<IndigenousLayer | undefined>;
+
+  createScreening(screening: InsertScreening): Promise<Screening>;
+  getScreeningsByUser(userId: string): Promise<Screening[]>;
+  createScreeningHit(hit: InsertScreeningHit): Promise<ScreeningHit>;
+  getScreeningHits(screeningId: string): Promise<ScreeningHit[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1718,6 +1740,47 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(guides)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(asc(guides.sortOrder), desc(guides.publishedAt));
+  }
+
+  async createIndigenousLayer(layer: InsertIndigenousLayer): Promise<IndigenousLayer> {
+    const [result] = await db.insert(indigenousLayers).values(layer).returning();
+    return result;
+  }
+
+  async getIndigenousLayers(): Promise<IndigenousLayer[]> {
+    return db.select().from(indigenousLayers).orderBy(indigenousLayers.layerGroup);
+  }
+
+  async getIndigenousLayerBySlug(slug: string): Promise<IndigenousLayer | undefined> {
+    const [result] = await db.select().from(indigenousLayers).where(eq(indigenousLayers.slug, slug));
+    return result;
+  }
+
+  async updateIndigenousLayer(id: string, updates: Partial<IndigenousLayer>): Promise<IndigenousLayer | undefined> {
+    const [result] = await db.update(indigenousLayers).set(updates).where(eq(indigenousLayers.id, id)).returning();
+    return result;
+  }
+
+  async createScreening(screening: InsertScreening): Promise<Screening> {
+    const [result] = await db.insert(screenings).values(screening).returning();
+    return result;
+  }
+
+  async getScreeningsByUser(userId: string): Promise<Screening[]> {
+    return db.select().from(screenings)
+      .where(eq(screenings.userId, userId))
+      .orderBy(desc(screenings.createdAt))
+      .limit(50);
+  }
+
+  async createScreeningHit(hit: InsertScreeningHit): Promise<ScreeningHit> {
+    const [result] = await db.insert(screeningHits).values(hit).returning();
+    return result;
+  }
+
+  async getScreeningHits(screeningId: string): Promise<ScreeningHit[]> {
+    return db.select().from(screeningHits)
+      .where(eq(screeningHits.screeningId, screeningId));
   }
 }
 

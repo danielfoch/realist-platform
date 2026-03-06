@@ -6374,6 +6374,110 @@ export async function registerRoutes(
     }
   }
 
+  // ─── Indigenous Land Claim Screener ─────────────────────
+  const { screenLocation, getFeatureGeoJSON } = await import("./landClaimScreener");
+  const { importAllLayers, checkAndImportIfEmpty } = await import("./indigenousDataImporter");
+
+  checkAndImportIfEmpty().catch(err => console.error("[indigenous-import] Startup check failed:", err.message));
+
+  app.post("/api/land-claim-screener/screen", async (req: any, res) => {
+    try {
+      const screenSchema = z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        bufferMeters: z.number().min(0).max(5000).default(0),
+        address: z.string().max(500).optional(),
+      });
+      const parsed = screenSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+        return;
+      }
+      const { lat, lng, bufferMeters, address } = parsed.data;
+
+      const result = await screenLocation(lat, lng, bufferMeters);
+
+      const userId = req.session?.userId || null;
+      const screening = await storage.createScreening({
+        userId,
+        searchedAddress: address || null,
+        lat,
+        lng,
+        screeningMethod: "point_plus_buffer",
+        bufferMeters,
+        resultStatus: result.status,
+        completenessStatus: result.completeness,
+        summaryJson: JSON.stringify({ summary: result.summary, hitsCount: result.hitsCount }),
+      });
+
+      for (const hit of result.hits) {
+        await storage.createScreeningHit({
+          screeningId: screening.id,
+          featureId: hit.featureId,
+          hitType: hit.hitType,
+          distanceMeters: hit.distanceMeters,
+          notes: `${hit.layerName}: ${hit.featureName}`,
+        });
+      }
+
+      res.json({ ...result, screeningId: screening.id });
+    } catch (error: any) {
+      console.error("Error running screening:", error);
+      res.status(500).json({ error: "Screening failed" });
+    }
+  });
+
+  app.get("/api/land-claim-screener/features", async (_req, res) => {
+    try {
+      const geojson = await getFeatureGeoJSON();
+      res.json(geojson);
+    } catch (error: any) {
+      console.error("Error fetching features:", error);
+      res.status(500).json({ error: "Failed to load features" });
+    }
+  });
+
+  app.get("/api/land-claim-screener/layers", async (_req, res) => {
+    try {
+      const layers = await storage.getIndigenousLayers();
+      res.json(layers.filter(l => l.active));
+    } catch (error: any) {
+      console.error("Error fetching layers:", error);
+      res.status(500).json({ error: "Failed to load layers" });
+    }
+  });
+
+  app.get("/api/land-claim-screener/history", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const screeningsResult = await storage.getScreeningsByUser(userId);
+      res.json(screeningsResult);
+    } catch (error: any) {
+      console.error("Error fetching screening history:", error);
+      res.status(500).json({ error: "Failed to load history" });
+    }
+  });
+
+  app.post("/api/admin/indigenous/import", isAdmin, async (_req, res) => {
+    try {
+      const result = await importAllLayers();
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error importing indigenous data:", error);
+      res.status(500).json({ error: "Import failed: " + error.message });
+    }
+  });
+
+  app.get("/api/admin/indigenous/layers", isAdmin, async (_req, res) => {
+    try {
+      const layers = await storage.getIndigenousLayers();
+      res.json(layers);
+    } catch (error: any) {
+      console.error("Error fetching admin layers:", error);
+      res.status(500).json({ error: "Failed to load layers" });
+    }
+  });
+
   return httpServer;
 }
 
