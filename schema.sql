@@ -279,3 +279,66 @@ COMMENT ON COLUMN listings.gross_yield IS 'Gross rental yield: (Annual Rent / Li
 COMMENT ON TABLE listing_photos IS 'Property photos and media files';
 COMMENT ON TABLE agents IS 'Real estate agents and brokers';
 COMMENT ON TABLE brokerages IS 'Real estate brokerage firms';
+
+-- ==================== SEO CONTENT TABLES ====================
+
+-- Blog Posts table for SEO content
+CREATE TABLE IF NOT EXISTS blog_posts (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  excerpt TEXT,
+  content TEXT NOT NULL, -- Markdown content
+  featured_image VARCHAR(500),
+  author VARCHAR(100) DEFAULT 'Realist Team',
+  status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
+  category VARCHAR(50), -- Market Update, Analysis, News, Tutorial
+  tags TEXT[], -- Array of tags for SEO
+  meta_title VARCHAR(70),
+  meta_description VARCHAR(160),
+  canonical_url VARCHAR(500),
+  published_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Guides table for evergreen how-to content
+CREATE TABLE IF NOT EXISTS guides (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  excerpt TEXT,
+  content TEXT NOT NULL, -- Markdown content
+  featured_image VARCHAR(500),
+  author VARCHAR(100) DEFAULT 'Realist Team',
+  status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
+  category VARCHAR(50), -- Analysis, Markets, Tax & Legal, Financing
+  difficulty VARCHAR(20), -- beginner, intermediate, advanced
+  estimated_read_time_minutes INTEGER,
+  meta_title VARCHAR(70),
+  meta_description VARCHAR(160),
+  canonical_url VARCHAR(500),
+  published_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for SEO content
+CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_status_published ON blog_posts(status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts(category);
+
+CREATE INDEX IF NOT EXISTS idx_guides_slug ON guides(slug);
+CREATE INDEX IF NOT EXISTS idx_guides_status_published ON guides(status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_guides_category ON guides(category);
+
+-- Triggers to auto-update updated_at for content tables
+CREATE TRIGGER update_blog_posts_updated_at BEFORE UPDATE ON blog_posts
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_guides_updated_at BEFORE UPDATE ON guides
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Comments for documentation
+COMMENT ON TABLE blog_posts IS 'SEO blog posts for content marketing';
+COMMENT ON TABLE guides IS 'Evergreen how-to guides for real estate investing';
