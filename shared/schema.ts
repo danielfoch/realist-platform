@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, uniqueIndex, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -2123,6 +2123,18 @@ export const insertIndigenousLayerSchema = createInsertSchema(indigenousLayers).
 export type InsertIndigenousLayer = z.infer<typeof insertIndigenousLayerSchema>;
 export type IndigenousLayer = typeof indigenousLayers.$inferSelect;
 
+const geometry = customType<{ data: string }>({
+  dataType() {
+    return "geometry(Geometry,4326)";
+  },
+});
+
+const point = customType<{ data: string }>({
+  dataType() {
+    return "geometry(Point,4326)";
+  },
+});
+
 export const indigenousFeatures = pgTable("indigenous_features", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   layerId: varchar("layer_id").notNull(),
@@ -2138,11 +2150,15 @@ export const indigenousFeatures = pgTable("indigenous_features", {
   metadataJson: text("metadata_json"),
   bbox: text("bbox"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  geom: geometry("geom"),
+  centroid: point("centroid"),
 });
 
 export const insertIndigenousFeatureSchema = createInsertSchema(indigenousFeatures).omit({
   id: true,
   createdAt: true,
+  geom: true,
+  centroid: true,
 });
 export type InsertIndigenousFeature = z.infer<typeof insertIndigenousFeatureSchema>;
 export type IndigenousFeature = typeof indigenousFeatures.$inferSelect;
