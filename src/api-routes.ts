@@ -799,6 +799,112 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
     }
   });
 
+  // POST /api/market-update/generate - Generate monthly market update blog post
+  // Can be called by cron job or admin
+  router.post('/market-update/generate', async (req: Request, res: Response) => {
+    // Demo mode - return mock success without database
+    if (isDemoMode()) {
+      return res.json({
+        success: true,
+        message: 'Demo mode: Market update generation skipped',
+        data: {
+          title: 'March 2026: Top 5 Canadian Cities by Rental Yield',
+          slug: 'march-2026-top-5-canadian-cities-by-rental-yield',
+          citiesAnalyzed: 15,
+          topCity: 'Windsor',
+          avgCapRate: 7.2,
+        },
+      });
+    }
+
+    try {
+      // Import the generator function
+      const { generateMonthlyMarketUpdate } = await import('./scripts/generate-market-update');
+      const result = await generateMonthlyMarketUpdate();
+      
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
+  // GET /api/market-update/preview - Preview what the market update would look like
+  router.get('/market-update/preview', async (req: Request, res: Response) => {
+    // Demo mode - return mock data
+    if (isDemoMode()) {
+      return res.json({
+        success: true,
+        data: {
+          monthYear: 'March 2026',
+          topCities: [
+            { city: 'Windsor', province: 'ON', medianRent: 1800, estimatedCapRate: 8.5 },
+            { city: 'London', province: 'ON', medianRent: 2100, estimatedCapRate: 7.8 },
+            { city: 'Hamilton', province: 'ON', medianRent: 2200, estimatedCapRate: 7.2 },
+            { city: 'Kitchener', province: 'ON', medianRent: 2300, estimatedCapRate: 6.9 },
+            { city: 'Barrie', province: 'ON', medianRent: 2400, estimatedCapRate: 6.5 },
+          ],
+          avgCapRate: 7.38,
+        },
+      });
+    }
+
+    try {
+      const rentData = await database.query(`
+        WITH latest_pulse AS (
+          SELECT city, province, median_rent, sample_size,
+                 ROW_NUMBER() OVER (PARTITION BY city ORDER BY scraped_at DESC) as rn
+          FROM rent_pulse
+          WHERE scraped_at > NOW() - INTERVAL '7 days'
+            AND bedrooms = 'all'
+        )
+        SELECT city, province, median_rent / 100 as median_rent, sample_size
+        FROM latest_pulse
+        WHERE rn = 1
+        ORDER BY median_rent DESC
+        LIMIT 20
+      `);
+
+      const CITY_PRICES: Record<string, number> = {
+        'Toronto': 850000, 'Vancouver': 950000, 'Montreal': 520000,
+        'Calgary': 480000, 'Ottawa': 520000, 'Edmonton': 380000,
+        'Hamilton': 620000, 'Kitchener': 580000, 'London': 510000,
+        'Windsor': 380000, 'Mississauga': 720000, 'Brampton': 680000,
+      };
+
+      const now = new Date();
+      const monthYear = now.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
+
+      const cityYields = rentData.rows
+        .map((row: any) => {
+          const price = CITY_PRICES[row.city] || 500000;
+          const capRate = ((row.median_rent * 12 * 0.6) / price) * 100;
+          return {
+            city: row.city,
+            province: row.province,
+            medianRent: row.median_rent,
+            estimatedCapRate: Math.round(capRate * 100) / 100,
+          };
+        })
+        .sort((a: any, b: any) => b.estimatedCapRate - a.estimatedCapRate)
+        .slice(0, 5);
+
+      const avgCapRate = cityYields.reduce((sum: number, c: any) => sum + c.estimatedCapRate, 0) / cityYields.length;
+
+      res.json({
+        success: true,
+        data: {
+          monthYear,
+          topCities: cityYields,
+          avgCapRate: Math.round(avgCapRate * 100) / 100,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
   return router;
 }
 

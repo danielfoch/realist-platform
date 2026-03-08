@@ -339,6 +339,51 @@ CREATE TRIGGER update_blog_posts_updated_at BEFORE UPDATE ON blog_posts
 CREATE TRIGGER update_guides_updated_at BEFORE UPDATE ON guides
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- ==================== RENT PULSE TABLES ====================
+
+-- Rent pulse data for city-level yield calculations
+CREATE TABLE IF NOT EXISTS rent_pulse (
+  id SERIAL PRIMARY KEY,
+  city VARCHAR(100) NOT NULL,
+  province VARCHAR(2) NOT NULL,
+  bedrooms VARCHAR(10) NOT NULL, -- "1BR", "2BR", "3BR", "all"
+  median_rent INTEGER, -- monthly, CAD cents
+  avg_rent INTEGER,
+  min_rent INTEGER,
+  max_rent INTEGER,
+  sample_size INTEGER,
+  source VARCHAR(20), -- "kijiji", "rentals_ca", "mixed"
+  scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Individual rent listings from scrapers
+CREATE TABLE IF NOT EXISTS rent_listings (
+  id SERIAL PRIMARY KEY,
+  city VARCHAR(100) NOT NULL,
+  province VARCHAR(2) NOT NULL,
+  title VARCHAR(500),
+  price INTEGER NOT NULL, -- monthly, CAD cents
+  bedrooms INTEGER,
+  bathrooms INTEGER,
+  address TEXT,
+  lat DECIMAL(10, 7),
+  lng DECIMAL(10, 7),
+  source VARCHAR(20) NOT NULL, -- "kijiji", "rentals_ca"
+  source_url TEXT,
+  source_id VARCHAR(100) UNIQUE, -- dedup key
+  scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for rent pulse queries
+CREATE INDEX IF NOT EXISTS idx_rent_pulse_city_province ON rent_pulse(city, province);
+CREATE INDEX IF NOT EXISTS idx_rent_pulse_scraped_at ON rent_pulse(scraped_at DESC);
+CREATE INDEX IF NOT EXISTS idx_rent_listings_city ON rent_listings(city);
+CREATE INDEX IF NOT EXISTS idx_rent_listings_source_id ON rent_listings(source_id);
+
 -- Comments for documentation
 COMMENT ON TABLE blog_posts IS 'SEO blog posts for content marketing';
 COMMENT ON TABLE guides IS 'Evergreen how-to guides for real estate investing';
+COMMENT ON TABLE rent_pulse IS 'City-level rent data for cap rate and yield calculations';
+COMMENT ON TABLE rent_listings IS 'Individual rental listings from scrapers';
