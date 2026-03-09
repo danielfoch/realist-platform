@@ -6380,6 +6380,64 @@ export async function registerRoutes(
 
   checkAndImportIfEmpty().catch(err => console.error("[indigenous-import] Startup check failed:", err.message));
 
+  app.post("/api/land-claim-screener/register", async (req: any, res) => {
+    try {
+      const registerSchema = z.object({
+        firstName: z.string().min(1).max(100),
+        lastName: z.string().max(100).optional(),
+        email: z.string().email().max(200),
+        address: z.string().min(1).max(500),
+      });
+      const parsed = registerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+        return;
+      }
+      const { firstName, lastName, email, address } = parsed.data;
+      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+
+      const lead = await storage.createLead({
+        name: fullName,
+        email,
+        phone: "",
+        consent: true,
+        leadSource: "Land Claim Screener",
+      });
+
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName: lastName || "",
+        fullName,
+        phone: "",
+        leadSource: "Land Claim Screener",
+        formTag: "land_claim_screener",
+        tags: ["land_claim_screener"],
+        notes: `Address to screen: ${address}`,
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Webhook error:", err));
+
+      sendToGoogleSheets({
+        name: fullName,
+        email,
+        phone: "",
+        source: "Land Claim Screener",
+        notes: `Address to screen: ${address}`,
+      }).catch(err => console.error("Google Sheets error:", err));
+
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName: lastName || undefined,
+      }).catch(err => console.error("Auto-enroll error:", err));
+
+      res.json({ success: true, leadId: lead.id });
+    } catch (error: any) {
+      console.error("Screener registration error:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
   app.post("/api/land-claim-screener/screen", async (req: any, res) => {
     try {
       const screenSchema = z.object({
