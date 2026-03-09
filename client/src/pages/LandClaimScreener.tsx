@@ -107,6 +107,7 @@ export default function LandClaimScreener() {
   const [gateFirstName, setGateFirstName] = useState("");
   const [gateLastName, setGateLastName] = useState("");
   const [gateEmail, setGateEmail] = useState("");
+  const [gatePhone, setGatePhone] = useState("");
   const [gateAddress, setGateAddress] = useState("");
   const [gateSubmitting, setGateSubmitting] = useState(false);
 
@@ -114,7 +115,7 @@ export default function LandClaimScreener() {
 
   const handleGateSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gateFirstName.trim() || !gateEmail.trim() || !gateAddress.trim()) {
+    if (!gateFirstName.trim() || !gateEmail.trim() || !gatePhone.trim() || !gateAddress.trim()) {
       toast({ title: "Please fill in all required fields", variant: "destructive" });
       return;
     }
@@ -124,6 +125,7 @@ export default function LandClaimScreener() {
         firstName: gateFirstName.trim(),
         lastName: gateLastName.trim(),
         email: gateEmail.trim(),
+        phone: gatePhone.trim(),
         address: gateAddress.trim(),
       });
       setAddress(gateAddress.trim());
@@ -135,7 +137,7 @@ export default function LandClaimScreener() {
     } finally {
       setGateSubmitting(false);
     }
-  }, [gateFirstName, gateLastName, gateEmail, gateAddress, toast]);
+  }, [gateFirstName, gateLastName, gateEmail, gatePhone, gateAddress, toast]);
 
   const { data: featuresGeoJSON, isLoading: featuresLoading } = useQuery({
     queryKey: ["/api/land-claim-screener/features"],
@@ -345,6 +347,20 @@ export default function LandClaimScreener() {
                           className="pl-10"
                           required
                           data-testid="input-gate-email"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="gate-phone">Phone *</Label>
+                      <div className="relative">
+                        <Input
+                          id="gate-phone"
+                          type="tel"
+                          placeholder="(416) 555-1234"
+                          value={gatePhone}
+                          onChange={(e) => setGatePhone(e.target.value)}
+                          required
+                          data-testid="input-gate-phone"
                         />
                       </div>
                     </div>

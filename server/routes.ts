@@ -6386,6 +6386,7 @@ export async function registerRoutes(
         firstName: z.string().min(1).max(100),
         lastName: z.string().max(100).optional(),
         email: z.string().email().max(200),
+        phone: z.string().min(1).max(30),
         address: z.string().min(1).max(500),
       });
       const parsed = registerSchema.safeParse(req.body);
@@ -6393,13 +6394,20 @@ export async function registerRoutes(
         res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
         return;
       }
-      const { firstName, lastName, email, address } = parsed.data;
+      const { firstName, lastName, email, phone, address } = parsed.data;
       const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) return '+' + cleaned;
+        if (cleaned.length === 10) return '+1' + cleaned;
+        return '+' + cleaned;
+      };
 
       const lead = await storage.createLead({
         name: fullName,
         email,
-        phone: "",
+        phone,
         consent: true,
         leadSource: "Land Claim Screener",
       });
@@ -6409,7 +6417,8 @@ export async function registerRoutes(
         firstName,
         lastName: lastName || "",
         fullName,
-        phone: "",
+        phone: formatPhoneE164(phone),
+        companyName: address,
         leadSource: "Land Claim Screener",
         formTag: "land_claim_screener",
         tags: ["land_claim_screener"],
@@ -6420,7 +6429,7 @@ export async function registerRoutes(
       sendToGoogleSheets({
         name: fullName,
         email,
-        phone: "",
+        phone,
         source: "Land Claim Screener",
         notes: `Address to screen: ${address}`,
       }).catch(err => console.error("Google Sheets error:", err));
