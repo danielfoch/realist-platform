@@ -6380,6 +6380,9 @@ export async function registerRoutes(
 
   checkAndImportIfEmpty().catch(err => console.error("[indigenous-import] Startup check failed:", err.message));
 
+  const { checkAndSeedWatchOverlays, seedWatchOverlays } = await import("./watchOverlaySeeder");
+  checkAndSeedWatchOverlays().catch(err => console.error("[watch-overlays] Startup seed failed:", err.message));
+
   app.post("/api/land-claim-screener/register", async (req: any, res) => {
     try {
       const registerSchema = z.object({
@@ -6542,6 +6545,108 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error fetching admin layers:", error);
       res.status(500).json({ error: "Failed to load layers" });
+    }
+  });
+
+  app.post("/api/admin/watch-overlays", isAdmin, async (req, res) => {
+    try {
+      const createSchema = z.object({
+        slug: z.string().min(1).max(200),
+        overlayName: z.string().min(1).max(500),
+        overlayGroup: z.string().default("high_sensitivity"),
+        jurisdiction: z.string().optional(),
+        nationName: z.string().optional(),
+        legalContextType: z.string().optional(),
+        sourceSummary: z.string().optional(),
+        sourceUrl: z.string().optional(),
+        sourceDate: z.string().optional(),
+        geometryMethod: z.string().optional(),
+        geometryConfidence: z.enum(["high", "medium", "low"]).optional(),
+        authorityLevel: z.string().optional(),
+        disclaimerText: z.string().optional(),
+        statusLabel: z.string().optional(),
+        active: z.boolean().default(true),
+        createdBy: z.string().optional(),
+        digitizationNotes: z.string().optional(),
+        geojson: z.any().optional(),
+      });
+      const parsed = createSchema.parse(req.body);
+      const { geojson, ...overlayData } = parsed;
+      const overlay = await storage.createWatchOverlay(overlayData as any);
+      if (geojson) {
+        const geojsonStr = JSON.stringify(geojson);
+        await db.execute(sql`
+          UPDATE watch_overlays
+          SET geom = ST_SetSRID(ST_GeomFromGeoJSON(${geojsonStr}), 4326)
+          WHERE id = ${overlay.id}
+        `);
+      }
+      res.json(overlay);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+        return;
+      }
+      res.status(500).json({ error: "Failed to create overlay" });
+    }
+  });
+
+  app.get("/api/admin/watch-overlays", isAdmin, async (_req, res) => {
+    try {
+      const overlays = await storage.getWatchOverlays();
+      res.json(overlays);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to load watch overlays" });
+    }
+  });
+
+  app.put("/api/admin/watch-overlays/:id", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { geojson, ...updates } = req.body;
+      const updated = await storage.updateWatchOverlay(id, updates);
+      if (!updated) {
+        res.status(404).json({ error: "Overlay not found" });
+        return;
+      }
+      if (geojson) {
+        const geojsonStr = JSON.stringify(geojson);
+        await db.execute(sql`
+          UPDATE watch_overlays
+          SET geom = ST_SetSRID(ST_GeomFromGeoJSON(${geojsonStr}), 4326)
+          WHERE id = ${id}
+        `);
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to update overlay" });
+    }
+  });
+
+  app.delete("/api/admin/watch-overlays/:id", isAdmin, async (req, res) => {
+    try {
+      await storage.deleteWatchOverlay(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to delete overlay" });
+    }
+  });
+
+  app.post("/api/admin/watch-overlays/seed", isAdmin, async (_req, res) => {
+    try {
+      const result = await seedWatchOverlays();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to seed overlays" });
+    }
+  });
+
+  app.get("/api/land-claim-screener/watch-overlays", async (_req, res) => {
+    try {
+      const overlays = await storage.getWatchOverlays();
+      res.json(overlays.filter(o => o.active));
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to load watch overlays" });
     }
   });
 

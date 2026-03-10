@@ -2163,6 +2163,40 @@ export const insertIndigenousFeatureSchema = createInsertSchema(indigenousFeatur
 export type InsertIndigenousFeature = z.infer<typeof insertIndigenousFeatureSchema>;
 export type IndigenousFeature = typeof indigenousFeatures.$inferSelect;
 
+export const watchOverlays = pgTable("watch_overlays", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  overlayName: text("overlay_name").notNull(),
+  overlayGroup: text("overlay_group").notNull().default("high_sensitivity"),
+  jurisdiction: text("jurisdiction").default("provincial"),
+  nationName: text("nation_name"),
+  legalContextType: text("legal_context_type"),
+  sourceSummary: text("source_summary"),
+  sourceUrl: text("source_url"),
+  sourceDate: text("source_date"),
+  geometryMethod: text("geometry_method"),
+  geometryConfidence: text("geometry_confidence"),
+  authorityLevel: text("authority_level"),
+  disclaimerText: text("disclaimer_text"),
+  statusLabel: text("status_label"),
+  active: boolean("active").default(true).notNull(),
+  metadataJson: text("metadata_json"),
+  createdBy: text("created_by"),
+  digitizationNotes: text("digitization_notes"),
+  reviewedBy: text("reviewed_by"),
+  reviewStatus: text("review_status"),
+  geom: geometry("geom"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertWatchOverlaySchema = createInsertSchema(watchOverlays).omit({
+  id: true,
+  createdAt: true,
+  geom: true,
+});
+export type InsertWatchOverlay = z.infer<typeof insertWatchOverlaySchema>;
+export type WatchOverlay = typeof watchOverlays.$inferSelect;
+
 export const screenings = pgTable("screenings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id"),

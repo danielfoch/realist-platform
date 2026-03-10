@@ -132,12 +132,15 @@ import {
   type InsertGuide,
   indigenousLayers,
   indigenousFeatures,
+  watchOverlays,
   screenings,
   screeningHits,
   type IndigenousLayer,
   type InsertIndigenousLayer,
   type IndigenousFeature,
   type InsertIndigenousFeature,
+  type WatchOverlay,
+  type InsertWatchOverlay,
   type Screening,
   type InsertScreening,
   type ScreeningHit,
@@ -411,6 +414,12 @@ export interface IStorage {
   getIndigenousLayers(): Promise<IndigenousLayer[]>;
   getIndigenousLayerBySlug(slug: string): Promise<IndigenousLayer | undefined>;
   updateIndigenousLayer(id: string, updates: Partial<IndigenousLayer>): Promise<IndigenousLayer | undefined>;
+
+  createWatchOverlay(overlay: InsertWatchOverlay): Promise<WatchOverlay>;
+  getWatchOverlays(): Promise<WatchOverlay[]>;
+  getWatchOverlayBySlug(slug: string): Promise<WatchOverlay | undefined>;
+  updateWatchOverlay(id: string, updates: Partial<WatchOverlay>): Promise<WatchOverlay | undefined>;
+  deleteWatchOverlay(id: string): Promise<void>;
 
   createScreening(screening: InsertScreening): Promise<Screening>;
   getScreeningsByUser(userId: string): Promise<Screening[]>;
@@ -1759,6 +1768,29 @@ export class DatabaseStorage implements IStorage {
   async updateIndigenousLayer(id: string, updates: Partial<IndigenousLayer>): Promise<IndigenousLayer | undefined> {
     const [result] = await db.update(indigenousLayers).set(updates).where(eq(indigenousLayers.id, id)).returning();
     return result;
+  }
+
+  async createWatchOverlay(overlay: InsertWatchOverlay): Promise<WatchOverlay> {
+    const [result] = await db.insert(watchOverlays).values(overlay).returning();
+    return result;
+  }
+
+  async getWatchOverlays(): Promise<WatchOverlay[]> {
+    return db.select().from(watchOverlays).orderBy(watchOverlays.overlayName);
+  }
+
+  async getWatchOverlayBySlug(slug: string): Promise<WatchOverlay | undefined> {
+    const [result] = await db.select().from(watchOverlays).where(eq(watchOverlays.slug, slug));
+    return result;
+  }
+
+  async updateWatchOverlay(id: string, updates: Partial<WatchOverlay>): Promise<WatchOverlay | undefined> {
+    const [result] = await db.update(watchOverlays).set(updates).where(eq(watchOverlays.id, id)).returning();
+    return result;
+  }
+
+  async deleteWatchOverlay(id: string): Promise<void> {
+    await db.delete(watchOverlays).where(eq(watchOverlays.id, id));
   }
 
   async createScreening(screening: InsertScreening): Promise<Screening> {

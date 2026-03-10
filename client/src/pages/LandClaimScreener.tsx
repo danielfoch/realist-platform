@@ -34,11 +34,34 @@ const BUFFER_OPTIONS = [
 const LAYER_COLORS: Record<string, string> = {
   historic_treaty: "#3b82f6",
   modern_treaty: "#22c55e",
+  high_sensitivity: "#ef4444",
 };
 
 const LAYER_LABELS: Record<string, string> = {
   historic_treaty: "Historic Treaties",
   modern_treaty: "Modern Treaties & Agreements",
+  high_sensitivity: "High-Sensitivity / Active Contestation",
+};
+
+const HS_OVERLAY_COLORS: Record<string, { fill: string; stroke: string }> = {
+  "cowichan-title-lands-richmond": { fill: "#dc2626", stroke: "#991b1b" },
+  "musqueam-territory-agreement-watch": { fill: "#f59e0b", stroke: "#b45309" },
+  "musqueam-soi-approximate": { fill: "#f59e0b", stroke: "#92400e" },
+  "haldimand-tract-historic-watch": { fill: "#7c3aed", stroke: "#5b21b6" },
+};
+
+const CONFIDENCE_LABELS: Record<string, string> = {
+  high: "High confidence",
+  medium: "Medium confidence",
+  low: "Low confidence — approximate",
+};
+
+const CONTEXT_LABELS: Record<string, string> = {
+  court_decision: "Court Decision",
+  rights_recognition_agreement: "Rights Recognition Agreement",
+  historic_tract_litigation: "Historic Tract / Litigation",
+  statement_of_intent_boundary: "Statement of Intent / Declaration",
+  declaration_boundary: "Declaration Boundary",
 };
 
 interface ScreeningHit {
@@ -55,6 +78,15 @@ interface ScreeningHit {
   sourceUrl: string | null;
   hitType: "inside" | "intersects" | "within_buffer";
   distanceMeters: number | null;
+  isHighSensitivity?: boolean;
+  legalContextType?: string | null;
+  geometryConfidence?: string | null;
+  authorityLevel?: string | null;
+  disclaimerText?: string | null;
+  statusLabel?: string | null;
+  sourceSummary?: string | null;
+  sourceDate?: string | null;
+  geometryMethod?: string | null;
 }
 
 interface ScreeningResult {
@@ -67,6 +99,8 @@ interface ScreeningResult {
   hits: ScreeningHit[];
   disclaimer: string;
   screeningId: string;
+  hasHighSensitivityHits: boolean;
+  highSensitivityBanner: string | null;
 }
 
 function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
@@ -75,6 +109,11 @@ function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }
     map.flyTo(center, zoom, { duration: 1.5 });
   }, [center, zoom, map]);
   return null;
+}
+
+function escHtml(str: string | null | undefined): string {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 const redIcon = new L.Icon({
@@ -102,6 +141,7 @@ export default function LandClaimScreener() {
   const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>({
     historic_treaty: true,
     modern_treaty: true,
+    high_sensitivity: true,
   });
 
   const [gateFirstName, setGateFirstName] = useState("");
@@ -247,6 +287,30 @@ export default function LandClaimScreener() {
 
   const geoJsonStyle = useCallback((feature: any) => {
     const group = feature?.properties?.layerGroup || "historic_treaty";
+    const isHS = feature?.properties?.isHighSensitivity;
+    const slug = feature?.properties?.layerSlug;
+
+    if (isHS && slug && HS_OVERLAY_COLORS[slug]) {
+      const colors = HS_OVERLAY_COLORS[slug];
+      return {
+        color: colors.stroke,
+        weight: 3,
+        fillOpacity: 0.25,
+        fillColor: colors.fill,
+        dashArray: "8 4",
+      };
+    }
+
+    if (isHS) {
+      return {
+        color: "#991b1b",
+        weight: 3,
+        fillOpacity: 0.25,
+        fillColor: "#ef4444",
+        dashArray: "8 4",
+      };
+    }
+
     return {
       color: LAYER_COLORS[group] || "#6b7280",
       weight: 2,
@@ -257,14 +321,33 @@ export default function LandClaimScreener() {
 
   const onEachFeature = useCallback((feature: any, layer: any) => {
     const p = feature.properties;
-    layer.bindPopup(`
-      <div style="min-width:200px">
-        <strong>${p.featureName || "Unknown"}</strong><br/>
-        <span style="color:#666">${p.layerName}</span><br/>
-        ${p.province ? `<span>Province: ${p.province}</span><br/>` : ""}
-        ${p.category ? `<span style="font-size:0.85em;color:#888">${p.category}</span>` : ""}
-      </div>
-    `);
+    const isHS = p.isHighSensitivity;
+    const confidenceLabel = p.geometryConfidence ? (CONFIDENCE_LABELS[p.geometryConfidence] || p.geometryConfidence) : null;
+    const contextLabel = p.legalContextType ? (CONTEXT_LABELS[p.legalContextType] || p.legalContextType) : null;
+
+    if (isHS) {
+      layer.bindPopup(`
+        <div style="min-width:220px;border-left:4px solid #ef4444;padding-left:8px">
+          <div style="background:#fef2f2;padding:4px 6px;margin:-4px -4px 8px -12px;border-radius:2px">
+            <strong style="color:#991b1b;font-size:0.8em">⚠ HEIGHTENED REVIEW</strong>
+          </div>
+          <strong>${escHtml(p.featureName) || "Unknown"}</strong><br/>
+          ${contextLabel ? `<span style="font-size:0.85em;color:#b45309">${escHtml(contextLabel)}</span><br/>` : ""}
+          ${p.statusLabel ? `<span style="font-size:0.85em;color:#666">Status: ${escHtml(p.statusLabel)}</span><br/>` : ""}
+          ${confidenceLabel ? `<span style="font-size:0.8em;color:#888">Geometry: ${escHtml(confidenceLabel)}</span><br/>` : ""}
+          ${p.disclaimerText ? `<div style="font-size:0.75em;color:#666;margin-top:6px;padding:4px;background:#f9fafb;border-radius:2px">${escHtml(p.disclaimerText)}</div>` : ""}
+        </div>
+      `);
+    } else {
+      layer.bindPopup(`
+        <div style="min-width:200px">
+          <strong>${escHtml(p.featureName) || "Unknown"}</strong><br/>
+          <span style="color:#666">${escHtml(p.layerName)}</span><br/>
+          ${p.province ? `<span>Province: ${escHtml(p.province)}</span><br/>` : ""}
+          ${p.category ? `<span style="font-size:0.85em;color:#888">${escHtml(p.category)}</span>` : ""}
+        </div>
+      `);
+    }
   }, []);
 
   const filteredFeatures = useMemo(() => {
@@ -609,6 +692,16 @@ export default function LandClaimScreener() {
                   </Badge>
                 </div>
 
+                {result.hasHighSensitivityHits && result.highSensitivityBanner && (
+                  <div className="rounded-lg border-2 border-red-500/50 bg-red-50 dark:bg-red-950/30 p-4" data-testid="hs-banner">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <span className="font-bold text-red-700 dark:text-red-300 text-sm">Heightened Review Area</span>
+                    </div>
+                    <p className="text-sm text-red-800 dark:text-red-200">{result.highSensitivityBanner}</p>
+                  </div>
+                )}
+
                 {result.hits.length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-2 text-sm" data-testid="text-hits-heading">
@@ -616,12 +709,27 @@ export default function LandClaimScreener() {
                     </h3>
                     <div className="space-y-2">
                       {result.hits.map((hit, idx) => (
-                        <Card key={idx} data-testid={`card-hit-${idx}`}>
+                        <Card
+                          key={idx}
+                          className={hit.isHighSensitivity ? "border-red-400/60 dark:border-red-600/60 shadow-sm" : ""}
+                          data-testid={`card-hit-${idx}`}
+                        >
                           <CardContent className="p-3 space-y-1.5">
+                            {hit.isHighSensitivity && (
+                              <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400 mb-1">
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                <span className="text-xs font-semibold uppercase tracking-wide">
+                                  {hit.statusLabel || "Heightened Review"}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <div className="font-medium text-sm" data-testid={`text-hit-name-${idx}`}>{hit.featureName}</div>
-                                <div className="text-xs text-muted-foreground">{hit.layerName}</div>
+                                {!hit.isHighSensitivity && <div className="text-xs text-muted-foreground">{hit.layerName}</div>}
+                                {hit.isHighSensitivity && hit.nationName && (
+                                  <div className="text-xs text-muted-foreground">{hit.nationName}</div>
+                                )}
                               </div>
                               <Badge
                                 variant={hit.hitType === "inside" ? "destructive" : "secondary"}
@@ -631,14 +739,29 @@ export default function LandClaimScreener() {
                                 {hit.hitType === "inside" ? "Inside" : hit.hitType === "within_buffer" ? `Within ${hit.distanceMeters}m` : hit.hitType}
                               </Badge>
                             </div>
-                            {hit.province && <div className="text-xs text-muted-foreground">Province: {hit.province}</div>}
-                            {hit.category && <div className="text-xs text-muted-foreground">{hit.category}</div>}
+                            {hit.isHighSensitivity && hit.legalContextType && (
+                              <div className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                                {CONTEXT_LABELS[hit.legalContextType] || hit.legalContextType}
+                              </div>
+                            )}
+                            {hit.isHighSensitivity && hit.geometryConfidence && (
+                              <div className="text-xs text-muted-foreground">
+                                Geometry: {CONFIDENCE_LABELS[hit.geometryConfidence] || hit.geometryConfidence}
+                              </div>
+                            )}
+                            {!hit.isHighSensitivity && hit.province && <div className="text-xs text-muted-foreground">Province: {hit.province}</div>}
+                            {!hit.isHighSensitivity && hit.category && <div className="text-xs text-muted-foreground">{hit.category}</div>}
                             <div className="text-xs text-muted-foreground">
-                              Source: {hit.sourceName}
+                              Source: {hit.isHighSensitivity ? (hit.sourceSummary ? hit.sourceSummary.substring(0, 100) + "..." : hit.sourceName) : hit.sourceName}
                               {hit.sourceUrl && (
-                                <> &middot; <a href={hit.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">View source</a></>
+                                <> &middot; <a href={hit.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">View source</a></>
                               )}
                             </div>
+                            {hit.isHighSensitivity && hit.disclaimerText && (
+                              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded mt-1 border border-muted">
+                                {hit.disclaimerText}
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       ))}
