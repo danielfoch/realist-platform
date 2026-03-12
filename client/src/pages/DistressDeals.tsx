@@ -315,15 +315,15 @@ function ListingDetailModal({
 
 export default function DistressDeals() {
   const { toast } = useToast();
-  const [province, setProvince] = useState<string>("");
+  const [province, setProvince] = useState<string>("Ontario");
   const [city, setCity] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minBeds, setMinBeds] = useState("");
   const [maxBeds, setMaxBeds] = useState("");
   const [toggleForeclosure, setToggleForeclosure] = useState(true);
-  const [toggleMotivated, setToggleMotivated] = useState(true);
-  const [toggleVtb, setToggleVtb] = useState(true);
+  const [toggleMotivated, setToggleMotivated] = useState(false);
+  const [toggleVtb, setToggleVtb] = useState(false);
   const [viewMode, setViewMode] = useState<"split" | "list" | "map">("split");
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [selectedListing, setSelectedListing] = useState<DistressListing | null>(null);
@@ -331,8 +331,8 @@ export default function DistressDeals() {
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [mapBounds, setMapBounds] = useState<any>(null);
   const [searchCity, setSearchCity] = useState("");
-  const [searchProvince, setSearchProvince] = useState("");
-  const [hasSearched, setHasSearched] = useState(false);
+  const [searchProvince, setSearchProvince] = useState("Ontario");
+  const [hasSearched, setHasSearched] = useState(true);
   const mapRef = useRef<any>(null);
 
   const categories = useMemo(() => {
