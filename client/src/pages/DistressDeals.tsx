@@ -401,7 +401,7 @@ export default function DistressDeals() {
   const { data, isLoading, isFetching } = useQuery<{
     listings: DistressListing[];
     totalCount: number;
-    totalDdfCount: number;
+    totalDdfScanned: number;
   }>({
     queryKey: ["/api/distress-deals", queryString],
     queryFn: async () => {
@@ -660,9 +660,14 @@ export default function DistressDeals() {
                 )}
 
                 {isLoading && (
-                  <div className="p-3 space-y-3">
-                    {[...Array(6)].map((_, i) => (
-                      <Skeleton key={i} className="h-32 rounded-lg" />
+                  <div className="p-6 space-y-4">
+                    <div className="flex flex-col items-center text-center space-y-2 py-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-sm font-medium">Scanning MLS listings for distress signals...</p>
+                      <p className="text-xs text-muted-foreground">First search may take up to 60 seconds as we scan thousands of listings</p>
+                    </div>
+                    {[...Array(4)].map((_, i) => (
+                      <Skeleton key={i} className="h-28 rounded-lg" />
                     ))}
                   </div>
                 )}
@@ -681,7 +686,7 @@ export default function DistressDeals() {
                   <div className="p-2">
                     <div className="flex items-center justify-between px-2 py-1.5 mb-2">
                       <span className="text-xs text-muted-foreground" data-testid="text-result-count">
-                        {data?.totalCount || 0} flagged / {data?.totalDdfCount || 0} scanned
+                        {data?.totalCount || 0} flagged
                       </span>
                       <div className="flex gap-1">
                         {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}

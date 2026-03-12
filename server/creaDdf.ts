@@ -244,6 +244,108 @@ export async function searchDdfListings(params: {
   };
 }
 
+export async function searchDdfByRemarks(params: {
+  searchTerms: string[];
+  stateOrProvince?: string;
+  city?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minBeds?: number;
+  maxBeds?: number;
+  top?: number;
+  skip?: number;
+  signal?: AbortSignal;
+}): Promise<{ listings: DdfListing[]; count: number }> {
+  const token = await getDdfToken();
+
+  const filters: string[] = [];
+  filters.push("StandardStatus eq 'Active'");
+
+  if (params.stateOrProvince) {
+    filters.push(`StateOrProvince eq '${params.stateOrProvince.replace(/'/g, "''")}'`);
+  }
+  if (params.city) {
+    filters.push(`City eq '${params.city.replace(/'/g, "''")}'`);
+  }
+  if (params.minPrice) {
+    filters.push(`ListPrice ge ${params.minPrice}`);
+  }
+  if (params.maxPrice) {
+    filters.push(`ListPrice le ${params.maxPrice}`);
+  }
+  if (params.minBeds) {
+    filters.push(`BedroomsTotal ge ${params.minBeds}`);
+  }
+  if (params.maxBeds) {
+    filters.push(`BedroomsTotal le ${params.maxBeds}`);
+  }
+
+  const remarksClauses: string[] = [];
+  for (const term of params.searchTerms) {
+    const escaped = term.replace(/'/g, "''");
+    remarksClauses.push(`contains(PublicRemarks,'${escaped}')`);
+  }
+  if (remarksClauses.length > 0) {
+    filters.push(`(${remarksClauses.join(" or ")})`);
+  }
+
+  const maxPerPage = 100;
+  const requestedTop = Math.min(params.top || 100, 100);
+  const skip = params.skip || 0;
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("$filter", filters.join(" and "));
+  queryParams.set("$count", "true");
+  queryParams.set("$top", String(requestedTop));
+  if (skip > 0) queryParams.set("$skip", String(skip));
+  queryParams.set("$orderby", "ModificationTimestamp desc");
+  queryParams.set("$select", DDF_SELECT_FIELDS);
+
+  const url = `${DDF_API_BASE}/Property?${queryParams.toString()}`;
+
+  const fetchOpts: RequestInit = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  };
+  if (params.signal) fetchOpts.signal = params.signal;
+
+  const response = await fetch(url, fetchOpts);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("DDF remarks search error:", response.status, errorText);
+    throw new Error(`DDF remarks search failed: ${response.status} - ${errorText}`);
+  }
+
+  const data: DdfSearchResponse = await response.json();
+  const allListings = data.value || [];
+  const totalCount = data["@odata.count"] || allListings.length;
+
+  if (totalCount > requestedTop && !params.skip) {
+    const remainingPages = Math.min(Math.ceil(totalCount / maxPerPage) - 1, 2);
+    for (let p = 1; p <= remainingPages; p++) {
+      try {
+        if (params.signal?.aborted) break;
+        const pageParams = new URLSearchParams(queryParams);
+        pageParams.set("$skip", String(p * maxPerPage));
+        const pageResponse = await fetch(`${DDF_API_BASE}/Property?${pageParams.toString()}`, fetchOpts);
+        if (pageResponse.ok) {
+          const pageData = await pageResponse.json();
+          if (pageData?.value) allListings.push(...pageData.value);
+        }
+      } catch {
+      }
+    }
+  }
+
+  return {
+    listings: allListings,
+    count: totalCount,
+  };
+}
+
 export async function getDdfListing(listingKey: string): Promise<DdfListing | null> {
   const token = await getDdfToken();
 

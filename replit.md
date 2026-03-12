@@ -53,7 +53,7 @@ Preferred communication style: Simple, everyday language.
 - **Realtor Partner Network**: System for realtors to claim markets, receive leads, and manage referrals.
 - **Monthly Market Report**: Auto-generated reports for Canadian cities based on DDF and CMHC data.
 - **Indigenous Land Claim Screener**: Map-based tool to identify properties overlapping with Indigenous land claims and treaty areas, including "Watch Overlays" for high-sensitivity areas.
-- **Distress Deals Browser**: Tool to find power-of-sale, bank-owned, and motivated seller listings using text-based scoring.
+- **Distress Deals Browser**: Tool to find power-of-sale, bank-owned, and motivated seller listings using CREA DDF `contains(PublicRemarks,...)` OData queries with keyword-per-term search, distress scoring, and server-side caching. Note: DDF API does not support `tolower()` in OData filters; `contains()` is case-insensitive. First uncached load takes ~60-90s; cached results serve instantly (10-min TTL).
 - **Daily City Investment Reports**: Auto-generated, regularly published investment reports for major Canadian cities.
 - **Community Underwriting System**: Facilitates collaborative deal analysis through notes, comments, votes, and a points system to determine community cap rates.
 

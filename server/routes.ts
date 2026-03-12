@@ -6377,9 +6377,11 @@ export async function registerRoutes(
 
   // ─── Distress Deals Browser ─────────────────────
   app.get("/api/distress-deals", async (req, res) => {
+    req.setTimeout(120000);
+    res.setTimeout(120000);
     try {
       const { scoreDistress } = await import("@shared/distressScoring");
-      const { searchDdfListings, normalizeDdfToRepliersFormat, isDdfConfigured } = await import("./creaDdf");
+      const { searchDdfByRemarks, normalizeDdfToRepliersFormat, isDdfConfigured } = await import("./creaDdf");
 
       if (!isDdfConfigured()) {
         res.status(503).json({ error: "DDF not configured" });
@@ -6392,22 +6394,53 @@ export async function registerRoutes(
       const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
       const minBeds = req.query.minBeds ? Number(req.query.minBeds) : undefined;
       const maxBeds = req.query.maxBeds ? Number(req.query.maxBeds) : undefined;
-      const propertyType = req.query.propertyType as string | undefined;
-      const latMin = req.query.latMin ? Number(req.query.latMin) : undefined;
-      const latMax = req.query.latMax ? Number(req.query.latMax) : undefined;
-      const lngMin = req.query.lngMin ? Number(req.query.lngMin) : undefined;
-      const lngMax = req.query.lngMax ? Number(req.query.lngMax) : undefined;
       const page = req.query.page ? Number(req.query.page) : 1;
-      const limit = Math.min(Number(req.query.limit) || 48, 100);
+      const limit = Math.min(Number(req.query.limit) || 48, 200);
       const categories = (req.query.categories as string || "").split(",").filter(Boolean);
       const excludeKeywords = (req.query.excludeKeywords as string || "").split(",").filter(Boolean);
       const minScore = req.query.minScore ? Number(req.query.minScore) : 1;
 
       const effectiveProvince = province === "all_provinces" ? undefined : province;
 
-      const cacheKey = `distress-deals:${JSON.stringify({
-        province: effectiveProvince, city, minPrice, maxPrice, minBeds, maxBeds, propertyType,
-        latMin, latMax, lngMin, lngMax
+      const SEARCH_TERMS_BY_CATEGORY: Record<string, string[]> = {
+        foreclosure_pos: [
+          "power of sale",
+          "foreclosure",
+          "bank owned",
+          "court ordered sale",
+          "judicial sale",
+          "mortgagee sale",
+          "receivership",
+          "reprise de finance",
+          "estate sale",
+        ],
+        motivated: [
+          "motivated",
+          "priced to sell",
+          "must sell",
+          "price reduced",
+          "immediate possession",
+          "fixer upper",
+          "handyman special",
+          "bring an offer",
+        ],
+        vtb: [
+          "vendor take back",
+          "vtb",
+          "seller financing",
+          "owner financing",
+          "vendor financing",
+          "financement vendeur",
+        ],
+      };
+
+      const activeCategories = categories.length > 0
+        ? categories.filter(c => SEARCH_TERMS_BY_CATEGORY[c])
+        : Object.keys(SEARCH_TERMS_BY_CATEGORY);
+
+      const cacheKey = `distress-v3:${JSON.stringify({
+        province: effectiveProvince, city, minPrice, maxPrice, minBeds, maxBeds,
+        cats: activeCategories.sort().join(","),
       })}`;
 
       const [cachedRow] = await db.select().from(dataCache)
@@ -6415,6 +6448,7 @@ export async function registerRoutes(
       if (cachedRow) {
         let cachedData = cachedRow.valueJson as any;
         let filteredListings = cachedData.listings as any[];
+        filteredListings = filteredListings.filter((l: any) => (l.distress?.distressScore || 0) >= minScore);
         if (categories.length > 0) {
           filteredListings = filteredListings.filter((l: any) =>
             categories.some((cat: string) => l.distress?.categoriesTriggered?.[cat])
@@ -6427,68 +6461,78 @@ export async function registerRoutes(
             return !lowerExclude.some((kw: string) => remark.includes(kw));
           });
         }
-        filteredListings = filteredListings.filter((l: any) => (l.distress?.distressScore || 0) >= minScore);
         const skip = (page - 1) * limit;
         res.json({
-          ...cachedData,
           listings: filteredListings.slice(skip, skip + limit),
           totalCount: filteredListings.length,
+          totalDdfScanned: cachedData.totalDdfScanned || 0,
           page,
           limit,
         });
         return;
       }
 
-      const skip = (page - 1) * limit;
-      const fetchLimit = Math.max(limit * 2, 100);
-      const ddfResult = await searchDdfListings({
-        stateOrProvince: effectiveProvince,
-        city,
-        minPrice,
-        maxPrice,
-        minBeds,
-        maxBeds,
-        propertySubType: propertyType,
-        latitudeMin: latMin,
-        latitudeMax: latMax,
-        longitudeMin: lngMin,
-        longitudeMax: lngMax,
-        top: fetchLimit,
-        skip: 0,
-      });
+      const searchTerms: string[] = [];
+      for (const cat of activeCategories) {
+        searchTerms.push(...(SEARCH_TERMS_BY_CATEGORY[cat] || []));
+      }
+      const uniqueTerms = [...new Set(searchTerms)];
 
-      let scored = ddfResult.listings.map(raw => {
+      const allListings = new Map<string, any>();
+      let totalDdfScanned = 0;
+
+      const CONCURRENCY = 2;
+      const TERM_TIMEOUT = 45000;
+      for (let c = 0; c < uniqueTerms.length; c += CONCURRENCY) {
+        const termChunk = uniqueTerms.slice(c, c + CONCURRENCY);
+        const results = await Promise.allSettled(
+          termChunk.map(term => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), TERM_TIMEOUT);
+            return searchDdfByRemarks({
+              searchTerms: [term],
+              stateOrProvince: effectiveProvince,
+              city,
+              minPrice,
+              maxPrice,
+              minBeds,
+              maxBeds,
+              top: 100,
+              signal: controller.signal,
+            }).finally(() => clearTimeout(timer));
+          })
+        );
+        for (let i = 0; i < results.length; i++) {
+          const r = results[i];
+          if (r.status === "fulfilled") {
+            totalDdfScanned += r.value.count;
+            for (const raw of r.value.listings) {
+              const key = raw.ListingKey || raw.ListingId || "";
+              if (key && !allListings.has(key)) {
+                allListings.set(key, raw);
+              }
+            }
+            console.log(`[distress-deals] "${termChunk[i]}": ${r.value.count} matches, ${r.value.listings.length} fetched`);
+          } else {
+            console.error(`[distress-deals] "${termChunk[i]}" error:`, (r.reason as any)?.message || r.reason);
+          }
+        }
+      }
+      console.log(`[distress-deals] Total: ${allListings.size} unique listings from ${uniqueTerms.length} searches`);
+
+      let allScored = Array.from(allListings.values()).map(raw => {
         const normalized = normalizeDdfToRepliersFormat(raw);
         const remarks = raw.PublicRemarks || "";
-        const listingProvince = raw.StateOrProvince || province || "";
+        const listingProvince = raw.StateOrProvince || effectiveProvince || "";
         const distress = scoreDistress(remarks, listingProvince);
         return { ...normalized, distress, rawRemarks: remarks };
       });
 
-      scored = scored.filter(l => l.distress.distressScore >= minScore);
-
-      if (categories.length > 0) {
-        scored = scored.filter(l =>
-          categories.some(cat => l.distress.categoriesTriggered[cat as keyof typeof l.distress.categoriesTriggered])
-        );
-      }
-
-      if (excludeKeywords.length > 0) {
-        const lowerExclude = excludeKeywords.map(k => k.toLowerCase().trim());
-        scored = scored.filter(l => {
-          const remark = (l.rawRemarks || "").toLowerCase();
-          return !lowerExclude.some(kw => remark.includes(kw));
-        });
-      }
-
-      scored.sort((a, b) => b.distress.distressScore - a.distress.distressScore);
+      allScored.sort((a, b) => b.distress.distressScore - a.distress.distressScore);
 
       const cacheData = {
-        listings: scored,
-        totalCount: scored.length,
-        totalDdfCount: ddfResult.count,
-        page: 1,
-        limit: scored.length,
+        listings: allScored,
+        totalDdfScanned,
       };
 
       await db.insert(dataCache).values({
@@ -6500,10 +6544,27 @@ export async function registerRoutes(
         set: { valueJson: cacheData, fetchedAt: new Date(), source: "distress-deals" },
       });
 
+      let filtered = allScored.filter(l => l.distress.distressScore >= minScore);
+
+      if (categories.length > 0) {
+        filtered = filtered.filter(l =>
+          categories.some(cat => l.distress.categoriesTriggered[cat as keyof typeof l.distress.categoriesTriggered])
+        );
+      }
+
+      if (excludeKeywords.length > 0) {
+        const lowerExclude = excludeKeywords.map(k => k.toLowerCase().trim());
+        filtered = filtered.filter(l => {
+          const remark = (l.rawRemarks || "").toLowerCase();
+          return !lowerExclude.some(kw => remark.includes(kw));
+        });
+      }
+
+      const skip = (page - 1) * limit;
       res.json({
-        listings: scored.slice(skip, skip + limit),
-        totalCount: scored.length,
-        totalDdfCount: ddfResult.count,
+        listings: filtered.slice(skip, skip + limit),
+        totalCount: filtered.length,
+        totalDdfScanned,
         page,
         limit,
       });
