@@ -1,7 +1,7 @@
 # Realist.ca - Real Estate Deal Analyzer
 
 ## Overview
-Realist.ca is a production-grade web application for real estate investors. It enables underwriting deals, comparing investment strategies (Buy & Hold, BRRR, Flip, Airbnb, Multiplex), and exporting investor-ready analysis sheets. The platform provides institutional-grade financial calculations including cap rates, IRR, cash-on-cash returns, and multi-year projections for Canadian and US real estate markets. Key features include a map-first homepage, a sophisticated deal analyzer supporting various strategies, community underwriting on the Cap Rates Explorer, MLS# import via CREA DDF, and an admin dashboard for lead management.
+Realist.ca is a production-grade web application designed for real estate investors. Its primary purpose is to facilitate the underwriting of real estate deals, compare various investment strategies (Buy & Hold, BRRR, Flip, Airbnb, Multiplex), and generate investor-ready analysis sheets. The platform provides institutional-grade financial calculations, including cap rates, IRR, cash-on-cash returns, and multi-year projections for Canadian and US real estate markets. Key capabilities include a map-first homepage, a comprehensive deal analyzer, community-driven underwriting via the Cap Rates Explorer, MLS# import functionality, and an admin dashboard for lead management. The project aims to be the leading tool for sophisticated real estate investment analysis.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -9,7 +9,7 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend
-- **Framework**: React with TypeScript (Vite for bundling)
+- **Framework**: React with TypeScript (Vite)
 - **Routing**: Wouter
 - **State Management**: TanStack Query (React Query)
 - **UI Components**: shadcn/ui (built on Radix UI)
@@ -34,49 +34,43 @@ Preferred communication style: Simple, everyday language.
 - **Storage Abstraction**: `IStorage` interface for database operations.
 - **Path Aliases**: `@/` for client source, `@shared/` for shared code.
 
-### Navigation Structure
-The application features a category-based dropdown navigation:
-- **Tools**: Deal Analyzer, Yield Map, True Cost, BuyBox, Co-Invest, Land Claim Screener, Calculators.
-- **Community**: Events, Network, Online Community.
-- **Insights**: Market Report, Podcast, Blog, Guides.
-- **About**: Company information, Team, Programs, Shop, Contact.
-
-### Core Features and Pages
-- **Map-First Homepage**: `/` renders `MapHomepage.tsx` with a Leaflet cap rate map as subdued background, glass overlay with CTAs, stats strip, "As seen on" logos, embedded deal analyzer (via `<Home embedded />`), community underwriting explainer, and live leaderboard preview (fetches from `/api/leaderboard` and `/api/leaderboard/contributions`). Controlled by `VITE_HOME_VARIANT` env var ("map" default, "deal" for original). Original deal analyzer homepage at `/deal-analyzer` and `/tools/analyzer`.
-- **Deal Analyzer**: Main product with calculator and analysis tools. Supports MLS# import via DDF (`GET /api/ddf/mls/:mlsNumber`) and URL/HTML paste import.
-- **Cap Rates Explorer**: Realtor.ca-style map-driven search powered by CREA DDF. Default filters: minimum 4% cap rate, minimum 2 units, excludes parking/locker/storage and business sales/commercial. Features community underwriting with tabbed detail panel (Overview | Underwrite | Community), community cap rate badges on listing cards, batch aggregates, voting, and comments.
-- **BuyBox**: Mandate builder with Leaflet/OSM map for polygon area drawing. Step 3 offers paid outreach services (Direct Mail via PostGrid, AI Phone Calls via ElevenLabs, Voicemail Drops via SlyBroadcast). Server-side canonical pricing validation. Route: `/tools/buybox`, `/tools/buybox/checkout`.
-- **Co-Investing Platform**: Tools for finding partners, pooling capital, group creation wizard, complexity assessment, and in-group chat. Includes BRA (Buyer Representation Agreement) gating for Ontario users.
-- **Calculators Hub**: Includes various tools like "True Cost of Homeownership", "Will It Plex?", and "Fixed vs Variable".
-- **Fixed vs Variable Calculator**: Compare total interest costs for fixed vs variable mortgages over 5, 10, and 25 years. Features: rate auto-fill from DB, rising/falling direction toggle, severity slider (0-300 bps), front/back/even loading speed, loan amount override, expandable yearly amortization tables per scenario (Fixed, Base, Best, Worst). Core engine: `client/src/lib/mortgage/amortization.ts` (with 15 unit tests). Route: `/tools/fixed-vs-variable`. API: `GET /api/rates/mortgage?termYears=N&type=fixed|variable`, `GET /api/rate-forecast/latest`. DB table: `rate_forecasts`. Integrated on ToolsHub, CalculatorSelector (replaced RenoQuote), and MortgageRates promo card.
-- **Mortgage Rates Page**: Live Canadian mortgage rates at `/insights/mortgage-rates`. Three tabs: Best Rates (broker), Big Banks (posted), Policy Rates (BoC). Rate scraper: `server/rateScraper.ts` fetches from Bank of Canada Valet API, wowa.ca HTML, and hardcoded big-bank averages. Tables: `mortgage_rates`, `mortgage_rate_history`. Weekly refresh cron (every 6h, skips if <7 days old). Admin scrape: `POST /api/admin/mortgage-rates/scrape`.
-- **Listing Import**: Supports property detail import from realtor.ca and zillow.com via URL, HTML paste, or MLS# (via DDF).
-- **Rent Pulse API**: Integrates scraped rent data for market insights. Cascading rent estimation: 1) Rent Pulse scraped data (by city+bedrooms), 2) CMHC city-level benchmarks (`shared/cmhcRents.ts` — 150+ Canadian cities), 3) CMHC provincial/state averages (all 13 provinces/territories), 4) Country-level defaults. Source is labeled in the Cap Rates Explorer detail panel.
-- **Stress Test Analysis**: Provides Base/Bear/Bull scenarios for financial projections within the Deal Analyzer.
-- **MLI Select Calculator**: Standalone CMHC MLI Select points calculator with underwriting and stress testing.
-- **Blog**: Database-backed blog at `/insights/blog` with individual post pages at `/insights/blog/:slug`. Dual-section layout: primary DB posts (with category filters, SEO) and secondary Substack RSS feed. Admin CRUD via `/api/blog/posts` endpoints. Categories: Market Analysis, Strategy, Deal Breakdown, News. Tables: `blog_posts`. Individual posts render full HTML content with dynamic SEO meta tags.
-- **Guides**: Database-backed guides at `/insights/guides` with individual guide pages at `/insights/guides/:slug`. Features difficulty badges (Beginner/Intermediate/Advanced), auto-generated table of contents from headings, and prev/next navigation. Static "Tool Guides" section preserved. Admin CRUD via `/api/guides` endpoints. Categories: Getting Started, Strategy, Analysis, Advanced. Tables: `guides`.
-- **Admin Dashboard**: Protected area for lead, webhook, blog post, and guide management. Blog and Guides tabs support full CRUD with editor dialogs, publish/draft toggles, and auto-generated slugs.
-- **Authentication**: Custom email/password system with PostgreSQL-backed sessions, bcrypt hashing, and secure token management for resets/account setup. All lead capture forms auto-create user accounts with 7-day password setup tokens and send welcome emails via Resend. Admin backfill endpoint: `POST /api/admin/backfill-lead-accounts`.
-- **Leaderboard & Analytics**: Dual-tab leaderboard with "Deal Analysis" and "Community Contributions" tabs, monthly/all-time toggle, user role badges. Route: `/leaderboard`. API: `/api/leaderboard`, `/api/leaderboard/contributions`, `/api/leaderboard/top-cities`.
-- **Realtor Partner Network**: Realtors can claim a market, sign a 25% referral agreement (with e-signature canvas), receive lead notifications when deals are analyzed in their market, and claim leads via a formal logged introduction email. Route: `/partner/network`. Tables: `realtor_market_claims`, `realtor_lead_notifications`, `realtor_introductions`. API prefix: `/api/realtor-network/`.
-- **Monthly Market Report**: Auto-generated monthly report covering 34 major Canadian cities. Three-tab layout: Overview (CMHC rents), DDF Yields (gross/net yield charts + pricing + market depth table), Compare Cities (interactive multi-city yield trend line chart — add/remove up to 10 cities). Shows CMHC rent benchmarks, DDF-derived yield data, DSCR, cash-on-cash, and purchase price averages. Province filtering, auto-generated written commentary. Route: `/insights/market-report`. Tables: `market_snapshots`, `ddf_listing_snapshots`, `city_yield_history`. API: `GET /api/market-report/latest|history|all`, `POST /api/market-report/compute-snapshot` (admin), `GET /api/yield-history`, `POST /api/yield-history/compare`, `POST /api/ddf-crawl/trigger` (admin), `GET /api/ddf-crawl/status` (admin). Hourly cron auto-generates both market snapshots and DDF yield crawls on the 1st of each month. DDF crawler (`server/ddfYieldCrawler.ts`) crawls all 34 cities via DDF API, calculates yields using CMHC rents + standardized expense assumptions (5% vacancy, 8% management, 5% maintenance, 0.3% insurance), stores individual listing snapshots + aggregated city-level yield history. The `computeMonthlySnapshot()` shared function handles startup check, admin endpoint, and cron.
-- **Indigenous Land Claim / Treaty Area Screener**: Map-based screening tool at `/tools/land-claim-screener`. Users enter an address or coordinates, and the tool checks for potential overlap with historic treaties, modern treaties, and Indigenous agreement areas using PostGIS spatial queries against official federal open data from Indigenous Services Canada (SAC-ISC). Features: address geocoding (Nominatim), configurable buffer search (0-5km), color-coded treaty polygon overlays on Leaflet map, results drawer with hit details, CSV/clipboard export, research mode with raw data, search history for signed-in users, and prominent disclaimers. **Watch Overlays**: High-sensitivity / active-contestation overlay layer group for court decisions, rights recognition agreements, historic tract litigation, and SOI boundaries. 4 seeded overlays: Cowichan Title Lands (Richmond BC), Musqueam Territory (Metro Vancouver), Musqueam SOI (broader), Haldimand Tract (Grand River ON). Distinct map styling (dashed borders, per-overlay colors), "Heightened Review" banner on hits, enriched hit cards with legal context type, geometry confidence, authority level, and per-overlay disclaimers. Tables: `indigenous_layers`, `indigenous_features`, `watch_overlays` (with PostGIS geometry columns + spatial index), `screenings`, `screening_hits`. Data: 17 Historic Treaties + 29 Modern Treaties auto-imported on startup from ESRI REST endpoints; 4 watch overlays auto-seeded on startup. API: `POST /api/land-claim-screener/screen`, `GET /api/land-claim-screener/features`, `GET /api/land-claim-screener/layers`, `GET /api/land-claim-screener/watch-overlays`, `GET /api/land-claim-screener/history`. Admin: `POST /api/admin/indigenous/import`, `GET /api/admin/indigenous/layers`, `POST /api/admin/watch-overlays` (create), `GET /api/admin/watch-overlays`, `PUT /api/admin/watch-overlays/:id`, `DELETE /api/admin/watch-overlays/:id`, `POST /api/admin/watch-overlays/seed`. Module: `server/indigenousDataImporter.ts`, `server/landClaimScreener.ts`, `server/watchOverlaySeeder.ts`.
-- **Daily City Investment Reports**: Auto-generated blog posts for top 30 Canadian cities by population. One report published per day, cycling through all 30 cities each month. Module: `server/cityReportGenerator.ts`. Schedule logic: 30-day months = one city/day; 31-day months = skip day 16; 28-29 day months = drop bottom 2 cities. Each report includes: DDF yield data (gross/net yields, pricing, inventory), CMHC rent benchmarks, community deal analysis metrics, month-over-month trend comparisons, and strategy recommendations. Reports published as blog posts with category "market-analysis", author "Realist Research". Daily cron runs hourly after 8am, also checks on startup. Admin endpoints: `POST /api/admin/city-reports/generate` (single city), `POST /api/admin/city-reports/generate-all` (all 30), `GET /api/admin/city-reports/schedule` (view schedule). Idempotent — won't duplicate existing reports.
-
-### Community Underwriting System
-- **Tables**: `underwriting_notes`, `listing_comments`, `votes`, `contribution_events`, `listing_analysis_aggregates`
-- **API prefix**: `/api/community/`
-- **Endpoints**: `POST /api/community/notes` (auth, 3/day/listing rate limit), `GET /api/community/notes/:mlsNumber`, `POST /api/community/comments` (auth), `GET /api/community/comments/:mlsNumber`, `POST /api/community/vote` (auth), `GET /api/community/aggregate/:mlsNumber`, `POST /api/community/aggregates` (batch)
-- **Points system**: +5 note, +1 comment, +2 upvote received, -1 downvote (floor 0)
-- **Aggregation**: Best note by score determines community cap rate; recomputed on note/vote
+### Core Features
+- **Map-First Homepage**: Interactive map-driven interface with embedded deal analyzer and community features.
+- **Deal Analyzer**: Central tool for financial modeling and strategy comparison, supporting MLS# import.
+- **Cap Rates Explorer**: Map-based search tool leveraging CREA DDF data for community underwriting.
+- **BuyBox**: Mandate builder with geographic area selection and paid outreach service integration.
+- **Co-Investing Platform**: Tools for partner discovery, capital pooling, and group management.
+- **Calculators Hub**: Collection of specialized real estate calculators including "Fixed vs Variable" mortgage analysis.
+- **Mortgage Rates Page**: Displays live Canadian mortgage rates from various sources.
+- **Listing Import**: Supports property data import from major real estate portals.
+- **Rent Pulse API**: Integrates scraped and benchmarked rent data for market insights.
+- **Stress Test Analysis**: Provides Base/Bear/Bull scenarios for financial projections.
+- **MLI Select Calculator**: Standalone CMHC MLI Select points calculator.
+- **Content Management**: Database-backed Blog and Guides sections with CRUD capabilities via Admin Dashboard.
+- **Admin Dashboard**: Protected area for managing leads, webhooks, blog posts, and guides.
+- **Authentication**: Custom email/password system with secure session management.
+- **Leaderboard & Analytics**: Tracks and displays user contributions and deal analyses.
+- **Realtor Partner Network**: System for realtors to claim markets, receive leads, and manage referrals.
+- **Monthly Market Report**: Auto-generated reports for Canadian cities based on DDF and CMHC data.
+- **Indigenous Land Claim Screener**: Map-based tool to identify properties overlapping with Indigenous land claims and treaty areas, including "Watch Overlays" for high-sensitivity areas.
+- **Distress Deals Browser**: Tool to find power-of-sale, bank-owned, and motivated seller listings using text-based scoring.
+- **Daily City Investment Reports**: Auto-generated, regularly published investment reports for major Canadian cities.
+- **Community Underwriting System**: Facilitates collaborative deal analysis through notes, comments, votes, and a points system to determine community cap rates.
 
 ## External Dependencies
 
-- **CRM Integration**: GoHighLevel (GHL) via webhooks for lead delivery, with retry logic and logging.
-- **Database**: PostgreSQL (configured via `DATABASE_URL`).
-- **Session Store**: `connect-pg-simple` for Express sessions.
-- **Mapping**: Google Maps Places API (for address autocomplete and geocoding), Leaflet for Cap Rates Explorer map.
-- **PDF Export**: html-to-image and jsPDF (for analysis exports).
-- **Google Sheets**: Webhook backup for all lead creation endpoints.
-- **CREA DDF**: Official Canadian MLS data feed via RESO Web API (OData v4). Auth: OAuth2 client_credentials grant at `identity.crea.ca`. API base: `https://ddfapi.realtor.ca/odata/v1`. Secrets: `CREA_DDF_USERNAME`, `CREA_DDF_PASSWORD`. Client module: `server/creaDdf.ts`. Routes: `GET /api/ddf/status`, `POST /api/ddf/listings`, `GET /api/ddf/listing/:listingKey`, `GET /api/ddf/mls/:mlsNumber`. Data is normalized to Repliers format for the Cap Rates Explorer. DDF is used as primary data source with Repliers as fallback.
+- **CRM Integration**: GoHighLevel (GHL) for lead delivery.
+- **Database**: PostgreSQL.
+- **Session Store**: `connect-pg-simple`.
+- **Mapping**: Google Maps Places API, Leaflet.
+- **PDF Export**: html-to-image and jsPDF.
+- **Google Sheets**: Webhook backup for lead data.
+- **CREA DDF**: Official Canadian MLS data feed via RESO Web API.
+- **Email Service**: Resend.
+- **Geocoding**: Nominatim (for Land Claim Screener).
+- **PostGrid**: For direct mail services (via BuyBox).
+- **ElevenLabs**: For AI phone calls (via BuyBox).
+- **SlyBroadcast**: For voicemail drops (via BuyBox).
+- **Bank of Canada Valet API**: For mortgage rate data.
+- **wowa.ca**: For mortgage rate scraping.
+- **Indigenous Services Canada (SAC-ISC)**: Federal open data for Indigenous land claims.

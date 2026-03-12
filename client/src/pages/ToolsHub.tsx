@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2, Scale, ArrowLeftRight, Shield } from "lucide-react";
+import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2, Scale, ArrowLeftRight, Shield, Gavel } from "lucide-react";
 
 const tools = [
   {
@@ -75,6 +75,13 @@ const tools = [
     title: "Land Claim Screener",
     description: "Screen properties for potential overlap with historic treaties, modern treaties, and Indigenous agreement areas using official federal data.",
     icon: Shield,
+    badge: "New",
+  },
+  {
+    href: "/tools/distress-deals",
+    title: "Distress Deals",
+    description: "Find power-of-sale, court-ordered, bank-owned, motivated sellers, and seller-financing opportunities across Canadian MLS listings.",
+    icon: Gavel,
     badge: "New",
   },
   {

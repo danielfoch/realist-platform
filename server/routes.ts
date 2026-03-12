@@ -35,6 +35,7 @@ import {
   listingComments,
   insertBlogPostSchema,
   insertGuideSchema,
+  dataCache,
 } from "@shared/schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
@@ -6373,6 +6374,144 @@ export async function registerRoutes(
       console.error("Error recomputing listing aggregate:", error);
     }
   }
+
+  // ─── Distress Deals Browser ─────────────────────
+  app.get("/api/distress-deals", async (req, res) => {
+    try {
+      const { scoreDistress } = await import("@shared/distressScoring");
+      const { searchDdfListings, normalizeDdfToRepliersFormat, isDdfConfigured } = await import("./creaDdf");
+
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "DDF not configured" });
+        return;
+      }
+
+      const province = req.query.province as string | undefined;
+      const city = req.query.city as string | undefined;
+      const minPrice = req.query.minPrice ? Number(req.query.minPrice) : undefined;
+      const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
+      const minBeds = req.query.minBeds ? Number(req.query.minBeds) : undefined;
+      const maxBeds = req.query.maxBeds ? Number(req.query.maxBeds) : undefined;
+      const propertyType = req.query.propertyType as string | undefined;
+      const latMin = req.query.latMin ? Number(req.query.latMin) : undefined;
+      const latMax = req.query.latMax ? Number(req.query.latMax) : undefined;
+      const lngMin = req.query.lngMin ? Number(req.query.lngMin) : undefined;
+      const lngMax = req.query.lngMax ? Number(req.query.lngMax) : undefined;
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const limit = Math.min(Number(req.query.limit) || 48, 100);
+      const categories = (req.query.categories as string || "").split(",").filter(Boolean);
+      const excludeKeywords = (req.query.excludeKeywords as string || "").split(",").filter(Boolean);
+      const minScore = req.query.minScore ? Number(req.query.minScore) : 1;
+
+      const effectiveProvince = province === "all_provinces" ? undefined : province;
+
+      const cacheKey = `distress-deals:${JSON.stringify({
+        province: effectiveProvince, city, minPrice, maxPrice, minBeds, maxBeds, propertyType,
+        latMin, latMax, lngMin, lngMax
+      })}`;
+
+      const [cachedRow] = await db.select().from(dataCache)
+        .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '10 minutes'`));
+      if (cachedRow) {
+        let cachedData = cachedRow.valueJson as any;
+        let filteredListings = cachedData.listings as any[];
+        if (categories.length > 0) {
+          filteredListings = filteredListings.filter((l: any) =>
+            categories.some((cat: string) => l.distress?.categoriesTriggered?.[cat])
+          );
+        }
+        if (excludeKeywords.length > 0) {
+          const lowerExclude = excludeKeywords.map((k: string) => k.toLowerCase().trim());
+          filteredListings = filteredListings.filter((l: any) => {
+            const remark = (l.rawRemarks || "").toLowerCase();
+            return !lowerExclude.some((kw: string) => remark.includes(kw));
+          });
+        }
+        filteredListings = filteredListings.filter((l: any) => (l.distress?.distressScore || 0) >= minScore);
+        const skip = (page - 1) * limit;
+        res.json({
+          ...cachedData,
+          listings: filteredListings.slice(skip, skip + limit),
+          totalCount: filteredListings.length,
+          page,
+          limit,
+        });
+        return;
+      }
+
+      const skip = (page - 1) * limit;
+      const fetchLimit = Math.max(limit * 2, 100);
+      const ddfResult = await searchDdfListings({
+        stateOrProvince: effectiveProvince,
+        city,
+        minPrice,
+        maxPrice,
+        minBeds,
+        maxBeds,
+        propertySubType: propertyType,
+        latitudeMin: latMin,
+        latitudeMax: latMax,
+        longitudeMin: lngMin,
+        longitudeMax: lngMax,
+        top: fetchLimit,
+        skip: 0,
+      });
+
+      let scored = ddfResult.listings.map(raw => {
+        const normalized = normalizeDdfToRepliersFormat(raw);
+        const remarks = raw.PublicRemarks || "";
+        const listingProvince = raw.StateOrProvince || province || "";
+        const distress = scoreDistress(remarks, listingProvince);
+        return { ...normalized, distress, rawRemarks: remarks };
+      });
+
+      scored = scored.filter(l => l.distress.distressScore >= minScore);
+
+      if (categories.length > 0) {
+        scored = scored.filter(l =>
+          categories.some(cat => l.distress.categoriesTriggered[cat as keyof typeof l.distress.categoriesTriggered])
+        );
+      }
+
+      if (excludeKeywords.length > 0) {
+        const lowerExclude = excludeKeywords.map(k => k.toLowerCase().trim());
+        scored = scored.filter(l => {
+          const remark = (l.rawRemarks || "").toLowerCase();
+          return !lowerExclude.some(kw => remark.includes(kw));
+        });
+      }
+
+      scored.sort((a, b) => b.distress.distressScore - a.distress.distressScore);
+
+      const cacheData = {
+        listings: scored,
+        totalCount: scored.length,
+        totalDdfCount: ddfResult.count,
+        page: 1,
+        limit: scored.length,
+      };
+
+      await db.insert(dataCache).values({
+        key: cacheKey,
+        valueJson: cacheData,
+        source: "distress-deals",
+      }).onConflictDoUpdate({
+        target: dataCache.key,
+        set: { valueJson: cacheData, fetchedAt: new Date(), source: "distress-deals" },
+      });
+
+      res.json({
+        listings: scored.slice(skip, skip + limit),
+        totalCount: scored.length,
+        totalDdfCount: ddfResult.count,
+        page,
+        limit,
+      });
+    } catch (error: any) {
+      console.error("[distress-deals] Error:", error.message);
+      res.status(500).json({ error: "Failed to fetch distress deals" });
+    }
+  });
 
   // ─── Indigenous Land Claim Screener ─────────────────────
   const { screenLocation, getFeatureGeoJSON } = await import("./landClaimScreener");
