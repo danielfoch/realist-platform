@@ -54,6 +54,7 @@ Preferred communication style: Simple, everyday language.
 - **Monthly Market Report**: Auto-generated reports for Canadian cities based on DDF and CMHC data.
 - **Indigenous Land Claim Screener**: Map-based tool to identify properties overlapping with Indigenous land claims and treaty areas, including "Watch Overlays" for high-sensitivity areas.
 - **Distress Deals Browser**: Tool to find power-of-sale, bank-owned, and motivated seller listings using CREA DDF `contains(PublicRemarks,...)` OData queries with keyword-per-term search, distress scoring, and server-side caching. Note: DDF API does not support `tolower()` in OData filters; `contains()` is case-insensitive. First uncached load takes ~60-90s; cached results serve instantly (10-min TTL).
+- **Monthly Distress Report**: Auto-generated monthly report system (`server/distressReportGenerator.ts`) that scans all provinces via DDF, captures snapshots to `distress_snapshots` table, and publishes a blog post with national/provincial/city breakdowns, month-over-month trends, and category analysis. Runs on 2nd of each month via cron. Admin can trigger manually via `POST /api/admin/distress-report/generate`. Frontend insights page at `/insights/distress-report` with charts and data tables.
 - **Daily City Investment Reports**: Auto-generated, regularly published investment reports for major Canadian cities.
 - **Community Underwriting System**: Facilitates collaborative deal analysis through notes, comments, votes, and a points system to determine community cap rates.
 

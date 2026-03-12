@@ -2234,3 +2234,34 @@ export const insertScreeningHitSchema = createInsertSchema(screeningHits).omit({
 });
 export type InsertScreeningHit = z.infer<typeof insertScreeningHitSchema>;
 export type ScreeningHit = typeof screeningHits.$inferSelect;
+
+export const distressSnapshots = pgTable("distress_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  month: varchar("month", { length: 7 }).notNull(),
+  province: text("province").notNull(),
+  city: text("city"),
+  totalListings: integer("total_listings").default(0).notNull(),
+  foreclosurePosCount: integer("foreclosure_pos_count").default(0).notNull(),
+  motivatedCount: integer("motivated_count").default(0).notNull(),
+  vtbCount: integer("vtb_count").default(0).notNull(),
+  avgDistressScore: real("avg_distress_score"),
+  maxDistressScore: real("max_distress_score"),
+  avgListPrice: real("avg_list_price"),
+  medianListPrice: real("median_list_price"),
+  highConfidenceCount: integer("high_confidence_count").default(0).notNull(),
+  mediumConfidenceCount: integer("medium_confidence_count").default(0).notNull(),
+  lowConfidenceCount: integer("low_confidence_count").default(0).notNull(),
+  avgDaysOnMarket: real("avg_days_on_market"),
+  propertyTypesJson: jsonb("property_types_json"),
+  topCitiesJson: jsonb("top_cities_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS distress_snapshots_month_prov_city_idx ON distress_snapshots(month, province, city)`
+]);
+
+export const insertDistressSnapshotSchema = createInsertSchema(distressSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertDistressSnapshot = z.infer<typeof insertDistressSnapshotSchema>;
+export type DistressSnapshot = typeof distressSnapshots.$inferSelect;

@@ -2,7 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Radio, BookOpen, FileText, TrendingUp } from "lucide-react";
+import { Radio, BookOpen, FileText, TrendingUp, AlertTriangle } from "lucide-react";
 
 const insightItems = [
   {
@@ -23,6 +23,12 @@ const insightItems = [
     description: "Educational resources, how-to guides, and templates to help you become a better investor.",
     icon: FileText,
   },
+  {
+    href: "/insights/distress-report",
+    title: "Distress Report",
+    description: "Monthly snapshot of foreclosures, power of sale, motivated sellers, and VTB opportunities across Canada.",
+    icon: AlertTriangle,
+  },
 ];
 
 export default function InsightsHub() {
@@ -38,7 +44,7 @@ export default function InsightsHub() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {insightItems.map((item) => (
             <Link key={item.href} href={item.href}>
               <Card className="h-full hover-elevate cursor-pointer transition-all">

@@ -52,6 +52,7 @@ import MortgageRates from "@/pages/MortgageRates";
 import FixedVsVariable from "@/pages/FixedVsVariable";
 import LandClaimScreener from "@/pages/LandClaimScreener";
 import DistressDeals from "@/pages/DistressDeals";
+import DistressReport from "@/pages/DistressReport";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -89,6 +90,7 @@ function Router() {
       <Route path="/tools/fixed-vs-variable" component={FixedVsVariable} />
       <Route path="/tools/land-claim-screener" component={LandClaimScreener} />
       <Route path="/tools/distress-deals" component={DistressDeals} />
+      <Route path="/insights/distress-report" component={DistressReport} />
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/insights/market-report" component={MarketReport} />
       <Route path="/insights/mortgage-rates" component={MortgageRates} />

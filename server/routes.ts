@@ -36,6 +36,7 @@ import {
   insertBlogPostSchema,
   insertGuideSchema,
   dataCache,
+  distressSnapshots,
 } from "@shared/schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
@@ -6116,6 +6117,39 @@ export async function registerRoutes(
     }
   })();
 
+  // Monthly distress report: check every 6 hours on 2nd-5th of month, generate snapshot + blog report
+  let distressReportMonth = "";
+  const runDistressReportIfNeeded = async () => {
+    try {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      if (distressReportMonth === currentMonth) return;
+
+      const existing = await db.select().from(distressSnapshots)
+        .where(and(eq(distressSnapshots.month, currentMonth), sql`city IS NULL`))
+        .limit(1);
+      if (existing.length > 0) {
+        distressReportMonth = currentMonth;
+        return;
+      }
+
+      const dayOfMonth = now.getDate();
+      if (dayOfMonth < 2) return;
+
+      console.log("[distress-report] Monthly cron: starting distress report...");
+      const { runMonthlyDistressReport } = await import("./distressReportGenerator");
+      const result = await runMonthlyDistressReport();
+      console.log(`[distress-report] Monthly cron result: ${result.action} — ${result.details}`);
+      if (result.action === "published" || result.action === "exists") {
+        distressReportMonth = currentMonth;
+      }
+    } catch (error) {
+      console.error("[distress-report] Monthly cron failed:", error);
+    }
+  };
+  setInterval(runDistressReportIfNeeded, 6 * 60 * 60 * 1000);
+  runDistressReportIfNeeded();
+
   // Weekly mortgage rate scrape: check every 6 hours, run if >7 days since last update
   (async () => {
     try {
@@ -6571,6 +6605,59 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("[distress-deals] Error:", error.message);
       res.status(500).json({ error: "Failed to fetch distress deals" });
+    }
+  });
+
+  // ─── Distress Report API ─────────────────────
+  app.get("/api/distress-snapshots", async (req, res) => {
+    try {
+      const month = req.query.month as string | undefined;
+      const province = req.query.province as string | undefined;
+
+      let query = db.select().from(distressSnapshots);
+      const conditions = [];
+      if (month) conditions.push(eq(distressSnapshots.month, month));
+      if (province) conditions.push(eq(distressSnapshots.province, province));
+
+      const rows = conditions.length
+        ? await query.where(and(...conditions)).orderBy(desc(distressSnapshots.month))
+        : await query.orderBy(desc(distressSnapshots.month));
+
+      res.json(rows);
+    } catch (error: any) {
+      console.error("[distress-snapshots] Error:", error.message);
+      res.status(500).json({ error: "Failed to fetch distress snapshots" });
+    }
+  });
+
+  app.get("/api/distress-snapshots/months", async (_req, res) => {
+    try {
+      const rows = await db.selectDistinct({ month: distressSnapshots.month })
+        .from(distressSnapshots)
+        .orderBy(desc(distressSnapshots.month));
+      res.json(rows.map(r => r.month));
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch months" });
+    }
+  });
+
+  app.post("/api/admin/distress-report/generate", isAdmin, async (req, res) => {
+    try {
+      const now = new Date();
+      const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const month = (req.body.month as string) || defaultMonth;
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        res.status(400).json({ error: "Invalid month format. Use YYYY-MM." });
+        return;
+      }
+      const { captureDistressSnapshots, generateDistressReport } = await import("./distressReportGenerator");
+      console.log(`[distress-report] Admin triggered for ${month}`);
+      const snapResult = await captureDistressSnapshots(month);
+      const reportResult = await generateDistressReport(month);
+      res.json({ ...reportResult, snapshots: snapResult });
+    } catch (error: any) {
+      console.error("[distress-report] Admin trigger failed:", error.message);
+      res.status(500).json({ error: error.message });
     }
   });
 
