@@ -6410,9 +6410,41 @@ export async function registerRoutes(
   }
 
   // ─── Distress Deals Browser ─────────────────────
+  const SEARCH_TERMS_BY_CATEGORY: Record<string, string[]> = {
+    foreclosure_pos: [
+      "power of sale",
+      "foreclosure",
+      "bank owned",
+      "court ordered sale",
+      "judicial sale",
+      "mortgagee sale",
+      "receivership",
+      "reprise de finance",
+      "estate sale",
+    ],
+    motivated: [
+      "motivated",
+      "priced to sell",
+      "must sell",
+      "price reduced",
+      "immediate possession",
+      "fixer upper",
+      "handyman special",
+      "bring an offer",
+    ],
+    vtb: [
+      "vendor take back",
+      "vtb",
+      "seller financing",
+      "owner financing",
+      "vendor financing",
+      "financement vendeur",
+    ],
+  };
+
   app.get("/api/distress-deals", async (req, res) => {
-    req.setTimeout(120000);
-    res.setTimeout(120000);
+    req.setTimeout(300000);
+    res.setTimeout(300000);
     try {
       const { scoreDistress } = await import("@shared/distressScoring");
       const { searchDdfByRemarks, normalizeDdfToRepliersFormat, isDdfConfigured } = await import("./creaDdf");
@@ -6436,65 +6468,35 @@ export async function registerRoutes(
 
       const effectiveProvince = province === "all_provinces" ? undefined : province;
 
-      const SEARCH_TERMS_BY_CATEGORY: Record<string, string[]> = {
-        foreclosure_pos: [
-          "power of sale",
-          "foreclosure",
-          "bank owned",
-          "court ordered sale",
-          "judicial sale",
-          "mortgagee sale",
-          "receivership",
-          "reprise de finance",
-          "estate sale",
-        ],
-        motivated: [
-          "motivated",
-          "priced to sell",
-          "must sell",
-          "price reduced",
-          "immediate possession",
-          "fixer upper",
-          "handyman special",
-          "bring an offer",
-        ],
-        vtb: [
-          "vendor take back",
-          "vtb",
-          "seller financing",
-          "owner financing",
-          "vendor financing",
-          "financement vendeur",
-        ],
-      };
-
-      const activeCategories = categories.length > 0
-        ? categories.filter(c => SEARCH_TERMS_BY_CATEGORY[c])
-        : Object.keys(SEARCH_TERMS_BY_CATEGORY);
+      const allCategoryKeys = Object.keys(SEARCH_TERMS_BY_CATEGORY);
 
       const cacheKey = `distress-v3:${JSON.stringify({
         province: effectiveProvince, city, minPrice, maxPrice, minBeds, maxBeds,
-        cats: activeCategories.sort().join(","),
+        cats: allCategoryKeys.sort().join(","),
       })}`;
 
-      const [cachedRow] = await db.select().from(dataCache)
-        .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '10 minutes'`));
-      if (cachedRow) {
-        let cachedData = cachedRow.valueJson as any;
-        let filteredListings = cachedData.listings as any[];
-        filteredListings = filteredListings.filter((l: any) => (l.distress?.distressScore || 0) >= minScore);
+      function applyFilters(listings: any[]) {
+        let filtered = listings.filter((l: any) => (l.distress?.distressScore || 0) >= minScore);
         if (categories.length > 0) {
-          filteredListings = filteredListings.filter((l: any) =>
+          filtered = filtered.filter((l: any) =>
             categories.some((cat: string) => l.distress?.categoriesTriggered?.[cat])
           );
         }
         if (excludeKeywords.length > 0) {
           const lowerExclude = excludeKeywords.map((k: string) => k.toLowerCase().trim());
-          filteredListings = filteredListings.filter((l: any) => {
+          filtered = filtered.filter((l: any) => {
             const remark = (l.rawRemarks || "").toLowerCase();
             return !lowerExclude.some((kw: string) => remark.includes(kw));
           });
         }
+        return filtered;
+      }
+
+      const [cachedRow] = await db.select().from(dataCache)
+        .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '24 hours'`));
+      if (cachedRow) {
+        let cachedData = cachedRow.valueJson as any;
+        const filteredListings = applyFilters(cachedData.listings as any[]);
         const skip = (page - 1) * limit;
         res.json({
           listings: filteredListings.slice(skip, skip + limit),
@@ -6507,7 +6509,7 @@ export async function registerRoutes(
       }
 
       const searchTerms: string[] = [];
-      for (const cat of activeCategories) {
+      for (const cat of allCategoryKeys) {
         searchTerms.push(...(SEARCH_TERMS_BY_CATEGORY[cat] || []));
       }
       const uniqueTerms = [...new Set(searchTerms)];
@@ -6578,22 +6580,7 @@ export async function registerRoutes(
         set: { valueJson: cacheData, fetchedAt: new Date(), source: "distress-deals" },
       });
 
-      let filtered = allScored.filter(l => l.distress.distressScore >= minScore);
-
-      if (categories.length > 0) {
-        filtered = filtered.filter(l =>
-          categories.some(cat => l.distress.categoriesTriggered[cat as keyof typeof l.distress.categoriesTriggered])
-        );
-      }
-
-      if (excludeKeywords.length > 0) {
-        const lowerExclude = excludeKeywords.map(k => k.toLowerCase().trim());
-        filtered = filtered.filter(l => {
-          const remark = (l.rawRemarks || "").toLowerCase();
-          return !lowerExclude.some(kw => remark.includes(kw));
-        });
-      }
-
+      const filtered = applyFilters(allScored);
       const skip = (page - 1) * limit;
       res.json({
         listings: filtered.slice(skip, skip + limit),
@@ -6607,6 +6594,53 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to fetch distress deals" });
     }
   });
+
+  // ─── Distress Deals Pre-Warm ─────────────────────
+  const PREWARM_PROVINCES = ["Ontario", "British Columbia", "Alberta", "Quebec"];
+
+  async function prewarmDistressDeals() {
+    const { isDdfConfigured } = await import("./creaDdf");
+    if (!isDdfConfigured()) {
+      console.log("[distress-prewarm] DDF not configured, skipping");
+      return;
+    }
+    console.log("[distress-prewarm] Starting daily pre-warm...");
+    const allCats = Object.keys(SEARCH_TERMS_BY_CATEGORY).sort().join(",");
+    let warmed = 0;
+    for (const province of PREWARM_PROVINCES) {
+      const cacheKey = `distress-v3:${JSON.stringify({
+        province, city: undefined, minPrice: undefined, maxPrice: undefined, minBeds: undefined, maxBeds: undefined,
+        cats: allCats,
+      })}`;
+      const [existing] = await db.select().from(dataCache)
+        .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '12 hours'`));
+      if (existing) {
+        console.log(`[distress-prewarm] Cache fresh for ${province}, skipping`);
+        continue;
+      }
+      try {
+        console.log(`[distress-prewarm] Warming ${province}...`);
+        const url = `http://localhost:5000/api/distress-deals?province=${encodeURIComponent(province)}&limit=1`;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 300000);
+        const resp = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!resp.ok) {
+          console.error(`[distress-prewarm] Failed ${province}: HTTP ${resp.status}`);
+          continue;
+        }
+        warmed++;
+        console.log(`[distress-prewarm] Warmed ${province}`);
+        await new Promise(r => setTimeout(r, 3000));
+      } catch (err: any) {
+        console.error(`[distress-prewarm] Failed ${province}:`, err.message);
+      }
+    }
+    console.log(`[distress-prewarm] Complete: ${warmed} caches warmed`);
+  }
+
+  setTimeout(() => prewarmDistressDeals(), 15000);
+  setInterval(() => prewarmDistressDeals(), 12 * 60 * 60 * 1000);
 
   // ─── Distress Report API ─────────────────────
   app.get("/api/distress-snapshots", async (req, res) => {
