@@ -179,16 +179,16 @@ export default function LandClaimScreener() {
     }
   }, [gateFirstName, gateLastName, gateEmail, gatePhone, gateAddress, toast]);
 
+  const [showSignUpGate, setShowSignUpGate] = useState(false);
+
   const { data: featuresGeoJSON, isLoading: featuresLoading } = useQuery({
     queryKey: ["/api/land-claim-screener/features"],
     staleTime: 1000 * 60 * 60,
-    enabled: isUnlocked,
   });
 
   const { data: layers } = useQuery({
     queryKey: ["/api/land-claim-screener/layers"],
     staleTime: 1000 * 60 * 60,
-    enabled: isUnlocked,
   });
 
   const { data: history, refetch: refetchHistory } = useQuery({
@@ -212,6 +212,10 @@ export default function LandClaimScreener() {
   });
 
   const handleSearch = useCallback(async () => {
+    if (!isUnlocked) {
+      setShowSignUpGate(true);
+      return;
+    }
     if (!address.trim()) {
       toast({ title: "Please enter an address", variant: "destructive" });
       return;
@@ -247,7 +251,7 @@ export default function LandClaimScreener() {
     } catch {
       toast({ title: "Geocoding failed", description: "Please try again or enter coordinates.", variant: "destructive" });
     }
-  }, [address, bufferMeters, screenMutation, toast]);
+  }, [address, bufferMeters, screenMutation, toast, isUnlocked]);
 
   const statusConfig = useMemo(() => {
     if (!result) return null;
@@ -371,124 +375,7 @@ export default function LandClaimScreener() {
       />
       <Navigation />
 
-      {!isUnlocked && !authLoading && (
-        <div className="flex-1 flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
-          <Card className="w-full max-w-lg" data-testid="gate-card">
-            <CardHeader className="text-center space-y-3">
-              <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                <Shield className="h-7 w-7 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-bold">Land Claim & Treaty Area Screener</CardTitle>
-              <CardDescription className="text-base">
-                Screen any Canadian property for overlap with historic treaties, modern treaties, and Indigenous agreement areas — powered by official federal open data.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {user === null && (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground text-center">
-                    Register below or <a href={`/login?returnUrl=${encodeURIComponent("/tools/land-claim-screener")}`} className="text-primary underline font-medium" data-testid="link-login">sign in</a> to access the screener.
-                  </p>
-                  <form onSubmit={handleGateSubmit} className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="gate-first-name">First Name *</Label>
-                        <div className="relative">
-                          <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="gate-first-name"
-                            placeholder="First name"
-                            value={gateFirstName}
-                            onChange={(e) => setGateFirstName(e.target.value)}
-                            className="pl-10"
-                            required
-                            data-testid="input-gate-first-name"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="gate-last-name">Last Name</Label>
-                        <Input
-                          id="gate-last-name"
-                          placeholder="Last name"
-                          value={gateLastName}
-                          onChange={(e) => setGateLastName(e.target.value)}
-                          data-testid="input-gate-last-name"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="gate-email">Email *</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="gate-email"
-                          type="email"
-                          placeholder="you@example.com"
-                          value={gateEmail}
-                          onChange={(e) => setGateEmail(e.target.value)}
-                          className="pl-10"
-                          required
-                          data-testid="input-gate-email"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="gate-phone">Phone *</Label>
-                      <div className="relative">
-                        <Input
-                          id="gate-phone"
-                          type="tel"
-                          placeholder="(416) 555-1234"
-                          value={gatePhone}
-                          onChange={(e) => setGatePhone(e.target.value)}
-                          required
-                          data-testid="input-gate-phone"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="gate-address">Address to Screen *</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="gate-address"
-                          placeholder="123 Main St, Toronto, ON"
-                          value={gateAddress}
-                          onChange={(e) => setGateAddress(e.target.value)}
-                          className="pl-10"
-                          required
-                          data-testid="input-gate-address"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      type="submit"
-                      className="w-full gap-2"
-                      disabled={gateSubmitting}
-                      data-testid="button-gate-submit"
-                    >
-                      {gateSubmitting ? (
-                        <>Unlocking...</>
-                      ) : (
-                        <>
-                          <Lock className="h-4 w-4" />
-                          Unlock Screener
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                  <p className="text-xs text-muted-foreground text-center">
-                    By registering, you agree to receive occasional updates from Realist. We will never share your information.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {isUnlocked && <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)]">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)]">
         <div className="flex-1 flex flex-col">
           <div className="bg-card border-b p-3 md:p-4 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
@@ -851,7 +738,41 @@ export default function LandClaimScreener() {
             )}
           </div>
         )}
-      </div>}
+      </div>
+
+      {showSignUpGate && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowSignUpGate(false)}>
+          <div
+            className="bg-card rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="signup-gate-modal"
+          >
+            <div className="p-6 text-center space-y-4">
+              <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                <Lock className="h-7 w-7 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold" data-testid="text-gate-title">Sign up to view details</h2>
+              <p className="text-sm text-muted-foreground">
+                Create a free account to screen properties for treaty area overlap and view detailed land claim information.
+              </p>
+              <div className="space-y-2 pt-2">
+                <Button asChild className="w-full gap-2" data-testid="button-gate-signup">
+                  <a href={`/login?returnUrl=${encodeURIComponent("/tools/land-claim-screener")}`}>
+                    <UserIcon className="h-4 w-4" />
+                    Sign Up — It's Free
+                  </a>
+                </Button>
+                <Button variant="ghost" className="w-full" onClick={() => setShowSignUpGate(false)} data-testid="button-gate-dismiss">
+                  Maybe Later
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Already have an account? <a href={`/login?returnUrl=${encodeURIComponent("/tools/land-claim-screener")}`} className="text-primary underline font-medium" data-testid="link-gate-login">Sign in</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

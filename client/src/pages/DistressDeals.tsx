@@ -14,10 +14,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Search, MapPin, AlertTriangle, Gavel, TrendingDown, DollarSign,
   Heart, ExternalLink, Filter, X, ChevronDown, ChevronUp, Info,
-  List, Map as MapIcon, Share2, Loader2, Building2, Home
+  List, Map as MapIcon, Share2, Loader2, Building2, Home, Lock, UserIcon
 } from "lucide-react";
 import { DISTRESS_CATEGORIES, type DistressResult, type MatchedTerm, getProvincialNuance } from "@shared/distressScoring";
 
@@ -313,8 +314,46 @@ function ListingDetailModal({
   );
 }
 
+function SignUpGateModal({ onClose, toolName }: { onClose: () => void; toolName: string }) {
+  return (
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="bg-card rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="signup-gate-modal"
+      >
+        <div className="p-6 text-center space-y-4">
+          <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <Lock className="h-7 w-7 text-primary" />
+          </div>
+          <h2 className="text-xl font-bold" data-testid="text-gate-title">Sign up to view details</h2>
+          <p className="text-sm text-muted-foreground">
+            Create a free account to view full listing details, distress analysis, and property photos in the {toolName}.
+          </p>
+          <div className="space-y-2 pt-2">
+            <Button asChild className="w-full gap-2" data-testid="button-gate-signup">
+              <a href={`/login?returnUrl=${encodeURIComponent("/tools/distress-deals")}`}>
+                <UserIcon className="h-4 w-4" />
+                Sign Up — It's Free
+              </a>
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={onClose} data-testid="button-gate-dismiss">
+              Maybe Later
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Already have an account? <a href={`/login?returnUrl=${encodeURIComponent("/tools/distress-deals")}`} className="text-primary underline font-medium" data-testid="link-gate-login">Sign in</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DistressDeals() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [showSignUpGate, setShowSignUpGate] = useState(false);
   const [province, setProvince] = useState<string>("Ontario");
   const [city, setCity] = useState("");
   const [minPrice, setMinPrice] = useState("");
@@ -376,6 +415,14 @@ export default function DistressDeals() {
 
   const listings = data?.listings || [];
   const listingsWithLocation = listings.filter(l => l.map?.latitude && l.map?.longitude);
+
+  const handleListingClick = useCallback((listing: DistressListing) => {
+    if (!user) {
+      setShowSignUpGate(true);
+      return;
+    }
+    setSelectedListing(listing);
+  }, [user]);
 
   const handleSearch = useCallback(() => {
     setSearchCity(city);
@@ -649,7 +696,7 @@ export default function DistressDeals() {
                         <Card
                           key={listing.mlsNumber}
                           className="cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden"
-                          onClick={() => setSelectedListing(listing)}
+                          onClick={() => handleListingClick(listing)}
                           data-testid={`card-listing-${listing.mlsNumber}`}
                         >
                           <CardContent className="p-0">
@@ -719,7 +766,7 @@ export default function DistressDeals() {
                     key={listing.mlsNumber}
                     position={[listing.map!.latitude, listing.map!.longitude]}
                     icon={getListingIcon(listing)}
-                    eventHandlers={{ click: () => setSelectedListing(listing) }}
+                    eventHandlers={{ click: () => handleListingClick(listing) }}
                   >
                     <Popup>
                       <div style={{ minWidth: 180 }}>
@@ -749,6 +796,13 @@ export default function DistressDeals() {
         <ListingDetailModal
           listing={selectedListing}
           onClose={() => setSelectedListing(null)}
+        />
+      )}
+
+      {showSignUpGate && (
+        <SignUpGateModal
+          onClose={() => setShowSignUpGate(false)}
+          toolName="Distress Deals Browser"
         />
       )}
     </div>
