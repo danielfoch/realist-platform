@@ -323,11 +323,26 @@ export default function LandClaimScreener() {
     };
   }, []);
 
+  const loginUrl = `/login?returnUrl=${encodeURIComponent("/tools/land-claim-screener")}`;
+
   const onEachFeature = useCallback((feature: any, layer: any) => {
     const p = feature.properties;
     const isHS = p.isHighSensitivity;
     const confidenceLabel = p.geometryConfidence ? (CONFIDENCE_LABELS[p.geometryConfidence] || p.geometryConfidence) : null;
     const contextLabel = p.legalContextType ? (CONTEXT_LABELS[p.legalContextType] || p.legalContextType) : null;
+
+    if (!isUnlocked) {
+      layer.bindPopup(`
+        <div style="min-width:220px;text-align:center;padding:8px 4px">
+          <div style="font-size:1.4em;margin-bottom:6px">🔒</div>
+          <strong style="font-size:0.95em">Sign in to view details</strong>
+          <p style="font-size:0.82em;color:#666;margin:8px 0">Log in or create a free account to see treaty names, status, legal context, and sensitivity details for this area.</p>
+          <a href="${loginUrl}" style="display:inline-block;padding:8px 20px;background:#2563eb;color:#fff;border-radius:6px;font-size:0.85em;font-weight:600;text-decoration:none;margin-top:4px" data-testid="popup-login-btn">Sign In</a>
+          <p style="font-size:0.75em;color:#888;margin-top:8px">Don't have an account? <a href="${loginUrl}" style="color:#2563eb;text-decoration:underline">Create one free</a></p>
+        </div>
+      `);
+      return;
+    }
 
     if (isHS) {
       layer.bindPopup(`
@@ -352,7 +367,7 @@ export default function LandClaimScreener() {
         </div>
       `);
     }
-  }, []);
+  }, [isUnlocked, loginUrl]);
 
   const filteredFeatures = useMemo(() => {
     if (!featuresGeoJSON) return null;
@@ -469,7 +484,7 @@ export default function LandClaimScreener() {
 
                 {filteredFeatures && filteredFeatures.features?.length > 0 && (
                   <GeoJSON
-                    key={JSON.stringify(visibleLayers)}
+                    key={JSON.stringify(visibleLayers) + (isUnlocked ? "-unlocked" : "-locked")}
                     data={filteredFeatures}
                     style={geoJsonStyle}
                     onEachFeature={onEachFeature}
