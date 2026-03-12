@@ -482,6 +482,26 @@ export default function DistressDeals() {
     if (p || c) setHasSearched(true);
   }, []);
 
+  useEffect(() => {
+    if (!searchProvince || searchProvince === "all_provinces") return;
+    const provCoords: Record<string, [number, number]> = {
+      Ontario: [44.0, -79.0],
+      "British Columbia": [49.0, -123.0],
+      Alberta: [51.5, -114.0],
+      Quebec: [46.5, -72.0],
+      Manitoba: [49.9, -97.1],
+      Saskatchewan: [50.4, -104.6],
+      "Nova Scotia": [44.6, -63.5],
+      "New Brunswick": [46.5, -66.5],
+      "Newfoundland and Labrador": [47.6, -52.7],
+      "Prince Edward Island": [46.2, -63.0],
+    };
+    if (provCoords[searchProvince]) {
+      setMapCenter(provCoords[searchProvince]);
+      setMapZoom(7);
+    }
+  }, [searchProvince]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col" data-testid="distress-deals-page">
       <SEO
@@ -567,7 +587,7 @@ export default function DistressDeals() {
             <div className={`border-r bg-card flex flex-col ${viewMode === "split" ? "w-[420px] flex-shrink-0" : "flex-1"}`}>
               <div className="p-3 border-b space-y-3">
                 <div className="flex gap-2">
-                  <Select value={province} onValueChange={setProvince}>
+                  <Select value={province} onValueChange={(val) => { setProvince(val); setSearchProvince(val); }}>
                     <SelectTrigger className="w-[160px]" data-testid="select-province">
                       <SelectValue placeholder="Province" />
                     </SelectTrigger>
