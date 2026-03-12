@@ -107,6 +107,92 @@ function getAffordabilityLevel(avgPrice: number | null | undefined): string {
   return "highly affordable";
 }
 
+function getMarketCharacter(city: string, province: string, yieldData: any, cmhcRents: any): string {
+  const traits: string[] = [];
+  if (yieldData?.avgGrossYield >= 6) traits.push("high-yield cash flow market");
+  else if (yieldData?.avgGrossYield >= 4.5) traits.push("balanced growth-and-income market");
+  else if (yieldData?.avgGrossYield) traits.push("appreciation-driven market");
+  if (yieldData?.avgListPrice && yieldData.avgListPrice < 400000) traits.push("one of the most affordable investment markets in Canada");
+  if (yieldData?.avgListPrice && yieldData.avgListPrice > 800000) traits.push("a premium market favouring well-capitalized investors");
+  if (yieldData?.avgDaysOnMarket && yieldData.avgDaysOnMarket < 25) traits.push("fast-moving with strong demand");
+  if (yieldData?.avgDaysOnMarket && yieldData.avgDaysOnMarket > 60) traits.push("buyer-friendly with extended negotiation windows");
+  if (cmhcRents?.twoBed >= 2000) traits.push("a strong rental demand hub");
+  if (["ON", "BC"].includes(province) && yieldData?.avgListPrice < 500000) traits.push("an emerging value pocket within " + PROVINCE_NAMES[province]);
+  return traits.length > 0 ? traits.join(", ") : "a developing market worth monitoring";
+}
+
+function generateSeoSummary(params: {
+  city: string; province: string; provinceName: string; monthName: string; year: number;
+  yieldData: any; cmhcRents: any; rank: number;
+}): string {
+  const { city, province, provinceName, monthName, year, yieldData, cmhcRents, rank } = params;
+  const hasYield = yieldData && yieldData.listingCount > 0;
+  const character = getMarketCharacter(city, province, yieldData, cmhcRents);
+  const sections: string[] = [];
+
+  sections.push(`<h2>Is ${city} a Good Real Estate Investment Market in ${year}?</h2>`);
+
+  if (hasYield) {
+    const yieldLevel = yieldData.avgGrossYield >= 6 ? "above-average for Canadian markets" : yieldData.avgGrossYield >= 4 ? "competitive among mid-tier Canadian cities" : "below-average for income-focused strategies";
+    sections.push(`<p>${city} is currently ${character}. With a gross rental yield of <strong>${fmtPct(yieldData.avgGrossYield)}</strong> — ${yieldLevel} — ${city} ${yieldData.avgGrossYield >= 5 ? "ranks among the best real estate investment markets in Canada for income-focused investors" : "appeals primarily to investors seeking long-term capital appreciation"}. The median listing price of ${fmtDollar(yieldData.medianListPrice)} ${yieldData.avgListPrice < 500000 ? "makes it accessible for first-time investors and BRRR strategists" : yieldData.avgListPrice > 800000 ? "positions it as a premium market requiring significant capital or creative financing" : "places it in the mid-range for Canadian investment properties"}.</p>`);
+
+    if (yieldData.avgDaysOnMarket) {
+      const dom = yieldData.avgDaysOnMarket;
+      sections.push(`<p>Properties in ${city} spend an average of <strong>${fmt(dom, 0)} days on market</strong> before selling. ${dom < 20 ? "This is an extremely competitive seller's market — investors need pre-approved financing and fast due diligence to secure deals." : dom < 40 ? "The market moves at a healthy pace, giving investors reasonable time to conduct due diligence while still reflecting strong demand." : "The extended days on market create opportunities for negotiation, conditional offers, and below-asking purchases — ideal conditions for value investors."}</p>`);
+    }
+  } else {
+    sections.push(`<p>${city}, ${provinceName} is ${character}. As Canada's #${rank} largest metropolitan area, it draws consistent investor interest. This ${monthName} ${year} edition tracks the metrics that matter for anyone evaluating ${city} as a place to buy rental property in Canada.</p>`);
+  }
+
+  if (cmhcRents) {
+    const rentContext = cmhcRents.twoBed >= 2000
+      ? `strong rental rates that support positive cash flow on moderately leveraged properties`
+      : cmhcRents.twoBed >= 1400
+      ? `solid mid-market rents that can pencil out with conservative underwriting`
+      : `lower rents that favour investors who can acquire properties below market value through distress deals or vendor take-back financing`;
+    sections.push(`<p>On the rental side, ${city} features ${rentContext}. A typical 2-bedroom unit rents for approximately <strong>${fmtDollar(cmhcRents.twoBed)}/month</strong> according to CMHC benchmarks — a critical input for any buy-and-hold analysis.</p>`);
+  }
+
+  if (hasYield) {
+    const buyerProfiles: string[] = [];
+    if (yieldData.avgGrossYield >= 6) {
+      buyerProfiles.push("cash flow investors looking for rental income in Canada");
+      buyerProfiles.push("out-of-province buyers seeking higher yields than Toronto or Vancouver");
+    }
+    if (yieldData.avgListPrice < 500000) {
+      buyerProfiles.push("first-time real estate investors starting with smaller capital");
+      buyerProfiles.push("BRRR investors targeting forced appreciation through renovation");
+    }
+    if (yieldData.avgGrossYield >= 4 && yieldData.avgGrossYield < 6) {
+      buyerProfiles.push("balanced investors seeking both growth and income");
+    }
+    if (yieldData.avgListPrice >= 800000) {
+      buyerProfiles.push("equity-rich investors repositioning capital from primary markets");
+      buyerProfiles.push("developers and land assemblers targeting rezoning upside");
+    }
+    buyerProfiles.push(`anyone comparing the best cities to invest in real estate in ${provinceName}`);
+
+    sections.push(`
+      <h3>Who Should Invest in ${city} Real Estate?</h3>
+      <p>Based on the current ${monthName} ${year} data, ${city} is particularly well-suited for:</p>
+      <ul>${buyerProfiles.map(b => `<li style="margin-bottom:6px;">${b.charAt(0).toUpperCase() + b.slice(1)}</li>`).join("")}</ul>
+    `);
+  }
+
+  const comparisons: string[] = [];
+  if (hasYield) {
+    if (city !== "Toronto" && province === "ON") comparisons.push(`Compared to Toronto, ${city} offers ${yieldData.avgListPrice < 800000 ? "significantly more affordable entry points" : "similar pricing but different fundamentals"}.`);
+    if (city !== "Vancouver" && province === "BC") comparisons.push(`While Vancouver commands premium prices, ${city} provides ${yieldData.avgGrossYield > 4 ? "better yields" : "a different risk-reward profile"} for BC investors.`);
+    if (!["ON", "BC"].includes(province)) comparisons.push(`As an alternative to Ontario and BC, ${city} represents a growing segment of Canadian investors looking beyond traditional gateway markets for stronger returns.`);
+  }
+  if (comparisons.length > 0) {
+    sections.push(`<h3>How ${city} Compares to Other Canadian Markets</h3><p>${comparisons.join(" ")}</p>`);
+    sections.push(`<p>For a detailed city-vs-city comparison including yield maps and historical trends, visit the <a href="/insights/market-report">Monthly Market Report</a> dashboard on Realist.ca.</p>`);
+  }
+
+  return sections.join("\n");
+}
+
 function generateReportHtml(params: {
   city: string;
   province: string;
@@ -262,6 +348,12 @@ function generateReportHtml(params: {
     <p>Use the <a href="/tools/analyzer">Realist.ca Deal Analyzer</a> to run detailed underwriting on any ${city} property, including multi-year projections, stress testing, and strategy comparison.</p>
   `);
 
+  const rank = params.yieldData?.rank || TOP_30_CITIES.findIndex(c => c.city === city) + 1 || 15;
+  sections.push(generateSeoSummary({
+    city, province, provinceName, monthName, year,
+    yieldData: hasYield ? yieldData : null, cmhcRents, rank,
+  }));
+
   sections.push(`
     <h2>Methodology</h2>
     <p>This report is generated using data from the following sources:</p>
@@ -273,14 +365,21 @@ function generateReportHtml(params: {
     <p>Net yields are calculated using standardized expense assumptions: 5% vacancy, 8% property management, 5% maintenance, and 0.3% insurance rate. Actual returns may vary based on property-specific conditions.</p>
   `);
 
+  sections.push(`
+    <h2>Past Reports & Related Resources</h2>
+    <p>This report is part of the Realist.ca Monthly Market Report series covering 30 Canadian cities. Browse the full archive of past reports in the <a href="/insights/blog">Blog &amp; Research</a> section, or explore the interactive <a href="/insights/market-report">Market Report Dashboard</a> for city-by-city comparisons.</p>
+    <p>Related tools: <a href="/tools/analyzer">Deal Analyzer</a> · <a href="/tools/distress-deals">Distress Deals Browser</a> · <a href="/insights/distress-report">Monthly Distress Report</a> · <a href="/tools/cap-rates">Cap Rates Explorer</a></p>
+  `);
+
   return sections.join("\n");
 }
 
 function generateExcerpt(city: string, province: string, monthName: string, year: number, yieldData: any): string {
+  const provinceName = PROVINCE_NAMES[province] || province;
   if (yieldData && yieldData.avgGrossYield) {
-    return `${monthName} ${year} investment report for ${city}, ${province}. Average gross yield: ${fmtPct(yieldData.avgGrossYield)}, net yield: ${fmtPct(yieldData.avgNetYield)}, with ${yieldData.listingCount} active listings analyzed. Includes CMHC rents, pricing data, and strategy insights.`;
+    return `Is ${city} a good place to invest in real estate? ${monthName} ${year} report: ${fmtPct(yieldData.avgGrossYield)} gross yield, ${fmtPct(yieldData.avgNetYield)} net yield, ${yieldData.listingCount} listings analyzed. Complete ${city}, ${provinceName} investment analysis with CMHC rents, pricing trends, and strategy recommendations for Canadian real estate investors.`;
   }
-  return `${monthName} ${year} real estate investment report for ${city}, ${province}. Comprehensive analysis including market pricing, rent benchmarks, and investment strategy considerations.`;
+  return `${monthName} ${year} real estate investment report for ${city}, ${provinceName}. Comprehensive market analysis including pricing, CMHC rent benchmarks, and investment strategy considerations for buying rental property in ${city}.`;
 }
 
 export async function generateCityReport(city: string, province: string, month: string): Promise<{ created: boolean; slug: string; message: string }> {
@@ -321,8 +420,10 @@ export async function generateCityReport(city: string, province: string, month: 
   const wordCount = content.replace(/<[^>]*>/g, " ").split(/\s+/).length;
   const readTimeMinutes = Math.max(3, Math.ceil(wordCount / 200));
 
-  const tags = [city, provinceName, "Investment Report", "Market Analysis", monthName + " " + year];
+  const tags = [city, provinceName, "Investment Report", "Market Analysis", monthName + " " + year, "Rental Yield", "Buy and Hold"];
   if (yieldData?.avgGrossYield && yieldData.avgGrossYield >= 5) tags.push("High Yield");
+  if (yieldData?.avgListPrice && yieldData.avgListPrice < 500000) tags.push("Affordable Market");
+  if (yieldData?.avgGrossYield && yieldData.avgGrossYield >= 4) tags.push("Cash Flow");
 
   await storage.createBlogPost({
     title,
@@ -333,8 +434,8 @@ export async function generateCityReport(city: string, province: string, month: 
     category: "market-analysis",
     tags,
     status: "published",
-    metaTitle: `${city} Real Estate Investment Report ${monthName} ${year} | Realist.ca`,
-    metaDescription: excerpt.substring(0, 160),
+    metaTitle: `${city} Real Estate Investment Report ${monthName} ${year} — Yields, Rents & Analysis | Realist.ca`,
+    metaDescription: excerpt.length <= 160 ? excerpt : excerpt.substring(0, excerpt.lastIndexOf(".", 157) + 1) || excerpt.substring(0, 157) + "...",
     readTimeMinutes,
     publishedAt: new Date(),
   });

@@ -8,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
-import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Minus, X, Plus, Layers } from "lucide-react";
+import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Minus, X, Plus, Layers, FileText } from "lucide-react";
+import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -200,6 +201,15 @@ export default function MarketReport() {
     enabled: compareCities.length > 0,
     queryFn: async () => {
       const res = await apiRequest("POST", "/api/yield-history/compare", { cities: compareCities });
+      return res.json();
+    },
+  });
+
+  const { data: archivePosts = [] } = useQuery<{ id: number; title: string; slug: string; excerpt: string; publishedAt: string; tags: string[] }[]>({
+    queryKey: ["/api/blog/posts/db", "market-analysis"],
+    queryFn: async () => {
+      const res = await fetch("/api/blog/posts/db?category=market-analysis");
+      if (!res.ok) return [];
       return res.json();
     },
   });
@@ -785,6 +795,41 @@ export default function MarketReport() {
                 </div>
               </CardContent>
             </Card>
+
+            {archivePosts.length > 0 && (
+              <Card className="mt-8" data-testid="report-archive">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Monthly Report Archive
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Every month, Realist.ca publishes detailed investment reports for 30 Canadian cities — covering yields, rents, pricing, and strategy insights. Browse past editions below.
+                  </p>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {archivePosts.map(post => (
+                      <Link key={post.id} href={`/insights/blog/${post.slug}`}>
+                        <div className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer" data-testid={`archive-post-${post.slug}`}>
+                          <p className="text-sm font-medium leading-snug">{post.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : ""}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="mt-4 text-center">
+                    <Link href="/insights/blog">
+                      <Button variant="outline" size="sm" data-testid="view-all-reports-btn">
+                        View All Reports & Research
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <div className="mt-8 text-center text-sm text-muted-foreground" data-testid="text-methodology">
               <p className="mb-2">
