@@ -5,6 +5,7 @@
 import { Router, Request, Response } from 'express';
 import { QueryResultRow } from 'pg';
 import { db as defaultDb } from './db';
+import { isDemoMode, getDemoBlogPosts, getDemoGuideBySlug, getDemoBlogPostBySlug, demoGuides } from './demo-data';
 
 interface DatabaseAdapter {
   query: <T extends QueryResultRow = QueryResultRow>(text: string, params?: readonly unknown[]) => Promise<{ rows: T[] }>;
@@ -19,6 +20,25 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
   router.get('/blog', async (req: Request, res: Response) => {
     try {
       const { category, limit = 10, offset = 0 } = req.query;
+      
+      // Demo mode - return demo blog posts
+      if (isDemoMode()) {
+        let posts = getDemoBlogPosts();
+        if (category) {
+          posts = posts.filter(p => p.category === category);
+        }
+        const start = Number(offset);
+        const end = start + Number(limit);
+        return res.json({
+          success: true,
+          data: posts.slice(start, end),
+          pagination: {
+            limit: Number(limit),
+            offset: Number(offset),
+            total: posts.length
+          }
+        });
+      }
       
       let query = `
         SELECT id, title, slug, excerpt, featured_image, author, published_at, 
@@ -57,6 +77,18 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
   router.get('/blog/:slug', async (req: Request, res: Response) => {
     try {
       const { slug } = req.params;
+      
+      // Demo mode - return demo blog post
+      if (isDemoMode()) {
+        const post = getDemoBlogPostBySlug(slug);
+        if (!post) {
+          return res.status(404).json({ success: false, error: 'Blog post not found' });
+        }
+        return res.json({
+          success: true,
+          data: post
+        });
+      }
       
       const result = await database.query(
         `SELECT * FROM blog_posts WHERE slug = $1 AND status = 'published'`,
@@ -194,6 +226,28 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
     try {
       const { category, difficulty, limit = 10, offset = 0 } = req.query;
       
+      // Demo mode - return demo guides
+      if (isDemoMode()) {
+        let guides = [...demoGuides];
+        if (category) {
+          guides = guides.filter(g => g.category === category);
+        }
+        if (difficulty) {
+          guides = guides.filter(g => g.difficulty === difficulty);
+        }
+        const start = Number(offset);
+        const end = start + Number(limit);
+        return res.json({
+          success: true,
+          data: guides.slice(start, end),
+          pagination: {
+            limit: Number(limit),
+            offset: Number(offset),
+            total: guides.length
+          }
+        });
+      }
+      
       let query = `
         SELECT id, title, slug, excerpt, featured_image, author, published_at, 
                category, difficulty, estimated_read_time_minutes, meta_title, meta_description
@@ -236,6 +290,18 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
   router.get('/guides/:slug', async (req: Request, res: Response) => {
     try {
       const { slug } = req.params;
+      
+      // Demo mode - return demo guide
+      if (isDemoMode()) {
+        const guide = demoGuides.find(g => g.slug === slug);
+        if (!guide) {
+          return res.status(404).json({ success: false, error: 'Guide not found' });
+        }
+        return res.json({
+          success: true,
+          data: guide
+        });
+      }
       
       const result = await database.query(
         `SELECT * FROM guides WHERE slug = $1 AND status = 'published'`,
