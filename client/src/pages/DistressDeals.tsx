@@ -376,26 +376,27 @@ export default function DistressDeals() {
   });
 
   const allListings = data?.listings || [];
-  const allWithLocation = useMemo(() => allListings.filter(l => l.map?.latitude && l.map?.longitude), [allListings]);
+
+  const categoryFiltered = useMemo(() => {
+    if (categories.length === 0) return [];
+    if (categories.length >= 3) return allListings;
+    return allListings.filter(l =>
+      categories.some(cat => l.distress?.categoriesTriggered?.[cat as keyof typeof l.distress.categoriesTriggered])
+    );
+  }, [allListings, categories]);
+
+  const allWithLocation = useMemo(() => categoryFiltered.filter(l => l.map?.latitude && l.map?.longitude), [categoryFiltered]);
 
   const listings = useMemo(() => {
-    let filtered = allListings;
-    if (categories.length > 0 && categories.length < 3) {
-      filtered = filtered.filter(l =>
-        categories.some(cat => l.distress?.categoriesTriggered?.[cat as keyof typeof l.distress.categoriesTriggered])
-      );
-    }
-    if (mapBounds) {
-      filtered = filtered.filter(l => {
-        const lat = l.map?.latitude;
-        const lng = l.map?.longitude;
-        if (!lat || !lng) return false;
-        return lat >= mapBounds.latMin && lat <= mapBounds.latMax &&
-               lng >= mapBounds.lngMin && lng <= mapBounds.lngMax;
-      });
-    }
-    return filtered;
-  }, [allListings, categories, mapBounds]);
+    if (!mapBounds) return categoryFiltered;
+    return categoryFiltered.filter(l => {
+      const lat = l.map?.latitude;
+      const lng = l.map?.longitude;
+      if (!lat || !lng) return false;
+      return lat >= mapBounds.latMin && lat <= mapBounds.latMax &&
+             lng >= mapBounds.lngMin && lng <= mapBounds.lngMax;
+    });
+  }, [categoryFiltered, mapBounds]);
 
   const handleListingClick = useCallback((listing: DistressListing) => {
     if (!user) {
