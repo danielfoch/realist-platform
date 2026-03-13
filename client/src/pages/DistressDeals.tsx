@@ -443,7 +443,7 @@ export default function DistressDeals() {
   }, [toast]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" data-testid="distress-deals-page">
+    <div className="h-screen bg-background flex flex-col overflow-hidden" data-testid="distress-deals-page">
       <SEO
         title="Distress Deals Browser - Foreclosure, Power of Sale, VTB | Realist.ca"
         description="Find power-of-sale, court-ordered, bank-owned, motivated sellers, and seller-financing opportunities across Canada using MLS data."
@@ -522,7 +522,7 @@ export default function DistressDeals() {
           </div>
         </div>
 
-        <div className="flex-1 flex">
+        <div className="flex-1 flex min-h-0">
           {(viewMode === "split" || viewMode === "list") && (
             <div className={`border-r bg-card flex flex-col ${viewMode === "split" ? "w-[420px] flex-shrink-0" : "flex-1"}`}>
               <div className="p-3 border-b space-y-3">
