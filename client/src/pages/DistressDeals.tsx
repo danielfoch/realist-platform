@@ -453,7 +453,7 @@ export default function DistressDeals() {
       <Navigation />
 
       <div className="flex-1 flex flex-col">
-        <div className="border-b bg-card relative z-10">
+        <div className="border-b bg-card relative z-20">
           <div className="max-w-[1800px] mx-auto px-4 py-4">
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -655,11 +655,11 @@ export default function DistressDeals() {
           )}
 
           {(viewMode === "split" || viewMode === "map") && (
-            <div className="flex-1 relative">
+            <div className="flex-1 relative" style={{ zIndex: 0, isolation: "isolate" }}>
               <MapContainer
                 center={mapCenter}
                 zoom={mapZoom}
-                className="h-full w-full z-0"
+                className="h-full w-full"
                 scrollWheelZoom={true}
                 ref={mapRef}
               >
