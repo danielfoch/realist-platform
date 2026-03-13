@@ -340,12 +340,13 @@ function SignUpGateModal({ onClose, toolName }: { onClose: () => void; toolName:
 export default function DistressDeals() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   const [showSignUpGate, setShowSignUpGate] = useState(false);
   const [toggleForeclosure, setToggleForeclosure] = useState(true);
   const [toggleMotivated, setToggleMotivated] = useState(false);
   const [toggleVtb, setToggleVtb] = useState(false);
-  const [viewMode, setViewMode] = useState<"split" | "list" | "map">("split");
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<"split" | "list" | "map">(isMobile ? "list" : "split");
+  const [filtersOpen, setFiltersOpen] = useState(!isMobile);
   const [selectedListing, setSelectedListing] = useState<DistressListing | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([44.0, -79.0]);
   const [mapZoom, setMapZoom] = useState(7);
@@ -457,20 +458,20 @@ export default function DistressDeals() {
           <div className="max-w-[1800px] mx-auto px-4 py-4">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h1 className="text-xl font-bold flex items-center gap-2" data-testid="text-page-title">
+                <h1 className="text-lg md:text-xl font-bold flex items-center gap-2" data-testid="text-page-title">
                   <Gavel className="h-5 w-5 text-red-500" />
                   Distress Deals
                 </h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
                   Foreclosure, Power of Sale, Motivated Sellers & VTB opportunities
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 md:gap-2">
                 <Button
                   variant={viewMode === "split" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setViewMode("split")}
-                  className="gap-1"
+                  className="gap-1 hidden md:inline-flex"
                   data-testid="button-view-split"
                 >
                   <Filter className="h-3.5 w-3.5" /> Split
@@ -482,7 +483,7 @@ export default function DistressDeals() {
                   className="gap-1"
                   data-testid="button-view-list"
                 >
-                  <List className="h-3.5 w-3.5" /> List
+                  <List className="h-3.5 w-3.5" /> <span className="hidden sm:inline">List</span>
                 </Button>
                 <Button
                   variant={viewMode === "map" ? "default" : "outline"}
@@ -491,31 +492,33 @@ export default function DistressDeals() {
                   className="gap-1"
                   data-testid="button-view-map"
                 >
-                  <MapIcon className="h-3.5 w-3.5" /> Map
+                  <MapIcon className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Map</span>
                 </Button>
               </div>
             </div>
 
-            <div className="flex items-center gap-6 flex-wrap">
-              <div className="flex items-center gap-2" data-testid="toggle-foreclosure">
+            <div className="flex items-center gap-3 md:gap-6 flex-wrap">
+              <div className="flex items-center gap-1.5 md:gap-2" data-testid="toggle-foreclosure">
                 <Switch checked={toggleForeclosure} onCheckedChange={setToggleForeclosure} id="t-foreclosure" />
-                <Label htmlFor="t-foreclosure" className="text-sm flex items-center gap-1.5 cursor-pointer">
-                  <Gavel className="h-3.5 w-3.5 text-red-500" />
-                  Foreclosure / POS
+                <Label htmlFor="t-foreclosure" className="text-xs md:text-sm flex items-center gap-1 md:gap-1.5 cursor-pointer">
+                  <Gavel className="h-3 w-3 md:h-3.5 md:w-3.5 text-red-500" />
+                  <span className="hidden sm:inline">Foreclosure / POS</span>
+                  <span className="sm:hidden">POS</span>
                 </Label>
               </div>
-              <div className="flex items-center gap-2" data-testid="toggle-motivated">
+              <div className="flex items-center gap-1.5 md:gap-2" data-testid="toggle-motivated">
                 <Switch checked={toggleMotivated} onCheckedChange={setToggleMotivated} id="t-motivated" />
-                <Label htmlFor="t-motivated" className="text-sm flex items-center gap-1.5 cursor-pointer">
-                  <TrendingDown className="h-3.5 w-3.5 text-amber-500" />
-                  Motivated Seller
+                <Label htmlFor="t-motivated" className="text-xs md:text-sm flex items-center gap-1 md:gap-1.5 cursor-pointer">
+                  <TrendingDown className="h-3 w-3 md:h-3.5 md:w-3.5 text-amber-500" />
+                  <span className="hidden sm:inline">Motivated Seller</span>
+                  <span className="sm:hidden">Motivated</span>
                 </Label>
               </div>
-              <div className="flex items-center gap-2" data-testid="toggle-vtb">
+              <div className="flex items-center gap-1.5 md:gap-2" data-testid="toggle-vtb">
                 <Switch checked={toggleVtb} onCheckedChange={setToggleVtb} id="t-vtb" />
-                <Label htmlFor="t-vtb" className="text-sm flex items-center gap-1.5 cursor-pointer">
-                  <DollarSign className="h-3.5 w-3.5 text-purple-500" />
-                  VTB / Seller Financing
+                <Label htmlFor="t-vtb" className="text-xs md:text-sm flex items-center gap-1 md:gap-1.5 cursor-pointer">
+                  <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5 text-purple-500" />
+                  VTB
                 </Label>
               </div>
             </div>
@@ -577,7 +580,7 @@ export default function DistressDeals() {
                   <div className="p-2">
                     <div className="flex items-center justify-between px-2 py-1.5 mb-2">
                       <span className="text-xs text-muted-foreground" data-testid="text-result-count">
-                        {listings.length} in view
+                        {listings.length} {mapBounds ? "in view" : "listings"}
                       </span>
                       <div className="flex gap-1">
                         {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
