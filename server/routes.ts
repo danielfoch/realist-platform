@@ -6454,26 +6454,13 @@ export async function registerRoutes(
         return;
       }
 
-      const province = req.query.province as string | undefined;
-      const city = req.query.city as string | undefined;
-      const minPrice = req.query.minPrice ? Number(req.query.minPrice) : undefined;
-      const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
-      const minBeds = req.query.minBeds ? Number(req.query.minBeds) : undefined;
-      const maxBeds = req.query.maxBeds ? Number(req.query.maxBeds) : undefined;
-      const page = req.query.page ? Number(req.query.page) : 1;
-      const limit = Math.min(Number(req.query.limit) || 48, 200);
       const categories = (req.query.categories as string || "").split(",").filter(Boolean);
       const excludeKeywords = (req.query.excludeKeywords as string || "").split(",").filter(Boolean);
       const minScore = req.query.minScore ? Number(req.query.minScore) : 1;
 
-      const effectiveProvince = province === "all_provinces" ? undefined : province;
-
       const allCategoryKeys = Object.keys(SEARCH_TERMS_BY_CATEGORY);
 
-      const cacheKey = `distress-v3:${JSON.stringify({
-        province: effectiveProvince, city, minPrice, maxPrice, minBeds, maxBeds,
-        cats: allCategoryKeys.sort().join(","),
-      })}`;
+      const cacheKey = `distress-v4:all`;
 
       function applyFilters(listings: any[]) {
         let filtered = listings.filter((l: any) => (l.distress?.distressScore || 0) >= minScore);
@@ -6495,15 +6482,12 @@ export async function registerRoutes(
       const [cachedRow] = await db.select().from(dataCache)
         .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '24 hours'`));
       if (cachedRow) {
-        let cachedData = cachedRow.valueJson as any;
+        const cachedData = cachedRow.valueJson as any;
         const filteredListings = applyFilters(cachedData.listings as any[]);
-        const skip = (page - 1) * limit;
         res.json({
-          listings: filteredListings.slice(skip, skip + limit),
+          listings: filteredListings,
           totalCount: filteredListings.length,
           totalDdfScanned: cachedData.totalDdfScanned || 0,
-          page,
-          limit,
         });
         return;
       }
@@ -6518,7 +6502,7 @@ export async function registerRoutes(
       let totalDdfScanned = 0;
 
       const CONCURRENCY = 2;
-      const TERM_TIMEOUT = 45000;
+      const TERM_TIMEOUT = 60000;
       for (let c = 0; c < uniqueTerms.length; c += CONCURRENCY) {
         const termChunk = uniqueTerms.slice(c, c + CONCURRENCY);
         const results = await Promise.allSettled(
@@ -6527,13 +6511,7 @@ export async function registerRoutes(
             const timer = setTimeout(() => controller.abort(), TERM_TIMEOUT);
             return searchDdfByRemarks({
               searchTerms: [term],
-              stateOrProvince: effectiveProvince,
-              city,
-              minPrice,
-              maxPrice,
-              minBeds,
-              maxBeds,
-              top: 100,
+              top: 200,
               signal: controller.signal,
             }).finally(() => clearTimeout(timer));
           })
@@ -6559,7 +6537,7 @@ export async function registerRoutes(
       let allScored = Array.from(allListings.values()).map(raw => {
         const normalized = normalizeDdfToRepliersFormat(raw);
         const remarks = raw.PublicRemarks || "";
-        const listingProvince = raw.StateOrProvince || effectiveProvince || "";
+        const listingProvince = raw.StateOrProvince || "";
         const distress = scoreDistress(remarks, listingProvince);
         return { ...normalized, distress, rawRemarks: remarks };
       });
@@ -6581,13 +6559,10 @@ export async function registerRoutes(
       });
 
       const filtered = applyFilters(allScored);
-      const skip = (page - 1) * limit;
       res.json({
-        listings: filtered.slice(skip, skip + limit),
+        listings: filtered,
         totalCount: filtered.length,
         totalDdfScanned,
-        page,
-        limit,
       });
     } catch (error: any) {
       console.error("[distress-deals] Error:", error.message);
@@ -6596,47 +6571,34 @@ export async function registerRoutes(
   });
 
   // ─── Distress Deals Pre-Warm ─────────────────────
-  const PREWARM_PROVINCES = ["Ontario", "British Columbia", "Alberta", "Quebec"];
-
   async function prewarmDistressDeals() {
     const { isDdfConfigured } = await import("./creaDdf");
     if (!isDdfConfigured()) {
       console.log("[distress-prewarm] DDF not configured, skipping");
       return;
     }
-    console.log("[distress-prewarm] Starting daily pre-warm...");
-    const allCats = Object.keys(SEARCH_TERMS_BY_CATEGORY).sort().join(",");
-    let warmed = 0;
-    for (const province of PREWARM_PROVINCES) {
-      const cacheKey = `distress-v3:${JSON.stringify({
-        province, city: undefined, minPrice: undefined, maxPrice: undefined, minBeds: undefined, maxBeds: undefined,
-        cats: allCats,
-      })}`;
-      const [existing] = await db.select().from(dataCache)
-        .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '12 hours'`));
-      if (existing) {
-        console.log(`[distress-prewarm] Cache fresh for ${province}, skipping`);
-        continue;
-      }
-      try {
-        console.log(`[distress-prewarm] Warming ${province}...`);
-        const url = `http://localhost:5000/api/distress-deals?province=${encodeURIComponent(province)}&limit=1`;
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 300000);
-        const resp = await fetch(url, { signal: controller.signal });
-        clearTimeout(timer);
-        if (!resp.ok) {
-          console.error(`[distress-prewarm] Failed ${province}: HTTP ${resp.status}`);
-          continue;
-        }
-        warmed++;
-        console.log(`[distress-prewarm] Warmed ${province}`);
-        await new Promise(r => setTimeout(r, 3000));
-      } catch (err: any) {
-        console.error(`[distress-prewarm] Failed ${province}:`, err.message);
-      }
+    const cacheKey = `distress-v4:all`;
+    const [existing] = await db.select().from(dataCache)
+      .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '12 hours'`));
+    if (existing) {
+      console.log("[distress-prewarm] Cache fresh, skipping");
+      return;
     }
-    console.log(`[distress-prewarm] Complete: ${warmed} caches warmed`);
+    console.log("[distress-prewarm] Warming all distress deals...");
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 600000);
+      const resp = await fetch("http://localhost:5000/api/distress-deals?limit=9999", { signal: controller.signal });
+      clearTimeout(timer);
+      if (!resp.ok) {
+        console.error(`[distress-prewarm] Failed: HTTP ${resp.status}`);
+        return;
+      }
+      const data = await resp.json();
+      console.log(`[distress-prewarm] Warmed ${data.totalCount} listings`);
+    } catch (err: any) {
+      console.error(`[distress-prewarm] Failed:`, err.message);
+    }
   }
 
   setTimeout(() => prewarmDistressDeals(), 15000);

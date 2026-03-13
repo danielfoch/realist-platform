@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,18 +24,6 @@ import { DISTRESS_CATEGORIES, type DistressResult, type MatchedTerm, getProvinci
 const CANADA_CENTER: [number, number] = [51.0, -85.0];
 const DEFAULT_ZOOM = 5;
 
-const PROVINCES = [
-  { value: "Ontario", label: "Ontario" },
-  { value: "British Columbia", label: "British Columbia" },
-  { value: "Alberta", label: "Alberta" },
-  { value: "Quebec", label: "Quebec" },
-  { value: "Manitoba", label: "Manitoba" },
-  { value: "Saskatchewan", label: "Saskatchewan" },
-  { value: "Nova Scotia", label: "Nova Scotia" },
-  { value: "New Brunswick", label: "New Brunswick" },
-  { value: "Newfoundland and Labrador", label: "Newfoundland" },
-  { value: "Prince Edward Island", label: "PEI" },
-];
 
 const CATEGORY_ICONS: Record<string, any> = {
   foreclosure_pos: Gavel,
@@ -354,24 +341,16 @@ export default function DistressDeals() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [showSignUpGate, setShowSignUpGate] = useState(false);
-  const [province, setProvince] = useState<string>("Ontario");
-  const [city, setCity] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [minBeds, setMinBeds] = useState("");
-  const [maxBeds, setMaxBeds] = useState("");
   const [toggleForeclosure, setToggleForeclosure] = useState(true);
   const [toggleMotivated, setToggleMotivated] = useState(false);
   const [toggleVtb, setToggleVtb] = useState(false);
   const [viewMode, setViewMode] = useState<"split" | "list" | "map">("split");
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [selectedListing, setSelectedListing] = useState<DistressListing | null>(null);
-  const [mapCenter, setMapCenter] = useState<[number, number]>(CANADA_CENTER);
-  const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([44.0, -79.0]);
+  const [mapZoom, setMapZoom] = useState(7);
   const [mapBounds, setMapBounds] = useState<any>(null);
-  const [searchCity, setSearchCity] = useState("");
-  const [searchProvince, setSearchProvince] = useState("Ontario");
-  const [hasSearched, setHasSearched] = useState(true);
+  const [city, setCity] = useState("");
   const mapRef = useRef<any>(null);
 
   const categories = useMemo(() => {
@@ -382,39 +361,41 @@ export default function DistressDeals() {
     return cats;
   }, [toggleForeclosure, toggleMotivated, toggleVtb]);
 
-  const queryParams = useMemo(() => {
-    const params: Record<string, string> = {};
-    if (searchProvince) params.province = searchProvince;
-    if (searchCity) params.city = searchCity;
-    if (minPrice) params.minPrice = minPrice;
-    if (maxPrice) params.maxPrice = maxPrice;
-    if (minBeds) params.minBeds = minBeds;
-    if (maxBeds) params.maxBeds = maxBeds;
-    if (categories.length > 0 && categories.length < 3) params.categories = categories.join(",");
-    return params;
-  }, [searchProvince, searchCity, minPrice, maxPrice, minBeds, maxBeds, categories]);
-
-  const queryString = useMemo(() => {
-    return new URLSearchParams(queryParams).toString();
-  }, [queryParams]);
-
   const { data, isLoading, isFetching } = useQuery<{
     listings: DistressListing[];
     totalCount: number;
     totalDdfScanned: number;
   }>({
-    queryKey: ["/api/distress-deals", queryString],
+    queryKey: ["/api/distress-deals"],
     queryFn: async () => {
-      const res = await fetch(`/api/distress-deals?${queryString}`);
+      const res = await fetch("/api/distress-deals");
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    enabled: hasSearched,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
   });
 
-  const listings = data?.listings || [];
-  const listingsWithLocation = listings.filter(l => l.map?.latitude && l.map?.longitude);
+  const allListings = data?.listings || [];
+  const allWithLocation = useMemo(() => allListings.filter(l => l.map?.latitude && l.map?.longitude), [allListings]);
+
+  const listings = useMemo(() => {
+    let filtered = allListings;
+    if (categories.length > 0 && categories.length < 3) {
+      filtered = filtered.filter(l =>
+        categories.some(cat => l.distress?.categoriesTriggered?.[cat as keyof typeof l.distress.categoriesTriggered])
+      );
+    }
+    if (mapBounds) {
+      filtered = filtered.filter(l => {
+        const lat = l.map?.latitude;
+        const lng = l.map?.longitude;
+        if (!lat || !lng) return false;
+        return lat >= mapBounds.latMin && lat <= mapBounds.latMax &&
+               lng >= mapBounds.lngMin && lng <= mapBounds.lngMax;
+      });
+    }
+    return filtered;
+  }, [allListings, categories, mapBounds]);
 
   const handleListingClick = useCallback((listing: DistressListing) => {
     if (!user) {
@@ -424,11 +405,8 @@ export default function DistressDeals() {
     setSelectedListing(listing);
   }, [user]);
 
-  const handleSearch = useCallback(() => {
-    setSearchCity(city);
-    setSearchProvince(province);
-    setHasSearched(true);
-
+  const handleCitySearch = useCallback(() => {
+    if (!city.trim()) return;
     const cityCoords: Record<string, [number, number]> = {
       toronto: [43.65, -79.38],
       vancouver: [49.28, -123.12],
@@ -440,67 +418,28 @@ export default function DistressDeals() {
       hamilton: [43.25, -79.87],
       halifax: [44.65, -63.57],
       london: [42.98, -81.25],
+      victoria: [48.43, -123.37],
+      kelowna: [49.89, -119.50],
+      saskatoon: [52.13, -106.67],
+      regina: [50.45, -104.62],
+      kitchener: [43.45, -80.48],
+      barrie: [44.39, -79.69],
+      oshawa: [43.90, -78.85],
+      brampton: [43.68, -79.77],
+      mississauga: [43.59, -79.64],
     };
-
-    const lowerCity = city.toLowerCase();
+    const lowerCity = city.toLowerCase().trim();
     if (cityCoords[lowerCity]) {
       setMapCenter(cityCoords[lowerCity]);
       setMapZoom(11);
-    } else if (province) {
-      const provCoords: Record<string, [number, number]> = {
-        Ontario: [44.0, -79.0],
-        "British Columbia": [49.0, -123.0],
-        Alberta: [51.5, -114.0],
-        Quebec: [46.5, -72.0],
-        Manitoba: [49.9, -97.1],
-        Saskatchewan: [50.4, -104.6],
-        "Nova Scotia": [44.6, -63.5],
-        "New Brunswick": [46.5, -66.5],
-        "Newfoundland and Labrador": [47.6, -52.7],
-        "Prince Edward Island": [46.2, -63.0],
-      };
-      if (provCoords[province]) {
-        setMapCenter(provCoords[province]);
-        setMapZoom(7);
-      }
     }
-  }, [city, province]);
+  }, [city]);
 
   const handleShare = useCallback(() => {
-    const url = `${window.location.origin}/tools/distress-deals?${queryString}`;
-    navigator.clipboard.writeText(url).then(() => {
+    navigator.clipboard.writeText(`${window.location.origin}/tools/distress-deals`).then(() => {
       toast({ title: "Link copied", description: "Share link has been copied to clipboard" });
     });
-  }, [queryString, toast]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const p = params.get("province");
-    const c = params.get("city");
-    if (p) { setProvince(p); setSearchProvince(p); }
-    if (c) { setCity(c); setSearchCity(c); }
-    if (p || c) setHasSearched(true);
-  }, []);
-
-  useEffect(() => {
-    if (!searchProvince || searchProvince === "all_provinces") return;
-    const provCoords: Record<string, [number, number]> = {
-      Ontario: [44.0, -79.0],
-      "British Columbia": [49.0, -123.0],
-      Alberta: [51.5, -114.0],
-      Quebec: [46.5, -72.0],
-      Manitoba: [49.9, -97.1],
-      Saskatchewan: [50.4, -104.6],
-      "Nova Scotia": [44.6, -63.5],
-      "New Brunswick": [46.5, -66.5],
-      "Newfoundland and Labrador": [47.6, -52.7],
-      "Prince Edward Island": [46.2, -63.0],
-    };
-    if (provCoords[searchProvince]) {
-      setMapCenter(provCoords[searchProvince]);
-      setMapZoom(7);
-    }
-  }, [searchProvince]);
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col" data-testid="distress-deals-page">
@@ -587,29 +526,21 @@ export default function DistressDeals() {
             <div className={`border-r bg-card flex flex-col ${viewMode === "split" ? "w-[420px] flex-shrink-0" : "flex-1"}`}>
               <div className="p-3 border-b space-y-3">
                 <div className="flex gap-2">
-                  <Select value={province} onValueChange={(val) => { setProvince(val); setSearchProvince(val); }}>
-                    <SelectTrigger className="w-[160px]" data-testid="select-province">
-                      <SelectValue placeholder="Province" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all_provinces">All Provinces</SelectItem>
-                      {PROVINCES.map(p => (
-                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <Input
-                    placeholder="City"
+                    placeholder="Jump to city..."
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     className="flex-1"
                     data-testid="input-city"
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    onKeyDown={(e) => e.key === "Enter" && handleCitySearch()}
                   />
-                  <Button onClick={handleSearch} size="sm" className="gap-1" data-testid="button-search">
+                  <Button onClick={handleCitySearch} size="sm" className="gap-1" data-testid="button-search">
                     <Search className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="text-[10px] text-muted-foreground px-1">
+                  Drag the map to explore listings. The list updates as you move.
+                </p>
 
                 <Button
                   variant="ghost"
@@ -623,68 +554,20 @@ export default function DistressDeals() {
                 </Button>
 
                 {filtersOpen && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Min Price</Label>
-                      <Input
-                        placeholder="$0"
-                        value={minPrice}
-                        onChange={(e) => setMinPrice(e.target.value)}
-                        type="number"
-                        data-testid="input-min-price"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Max Price</Label>
-                      <Input
-                        placeholder="No max"
-                        value={maxPrice}
-                        onChange={(e) => setMaxPrice(e.target.value)}
-                        type="number"
-                        data-testid="input-max-price"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Min Beds</Label>
-                      <Input
-                        placeholder="Any"
-                        value={minBeds}
-                        onChange={(e) => setMinBeds(e.target.value)}
-                        type="number"
-                        data-testid="input-min-beds"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Max Beds</Label>
-                      <Input
-                        placeholder="Any"
-                        value={maxBeds}
-                        onChange={(e) => setMaxBeds(e.target.value)}
-                        type="number"
-                        data-testid="input-max-beds"
-                      />
-                    </div>
+                  <div className="text-xs text-muted-foreground px-1 py-1">
+                    All {data?.totalCount || 0} distress listings loaded across Canada.
+                    {mapBounds && ` Showing ${listings.length} in current view.`}
                   </div>
                 )}
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                {!hasSearched && (
-                  <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                    <Gavel className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                    <h3 className="font-semibold text-lg mb-2">Find Distressed Deals</h3>
-                    <p className="text-sm text-muted-foreground max-w-xs">
-                      Select a province and/or city, then search to find power-of-sale, foreclosure, motivated seller, and VTB listings.
-                    </p>
-                  </div>
-                )}
-
                 {isLoading && (
                   <div className="p-6 space-y-4">
                     <div className="flex flex-col items-center text-center space-y-2 py-4">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <p className="text-sm font-medium">Scanning MLS listings for distress signals...</p>
-                      <p className="text-xs text-muted-foreground">First search may take up to 60 seconds as we scan thousands of listings</p>
+                      <p className="text-sm font-medium">Loading distress listings...</p>
+                      <p className="text-xs text-muted-foreground">Pre-loaded data should appear instantly</p>
                     </div>
                     {[...Array(4)].map((_, i) => (
                       <Skeleton key={i} className="h-28 rounded-lg" />
@@ -692,21 +575,21 @@ export default function DistressDeals() {
                   </div>
                 )}
 
-                {hasSearched && !isLoading && listings.length === 0 && (
+                {!isLoading && listings.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-64 text-center p-8">
                     <Search className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                    <h3 className="font-medium mb-1">No distress signals found</h3>
+                    <h3 className="font-medium mb-1">No distress listings in this area</h3>
                     <p className="text-sm text-muted-foreground">
-                      Try expanding your search area or adjusting filters. Not all listings contain distress-related language.
+                      Try zooming out or panning the map to a different region. You can also toggle more categories above.
                     </p>
                   </div>
                 )}
 
-                {hasSearched && !isLoading && listings.length > 0 && (
+                {!isLoading && listings.length > 0 && (
                   <div className="p-2">
                     <div className="flex items-center justify-between px-2 py-1.5 mb-2">
                       <span className="text-xs text-muted-foreground" data-testid="text-result-count">
-                        {data?.totalCount || 0} flagged
+                        {listings.length} in view
                       </span>
                       <div className="flex gap-1">
                         {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
@@ -786,7 +669,7 @@ export default function DistressDeals() {
                 <MapBoundsTracker onBoundsChange={setMapBounds} />
                 <MapCenterUpdater center={mapCenter} zoom={mapZoom} />
 
-                {listingsWithLocation.map((listing) => (
+                {allWithLocation.map((listing) => (
                   <Marker
                     key={listing.mlsNumber}
                     position={[listing.map!.latitude, listing.map!.longitude]}
