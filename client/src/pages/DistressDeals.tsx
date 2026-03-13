@@ -452,8 +452,8 @@ export default function DistressDeals() {
       />
       <Navigation />
 
-      <div className="flex-1 flex flex-col">
-        <div className="border-b bg-card relative z-20">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="border-b bg-card relative z-20 flex-shrink-0">
           <div className="max-w-[1800px] mx-auto px-4 py-4">
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -693,7 +693,7 @@ export default function DistressDeals() {
           )}
         </div>
 
-        <div className="border-t bg-muted/30 px-4 py-2">
+        <div className="border-t bg-muted/30 px-4 py-2 flex-shrink-0">
           <p className="text-[10px] text-muted-foreground text-center max-w-4xl mx-auto" data-testid="text-disclaimer">
             This is not legal advice. "Power of Sale"/foreclosure processes vary by province. Listings are flagged based on MLS remarks and signals; verify details with professionals.
             Distress Score is derived from listing remarks, provincial sale terminology, and available listing signals. It is not a guarantee of distressed status.
