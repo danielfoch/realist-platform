@@ -526,19 +526,6 @@ export default function DistressDeals() {
           {(viewMode === "split" || viewMode === "list") && (
             <div className={`border-r bg-card flex flex-col ${viewMode === "split" ? "w-[420px] flex-shrink-0" : "flex-1"}`}>
               <div className="p-3 border-b space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Jump to city..."
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="flex-1"
-                    data-testid="input-city"
-                    onKeyDown={(e) => e.key === "Enter" && handleCitySearch()}
-                  />
-                  <Button onClick={handleCitySearch} size="sm" className="gap-1" data-testid="button-search">
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </div>
                 <p className="text-[10px] text-muted-foreground px-1">
                   Drag the map to explore listings. The list updates as you move.
                 </p>
