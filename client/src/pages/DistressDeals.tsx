@@ -453,7 +453,7 @@ export default function DistressDeals() {
       <Navigation />
 
       <div className="flex-1 flex flex-col">
-        <div className="border-b bg-card">
+        <div className="border-b bg-card relative z-10">
           <div className="max-w-[1800px] mx-auto px-4 py-4">
             <div className="flex items-center justify-between mb-3">
               <div>
