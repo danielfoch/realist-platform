@@ -343,8 +343,8 @@ export default function DistressDeals() {
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   const [showSignUpGate, setShowSignUpGate] = useState(false);
   const [toggleForeclosure, setToggleForeclosure] = useState(true);
-  const [toggleMotivated, setToggleMotivated] = useState(false);
-  const [toggleVtb, setToggleVtb] = useState(false);
+  const [toggleMotivated, setToggleMotivated] = useState(true);
+  const [toggleVtb, setToggleVtb] = useState(true);
   const [viewMode, setViewMode] = useState<"split" | "list" | "map">(isMobile ? "list" : "split");
   const [filtersOpen, setFiltersOpen] = useState(!isMobile);
   const [selectedListing, setSelectedListing] = useState<DistressListing | null>(null);
