@@ -178,6 +178,18 @@ function MapBoundsTracker({ onBoundsChange }: { onBoundsChange: (bounds: any) =>
       });
     },
   });
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+      const b = map.getBounds();
+      onBoundsChange({
+        latMin: b.getSouth(),
+        latMax: b.getNorth(),
+        lngMin: b.getWest(),
+        lngMax: b.getEast(),
+      });
+    }, 100);
+  }, [map, onBoundsChange]);
   return null;
 }
 
@@ -385,8 +397,6 @@ export default function DistressDeals() {
       categories.some(cat => l.distress?.categoriesTriggered?.[cat as keyof typeof l.distress.categoriesTriggered])
     );
   }, [allListings, categories]);
-
-  const allWithLocation = useMemo(() => categoryFiltered.filter(l => l.map?.latitude && l.map?.longitude), [categoryFiltered]);
 
   const listings = useMemo(() => {
     if (!mapBounds) return categoryFiltered;
@@ -660,7 +670,7 @@ export default function DistressDeals() {
                 <MapBoundsTracker onBoundsChange={setMapBounds} />
                 <MapCenterUpdater center={mapCenter} zoom={mapZoom} />
 
-                {allWithLocation.map((listing) => (
+                {listings.filter(l => l.map?.latitude && l.map?.longitude).slice(0, 500).map((listing) => (
                   <Marker
                     key={listing.mlsNumber}
                     position={[listing.map!.latitude, listing.map!.longitude]}
