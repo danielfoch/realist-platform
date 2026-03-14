@@ -6492,6 +6492,31 @@ export async function registerRoutes(
         return;
       }
 
+      const [staleRow] = await db.select().from(dataCache)
+        .where(eq(dataCache.key, cacheKey));
+      if (staleRow) {
+        const staleData = staleRow.valueJson as any;
+        const filteredListings = applyFilters(staleData.listings as any[]);
+        console.log(`[distress-deals] Serving stale cache (${filteredListings.length} listings) while pre-warm refreshes`);
+        res.json({
+          listings: filteredListings,
+          totalCount: filteredListings.length,
+          totalDdfScanned: staleData.totalDdfScanned || 0,
+          stale: true,
+        });
+        return;
+      }
+
+      res.json({
+        listings: [],
+        totalCount: 0,
+        totalDdfScanned: 0,
+        warming: true,
+        message: "Data is being loaded for the first time. Please refresh in a few minutes.",
+      });
+      return;
+
+      /* Legacy live-fetch code removed — all data comes from pre-warm cache */
       const searchTerms: string[] = [];
       for (const cat of allCategoryKeys) {
         searchTerms.push(...(SEARCH_TERMS_BY_CATEGORY[cat] || []));

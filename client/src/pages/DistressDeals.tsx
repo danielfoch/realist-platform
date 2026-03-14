@@ -378,6 +378,8 @@ export default function DistressDeals() {
     listings: DistressListing[];
     totalCount: number;
     totalDdfScanned: number;
+    warming?: boolean;
+    message?: string;
   }>({
     queryKey: ["/api/distress-deals"],
     queryFn: async () => {
@@ -386,6 +388,10 @@ export default function DistressDeals() {
       return res.json();
     },
     staleTime: 30 * 60 * 1000,
+    refetchInterval: (query) => {
+      const d = query.state.data as any;
+      return d?.warming ? 15000 : false;
+    },
   });
 
   const allListings = data?.listings || [];
@@ -563,12 +569,12 @@ export default function DistressDeals() {
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                {isLoading && (
+                {(isLoading || data?.warming) && (
                   <div className="p-6 space-y-4">
                     <div className="flex flex-col items-center text-center space-y-2 py-4">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <p className="text-sm font-medium">Loading distress listings...</p>
-                      <p className="text-xs text-muted-foreground">Pre-loaded data should appear instantly</p>
+                      <p className="text-sm font-medium">{data?.warming ? "Building distress database..." : "Loading distress listings..."}</p>
+                      <p className="text-xs text-muted-foreground">{data?.warming ? "First-time scan takes 2-3 minutes. This page will auto-refresh." : "Data should appear momentarily"}</p>
                     </div>
                     {[...Array(4)].map((_, i) => (
                       <Skeleton key={i} className="h-28 rounded-lg" />
