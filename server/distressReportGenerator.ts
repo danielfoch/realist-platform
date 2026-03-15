@@ -75,7 +75,7 @@ interface ScoredListing {
   distress: {
     distressScore: number;
     confidence: string;
-    categoriesTriggered: { foreclosure_pos: boolean; motivated: boolean; vtb: boolean };
+    categoriesTriggered: { foreclosure_pos: boolean; motivated: boolean; vtb: boolean; commercial: boolean };
   };
   rawRemarks: string;
 }

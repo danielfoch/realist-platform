@@ -1,6 +1,6 @@
 export interface MatchedTerm {
   term: string;
-  category: "foreclosure_pos" | "motivated" | "vtb";
+  category: "foreclosure_pos" | "motivated" | "vtb" | "commercial";
   weight: "strong" | "medium";
   points: number;
 }
@@ -12,12 +12,13 @@ export interface DistressResult {
     foreclosure_pos: boolean;
     motivated: boolean;
     vtb: boolean;
+    commercial: boolean;
   };
   matchedTerms: MatchedTerm[];
   rawScore: number;
 }
 
-type Category = "foreclosure_pos" | "motivated" | "vtb";
+type Category = "foreclosure_pos" | "motivated" | "vtb" | "commercial";
 
 interface TermEntry {
   term: string;
@@ -126,6 +127,33 @@ const TERMS: TermEntry[] = [
   { term: "vendeur finance", category: "vtb", weight: "strong" },
   { term: "agreement for sale", category: "vtb", weight: "medium" },
   { term: "terms available", category: "vtb", weight: "medium" },
+
+  { term: "commercial property", category: "commercial", weight: "strong" },
+  { term: "commercial building", category: "commercial", weight: "strong" },
+  { term: "commercial space", category: "commercial", weight: "strong" },
+  { term: "commercial unit", category: "commercial", weight: "strong" },
+  { term: "retail space", category: "commercial", weight: "strong" },
+  { term: "office space", category: "commercial", weight: "strong" },
+  { term: "office building", category: "commercial", weight: "strong" },
+  { term: "warehouse", category: "commercial", weight: "strong" },
+  { term: "industrial", category: "commercial", weight: "medium" },
+  { term: "mixed use", category: "commercial", weight: "strong" },
+  { term: "mixed-use", category: "commercial", weight: "strong" },
+  { term: "strip mall", category: "commercial", weight: "strong" },
+  { term: "plaza", category: "commercial", weight: "medium" },
+  { term: "storefront", category: "commercial", weight: "strong" },
+  { term: "store front", category: "commercial", weight: "strong" },
+  { term: "multi-tenant", category: "commercial", weight: "strong" },
+  { term: "multi tenant", category: "commercial", weight: "strong" },
+  { term: "triple net", category: "commercial", weight: "strong" },
+  { term: "nnn", category: "commercial", weight: "strong" },
+  { term: "cap rate", category: "commercial", weight: "medium" },
+  { term: "commercial lease", category: "commercial", weight: "strong" },
+  { term: "zoned commercial", category: "commercial", weight: "strong" },
+  { term: "business for sale", category: "commercial", weight: "strong" },
+  { term: "investment property", category: "commercial", weight: "medium" },
+  { term: "income property", category: "commercial", weight: "medium" },
+  { term: "revenue property", category: "commercial", weight: "medium" },
 ];
 
 const PATTERN_COMBOS: Array<{
@@ -221,7 +249,7 @@ export function scoreDistress(
   const empty: DistressResult = {
     distressScore: 0,
     confidence: "low",
-    categoriesTriggered: { foreclosure_pos: false, motivated: false, vtb: false },
+    categoriesTriggered: { foreclosure_pos: false, motivated: false, vtb: false, commercial: false },
     matchedTerms: [],
     rawScore: 0,
   };
@@ -292,6 +320,7 @@ export function scoreDistress(
     foreclosure_pos: matchedTerms.some(m => m.category === "foreclosure_pos"),
     motivated: matchedTerms.some(m => m.category === "motivated"),
     vtb: matchedTerms.some(m => m.category === "vtb"),
+    commercial: matchedTerms.some(m => m.category === "commercial"),
   };
 
   const strongHits = matchedTerms.filter(m => m.weight === "strong");
@@ -369,5 +398,11 @@ export const DISTRESS_CATEGORIES = {
     shortLabel: "VTB",
     color: "#8b5cf6",
     description: "Vendor take-back mortgage, seller financing, or owner financing offered",
+  },
+  commercial: {
+    label: "Commercial / Mixed-Use",
+    shortLabel: "Commercial",
+    color: "#06b6d4",
+    description: "Commercial, retail, office, warehouse, mixed-use, or investment properties",
   },
 } as const;

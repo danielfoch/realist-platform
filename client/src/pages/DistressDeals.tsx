@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import "leaflet.markercluster";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +32,7 @@ const CATEGORY_ICONS: Record<string, any> = {
   foreclosure_pos: Gavel,
   motivated: TrendingDown,
   vtb: DollarSign,
+  commercial: Building2,
 };
 
 interface DistressListing {
@@ -86,9 +90,19 @@ const purpleIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
+const blueIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
 function getListingIcon(listing: DistressListing) {
   if (listing.distress.categoriesTriggered.foreclosure_pos) return redIcon;
   if (listing.distress.categoriesTriggered.vtb) return purpleIcon;
+  if (listing.distress.categoriesTriggered.commercial) return blueIcon;
   return orangeIcon;
 }
 
@@ -164,6 +178,66 @@ function CategoryBadges({ categories }: { categories: DistressResult["categories
       })}
     </div>
   );
+}
+
+function MarkerClusterLayer({ listings, onListingClick }: { listings: DistressListing[]; onListingClick: (listing: DistressListing) => void }) {
+  const map = useMap();
+  const clusterRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (clusterRef.current) {
+      map.removeLayer(clusterRef.current);
+    }
+
+    const cluster = (L as any).markerClusterGroup({
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      chunkedLoading: true,
+      disableClusteringAtZoom: 16,
+      iconCreateFunction: (c: any) => {
+        const count = c.getChildCount();
+        let size = "small";
+        let dim = 36;
+        if (count > 100) { size = "large"; dim = 50; }
+        else if (count > 30) { size = "medium"; dim = 44; }
+        return L.divIcon({
+          html: `<div style="background:rgba(220,38,38,0.85);color:#fff;border-radius:50%;width:${dim}px;height:${dim}px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${dim < 40 ? 12 : 14}px;border:2px solid rgba(255,255,255,0.8);box-shadow:0 2px 6px rgba(0,0,0,0.3)">${count}</div>`,
+          className: "marker-cluster-custom",
+          iconSize: L.point(dim, dim),
+        });
+      },
+    });
+
+    const markers = listings
+      .filter(l => l.map?.latitude && l.map?.longitude)
+      .map(listing => {
+        const marker = L.marker(
+          [listing.map!.latitude, listing.map!.longitude],
+          { icon: getListingIcon(listing) }
+        );
+        marker.bindPopup(
+          `<div style="min-width:180px"><strong>${escHtml(formatPrice(listing.listPrice))}</strong><br/>` +
+          `<span style="font-size:0.85em">${escHtml(formatAddress(listing.address))}</span><br/>` +
+          `<span style="font-size:0.8em;color:#666">Score: ${listing.distress.distressScore} (${escHtml(listing.distress.confidence)})</span></div>`
+        );
+        marker.on("click", () => onListingClick(listing));
+        return marker;
+      });
+
+    cluster.addLayers(markers);
+    map.addLayer(cluster);
+    clusterRef.current = cluster;
+
+    return () => {
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+      }
+    };
+  }, [listings, map, onListingClick]);
+
+  return null;
 }
 
 function MapBoundsTracker({ onBoundsChange }: { onBoundsChange: (bounds: any) => void }) {
@@ -313,7 +387,18 @@ function ListingDetailModal({
   );
 }
 
-function SignUpGateModal({ onClose, toolName }: { onClose: () => void; toolName: string }) {
+function SignUpGateModal({ onClose, toolName, pendingMls }: { onClose: () => void; toolName: string; pendingMls?: string | null }) {
+  const returnUrl = pendingMls
+    ? `/tools/distress-deals?listing=${encodeURIComponent(pendingMls)}`
+    : "/tools/distress-deals";
+  const loginHref = `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
+
+  const handleAuthClick = () => {
+    if (pendingMls) {
+      sessionStorage.setItem("pendingDistressListing", pendingMls);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
@@ -331,7 +416,7 @@ function SignUpGateModal({ onClose, toolName }: { onClose: () => void; toolName:
           </p>
           <div className="space-y-2 pt-2">
             <Button asChild className="w-full gap-2" data-testid="button-gate-signup">
-              <a href={`/login?returnUrl=${encodeURIComponent("/tools/distress-deals")}`}>
+              <a href={loginHref} onClick={handleAuthClick}>
                 <UserIcon className="h-4 w-4" />
                 Sign Up — It's Free
               </a>
@@ -341,7 +426,7 @@ function SignUpGateModal({ onClose, toolName }: { onClose: () => void; toolName:
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Already have an account? <a href={`/login?returnUrl=${encodeURIComponent("/tools/distress-deals")}`} className="text-primary underline font-medium" data-testid="link-gate-login">Sign in</a>
+            Already have an account? <a href={loginHref} onClick={handleAuthClick} className="text-primary underline font-medium" data-testid="link-gate-login">Sign in</a>
           </p>
         </div>
       </div>
@@ -357,6 +442,8 @@ export default function DistressDeals() {
   const [toggleForeclosure, setToggleForeclosure] = useState(true);
   const [toggleMotivated, setToggleMotivated] = useState(true);
   const [toggleVtb, setToggleVtb] = useState(true);
+  const [toggleCommercial, setToggleCommercial] = useState(true);
+  const [pendingListingMls, setPendingListingMls] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"split" | "list" | "map">(isMobile ? "list" : "split");
   const [filtersOpen, setFiltersOpen] = useState(!isMobile);
   const [selectedListing, setSelectedListing] = useState<DistressListing | null>(null);
@@ -371,8 +458,9 @@ export default function DistressDeals() {
     if (toggleForeclosure) cats.push("foreclosure_pos");
     if (toggleMotivated) cats.push("motivated");
     if (toggleVtb) cats.push("vtb");
+    if (toggleCommercial) cats.push("commercial");
     return cats;
-  }, [toggleForeclosure, toggleMotivated, toggleVtb]);
+  }, [toggleForeclosure, toggleMotivated, toggleVtb, toggleCommercial]);
 
   const { data, isLoading, isFetching } = useQuery<{
     listings: DistressListing[];
@@ -398,7 +486,7 @@ export default function DistressDeals() {
 
   const categoryFiltered = useMemo(() => {
     if (categories.length === 0) return [];
-    if (categories.length >= 3) return allListings;
+    if (categories.length >= 4) return allListings;
     return allListings.filter(l =>
       categories.some(cat => l.distress?.categoriesTriggered?.[cat as keyof typeof l.distress.categoriesTriggered])
     );
@@ -417,11 +505,30 @@ export default function DistressDeals() {
 
   const handleListingClick = useCallback((listing: DistressListing) => {
     if (!user) {
+      setPendingListingMls(listing.mlsNumber);
       setShowSignUpGate(true);
       return;
     }
     setSelectedListing(listing);
   }, [user]);
+
+  useEffect(() => {
+    if (user && allListings.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const mlsFromUrl = urlParams.get("listing");
+      const mlsFromStorage = sessionStorage.getItem("pendingDistressListing");
+      const targetMls = mlsFromUrl || mlsFromStorage;
+      if (targetMls) {
+        const found = allListings.find(l => l.mlsNumber === targetMls);
+        if (found) setSelectedListing(found);
+        sessionStorage.removeItem("pendingDistressListing");
+        if (mlsFromUrl) {
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, "", newUrl);
+        }
+      }
+    }
+  }, [user, allListings]);
 
   const handleCitySearch = useCallback(() => {
     if (!city.trim()) return;
@@ -462,9 +569,9 @@ export default function DistressDeals() {
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden" data-testid="distress-deals-page">
       <SEO
-        title="Distress Deals Browser - Foreclosure, Power of Sale, VTB | Realist.ca"
-        description="Find power-of-sale, court-ordered, bank-owned, motivated sellers, and seller-financing opportunities across Canada using MLS data."
-        keywords="foreclosure canada, power of sale, court ordered sale, motivated seller, vtb, vendor take back, distressed property, bank owned"
+        title="Distress Deals Browser - Foreclosure, Power of Sale, VTB, Commercial | Realist.ca"
+        description="Find power-of-sale, court-ordered, bank-owned, motivated sellers, seller-financing, and commercial/mixed-use investment opportunities across Canada using MLS data."
+        keywords="foreclosure canada, power of sale, court ordered sale, motivated seller, vtb, vendor take back, distressed property, bank owned, commercial real estate, mixed use"
         canonicalUrl="/tools/distress-deals"
       />
       <Navigation />
@@ -479,7 +586,7 @@ export default function DistressDeals() {
                   Distress Deals
                 </h1>
                 <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
-                  Foreclosure, Power of Sale, Motivated Sellers & VTB opportunities
+                  Foreclosure, Power of Sale, Motivated Sellers, VTB & Commercial opportunities
                 </p>
               </div>
               <div className="flex items-center gap-1 md:gap-2">
@@ -535,6 +642,14 @@ export default function DistressDeals() {
                 <Label htmlFor="t-vtb" className="text-xs md:text-sm flex items-center gap-1 md:gap-1.5 cursor-pointer">
                   <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5 text-purple-500" />
                   VTB
+                </Label>
+              </div>
+              <div className="flex items-center gap-1.5 md:gap-2" data-testid="toggle-commercial">
+                <Switch checked={toggleCommercial} onCheckedChange={setToggleCommercial} id="t-commercial" />
+                <Label htmlFor="t-commercial" className="text-xs md:text-sm flex items-center gap-1 md:gap-1.5 cursor-pointer">
+                  <Building2 className="h-3 w-3 md:h-3.5 md:w-3.5 text-cyan-500" />
+                  <span className="hidden sm:inline">Commercial</span>
+                  <span className="sm:hidden">CRE</span>
                 </Label>
               </div>
             </div>
@@ -675,25 +790,7 @@ export default function DistressDeals() {
                 />
                 <MapBoundsTracker onBoundsChange={setMapBounds} />
                 <MapCenterUpdater center={mapCenter} zoom={mapZoom} />
-
-                {listings.filter(l => l.map?.latitude && l.map?.longitude).slice(0, 500).map((listing) => (
-                  <Marker
-                    key={listing.mlsNumber}
-                    position={[listing.map!.latitude, listing.map!.longitude]}
-                    icon={getListingIcon(listing)}
-                    eventHandlers={{ click: () => handleListingClick(listing) }}
-                  >
-                    <Popup>
-                      <div style={{ minWidth: 180 }}>
-                        <strong>{formatPrice(listing.listPrice)}</strong><br />
-                        <span style={{ fontSize: "0.85em" }}>{formatAddress(listing.address)}</span><br />
-                        <span style={{ fontSize: "0.8em", color: "#666" }}>
-                          Score: {listing.distress.distressScore} ({listing.distress.confidence})
-                        </span>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
+                <MarkerClusterLayer listings={categoryFiltered} onListingClick={handleListingClick} />
               </MapContainer>
             </div>
           )}
@@ -718,6 +815,7 @@ export default function DistressDeals() {
         <SignUpGateModal
           onClose={() => setShowSignUpGate(false)}
           toolName="Distress Deals Browser"
+          pendingMls={pendingListingMls}
         />
       )}
     </div>

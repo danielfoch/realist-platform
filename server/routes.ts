@@ -6440,6 +6440,20 @@ export async function registerRoutes(
       "vendor financing",
       "financement vendeur",
     ],
+    commercial: [
+      "commercial property",
+      "commercial building",
+      "retail space",
+      "office space",
+      "warehouse",
+      "mixed use",
+      "strip mall",
+      "storefront",
+      "triple net",
+      "zoned commercial",
+      "business for sale",
+      "investment property",
+    ],
   };
 
   app.get("/api/distress-deals", async (req, res) => {
@@ -6460,7 +6474,7 @@ export async function registerRoutes(
 
       const allCategoryKeys = Object.keys(SEARCH_TERMS_BY_CATEGORY);
 
-      const cacheKey = `distress-v4:all`;
+      const cacheKey = `distress-v5:all`;
 
       function applyFilters(listings: any[]) {
         let filtered = listings.filter((l: any) => (l.distress?.distressScore || 0) >= minScore);
@@ -6602,7 +6616,7 @@ export async function registerRoutes(
       console.log("[distress-prewarm] DDF not configured, skipping");
       return;
     }
-    const cacheKey = `distress-v4:all`;
+    const cacheKey = `distress-v5:all`;
     const [existing] = await db.select().from(dataCache)
       .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '12 hours'`));
     if (existing) {
