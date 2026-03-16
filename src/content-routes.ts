@@ -459,5 +459,88 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
     }
   });
 
+  // ==================== CITY YIELD RANKINGS ====================
+
+  // GET /api/content/city-yields - Get city-level rent/yield rankings for SEO content
+  router.get('/content/city-yields', async (req: Request, res: Response) => {
+    try {
+      const { limit = 10, province } = req.query;
+      
+      // Demo mode - return sample city yield data
+      if (isDemoMode()) {
+        const demoCityYields = [
+          { city: 'Windsor', province: 'ON', median_rent: 1650, sample_size: 450, yield_estimate: 8.2 },
+          { city: 'Saint John', province: 'NB', median_rent: 1200, sample_size: 280, yield_estimate: 7.8 },
+          { city: 'Trois-Rivières', province: 'QC', median_rent: 1050, sample_size: 320, yield_estimate: 7.5 },
+          { city: 'Saskatoon', province: 'SK', median_rent: 1400, sample_size: 510, yield_estimate: 6.9 },
+          { city: 'London', province: 'ON', median_rent: 1850, sample_size: 890, yield_estimate: 6.4 },
+          { city: 'Kingston', province: 'ON', median_rent: 1700, sample_size: 420, yield_estimate: 6.1 },
+          { city: 'St. Catharines', province: 'ON', median_rent: 1600, sample_size: 380, yield_estimate: 5.8 },
+          { city: 'Oshawa', province: 'ON', median_rent: 1900, sample_size: 540, yield_estimate: 5.5 },
+          { city: 'Kitchener', province: 'ON', median_rent: 1950, sample_size: 670, yield_estimate: 5.2 },
+          { city: 'Hamilton', province: 'ON', median_rent: 2000, sample_size: 780, yield_estimate: 5.0 },
+        ];
+        
+        let filtered = demoCityYields;
+        if (province) {
+          filtered = demoCityYields.filter(c => c.province === province);
+        }
+        
+        return res.json({
+          success: true,
+          data: filtered.slice(0, Number(limit)),
+          meta: {
+            source: 'Realist Rent Pulse',
+            updated_at: new Date().toISOString(),
+            note: 'Yield estimates based on average rental rates vs. median property prices'
+          }
+        });
+      }
+      
+      // Production mode - query rent_pulse table
+      let query = `
+        SELECT 
+          city,
+          province,
+          AVG(median_rent) as median_rent,
+          SUM(sample_size) as sample_size,
+          COUNT(*) as data_points
+        FROM rent_pulse
+        WHERE bedrooms = 'all'
+      `;
+      
+      const params: unknown[] = [];
+      
+      if (province) {
+        params.push(province);
+        query += ` AND province = $${params.length}`;
+      }
+      
+      query += ` GROUP BY city, province ORDER BY median_rent DESC LIMIT $${params.length + 1}`;
+      params.push(Number(limit));
+      
+      const result = await database.query(query, params);
+      
+      // Add yield estimates (rough calculation based on typical price-to-rent ratio)
+      const cityYields = result.rows.map(row => ({
+        ...row,
+        median_rent: row.median_rent / 100, // Convert from cents to dollars
+        yield_estimate: Math.round((row.median_rent * 12 / 300000) * 100) / 100 // Rough cap rate estimate
+      }));
+      
+      res.json({
+        success: true,
+        data: cityYields,
+        meta: {
+          source: 'Realist Rent Pulse',
+          updated_at: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching city yields:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch city yields' });
+    }
+  });
+
   return router;
 }
