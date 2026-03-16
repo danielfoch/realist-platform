@@ -53,6 +53,7 @@ import FixedVsVariable from "@/pages/FixedVsVariable";
 import LandClaimScreener from "@/pages/LandClaimScreener";
 import DistressDeals from "@/pages/DistressDeals";
 import DistressReport from "@/pages/DistressReport";
+import MultiplexFit from "@/pages/MultiplexFit";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -90,6 +91,7 @@ function Router() {
       <Route path="/tools/fixed-vs-variable" component={FixedVsVariable} />
       <Route path="/tools/land-claim-screener" component={LandClaimScreener} />
       <Route path="/tools/distress-deals" component={DistressDeals} />
+      <Route path="/multiplex-investor-fit" component={MultiplexFit} />
       <Route path="/insights/distress-report" component={DistressReport} />
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/insights/market-report" component={MarketReport} />

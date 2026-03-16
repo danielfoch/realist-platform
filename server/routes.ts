@@ -6456,6 +6456,88 @@ export async function registerRoutes(
     ],
   };
 
+  app.post("/api/multiplex-fit", async (req, res) => {
+    try {
+      const { name, email, phone, consent, assessmentData, fitScore, fitTier, recommendation } = req.body;
+
+      if (!name || !email || !phone) {
+        res.status(400).json({ error: "Name, email, and phone are required" });
+        return;
+      }
+
+      const lead = await storage.createLead({
+        name,
+        email,
+        phone,
+        consent: consent || false,
+        leadSource: "Multiplex Investor Fit Assessment",
+      });
+
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) return '+' + cleaned;
+        if (cleaned.length === 10) return '+1' + cleaned;
+        return '+' + cleaned;
+      };
+
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const tags = ["multiplexmasterclass", `fit_${fitTier}`, `rec_${recommendation}`];
+      if (assessmentData?.province) tags.push(`LEAD_${assessmentData.province}`);
+      if (assessmentData?.goal) tags.push(`goal_${assessmentData.goal.replace(/\s+/g, "_").toLowerCase()}`);
+      if (assessmentData?.capital) tags.push(`capital_${assessmentData.capital.replace(/[^a-z0-9]/gi, "_").toLowerCase()}`);
+
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName,
+        fullName: name,
+        phone: formatPhoneE164(phone),
+        consent: consent || false,
+        leadSource: "Multiplex Investor Fit Assessment",
+        formTag: "multiplexmasterclass",
+        tags,
+        fitScore,
+        fitTier,
+        recommendation,
+        province: assessmentData?.province || "",
+        city: assessmentData?.city || "",
+        investingLocally: assessmentData?.investingLocally || "",
+        goal: assessmentData?.goal || "",
+        capital: assessmentData?.capital || "",
+        experience: assessmentData?.experience || "",
+        contractorComfort: assessmentData?.contractorComfort || "",
+        delayTolerance: assessmentData?.delayTolerance || "",
+        geographicFlexibility: assessmentData?.geographicFlexibility || "",
+        helpPreference: assessmentData?.helpPreference || "",
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Multiplex fit webhook error:", err));
+
+      sendToGoogleSheets({
+        name,
+        email,
+        phone,
+        source: "Multiplex Investor Fit Assessment",
+        notes: `Score: ${fitScore}, Tier: ${fitTier}, Rec: ${recommendation}, Province: ${assessmentData?.province}, City: ${assessmentData?.city}, Goal: ${assessmentData?.goal}, Capital: ${assessmentData?.capital}`,
+      }).catch(err => console.error("Google Sheets error:", err));
+
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName: lastName || undefined,
+        phone,
+        leadSource: "Multiplex Investor Fit Assessment",
+      }).catch(err => console.error("Auto-enroll error:", err));
+
+      res.json({ success: true, leadId: lead.id });
+    } catch (error: any) {
+      console.error("Multiplex fit submission error:", error);
+      res.status(500).json({ error: "Submission failed" });
+    }
+  });
+
   app.get("/api/distress-deals", async (req, res) => {
     req.setTimeout(300000);
     res.setTimeout(300000);

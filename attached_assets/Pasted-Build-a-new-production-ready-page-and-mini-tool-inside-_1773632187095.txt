@@ -1,0 +1,87 @@
+Build a new production-ready page and mini-tool inside the existing Realist.ca app called “Multiplex Investor Fit Assessment.”
+
+Goal:
+Create a page that feels like a helpful multiplex investor assessment tool, but is strategically designed as a conversion funnel that routes visitors to either:
+1. buy Multiplex Masterclass Canada, or
+2. book a free consult call for higher-ticket mentorship / advisory.
+
+This should NOT feel scammy or overly salesy. It should feel diagnostic, useful, clean, and aligned with the Realist brand.
+
+PAGE URL
+- /multiplex-investor-fit
+
+PRIMARY UX GOAL
+- User takes a 3–5 minute assessment
+- User sees a personalized result with a fit score and recommended path
+- User is routed to the correct CTA:
+  - Buy course
+  - Book consult
+  - Join waitlist / nurture
+
+DESIGN DIRECTION
+- Match existing Realist.ca visual language
+- Clean, modern, investor-focused, slightly data-driven
+- Should resemble a “tool” more than a generic sales page
+- Include strong trust / credibility sections
+- Mobile responsive
+- Fast-loading
+
+PAGE STRUCTURE
+1. Hero
+   - Headline: “Should You Be a Multiplex Investor?”
+   - Subheadline: “Get a fast assessment based on your budget, market, timeline, and risk tolerance — then decide whether to self-study with Multiplex Masterclass Canada or book a free consult call.”
+   - CTA button: Start the Assessment
+   - Secondary CTA: See What’s Included
+
+2. Trust strip
+   - National framework for Canadian investors
+   - Based on our existing Multiplex Masterclass curriculum
+   - Built by the team behind Realist and The Canadian Real Estate Investor
+   - Designed to help avoid zoning, financing, permitting, and execution mistakes
+
+3. Short problem/benefit section
+   - Explain that most people like the idea of multiplexes long before they know whether the strategy actually fits them.
+   - The tool should position itself as a clarity engine, not a hype engine.
+
+4. Multi-step assessment tool
+   - 5 steps max
+   - Progress bar
+   - Minimal friction
+   - Clean cards, toggles, dropdowns, and button selections
+   - Final opt-in gate before result is fully revealed
+
+QUIZ QUESTIONS
+Step 1: Market
+- Province (dropdown)
+- City / target market (text)
+- Investing in home market or remotely? (buttons)
+
+Step 2: Goal
+- What are you trying to accomplish? (multi-option single select)
+  - House-hack
+  - Add rental income
+  - Long-term appreciation
+  - Small development / build and hold
+  - Just learning for now
+
+Step 3: Capital and experience
+- Approx liquid capital available? (button ranges)
+  - Under 50k
+  - 50k–100k
+  - 100k–200k
+  - 200k–400k
+  - 400k+
+- Current investing experience? (single select)
+  - None
+  - Own a rental
+  - Have done renovations / BRRRR
+  - Have done development / multifamily work
+
+Step 4: Complexity tolerance
+- Are you comfortable dealing with contractors / consultants / approvals? (scale or buttons)
+- Are you open to delays and some execution risk? (yes/somewhat/no)
+- Are you willing to invest outside your exact neighborhood if the economics are better? (yes/no/somewhat)
+
+Step 5: Help preference
+- Which sounds most like you?
+  - I want a course and templates to do this myself
