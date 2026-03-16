@@ -716,7 +716,7 @@ export default function MultiplexFit() {
                 <Button
                   className="w-full gap-2"
                   size="lg"
-                  onClick={() => window.open("https://multiplexmasterclass.ca", "_blank")}
+                  onClick={() => window.open("https://www.skool.com/realist/classroom/ed10579b?md=bdef7de8690640b599435fc633f90c10", "_blank")}
                   data-testid="button-buy-course"
                 >
                   Learn More About the Course <ArrowRight className="h-4 w-4" />
@@ -761,7 +761,7 @@ export default function MultiplexFit() {
                   Or check out the{" "}
                   <button
                     className="text-primary underline"
-                    onClick={() => window.open("https://multiplexmasterclass.ca", "_blank")}
+                    onClick={() => window.open("https://www.skool.com/realist/classroom/ed10579b?md=bdef7de8690640b599435fc633f90c10", "_blank")}
                     data-testid="button-alt-course"
                   >
                     Multiplex Masterclass
