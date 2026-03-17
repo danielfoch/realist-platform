@@ -12,9 +12,14 @@ const STRIPE_PRICE_PREMIUM = process.env.STRIPE_PRICE_PREMIUM || 'price_premium_
 const STRIPE_PRICE_ENTERPRISE = process.env.STRIPE_PRICE_ENTERPRISE || 'price_enterprise_custom';
 
 // Initialize Stripe
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
+const stripe = new Stripe(STRIPE_SECRET_KEY || 'sk_test_dummy', {
   apiVersion: '2026-02-25.clover', // Use latest stable version
 });
+
+// Helper to check if Stripe is configured
+function isStripeConfigured(): boolean {
+  return Boolean(STRIPE_SECRET_KEY);
+}
 
 // Price configurations (in cents)
 const PRICE_CONFIG = {
