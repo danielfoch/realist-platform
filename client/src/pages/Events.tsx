@@ -479,7 +479,7 @@ export default function Events() {
                     { name: "Forefront Multiplex Marketing", logo: "/partners/forefront.png", url: "https://weareforefront.ca/" },
                     { name: "Theorem Developments", logo: "/partners/theorem.png", url: "https://theoremdevelopments.com" },
                     { name: "Burke by Burke", logo: "/partners/burke-by-burke.png", url: "https://www.burkebyburke.com/" },
-                    { name: "Greater Vancouver Tenant & Property Management Ltd", logo: "/partners/gvtpm.png", url: "https://gvtpm.com" },
+                    { name: "Greater Vancouver Tenant & Property Management Ltd", logo: "/partners/gvtpm.png", url: "https://gvantpm.com/" },
                     { name: "Homies", logo: "/partners/homies.png", url: "https://meetyourhomies.com" },
                   ].map((partner) => (
                     <a
