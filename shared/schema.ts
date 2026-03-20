@@ -2265,3 +2265,81 @@ export const insertDistressSnapshotSchema = createInsertSchema(distressSnapshots
 });
 export type InsertDistressSnapshot = z.infer<typeof insertDistressSnapshotSchema>;
 export type DistressSnapshot = typeof distressSnapshots.$inferSelect;
+
+export const geographies = pgTable("geographies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  city: text("city"),
+  province: text("province"),
+  geometry: jsonb("geometry"),
+  centroidLat: real("centroid_lat"),
+  centroidLng: real("centroid_lng"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertGeographySchema = createInsertSchema(geographies).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertGeography = z.infer<typeof insertGeographySchema>;
+export type Geography = typeof geographies.$inferSelect;
+
+export const metrics = pgTable("metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  geographyId: varchar("geography_id").references(() => geographies.id).notNull(),
+  metricType: text("metric_type").notNull(),
+  value: real("value").notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  source: text("source"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  sql`CREATE INDEX IF NOT EXISTS metrics_geo_date_idx ON metrics(geography_id, date)`,
+  sql`CREATE INDEX IF NOT EXISTS metrics_type_idx ON metrics(metric_type)`
+]);
+
+export const insertMetricSchema = createInsertSchema(metrics).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertMetric = z.infer<typeof insertMetricSchema>;
+export type Metric = typeof metrics.$inferSelect;
+
+export const areaScores = pgTable("area_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  geographyId: varchar("geography_id").references(() => geographies.id).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  investorScore: real("investor_score"),
+  livabilityScore: real("livability_score"),
+  growthScore: real("growth_score"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("area_scores_geo_date_idx").on(table.geographyId, table.date),
+]);
+
+export const insertAreaScoreSchema = createInsertSchema(areaScores).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAreaScore = z.infer<typeof insertAreaScoreSchema>;
+export type AreaScore = typeof areaScores.$inferSelect;
+
+export const savedReports = pgTable("saved_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  title: text("title").notNull(),
+  geographyIds: text("geography_ids").array(),
+  metricTypes: text("metric_types").array(),
+  startDate: varchar("start_date", { length: 10 }),
+  endDate: varchar("end_date", { length: 10 }),
+  configJson: jsonb("config_json"),
+  shareToken: varchar("share_token"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSavedReportSchema = createInsertSchema(savedReports).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSavedReport = z.infer<typeof insertSavedReportSchema>;
+export type SavedReport = typeof savedReports.$inferSelect;

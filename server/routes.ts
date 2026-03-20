@@ -7054,6 +7054,128 @@ export async function registerRoutes(
     }
   });
 
+  // ===== GEOGRAPHIES & METRICS API =====
+
+  app.get("/api/geographies", async (req, res) => {
+    try {
+      const { city, province, type, q } = req.query;
+      if (q && typeof q === "string") {
+        const results = await storage.searchGeographies(q);
+        return res.json(results);
+      }
+      const results = await storage.getGeographies({
+        city: city as string,
+        province: province as string,
+        type: type as string,
+      });
+      res.json(results);
+    } catch (err) {
+      console.error("[geographies] Error:", err);
+      res.status(500).json({ error: "Failed to fetch geographies" });
+    }
+  });
+
+  app.get("/api/geographies/:id", async (req, res) => {
+    try {
+      const geo = await storage.getGeography(req.params.id);
+      if (!geo) return res.status(404).json({ error: "Geography not found" });
+      res.json(geo);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch geography" });
+    }
+  });
+
+  app.get("/api/metrics", async (req, res) => {
+    try {
+      const { geography_id, metric_type, start, end } = req.query;
+      const results = await storage.getMetrics({
+        geographyId: geography_id as string,
+        metricType: metric_type as string,
+        startDate: start as string,
+        endDate: end as string,
+      });
+      res.json(results);
+    } catch (err) {
+      console.error("[metrics] Error:", err);
+      res.status(500).json({ error: "Failed to fetch metrics" });
+    }
+  });
+
+  app.get("/api/metrics/types", async (_req, res) => {
+    try {
+      const types = await storage.getMetricTypes();
+      res.json(types);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch metric types" });
+    }
+  });
+
+  app.get("/api/area-scores", async (req, res) => {
+    try {
+      const { geography_id, start, end } = req.query;
+      if (!geography_id) return res.status(400).json({ error: "geography_id required" });
+      const results = await storage.getAreaScores(
+        geography_id as string,
+        start as string,
+        end as string
+      );
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch area scores" });
+    }
+  });
+
+  app.get("/api/area-scores/latest", async (req, res) => {
+    try {
+      const { ids } = req.query;
+      const geographyIds = ids ? (ids as string).split(",") : undefined;
+      const results = await storage.getLatestAreaScores(geographyIds);
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch latest area scores" });
+    }
+  });
+
+  app.post("/api/saved-reports", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      const token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+      const report = await storage.createSavedReport({
+        ...req.body,
+        userId: req.session.userId,
+        shareToken: token,
+      });
+      res.json(report);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to save report" });
+    }
+  });
+
+  app.get("/api/saved-reports/:id", async (req, res) => {
+    try {
+      const report = await storage.getSavedReport(req.params.id);
+      if (!report) return res.status(404).json({ error: "Report not found" });
+      if (report.userId && req.session?.userId !== report.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      res.json(report);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
+  app.get("/api/saved-reports/share/:token", async (req, res) => {
+    try {
+      const report = await storage.getSavedReportByToken(req.params.token);
+      if (!report) return res.status(404).json({ error: "Report not found" });
+      res.json(report);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
   return httpServer;
 }
 

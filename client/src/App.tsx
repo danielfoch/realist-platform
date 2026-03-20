@@ -54,6 +54,7 @@ import LandClaimScreener from "@/pages/LandClaimScreener";
 import DistressDeals from "@/pages/DistressDeals";
 import DistressReport from "@/pages/DistressReport";
 import MultiplexFit from "@/pages/MultiplexFit";
+import MarketReportBuilder from "@/pages/MarketReportBuilder";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -96,6 +97,7 @@ function Router() {
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/insights/market-report" component={MarketReport} />
       <Route path="/insights/mortgage-rates" component={MortgageRates} />
+      <Route path="/insights/market-report-builder" component={MarketReportBuilder} />
       <Route path="/premium" component={Premium} />
       <Route path="/premium/branding" component={PremiumBranding} />
       

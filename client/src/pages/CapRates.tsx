@@ -27,6 +27,7 @@ import type { ListingAnalysisAggregate, UnderwritingNote, ListingComment } from 
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { MapLayersPanel, DEFAULT_LAYERS, type MapLayer } from "@/components/MapLayersPanel";
 
 interface RepliersListing {
   mlsNumber: string;
@@ -350,6 +351,7 @@ export default function CapRates() {
   const [dataSource, setDataSource] = useState<"crea_ddf" | "repliers" | null>(null);
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [showMobileList, setShowMobileList] = useState(false);
+  const [mapLayers, setMapLayers] = useState<MapLayer[]>(DEFAULT_LAYERS);
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | null>(null);
   const [detailTab, setDetailTab] = useState<string>("overview");
   const [aggregatesMap, setAggregatesMap] = useState<Record<string, ListingAnalysisAggregate>>({});
@@ -1614,6 +1616,8 @@ export default function CapRates() {
             <GeolocateOnMount />
             {flyTo && <FlyToLocation lat={flyTo.lat} lng={flyTo.lng} />}
           </MapContainer>
+
+          <MapLayersPanel layers={mapLayers} onLayersChange={setMapLayers} />
 
           <div className="lg:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000]">
             <Button

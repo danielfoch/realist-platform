@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import { seedGeographies } from "./seedGeographies";
 
 const app = express();
 // Trust proxy for secure cookies behind Replit's reverse proxy
@@ -161,6 +162,7 @@ async function initStripe() {
     },
     () => {
       log(`serving on port ${port}`);
+      seedGeographies().catch((err) => log(`Seed error: ${err.message}`, "seed"));
     },
   );
 })();

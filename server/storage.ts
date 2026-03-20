@@ -145,6 +145,18 @@ import {
   type InsertScreening,
   type ScreeningHit,
   type InsertScreeningHit,
+  geographies,
+  metrics,
+  areaScores,
+  savedReports,
+  type Geography,
+  type InsertGeography,
+  type Metric,
+  type InsertMetric,
+  type AreaScore,
+  type InsertAreaScore,
+  type SavedReport,
+  type InsertSavedReport,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -425,6 +437,26 @@ export interface IStorage {
   getScreeningsByUser(userId: string): Promise<Screening[]>;
   createScreeningHit(hit: InsertScreeningHit): Promise<ScreeningHit>;
   getScreeningHits(screeningId: string): Promise<ScreeningHit[]>;
+
+  createGeography(geo: InsertGeography): Promise<Geography>;
+  getGeography(id: string): Promise<Geography | undefined>;
+  getGeographies(opts?: { city?: string; province?: string; type?: string }): Promise<Geography[]>;
+  searchGeographies(query: string): Promise<Geography[]>;
+
+  createMetric(metric: InsertMetric): Promise<Metric>;
+  createMetricsBatch(metrics: InsertMetric[]): Promise<number>;
+  getMetrics(opts: { geographyId?: string; metricType?: string; startDate?: string; endDate?: string }): Promise<Metric[]>;
+  getMetricTypes(): Promise<string[]>;
+
+  upsertAreaScore(score: InsertAreaScore): Promise<AreaScore>;
+  getAreaScores(geographyId: string, startDate?: string, endDate?: string): Promise<AreaScore[]>;
+  getLatestAreaScores(geographyIds?: string[]): Promise<AreaScore[]>;
+
+  createSavedReport(report: InsertSavedReport): Promise<SavedReport>;
+  getSavedReport(id: string): Promise<SavedReport | undefined>;
+  getSavedReportByToken(token: string): Promise<SavedReport | undefined>;
+  getSavedReportsByUser(userId: string): Promise<SavedReport[]>;
+  deleteSavedReport(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1813,6 +1845,117 @@ export class DatabaseStorage implements IStorage {
   async getScreeningHits(screeningId: string): Promise<ScreeningHit[]> {
     return db.select().from(screeningHits)
       .where(eq(screeningHits.screeningId, screeningId));
+  }
+
+  async createGeography(geo: InsertGeography): Promise<Geography> {
+    const [result] = await db.insert(geographies).values(geo).returning();
+    return result;
+  }
+
+  async getGeography(id: string): Promise<Geography | undefined> {
+    const [result] = await db.select().from(geographies).where(eq(geographies.id, id));
+    return result || undefined;
+  }
+
+  async getGeographies(opts?: { city?: string; province?: string; type?: string }): Promise<Geography[]> {
+    const conditions = [];
+    if (opts?.city) conditions.push(eq(geographies.city, opts.city));
+    if (opts?.province) conditions.push(eq(geographies.province, opts.province));
+    if (opts?.type) conditions.push(eq(geographies.type, opts.type));
+    if (conditions.length > 0) {
+      return db.select().from(geographies).where(and(...conditions)).orderBy(asc(geographies.name));
+    }
+    return db.select().from(geographies).orderBy(asc(geographies.name));
+  }
+
+  async searchGeographies(query: string): Promise<Geography[]> {
+    return db.select().from(geographies)
+      .where(sql`lower(${geographies.name}) LIKE ${'%' + query.toLowerCase() + '%'}`)
+      .orderBy(asc(geographies.name))
+      .limit(50);
+  }
+
+  async createMetric(metric: InsertMetric): Promise<Metric> {
+    const [result] = await db.insert(metrics).values(metric).returning();
+    return result;
+  }
+
+  async createMetricsBatch(batch: InsertMetric[]): Promise<number> {
+    if (batch.length === 0) return 0;
+    await db.insert(metrics).values(batch);
+    return batch.length;
+  }
+
+  async getMetrics(opts: { geographyId?: string; metricType?: string; startDate?: string; endDate?: string }): Promise<Metric[]> {
+    const conditions = [];
+    if (opts.geographyId) conditions.push(eq(metrics.geographyId, opts.geographyId));
+    if (opts.metricType) conditions.push(eq(metrics.metricType, opts.metricType));
+    if (opts.startDate) conditions.push(gte(metrics.date, opts.startDate));
+    if (opts.endDate) conditions.push(lte(metrics.date, opts.endDate));
+    if (conditions.length > 0) {
+      return db.select().from(metrics).where(and(...conditions)).orderBy(asc(metrics.date));
+    }
+    return db.select().from(metrics).orderBy(asc(metrics.date)).limit(1000);
+  }
+
+  async getMetricTypes(): Promise<string[]> {
+    const results = await db.selectDistinct({ metricType: metrics.metricType }).from(metrics);
+    return results.map(r => r.metricType);
+  }
+
+  async upsertAreaScore(score: InsertAreaScore): Promise<AreaScore> {
+    const [result] = await db.insert(areaScores).values(score)
+      .onConflictDoUpdate({
+        target: [areaScores.geographyId, areaScores.date],
+        set: {
+          investorScore: score.investorScore,
+          livabilityScore: score.livabilityScore,
+          growthScore: score.growthScore,
+        }
+      })
+      .returning();
+    return result;
+  }
+
+  async getAreaScores(geographyId: string, startDate?: string, endDate?: string): Promise<AreaScore[]> {
+    const conditions = [eq(areaScores.geographyId, geographyId)];
+    if (startDate) conditions.push(gte(areaScores.date, startDate));
+    if (endDate) conditions.push(lte(areaScores.date, endDate));
+    return db.select().from(areaScores).where(and(...conditions)).orderBy(asc(areaScores.date));
+  }
+
+  async getLatestAreaScores(geographyIds?: string[]): Promise<AreaScore[]> {
+    if (geographyIds && geographyIds.length > 0) {
+      return db.select().from(areaScores)
+        .where(inArray(areaScores.geographyId, geographyIds))
+        .orderBy(desc(areaScores.date));
+    }
+    return db.select().from(areaScores).orderBy(desc(areaScores.date)).limit(500);
+  }
+
+  async createSavedReport(report: InsertSavedReport): Promise<SavedReport> {
+    const [result] = await db.insert(savedReports).values(report).returning();
+    return result;
+  }
+
+  async getSavedReport(id: string): Promise<SavedReport | undefined> {
+    const [result] = await db.select().from(savedReports).where(eq(savedReports.id, id));
+    return result || undefined;
+  }
+
+  async getSavedReportByToken(token: string): Promise<SavedReport | undefined> {
+    const [result] = await db.select().from(savedReports).where(eq(savedReports.shareToken, token));
+    return result || undefined;
+  }
+
+  async getSavedReportsByUser(userId: string): Promise<SavedReport[]> {
+    return db.select().from(savedReports)
+      .where(eq(savedReports.userId, userId))
+      .orderBy(desc(savedReports.createdAt));
+  }
+
+  async deleteSavedReport(id: string): Promise<void> {
+    await db.delete(savedReports).where(eq(savedReports.id, id));
   }
 }
 
