@@ -493,7 +493,7 @@ export default function Events() {
                       <img
                         src={partner.logo}
                         alt={partner.name}
-                        className="max-h-12 max-w-full object-contain dark:invert opacity-70 group-hover:opacity-100 transition-opacity"
+                        className="max-h-12 max-w-full object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
                       />
                     </a>
                   ))}
@@ -656,7 +656,7 @@ export default function Events() {
                   <img
                     src={partner.logo}
                     alt={partner.name}
-                    className="max-h-10 max-w-full object-contain dark:invert opacity-50 group-hover:opacity-80 transition-opacity"
+                    className="max-h-10 max-w-full object-contain grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-90 transition-all duration-300"
                   />
                 </a>
               ))}
