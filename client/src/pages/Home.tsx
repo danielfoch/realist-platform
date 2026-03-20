@@ -172,6 +172,30 @@ export default function Home({ embedded }: { embedded?: boolean }) {
   }, [inputs]);
 
   const [listingPrice, setListingPrice] = useState<number | null>(null);
+  const lastTrackedRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!showResults || !results || inputs.purchasePrice <= 0) return;
+    const trackKey = `${inputs.purchasePrice}-${inputs.monthlyRent}-${strategy}-${city}`;
+    if (trackKey === lastTrackedRef.current) return;
+    lastTrackedRef.current = trackKey;
+
+    const formattedAddress = [address, city, region].filter(Boolean).join(", ");
+    fetch("/api/analyses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        countryMode: country,
+        strategyType: strategy,
+        inputsJson: { ...inputs, listingPrice },
+        resultsJson: results,
+        address: formattedAddress || null,
+        city: city || null,
+        province: region || null,
+      }),
+    }).catch(() => {});
+  }, [showResults, results, inputs.purchasePrice, inputs.monthlyRent, strategy, city]);
 
   const handleListingImport = (listing: {
     address: string;

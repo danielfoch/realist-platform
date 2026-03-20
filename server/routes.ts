@@ -1389,6 +1389,47 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/analyses", async (req, res) => {
+    try {
+      const { countryMode, strategyType, inputsJson, resultsJson, address, city, province } = req.body;
+      if (!countryMode || !strategyType || !inputsJson) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      const userId = (req.session as any)?.userId || null;
+      const analysis = await storage.createAnalysis({
+        countryMode,
+        strategyType,
+        inputsJson,
+        resultsJson: resultsJson || null,
+        userId,
+        address: address || null,
+        city: city || null,
+        province: province || null,
+        leadId: null,
+        propertyId: null,
+        rentInputs: inputsJson.monthlyRent != null ? {
+          monthlyRent: inputsJson.monthlyRent,
+          rentPerUnit: inputsJson.rentPerUnit,
+          numberOfUnits: inputsJson.numberOfUnits,
+          additionalIncome: inputsJson.additionalIncome,
+        } : null,
+        vacancyRate: inputsJson.vacancyRate != null ? Number(inputsJson.vacancyRate) : null,
+        expenseAssumptions: inputsJson.operatingExpenses != null || inputsJson.propertyTax != null ? {
+          operatingExpenses: inputsJson.operatingExpenses,
+          propertyTax: inputsJson.propertyTax,
+          insurance: inputsJson.insurance,
+          maintenance: inputsJson.maintenance,
+          managementFee: inputsJson.managementFee,
+          utilities: inputsJson.utilities,
+        } : null,
+      });
+      res.json({ id: analysis.id });
+    } catch (error) {
+      console.error("Error saving analysis:", error);
+      res.status(500).json({ error: "Failed to save analysis" });
+    }
+  });
+
   app.get("/api/rates", async (req, res) => {
     try {
       const cached = await storage.getDataCache("interest_rates");

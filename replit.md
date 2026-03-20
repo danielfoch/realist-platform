@@ -49,7 +49,7 @@ Preferred communication style: Simple, everyday language.
 - **Content Management**: Database-backed Blog and Guides sections with CRUD capabilities via Admin Dashboard.
 - **Admin Dashboard**: Protected area for managing leads, webhooks, blog posts, and guides.
 - **Authentication**: Custom email/password system with secure session management.
-- **Leaderboard & Analytics**: Tracks and displays user contributions and deal analyses.
+- **Leaderboard & Analytics**: Tracks and displays user contributions and deal analyses. Shows all-time and monthly leaderboards side by side for permanent gamification. Auto-tracks every deal analysis via `POST /api/analyses` when results are computed.
 - **Realtor Partner Network**: System for realtors to claim markets, receive leads, and manage referrals.
 - **Monthly Market Report**: Auto-generated reports for Canadian cities based on DDF and CMHC data.
 - **Market Report Builder**: Interactive tool at `/insights/market-report-builder` for custom market reports with geography search, metric selection (rent, vacancy, income, homeownership, crime, price, investor score), time-series charts (line/indexed/bar), CAGR/stats computation, and save/export. Backed by `geographies`, `metrics`, and `area_scores` tables seeded from CMHC data.
