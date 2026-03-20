@@ -465,6 +465,41 @@ export default function Events() {
                 </div>
               )}
 
+              {/* 2026 Event Partners Section */}
+              <div className="mb-12">
+                <div className="flex items-center gap-3 mb-6">
+                  <Handshake className="h-6 w-6 text-primary" />
+                  <h2 className="text-2xl font-bold">2026 Event Partners</h2>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+                  {[
+                    { name: "CMHC", logo: "/partners/cmhc.png", url: "https://www.cmhc-schl.gc.ca" },
+                    { name: "Vancity", logo: "/partners/vancity.png", url: "https://www.vancity.com" },
+                    { name: "BLD Financial", logo: "/partners/bld-financial.png", url: "https://bldfinancial.com" },
+                    { name: "Forefront Multiplex Marketing", logo: "/partners/forefront.png", url: "https://forefrontmultiplex.com" },
+                    { name: "Theorem Developments", logo: "/partners/theorem.png", url: "https://theoremdevelopments.com" },
+                    { name: "Burke by Burke", logo: "/partners/burke-by-burke.png", url: "https://burkebyburke.com" },
+                    { name: "Greater Vancouver Tenant & Property Management Ltd", logo: "/partners/gvtpm.png", url: "https://gvtpm.com" },
+                    { name: "Homies", logo: "/partners/homies.png", url: "https://meetyourhomies.com" },
+                  ].map((partner) => (
+                    <a
+                      key={partner.name}
+                      href={partner.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-center rounded-xl border border-border/50 bg-card/50 hover:bg-card hover:border-primary/30 transition-all duration-200 p-6 h-24"
+                      data-testid={`link-partner-${partner.name.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      <img
+                        src={partner.logo}
+                        alt={partner.name}
+                        className="max-h-12 max-w-full object-contain dark:invert opacity-70 group-hover:opacity-100 transition-opacity"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+
               {/* Regular Meetups Section */}
               {groupedUpcoming.length > 0 && (
                 <div className="space-y-6">
