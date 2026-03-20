@@ -476,7 +476,7 @@ export default function Events() {
                     { name: "CMHC", logo: "/partners/cmhc.png", url: "https://www.cmhc-schl.gc.ca" },
                     { name: "Vancity", logo: "/partners/vancity.png", url: "https://www.vancity.com" },
                     { name: "BLD Financial", logo: "/partners/bld-financial.png", url: "https://bldfinancial.ca/" },
-                    { name: "Forefront Multiplex Marketing", logo: "/partners/forefront.png", url: "https://forefrontmultiplex.com" },
+                    { name: "Forefront Multiplex Marketing", logo: "/partners/forefront.png", url: "https://weareforefront.ca/" },
                     { name: "Theorem Developments", logo: "/partners/theorem.png", url: "https://theoremdevelopments.com" },
                     { name: "Burke by Burke", logo: "/partners/burke-by-burke.png", url: "https://burkebyburke.com" },
                     { name: "Greater Vancouver Tenant & Property Management Ltd", logo: "/partners/gvtpm.png", url: "https://gvtpm.com" },
