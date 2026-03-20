@@ -627,6 +627,42 @@ export default function Events() {
             </div>
           </div>
 
+          {/* Past Event Partners Section */}
+          <div className="mt-24">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-muted-foreground mb-2" data-testid="text-past-partners-title">
+                Past Event Partners
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Companies that have supported our community events.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
+              {[
+                { name: "Sherwin Williams", logo: "/partners/sherwin-williams.png", url: "https://www.sherwin-williams.com" },
+                { name: "Dorr Capital", logo: "/partners/dorr-capital.png", url: "https://dorrcapital.com" },
+                { name: "Landlord.net", logo: "/partners/landlord-net.png", url: "https://landlord.net" },
+                { name: "Foremost Financial", logo: "/partners/foremost-financial.png", url: "https://foremostfinancial.ca" },
+                { name: "Cognitive Capital", logo: "/partners/cognitive-capital.png", url: "https://cognitivecapital.ca" },
+              ].map((partner) => (
+                <a
+                  key={partner.name}
+                  href={partner.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center justify-center rounded-xl border border-border/50 bg-card/50 hover:bg-card hover:border-primary/30 transition-all duration-200 p-5 h-20"
+                  data-testid={`link-past-partner-${partner.name.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  <img
+                    src={partner.logo}
+                    alt={partner.name}
+                    className="max-h-10 max-w-full object-contain dark:invert opacity-50 group-hover:opacity-80 transition-opacity"
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-16 text-center">
             <Card className="inline-block p-8 bg-gradient-to-br from-primary/10 to-accent/10">
               <h3 className="text-xl font-semibold mb-2">Don't miss an event</h3>
