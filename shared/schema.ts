@@ -510,6 +510,72 @@ export const insertPartnerLeadSchema = createInsertSchema(partnerLeads).omit({
   assignedAt: true,
 });
 
+export const realtorApplications = pgTable("realtor_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  brokerage: text("brokerage"),
+  markets: text("markets").array(),
+  assetTypes: text("asset_types").array(),
+  dealTypes: text("deal_types").array(),
+  avgDealSize: text("avg_deal_size"),
+  referralAgreement: boolean("referral_agreement").default(false),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const lenderApplications = pgTable("lender_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  company: text("company"),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  lendingTypes: text("lending_types").array(),
+  targetMarkets: text("target_markets").array(),
+  loanSizeMin: text("loan_size_min"),
+  loanSizeMax: text("loan_size_max"),
+  preferredDscr: text("preferred_dscr"),
+  preferredLtv: text("preferred_ltv"),
+  turnaroundTime: text("turnaround_time"),
+  referralAgreement: boolean("referral_agreement").default(false),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const dealMatchRequests = pgTable("deal_match_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  matchTypes: text("match_types").array(),
+  city: text("city"),
+  province: text("province"),
+  dealSummary: jsonb("deal_summary"),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRealtorApplicationSchema = createInsertSchema(realtorApplications).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
+export const insertLenderApplicationSchema = createInsertSchema(lenderApplications).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
+export const insertDealMatchRequestSchema = createInsertSchema(dealMatchRequests).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertInvestorProfile = z.infer<typeof insertInvestorProfileSchema>;
 export type InvestorProfile = typeof investorProfiles.$inferSelect;

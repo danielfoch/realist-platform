@@ -31,7 +31,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { calculateBuyHoldAnalysis, calculateStressTest, formatCurrency } from "@/lib/calculations";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
-import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet, Table } from "lucide-react";
+import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
 import { MortgageConsultationButton } from "@/components/DealPromotions";
 
@@ -870,6 +870,35 @@ export default function Home({ embedded }: { embedded?: boolean }) {
               </div>
 
               <DealTimeline />
+
+              <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-background to-primary/5">
+                <CardContent className="p-6 md:p-8">
+                  <div className="text-center space-y-4">
+                    <h3 className="text-xl md:text-2xl font-bold" data-testid="text-get-matched-title">
+                      Ready to move on this deal?
+                    </h3>
+                    <p className="text-muted-foreground max-w-lg mx-auto">
+                      Get matched with realtors who have similar deals and lenders who will finance this type of property.
+                    </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                      <Link href="/join/realtors">
+                        <Button size="lg" className="gap-2 w-full sm:w-auto" data-testid="button-match-realtor">
+                          <Users className="h-4 w-4" />
+                          Find a Realtor
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Link href="/join/lenders">
+                        <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto" data-testid="button-match-lender">
+                          <Landmark className="h-4 w-4" />
+                          Find a Lender
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </section>
         )}

@@ -5744,8 +5744,10 @@ export async function registerRoutes(
   app.get("/api/leaderboard", async (req, res) => {
     try {
       const period = req.query.period as string;
+      const cityFilter = req.query.city as string | undefined;
       let dateFilter = sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`;
       let aggregateDateFilter = sql`${analyses.resultsJson} IS NOT NULL`;
+
       if (period === 'monthly') {
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
@@ -5753,6 +5755,20 @@ export async function registerRoutes(
         const monthStr = startOfMonth.toISOString();
         dateFilter = sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${monthStr}`;
         aggregateDateFilter = sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${monthStr}`;
+      } else if (period === 'weekly') {
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - dayOfWeek);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const weekStr = startOfWeek.toISOString();
+        dateFilter = sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`;
+        aggregateDateFilter = sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`;
+      }
+
+      if (cityFilter) {
+        dateFilter = sql`${dateFilter} AND LOWER(${analyses.city}) = LOWER(${cityFilter})`;
+        aggregateDateFilter = sql`${aggregateDateFilter} AND LOWER(${analyses.city}) = LOWER(${cityFilter})`;
       }
 
       const analystResults = await db
@@ -5818,8 +5834,200 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/leaderboard/top-cities", async (_req, res) => {
+  app.get("/api/weekly-stats", async (_req, res) => {
     try {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const weekStr = startOfWeek.toISOString();
+
+      const [stats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`);
+
+      const cityResult = await db
+        .select({
+          city: analyses.city,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr} AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
+        .groupBy(analyses.city)
+        .orderBy(desc(count(analyses.id)))
+        .limit(1);
+
+      res.json({
+        totalDeals: Number(stats?.totalDeals || 0),
+        avgCapRate: stats?.avgCapRate != null ? Math.round(Number(stats.avgCapRate) * 100) / 100 : null,
+        avgCashOnCash: stats?.avgCashOnCash != null ? Math.round(Number(stats.avgCashOnCash) * 100) / 100 : null,
+        avgDscr: stats?.avgDscr != null ? Math.round(Number(stats.avgDscr) * 100) / 100 : null,
+        mostActiveCity: cityResult.length > 0 ? cityResult[0].city : null,
+        mostActiveCityDeals: cityResult.length > 0 ? Number(cityResult[0].dealCount) : 0,
+      });
+    } catch (error) {
+      console.error("Error fetching weekly stats:", error);
+      res.status(500).json({ error: "Failed to fetch weekly stats" });
+    }
+  });
+
+  app.get("/api/user/stats", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const userId = req.session.userId;
+
+      const [userStats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          firstAnalysis: sql<string>`MIN(${analyses.createdAt})`,
+          lastAnalysis: sql<string>`MAX(${analyses.createdAt})`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL`);
+
+      const totalDeals = Number(userStats?.totalDeals || 0);
+
+      const badges: { id: string; name: string; description: string; icon: string; earnedAt: string | null }[] = [];
+      const badgeDefs = [
+        { id: "analyst", name: "Analyst", description: "Analyzed 10 deals", icon: "search", threshold: 10 },
+        { id: "power-user", name: "Power User", description: "Analyzed 50 deals", icon: "zap", threshold: 50 },
+        { id: "deal-hunter", name: "Deal Hunter", description: "Analyzed 100 deals", icon: "target", threshold: 100 },
+        { id: "veteran", name: "Veteran", description: "Analyzed 250 deals", icon: "shield", threshold: 250 },
+        { id: "legend", name: "Legend", description: "Analyzed 500 deals", icon: "crown", threshold: 500 },
+      ];
+
+      for (const def of badgeDefs) {
+        if (totalDeals >= def.threshold) {
+          const [nthDeal] = await db
+            .select({ createdAt: analyses.createdAt })
+            .from(analyses)
+            .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL`)
+            .orderBy(analyses.createdAt)
+            .limit(1)
+            .offset(def.threshold - 1);
+
+          badges.push({
+            id: def.id,
+            name: def.name,
+            description: def.description,
+            icon: def.icon,
+            earnedAt: nthDeal?.createdAt ? new Date(nthDeal.createdAt).toISOString() : null,
+          });
+        }
+      }
+
+      const allTimeRanking = await db
+        .select({
+          userId: analyses.userId,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`)
+        .groupBy(analyses.userId)
+        .orderBy(desc(count(analyses.id)));
+
+      let rank: number | null = null;
+      const rankIndex = allTimeRanking.findIndex(r => r.userId === userId);
+      if (rankIndex >= 0) {
+        rank = rankIndex + 1;
+      }
+
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const weekStr = startOfWeek.toISOString();
+      const prevWeekStart = new Date(startOfWeek);
+      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+      const prevWeekStr = prevWeekStart.toISOString();
+
+      const prevWeekRanking = await db
+        .select({
+          userId: analyses.userId,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} < ${weekStr}`)
+        .groupBy(analyses.userId)
+        .orderBy(desc(count(analyses.id)));
+
+      let prevRank: number | null = null;
+      const prevRankIndex = prevWeekRanking.findIndex(r => r.userId === userId);
+      if (prevRankIndex >= 0) {
+        prevRank = prevRankIndex + 1;
+      }
+
+      let rankChange: number | null = null;
+      if (rank != null && prevRank != null) {
+        rankChange = prevRank - rank;
+      }
+
+      const topCity = await db
+        .select({
+          city: analyses.city,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
+        .groupBy(analyses.city)
+        .orderBy(desc(count(analyses.id)))
+        .limit(1);
+
+      res.json({
+        totalDeals,
+        avgCapRate: userStats?.avgCapRate != null ? Math.round(Number(userStats.avgCapRate) * 100) / 100 : null,
+        avgCashOnCash: userStats?.avgCashOnCash != null ? Math.round(Number(userStats.avgCashOnCash) * 100) / 100 : null,
+        avgDscr: userStats?.avgDscr != null ? Math.round(Number(userStats.avgDscr) * 100) / 100 : null,
+        rank,
+        rankChange,
+        totalUsers: allTimeRanking.length,
+        badges,
+        nextBadge: badgeDefs.find(b => totalDeals < b.threshold) || null,
+        topCity: topCity.length > 0 ? topCity[0].city : null,
+        topCityDeals: topCity.length > 0 ? Number(topCity[0].dealCount) : 0,
+        firstAnalysis: userStats?.firstAnalysis || null,
+        lastAnalysis: userStats?.lastAnalysis || null,
+      });
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      res.status(500).json({ error: "Failed to fetch user stats" });
+    }
+  });
+
+  app.get("/api/leaderboard/top-cities", async (req, res) => {
+    try {
+      const period = req.query.period as string | undefined;
+      let dateFilter = sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`;
+
+      if (period === 'weekly') {
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - dayOfWeek);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const weekStr = startOfWeek.toISOString();
+        dateFilter = sql`${dateFilter} AND ${analyses.createdAt} >= ${weekStr}`;
+      } else if (period === 'monthly') {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const monthStr = startOfMonth.toISOString();
+        dateFilter = sql`${dateFilter} AND ${analyses.createdAt} >= ${monthStr}`;
+      }
+
       const results = await db
         .select({
           city: analyses.city,
@@ -5831,7 +6039,7 @@ export async function registerRoutes(
           avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
         })
         .from(analyses)
-        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
+        .where(dateFilter)
         .groupBy(analyses.city, analyses.province)
         .orderBy(desc(count(analyses.id)))
         .limit(25);
@@ -5851,6 +6059,130 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching top cities:", error);
       res.status(500).json({ error: "Failed to fetch top cities" });
+    }
+  });
+
+  // ============================================
+  // PARTNER JOIN / MATCHING ROUTES
+  // ============================================
+
+  app.post("/api/join/realtor", async (req, res) => {
+    try {
+      const { realtorApplications } = await import("@shared/schema");
+      const { insertRealtorApplicationSchema } = await import("@shared/schema");
+      const parsed = insertRealtorApplicationSchema.parse(req.body);
+      const [application] = await db.insert(realtorApplications).values(parsed).returning();
+
+      try {
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...parsed,
+              formTag: "realtor_application",
+              source: "realist.ca",
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      try {
+        const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
+        if (sheetsUrl) {
+          fetch(sheetsUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "realtor_application",
+              ...parsed,
+              timestamp: new Date().toISOString(),
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      res.json({ success: true, id: application.id });
+    } catch (error: any) {
+      console.error("Error creating realtor application:", error);
+      res.status(400).json({ error: error.message || "Failed to submit application" });
+    }
+  });
+
+  app.post("/api/join/lender", async (req, res) => {
+    try {
+      const { lenderApplications } = await import("@shared/schema");
+      const { insertLenderApplicationSchema } = await import("@shared/schema");
+      const parsed = insertLenderApplicationSchema.parse(req.body);
+      const [application] = await db.insert(lenderApplications).values(parsed).returning();
+
+      try {
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...parsed,
+              formTag: "lender_application",
+              source: "realist.ca",
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      try {
+        const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
+        if (sheetsUrl) {
+          fetch(sheetsUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "lender_application",
+              ...parsed,
+              timestamp: new Date().toISOString(),
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      res.json({ success: true, id: application.id });
+    } catch (error: any) {
+      console.error("Error creating lender application:", error);
+      res.status(400).json({ error: error.message || "Failed to submit application" });
+    }
+  });
+
+  app.post("/api/deal-match", async (req, res) => {
+    try {
+      const { dealMatchRequests } = await import("@shared/schema");
+      const { insertDealMatchRequestSchema } = await import("@shared/schema");
+      const parsed = insertDealMatchRequestSchema.parse({
+        ...req.body,
+        userId: req.session?.userId || null,
+      });
+      const [match] = await db.insert(dealMatchRequests).values(parsed).returning();
+
+      try {
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...parsed,
+              formTag: "deal_match_request",
+              source: "realist.ca",
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      res.json({ success: true, id: match.id });
+    } catch (error: any) {
+      console.error("Error creating deal match request:", error);
+      res.status(400).json({ error: error.message || "Failed to submit match request" });
     }
   });
 

@@ -55,6 +55,8 @@ import DistressDeals from "@/pages/DistressDeals";
 import DistressReport from "@/pages/DistressReport";
 import MultiplexFit from "@/pages/MultiplexFit";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
+import JoinRealtors from "@/pages/JoinRealtors";
+import JoinLenders from "@/pages/JoinLenders";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -154,6 +156,8 @@ function Router() {
       <Route path="/verify-phone" component={VerifyPhone} />
       <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
       <Route path="/partner/network" component={RealtorNetwork} />
+      <Route path="/join/realtors" component={JoinRealtors} />
+      <Route path="/join/lenders" component={JoinLenders} />
       
       {/* 404 */}
       <Route component={NotFound} />
