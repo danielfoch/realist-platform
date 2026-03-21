@@ -266,10 +266,9 @@ export async function seedWatchOverlays(): Promise<{ created: number; skipped: n
       digitizationNotes: config.digitizationNotes,
     });
 
-    const geojsonStr = JSON.stringify(config.geojson);
     await db.execute(sql`
       UPDATE watch_overlays
-      SET geom = ST_SetSRID(ST_GeomFromGeoJSON(${geojsonStr}), 4326)
+      SET geojson = ${JSON.stringify(config.geojson)}::jsonb
       WHERE id = ${overlay.id}
     `);
 

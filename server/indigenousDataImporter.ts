@@ -119,11 +119,29 @@ async function importLayer(config: LayerConfig): Promise<{ imported: number; err
         ? JSON.stringify(feature.geometry.bbox)
         : null;
 
+      let centroidLat: number | null = null;
+      let centroidLng: number | null = null;
+      if (feature.geometry?.coordinates) {
+        const coords: number[][] = [];
+        function extractCoords(c: any) {
+          if (typeof c[0] === "number" && typeof c[1] === "number" && c.length >= 2) {
+            coords.push(c);
+          } else if (Array.isArray(c)) {
+            for (const sub of c) extractCoords(sub);
+          }
+        }
+        extractCoords(feature.geometry.coordinates);
+        if (coords.length > 0) {
+          centroidLng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+          centroidLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+        }
+      }
+
       await db.execute(sql`
         INSERT INTO indigenous_features (
           id, layer_id, feature_external_id, feature_name, nation_name, treaty_name,
           agreement_name, claim_name, province, category, status, metadata_json, bbox,
-          geom, centroid, created_at
+          geojson, centroid_lat, centroid_lng, created_at
         ) VALUES (
           gen_random_uuid()::text,
           ${layer.id},
@@ -138,8 +156,9 @@ async function importLayer(config: LayerConfig): Promise<{ imported: number; err
           'active',
           ${JSON.stringify(props)},
           ${bbox},
-          ST_SetSRID(ST_GeomFromGeoJSON(${geojsonStr}), 4326),
-          ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(${geojsonStr}), 4326)),
+          ${geojsonStr}::jsonb,
+          ${centroidLat},
+          ${centroidLng},
           NOW()
         )
       `);

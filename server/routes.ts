@@ -7865,10 +7865,9 @@ export async function registerRoutes(
       const { geojson, ...overlayData } = parsed;
       const overlay = await storage.createWatchOverlay(overlayData as any);
       if (geojson) {
-        const geojsonStr = JSON.stringify(geojson);
         await db.execute(sql`
           UPDATE watch_overlays
-          SET geom = ST_SetSRID(ST_GeomFromGeoJSON(${geojsonStr}), 4326)
+          SET geojson = ${JSON.stringify(geojson)}::jsonb
           WHERE id = ${overlay.id}
         `);
       }
@@ -7901,10 +7900,9 @@ export async function registerRoutes(
         return;
       }
       if (geojson) {
-        const geojsonStr = JSON.stringify(geojson);
         await db.execute(sql`
           UPDATE watch_overlays
-          SET geom = ST_SetSRID(ST_GeomFromGeoJSON(${geojsonStr}), 4326)
+          SET geojson = ${JSON.stringify(geojson)}::jsonb
           WHERE id = ${id}
         `);
       }
@@ -7959,6 +7957,38 @@ export async function registerRoutes(
     } catch (err) {
       console.error("[geographies] Error:", err);
       res.status(500).json({ error: "Failed to fetch geographies" });
+    }
+  });
+
+  app.get("/api/geographies/map-data", async (req, res) => {
+    try {
+      const results = await db.execute(sql`
+        SELECT g.id, g.name, g.province, g.centroid_lat, g.centroid_lng,
+          (SELECT m.value FROM metrics m WHERE m.geography_id = g.id AND m.metric_type = 'rent' ORDER BY m.date DESC LIMIT 1) as rent,
+          (SELECT m.value FROM metrics m WHERE m.geography_id = g.id AND m.metric_type = 'vacancy_rate' ORDER BY m.date DESC LIMIT 1) as vacancy_rate,
+          (SELECT m.value FROM metrics m WHERE m.geography_id = g.id AND m.metric_type = 'income' ORDER BY m.date DESC LIMIT 1) as income,
+          (SELECT m.value FROM metrics m WHERE m.geography_id = g.id AND m.metric_type = 'homeownership_rate' ORDER BY m.date DESC LIMIT 1) as homeownership_rate,
+          (SELECT a.investor_score FROM area_scores a WHERE a.geography_id = g.id ORDER BY a.date DESC LIMIT 1) as investor_score
+        FROM geographies g
+        WHERE g.centroid_lat IS NOT NULL AND g.centroid_lng IS NOT NULL
+        ORDER BY g.name
+      `);
+      res.json(results.rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch map data" });
+    }
+  });
+
+  app.get("/api/geographies/:id/trends", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const metrics = await storage.getMetrics({ geographyId: id });
+      const scores = await storage.getAreaScores(id);
+      const geo = await storage.getGeography(id);
+      if (!geo) return res.status(404).json({ error: "Geography not found" });
+      res.json({ geography: geo, metrics, scores });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch trends" });
     }
   });
 

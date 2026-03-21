@@ -2189,18 +2189,6 @@ export const insertIndigenousLayerSchema = createInsertSchema(indigenousLayers).
 export type InsertIndigenousLayer = z.infer<typeof insertIndigenousLayerSchema>;
 export type IndigenousLayer = typeof indigenousLayers.$inferSelect;
 
-const geometry = customType<{ data: string }>({
-  dataType() {
-    return "geometry(Geometry,4326)";
-  },
-});
-
-const point = customType<{ data: string }>({
-  dataType() {
-    return "geometry(Point,4326)";
-  },
-});
-
 export const indigenousFeatures = pgTable("indigenous_features", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   layerId: varchar("layer_id").notNull(),
@@ -2215,16 +2203,15 @@ export const indigenousFeatures = pgTable("indigenous_features", {
   status: text("status"),
   metadataJson: text("metadata_json"),
   bbox: text("bbox"),
+  geojson: jsonb("geojson"),
+  centroidLat: real("centroid_lat"),
+  centroidLng: real("centroid_lng"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  geom: geometry("geom"),
-  centroid: point("centroid"),
 });
 
 export const insertIndigenousFeatureSchema = createInsertSchema(indigenousFeatures).omit({
   id: true,
   createdAt: true,
-  geom: true,
-  centroid: true,
 });
 export type InsertIndigenousFeature = z.infer<typeof insertIndigenousFeatureSchema>;
 export type IndigenousFeature = typeof indigenousFeatures.$inferSelect;
@@ -2251,14 +2238,13 @@ export const watchOverlays = pgTable("watch_overlays", {
   digitizationNotes: text("digitization_notes"),
   reviewedBy: text("reviewed_by"),
   reviewStatus: text("review_status"),
-  geom: geometry("geom"),
+  geojson: jsonb("geojson"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertWatchOverlaySchema = createInsertSchema(watchOverlays).omit({
   id: true,
   createdAt: true,
-  geom: true,
 });
 export type InsertWatchOverlay = z.infer<typeof insertWatchOverlaySchema>;
 export type WatchOverlay = typeof watchOverlays.$inferSelect;

@@ -42,14 +42,80 @@ export interface ScreeningResult {
 
 const DISCLAIMER = "This tool is for informational screening only and does not determine legal title, rights, obligations, or whether a property is definitively subject to a land claim. Data coverage varies by jurisdiction and source. Users should obtain legal, title, and Indigenous relations advice before relying on results.";
 
+function pointInPolygon(lat: number, lng: number, coordinates: number[][][]): boolean {
+  for (const ring of coordinates) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][1], yi = ring[i][0];
+      const xj = ring[j][1], yj = ring[j][0];
+      if (((yi > lng) !== (yj > lng)) && (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    if (inside) return true;
+  }
+  return false;
+}
+
+function pointInGeometry(lat: number, lng: number, geojson: any): boolean {
+  if (!geojson) return false;
+  if (geojson.type === "Polygon") {
+    return pointInPolygon(lat, lng, geojson.coordinates);
+  }
+  if (geojson.type === "MultiPolygon") {
+    return geojson.coordinates.some((coords: number[][][]) => pointInPolygon(lat, lng, coords));
+  }
+  return false;
+}
+
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function bboxContainsOrNear(bbox: string | null, lat: number, lng: number, bufferDeg: number): boolean {
+  if (!bbox) return true;
+  try {
+    const b = JSON.parse(bbox);
+    if (Array.isArray(b) && b.length >= 4) {
+      const [minLng, minLat, maxLng, maxLat] = b;
+      return lng >= minLng - bufferDeg && lng <= maxLng + bufferDeg &&
+             lat >= minLat - bufferDeg && lat <= maxLat + bufferDeg;
+    }
+  } catch {}
+  return true;
+}
+
+function computeBboxFromGeojson(geojson: any): [number, number, number, number] | null {
+  if (!geojson || !geojson.coordinates) return null;
+  let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+  function processCoords(coords: any) {
+    if (typeof coords[0] === "number") {
+      minLng = Math.min(minLng, coords[0]);
+      minLat = Math.min(minLat, coords[1]);
+      maxLng = Math.max(maxLng, coords[0]);
+      maxLat = Math.max(maxLat, coords[1]);
+    } else {
+      for (const c of coords) processCoords(c);
+    }
+  }
+  processCoords(geojson.coordinates);
+  if (minLng === Infinity) return null;
+  return [minLng, minLat, maxLng, maxLat];
+}
+
 export async function screenLocation(
   lat: number,
   lng: number,
   bufferMeters: number = 0
 ): Promise<ScreeningResult> {
   const hits: ScreeningHitResult[] = [];
+  const bufferDeg = bufferMeters / 111000;
 
-  const directHits = await db.execute(sql`
+  const featureRows = await db.execute(sql`
     SELECT
       f.id as feature_id,
       f.feature_name,
@@ -58,69 +124,29 @@ export async function screenLocation(
       f.agreement_name,
       f.province,
       f.category,
+      f.geojson,
+      f.bbox,
+      f.centroid_lat,
+      f.centroid_lng,
       l.layer_name,
       l.layer_group,
       l.source_name,
-      l.source_url,
-      ST_Distance(
-        f.geom::geography,
-        ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
-      ) as distance_m
+      l.source_url
     FROM indigenous_features f
     JOIN indigenous_layers l ON l.id = f.layer_id
     WHERE l.active = true
-      AND ST_Intersects(f.geom, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326))
   `);
 
-  for (const row of (directHits as any).rows || []) {
-    hits.push({
-      featureId: row.feature_id,
-      featureName: row.feature_name || "Unknown",
-      nationName: row.nation_name,
-      treatyName: row.treaty_name,
-      agreementName: row.agreement_name,
-      province: row.province,
-      category: row.category,
-      layerName: row.layer_name,
-      layerGroup: row.layer_group,
-      sourceName: row.source_name,
-      sourceUrl: row.source_url,
-      hitType: "inside",
-      distanceMeters: Math.round(row.distance_m || 0),
-      isHighSensitivity: false,
-    });
-  }
+  for (const row of (featureRows as any).rows || []) {
+    if (!bboxContainsOrNear(row.bbox, lat, lng, bufferDeg + 0.5)) continue;
 
-  if (bufferMeters > 0) {
-    const bufferHits = await db.execute(sql`
-      SELECT
-        f.id as feature_id,
-        f.feature_name,
-        f.nation_name,
-        f.treaty_name,
-        f.agreement_name,
-        f.province,
-        f.category,
-        l.layer_name,
-        l.layer_group,
-        l.source_name,
-        l.source_url,
-        ST_Distance(
-          f.geom::geography,
-          ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
-        ) as distance_m
-      FROM indigenous_features f
-      JOIN indigenous_layers l ON l.id = f.layer_id
-      WHERE l.active = true
-        AND NOT ST_Intersects(f.geom, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326))
-        AND ST_DWithin(
-          f.geom::geography,
-          ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography,
-          ${bufferMeters}
-        )
-    `);
+    const geojson = row.geojson;
+    const isInside = geojson ? pointInGeometry(lat, lng, geojson) : false;
 
-    for (const row of (bufferHits as any).rows || []) {
+    if (isInside) {
+      const distM = row.centroid_lat && row.centroid_lng
+        ? haversineDistance(lat, lng, row.centroid_lat, row.centroid_lng)
+        : 0;
       hits.push({
         featureId: row.feature_id,
         featureName: row.feature_name || "Unknown",
@@ -133,14 +159,42 @@ export async function screenLocation(
         layerGroup: row.layer_group,
         sourceName: row.source_name,
         sourceUrl: row.source_url,
-        hitType: "within_buffer",
-        distanceMeters: Math.round(row.distance_m || 0),
+        hitType: "inside",
+        distanceMeters: Math.round(distM),
         isHighSensitivity: false,
       });
+    } else if (bufferMeters > 0 && row.centroid_lat && row.centroid_lng) {
+      const distM = haversineDistance(lat, lng, row.centroid_lat, row.centroid_lng);
+      const bbox = row.bbox ? JSON.parse(row.bbox) : null;
+      let closestDist = distM;
+      if (bbox && bbox.length >= 4) {
+        const clampedLng = Math.max(bbox[0], Math.min(bbox[2], lng));
+        const clampedLat = Math.max(bbox[1], Math.min(bbox[3], lat));
+        closestDist = haversineDistance(lat, lng, clampedLat, clampedLng);
+      }
+
+      if (closestDist <= bufferMeters) {
+        hits.push({
+          featureId: row.feature_id,
+          featureName: row.feature_name || "Unknown",
+          nationName: row.nation_name,
+          treatyName: row.treaty_name,
+          agreementName: row.agreement_name,
+          province: row.province,
+          category: row.category,
+          layerName: row.layer_name,
+          layerGroup: row.layer_group,
+          sourceName: row.source_name,
+          sourceUrl: row.source_url,
+          hitType: "within_buffer",
+          distanceMeters: Math.round(closestDist),
+          isHighSensitivity: false,
+        });
+      }
     }
   }
 
-  const watchDirectHits = await db.execute(sql`
+  const watchRows = await db.execute(sql`
     SELECT
       w.id,
       w.slug,
@@ -156,76 +210,22 @@ export async function screenLocation(
       w.authority_level,
       w.disclaimer_text,
       w.status_label,
-      ST_Distance(
-        w.geom::geography,
-        ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
-      ) as distance_m
+      w.geojson
     FROM watch_overlays w
     WHERE w.active = true
-      AND w.geom IS NOT NULL
-      AND ST_Intersects(w.geom, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326))
+      AND w.geojson IS NOT NULL
   `);
 
-  for (const row of (watchDirectHits as any).rows || []) {
-    hits.push({
-      featureId: row.id,
-      featureName: row.overlay_name,
-      nationName: row.nation_name,
-      treatyName: null,
-      agreementName: null,
-      province: null,
-      category: row.legal_context_type,
-      layerName: row.overlay_name,
-      layerGroup: row.overlay_group,
-      sourceName: row.source_summary || "Research Overlay",
-      sourceUrl: row.source_url,
-      hitType: "inside",
-      distanceMeters: Math.round(row.distance_m || 0),
-      isHighSensitivity: true,
-      legalContextType: row.legal_context_type,
-      geometryConfidence: row.geometry_confidence,
-      authorityLevel: row.authority_level,
-      disclaimerText: row.disclaimer_text,
-      statusLabel: row.status_label,
-      sourceSummary: row.source_summary,
-      sourceDate: row.source_date,
-      geometryMethod: row.geometry_method,
-    });
-  }
+  for (const row of (watchRows as any).rows || []) {
+    const geojson = typeof row.geojson === "string" ? JSON.parse(row.geojson) : row.geojson;
+    if (!geojson) continue;
 
-  if (bufferMeters > 0) {
-    const watchBufferHits = await db.execute(sql`
-      SELECT
-        w.id,
-        w.slug,
-        w.overlay_name,
-        w.overlay_group,
-        w.nation_name,
-        w.legal_context_type,
-        w.source_summary,
-        w.source_url,
-        w.source_date,
-        w.geometry_method,
-        w.geometry_confidence,
-        w.authority_level,
-        w.disclaimer_text,
-        w.status_label,
-        ST_Distance(
-          w.geom::geography,
-          ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
-        ) as distance_m
-      FROM watch_overlays w
-      WHERE w.active = true
-        AND w.geom IS NOT NULL
-        AND NOT ST_Intersects(w.geom, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326))
-        AND ST_DWithin(
-          w.geom::geography,
-          ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography,
-          ${bufferMeters}
-        )
-    `);
+    const wBbox = computeBboxFromGeojson(geojson);
+    if (wBbox && !bboxContainsOrNear(JSON.stringify(wBbox), lat, lng, bufferDeg + 0.1)) continue;
 
-    for (const row of (watchBufferHits as any).rows || []) {
+    const isInside = pointInGeometry(lat, lng, geojson);
+
+    if (isInside) {
       hits.push({
         featureId: row.id,
         featureName: row.overlay_name,
@@ -238,8 +238,8 @@ export async function screenLocation(
         layerGroup: row.overlay_group,
         sourceName: row.source_summary || "Research Overlay",
         sourceUrl: row.source_url,
-        hitType: "within_buffer",
-        distanceMeters: Math.round(row.distance_m || 0),
+        hitType: "inside",
+        distanceMeters: 0,
         isHighSensitivity: true,
         legalContextType: row.legal_context_type,
         geometryConfidence: row.geometry_confidence,
@@ -250,6 +250,37 @@ export async function screenLocation(
         sourceDate: row.source_date,
         geometryMethod: row.geometry_method,
       });
+    } else if (bufferMeters > 0 && wBbox) {
+      const clampedLng = Math.max(wBbox[0], Math.min(wBbox[2], lng));
+      const clampedLat = Math.max(wBbox[1], Math.min(wBbox[3], lat));
+      const dist = haversineDistance(lat, lng, clampedLat, clampedLng);
+
+      if (dist <= bufferMeters) {
+        hits.push({
+          featureId: row.id,
+          featureName: row.overlay_name,
+          nationName: row.nation_name,
+          treatyName: null,
+          agreementName: null,
+          province: null,
+          category: row.legal_context_type,
+          layerName: row.overlay_name,
+          layerGroup: row.overlay_group,
+          sourceName: row.source_summary || "Research Overlay",
+          sourceUrl: row.source_url,
+          hitType: "within_buffer",
+          distanceMeters: Math.round(dist),
+          isHighSensitivity: true,
+          legalContextType: row.legal_context_type,
+          geometryConfidence: row.geometry_confidence,
+          authorityLevel: row.authority_level,
+          disclaimerText: row.disclaimer_text,
+          statusLabel: row.status_label,
+          sourceSummary: row.source_summary,
+          sourceDate: row.source_date,
+          geometryMethod: row.geometry_method,
+        });
+      }
     }
   }
 
@@ -354,11 +385,12 @@ export async function getFeatureGeoJSON(): Promise<any> {
       f.agreement_name,
       f.province,
       f.category,
+      f.geojson,
+      f.centroid_lat,
+      f.centroid_lng,
       l.layer_name,
       l.layer_group,
       l.slug as layer_slug,
-      ST_AsGeoJSON(ST_Simplify(f.geom, 0.01)) as geometry,
-      ST_AsGeoJSON(f.centroid) as centroid_geojson,
       FALSE as is_high_sensitivity,
       NULL as legal_context_type,
       NULL as geometry_confidence,
@@ -381,11 +413,12 @@ export async function getFeatureGeoJSON(): Promise<any> {
       NULL as agreement_name,
       w.jurisdiction as province,
       w.legal_context_type as category,
+      w.geojson,
+      NULL as centroid_lat,
+      NULL as centroid_lng,
       w.overlay_name as layer_name,
       w.overlay_group as layer_group,
       w.slug as layer_slug,
-      ST_AsGeoJSON(ST_Simplify(w.geom, 0.005)) as geometry,
-      NULL as centroid_geojson,
       TRUE as is_high_sensitivity,
       w.legal_context_type,
       w.geometry_confidence,
@@ -396,11 +429,13 @@ export async function getFeatureGeoJSON(): Promise<any> {
       w.geometry_method,
       w.disclaimer_text
     FROM watch_overlays w
-    WHERE w.active = true AND w.geom IS NOT NULL
+    WHERE w.active = true AND w.geojson IS NOT NULL
   `);
 
   const features = ((result as any).rows || []).map((row: any) => {
-    if (!row.geometry) return null;
+    const geojson = row.geojson;
+    if (!geojson) return null;
+    const geo = typeof geojson === "string" ? JSON.parse(geojson) : geojson;
     return {
       type: "Feature",
       properties: {
@@ -423,7 +458,7 @@ export async function getFeatureGeoJSON(): Promise<any> {
         geometryMethod: row.geometry_method,
         disclaimerText: row.disclaimer_text,
       },
-      geometry: JSON.parse(row.geometry),
+      geometry: geo,
     };
   }).filter(Boolean);
 

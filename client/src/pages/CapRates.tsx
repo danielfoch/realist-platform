@@ -31,6 +31,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "re
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapLayersPanel, DEFAULT_LAYERS, type MapLayer } from "@/components/MapLayersPanel";
+import { NeighbourhoodOverlay } from "@/components/NeighbourhoodOverlay";
 
 interface RepliersListing {
   mlsNumber: string;
@@ -1886,6 +1887,7 @@ export default function CapRates() {
                 </Marker>
               ))
             )}
+            <NeighbourhoodOverlay layers={mapLayers} />
             <MapEventHandler onBoundsChange={handleBoundsChange} />
             <GeolocateOnMount />
             {flyTo && <FlyToLocation lat={flyTo.lat} lng={flyTo.lng} />}
