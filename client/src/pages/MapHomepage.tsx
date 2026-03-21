@@ -296,8 +296,8 @@ export default function MapHomepage() {
                   className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight"
                   data-testid="text-map-hero-headline"
                 >
-                  Analyze real estate deals{" "}
-                  <span className="text-gradient">to train Ai that investors use</span>
+                  Analyze real estate deals to train{" "}
+                  <span className="text-gradient">Ai that investors use</span>
                 </h1>
                 <p
                   className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto"
