@@ -10,6 +10,7 @@
     "start": "node dist/server.js",
     "premigrate": "npm run sync:schema",
     "sync:schema": "node src/scripts/sync-schema.mjs",
+    "db:doctor": "tsx src/scripts/check-db-extensions.ts",
     "sync": "tsx src/sync-listings.ts",
     "sync:full": "tsx src/sync-listings.ts --full",
     "test:ddf": "tsx src/test-ddf-connection.ts",

@@ -60,3 +60,22 @@ After boot, verify:
 - `GET /api/listings?limit=10`
 
 If you do not have a live database yet, start with `DEMO_MODE=true` and `SKIP_MIGRATIONS=true`.
+
+## 6. Replit database migration warning
+
+This app needs:
+
+- `cube`
+- `earthdistance`
+
+It does not require PostGIS.
+
+If Replit publish says it is trying to alter `spatial_ref_sys`, your development database likely has the `postgis` extension installed and Replit is diffing extension-owned system tables.
+
+Run:
+
+```bash
+npm run db:doctor
+```
+
+If `postgis` is installed and you are not intentionally using it, remove it from the Replit development database before publishing. Otherwise Replit may keep generating invalid production migration statements for system tables.
