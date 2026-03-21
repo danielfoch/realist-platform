@@ -139,6 +139,7 @@ function Router() {
       <Route path="/podcast">{() => <Redirect to="/insights/podcast" />}</Route>
       <Route path="/blog">{() => <Redirect to="/insights/blog" />}</Route>
       <Route path="/shop">{() => <Redirect to="/about/shop" />}</Route>
+      <Route path="/dashboard">{() => <Redirect to="/my-performance" />}</Route>
       
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />
