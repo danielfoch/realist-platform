@@ -1,3 +1,11 @@
+-- GENERATED FILE: do not edit schema.sql directly.
+-- Source of truth: db/migrations/*.sql
+-- Regenerate with: npm run sync:schema
+
+-- ============================================
+-- 001_initial_schema.sql
+-- ============================================
+
 -- CREA DDF IDX Database Schema for Realist.ca
 -- PostgreSQL Migration
 
@@ -280,110 +288,904 @@ COMMENT ON TABLE listing_photos IS 'Property photos and media files';
 COMMENT ON TABLE agents IS 'Real estate agents and brokers';
 COMMENT ON TABLE brokerages IS 'Real estate brokerage firms';
 
--- ==================== SEO CONTENT TABLES ====================
+-- ============================================
+-- 002_optimization_and_partitioning.sql
+-- ============================================
 
--- Blog Posts table for SEO content
+-- Extensions required for location indexes.
+CREATE EXTENSION IF NOT EXISTS cube;
+CREATE EXTENSION IF NOT EXISTS earthdistance;
+
+-- Sync run tracking for observability and /metrics endpoint.
+CREATE TABLE IF NOT EXISTS sync_runs (
+  id BIGSERIAL PRIMARY KEY,
+  status VARCHAR(20) NOT NULL,
+  incremental_sync BOOLEAN NOT NULL DEFAULT true,
+  batch_size INTEGER NOT NULL,
+  processed_count INTEGER NOT NULL DEFAULT 0,
+  inserted_count INTEGER NOT NULL DEFAULT 0,
+  updated_count INTEGER NOT NULL DEFAULT 0,
+  failed_count INTEGER NOT NULL DEFAULT 0,
+  duration_ms INTEGER,
+  error_message TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_runs_created_at ON sync_runs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sync_runs_status ON sync_runs(status);
+
+-- Additional listing indexes for common API filters.
+CREATE INDEX IF NOT EXISTS idx_listings_synced_at ON listings(synced_at DESC);
+CREATE INDEX IF NOT EXISTS idx_listings_province_price ON listings(address_province, list_price);
+CREATE INDEX IF NOT EXISTS idx_listings_city_status ON listings(address_city, status);
+CREATE INDEX IF NOT EXISTS idx_listings_ddf_modified ON listings(ddf_last_modified DESC);
+CREATE INDEX IF NOT EXISTS idx_listings_active_price ON listings(list_price) WHERE status = 'Active';
+CREATE INDEX IF NOT EXISTS idx_listing_history_changed_at ON listing_history(changed_at DESC);
+
+-- Optional partitioned table strategy for high-volume growth.
+-- This does not replace the current listings table automatically.
+CREATE TABLE IF NOT EXISTS listings_partitioned (
+  LIKE listings INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING STORAGE
+) PARTITION BY LIST (address_province);
+
+DO $$
+DECLARE
+  prov TEXT;
+BEGIN
+  FOREACH prov IN ARRAY ARRAY['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT']
+  LOOP
+    EXECUTE format(
+      'CREATE TABLE IF NOT EXISTS listings_partitioned_%I PARTITION OF listings_partitioned FOR VALUES IN (%L);',
+      lower(prov),
+      prov
+    );
+  END LOOP;
+
+  EXECUTE 'CREATE TABLE IF NOT EXISTS listings_partitioned_other PARTITION OF listings_partitioned DEFAULT';
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS idx_listings_partitioned_mls ON listings_partitioned(mls_number);
+CREATE INDEX IF NOT EXISTS idx_listings_partitioned_status_price ON listings_partitioned(status, list_price);
+
+-- Optional helper function for future migration of live data.
+CREATE OR REPLACE FUNCTION migrate_listings_to_partitioned(limit_count INTEGER DEFAULT 10000)
+RETURNS INTEGER AS $$
+DECLARE
+  moved_count INTEGER;
+BEGIN
+  WITH moved AS (
+    DELETE FROM listings
+    WHERE id IN (SELECT id FROM listings ORDER BY id LIMIT limit_count)
+    RETURNING *
+  )
+  INSERT INTO listings_partitioned
+  SELECT * FROM moved;
+
+  GET DIAGNOSTICS moved_count = ROW_COUNT;
+  RETURN moved_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================
+-- 003_monetization.sql
+-- ============================================
+
+-- Monetization tables for Realist.ca
+-- Adds user management, subscriptions, and lead capture
+
+-- ==================== USERS TABLE ====================
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255),
+  avatar_url TEXT,
+  
+  -- Subscription tier: free, premium, enterprise
+  tier VARCHAR(20) NOT NULL DEFAULT 'free',
+  
+  -- Stripe customer and subscription IDs
+  stripe_customer_id VARCHAR(255) UNIQUE,
+  stripe_subscription_id VARCHAR(255) UNIQUE,
+  
+  -- Subscription status (maps to Stripe status)
+  subscription_status VARCHAR(20) NOT NULL DEFAULT 'inactive', -- active, canceled, past_due, unpaid, incomplete, incomplete_expired, trialing
+  current_period_end TIMESTAMP,
+  cancel_at_period_end BOOLEAN DEFAULT FALSE,
+  canceled_at TIMESTAMP,
+  
+  -- Lead generation opt-in
+  receive_marketing_emails BOOLEAN DEFAULT TRUE,
+  agree_to_terms BOOLEAN DEFAULT FALSE,
+  
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_login_at TIMESTAMP,
+  
+  -- Indexes
+  CONSTRAINT valid_tier CHECK (tier IN ('free', 'premium', 'enterprise')),
+  CONSTRAINT valid_subscription_status CHECK (subscription_status IN (
+    'active', 'canceled', 'past_due', 'unpaid', 'incomplete', 'incomplete_expired', 'trialing', 'inactive'
+  ))
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_tier ON users(tier);
+CREATE INDEX idx_users_subscription_status ON users(subscription_status);
+CREATE INDEX idx_users_stripe_customer_id ON users(stripe_customer_id);
+
+-- ==================== SUBSCRIPTION HISTORY ====================
+-- Tracks changes to subscriptions for auditing and analytics
+CREATE TABLE IF NOT EXISTS subscription_history (
+  id BIGSERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_type VARCHAR(50) NOT NULL, -- subscription_created, subscription_updated, subscription_canceled, payment_succeeded, payment_failed, tier_changed
+  old_tier VARCHAR(20),
+  new_tier VARCHAR(20),
+  old_status VARCHAR(20),
+  new_status VARCHAR(20),
+  stripe_event_id VARCHAR(255),
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_subscription_history_user_id ON subscription_history(user_id);
+CREATE INDEX idx_subscription_history_created_at ON subscription_history(created_at DESC);
+CREATE INDEX idx_subscription_history_stripe_event_id ON subscription_history(stripe_event_id);
+
+-- ==================== LEAD SUBMISSIONS ====================
+-- For realtor partnership inquiries
+CREATE TABLE IF NOT EXISTS lead_submissions (
+  id SERIAL PRIMARY KEY,
+  -- Contact info
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
+  company VARCHAR(255),
+  role VARCHAR(100),
+  
+  -- Inquiry details
+  inquiry_type VARCHAR(50) NOT NULL, -- partnership, advertising, sponsorship, other
+  message TEXT,
+  source VARCHAR(100) DEFAULT 'website', -- website, landing_page, referral, etc.
+  
+  -- CRM integration
+  ghl_contact_id VARCHAR(255), -- GoHighLevel contact ID
+  ghl_opportunity_id VARCHAR(255), -- GoHighLevel opportunity ID
+  crm_synced_at TIMESTAMP,
+  
+  -- Status tracking
+  status VARCHAR(20) NOT NULL DEFAULT 'new', -- new, contacted, qualified, closed, lost
+  assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL, -- internal user assigned to lead
+  follow_up_date DATE,
+  
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_lead_submissions_email ON lead_submissions(email);
+CREATE INDEX idx_lead_submissions_status ON lead_submissions(status);
+CREATE INDEX idx_lead_submissions_created_at ON lead_submissions(created_at DESC);
+CREATE INDEX idx_lead_submissions_ghl_contact_id ON lead_submissions(ghl_contact_id);
+
+-- ==================== FEATURE FLAGS ====================
+-- Defines which features are available for each tier
+CREATE TABLE IF NOT EXISTS tier_features (
+  tier VARCHAR(20) PRIMARY KEY,
+  features JSONB NOT NULL,
+  description TEXT,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO tier_features (tier, features, description) VALUES
+('free', '[
+  "search_listings",
+  "view_listing_details",
+  "basic_filters",
+  "map_view",
+  "save_up_to_5_favorites",
+  "save_up_to_2_searches"
+]', 'Free tier with basic access'),
+('premium', '[
+  "search_listings",
+  "view_listing_details",
+  "advanced_filters",
+  "map_view",
+  "unlimited_favorites",
+  "unlimited_saved_searches",
+  "investment_metrics",
+  "cap_rate_calculator",
+  "rent_estimate_access",
+  "export_to_csv",
+  "priority_support"
+]', 'Premium tier with advanced tools'),
+('enterprise', '[
+  "search_listings",
+  "view_listing_details",
+  "advanced_filters",
+  "map_view",
+  "unlimited_favorites",
+  "unlimited_saved_searches",
+  "investment_metrics",
+  "cap_rate_calculator",
+  "rent_estimate_access",
+  "export_to_csv",
+  "priority_support",
+  "api_access",
+  "custom_reports",
+  "team_accounts",
+  "white_labeling"
+]', 'Enterprise tier with full platform access')
+ON CONFLICT (tier) DO UPDATE SET
+  features = EXCLUDED.features,
+  description = EXCLUDED.description,
+  updated_at = CURRENT_TIMESTAMP;
+
+-- ==================== UPDATE EXISTING TABLES ====================
+-- Add foreign key constraints to saved_searches and favorites (they currently have user_id integer)
+ALTER TABLE saved_searches 
+ADD CONSTRAINT fk_saved_searches_user 
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE favorites 
+ADD CONSTRAINT fk_favorites_user 
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- Add ON DELETE CASCADE to existing foreign keys for consistency
+ALTER TABLE listing_photos 
+DROP CONSTRAINT IF EXISTS listing_photos_listing_id_fkey,
+ADD CONSTRAINT listing_photos_listing_id_fkey 
+FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE;
+
+ALTER TABLE listing_rooms 
+DROP CONSTRAINT IF EXISTS listing_rooms_listing_id_fkey,
+ADD CONSTRAINT listing_rooms_listing_id_fkey 
+FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE;
+
+ALTER TABLE listing_history 
+DROP CONSTRAINT IF EXISTS listing_history_listing_id_fkey,
+ADD CONSTRAINT listing_history_listing_id_fkey 
+FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE;
+
+-- ==================== TRIGGERS ====================
+-- Auto-update updated_at for new tables
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_lead_submissions_updated_at BEFORE UPDATE ON lead_submissions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ==================== FUNCTIONS ====================
+-- Function to check if a user has access to a feature
+CREATE OR REPLACE FUNCTION has_feature_access(
+  p_user_id INTEGER,
+  p_feature VARCHAR(100)
+) RETURNS BOOLEAN AS $$
+DECLARE
+  v_tier VARCHAR(20);
+  v_features JSONB;
+BEGIN
+  -- Get user's tier
+  SELECT tier INTO v_tier FROM users WHERE id = p_user_id;
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+  
+  -- Get features for tier
+  SELECT features INTO v_features FROM tier_features WHERE tier = v_tier;
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+  
+  -- Check if feature exists in array
+  RETURN v_features ? p_feature;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Function to get user's subscription status summary
+CREATE OR REPLACE FUNCTION get_user_subscription_summary(
+  p_user_id INTEGER
+) RETURNS TABLE(
+  tier VARCHAR(20),
+  subscription_status VARCHAR(20),
+  current_period_end TIMESTAMP,
+  cancel_at_period_end BOOLEAN,
+  features JSONB
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    u.tier,
+    u.subscription_status,
+    u.current_period_end,
+    u.cancel_at_period_end,
+    tf.features
+  FROM users u
+  LEFT JOIN tier_features tf ON u.tier = tf.tier
+  WHERE u.id = p_user_id;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- ==================== COMMENTS ====================
+COMMENT ON TABLE users IS 'User accounts with subscription information';
+COMMENT ON COLUMN users.tier IS 'Current subscription tier: free, premium, enterprise';
+COMMENT ON COLUMN users.subscription_status IS 'Stripe subscription status';
+COMMENT ON COLUMN users.current_period_end IS 'When the current subscription period ends';
+
+COMMENT ON TABLE subscription_history IS 'Audit log of subscription changes and Stripe webhook events';
+COMMENT ON TABLE lead_submissions IS 'Realtor partnership inquiries for CRM integration';
+COMMENT ON TABLE tier_features IS 'Feature definitions for each subscription tier';
+
+-- ============================================
+-- 004_realtor_portal.sql
+-- ============================================
+
+-- Realtor Portal & Lead Distribution System Migration
+-- Adds tables for realtor users, market claims, investor leads, and lead distribution
+
+-- ==================== REALTOR USERS ====================
+-- Specialized users who are licensed realtors
+CREATE TABLE IF NOT EXISTS realtor_users (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  
+  -- Realtor details
+  license_number VARCHAR(50) UNIQUE,
+  license_province VARCHAR(2),
+  brokerage_name VARCHAR(255),
+  brokerage_phone VARCHAR(50),
+  
+  -- Agreement
+  agreed_to_referral_fee BOOLEAN DEFAULT false,
+  referral_fee_percentage DECIMAL(5, 2) DEFAULT 25.00,
+  agreement_signed_at TIMESTAMP,
+  agreement_ip VARCHAR(45),
+  
+  -- Verification status
+  verified BOOLEAN DEFAULT false,
+  verified_at TIMESTAMP,
+  
+  -- Stats
+  leads_received INTEGER DEFAULT 0,
+  leads_claimed INTEGER DEFAULT 0,
+  referral_earnings DECIMAL(12, 2) DEFAULT 0.00,
+  
+  -- Notifications
+  email_notifications BOOLEAN DEFAULT true,
+  phone_notifications BOOLEAN DEFAULT false,
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==================== MARKET CLAIMS ====================
+-- Postal codes or cities that realtors claim for lead distribution
+CREATE TABLE IF NOT EXISTS market_claims (
+  id SERIAL PRIMARY KEY,
+  realtor_id INTEGER REFERENCES realtor_users(id) ON DELETE CASCADE,
+  
+  -- Market definition (postal code prefix or city name)
+  market_type VARCHAR(20) NOT NULL, -- 'postal_code', 'city', 'province'
+  market_value VARCHAR(100) NOT NULL, -- e.g., 'M5V', 'Toronto', 'ON'
+  
+  -- Status
+  status VARCHAR(20) DEFAULT 'active', -- 'active', 'paused', 'removed'
+  
+  -- Stats for this market
+  total_leads INTEGER DEFAULT 0,
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  UNIQUE(realtor_id, market_type, market_value)
+);
+
+-- ==================== INVESTOR LEADS ====================
+-- Leads from investors looking to be matched with a realtor
+CREATE TABLE IF NOT EXISTS investor_leads (
+  id SERIAL PRIMARY KEY,
+  
+  -- Contact info
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
+  
+  -- Investment criteria
+  investment_type VARCHAR(50), -- 'rental', 'flip', 'hold', 'multi-family'
+  budget_min DECIMAL(12, 2),
+  budget_max DECIMAL(12, 2),
+  target_cities TEXT[], -- Array of cities
+  target_provinces VARCHAR(2)[], -- Array of provinces
+  timeline VARCHAR(50), -- 'immediate', '3-months', '6-months', 'exploring'
+  
+  -- Additional info
+  investment_experience VARCHAR(50), -- 'first-time', '1-5-deals', '5+-deals'
+  notes TEXT,
+  
+  -- Source tracking
+  source VARCHAR(50) DEFAULT 'website',
+  utm_source VARCHAR(100),
+  utm_medium VARCHAR(100),
+  utm_campaign VARCHAR(100),
+  
+  -- Status
+  status VARCHAR(20) DEFAULT 'new', -- 'new', 'distributed', 'claimed', 'contacted', 'closed', 'lost'
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==================== LEAD DISTRIBUTION ====================
+-- Tracks which leads were sent to which realtors
+CREATE TABLE IF NOT EXISTS lead_notifications (
+  id SERIAL PRIMARY KEY,
+  lead_id INTEGER REFERENCES investor_leads(id) ON DELETE CASCADE,
+  realtor_id INTEGER REFERENCES realtor_users(id) ON DELETE CASCADE,
+  
+  -- Notification status
+  notified_at TIMESTAMP,
+  notification_method VARCHAR(20), -- 'email', 'sms', 'in-app'
+  
+  -- Claim status
+  claimed BOOLEAN DEFAULT false,
+  claimed_at TIMESTAMP,
+  
+  -- Introduction email
+  introduction_email_sent BOOLEAN DEFAULT false,
+  introduction_email_sent_at TIMESTAMP,
+  introduction_email_tracking_id VARCHAR(100),
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  UNIQUE(lead_id, realtor_id)
+);
+
+-- ==================== REFERRAL EARNINGS ====================
+-- Tracks referral fee earnings
+CREATE TABLE IF NOT EXISTS referral_earnings (
+  id SERIAL PRIMARY KEY,
+  realtor_id INTEGER REFERENCES realtor_users(id) ON DELETE CASCADE,
+  lead_id INTEGER REFERENCES investor_leads(id) ON DELETE SET NULL,
+  
+  -- Transaction details
+  transaction_type VARCHAR(20), -- 'referral_fee', 'bonus'
+  amount DECIMAL(10, 2) NOT NULL,
+  currency VARCHAR(3) DEFAULT 'CAD',
+  
+  -- Reference
+  deal_address VARCHAR(255),
+  deal_price DECIMAL(12, 2),
+  commission_percentage DECIMAL(5, 2),
+  
+  -- Status
+  status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'paid', 'cancelled'
+  paid_at TIMESTAMP,
+  
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==================== INDEXES ====================
+CREATE INDEX IF NOT EXISTS idx_realtor_users_user ON realtor_users(user_id);
+CREATE INDEX IF NOT EXISTS idx_realtor_users_license ON realtor_users(license_number);
+
+CREATE INDEX IF NOT EXISTS idx_market_claims_realtor ON market_claims(realtor_id);
+CREATE INDEX IF NOT EXISTS idx_market_claims_market ON market_claims(market_type, market_value);
+
+CREATE INDEX IF NOT EXISTS idx_investor_leads_status ON investor_leads(status);
+CREATE INDEX IF NOT EXISTS idx_investor_leads_email ON investor_leads(email);
+CREATE INDEX IF NOT EXISTS idx_investor_leads_created ON investor_leads(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_lead_notifications_lead ON lead_notifications(lead_id);
+CREATE INDEX IF NOT EXISTS idx_lead_notifications_realtor ON lead_notifications(realtor_id);
+CREATE INDEX IF NOT EXISTS idx_lead_notifications_claimed ON lead_notifications(claimed);
+
+CREATE INDEX IF NOT EXISTS idx_referral_earnings_realtor ON referral_earnings(realtor_id);
+CREATE INDEX IF NOT EXISTS idx_referral_earnings_status ON referral_earnings(status);
+
+-- ==================== TRIGGERS ====================
+-- Function to auto-update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_realtor_users_updated_at BEFORE UPDATE ON realtor_users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_market_claims_updated_at BEFORE UPDATE ON market_claims
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_investor_leads_updated_at BEFORE UPDATE ON investor_leads
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Comments for documentation
+COMMENT ON TABLE realtor_users IS 'Licensed realtors who receive investor leads';
+COMMENT ON TABLE market_claims IS 'Postal codes/cities realtors claim for lead distribution';
+COMMENT ON TABLE investor_leads IS 'Leads from investors looking to be matched with a realtor';
+COMMENT ON TABLE lead_notifications IS 'Tracks which leads were sent to which realtors';
+COMMENT ON TABLE referral_earnings IS 'Tracks referral fee earnings for realtors';
+
+-- ============================================
+-- 005_seo_content.sql
+-- ============================================
+
+-- Migration 005: SEO Content Infrastructure
+-- Creates blog_posts and guides tables for content marketing
+
+-- Blog Posts Table
 CREATE TABLE IF NOT EXISTS blog_posts (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  slug VARCHAR(255) UNIQUE NOT NULL,
-  excerpt TEXT,
-  content TEXT NOT NULL, -- Markdown content
-  featured_image VARCHAR(500),
-  author VARCHAR(100) DEFAULT 'Realist Team',
-  status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
-  category VARCHAR(50), -- Market Update, Analysis, News, Tutorial
-  tags TEXT[], -- Array of tags for SEO
-  meta_title VARCHAR(70),
-  meta_description VARCHAR(160),
-  canonical_url VARCHAR(500),
-  published_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(500) NOT NULL,
+    slug VARCHAR(500) UNIQUE NOT NULL,
+    excerpt TEXT,
+    content TEXT, -- markdown content
+    featured_image TEXT,
+    author VARCHAR(255),
+    published_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- SEO Fields
+    meta_title VARCHAR(200),
+    meta_description VARCHAR(500),
+    canonical_url TEXT,
+    
+    -- Status
+    status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
+    featured BOOLEAN DEFAULT FALSE,
+    
+    -- Categorization
+    category VARCHAR(100), -- market-update, news, analysis, tutorial
+    tags TEXT[] -- array of tags for filtering
 );
 
--- Guides table for evergreen how-to content
+-- Guides Table
 CREATE TABLE IF NOT EXISTS guides (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  slug VARCHAR(255) UNIQUE NOT NULL,
-  excerpt TEXT,
-  content TEXT NOT NULL, -- Markdown content
-  featured_image VARCHAR(500),
-  author VARCHAR(100) DEFAULT 'Realist Team',
-  status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
-  category VARCHAR(50), -- Analysis, Markets, Tax & Legal, Financing
-  difficulty VARCHAR(20), -- beginner, intermediate, advanced
-  estimated_read_time_minutes INTEGER,
-  meta_title VARCHAR(70),
-  meta_description VARCHAR(160),
-  canonical_url VARCHAR(500),
-  published_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(500) NOT NULL,
+    slug VARCHAR(500) UNIQUE NOT NULL,
+    excerpt TEXT,
+    content TEXT, -- markdown content
+    featured_image TEXT,
+    author VARCHAR(255),
+    published_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- SEO Fields
+    meta_title VARCHAR(200),
+    meta_description VARCHAR(500),
+    canonical_url TEXT,
+    
+    -- Status
+    status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
+    featured BOOLEAN DEFAULT FALSE,
+    
+    -- Category - from spec: "Analysis", "Markets", "Tax & Legal", "Financing"
+    category VARCHAR(100), -- analysis, markets, tax-legal, financing
+    difficulty VARCHAR(20), -- beginner, intermediate, advanced
+    estimated_read_time_minutes INTEGER
 );
 
--- Indexes for SEO content
+-- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug);
-CREATE INDEX IF NOT EXISTS idx_blog_posts_status_published ON blog_posts(status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON blog_posts(status);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_published_at ON blog_posts(published_at);
 CREATE INDEX IF NOT EXISTS idx_blog_posts_category ON blog_posts(category);
 
 CREATE INDEX IF NOT EXISTS idx_guides_slug ON guides(slug);
-CREATE INDEX IF NOT EXISTS idx_guides_status_published ON guides(status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_guides_status ON guides(status);
+CREATE INDEX IF NOT EXISTS idx_guides_published_at ON guides(published_at);
 CREATE INDEX IF NOT EXISTS idx_guides_category ON guides(category);
 
--- Triggers to auto-update updated_at for content tables
-CREATE TRIGGER update_blog_posts_updated_at BEFORE UPDATE ON blog_posts
+-- Insert sample blog post (for testing)
+INSERT INTO blog_posts (title, slug, excerpt, content, author, published_at, status, category, meta_title, meta_description)
+VALUES (
+    'March 2026: Top 5 Canadian Cities by Rental Yield',
+    'march-2026-top-5-canadian-cities-by-rental-yield',
+    'Our analysis of the latest rent data reveals the best cities for rental yield in Canada for March 2026.',
+    '# March 2026: Top 5 Canadian Cities by Rental Yield
+
+Based on our latest rent scraper data from Kijiji and Rentals.ca, here are the top 5 Canadian cities by gross rental yield...
+
+## 1. Edmonton, Alberta
+- Average Rent: $1,450/month
+- Median Home Price: $340,000
+- Gross Yield: 5.1%
+
+## 2. Calgary, Alberta  
+- Average Rent: $1,650/month
+- Median Home Price: $480,000
+- Gross Yield: 4.1%
+
+## 3. Winnipeg, Manitoba
+- Average Rent: $1,250/month
+- Median Home Price: $290,000
+- Gross Yield: 5.2%
+
+## 4. Halifax, Nova Scotia
+- Average Rent: $1,800/month
+- Median Home Price: $450,000
+- Gross Yield: 4.8%
+
+## 5. London, Ontario
+- Average Rent: $1,900/month
+- Median Home Price: $520,000
+- Gross Yield: 4.4%
+
+*Data sourced from our weekly rent scraper. Yields are gross and do not account for expenses.*',
+    'Realist Team',
+    '2026-03-01',
+    'published',
+    'market-update',
+    'March 2026: Top 5 Canadian Cities by Rental Yield | Realist.ca',
+    'Discover the best Canadian cities for rental yield in March 2026. Our data-driven analysis covers Edmonton, Calgary, Winnipeg, Halifax, and London.'
+) ON CONFLICT (slug) DO NOTHING;
+
+-- Insert sample guides (for testing)
+INSERT INTO guides (title, slug, excerpt, content, author, published_at, status, category, difficulty, estimated_read_time_minutes, meta_title, meta_description)
+VALUES (
+    'How to Analyze a Multi-Unit Property in Ontario',
+    'how-to-analyze-multi-unit-property-ontario',
+    'A comprehensive guide to evaluating duplex, triplex, and quadruplex investments in Ontario.',
+    '# How to Analyze a Multi-Unit Property in Ontario
+
+This guide walks you through the complete process of analyzing multi-unit residential properties in Ontario...
+
+## Understanding Cap Rates
+
+The capitalization rate (cap rate) is the most important metric for rental properties:
+
+**Cap Rate = Net Operating Income / Property Value**
+
+## Key Metrics to Analyze
+
+1. Gross Rental Yield
+2. Net Operating Income (NOI)
+3. Cash-on-Cash Return
+4. Debt Service Coverage Ratio (DSCR)
+
+## Using the Realist Deal Analyzer
+
+Our free deal analyzer at realist.ca/deal-analyzer can help you calculate these metrics automatically.',
+    'Realist Team',
+    '2026-02-15',
+    'published',
+    'analysis',
+    'intermediate',
+    15,
+    'How to Analyze Multi-Unit Property in Ontario | Realist.ca',
+    'Learn how to analyze multi-unit properties in Ontario. Calculate cap rates, cash-on-cash returns, and use our free deal analyzer.'
+) ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO guides (title, slug, excerpt, content, author, published_at, status, category, difficulty, estimated_read_time_minutes, meta_title, meta_description)
+VALUES (
+    'Understanding CMHC Rent Benchmarks',
+    'understanding-cmhc-rent-benchmarks',
+    'Learn how CMHC rent data can help you make better investment decisions.',
+    '# Understanding CMHC Rent Benchmarks
+
+CMHC (Canada Mortgage and Housing Corporation) publishes annual rent data for primary rental markets across Canada...
+
+## Why CMHC Data Matters
+
+- Benchmark rents for 150+ markets
+- Vacancy rates by bedroom type
+- Historical trends going back 10+ years
+
+## How to Use This Data
+
+Compare your expected rents against CMHC benchmarks to:
+- Validate your investment assumptions
+- Identify over/under-valued markets
+- Set realistic vacancy expectations',
+    'Realist Team',
+    '2026-02-10',
+    'published',
+    'markets',
+    'beginner',
+    10,
+    'CMHC Rent Benchmarks Explained | Realist.ca',
+    'Understand CMHC rent benchmarks and how to use them for real estate investment analysis in Canada.'
+) ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO guides (title, slug, excerpt, content, author, published_at, status, category, difficulty, estimated_read_time_minutes, meta_title, meta_description)
+VALUES (
+    'Tax Strategies for Canadian Real Estate Investors',
+    'tax-strategies-canadian-real-estate-investors',
+    'Essential tax strategies every Canadian real estate investor should know.',
+    '# Tax Strategies for Canadian Real Estate Investors
+
+Understanding the tax implications of your real estate investments is crucial for maximizing returns...
+
+## Principal Residence Exemption
+
+The principal residence exemption can shield your primary home from capital gains tax...
+
+## Rental Property Deductions
+
+You can deduct:
+- Interest on your mortgage
+- Property taxes
+- Insurance
+- Maintenance and repairs
+- Property management fees
+- Depreciation (Capital Cost Allowance)
+
+## Holding Properties in a Corporation
+
+Consider incorporating to:
+- Split income with family members
+- Defer capital gains
+- Access small business deductions',
+    'Realist Team',
+    '2026-01-20',
+    'published',
+    'tax-legal',
+    'intermediate',
+    20,
+    'Tax Strategies for Canadian Real Estate Investors | Realist.ca',
+    'Learn essential tax strategies for Canadian real estate investors. Principal residence exemption, rental deductions, and corporate holding strategies.'
+) ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO guides (title, slug, excerpt, content, author, published_at, status, category, difficulty, estimated_read_time_minutes, meta_title, meta_description)
+VALUES (
+    'Financing Multi-Unit Properties in Canada',
+    'financing-multi-unit-properties-canada',
+    'Learn about CMHC insurance, conventional mortgages, and alternative financing for multi-unit properties.',
+    '# Financing Multi-Unit Properties in Canada
+
+Financing multi-unit properties requires understanding different loan products and lender requirements...
+
+## CMHC MLI Select
+
+For properties with 5+ units, CMHC offers MLI Select insurance:
+- Preferred rates
+- Flexible underwriting
+- Fast turnaround
+
+## Conventional Financing
+
+For properties under $1M:
+- 20% down payment minimum
+- Stress test applies
+- Multiple lender options
+
+## Alternative Financing
+
+Private mortgages, syndicated deals, and seller financing options for unique situations.',
+    'Realist Team',
+    '2026-01-15',
+    'published',
+    'financing',
+    'intermediate',
+    15,
+    'Financing Multi-Unit Properties in Canada | Realist.ca',
+    'Learn about financing options for multi-unit properties in Canada including CMHC MLI Select, conventional mortgages, and alternative financing.'
+) ON CONFLICT (slug) DO NOTHING;
+
+-- ============================================
+-- 006_partner_signup.sql
+-- ============================================
+
+-- Migration: Add realtors and lenders tables for partner signup
+-- Created: 2026-03-20
+
+-- Realtors table for partner signup
+CREATE TABLE IF NOT EXISTS realtors (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  phone TEXT NOT NULL,
+  brokerage TEXT NOT NULL,
+  markets_served JSONB NOT NULL DEFAULT '[]',
+  asset_types JSONB NOT NULL DEFAULT '[]',
+  deal_types JSONB NOT NULL DEFAULT '[]',
+  avg_deal_size TEXT,
+  referral_agreement BOOLEAN DEFAULT FALSE,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Lenders table for partner signup
+CREATE TABLE IF NOT EXISTS lenders (
+  id SERIAL PRIMARY KEY,
+  contact_name TEXT NOT NULL,
+  company_name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  phone TEXT NOT NULL,
+  lending_types JSONB NOT NULL DEFAULT '[]',
+  target_markets JSONB NOT NULL DEFAULT '[]',
+  loan_size_min INTEGER NOT NULL,
+  loan_size_max INTEGER NOT NULL,
+  preferred_dscr_min FLOAT,
+  preferred_ltv_max FLOAT,
+  turnaround_time TEXT NOT NULL,
+  referral_agreement BOOLEAN DEFAULT FALSE,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indexes for realtors
+CREATE INDEX IF NOT EXISTS idx_realtors_email ON realtors(email);
+CREATE INDEX IF NOT EXISTS idx_realtors_status ON realtors(status);
+CREATE INDEX IF NOT EXISTS idx_realtors_created ON realtors(created_at);
+
+-- Indexes for lenders
+CREATE INDEX IF NOT EXISTS idx_lenders_email ON lenders(email);
+CREATE INDEX IF NOT EXISTS idx_lenders_status ON lenders(status);
+CREATE INDEX IF NOT EXISTS idx_lenders_loan_size ON lenders(loan_size_min, loan_size_max);
+CREATE INDEX IF NOT EXISTS idx_lenders_created ON lenders(created_at);
+
+-- Trigger for updated_at
+CREATE TRIGGER update_realtors_updated_at BEFORE UPDATE ON realtors
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_guides_updated_at BEFORE UPDATE ON guides
+CREATE TRIGGER update_lenders_updated_at BEFORE UPDATE ON lenders
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- ==================== RENT PULSE TABLES ====================
+-- ============================================
+-- 007_rent_pulse.sql
+-- ============================================
 
--- Rent pulse data for city-level yield calculations
+-- Migration: Add rent pulse and rent listings tables
+-- Created: 2026-03-20
+
 CREATE TABLE IF NOT EXISTS rent_pulse (
   id SERIAL PRIMARY KEY,
   city VARCHAR(100) NOT NULL,
   province VARCHAR(2) NOT NULL,
-  bedrooms VARCHAR(10) NOT NULL, -- "1BR", "2BR", "3BR", "all"
-  median_rent INTEGER, -- monthly, CAD cents
+  bedrooms VARCHAR(10) NOT NULL,
+  median_rent INTEGER,
   avg_rent INTEGER,
   min_rent INTEGER,
   max_rent INTEGER,
   sample_size INTEGER,
-  source VARCHAR(20), -- "kijiji", "rentals_ca", "mixed"
+  source VARCHAR(20),
   scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Individual rent listings from scrapers
 CREATE TABLE IF NOT EXISTS rent_listings (
   id SERIAL PRIMARY KEY,
   city VARCHAR(100) NOT NULL,
   province VARCHAR(2) NOT NULL,
   title VARCHAR(500),
-  price INTEGER NOT NULL, -- monthly, CAD cents
+  price INTEGER NOT NULL,
   bedrooms INTEGER,
   bathrooms INTEGER,
   address TEXT,
   lat DECIMAL(10, 7),
   lng DECIMAL(10, 7),
-  source VARCHAR(20) NOT NULL, -- "kijiji", "rentals_ca"
+  source VARCHAR(20) NOT NULL,
   source_url TEXT,
-  source_id VARCHAR(100) UNIQUE, -- dedup key
+  source_id VARCHAR(100) UNIQUE,
   scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indexes for rent pulse queries
 CREATE INDEX IF NOT EXISTS idx_rent_pulse_city_province ON rent_pulse(city, province);
 CREATE INDEX IF NOT EXISTS idx_rent_pulse_scraped_at ON rent_pulse(scraped_at DESC);
 CREATE INDEX IF NOT EXISTS idx_rent_listings_city ON rent_listings(city);
 CREATE INDEX IF NOT EXISTS idx_rent_listings_source_id ON rent_listings(source_id);
 
--- Comments for documentation
-COMMENT ON TABLE blog_posts IS 'SEO blog posts for content marketing';
-COMMENT ON TABLE guides IS 'Evergreen how-to guides for real estate investing';
 COMMENT ON TABLE rent_pulse IS 'City-level rent data for cap rate and yield calculations';
 COMMENT ON TABLE rent_listings IS 'Individual rental listings from scrapers';
