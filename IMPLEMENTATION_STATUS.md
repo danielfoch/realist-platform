@@ -1,6 +1,6 @@
 # Realist.ca Flywheel - Implementation Summary
 
-**Generated:** March 20, 2026
+**Generated:** March 21, 2026
 
 ## What Was Created
 
@@ -34,72 +34,32 @@ Ready-to-deploy leaderboard page component.
 
 ---
 
-## Deployment Steps
+## Current Status
 
-### Step 1: Run Database Migration
-In your Replit PostgreSQL console, run:
-```
-\i sql/migrations/001_analyzed_deals.sql
-```
+### ✅ COMPLETED
+- Code written and pushed to GitHub
+- Cron job scheduled (Mondays 9am Toronto)
+- All specs created
 
-Or copy-paste the SQL contents into the Replit SQL executor.
-
-### Step 2: Add API Routes
-Add these routes to your Express/framework:
-```javascript
-import { captureDealAnalysis, getLeaderboard, getWeeklyStats } from "./server/deal-capture.js";
-
-app.post("/api/deals/capture", captureDealAnalysis);
-app.get("/api/leaderboard", getLeaderboard);
-app.get("/api/stats/weekly", getWeeklyStats);
-```
-
-### Step 3: Integrate Deal Analyzer
-In your existing `/api/analyze` endpoint, add:
-```javascript
-import { onDealAnalyzed } from "./server/deal-analyzer-integration.js";
-
-// After calculating results:
-await onDealAnalyzed({ ...inputs, ...results }, { user_id, session_id });
-```
-
-### Step 4: Deploy Leaderboard Page
-- Add `leaderboard.html` to your routes, OR
-- Integrate the component into your existing React/framework
+### 🚧 DEPLOYMENT NEEDED
+- Database migration not run on Replit
+- API routes not added to Express
+- Leaderboard page not deployed
 
 ---
 
-## Next Steps (Priority Order)
+## Next Action Required
 
-1. **Data Collection (DEPLOY PENDING)** - Migration + capture API pushed to GitHub, needs deployment to Replit
-2. **Leaderboard (DEPLOY PENDING)** - Frontend ready, needs API route deployed first
-3. **Email System (READY TO BUILD)** - Spec created, GHL available, needs cron + template
-4. **AI/Polsia (SPEC COMPLETE)** - Integration spec created, needs API key + webhook
+**Manual deploy to Replit required:**
 
-## What's Ready in Workspace
-
-```
-realist/
-├── sql/migrations/001_analyzed_deals.sql    ✅ Ready
-├── server/deal-capture.js                  ✅ Ready
-├── server/deal-analyzer-integration.js     ✅ Ready  
-├── client/leaderboard.html                  ✅ Ready
-├── weekly-email-workflow.md                ✅ Created (this run)
-├── polsia-integration.md                   ✅ Created (this run)
-├── flywheel-spec.md                        ✅ Complete
-└── db/migrations/008_flywheel_data_collection.sql  ✅ Pushed to GitHub
-```
-
-## Deployment Status
-
-**GitHub:** Code pushed to https://github.com/danielfoch/realist-platform
-**Replit:** Needs manual deploy or Replit Agent trigger
-
-### Manual Deploy Steps:
 1. Go to https://replit.com/@danielfoch/Realist-Platform
 2. Pull latest from GitHub
-3. Run: `\i db/migrations/008_flywheel_data_collection.sql` in PostgreSQL console
-4. Deploy server
+3. Run migration in PostgreSQL console:
+   ```sql
+   \i db/migrations/008_flywheel_data_collection.sql
+   ```
+4. Add API routes to Express server
+5. Deploy leaderboard page
 
 ### After Deploy:
 1. Test: `curl https://realist.ca/api/stats/weekly`
@@ -108,25 +68,9 @@ realist/
 
 ---
 
-## Files Created
+## Cron Schedule
 
-```
-realist/
-├── sql/
-│   └── migrations/
-│       └── 001_analyzed_deals.sql
-├── server/
-│   ├── deal-capture.js
-│   └── deal-analyzer-integration.js
-└── client/
-    └── leaderboard.html
-```
-
----
-
-## Notes
-
-- Session tracking works for anonymous users (no login required)
-- Leaderboard shows aggregate stats without exposing user data
-- Trigger automatically updates user_stats on each new deal
-- Badge logic is in the calculateBadges() function
+**Weekly:** Mondays at 9:00 AM Toronto time
+- Fetches stats from `/api/stats/weekly`
+- Sends email digest via GHL
+- Announces leaderboard to Telegram
