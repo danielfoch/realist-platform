@@ -79,3 +79,11 @@ npm run db:doctor
 ```
 
 If `postgis` is installed and you are not intentionally using it, remove it from the Replit development database before publishing. Otherwise Replit may keep generating invalid production migration statements for system tables.
+
+This repo also includes:
+
+```bash
+npm run db:replit:normalize
+```
+
+On Replit, `replit.start.sh` now runs that normalization step automatically before migrations. If the dev database has `postgis` installed but no `geometry`/`geography` columns, it will remove the unused extension and keep the required `cube` + `earthdistance` extensions in place.

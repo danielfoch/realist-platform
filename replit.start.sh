@@ -12,6 +12,8 @@ if [[ ! -d node_modules ]]; then
 fi
 
 if [[ -n "${DATABASE_URL:-}" && "${SKIP_MIGRATIONS:-false}" != "true" ]]; then
+  echo "[replit] normalizing database extensions"
+  npm run db:replit:normalize
   echo "[replit] running migrations"
   npm run migrate
 else
