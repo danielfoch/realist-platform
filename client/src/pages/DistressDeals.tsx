@@ -23,6 +23,8 @@ import {
   List, Map as MapIcon, Share2, Loader2, Building2, Home, Lock, UserIcon
 } from "lucide-react";
 import { DISTRESS_CATEGORIES, type DistressResult, type MatchedTerm, getProvincialNuance } from "@shared/distressScoring";
+import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
+import { Separator } from "@/components/ui/separator";
 
 const CANADA_CENTER: [number, number] = [51.0, -85.0];
 const DEFAULT_ZOOM = 5;
@@ -362,6 +364,16 @@ function ListingDetailModal({
             </div>
           </div>
 
+          <Separator />
+
+          <MiniDealAnalyzer
+            price={listing.listPrice}
+            monthlyRent={listing.listPrice * 0.004}
+            annualPropertyTax={listing.listPrice * 0.01}
+            unitCount={1}
+            isEstimated
+          />
+
           <div className="flex gap-2">
             <Button className="flex-1" data-testid="button-request-package">
               Request Deal Package
@@ -373,7 +385,7 @@ function ListingDetailModal({
                 rel="noopener noreferrer"
                 data-testid="link-analyze"
               >
-                Analyze Deal
+                Full Analysis
               </a>
             </Button>
           </div>

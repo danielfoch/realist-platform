@@ -25,6 +25,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { getCmhcRent } from "@shared/cmhcRents";
+import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
 import type { ListingAnalysisAggregate, UnderwritingNote, ListingComment } from "@shared/schema";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
@@ -1216,13 +1217,22 @@ export default function CapRates() {
                   </>
                 )}
 
+                <Separator />
+
+                <MiniDealAnalyzer
+                  price={typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice}
+                  monthlyRent={selectedListing.estimatedMonthlyRent}
+                  annualPropertyTax={selectedListing.taxes?.annualAmount}
+                  unitCount={selectedListing.unitCount}
+                />
+
                 <Button
                   className="w-full"
                   onClick={() => handleAnalyzeListing(selectedListing)}
                   data-testid="button-analyze-listing"
                 >
                   <Calculator className="h-4 w-4 mr-2" />
-                  Analyze in Deal Analyzer
+                  Full Analysis in Deal Analyzer
                 </Button>
               </TabsContent>
 
