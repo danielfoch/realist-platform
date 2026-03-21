@@ -6331,6 +6331,196 @@ export async function registerRoutes(
     }
   });
 
+  const userPerfCache = new Map<string, { data: any; expiresAt: number }>();
+
+  app.get("/api/user-performance", async (req: any, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const userId = req.session.userId;
+
+      const cacheKey = `perf:${userId}`;
+      const cached = userPerfCache.get(cacheKey);
+      if (cached && Date.now() < cached.expiresAt) {
+        res.json(cached.data);
+        return;
+      }
+
+      const [userStats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+          avgCashOnCash: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'cashOnCash')::numeric ELSE NULL END)`,
+          avgIrr: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'irr') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'irr')::numeric ELSE NULL END)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL`);
+
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const weekStr = startOfWeek.toISOString();
+
+      const [platformStats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+          avgCashOnCash: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'cashOnCash')::numeric ELSE NULL END)`,
+          avgIrr: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'irr') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'irr')::numeric ELSE NULL END)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL`);
+
+      const weeklyRanking = await db
+        .select({
+          uId: analyses.userId,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`)
+        .groupBy(analyses.userId)
+        .orderBy(desc(count(analyses.id)));
+
+      const allTimeRanking = await db
+        .select({
+          uId: analyses.userId,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`)
+        .groupBy(analyses.userId)
+        .orderBy(desc(count(analyses.id)));
+
+      const weeklyRank = weeklyRanking.findIndex(r => r.uId === userId) + 1 || null;
+      const allTimeRank = allTimeRanking.findIndex(r => r.uId === userId) + 1 || null;
+
+      const weeklyTop3 = await db
+        .select({
+          uId: analyses.userId,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          dealCount: count(analyses.id),
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`)
+        .groupBy(analyses.userId, users.firstName, users.lastName)
+        .orderBy(desc(count(analyses.id)))
+        .limit(3);
+
+      const allTimeTop3 = await db
+        .select({
+          uId: analyses.userId,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          dealCount: count(analyses.id),
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`)
+        .groupBy(analyses.userId, users.firstName, users.lastName)
+        .orderBy(desc(count(analyses.id)))
+        .limit(3);
+
+      const totalDeals = Number(userStats?.totalDeals || 0);
+      const badgeDefs = [
+        { threshold: 10, name: "Analyst" },
+        { threshold: 50, name: "Power User" },
+        { threshold: 100, name: "Deal Hunter" },
+        { threshold: 250, name: "Veteran" },
+        { threshold: 500, name: "Legend" },
+      ];
+      const currentBadge = badgeDefs.filter(b => totalDeals >= b.threshold).pop() || null;
+      const nextBadge = badgeDefs.find(b => totalDeals < b.threshold) || null;
+      const dealsToNext = nextBadge ? nextBadge.threshold - totalDeals : 0;
+
+      const monthlyBreakdown = await db
+        .select({
+          month: sql<string>`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`,
+          avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= NOW() - INTERVAL '6 months'`)
+        .groupBy(sql`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`)
+        .orderBy(sql`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`);
+
+      const platformMonthlyBreakdown = await db
+        .select({
+          month: sql<string>`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`,
+          avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= NOW() - INTERVAL '6 months'`)
+        .groupBy(sql`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`)
+        .orderBy(sql`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`);
+
+      const r = (v: any) => v != null ? Math.round(Number(v) * 100) / 100 : null;
+      const formatTop = (rows: any[]) => rows.map((row, i) => ({
+        rank: i + 1,
+        name: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
+        dealCount: Number(row.dealCount),
+        avgCapRate: r(row.avgCapRate),
+      }));
+
+      const responseData = {
+        user: {
+          deals_analyzed: totalDeals,
+          avg_cap_rate: r(userStats?.avgCapRate),
+          avg_cash_on_cash: r(userStats?.avgCashOnCash),
+          avg_irr: r(userStats?.avgIrr),
+          rank_weekly: weeklyRank,
+          rank_all_time: allTimeRank,
+          total_weekly_users: weeklyRanking.length,
+          total_all_time_users: allTimeRanking.length,
+        },
+        platform: {
+          avg_cap_rate: r(platformStats?.avgCapRate),
+          avg_cash_on_cash: r(platformStats?.avgCashOnCash),
+          avg_irr: r(platformStats?.avgIrr),
+          total_deals_analyzed: Number(platformStats?.totalDeals || 0),
+        },
+        leaderboard: {
+          weekly_top_3: formatTop(weeklyTop3),
+          all_time_top_3: formatTop(allTimeTop3),
+        },
+        gamification: {
+          current_badge: currentBadge,
+          next_badge: nextBadge,
+          deals_to_next: dealsToNext,
+          progress_percent: nextBadge ? Math.round((totalDeals / nextBadge.threshold) * 100) : 100,
+        },
+        trend: {
+          user_monthly: monthlyBreakdown.map(m => ({
+            month: m.month,
+            avgCapRate: r(m.avgCapRate),
+            dealCount: Number(m.dealCount),
+          })),
+          platform_monthly: platformMonthlyBreakdown.map(m => ({
+            month: m.month,
+            avgCapRate: r(m.avgCapRate),
+          })),
+        },
+      };
+
+      userPerfCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + 300000 });
+      if (userPerfCache.size > 500) {
+        const oldest = [...userPerfCache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+        for (let i = 0; i < 50; i++) userPerfCache.delete(oldest[i][0]);
+      }
+
+      res.json(responseData);
+    } catch (error) {
+      console.error("Error fetching user performance:", error);
+      res.status(500).json({ error: "Failed to fetch user performance" });
+    }
+  });
+
   app.get("/api/leaderboard/top-cities", async (req, res) => {
     try {
       const period = req.query.period as string | undefined;

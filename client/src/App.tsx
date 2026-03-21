@@ -57,6 +57,7 @@ import MultiplexFit from "@/pages/MultiplexFit";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
 import JoinRealtors from "@/pages/JoinRealtors";
 import JoinLenders from "@/pages/JoinLenders";
+import MyPerformance from "@/pages/MyPerformance";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -97,6 +98,7 @@ function Router() {
       <Route path="/multiplex-investor-fit" component={MultiplexFit} />
       <Route path="/insights/distress-report" component={DistressReport} />
       <Route path="/community/leaderboard" component={Leaderboard} />
+      <Route path="/my-performance" component={MyPerformance} />
       <Route path="/insights/market-report" component={MarketReport} />
       <Route path="/insights/mortgage-rates" component={MortgageRates} />
       <Route path="/insights/market-report-builder" component={MarketReportBuilder} />
