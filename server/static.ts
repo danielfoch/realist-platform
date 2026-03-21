@@ -12,8 +12,14 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  const indexPath = path.resolve(distPath, "index.html");
+  const rawHtml = fs.readFileSync(indexPath, "utf-8");
+
+  app.use("*", (req, res) => {
+    const protocol = req.headers["x-forwarded-proto"] || "https";
+    const host = req.headers["x-forwarded-host"] || req.headers.host || "realist.ca";
+    const origin = `${protocol}://${host}`;
+    const html = rawHtml.replace(/https:\/\/realist\.ca/g, origin);
+    res.status(200).set({ "Content-Type": "text/html" }).end(html);
   });
 }
