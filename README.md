@@ -117,6 +117,7 @@ This uses a 40% expense ratio (60% NOI ratio) which accounts for:
 - `TROUBLESHOOTING.md`
 - `ENVIRONMENT_VARIABLES.md`
 - `INTEGRATION_CHECKLIST.md`
+- `REPLIT_SETUP.md`
 
 ## Known Issues
 
