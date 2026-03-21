@@ -255,7 +255,7 @@ export default function MapHomepage() {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <SEO
-        title="Realist.ca - Analyze Real Estate Deals to Train Ai"
+        title="Realist.ca - Analyze Real Estate Deals to Train Ai That Investors Use"
         description="Canada's most researched real estate program. Browse listings with community-sourced yield estimates, analyze deals, and connect with 11,000+ investors."
         keywords="canadian real estate, yield map, real estate investing in canada, community underwriting, toronto real estate, daniel foch"
         canonicalUrl="/"
@@ -297,7 +297,7 @@ export default function MapHomepage() {
                   data-testid="text-map-hero-headline"
                 >
                   Analyze real estate deals{" "}
-                  <span className="text-gradient">to train Ai</span>
+                  <span className="text-gradient">to train Ai that investors use</span>
                 </h1>
                 <p
                   className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto"
