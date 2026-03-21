@@ -17,8 +17,10 @@ import {
   DollarSign, MapPin, ChevronRight, ChevronLeft, ArrowUpDown,
   Calculator, X, Loader2, ArrowRight, Map, LayoutGrid,
   RefreshCw, ChevronDown, ChevronUp, List, Users, MessageSquare,
-  ThumbsUp, ThumbsDown, Send, PenLine,
+  ThumbsUp, ThumbsDown, Send, PenLine, Sparkles, Eye, EyeOff,
+  Star, Target, Zap,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -220,6 +222,80 @@ function createCapRateIcon(capRate: number, isSelected: boolean): L.DivIcon {
   });
 }
 
+interface FindDealsResult {
+  id: string;
+  mlsNumber: string;
+  lat: number;
+  lng: number;
+  price: number;
+  cap_rate: number;
+  cash_on_cash: number;
+  deal_score: number;
+  final_score: number;
+  explanation: string;
+  address: RepliersListing["address"];
+  details: RepliersListing["details"];
+  images?: string[];
+  daysOnMarket: number;
+  monthlyRent: number;
+  rentSource: string;
+  listPrice: number | string;
+  taxes?: RepliersListing["taxes"];
+  numberOfUnitsTotal: number;
+}
+
+interface FindDealsResponse {
+  listings: FindDealsResult[];
+  bounds: { north: number; south: number; east: number; west: number; center: { lat: number; lng: number } } | null;
+  filters_applied: Record<string, any>;
+  total: number;
+  query: string;
+}
+
+function getDealScoreColor(score: number): string {
+  if (score >= 80) return "#f59e0b";
+  if (score >= 65) return "#3b82f6";
+  return "#6b7280";
+}
+
+function getDealScoreLabel(score: number): string {
+  if (score >= 80) return "Top Deal";
+  if (score >= 65) return "Good Deal";
+  return "Fair";
+}
+
+function createDealScoreIcon(score: number, isSelected: boolean): L.DivIcon {
+  const color = getDealScoreColor(score);
+  const size = isSelected ? 48 : 40;
+  const fontSize = isSelected ? 12 : 10;
+  const border = isSelected ? "3px solid #2563eb" : "2px solid white";
+  const shadow = isSelected ? "0 0 0 2px #2563eb, 0 2px 12px rgba(0,0,0,0.4)" : "0 2px 8px rgba(0,0,0,0.3)";
+
+  return L.divIcon({
+    className: "deal-score-marker",
+    html: `<div style="
+      background: ${color};
+      color: white;
+      font-weight: 700;
+      font-size: ${fontSize}px;
+      width: ${size}px;
+      height: ${size}px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: ${border};
+      box-shadow: ${shadow};
+      cursor: pointer;
+      transition: transform 0.15s ease;
+      line-height: 1;
+      font-family: system-ui, -apple-system, sans-serif;
+    ">${score}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
 function estimateMonthlyRent(
   bedrooms: number,
   city: string | undefined,
@@ -357,6 +433,14 @@ export default function CapRates() {
   const [aggregatesMap, setAggregatesMap] = useState<Record<string, ListingAnalysisAggregate>>({});
   const listingRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const searchInProgress = useRef(false);
+
+  const [findDealsQuery, setFindDealsQuery] = useState("");
+  const [findDealsResults, setFindDealsResults] = useState<FindDealsResult[]>([]);
+  const [findDealsActive, setFindDealsActive] = useState(false);
+  const [findDealsLoading, setFindDealsLoading] = useState(false);
+  const [findDealsFilters, setFindDealsFilters] = useState<Record<string, any>>({});
+  const [showTopDealsOnly, setShowTopDealsOnly] = useState(false);
+  const [selectedDealResult, setSelectedDealResult] = useState<FindDealsResult | null>(null);
 
   const [uwUnitCount, setUwUnitCount] = useState("1");
   const [uwRentPerUnit, setUwRentPerUnit] = useState("");
@@ -607,6 +691,73 @@ export default function CapRates() {
     () => listingsWithCapRates.filter((l) => l.map?.latitude && l.map?.longitude),
     [listingsWithCapRates]
   );
+
+  const handleFindDeals = useCallback(async () => {
+    if (!findDealsQuery.trim()) return;
+    setFindDealsLoading(true);
+    setFindDealsActive(true);
+    setSelectedListing(null);
+    setSelectedDealResult(null);
+    try {
+      const response = await apiRequest("POST", "/api/find-deals", {
+        query: findDealsQuery.trim(),
+        bounds: mapBounds,
+      });
+      const data: FindDealsResponse = await response.json();
+
+      setFindDealsResults(data.listings);
+      setFindDealsFilters(data.filters_applied || {});
+
+      if (data.filters_applied) {
+        const f = data.filters_applied;
+        if (f.minPrice) setMinPrice(String(f.minPrice));
+        if (f.maxPrice) setMaxPrice(String(f.maxPrice));
+        if (f.minBeds) setMinBeds(String(f.minBeds));
+        if (f.propertyType) setPropertyType(f.propertyType);
+      }
+
+      if (data.bounds?.center) {
+        setFlyTo({ lat: data.bounds.center.lat, lng: data.bounds.center.lng, zoom: 12 });
+      }
+
+      toast({
+        title: `Found ${data.listings.length} deals`,
+        description: data.listings.filter(l => l.deal_score >= 65).length + " scored as good or better",
+      });
+    } catch (error: any) {
+      console.error("Find deals error:", error);
+      toast({
+        title: "Search failed",
+        description: error.message || "Could not search for deals",
+        variant: "destructive",
+      });
+    } finally {
+      setFindDealsLoading(false);
+    }
+  }, [findDealsQuery, mapBounds, toast]);
+
+  const handleClearFindDeals = () => {
+    setFindDealsActive(false);
+    setFindDealsResults([]);
+    setFindDealsFilters({});
+    setFindDealsQuery("");
+    setSelectedDealResult(null);
+    setShowTopDealsOnly(false);
+  };
+
+  const handleSelectDealResult = (result: FindDealsResult) => {
+    setSelectedDealResult(result);
+    setSelectedListing(null);
+    setFlyTo({ lat: result.lat, lng: result.lng, zoom: 15 });
+  };
+
+  const displayedDealResults = useMemo(() => {
+    if (!findDealsActive) return [];
+    const results = showTopDealsOnly
+      ? findDealsResults.filter(r => r.deal_score >= 65)
+      : findDealsResults;
+    return results.slice(0, 20);
+  }, [findDealsActive, findDealsResults, showTopDealsOnly]);
 
   const handleRefresh = () => {
     if (mapBounds) {
@@ -1440,7 +1591,84 @@ export default function CapRates() {
       <Navigation />
 
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-[1000] relative">
-        <div className="px-3 py-2">
+        <div className="px-3 py-2 space-y-2">
+          <div className="flex gap-2 items-center">
+            <div className="flex-1 relative">
+              <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
+              <Input
+                placeholder='Try: "duplexes in Hamilton under 600k" or "3 bed houses in Calgary"'
+                value={findDealsQuery}
+                onChange={(e) => setFindDealsQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleFindDeals()}
+                className="pl-9 h-9 text-sm"
+                data-testid="input-find-deals"
+              />
+            </div>
+            <Button
+              size="sm"
+              className="h-9 px-4"
+              onClick={handleFindDeals}
+              disabled={findDealsLoading || !findDealsQuery.trim()}
+              data-testid="button-find-deals"
+            >
+              {findDealsLoading ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <Target className="h-4 w-4 mr-1.5" />
+              )}
+              Find Deals
+            </Button>
+            {findDealsActive && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={handleClearFindDeals}
+                data-testid="button-clear-find-deals"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {findDealsActive && Object.keys(findDealsFilters).length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="secondary" className="text-[10px] gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" data-testid="badge-ai-filters">
+                <Sparkles className="h-3 w-3" />
+                AI Filters Applied
+              </Badge>
+              {findDealsFilters.city && (
+                <Badge variant="outline" className="text-[10px]">{findDealsFilters.city}</Badge>
+              )}
+              {findDealsFilters.propertyType && (
+                <Badge variant="outline" className="text-[10px]">{findDealsFilters.propertyType}</Badge>
+              )}
+              {findDealsFilters.maxPrice && (
+                <Badge variant="outline" className="text-[10px]">Under {formatPrice(findDealsFilters.maxPrice)}</Badge>
+              )}
+              {findDealsFilters.minPrice && (
+                <Badge variant="outline" className="text-[10px]">Over {formatPrice(findDealsFilters.minPrice)}</Badge>
+              )}
+              {findDealsFilters.minBeds && (
+                <Badge variant="outline" className="text-[10px]">{findDealsFilters.minBeds}+ beds</Badge>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <span className="text-[9px] text-muted-foreground">80+</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                  <span className="text-[9px] text-muted-foreground">65–79</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-full bg-gray-500" />
+                  <span className="text-[9px] text-muted-foreground">&lt;65</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2 items-end">
             <div className="min-w-[100px]">
               <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Price</Label>
@@ -1585,33 +1813,69 @@ export default function CapRates() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | Real estate listings powered by <a href="https://valery.ca" target="_blank" rel="noopener noreferrer">valery.ca</a> / Valery Real Estate Inc.'
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
-            {mappableListings.map((listing) => (
-              <Marker
-                key={listing.mlsNumber}
-                position={[listing.map!.latitude, listing.map!.longitude]}
-                icon={createCapRateIcon(
-                  listing.capRate,
-                  selectedListing?.mlsNumber === listing.mlsNumber
-                )}
-                eventHandlers={{
-                  click: () => handleSelectListing(listing),
-                }}
-              >
-                <Popup>
-                  <div className="min-w-[200px]">
-                    <p className="font-bold text-sm">{formatPrice(listing.listPrice)}</p>
-                    <p className="text-xs text-gray-600">{formatShortAddress(listing.address)}, {listing.address?.city}</p>
-                    <p className="text-xs font-semibold mt-1" style={{ color: getCapRateMarkerColor(listing.capRate) }}>
-                      {listing.capRate.toFixed(1)}% Yield
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {listing.details?.numBedrooms || "?"} bed / {listing.details?.numBathrooms || "?"} bath
-                      {listing.details?.sqft ? ` / ${listing.details.sqft} sqft` : ""}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+            {findDealsActive ? (
+              displayedDealResults.map((result) => (
+                <Marker
+                  key={`deal-${result.id}`}
+                  position={[result.lat, result.lng]}
+                  icon={createDealScoreIcon(
+                    result.deal_score,
+                    selectedDealResult?.id === result.id
+                  )}
+                  eventHandlers={{
+                    click: () => handleSelectDealResult(result),
+                  }}
+                >
+                  <Popup>
+                    <div className="min-w-[220px]">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-bold text-sm">{formatPrice(result.price)}</p>
+                        <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{
+                          background: getDealScoreColor(result.deal_score),
+                          color: "white"
+                        }}>
+                          Score: {result.deal_score}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600">{formatShortAddress(result.address)}, {result.address?.city}</p>
+                      <div className="flex gap-3 mt-1 text-xs">
+                        <span className="font-medium">{result.cap_rate}% cap</span>
+                        <span className="font-medium">{result.cash_on_cash}% CoC</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 mt-1">{getDealScoreLabel(result.deal_score)}</p>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))
+            ) : (
+              mappableListings.map((listing) => (
+                <Marker
+                  key={listing.mlsNumber}
+                  position={[listing.map!.latitude, listing.map!.longitude]}
+                  icon={createCapRateIcon(
+                    listing.capRate,
+                    selectedListing?.mlsNumber === listing.mlsNumber
+                  )}
+                  eventHandlers={{
+                    click: () => handleSelectListing(listing),
+                  }}
+                >
+                  <Popup>
+                    <div className="min-w-[200px]">
+                      <p className="font-bold text-sm">{formatPrice(listing.listPrice)}</p>
+                      <p className="text-xs text-gray-600">{formatShortAddress(listing.address)}, {listing.address?.city}</p>
+                      <p className="text-xs font-semibold mt-1" style={{ color: getCapRateMarkerColor(listing.capRate) }}>
+                        {listing.capRate.toFixed(1)}% Yield
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {listing.details?.numBedrooms || "?"} bed / {listing.details?.numBathrooms || "?"} bath
+                        {listing.details?.sqft ? ` / ${listing.details.sqft} sqft` : ""}
+                      </p>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))
+            )}
             <MapEventHandler onBoundsChange={handleBoundsChange} />
             <GeolocateOnMount />
             {flyTo && <FlyToLocation lat={flyTo.lat} lng={flyTo.lng} />}

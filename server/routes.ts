@@ -3500,6 +3500,330 @@ export async function registerRoutes(
   });
 
   // ============================================
+  // FIND DEALS - AI-powered deal search
+  // ============================================
+
+  const CITY_COORDS: Record<string, { lat: number; lng: number; province: string }> = {
+    "toronto": { lat: 43.65, lng: -79.38, province: "Ontario" },
+    "mississauga": { lat: 43.59, lng: -79.64, province: "Ontario" },
+    "brampton": { lat: 43.73, lng: -79.76, province: "Ontario" },
+    "hamilton": { lat: 43.26, lng: -79.87, province: "Ontario" },
+    "ottawa": { lat: 45.42, lng: -75.70, province: "Ontario" },
+    "london": { lat: 42.98, lng: -81.25, province: "Ontario" },
+    "kitchener": { lat: 43.45, lng: -80.49, province: "Ontario" },
+    "windsor": { lat: 42.32, lng: -83.04, province: "Ontario" },
+    "oshawa": { lat: 43.90, lng: -78.86, province: "Ontario" },
+    "barrie": { lat: 44.39, lng: -79.69, province: "Ontario" },
+    "guelph": { lat: 43.55, lng: -80.25, province: "Ontario" },
+    "kingston": { lat: 44.23, lng: -76.49, province: "Ontario" },
+    "thunder bay": { lat: 48.38, lng: -89.25, province: "Ontario" },
+    "sudbury": { lat: 46.49, lng: -81.00, province: "Ontario" },
+    "st. catharines": { lat: 43.16, lng: -79.24, province: "Ontario" },
+    "niagara falls": { lat: 43.09, lng: -79.08, province: "Ontario" },
+    "cambridge": { lat: 43.36, lng: -80.31, province: "Ontario" },
+    "waterloo": { lat: 43.47, lng: -80.52, province: "Ontario" },
+    "brantford": { lat: 43.14, lng: -80.27, province: "Ontario" },
+    "peterborough": { lat: 44.30, lng: -78.32, province: "Ontario" },
+    "markham": { lat: 43.88, lng: -79.26, province: "Ontario" },
+    "vaughan": { lat: 43.84, lng: -79.51, province: "Ontario" },
+    "richmond hill": { lat: 43.87, lng: -79.44, province: "Ontario" },
+    "oakville": { lat: 43.45, lng: -79.68, province: "Ontario" },
+    "burlington": { lat: 43.33, lng: -79.80, province: "Ontario" },
+    "ajax": { lat: 43.85, lng: -79.04, province: "Ontario" },
+    "whitby": { lat: 43.88, lng: -78.94, province: "Ontario" },
+    "pickering": { lat: 43.84, lng: -79.09, province: "Ontario" },
+    "montreal": { lat: 45.50, lng: -73.57, province: "Quebec" },
+    "quebec city": { lat: 46.81, lng: -71.21, province: "Quebec" },
+    "laval": { lat: 45.57, lng: -73.69, province: "Quebec" },
+    "gatineau": { lat: 45.48, lng: -75.70, province: "Quebec" },
+    "longueuil": { lat: 45.53, lng: -73.52, province: "Quebec" },
+    "sherbrooke": { lat: 45.40, lng: -71.89, province: "Quebec" },
+    "trois-rivieres": { lat: 46.35, lng: -72.55, province: "Quebec" },
+    "vancouver": { lat: 49.28, lng: -123.12, province: "British Columbia" },
+    "surrey": { lat: 49.19, lng: -122.85, province: "British Columbia" },
+    "burnaby": { lat: 49.25, lng: -122.95, province: "British Columbia" },
+    "victoria": { lat: 48.43, lng: -123.37, province: "British Columbia" },
+    "kelowna": { lat: 49.88, lng: -119.50, province: "British Columbia" },
+    "nanaimo": { lat: 49.17, lng: -123.94, province: "British Columbia" },
+    "kamloops": { lat: 50.67, lng: -120.33, province: "British Columbia" },
+    "richmond": { lat: 49.17, lng: -123.14, province: "British Columbia" },
+    "calgary": { lat: 51.05, lng: -114.07, province: "Alberta" },
+    "edmonton": { lat: 53.55, lng: -113.49, province: "Alberta" },
+    "red deer": { lat: 52.27, lng: -113.81, province: "Alberta" },
+    "lethbridge": { lat: 49.69, lng: -112.83, province: "Alberta" },
+    "medicine hat": { lat: 50.04, lng: -110.68, province: "Alberta" },
+    "grande prairie": { lat: 55.17, lng: -118.80, province: "Alberta" },
+    "winnipeg": { lat: 49.90, lng: -97.14, province: "Manitoba" },
+    "brandon": { lat: 49.84, lng: -99.95, province: "Manitoba" },
+    "saskatoon": { lat: 52.13, lng: -106.67, province: "Saskatchewan" },
+    "regina": { lat: 50.45, lng: -104.62, province: "Saskatchewan" },
+    "halifax": { lat: 44.65, lng: -63.57, province: "Nova Scotia" },
+    "dartmouth": { lat: 44.67, lng: -63.57, province: "Nova Scotia" },
+    "moncton": { lat: 46.09, lng: -64.77, province: "New Brunswick" },
+    "saint john": { lat: 45.27, lng: -66.06, province: "New Brunswick" },
+    "fredericton": { lat: 45.96, lng: -66.64, province: "New Brunswick" },
+    "st. john's": { lat: 47.56, lng: -52.71, province: "Newfoundland and Labrador" },
+    "charlottetown": { lat: 46.24, lng: -63.13, province: "Prince Edward Island" },
+  };
+
+  function parseNaturalLanguageQuery(query: string): {
+    city?: string;
+    province?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minBeds?: number;
+    propertyType?: string;
+    minCapRate?: number;
+  } {
+    const q = query.toLowerCase().trim();
+    const filters: any = {};
+
+    for (const [cityName, coords] of Object.entries(CITY_COORDS)) {
+      if (q.includes(cityName)) {
+        filters.city = cityName.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        if (cityName === "st. catharines") filters.city = "St. Catharines";
+        if (cityName === "st. john's") filters.city = "St. John's";
+        if (cityName === "trois-rivieres") filters.city = "Trois-Rivières";
+        if (cityName === "quebec city") filters.city = "Québec";
+        filters.province = coords.province;
+        break;
+      }
+    }
+
+    const underMatch = q.match(/under\s*\$?\s*([\d,.]+)\s*(k|m|million|thousand)?/i);
+    if (underMatch) {
+      let val = parseFloat(underMatch[1].replace(/,/g, ""));
+      if (underMatch[2]?.toLowerCase() === "k" || underMatch[2]?.toLowerCase() === "thousand") val *= 1000;
+      if (underMatch[2]?.toLowerCase() === "m" || underMatch[2]?.toLowerCase() === "million") val *= 1000000;
+      filters.maxPrice = val;
+    }
+
+    const overMatch = q.match(/over\s*\$?\s*([\d,.]+)\s*(k|m|million|thousand)?/i);
+    if (overMatch) {
+      let val = parseFloat(overMatch[1].replace(/,/g, ""));
+      if (overMatch[2]?.toLowerCase() === "k" || overMatch[2]?.toLowerCase() === "thousand") val *= 1000;
+      if (overMatch[2]?.toLowerCase() === "m" || overMatch[2]?.toLowerCase() === "million") val *= 1000000;
+      filters.minPrice = val;
+    }
+
+    const rangeMatch = q.match(/\$?\s*([\d,.]+)\s*(k|m)?\s*(-|to)\s*\$?\s*([\d,.]+)\s*(k|m)?/i);
+    if (rangeMatch) {
+      let min = parseFloat(rangeMatch[1].replace(/,/g, ""));
+      let max = parseFloat(rangeMatch[4].replace(/,/g, ""));
+      if (rangeMatch[2]?.toLowerCase() === "k") min *= 1000;
+      if (rangeMatch[2]?.toLowerCase() === "m") min *= 1000000;
+      if (rangeMatch[5]?.toLowerCase() === "k") max *= 1000;
+      if (rangeMatch[5]?.toLowerCase() === "m") max *= 1000000;
+      filters.minPrice = min;
+      filters.maxPrice = max;
+    }
+
+    const bedMatch = q.match(/(\d+)\s*(?:\+\s*)?(?:bed|br|bedroom)/i);
+    if (bedMatch) filters.minBeds = parseInt(bedMatch[1]);
+
+    const typeMap: Record<string, string> = {
+      "detached": "Detached", "house": "Detached", "houses": "Detached",
+      "semi": "Semi-Detached", "semi-detached": "Semi-Detached",
+      "townhouse": "Townhouse", "townhome": "Townhouse", "town house": "Townhouse",
+      "condo": "Condo", "condominium": "Condo", "apartment": "Condo",
+      "duplex": "Duplex", "triplex": "Triplex", "multiplex": "Multiplex",
+      "fourplex": "Multiplex", "multi-family": "Multiplex", "multifamily": "Multiplex",
+    };
+    for (const [keyword, type] of Object.entries(typeMap)) {
+      if (q.includes(keyword)) { filters.propertyType = type; break; }
+    }
+
+    const capMatch = q.match(/(\d+(?:\.\d+)?)\s*%?\s*(?:cap|yield)/i);
+    if (capMatch) filters.minCapRate = parseFloat(capMatch[1]);
+
+    return filters;
+  }
+
+  const findDealsCache = new Map<string, { data: any; expiresAt: number }>();
+
+  app.post("/api/find-deals", async (req: any, res) => {
+    try {
+      const { query, bounds } = req.body;
+      if (!query || typeof query !== "string") {
+        res.status(400).json({ error: "Query is required" });
+        return;
+      }
+
+      const cacheKey = `find-deals:${query.toLowerCase().trim()}`;
+      const cached = findDealsCache.get(cacheKey);
+      if (cached && Date.now() < cached.expiresAt) {
+        res.json(cached.data);
+        return;
+      }
+
+      const { isDdfConfigured, searchDdfListings, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "DDF not configured", available: false });
+        return;
+      }
+
+      const filters = parseNaturalLanguageQuery(query);
+
+      const cityKey = filters.city?.toLowerCase() || "";
+      const cityCoords = CITY_COORDS[cityKey] || null;
+
+      const searchParams: any = {
+        top: 100,
+        skip: 0,
+        excludeBusinessSales: true,
+        excludeParking: true,
+      };
+
+      if (filters.city) searchParams.city = filters.city;
+      if (filters.province) searchParams.stateOrProvince = filters.province;
+      if (filters.minPrice) searchParams.minPrice = filters.minPrice;
+      if (filters.maxPrice) searchParams.maxPrice = filters.maxPrice;
+      if (filters.minBeds) searchParams.minBeds = filters.minBeds;
+      if (filters.propertyType) searchParams.propertySubType = filters.propertyType;
+
+      if (!filters.city && bounds) {
+        searchParams.latitudeMin = bounds.south;
+        searchParams.latitudeMax = bounds.north;
+        searchParams.longitudeMin = bounds.west;
+        searchParams.longitudeMax = bounds.east;
+      }
+
+      const result = await searchDdfListings(searchParams);
+      const normalizedListings = result.listings.map(normalizeDdfToRepliersFormat);
+
+      const { getCmhcRent } = await import("../shared/cmhcRents");
+
+      const scoredListings = normalizedListings
+        .filter((l: any) => l.map?.latitude && l.map?.longitude)
+        .map((listing: any) => {
+          const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+          const beds = listing.details?.numBedrooms || 2;
+          const units = listing.numberOfUnitsTotal || 1;
+
+          let monthlyRent = 0;
+          let rentSource = "estimated";
+          if (listing.totalActualRent && listing.totalActualRent > 0) {
+            monthlyRent = listing.totalActualRent / 12;
+            rentSource = "actual";
+          } else {
+            const city = listing.address?.city || "";
+            const province = listing.address?.state || "";
+            const cmhc = getCmhcRent(city, String(beds));
+            if (cmhc) {
+              monthlyRent = cmhc * units;
+              rentSource = "cmhc";
+            } else {
+              const baseFallback: Record<number, number> = { 0: 1200, 1: 1500, 2: 1800, 3: 2200, 4: 2600, 5: 3000 };
+              monthlyRent = (baseFallback[beds] || 1800) * units;
+              rentSource = "estimated";
+            }
+          }
+
+          const annualRent = monthlyRent * 12;
+          const vacancyLoss = annualRent * 0.05;
+          const opExpenses = annualRent * 0.35;
+          const noi = annualRent - vacancyLoss - opExpenses;
+          const capRate = price > 0 ? (noi / price) * 100 : 0;
+
+          const downPayment = price * 0.20;
+          const mortgageAmount = price * 0.80;
+          const annualMortgage = mortgageAmount * 0.055;
+          const cashFlow = noi - annualMortgage;
+          const cashOnCash = downPayment > 0 ? (cashFlow / downPayment) * 100 : 0;
+
+          let dealScore = 0;
+          dealScore += Math.min(capRate * 8, 40);
+          dealScore += Math.max(0, Math.min(cashOnCash * 3, 25));
+          const dom = parseInt(String(listing.daysOnMarket)) || 0;
+          if (dom > 60) dealScore += 10;
+          else if (dom > 30) dealScore += 5;
+          if (rentSource === "actual") dealScore += 10;
+          if (units >= 2) dealScore += 5;
+          if (units >= 4) dealScore += 5;
+          if (price > 0 && price < 500000) dealScore += 5;
+
+          dealScore = Math.min(Math.round(dealScore), 100);
+
+          const explanations: string[] = [];
+          if (capRate >= 6) explanations.push(`Strong ${capRate.toFixed(1)}% cap rate`);
+          else if (capRate >= 4) explanations.push(`Moderate ${capRate.toFixed(1)}% cap rate`);
+          else explanations.push(`Low ${capRate.toFixed(1)}% cap rate`);
+
+          if (cashOnCash > 5) explanations.push(`${cashOnCash.toFixed(1)}% cash-on-cash`);
+          if (dom > 60) explanations.push(`${dom} days on market — motivated seller potential`);
+          if (units >= 2) explanations.push(`${units}-unit property adds income diversity`);
+          if (rentSource === "actual") explanations.push("Verified actual rental income");
+
+          return {
+            id: listing.mlsNumber,
+            mlsNumber: listing.mlsNumber,
+            lat: listing.map.latitude,
+            lng: listing.map.longitude,
+            price,
+            cap_rate: Math.round(capRate * 10) / 10,
+            cash_on_cash: Math.round(cashOnCash * 10) / 10,
+            deal_score: dealScore,
+            final_score: dealScore,
+            explanation: explanations.join(". ") + ".",
+            address: listing.address,
+            details: listing.details,
+            images: listing.images,
+            daysOnMarket: dom,
+            monthlyRent: Math.round(monthlyRent),
+            rentSource,
+            listPrice: listing.listPrice,
+            taxes: listing.taxes,
+            numberOfUnitsTotal: units,
+          };
+        })
+        .sort((a: any, b: any) => b.final_score - a.final_score);
+
+      let responseBounds = null;
+      if (cityCoords) {
+        responseBounds = {
+          north: cityCoords.lat + 0.15,
+          south: cityCoords.lat - 0.15,
+          east: cityCoords.lng + 0.25,
+          west: cityCoords.lng - 0.25,
+          center: { lat: cityCoords.lat, lng: cityCoords.lng },
+        };
+      } else if (scoredListings.length > 0) {
+        const lats = scoredListings.map((l: any) => l.lat);
+        const lngs = scoredListings.map((l: any) => l.lng);
+        responseBounds = {
+          north: Math.max(...lats) + 0.02,
+          south: Math.min(...lats) - 0.02,
+          east: Math.max(...lngs) + 0.02,
+          west: Math.min(...lngs) - 0.02,
+          center: {
+            lat: (Math.max(...lats) + Math.min(...lats)) / 2,
+            lng: (Math.max(...lngs) + Math.min(...lngs)) / 2,
+          },
+        };
+      }
+
+      const responseData = {
+        listings: scoredListings,
+        bounds: responseBounds,
+        filters_applied: filters,
+        total: result.count || scoredListings.length,
+        query: query.trim(),
+      };
+
+      findDealsCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + 600000 });
+      if (findDealsCache.size > 100) {
+        const oldest = [...findDealsCache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+        for (let i = 0; i < 20; i++) findDealsCache.delete(oldest[i][0]);
+      }
+
+      res.json(responseData);
+    } catch (error: any) {
+      console.error("Find deals error:", error);
+      res.status(500).json({ error: "Failed to search for deals" });
+    }
+  });
+
+  // ============================================
   // REPLIERS API PROXY ROUTES
   // ============================================
 
