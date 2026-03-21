@@ -16,6 +16,7 @@ import authRouter from './auth-routes';
 import leadRouter from './lead-routes';
 import realtorRouter from './realtor-routes';
 import investorLeadRouter from './investor-lead-routes';
+import partnerRouter from './partner-routes';
 import { handleStripeWebhook } from './stripe-integration';
 
 dotenv.config();
@@ -74,6 +75,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/leads', leadRouter);
 app.use('/api/realtor', realtorRouter);
 app.use('/api/investor', investorLeadRouter);
+app.use('/api/partners', partnerRouter);
 app.use('/api', createContentRouter());
 
 // Stripe webhook endpoint (must be after raw body middleware)
