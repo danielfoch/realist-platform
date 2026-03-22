@@ -7645,6 +7645,52 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/email/unsubscribe", async (req, res) => {
+    try {
+      const uid = req.query.uid as string;
+      const token = req.query.token as string;
+      if (!uid || !token) {
+        res.status(400).send("Invalid unsubscribe link");
+        return;
+      }
+      const { verifyUnsubscribeToken } = await import("./weeklyDigest");
+      if (!verifyUnsubscribeToken(uid, token)) {
+        res.status(403).send("Invalid unsubscribe link");
+        return;
+      }
+      await db.update(users).set({ emailDigestOptIn: false }).where(eq(users.id, uid));
+      res.send(`
+        <html><head><title>Unsubscribed</title><style>body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f9fafb;}
+        .card{background:white;padding:40px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);text-align:center;max-width:400px;}
+        h2{color:#111827;margin:0 0 8px;}p{color:#6b7280;margin:0 0 16px;}a{color:#2563eb;}</style></head>
+        <body><div class="card"><h2>Unsubscribed</h2><p>You've been unsubscribed from the Realist.ca weekly digest.</p><a href="https://realist.ca">Back to Realist.ca</a></div></body></html>
+      `);
+    } catch (error: any) {
+      res.status(500).send("Something went wrong");
+    }
+  });
+
+  app.post("/api/email/resubscribe", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      await db.update(users).set({ emailDigestOptIn: true }).where(eq(users.id, userId));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to resubscribe" });
+    }
+  });
+
+  app.post("/api/admin/weekly-digest/send", isAdmin, async (req, res) => {
+    try {
+      const { sendWeeklyDigest } = await import("./weeklyDigest");
+      const result = await sendWeeklyDigest();
+      res.json(result);
+    } catch (error: any) {
+      console.error("[weekly-digest] Admin trigger failed:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/admin/distress-report/generate", isAdmin, async (req, res) => {
     try {
       const now = new Date();

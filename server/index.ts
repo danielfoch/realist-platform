@@ -163,6 +163,9 @@ async function initStripe() {
     () => {
       log(`serving on port ${port}`);
       seedGeographies().catch((err) => log(`Seed error: ${err.message}`, "seed"));
+      import("./weeklyDigest").then(({ scheduleWeeklyDigest }) => {
+        scheduleWeeklyDigest();
+      }).catch((err) => log(`Weekly digest schedule error: ${err.message}`, "digest"));
     },
   );
 })();

@@ -47,6 +47,7 @@ Preferred communication style: Simple, everyday language.
 - **Stress Test Analysis**: Provides Base/Bear/Bull scenarios for financial projections.
 - **MLI Select Calculator**: Standalone CMHC MLI Select points calculator.
 - **Content Management**: Database-backed Blog and Guides sections with CRUD capabilities via Admin Dashboard.
+- **Weekly Email Digest**: Automated Monday 9am (Toronto time) email digest via Resend + node-cron. Sends platform stats (total deals, avg cap rate, avg cash-on-cash, avg DSCR, hottest market) and per-user stats (deals analyzed, rank) with HMAC-signed unsubscribe links. Users opt in by default (`email_digest_opt_in` column). Endpoints: `GET /api/email/unsubscribe?uid=&token=`, `POST /api/email/resubscribe` (authenticated), `POST /api/admin/weekly-digest/send` (admin manual trigger). Module: `server/weeklyDigest.ts`.
 - **Admin Dashboard**: Protected area for managing leads, webhooks, blog posts, and guides.
 - **Authentication**: Custom email/password system with secure session management.
 - **Leaderboard & Analytics**: Tracks and displays user contributions and deal analyses. Shows all-time and monthly leaderboards side by side for permanent gamification. Auto-tracks every deal analysis via `POST /api/analyses` when results are computed.
