@@ -6095,6 +6095,9 @@ export async function registerRoutes(
         aggregateDateFilter = sql`${aggregateDateFilter} AND LOWER(${analyses.city}) = LOWER(${cityFilter})`;
       }
 
+      const safeAvg = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
       const analystResults = await db
         .select({
           userId: analyses.userId,
@@ -6103,9 +6106,9 @@ export async function registerRoutes(
           profileImageUrl: users.profileImageUrl,
           role: users.role,
           dealCount: count(analyses.id),
-          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgDscr: safeAvg('dscr', 0, 20),
+          avgCashOnCash: safeAvg('cashOnCash', -100, 200),
+          avgCapRate: safeAvg('capRate', -20, 100),
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
@@ -6129,11 +6132,13 @@ export async function registerRoutes(
       const [aggregates] = await db
         .select({
           totalDeals: count(analyses.id),
-          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgDscr: safeAvg('dscr', 0, 20),
+          avgCashOnCash: safeAvg('cashOnCash', -100, 200),
+          avgCapRate: safeAvg('capRate', -20, 100),
           avgOfferRatio: sql<number>`AVG(
-            CASE WHEN (${analyses.inputsJson}->>'purchasePrice')::numeric > 0 
+            CASE WHEN (${analyses.inputsJson}->>'purchasePrice') ~ '^[0-9]+(\\.[0-9]+)?$'
+                  AND (${analyses.inputsJson}->>'listingPrice') ~ '^[0-9]+(\\.[0-9]+)?$'
+                  AND (${analyses.inputsJson}->>'purchasePrice')::numeric > 0 
                   AND (${analyses.inputsJson}->>'listingPrice')::numeric > 0
             THEN (${analyses.inputsJson}->>'purchasePrice')::numeric / (${analyses.inputsJson}->>'listingPrice')::numeric
             ELSE NULL END
@@ -6167,12 +6172,15 @@ export async function registerRoutes(
       startOfWeek.setHours(0, 0, 0, 0);
       const weekStr = startOfWeek.toISOString();
 
+      const safeAvgW = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
       const [stats] = await db
         .select({
           totalDeals: count(analyses.id),
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          avgCapRate: safeAvgW('capRate', -20, 100),
+          avgCashOnCash: safeAvgW('cashOnCash', -100, 200),
+          avgDscr: safeAvgW('dscr', 0, 20),
         })
         .from(analyses)
         .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`);
@@ -6209,12 +6217,15 @@ export async function registerRoutes(
       }
       const userId = req.session.userId;
 
+      const safeAvgU = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
       const [userStats] = await db
         .select({
           totalDeals: count(analyses.id),
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          avgCapRate: safeAvgU('capRate', -20, 100),
+          avgCashOnCash: safeAvgU('cashOnCash', -100, 200),
+          avgDscr: safeAvgU('dscr', 0, 20),
           firstAnalysis: sql<string>`MIN(${analyses.createdAt})`,
           lastAnalysis: sql<string>`MAX(${analyses.createdAt})`,
         })
@@ -6397,13 +6408,16 @@ export async function registerRoutes(
       const weeklyRank = weeklyRanking.findIndex(r => r.uId === userId) + 1 || null;
       const allTimeRank = allTimeRanking.findIndex(r => r.uId === userId) + 1 || null;
 
+      const safeAvgP = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
       const weeklyTop3 = await db
         .select({
           uId: analyses.userId,
           firstName: users.firstName,
           lastName: users.lastName,
           dealCount: count(analyses.id),
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgCapRate: safeAvgP('capRate', -20, 100),
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
@@ -6418,7 +6432,7 @@ export async function registerRoutes(
           firstName: users.firstName,
           lastName: users.lastName,
           dealCount: count(analyses.id),
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgCapRate: safeAvgP('capRate', -20, 100),
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
@@ -6542,15 +6556,20 @@ export async function registerRoutes(
         dateFilter = sql`${dateFilter} AND ${analyses.createdAt} >= ${monthStr}`;
       }
 
+      const safeAvgC = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+      const safeAvgI = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`inputs_json->>'${field}'`)}) ~ '^[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`inputs_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`inputs_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
       const results = await db
         .select({
           city: analyses.city,
           province: analyses.province,
           dealCount: count(analyses.id),
-          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+          avgCashOnCash: safeAvgC('cashOnCash', -100, 200),
+          avgCapRate: safeAvgC('capRate', -20, 100),
+          avgDscr: safeAvgC('dscr', 0, 20),
+          avgPurchasePrice: safeAvgI('purchasePrice', 0, 100000000),
         })
         .from(analyses)
         .where(dateFilter)
@@ -6860,17 +6879,20 @@ export async function registerRoutes(
     const monthStart = new Date(year, m - 1, 1);
     const monthEnd = new Date(year, m, 1);
 
+    const safeAvgR = (source: string, field: string, lo: number, hi: number) =>
+      sql<number>`AVG(CASE WHEN (${sql.raw(`${source}->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`${source}->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`${source}->>'${field}'`)})::numeric ELSE NULL END)`;
+
     const monthResults = await db
       .select({
         city: analyses.city,
         province: analyses.province,
         dealCount: count(analyses.id),
-        avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-        avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-        avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-        avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+        avgCapRate: safeAvgR('results_json', 'capRate', -20, 100),
+        avgCashOnCash: safeAvgR('results_json', 'cashOnCash', -100, 200),
+        avgDscr: safeAvgR('results_json', 'dscr', 0, 20),
+        avgPurchasePrice: safeAvgR('inputs_json', 'purchasePrice', 0, 100000000),
         avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
-        avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+        avgRentPerUnit: safeAvgR('results_json', 'effectiveMonthlyIncome', 0, 1000000),
       })
       .from(analyses)
       .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${monthStart} AND ${analyses.createdAt} < ${monthEnd}`)
@@ -6881,12 +6903,12 @@ export async function registerRoutes(
         city: analyses.city,
         province: analyses.province,
         dealCount: count(analyses.id),
-        avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-        avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-        avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-        avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+        avgCapRate: safeAvgR('results_json', 'capRate', -20, 100),
+        avgCashOnCash: safeAvgR('results_json', 'cashOnCash', -100, 200),
+        avgDscr: safeAvgR('results_json', 'dscr', 0, 20),
+        avgPurchasePrice: safeAvgR('inputs_json', 'purchasePrice', 0, 100000000),
         avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
-        avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+        avgRentPerUnit: safeAvgR('results_json', 'effectiveMonthlyIncome', 0, 1000000),
       })
       .from(analyses)
       .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
