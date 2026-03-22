@@ -1094,6 +1094,15 @@ export default function CapRates() {
                   )}
                 </div>
 
+                <Button
+                  className="w-full"
+                  onClick={() => handleAnalyzeListing(selectedListing)}
+                  data-testid="button-analyze-listing"
+                >
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Full Analysis in Deal Analyzer
+                </Button>
+
                 <Separator />
 
                 <div>
@@ -1226,15 +1235,6 @@ export default function CapRates() {
                   annualPropertyTax={selectedListing.taxes?.annualAmount}
                   unitCount={selectedListing.unitCount}
                 />
-
-                <Button
-                  className="w-full"
-                  onClick={() => handleAnalyzeListing(selectedListing)}
-                  data-testid="button-analyze-listing"
-                >
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Full Analysis in Deal Analyzer
-                </Button>
               </TabsContent>
 
               <TabsContent value="underwrite" className="p-4 space-y-4 mt-0">

@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Search, MapPin, AlertTriangle, Gavel, TrendingDown, DollarSign,
   Heart, ExternalLink, Filter, X, ChevronDown, ChevronUp, Info,
-  List, Map as MapIcon, Share2, Loader2, Building2, Home, Lock, UserIcon
+  List, Map as MapIcon, Share2, Loader2, Building2, Home, Lock, UserIcon, Calculator
 } from "lucide-react";
 import { DISTRESS_CATEGORIES, type DistressResult, type MatchedTerm, getProvincialNuance } from "@shared/distressScoring";
 import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
@@ -324,6 +324,28 @@ function ListingDetailModal({
             </div>
           </div>
 
+          <Button className="w-full" asChild data-testid="button-full-analysis">
+            <a
+              href={`/tools/analyzer?${new URLSearchParams({
+                ...(listing.address ? { address: formatAddress(listing.address) } : {}),
+                ...(listing.listPrice ? { price: String(listing.listPrice) } : {}),
+                ...(listing.mlsNumber ? { mls: listing.mlsNumber } : {}),
+                ...(listing.address?.city ? { city: listing.address.city } : {}),
+                ...(listing.address?.state ? { state: listing.address.state } : {}),
+                ...(listing.details.numBedrooms ? { beds: String(listing.details.numBedrooms) } : {}),
+                ...(listing.details.numBathrooms ? { baths: String(listing.details.numBathrooms) } : {}),
+                ...(listing.details.sqft ? { sqft: listing.details.sqft } : {}),
+                rent: String(Math.round(listing.listPrice * 0.004)),
+                propertyTax: String(Math.round(listing.listPrice * 0.01)),
+              }).toString()}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Calculator className="h-4 w-4 mr-2" />
+              Full Analysis in Deal Analyzer
+            </a>
+          </Button>
+
           {listing.distress.matchedTerms.length > 0 && (
             <div>
               <h3 className="font-semibold text-sm mb-2">Matched Signals</h3>
@@ -377,16 +399,6 @@ function ListingDetailModal({
           <div className="flex gap-2">
             <Button className="flex-1" data-testid="button-request-package">
               Request Deal Package
-            </Button>
-            <Button variant="outline" asChild>
-              <a
-                href={`/tools/analyzer?mls=${listing.mlsNumber}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-testid="link-analyze"
-              >
-                Full Analysis
-              </a>
             </Button>
           </div>
 
