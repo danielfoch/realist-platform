@@ -184,7 +184,8 @@ async function crawlProvince(province: string, month: string): Promise<number> {
 }
 
 async function main() {
-  const month = "2026-03";
+  const now = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   console.log(`=== FULL DDF CRAWL START: ${new Date().toISOString()} ===`);
   console.log(`Target month: ${month}`);
   console.log(`Provinces: ${CRAWL_PROVINCES.join(", ")}`);

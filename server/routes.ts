@@ -6343,7 +6343,7 @@ export async function registerRoutes(
             yield: cityYieldHistory.avgGrossYield,
           })
           .from(cityYieldHistory)
-          .where(and(eq(cityYieldHistory.month, m), sql`${cityYieldHistory.listingCount} > 0 AND ${cityYieldHistory.avgGrossYield} IS NOT NULL`))
+          .where(and(eq(cityYieldHistory.month, m), sql`${cityYieldHistory.listingCount} >= 500 AND ${cityYieldHistory.avgGrossYield} IS NOT NULL AND ${cityYieldHistory.avgGrossYield} < 15`))
           .orderBy(desc(cityYieldHistory.avgGrossYield))
           .limit(1);
 
