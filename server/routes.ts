@@ -6175,7 +6175,7 @@ export async function registerRoutes(
       const safeAvgW = (field: string, lo: number, hi: number) =>
         sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
 
-      const [stats] = await db
+      const [weeklyStats] = await db
         .select({
           totalDeals: count(analyses.id),
           avgCapRate: safeAvgW('capRate', -20, 100),
@@ -6185,13 +6185,32 @@ export async function registerRoutes(
         .from(analyses)
         .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`);
 
+      const weeklyDeals = Number(weeklyStats?.totalDeals || 0);
+      const isWeekly = weeklyDeals > 0;
+
+      const dateFilter = isWeekly
+        ? sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`
+        : sql`${analyses.resultsJson} IS NOT NULL`;
+
+      const [stats] = isWeekly
+        ? [weeklyStats]
+        : await db
+            .select({
+              totalDeals: count(analyses.id),
+              avgCapRate: safeAvgW('capRate', -20, 100),
+              avgCashOnCash: safeAvgW('cashOnCash', -100, 200),
+              avgDscr: safeAvgW('dscr', 0, 20),
+            })
+            .from(analyses)
+            .where(dateFilter);
+
       const cityResult = await db
         .select({
           city: analyses.city,
           dealCount: count(analyses.id),
         })
         .from(analyses)
-        .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr} AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
+        .where(sql`${dateFilter} AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
         .groupBy(analyses.city)
         .orderBy(desc(count(analyses.id)))
         .limit(1);
@@ -6203,6 +6222,7 @@ export async function registerRoutes(
         avgDscr: stats?.avgDscr != null ? Math.round(Number(stats.avgDscr) * 100) / 100 : null,
         mostActiveCity: cityResult.length > 0 ? cityResult[0].city : null,
         mostActiveCityDeals: cityResult.length > 0 ? Number(cityResult[0].dealCount) : 0,
+        period: isWeekly ? "weekly" : "all-time",
       });
     } catch (error) {
       console.error("Error fetching weekly stats:", error);

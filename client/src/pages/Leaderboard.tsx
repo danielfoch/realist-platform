@@ -64,6 +64,7 @@ interface WeeklyStats {
   avgDscr: number | null;
   mostActiveCity: string | null;
   mostActiveCityDeals: number;
+  period?: "weekly" | "all-time";
 }
 
 interface BadgeInfo {
@@ -324,7 +325,9 @@ function WeeklyStatsPanel({ stats, isLoading }: { stats?: WeeklyStats; isLoading
       <CardContent className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold text-sm">This Week's Activity</h3>
+          <h3 className="font-semibold text-sm">
+            {stats.period === "all-time" ? "Platform Stats (All-Time)" : "This Week's Activity"}
+          </h3>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-3 rounded-lg bg-background/60" data-testid="weekly-total-deals">
