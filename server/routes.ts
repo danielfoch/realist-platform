@@ -7172,6 +7172,23 @@ export async function registerRoutes(
     }
   }, 60 * 60 * 1000);
 
+  // DDF yield crawl: run every 24 hours to keep listing data fresh
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      console.log("[ddf-crawler] Daily refresh: starting yield crawl for", currentMonth);
+      const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
+      runDdfYieldCrawl(currentMonth).then(result => {
+        console.log("[ddf-crawler] Daily refresh complete:", result);
+      }).catch(err => {
+        console.error("[ddf-crawler] Daily refresh failed:", err);
+      });
+    } catch (error) {
+      console.error("[ddf-crawler] Daily refresh error:", error);
+    }
+  }, 24 * 60 * 60 * 1000);
+
   // Daily city report cron: check every hour, publish one city report per day
   let lastCityReportDate = "";
   setInterval(async () => {
