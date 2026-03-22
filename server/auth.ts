@@ -11,6 +11,33 @@ import { storage } from "./storage";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
 import { sendWelcomeAccountEmail } from "./resend";
 
+async function sendLoginWebhookToGHL(user: { id: number; email: string; firstName: string | null; lastName: string | null; phone?: string | null }) {
+  const webhookUrl = process.env.GHL_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  const payload = {
+    email: user.email,
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    phone: user.phone || "",
+    formTag: "realist_login",
+    tags: ["realist-user", "logged-in", `login-${new Date().toISOString().slice(0, 7)}`],
+    source: "realist.ca",
+    loginTimestamp: new Date().toISOString(),
+  };
+
+  try {
+    const resp = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    console.log(`[ghl-login] Webhook sent for ${user.email}: ${resp.status}`);
+  } catch (err: any) {
+    console.error(`[ghl-login] Webhook failed for ${user.email}:`, err.message);
+  }
+}
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_AUTH_REDIRECT_URI = process.env.NODE_ENV === "production"
@@ -159,6 +186,10 @@ export function registerAuthRoutes(app: Express): void {
         firstName: user.firstName,
         lastName: user.lastName,
       });
+
+      sendLoginWebhookToGHL(user).catch(err =>
+        console.error("[ghl-login] webhook error:", err.message)
+      );
     } catch (error: any) {
       console.error("Login error:", error);
       if (error.name === "ZodError") {
@@ -559,15 +590,17 @@ export function registerAuthRoutes(app: Express): void {
       const existingOAuthAccount = await storage.getUserOAuthAccount("google", googleId);
 
       if (existingOAuthAccount) {
-        // User has linked Google before - log them in
         req.session.userId = existingOAuthAccount.userId;
         
-        // Get return URL and clear from session
         const returnUrl = req.session.googleAuthReturnUrl || "/investor";
         delete req.session.googleAuthReturnUrl;
         
-        // Check if phone is verified
         const [user] = await db.select().from(users).where(eq(users.id, existingOAuthAccount.userId)).limit(1);
+        if (user) {
+          sendLoginWebhookToGHL(user).catch(err =>
+            console.error("[ghl-login] oauth webhook error:", err.message)
+          );
+        }
         if (user && !user.phoneVerified) {
           res.redirect("/verify-phone");
           return;
@@ -599,11 +632,13 @@ export function registerAuthRoutes(app: Express): void {
         
         req.session.userId = existingUser.id;
         
-        // Get return URL and clear from session
+        sendLoginWebhookToGHL(existingUser).catch(err =>
+          console.error("[ghl-login] oauth link webhook error:", err.message)
+        );
+        
         const returnUrl = req.session.googleAuthReturnUrl || "/investor";
         delete req.session.googleAuthReturnUrl;
         
-        // Check if phone is verified
         if (!existingUser.phoneVerified) {
           res.redirect("/verify-phone");
           return;
@@ -635,7 +670,10 @@ export function registerAuthRoutes(app: Express): void {
 
       req.session.userId = newUser.id;
 
-      // Redirect to phone verification for new users
+      sendLoginWebhookToGHL(newUser).catch(err =>
+        console.error("[ghl-login] new oauth user webhook error:", err.message)
+      );
+
       res.redirect("/verify-phone");
     } catch (error) {
       console.error("Error in Google OAuth callback:", error);

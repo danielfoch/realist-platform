@@ -166,6 +166,86 @@ async function sendWebhook(leadId: string, payload: object) {
   });
 }
 
+async function sendDealAnalysisWebhookToGHL(data: {
+  userId: number | null;
+  analysisId: number;
+  strategyType: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  resultsJson?: any;
+  inputsJson?: any;
+}) {
+  const webhookUrl = process.env.GHL_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  let email = "";
+  let firstName = "";
+  let lastName = "";
+  if (data.userId) {
+    const [user] = await db.select({ email: users.email, firstName: users.firstName, lastName: users.lastName })
+      .from(users).where(eq(users.id, data.userId)).limit(1);
+    if (user) {
+      email = user.email;
+      firstName = user.firstName || "";
+      lastName = user.lastName || "";
+    }
+  }
+
+  const results = data.resultsJson || {};
+  const payload = {
+    email,
+    firstName,
+    lastName,
+    formTag: "realist_deal_analysis",
+    tags: ["realist-user", "deal-analyzed", `strategy-${data.strategyType}`, ...(data.city ? [`city-${data.city.toLowerCase().replace(/\s+/g, "-")}`] : [])],
+    source: "realist.ca",
+    analysisTimestamp: new Date().toISOString(),
+    analysisId: data.analysisId,
+    strategyType: data.strategyType,
+    propertyAddress: data.address || "",
+    city: data.city || "",
+    province: data.province || "",
+    capRate: results.capRate || "",
+    cashOnCash: results.cashOnCash || "",
+    purchasePrice: data.inputsJson?.purchasePrice || "",
+  };
+
+  try {
+    const resp = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    console.log(`[ghl-analysis] Webhook sent for analysis ${data.analysisId}: ${resp.status}`);
+  } catch (err: any) {
+    console.error(`[ghl-analysis] Webhook failed for analysis ${data.analysisId}:`, err.message);
+  }
+
+  const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
+  if (sheetsUrl) {
+    try {
+      await fetch(sheetsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "deal_analysis",
+          email,
+          name: `${firstName} ${lastName}`.trim(),
+          strategy: data.strategyType,
+          address: data.address || "",
+          city: data.city || "",
+          province: data.province || "",
+          capRate: results.capRate || "",
+          cashOnCash: results.cashOnCash || "",
+          price: data.inputsJson?.purchasePrice || "",
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    } catch {}
+  }
+}
+
 // Backup leads to Google Sheets via webhook
 async function sendToGoogleSheets(leadData: {
   email: string;
@@ -1425,6 +1505,17 @@ export async function registerRoutes(
         } : null,
       });
       res.json({ id: analysis.id });
+
+      sendDealAnalysisWebhookToGHL({
+        userId,
+        analysisId: analysis.id,
+        strategyType,
+        address,
+        city,
+        province,
+        resultsJson,
+        inputsJson,
+      }).catch(err => console.error("[ghl-analysis] webhook error:", err.message));
     } catch (error) {
       console.error("Error saving analysis:", error);
       res.status(500).json({ error: "Failed to save analysis" });
