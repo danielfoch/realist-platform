@@ -65,6 +65,15 @@ interface WeeklyStats {
   mostActiveCity: string | null;
   mostActiveCityDeals: number;
   period?: "weekly" | "all-time";
+  ddf?: {
+    totalListings: number;
+    avgCapRate: number | null;
+    avgPrice: number | null;
+    avgRent: number | null;
+    citiesTracked: number;
+    hotCity: string | null;
+    hotCityYield: number | null;
+  };
 }
 
 interface BadgeInfo {
@@ -320,19 +329,25 @@ function WeeklyStatsPanel({ stats, isLoading }: { stats?: WeeklyStats; isLoading
 
   if (!stats) return null;
 
+  const hasDdf = stats.ddf && stats.ddf.totalListings > 0;
+
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent" data-testid="panel-weekly-stats">
       <CardContent className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="h-5 w-5 text-primary" />
           <h3 className="font-semibold text-sm">
-            {stats.period === "all-time" ? "Platform Stats (All-Time)" : "This Week's Activity"}
+            {stats.period === "all-time" ? "Platform Overview" : "This Week's Activity"}
           </h3>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-3 rounded-lg bg-background/60" data-testid="weekly-total-deals">
-            <p className="text-2xl font-bold font-mono">{stats.totalDeals}</p>
-            <p className="text-xs text-muted-foreground mt-1">Deals Analyzed</p>
+            <p className="text-2xl font-bold font-mono">
+              {hasDdf ? (stats.totalDeals + stats.ddf!.totalListings).toLocaleString() : stats.totalDeals}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {hasDdf ? "Listings Tracked" : "Deals Analyzed"}
+            </p>
           </div>
           <div className="text-center p-3 rounded-lg bg-background/60" data-testid="weekly-avg-cap">
             <p className="text-2xl font-bold font-mono">{formatPercent(stats.avgCapRate)}</p>
@@ -344,9 +359,31 @@ function WeeklyStatsPanel({ stats, isLoading }: { stats?: WeeklyStats; isLoading
           </div>
           <div className="text-center p-3 rounded-lg bg-background/60" data-testid="weekly-active-city">
             <p className="text-2xl font-bold font-mono truncate">{stats.mostActiveCity || "—"}</p>
-            <p className="text-xs text-muted-foreground mt-1">Most Active City</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {hasDdf && stats.mostActiveCityDeals === 0 ? "Highest Yield City" : "Most Active City"}
+            </p>
           </div>
         </div>
+        {hasDdf && (
+          <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/50">
+            <div className="text-center p-2 rounded-lg bg-background/40" data-testid="ddf-cities-tracked">
+              <p className="text-lg font-bold font-mono text-primary">{stats.ddf!.citiesTracked}</p>
+              <p className="text-[10px] text-muted-foreground">Cities Tracked</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-background/40" data-testid="ddf-avg-price">
+              <p className="text-lg font-bold font-mono text-primary">
+                {stats.ddf!.avgPrice ? `$${Math.round(stats.ddf!.avgPrice / 1000)}K` : "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Avg List Price</p>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-background/40" data-testid="ddf-avg-rent">
+              <p className="text-lg font-bold font-mono text-primary">
+                {stats.ddf!.avgRent ? `$${stats.ddf!.avgRent.toLocaleString()}` : "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Avg Rent/Unit</p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

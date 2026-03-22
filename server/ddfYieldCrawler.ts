@@ -2,41 +2,52 @@ import { searchDdfListings, isDdfConfigured } from "./creaDdf";
 import { storage } from "./storage";
 import type { InsertDdfListingSnapshot, InsertCityYieldHistory } from "@shared/schema";
 
+const PROVINCE_FULL: Record<string, string> = {
+  "Ontario": "ON",
+  "British Columbia": "BC",
+  "Quebec": "QC",
+  "Alberta": "AB",
+  "Manitoba": "MB",
+  "Saskatchewan": "SK",
+  "Nova Scotia": "NS",
+  "New Brunswick": "NB",
+  "Prince Edward Island": "PE",
+};
+
 const CRAWL_CITIES = [
-  { city: "Toronto", province: "ON" },
-  { city: "Ottawa", province: "ON" },
-  { city: "Hamilton", province: "ON" },
-  { city: "London", province: "ON" },
-  { city: "Windsor", province: "ON" },
-  { city: "Kitchener", province: "ON" },
-  { city: "Waterloo", province: "ON" },
-  { city: "Cambridge", province: "ON" },
-  { city: "Mississauga", province: "ON" },
-  { city: "Brampton", province: "ON" },
-  { city: "Sudbury", province: "ON" },
-  { city: "Kingston", province: "ON" },
-  { city: "St. Catharines", province: "ON" },
-  { city: "Barrie", province: "ON" },
-  { city: "Guelph", province: "ON" },
-  { city: "Oshawa", province: "ON" },
-  { city: "Vancouver", province: "BC" },
-  { city: "Victoria", province: "BC" },
-  { city: "Kelowna", province: "BC" },
-  { city: "Surrey", province: "BC" },
-  { city: "Burnaby", province: "BC" },
-  { city: "Montreal", province: "QC" },
-  { city: "Quebec City", province: "QC" },
-  { city: "Gatineau", province: "QC" },
-  { city: "Calgary", province: "AB" },
-  { city: "Edmonton", province: "AB" },
-  { city: "Winnipeg", province: "MB" },
-  { city: "Saskatoon", province: "SK" },
-  { city: "Regina", province: "SK" },
-  { city: "Halifax", province: "NS" },
-  { city: "St. John's", province: "NL" },
-  { city: "Moncton", province: "NB" },
-  { city: "Fredericton", province: "NB" },
-  { city: "Charlottetown", province: "PE" },
+  { city: "Toronto", province: "Ontario" },
+  { city: "Ottawa", province: "Ontario" },
+  { city: "Hamilton", province: "Ontario" },
+  { city: "London", province: "Ontario" },
+  { city: "Windsor", province: "Ontario" },
+  { city: "Kitchener", province: "Ontario" },
+  { city: "Waterloo", province: "Ontario" },
+  { city: "Cambridge", province: "Ontario" },
+  { city: "Mississauga", province: "Ontario" },
+  { city: "Brampton", province: "Ontario" },
+  { city: "Sudbury", province: "Ontario" },
+  { city: "Kingston", province: "Ontario" },
+  { city: "St. Catharines", province: "Ontario" },
+  { city: "Barrie", province: "Ontario" },
+  { city: "Guelph", province: "Ontario" },
+  { city: "Oshawa", province: "Ontario" },
+  { city: "Vancouver", province: "British Columbia" },
+  { city: "Victoria", province: "British Columbia" },
+  { city: "Kelowna", province: "British Columbia" },
+  { city: "Surrey", province: "British Columbia" },
+  { city: "Burnaby", province: "British Columbia" },
+  { city: "Montreal", province: "Quebec" },
+  { city: "Quebec City", province: "Quebec" },
+  { city: "Gatineau", province: "Quebec" },
+  { city: "Calgary", province: "Alberta" },
+  { city: "Edmonton", province: "Alberta" },
+  { city: "Winnipeg", province: "Manitoba" },
+  { city: "Saskatoon", province: "Saskatchewan" },
+  { city: "Regina", province: "Saskatchewan" },
+  { city: "Halifax", province: "Nova Scotia" },
+  { city: "Moncton", province: "New Brunswick" },
+  { city: "Fredericton", province: "New Brunswick" },
+  { city: "Charlottetown", province: "Prince Edward Island" },
 ];
 
 interface CmhcRentData {
@@ -123,7 +134,7 @@ export async function crawlDdfForCity(
 ): Promise<InsertDdfListingSnapshot[]> {
   const snapshots: InsertDdfListingSnapshot[] = [];
   const maxPages = 10;
-  const pageSize = 200;
+  const pageSize = 100;
 
   for (let page = 0; page < maxPages; page++) {
     try {
@@ -212,8 +223,8 @@ export async function aggregateCityYield(
     s => s.city?.toLowerCase() === city.toLowerCase() && s.province === province
   );
 
-  const grossYields = citySnapshots.map(s => s.grossYield).filter((v): v is number => v != null && v > 0);
-  const netYields = citySnapshots.map(s => s.netYield).filter((v): v is number => v != null);
+  const grossYields = citySnapshots.map(s => s.grossYield).filter((v): v is number => v != null && v > 0 && v < 20);
+  const netYields = citySnapshots.map(s => s.netYield).filter((v): v is number => v != null && v > -10 && v < 15);
   const prices = citySnapshots.map(s => s.listPrice).filter((v): v is number => v != null && v > 0);
   const rents = citySnapshots.map(s => s.estimatedMonthlyRent).filter((v): v is number => v != null && v > 0);
   const doms = citySnapshots.map(s => s.daysOnMarket).filter((v): v is number => v != null);
@@ -273,22 +284,29 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
     let totalListings = 0;
     let citiesCrawled = 0;
 
-    for (const { city, province } of CRAWL_CITIES) {
+    for (const { city, province: ddfProvince } of CRAWL_CITIES) {
+      const shortProvince = PROVINCE_FULL[ddfProvince] || ddfProvince;
       try {
-        console.log(`[ddf-crawler] Crawling ${city}, ${province}...`);
-        const snapshots = await crawlDdfForCity(city, province, month, cmhcRents);
+        console.log(`[ddf-crawler] Crawling ${city}, ${ddfProvince}...`);
+        const snapshots = await crawlDdfForCity(city, ddfProvince, month, cmhcRents);
 
         if (snapshots.length > 0) {
+          for (const s of snapshots) {
+            if (s.province && PROVINCE_FULL[s.province]) {
+              s.province = PROVINCE_FULL[s.province];
+            }
+          }
           const inserted = await storage.insertDdfListingSnapshotsBatch(snapshots);
           totalListings += inserted;
           console.log(`[ddf-crawler] ${city}: ${inserted} listings stored`);
 
-          const yieldData = await aggregateCityYield(city, province, month, snapshots);
+          const yieldData = await aggregateCityYield(city, shortProvince, month,
+            snapshots.map(s => ({ ...s, province: shortProvince })));
           await storage.upsertCityYieldHistory(yieldData);
           console.log(`[ddf-crawler] ${city}: yield history updated (avg gross: ${yieldData.avgGrossYield}%)`);
         } else {
           await storage.upsertCityYieldHistory({
-            city, province, month,
+            city, province: shortProvince, month,
             listingCount: 0,
             avgGrossYield: null, medianGrossYield: null, avgNetYield: null,
             avgListPrice: null, medianListPrice: null, avgRentPerUnit: null,
@@ -301,7 +319,7 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
         citiesCrawled++;
         await new Promise(r => setTimeout(r, 1000));
       } catch (error) {
-        console.error(`[ddf-crawler] Failed to crawl ${city}, ${province}:`, error);
+        console.error(`[ddf-crawler] Failed to crawl ${city}, ${ddfProvince}:`, error);
       }
     }
 

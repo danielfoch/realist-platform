@@ -37,6 +37,7 @@ import {
   insertGuideSchema,
   dataCache,
   distressSnapshots,
+  cityYieldHistory,
 } from "@shared/schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
@@ -6215,14 +6216,83 @@ export async function registerRoutes(
         .orderBy(desc(count(analyses.id)))
         .limit(1);
 
+      const latestMonth = await db
+        .select({ month: cityYieldHistory.month })
+        .from(cityYieldHistory)
+        .where(sql`${cityYieldHistory.listingCount} > 0`)
+        .orderBy(desc(cityYieldHistory.month))
+        .limit(1);
+
+      let ddfStats: {
+        totalListings: number;
+        avgCapRate: number | null;
+        avgPrice: number | null;
+        avgRent: number | null;
+        citiesTracked: number;
+        hotCity: string | null;
+        hotCityYield: number | null;
+      } = { totalListings: 0, avgCapRate: null, avgPrice: null, avgRent: null, citiesTracked: 0, hotCity: null, hotCityYield: null };
+
+      if (latestMonth.length > 0) {
+        const m = latestMonth[0].month;
+        const [ddfAgg] = await db
+          .select({
+            totalListings: sql<number>`COALESCE(SUM(${cityYieldHistory.listingCount}), 0)`,
+            avgCapRate: sql<number>`ROUND(AVG(CASE WHEN ${cityYieldHistory.avgGrossYield} IS NOT NULL THEN ${cityYieldHistory.avgGrossYield} END)::numeric, 2)`,
+            avgPrice: sql<number>`ROUND(AVG(CASE WHEN ${cityYieldHistory.avgListPrice} IS NOT NULL THEN ${cityYieldHistory.avgListPrice} END)::numeric, 0)`,
+            avgRent: sql<number>`ROUND(AVG(CASE WHEN ${cityYieldHistory.avgRentPerUnit} IS NOT NULL THEN ${cityYieldHistory.avgRentPerUnit} END)::numeric, 0)`,
+            citiesTracked: sql<number>`COUNT(CASE WHEN ${cityYieldHistory.listingCount} > 0 THEN 1 END)`,
+          })
+          .from(cityYieldHistory)
+          .where(eq(cityYieldHistory.month, m));
+
+        const [hotCity] = await db
+          .select({
+            city: cityYieldHistory.city,
+            yield: cityYieldHistory.avgGrossYield,
+          })
+          .from(cityYieldHistory)
+          .where(and(eq(cityYieldHistory.month, m), sql`${cityYieldHistory.listingCount} > 0 AND ${cityYieldHistory.avgGrossYield} IS NOT NULL`))
+          .orderBy(desc(cityYieldHistory.avgGrossYield))
+          .limit(1);
+
+        ddfStats = {
+          totalListings: Number(ddfAgg?.totalListings || 0),
+          avgCapRate: ddfAgg?.avgCapRate != null ? Number(ddfAgg.avgCapRate) : null,
+          avgPrice: ddfAgg?.avgPrice != null ? Number(ddfAgg.avgPrice) : null,
+          avgRent: ddfAgg?.avgRent != null ? Number(ddfAgg.avgRent) : null,
+          citiesTracked: Number(ddfAgg?.citiesTracked || 0),
+          hotCity: hotCity?.city || null,
+          hotCityYield: hotCity?.yield != null ? Math.round(Number(hotCity.yield) * 100) / 100 : null,
+        };
+      }
+
+      const userAvgCap = stats?.avgCapRate != null ? Number(stats.avgCapRate) : null;
+      const ddfAvgCap = ddfStats.avgCapRate;
+      const blendedCapRate = userAvgCap != null && ddfAvgCap != null
+        ? Math.round(((userAvgCap + ddfAvgCap) / 2) * 100) / 100
+        : userAvgCap ?? ddfAvgCap;
+
+      const totalDeals = Number(stats?.totalDeals || 0);
+      const bestCity = cityResult.length > 0 ? cityResult[0].city : (ddfStats.hotCity || null);
+
       res.json({
-        totalDeals: Number(stats?.totalDeals || 0),
-        avgCapRate: stats?.avgCapRate != null ? Math.round(Number(stats.avgCapRate) * 100) / 100 : null,
+        totalDeals,
+        avgCapRate: blendedCapRate,
         avgCashOnCash: stats?.avgCashOnCash != null ? Math.round(Number(stats.avgCashOnCash) * 100) / 100 : null,
         avgDscr: stats?.avgDscr != null ? Math.round(Number(stats.avgDscr) * 100) / 100 : null,
-        mostActiveCity: cityResult.length > 0 ? cityResult[0].city : null,
+        mostActiveCity: bestCity,
         mostActiveCityDeals: cityResult.length > 0 ? Number(cityResult[0].dealCount) : 0,
         period: isWeekly ? "weekly" : "all-time",
+        ddf: {
+          totalListings: ddfStats.totalListings,
+          avgCapRate: ddfStats.avgCapRate,
+          avgPrice: ddfStats.avgPrice,
+          avgRent: ddfStats.avgRent,
+          citiesTracked: ddfStats.citiesTracked,
+          hotCity: ddfStats.hotCity,
+          hotCityYield: ddfStats.hotCityYield,
+        },
       });
     } catch (error) {
       console.error("Error fetching weekly stats:", error);
