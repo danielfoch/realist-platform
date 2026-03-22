@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { realtors, lenders, dealLeads } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
+import { pushRealtorToGHL, pushLenderToGHL, pushDealLeadToGHL } from '../ghl-service';
 
 const router = Router();
 
@@ -89,6 +90,10 @@ router.post('/realtors/join', async (req, res) => {
       status: 'active',
     }).returning();
 
+    // Push to GoHighLevel (background - don't await)
+    pushRealtorToGHL(body.name.trim(), body.email.toLowerCase().trim(), body.phone.trim(), body.brokerage.trim())
+      .catch(err => console.error('[GHL] Failed to push realtor:', err));
+
     res.status(201).json({ 
       success: true, 
       message: 'Registration successful!',
@@ -162,6 +167,10 @@ router.post('/lenders/join', async (req, res) => {
       status: 'active',
     }).returning();
 
+    // Push to GoHighLevel (background - don't await)
+    pushLenderToGHL(body.contactName.trim(), body.companyName.trim(), body.email.toLowerCase().trim(), body.phone.trim())
+      .catch(err => console.error('[GHL] Failed to push lender:', err));
+
     res.status(201).json({ 
       success: true, 
       message: 'Registration successful!',
@@ -206,6 +215,9 @@ router.post('/deal-leads', async (req, res) => {
   try {
     const { 
       userId, 
+      name,
+      email,
+      phone,
       propertyAddress, 
       city, 
       province, 
@@ -252,6 +264,12 @@ router.post('/deal-leads', async (req, res) => {
       matchedLenderId,
       status: 'new',
     }).returning();
+
+    // Push to GoHighLevel if email provided (background - don't await)
+    if (email) {
+      pushDealLeadToGHL(email, phone, name, city, province)
+        .catch(err => console.error('[GHL] Failed to push deal lead:', err));
+    }
 
     res.status(201).json({ 
       success: true, 
