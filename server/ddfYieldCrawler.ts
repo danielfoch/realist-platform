@@ -1,8 +1,9 @@
 import { searchDdfListings, isDdfConfigured } from "./creaDdf";
 import { storage } from "./storage";
 import type { InsertDdfListingSnapshot, InsertCityYieldHistory } from "@shared/schema";
+import { CMHC_PROVINCIAL_RENTS, CMHC_CITY_RENTS, type CmhcRentData as CmhcRentEntry } from "@shared/cmhcRents";
 
-const PROVINCE_FULL: Record<string, string> = {
+const PROVINCE_TO_ABBREV: Record<string, string> = {
   "Ontario": "ON",
   "British Columbia": "BC",
   "Quebec": "QC",
@@ -14,40 +15,16 @@ const PROVINCE_FULL: Record<string, string> = {
   "Prince Edward Island": "PE",
 };
 
-const CRAWL_CITIES = [
-  { city: "Toronto", province: "Ontario" },
-  { city: "Ottawa", province: "Ontario" },
-  { city: "Hamilton", province: "Ontario" },
-  { city: "London", province: "Ontario" },
-  { city: "Windsor", province: "Ontario" },
-  { city: "Kitchener", province: "Ontario" },
-  { city: "Waterloo", province: "Ontario" },
-  { city: "Cambridge", province: "Ontario" },
-  { city: "Mississauga", province: "Ontario" },
-  { city: "Brampton", province: "Ontario" },
-  { city: "Sudbury", province: "Ontario" },
-  { city: "Kingston", province: "Ontario" },
-  { city: "St. Catharines", province: "Ontario" },
-  { city: "Barrie", province: "Ontario" },
-  { city: "Guelph", province: "Ontario" },
-  { city: "Oshawa", province: "Ontario" },
-  { city: "Vancouver", province: "British Columbia" },
-  { city: "Victoria", province: "British Columbia" },
-  { city: "Kelowna", province: "British Columbia" },
-  { city: "Surrey", province: "British Columbia" },
-  { city: "Burnaby", province: "British Columbia" },
-  { city: "Montreal", province: "Quebec" },
-  { city: "Quebec City", province: "Quebec" },
-  { city: "Gatineau", province: "Quebec" },
-  { city: "Calgary", province: "Alberta" },
-  { city: "Edmonton", province: "Alberta" },
-  { city: "Winnipeg", province: "Manitoba" },
-  { city: "Saskatoon", province: "Saskatchewan" },
-  { city: "Regina", province: "Saskatchewan" },
-  { city: "Halifax", province: "Nova Scotia" },
-  { city: "Moncton", province: "New Brunswick" },
-  { city: "Fredericton", province: "New Brunswick" },
-  { city: "Charlottetown", province: "Prince Edward Island" },
+const CRAWL_PROVINCES = [
+  "Ontario",
+  "British Columbia",
+  "Quebec",
+  "Alberta",
+  "Manitoba",
+  "Saskatchewan",
+  "Nova Scotia",
+  "New Brunswick",
+  "Prince Edward Island",
 ];
 
 interface CmhcRentData {
@@ -55,14 +32,14 @@ interface CmhcRentData {
 }
 
 async function getCmhcRents(): Promise<CmhcRentData> {
-  const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
-  return CMHC_CITY_RENTS;
+  return CMHC_CITY_RENTS as unknown as CmhcRentData;
 }
 
 function estimateMonthlyRent(
   listing: any,
   cmhcRents: CmhcRentData,
   city: string,
+  province: string,
 ): { rent: number; source: string } {
   if (listing.TotalActualRent && listing.TotalActualRent > 0) {
     return { rent: listing.TotalActualRent, source: "ddf_actual" };
@@ -70,8 +47,8 @@ function estimateMonthlyRent(
 
   const beds = listing.BedroomsTotal || 1;
   const units = listing.NumberOfUnitsTotal || 1;
-  const cmhc = cmhcRents[city];
 
+  const cmhc = cmhcRents[city];
   if (cmhc) {
     let perUnit: number;
     if (beds >= 3) {
@@ -82,6 +59,19 @@ function estimateMonthlyRent(
       perUnit = cmhc.oneBed;
     }
     return { rent: perUnit * units, source: "cmhc_city" };
+  }
+
+  const provRents = CMHC_PROVINCIAL_RENTS[province] || CMHC_PROVINCIAL_RENTS[PROVINCE_TO_ABBREV[province] || ""];
+  if (provRents) {
+    let perUnit: number;
+    if (beds >= 3) {
+      perUnit = provRents.threeBed;
+    } else if (beds >= 2) {
+      perUnit = provRents.twoBed;
+    } else {
+      perUnit = provRents.oneBed;
+    }
+    return { rent: perUnit * units, source: "cmhc_province" };
   }
 
   const defaultRent = beds >= 3 ? 1800 : beds >= 2 ? 1500 : 1200;
@@ -126,21 +116,24 @@ function median(values: number[]): number | null {
   return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-export async function crawlDdfForCity(
-  city: string,
-  province: string,
+function avg(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+export async function crawlDdfForProvince(
+  ddfProvince: string,
   month: string,
   cmhcRents: CmhcRentData,
 ): Promise<InsertDdfListingSnapshot[]> {
   const snapshots: InsertDdfListingSnapshot[] = [];
-  const maxPages = 10;
   const pageSize = 100;
+  const maxPages = 500;
 
   for (let page = 0; page < maxPages; page++) {
     try {
       const result = await searchDdfListings({
-        city,
-        stateOrProvince: province,
+        stateOrProvince: ddfProvince,
         excludeBusinessSales: true,
         excludeParking: true,
         top: pageSize,
@@ -153,7 +146,8 @@ export async function crawlDdfForCity(
         const listPrice = listing.ListPrice;
         if (!listPrice || listPrice <= 0) continue;
 
-        const { rent, source } = estimateMonthlyRent(listing, cmhcRents, city);
+        const city = listing.City || "Unknown";
+        const { rent, source } = estimateMonthlyRent(listing, cmhcRents, city, ddfProvince);
         const { grossYield, netYield, estimatedExpenses, estimatedNoi } = calculateYield(
           listPrice,
           rent,
@@ -168,8 +162,8 @@ export async function crawlDdfForCity(
         snapshots.push({
           listingKey: listing.ListingKey,
           mlsNumber: listing.ListingId || null,
-          city: listing.City || city,
-          province: listing.StateOrProvince || province,
+          city,
+          province: PROVINCE_TO_ABBREV[ddfProvince] || ddfProvince,
           postalCode: listing.PostalCode || null,
           listPrice,
           bedroomsTotal: listing.BedroomsTotal || null,
@@ -201,8 +195,96 @@ export async function crawlDdfForCity(
         });
       }
 
-      if (result.listings.length < pageSize) break;
+      console.log(`[ddf-crawler] ${ddfProvince} page ${page + 1}: ${result.listings.length} kept / ${result.rawPageSize} fetched (total so far: ${snapshots.length}, API count: ${result.count})`);
 
+      if (result.rawPageSize < pageSize) break;
+
+      await new Promise(r => setTimeout(r, 800));
+    } catch (error) {
+      console.error(`[ddf-crawler] Error crawling ${ddfProvince} page ${page}:`, error);
+      break;
+    }
+  }
+
+  return snapshots;
+}
+
+export async function crawlDdfForCity(
+  city: string,
+  province: string,
+  month: string,
+  cmhcRents: CmhcRentData,
+): Promise<InsertDdfListingSnapshot[]> {
+  const snapshots: InsertDdfListingSnapshot[] = [];
+  const pageSize = 100;
+  const maxPages = 200;
+
+  for (let page = 0; page < maxPages; page++) {
+    try {
+      const result = await searchDdfListings({
+        city,
+        stateOrProvince: province,
+        excludeBusinessSales: true,
+        excludeParking: true,
+        top: pageSize,
+        skip: page * pageSize,
+      });
+
+      if (!result.listings || result.listings.length === 0) break;
+
+      for (const listing of result.listings) {
+        const listPrice = listing.ListPrice;
+        if (!listPrice || listPrice <= 0) continue;
+
+        const { rent, source } = estimateMonthlyRent(listing, cmhcRents, city, province);
+        const { grossYield, netYield, estimatedExpenses, estimatedNoi } = calculateYield(
+          listPrice,
+          rent,
+          listing.TaxAnnualAmount || 0,
+          listing.AssociationFee || 0,
+        );
+
+        const dom = listing.OriginalEntryTimestamp
+          ? Math.floor((Date.now() - new Date(listing.OriginalEntryTimestamp).getTime()) / 86400000)
+          : null;
+
+        snapshots.push({
+          listingKey: listing.ListingKey,
+          mlsNumber: listing.ListingId || null,
+          city: listing.City || city,
+          province: PROVINCE_TO_ABBREV[province] || province,
+          postalCode: listing.PostalCode || null,
+          listPrice,
+          bedroomsTotal: listing.BedroomsTotal || null,
+          bathroomsTotal: listing.BathroomsTotalInteger || null,
+          numberOfUnits: listing.NumberOfUnitsTotal || null,
+          livingArea: listing.LivingArea || null,
+          yearBuilt: listing.YearBuilt || null,
+          propertySubType: listing.PropertySubType || null,
+          structureType: listing.StructureType || null,
+          latitude: listing.Latitude || null,
+          longitude: listing.Longitude || null,
+          totalActualRent: listing.TotalActualRent || null,
+          taxAnnualAmount: listing.TaxAnnualAmount || null,
+          associationFee: listing.AssociationFee || null,
+          estimatedMonthlyRent: rent,
+          grossYield,
+          estimatedExpenses,
+          estimatedNoi,
+          netYield,
+          daysOnMarket: dom,
+          rentSource: source,
+          rawJson: {
+            publicRemarks: listing.PublicRemarks?.substring(0, 500),
+            streetAddress: listing.UnparsedAddress,
+            photosCount: listing.PhotosCount,
+            modificationTimestamp: listing.ModificationTimestamp,
+          },
+          snapshotMonth: month,
+        });
+      }
+
+      if (result.rawPageSize < pageSize) break;
       await new Promise(r => setTimeout(r, 500));
     } catch (error) {
       console.error(`[ddf-crawler] Error crawling ${city}, ${province} page ${page}:`, error);
@@ -236,8 +318,6 @@ export async function aggregateCityYield(
     }
   }
 
-  const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
-
   return {
     city,
     province,
@@ -263,68 +343,76 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
   month: string;
   totalListings: number;
   citiesCrawled: number;
+  provincesCompleted: number;
 }> {
   if (!isDdfConfigured()) {
     console.log("[ddf-crawler] DDF credentials not configured, skipping crawl");
-    return { month: "", totalListings: 0, citiesCrawled: 0 };
+    return { month: "", totalListings: 0, citiesCrawled: 0, provincesCompleted: 0 };
   }
 
   if (crawlInProgress) {
     console.log("[ddf-crawler] Crawl already in progress, skipping");
-    return { month: "", totalListings: 0, citiesCrawled: 0 };
+    return { month: "", totalListings: 0, citiesCrawled: 0, provincesCompleted: 0 };
   }
 
   crawlInProgress = true;
   const now = new Date();
   const month = targetMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  console.log(`[ddf-crawler] Starting yield crawl for ${month} across ${CRAWL_CITIES.length} cities`);
+  console.log(`[ddf-crawler] Starting FULL yield crawl for ${month} across ${CRAWL_PROVINCES.length} provinces`);
 
   try {
     const cmhcRents = await getCmhcRents();
     let totalListings = 0;
-    let citiesCrawled = 0;
+    let allCities = new Set<string>();
+    let provincesCompleted = 0;
 
-    for (const { city, province: ddfProvince } of CRAWL_CITIES) {
-      const shortProvince = PROVINCE_FULL[ddfProvince] || ddfProvince;
+    for (const ddfProvince of CRAWL_PROVINCES) {
+      const shortProvince = PROVINCE_TO_ABBREV[ddfProvince] || ddfProvince;
       try {
-        console.log(`[ddf-crawler] Crawling ${city}, ${ddfProvince}...`);
-        const snapshots = await crawlDdfForCity(city, ddfProvince, month, cmhcRents);
+        console.log(`[ddf-crawler] === Crawling province: ${ddfProvince} ===`);
+        const snapshots = await crawlDdfForProvince(ddfProvince, month, cmhcRents);
 
         if (snapshots.length > 0) {
+          const batchSize = 500;
+          let inserted = 0;
+          for (let i = 0; i < snapshots.length; i += batchSize) {
+            const batch = snapshots.slice(i, i + batchSize);
+            inserted += await storage.insertDdfListingSnapshotsBatch(batch);
+          }
+          totalListings += inserted;
+          console.log(`[ddf-crawler] ${ddfProvince}: ${inserted} listings stored`);
+
+          const citiesInProvince = new Map<string, InsertDdfListingSnapshot[]>();
           for (const s of snapshots) {
-            if (s.province && PROVINCE_FULL[s.province]) {
-              s.province = PROVINCE_FULL[s.province];
+            const cityName = s.city || "Unknown";
+            if (!citiesInProvince.has(cityName)) {
+              citiesInProvince.set(cityName, []);
+            }
+            citiesInProvince.get(cityName)!.push(s);
+          }
+
+          const minListingsForYield = 5;
+          for (const [cityName, citySnapshots] of citiesInProvince) {
+            if (citySnapshots.length >= minListingsForYield) {
+              const yieldData = await aggregateCityYield(cityName, shortProvince, month, citySnapshots);
+              await storage.upsertCityYieldHistory(yieldData);
+              allCities.add(cityName);
             }
           }
-          const inserted = await storage.insertDdfListingSnapshotsBatch(snapshots);
-          totalListings += inserted;
-          console.log(`[ddf-crawler] ${city}: ${inserted} listings stored`);
-
-          const yieldData = await aggregateCityYield(city, shortProvince, month,
-            snapshots.map(s => ({ ...s, province: shortProvince })));
-          await storage.upsertCityYieldHistory(yieldData);
-          console.log(`[ddf-crawler] ${city}: yield history updated (avg gross: ${yieldData.avgGrossYield}%)`);
+          console.log(`[ddf-crawler] ${ddfProvince}: yield data for ${citiesInProvince.size} cities (${[...citiesInProvince.entries()].filter(([_, s]) => s.length >= minListingsForYield).length} with 5+ listings)`);
         } else {
-          await storage.upsertCityYieldHistory({
-            city, province: shortProvince, month,
-            listingCount: 0,
-            avgGrossYield: null, medianGrossYield: null, avgNetYield: null,
-            avgListPrice: null, medianListPrice: null, avgRentPerUnit: null,
-            avgDaysOnMarket: null, avgPricePerSqft: null, inventoryCount: 0,
-            avgBedsPerListing: null, yieldTrend: null,
-          });
-          console.log(`[ddf-crawler] ${city}: no listings found, zero row stored`);
+          console.log(`[ddf-crawler] ${ddfProvince}: no listings found`);
         }
 
-        citiesCrawled++;
-        await new Promise(r => setTimeout(r, 1000));
+        provincesCompleted++;
+        await new Promise(r => setTimeout(r, 2000));
       } catch (error) {
-        console.error(`[ddf-crawler] Failed to crawl ${city}, ${ddfProvince}:`, error);
+        console.error(`[ddf-crawler] Failed to crawl province ${ddfProvince}:`, error);
       }
     }
 
-    console.log(`[ddf-crawler] Crawl complete: ${totalListings} listings across ${citiesCrawled} cities`);
-    return { month, totalListings, citiesCrawled };
+    console.log(`[ddf-crawler] FULL crawl complete: ${totalListings} listings across ${allCities.size} cities in ${provincesCompleted} provinces`);
+    return { month, totalListings, citiesCrawled: allCities.size, provincesCompleted };
   } finally {
     crawlInProgress = false;
   }

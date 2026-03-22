@@ -232,15 +232,16 @@ export async function searchDdfListings(params: {
   }
 
   const rawCount = data["@odata.count"] || listings.length;
-  const totalCount = EXCLUDED_SUBTYPES.size > 0 ? listings.length : rawCount;
   const currentPage = Math.floor(skip / top) + 1;
-  const totalPages = EXCLUDED_SUBTYPES.size > 0 ? 1 : Math.ceil(rawCount / top);
+  const totalPages = Math.ceil(rawCount / top);
+  const rawPageSize = (data.value || []).length;
 
   return {
     listings,
-    count: totalCount,
+    count: rawCount,
     numPages: totalPages,
     page: currentPage,
+    rawPageSize,
   };
 }
 
