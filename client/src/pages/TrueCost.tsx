@@ -62,6 +62,10 @@ interface CostBreakdown {
   grossHST: number;
   hstRebate: number;
   netHST: number;
+  federalGST: number;
+  provincialPST: number;
+  gstPaused: boolean;
+  pstPaused: boolean;
   developerMargin: number;
   totalCosts: number;
   matchedMunicipality: string | null;
@@ -576,18 +580,52 @@ export default function TrueCost() {
 
                     {result.grossHST > 0 && (
                       <>
+                        {result.gstPaused && (
+                          <div className="flex items-center gap-2 py-2 px-3 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 mb-1" data-testid="hst-pause-banner">
+                            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                            <span className="text-xs text-green-700 dark:text-green-300 font-medium">
+                              1-Year HST/GST Pause on New Builds — Federal GST (5%) and Ontario PST (8%) temporarily suspended
+                            </span>
+                          </div>
+                        )}
+
                         <div className="flex justify-between py-2 border-b">
-                          <span className="text-muted-foreground">HST (13%)</span>
-                          <span className="font-mono">
-                            {formatCurrency(result.grossHST)}
+                          <span className={result.gstPaused ? "text-muted-foreground/50" : "text-muted-foreground"}>
+                            Federal GST (5%)
+                            {result.gstPaused && <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 border-green-500 text-green-600 dark:text-green-400">PAUSED</Badge>}
+                          </span>
+                          <span className={`font-mono ${result.gstPaused ? "line-through text-muted-foreground/50" : ""}`} data-testid="amount-federal-gst">
+                            {formatCurrency(result.federalGST)}
                           </span>
                         </div>
 
-                        {result.hstRebate > 0 && (
+                        <div className="flex justify-between py-2 border-b">
+                          <span className={result.pstPaused ? "text-muted-foreground/50" : "text-muted-foreground"}>
+                            Ontario PST (8%)
+                            {result.pstPaused && <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 border-green-500 text-green-600 dark:text-green-400">PAUSED</Badge>}
+                          </span>
+                          <span className={`font-mono ${result.pstPaused ? "line-through text-muted-foreground/50" : ""}`} data-testid="amount-provincial-pst">
+                            {formatCurrency(result.provincialPST)}
+                          </span>
+                        </div>
+
+                        {result.hstRebate > 0 && !result.gstPaused && !result.pstPaused && (
                           <div className="flex justify-between py-2 border-b text-green-600 dark:text-green-400">
                             <span>New Home HST Rebate</span>
                             <span className="font-mono">
                               -{formatCurrency(result.hstRebate)}
+                            </span>
+                          </div>
+                        )}
+
+                        {(result.gstPaused || result.pstPaused) && (
+                          <div className="flex justify-between py-2 border-b text-green-600 dark:text-green-400">
+                            <span>HST Savings (Pause)</span>
+                            <span className="font-mono font-semibold" data-testid="hst-savings">
+                              -{formatCurrency(
+                                (result.gstPaused ? result.federalGST : 0) +
+                                (result.pstPaused ? result.provincialPST : 0)
+                              )}
                             </span>
                           </div>
                         )}
@@ -619,7 +657,7 @@ export default function TrueCost() {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground text-center">
-                  Estimates based on 2024-2025 Ontario rates (BILD/Altus, CMHC, CRA). Actual costs may vary. 
+                  Estimates based on 2024-2025 Ontario rates (BILD/Altus, CMHC, CRA). Reflects the 1-year federal/provincial HST pause on new construction. Actual costs may vary. 
                   This is for educational purposes only and not financial advice.
                 </p>
               </>

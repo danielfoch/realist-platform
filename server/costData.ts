@@ -353,6 +353,10 @@ export interface CostBreakdown {
   grossHST: number;
   hstRebate: number;
   netHST: number;
+  federalGST: number;
+  provincialPST: number;
+  gstPaused: boolean;
+  pstPaused: boolean;
   developerMargin: number;
   totalCosts: number;
   matchedMunicipality: string | null;
@@ -435,15 +439,22 @@ function calculateHSTRebate(
   isNewConstruction: boolean,
   buyerType: BuyerType,
   homeType: HomeType
-): { grossHST: number; rebate: number; netHST: number } {
+): { grossHST: number; rebate: number; netHST: number; federalGST: number; provincialPST: number; gstPaused: boolean; pstPaused: boolean } {
   if (!isNewConstruction) {
-    return { grossHST: 0, rebate: 0, netHST: 0 };
+    return { grossHST: 0, rebate: 0, netHST: 0, federalGST: 0, provincialPST: 0, gstPaused: false, pstPaused: false };
   }
 
-  const grossHST = Math.round(homeValue * hstGstRules.taxRates.HST);
+  const federalGST = Math.round(homeValue * hstGstRules.taxRates.GST);
+  const provincialPST = Math.round(homeValue * hstGstRules.taxRates.PST);
+  const grossHST = federalGST + provincialPST;
+
+  const pauseExpiry = new Date("2027-04-01");
+  const isPauseActive = new Date() < pauseExpiry;
+  const gstPaused = isPauseActive;
+  const pstPaused = isPauseActive;
 
   if (homeType === "PBR") {
-    return { grossHST, rebate: grossHST, netHST: 0 };
+    return { grossHST, rebate: grossHST, netHST: 0, federalGST, provincialPST, gstPaused, pstPaused };
   }
 
   let federalRebate = 0;
@@ -468,10 +479,18 @@ function calculateHSTRebate(
 
   const totalRebate = Math.round(federalRebate + provincialRebate);
 
+  const netHSTBeforePause = grossHST - totalRebate;
+  const pausedAmount = (gstPaused ? federalGST : 0) + (pstPaused ? provincialPST : 0);
+  const netHST = Math.max(0, netHSTBeforePause - pausedAmount);
+
   return {
     grossHST,
     rebate: totalRebate,
-    netHST: grossHST - totalRebate,
+    netHST,
+    federalGST,
+    provincialPST,
+    gstPaused,
+    pstPaused,
   };
 }
 
@@ -543,6 +562,10 @@ export function calculateTrueCost(input: TrueCostInput): CostBreakdown {
     grossHST: hstResult.grossHST,
     hstRebate: hstResult.rebate,
     netHST: hstResult.netHST,
+    federalGST: hstResult.federalGST,
+    provincialPST: hstResult.provincialPST,
+    gstPaused: hstResult.gstPaused,
+    pstPaused: hstResult.pstPaused,
     developerMargin,
     totalCosts,
     matchedMunicipality: matchedMuni?.name || null,
