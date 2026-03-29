@@ -1,0 +1,262 @@
+// Leaderboard Page Component
+// Realist.ca Flywheel - Leaderboard Display
+
+export const leaderboardPage = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaderboard | Realist.ca</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      color: #888;
+      font-size: 1.1rem;
+    }
+    .period-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .period-tab {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 24px;
+      background: #1a1a1a;
+      color: #888;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+    .period-tab.active {
+      background: #667eea;
+      color: #fff;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    .stat-card {
+      background: #1a1a1a;
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+    .stat-label {
+      color: #888;
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+    .leaderboard {
+      background: #1a1a1a;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .leaderboard-header {
+      display: grid;
+      grid-template-columns: 60px 1fr 100px 100px 120px;
+      padding: 16px 24px;
+      background: #222;
+      font-weight: 600;
+      color: #888;
+      font-size: 0.85rem;
+    }
+    .leaderboard-row {
+      display: grid;
+      grid-template-columns: 60px 1fr 100px 100px 120px;
+      padding: 16px 24px;
+      border-bottom: 1px solid #2a2a2a;
+      align-items: center;
+    }
+    .leaderboard-row:hover {
+      background: #252525;
+    }
+    .rank {
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+    .rank-1 { color: #ffd700; }
+    .rank-2 { color: #c0c0c0; }
+    .rank-3 { color: #cd7f32; }
+    .user-name {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background: #333;
+      color: #aaa;
+    }
+    .cta {
+      text-align: center;
+      margin-top: 40px;
+    }
+    .cta-button {
+      display: inline-block;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: transform 0.2s;
+    }
+    .cta-button:hover {
+      transform: scale(1.02);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🏆 Leaderboard</h1>
+      <p class="subtitle">Top Canadian Real Estate Analysts</p>
+    </header>
+
+    <div class="period-tabs">
+      <button class="period-tab active" data-period="weekly">This Week</button>
+      <button class="period-tab" data-period="monthly">This Month</button>
+      <button class="period-tab" data-period="alltime">All Time</button>
+    </div>
+
+    <div class="stats-grid" id="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="totalDeals">-</div>
+        <div class="stat-label">Deals Analyzed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="avgCapRate">-</div>
+        <div class="stat-label">Avg Cap Rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="avgCoC">-</div>
+        <div class="stat-label">Avg Cash-on-Cash</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="hottestCity">-</div>
+        <div class="stat-label">Hottest City</div>
+      </div>
+    </div>
+
+    <div class="leaderboard">
+      <div class="leaderboard-header">
+        <div>Rank</div>
+        <div>Analyst</div>
+        <div>Deals</div>
+        <div>Avg Cap</div>
+        <div>Badges</div>
+      </div>
+      <div id="rankings">
+        <div class="leaderboard-row">Loading...</div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <a href="/analyze" class="cta-button">Analyze Your First Deal</a>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '';
+
+    async function loadLeaderboard(period = 'weekly') {
+      try {
+        const response = await fetch(\`\${API_URL}/api/leaderboard?period=\${period}\`);
+        const data = await response.json();
+        
+        // Update stats
+        document.getElementById('totalDeals').textContent = data.stats.totalDealsThisPeriod.toLocaleString();
+        document.getElementById('avgCapRate').textContent = data.stats.avgCapRate + '%';
+        document.getElementById('avgCoC').textContent = data.stats.avgCashOnCash + '%';
+        document.getElementById('hottestCity').textContent = data.stats.hottestCity;
+        
+        // Update rankings
+        const rankingsHtml = data.rankings.map(r => \`
+          <div class="leaderboard-row">
+            <div class="rank rank-\${r.rank}">#\${r.rank}</div>
+            <div class="user-name">
+              <div class="avatar">\${r.name.charAt(0).toUpperCase()}</div>
+              <span>\${r.name}</span>
+            </div>
+            <div>\${r.deals}</div>
+            <div>\${r.avgCapRate}%</div>
+            <div class="badges">
+              \${r.badges.map(b => \`<span class="badge">\${b}</span>\`).join('')}
+            </div>
+          </div>
+        \`).join('');
+        
+        document.getElementById('rankings').innerHTML = rankingsHtml;
+      } catch (error) {
+        console.error('Failed to load leaderboard:', error);
+      }
+    }
+
+    // Tab switching
+    document.querySelectorAll('.period-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        loadLeaderboard(tab.dataset.period);
+      });
+    });
+
+    // Initial load
+    loadLeaderboard();
+  </script>
+</body>
+</html>
+`;
+
+export default leaderboardPage;

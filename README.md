@@ -1,130 +1,123 @@
-# Realist.ca CREA DDF IDX Integration
+# Realist Partner Integration - Implementation Guide
 
-Production-oriented IDX backend/frontend integration for CREA DDF data.
+## Quick Start
 
-## Stack
-- Backend: Express + TypeScript + PostgreSQL
-- Frontend: React + TypeScript + Vite + Tailwind + shadcn components
-- Sync: CREA DDF RETS client with retry, rate limiting, and sync telemetry
+This implementation adds:
+1. **Database tables** for realtors, lenders, and deal leads
+2. **API endpoints** for registration and admin
+3. **Join pages** at `/join/realtors` and `/join/lenders`
+4. **Deal analyzer integration** with "Get Matched" CTA
 
-## Prerequisites
-1. **PostgreSQL** (v14+) - Local or hosted (Supabase, Neon, Railway, etc.)
-2. **Node.js** (v18+)
-3. **Mapbox Token** - Get free at https://mapbox.com
+## Step 1: Database Setup
 
-## Setup
-
-```bash
-# 1. Clone and install dependencies
-cd idx-integration
-npm ci
-
-# 2. Configure environment
-cp .env.example .env
+### Option A: Run SQL Migration
+In your Replit database console, run the SQL from:
+```
+db/migration.sql
 ```
 
-### Environment Variables (.env)
-
-```env
-# CREA DDF Credentials (get from CREA)
-DDF_USERNAME=your_username
-DDF_PASSWORD=your_password
-
-# Database (PostgreSQL connection string)
-DATABASE_URL=postgresql://user:password@host:5432/realist
-
-# Rent API (from realist.ca scraper)
-RENT_API_URL=https://realist.ca/api/rents
-RENT_API_KEY=your_api_key
-
-# Server
-PORT=3000
-NODE_ENV=development
-
-# Mapbox (REQUIRED for map view)
-# Get free token at https://mapbox.com
-VITE_MAPBOX_TOKEN=pk.your_token_here
-
-# Optional: Sync schedule (cron format)
-SYNC_SCHEDULE=0 2 * * *
+### Option B: Drizzle Schema
+Add the schema to your existing Drizzle setup:
+```ts
+// Import from db/schema.ts
+export { realtors, lenders, dealLeeds } from './db/schema';
 ```
 
-### Database Setup
+## Step 2: Add API Routes
 
-```bash
-# Run migrations
-npm run migrate
+Add to your Express server (likely `server/index.ts` or similar):
 
-# Seed with sample data (optional but recommended for testing)
-npm run seed:comprehensive
+```ts
+import partnersRouter from './routes/partners';
+
+// Add to your app
+app.use('/api', partnersRouter);
 ```
 
-### Start Development Server
-
-```bash
-# Backend + Frontend
-npm run dev
+Make sure you have the db import:
+```ts
+import { db } from './db';
 ```
 
-Visit http://localhost:3000
+## Step 3: Add React Pages
 
-## Core Commands
-- `npm run sync` - Incremental sync from CREA DDF
-- `npm run sync:full` - Full sync (all listings)
-- `npm run test:ddf` - Test CREA DDF connectivity
-- `npm run seed:comprehensive` - Seed sample data with cap rates
-- `npm run test` - Unit/integration tests with coverage
-- `npm run type-check` - Strict TypeScript checks
+In your React router setup (likely `App.tsx` or `main.tsx`):
 
-## Cap Rate Calculation
+```tsx
+import { JoinRealtorsPage } from './pages/JoinRealtors';
+import { JoinLendersPage } from './pages/JoinLenders';
 
-Formula: `(Monthly Rent × 12 × 0.6) / Listing Price = Cap Rate`
+// Add routes
+<Route path="/join/realtors" element={<JoinRealtorsPage />} />
+<Route path="/join/lenders" element={<JoinLendersPage />} />
+```
 
-This uses a 40% expense ratio (60% NOI ratio) which accounts for:
-- Property management (8-10%)
-- Maintenance (5-10%)
-- Vacancy (5-8%)
-- Insurance (1-2%)
-- Property taxes (1-2%)
-- Utilities (if included)
-- Other expenses
+## Step 4: Deal Analyzer Integration
 
-## Features
+To add the "Get Matched" CTA after deal analysis:
 
-### Map View
-- Interactive Mapbox map showing all listings
-- Markers colored by cap rate (green = investment property)
-- Click markers for property details
-- Filter by cap rate range
+```tsx
+import { DealAnalyzerMatch } from './components/DealAnalyzerMatch';
 
-### Investment Filters
-- Filter by minimum/maximum cap rate
-- Sort by cap rate, price, cash flow, yield
-- Investment focus mode (only show properties with cap rate data)
+// Add after your analysis results
+<DealAnalyzerMatch 
+  propertyAddress={address}
+  city={city}
+  province={province}
+  purchasePrice={purchasePrice}
+/>
+```
 
-### API Endpoints
-- `GET /api/listings` - Paginated listings with filters
-- `GET /api/listings/:id` - Single listing details
-- `GET /api/listings/map` - Listings optimized for map view
-- `GET /api/stats` - Market statistics
-- `POST /api/rent/ingest` - Receive rent data from scraper
-- `GET /health` - Health check
-- `GET /metrics` - Prometheus metrics
+## File Structure
 
-## Documentation
-- `API_DOCUMENTATION.md`
-- `DEPLOYMENT.md`
-- `TROUBLESHOOTING.md`
-- `ENVIRONMENT_VARIABLES.md`
-- `INTEGRATION_CHECKLIST.md`
+```
+/workspace/realist/
+├── db/
+│   ├── schema.ts         # Drizzle schema definitions
+│   └── migration.sql     # Raw SQL for direct DB setup
+├── server/
+│   └── routes/
+│       └── partners.ts   # Express API endpoints
+├── client/
+│   ├── pages/
+│   │   ├── JoinRealtors.tsx
+│   │   ├── JoinLenders.tsx
+│   │   └── JoinForm.css
+│   └── components/
+│       ├── DealAnalyzerMatch.tsx
+│       └── DealAnalyzerMatch.css
+└── README.md
+```
 
-## Known Issues
+## API Endpoints
 
-### DDF Connection
-If DDF endpoints return DNS errors, the CREA account may not be activated. Contact CREA support to verify:
-1. Account is active
-2. IP is whitelisted
-3. Correct endpoint URLs are provided
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/realtors/join` | Register new realtor |
+| POST | `/api/lenders/join` | Register new lender |
+| GET | `/api/realtors` | List all realtors (admin) |
+| GET | `/api/lenders` | List all lenders (admin) |
+| POST | `/api/deal-leads` | Create lead from deal analyzer |
 
-### Mapbox Token Required
-The map view requires a valid Mapbox public token. Get one free at https://mapbox.com
+## Validation
+
+Both join endpoints include server-side validation:
+- Email format validation
+- Phone number validation (10+ digits)
+- Required field checks
+- JSON array non-empty checks
+- Duplicate email prevention
+
+## Notes
+
+- All dates are stored in UTC
+- Status defaults to 'active' for new records
+- Emails are stored lowercase and trimmed
+- The deal-leads endpoint attempts to auto-match based on city/province and loan size
+
+## Security Recommendations
+
+1. Add admin authentication for GET endpoints
+2. Implement rate limiting on join endpoints
+3. Add CAPTCHA to prevent spam
+4. Consider email verification flow
