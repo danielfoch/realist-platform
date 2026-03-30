@@ -187,7 +187,7 @@ router.get('/stats/weekly', async (req: Request, res: Response) => {
     );
 
     const change = thisWeek.rows[0].deals > 0 && lastWeek.rows[0].deals > 0
-      ? ((thisWeek.rows[0].deals - lastWeek.rows[0].deals) / lastWeek.rows[0].deals * 100).toFixed(0)
+      ? Number(((thisWeek.rows[0].deals - lastWeek.rows[0].deals) / lastWeek.rows[0].deals * 100).toFixed(0))
       : 0;
 
     const topAnalysts = await db.query(

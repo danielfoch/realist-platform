@@ -5,7 +5,7 @@
 import { Router, Request, Response } from 'express';
 import { QueryResultRow } from 'pg';
 import { db as defaultDb } from './db';
-import { isDemoMode, getDemoBlogPosts, getDemoGuideBySlug, getDemoBlogPostBySlug, demoGuides } from './demo-data';
+import { isDemoMode, getDemoBlogPosts, getDemoGuideBySlug, getDemoBlogPostBySlug, demoGuides, demoBlogPosts } from './demo-data';
 
 interface DatabaseAdapter {
   query: <T extends QueryResultRow = QueryResultRow>(text: string, params?: readonly unknown[]) => Promise<{ rows: T[] }>;
@@ -539,6 +539,223 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
     } catch (error) {
       console.error('Error fetching city yields:', error);
       res.status(500).json({ success: false, error: 'Failed to fetch city yields' });
+    }
+  });
+
+  // ==================== FEATURED CONTENT ====================
+
+  // GET /api/content/featured - Get featured blog posts and guides
+  router.get('/content/featured', async (req: Request, res: Response) => {
+    try {
+      const { type = 'all', limit = 5 } = req.query;
+      
+      if (isDemoMode()) {
+        const featuredPosts = demoBlogPosts.filter(p => p.featured).slice(0, Number(limit));
+        const featuredGuides = demoGuides.filter(g => g.featured).slice(0, Number(limit));
+        
+        if (type === 'blog') {
+          return res.json({ success: true, data: featuredPosts });
+        }
+        if (type === 'guides') {
+          return res.json({ success: true, data: featuredGuides });
+        }
+        return res.json({ 
+          success: true, 
+          data: {
+            blog: featuredPosts,
+            guides: featuredGuides
+          }
+        });
+      }
+      
+      const blogQuery = type !== 'guides' 
+        ? await database.query(
+            `SELECT id, title, slug, excerpt, featured_image, author, published_at, category, 'blog' as type
+             FROM blog_posts WHERE status = 'published' AND featured = true
+             ORDER BY published_at DESC LIMIT $1`,
+            [Number(limit)]
+          )
+        : { rows: [] };
+      
+      const guidesQuery = type !== 'blog'
+        ? await database.query(
+            `SELECT id, title, slug, excerpt, featured_image, author, published_at, category, difficulty, 'guide' as type
+             FROM guides WHERE status = 'published' AND featured = true
+             ORDER BY published_at DESC LIMIT $1`,
+            [Number(limit)]
+          )
+        : { rows: [] };
+      
+      if (type === 'blog') {
+        return res.json({ success: true, data: blogQuery.rows });
+      }
+      if (type === 'guides') {
+        return res.json({ success: true, data: guidesQuery.rows });
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          blog: blogQuery.rows,
+          guides: guidesQuery.rows
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching featured content:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch featured content' });
+    }
+  });
+
+  // ==================== CONTENT SEARCH ====================
+
+  // GET /api/content/search - Search blog posts and guides
+  router.get('/content/search', async (req: Request, res: Response) => {
+    try {
+      const { q, type, limit = 10 } = req.query;
+      
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ success: false, error: 'Search query required' });
+      }
+      
+      if (isDemoMode()) {
+        const searchLower = q.toLowerCase();
+        let blogResults: typeof demoBlogPosts = [];
+        let guideResults: typeof demoGuides = [];
+        
+        if (type !== 'guides') {
+          blogResults = demoBlogPosts.filter(p => 
+            p.title.toLowerCase().includes(searchLower) ||
+            p.excerpt.toLowerCase().includes(searchLower) ||
+            p.content.toLowerCase().includes(searchLower)
+          ).slice(0, Number(limit));
+        }
+        
+        if (type !== 'blog') {
+          guideResults = demoGuides.filter(g =>
+            g.title.toLowerCase().includes(searchLower) ||
+            g.excerpt.toLowerCase().includes(searchLower) ||
+            g.content.toLowerCase().includes(searchLower)
+          ).slice(0, Number(limit));
+        }
+        
+        return res.json({
+          success: true,
+          data: {
+            query: q,
+            blog: blogResults,
+            guides: guideResults,
+            total: blogResults.length + guideResults.length
+          }
+        });
+      }
+      
+      let blogResults = { rows: [] as QueryResultRow[] };
+      let guideResults = { rows: [] as QueryResultRow[] };
+      
+      if (type !== 'guides') {
+        blogResults = await database.query(
+          `SELECT id, title, slug, excerpt, 'blog' as type, published_at
+           FROM blog_posts 
+           WHERE status = 'published' AND search_vector @@ plainto_tsquery('english', $1)
+           ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1)) DESC
+           LIMIT $2`,
+          [q, Number(limit)]
+        );
+      }
+      
+      if (type !== 'blog') {
+        guideResults = await database.query(
+          `SELECT id, title, slug, excerpt, 'guide' as type, published_at
+           FROM guides 
+           WHERE status = 'published' AND search_vector @@ plainto_tsquery('english', $1)
+           ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1)) DESC
+           LIMIT $2`,
+          [q, Number(limit)]
+        );
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          query: q,
+          blog: blogResults.rows,
+          guides: guideResults.rows,
+          total: blogResults.rows.length + guideResults.rows.length
+        }
+      });
+    } catch (error) {
+      console.error('Error searching content:', error);
+      res.status(500).json({ success: false, error: 'Failed to search content' });
+    }
+  });
+
+  // ==================== SITEMAP DATA ====================
+
+  // GET /api/content/sitemap - Get all published content for sitemap generation
+  router.get('/content/sitemap', async (req: Request, res: Response) => {
+    try {
+      if (isDemoMode()) {
+        const blogUrls = demoBlogPosts
+          .filter(p => p.status === 'published')
+          .map(p => ({
+            url: `/insights/blog/${p.slug}`,
+            lastmod: p.published_at,
+            priority: '0.8',
+            changefreq: 'weekly'
+          }));
+        
+        const guideUrls = demoGuides
+          .filter(g => g.status === 'published')
+          .map(g => ({
+            url: `/insights/guides/${g.slug}`,
+            lastmod: g.published_at,
+            priority: '0.7',
+            changefreq: 'monthly'
+          }));
+        
+        return res.json({
+          success: true,
+          data: {
+            blog: blogUrls,
+            guides: guideUrls
+          }
+        });
+      }
+      
+      const blogResult = await database.query(
+        `SELECT slug, published_at as lastmod, 'blog' as type
+         FROM blog_posts WHERE status = 'published' ORDER BY published_at DESC`
+      );
+      
+      const guideResult = await database.query(
+        `SELECT slug, published_at as lastmod, 'guide' as type
+         FROM guides WHERE status = 'published' ORDER BY published_at DESC`
+      );
+      
+      const blogUrls = blogResult.rows.map(r => ({
+        url: `/insights/blog/${r.slug}`,
+        lastmod: r.lastmod,
+        priority: '0.8',
+        changefreq: 'weekly'
+      }));
+      
+      const guideUrls = guideResult.rows.map(r => ({
+        url: `/insights/guides/${r.slug}`,
+        lastmod: r.lastmod,
+        priority: '0.7',
+        changefreq: 'monthly'
+      }));
+      
+      res.json({
+        success: true,
+        data: {
+          blog: blogUrls,
+          guides: guideUrls
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching sitemap data:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch sitemap data' });
     }
   });
 

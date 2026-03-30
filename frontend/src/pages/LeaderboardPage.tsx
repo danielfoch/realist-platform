@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Trophy, TrendingUp, Users, Award, Crown, Target, Zap } from 'lucide-react'
+import { Trophy, Users, Crown, Target, Zap } from 'lucide-react'
 
 interface LeaderboardEntry {
   rank: number
