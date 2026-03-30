@@ -107,9 +107,12 @@ export default function Blog() {
         </div>
 
         <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-6" data-testid="text-realist-blog-heading">
-            Realist Blog
+          <h2 className="text-2xl font-bold mb-2" data-testid="text-substack-label">
+            From Our Substack
           </h2>
+          <h3 className="text-xl font-semibold mb-6 text-muted-foreground" data-testid="text-realist-blog-heading">
+            Monthly Real Estate Market Reports
+          </h3>
 
           <div className="flex items-center flex-wrap gap-2 mb-8" data-testid="container-category-filters">
             {categories.map((cat) => (
@@ -225,7 +228,7 @@ export default function Blog() {
         <section>
           <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
             <h2 className="text-2xl font-bold" data-testid="text-substack-heading">
-              From Our Substack
+              Latest Substack Posts
             </h2>
             <a
               href="https://padder.substack.com"
