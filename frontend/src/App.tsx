@@ -4,6 +4,7 @@ import { RealtorAuthPage } from './pages/RealtorAuthPage'
 import { RealtorDashboard } from './pages/RealtorDashboard'
 import { BlogListPage, BlogPostPage } from './pages/BlogPage'
 import { GuidesListPage, GuidePage } from './pages/GuidesPage'
+import { CityYieldPage } from './pages/CityYieldPage'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -24,6 +25,9 @@ function App() {
               </Link>
               <Link to="/insights/guides" className="text-sm font-medium hover:text-primary">
                 Guides
+              </Link>
+              <Link to="/insights/city-yields" className="text-sm font-medium hover:text-primary">
+                City Yields
               </Link>
               <Link to="/realtor" className="text-sm font-medium hover:text-primary">
                 Realtor Portal
@@ -46,6 +50,9 @@ function App() {
             {/* Guides Routes */}
             <Route path="/insights/guides" element={<GuidesListPage />} />
             <Route path="/insights/guides/:slug" element={<GuidePage />} />
+            
+            {/* City Yield Rankings */}
+            <Route path="/insights/city-yields" element={<CityYieldPage />} />
           </Routes>
         </main>
         

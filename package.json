@@ -13,6 +13,8 @@
     "migrate": "tsx src/scripts/migrate.ts",
     "seed": "tsx src/scripts/seed.ts",
     "seed:comprehensive": "tsx src/scripts/seed-comprehensive.ts",
+    "seed:content": "tsx src/scripts/seed-content.ts",
+    "monthly-update": "tsx src/scripts/run-monthly-update.ts",
     "test": "jest --runInBand --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
