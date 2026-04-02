@@ -36,7 +36,7 @@ const CITY_PRICES: Record<string, number> = {
   'Windsor': 380000,
   'Mississauga': 720000,
   'Brampton': 680000,
-  ' Vaughan': 780000,
+  'Vaughan': 780000,
   'Markham': 850000,
   'Richmond Hill': 920000,
   'Burlington': 710000,
@@ -184,7 +184,7 @@ export async function generateMonthlyMarketUpdate(): Promise<{
       content,
       'Realist Team',
       'published',
-      'Market Update',
+      'Markets',
       title,
       excerpt,
     ]);

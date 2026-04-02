@@ -5,7 +5,7 @@
 import { Router, Request, Response } from 'express';
 import { QueryResultRow } from 'pg';
 import { db as defaultDb } from './db';
-import { isDemoMode, getDemoBlogPosts, getDemoGuideBySlug, getDemoBlogPostBySlug, demoGuides, demoBlogPosts } from './demo-data';
+import { isDemoMode, getDemoBlogPosts, getDemoBlogPostBySlug, demoGuides, demoBlogPosts } from './demo-data';
 
 interface DatabaseAdapter {
   query: <T extends QueryResultRow = QueryResultRow>(text: string, params?: readonly unknown[]) => Promise<{ rows: T[] }>;
@@ -13,6 +13,21 @@ interface DatabaseAdapter {
 
 export function createContentRouter(database: DatabaseAdapter = defaultDb): Router {
   const router = Router();
+
+  const GUIDE_CATEGORIES = ['Analysis', 'Markets', 'Tax & Legal', 'Financing'] as const;
+  const normalizeGuideCategory = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().toLowerCase();
+    const map: Record<string, string> = {
+      analysis: 'Analysis',
+      markets: 'Markets',
+      'tax & legal': 'Tax & Legal',
+      'tax-legal': 'Tax & Legal',
+      'tax and legal': 'Tax & Legal',
+      financing: 'Financing',
+    };
+    return map[normalized] ?? null;
+  };
 
   // ==================== BLOG POSTS ====================
   
@@ -89,7 +104,6 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
           data: post
         });
       }
-      
       const result = await database.query(
         `SELECT * FROM blog_posts WHERE slug = $1 AND status = 'published'`,
         [slug]
@@ -124,7 +138,6 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
           error: 'Title, slug, and content are required' 
         });
       }
-      
       const result = await database.query(
         `INSERT INTO blog_posts 
          (title, slug, excerpt, content, featured_image, author, meta_title, meta_description, canonical_url, status, category, tags, published_at)
@@ -330,11 +343,19 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
         meta_title, meta_description, canonical_url,
         status, category, difficulty, estimated_read_time_minutes
       } = req.body;
+      const normalizedCategory = normalizeGuideCategory(category);
       
       if (!title || !slug || !content) {
         return res.status(400).json({ 
           success: false, 
           error: 'Title, slug, and content are required' 
+        });
+      }
+
+      if (category && !normalizedCategory) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid guide category. Allowed: ${GUIDE_CATEGORIES.join(', ')}`,
         });
       }
       
@@ -346,7 +367,7 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
         [
           title, slug, excerpt, content, featured_image, author,
           meta_title, meta_description, canonical_url,
-          status || 'draft', category, difficulty, estimated_read_time_minutes,
+          status || 'draft', normalizedCategory, difficulty, estimated_read_time_minutes,
           status === 'published' ? new Date() : null
         ]
       );
@@ -373,6 +394,14 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
         meta_title, meta_description, canonical_url,
         status, category, difficulty, estimated_read_time_minutes
       } = req.body;
+      const normalizedCategory = category === undefined ? undefined : normalizeGuideCategory(category);
+
+      if (category !== undefined && !normalizedCategory) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid guide category. Allowed: ${GUIDE_CATEGORIES.join(', ')}`,
+        });
+      }
       
       const result = await database.query(
         `UPDATE guides 
@@ -395,7 +424,7 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
          RETURNING *`,
         [title, slug, excerpt, content, featured_image, author,
          meta_title, meta_description, canonical_url,
-         status, category, difficulty, estimated_read_time_minutes, id]
+         status, normalizedCategory, difficulty, estimated_read_time_minutes, id]
       );
       
       if (result.rows.length === 0) {
