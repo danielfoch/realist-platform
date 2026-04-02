@@ -12,6 +12,7 @@
  */
 
 import { db } from '../db';
+import { isDemoMode } from '../demo-data';
 
 interface CityRentData {
   city: string;
@@ -96,6 +97,27 @@ export async function generateMonthlyMarketUpdate(): Promise<{
 }> {
   try {
     console.log('Generating monthly market update...\n');
+
+    // Demo mode - create a demo market update
+    if (isDemoMode()) {
+      console.log('Running in demo mode - creating sample market update...');
+      
+      const monthYear = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const title = `${monthYear}: Top 5 Canadian Cities by Rental Yield`;
+      const slug = slugify(title);
+      
+      console.log(`✅ Created demo market update: "${title}"`);
+      console.log(`   URL: /insights/blog/${slug}`);
+      
+      return {
+        success: true,
+        stats: {
+          citiesAnalyzed: 5,
+          topCity: 'Windsor',
+          avgCapRate: 7.38,
+        },
+      };
+    }
 
     // Get latest rent pulse data for each city (last 7 days)
     const rentData = await db.query<CityRentData>(`
