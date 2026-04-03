@@ -40,9 +40,7 @@ function extractImageFromContent(content: string): string | null {
 }
 
 function stripHtml(html: string): string {
-  const tmp = document.createElement("div");
-  tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || "";
+  return new DOMParser().parseFromString(html, "text/html").body.textContent ?? "";
 }
 
 function estimateReadTime(content: string): number {
