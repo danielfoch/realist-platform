@@ -9,8 +9,8 @@ export default function Shop() {
     
     function ShopifyBuyInit() {
       const client = (window as any).ShopifyBuy.buildClient({
-        domain: 'jytqv6-dh.myshopify.com',
-        storefrontAccessToken: 'a1b026dcf583784ef7f274d93c5c97e3',
+        domain: import.meta.env.VITE_SHOPIFY_DOMAIN,
+        storefrontAccessToken: import.meta.env.VITE_SHOPIFY_STOREFRONT_ACCESS_TOKEN,
       });
       
       (window as any).ShopifyBuy.UI.onReady(client).then(function (ui: any) {
