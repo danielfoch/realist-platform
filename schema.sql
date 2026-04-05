@@ -297,6 +297,8 @@ CREATE TABLE IF NOT EXISTS blog_posts (
   meta_title VARCHAR(70),
   meta_description VARCHAR(160),
   canonical_url VARCHAR(500),
+  view_count INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT false,
   published_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -318,6 +320,8 @@ CREATE TABLE IF NOT EXISTS guides (
   meta_title VARCHAR(70),
   meta_description VARCHAR(160),
   canonical_url VARCHAR(500),
+  view_count INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT false,
   published_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

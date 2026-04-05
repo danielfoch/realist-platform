@@ -1,7 +1,9 @@
 // Database schema for Realist partner tables
 // Add this to your Drizzle schema file
 
-import { pgTable, serial, text, timestamp, boolean, integer, real, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, boolean, integer, real, jsonb, varchar } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { createInsertSchema } from 'drizzle-zod';
 
 export const realtors = pgTable('realtors', {
   id: serial('id').primaryKey(),
@@ -53,6 +55,55 @@ export const dealLeads = pgTable('deal_leads', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// Blog Posts Table
+export const blogPosts = pgTable('blog_posts', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  slug: text('slug').notNull().unique(),
+  excerpt: text('excerpt'),
+  content: text('content').notNull(), // markdown
+  featuredImage: text('featured_image'),
+  author: text('author').default('Realist Team'),
+  status: text('status').default('draft'), // draft, published, archived
+  category: text('category'), // Market Update, Analysis, News, Tutorial
+  tags: text('tags').array(), // Array of tags for SEO
+  metaTitle: text('meta_title'),
+  metaDescription: text('meta_description'),
+  canonicalUrl: text('canonical_url'),
+  viewCount: integer('view_count').default(0),
+  featured: boolean('featured').default(false),
+  publishedAt: timestamp('published_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Guides Table
+export const guides = pgTable('guides', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  slug: text('slug').notNull().unique(),
+  excerpt: text('excerpt'),
+  content: text('content').notNull(), // markdown
+  featuredImage: text('featured_image'),
+  author: text('author').default('Realist Team'),
+  status: text('status').default('draft'), // draft, published, archived
+  category: text('category').notNull(), // Analysis, Markets, Tax & Legal, Financing
+  difficulty: text('difficulty'), // beginner, intermediate, advanced
+  estimatedReadTime: integer('estimated_read_time_minutes'), // minutes
+  metaTitle: text('meta_title'),
+  metaDescription: text('meta_description'),
+  canonicalUrl: text('canonical_url'),
+  viewCount: integer('view_count').default(0),
+  featured: boolean('featured').default(false),
+  publishedAt: timestamp('published_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Insert schemas for validation
+export const insertBlogPostSchema = createInsertSchema(blogPosts);
+export const insertGuideSchema = createInsertSchema(guides);
+
 // TypeScript types
 export type Realtor = typeof realtors.$inferSelect;
 export type NewRealtor = typeof realtors.$inferInsert;
@@ -60,3 +111,7 @@ export type Lender = typeof lenders.$inferSelect;
 export type NewLender = typeof lenders.$inferInsert;
 export type DealLead = typeof dealLeads.$inferSelect;
 export type NewDealLead = typeof dealLeads.$inferInsert;
+export type BlogPost = typeof blogPosts.$inferSelect;
+export type NewBlogPost = typeof blogPosts.$inferInsert;
+export type Guide = typeof guides.$inferSelect;
+export type NewGuide = typeof guides.$inferInsert;
