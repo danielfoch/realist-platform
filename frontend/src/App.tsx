@@ -35,6 +35,9 @@ function App() {
               <Link to="/realtor" className="text-sm font-medium hover:text-primary">
                 Realtor Portal
               </Link>
+              <Link to="/6ixplex" className="text-sm font-medium hover:text-primary">
+                Tools
+              </Link>
             </nav>
           </div>
         </header>
