@@ -7645,12 +7645,95 @@ export async function registerRoutes(
     }
   });
 
+  let distressScanInProgress = false;
+
+  async function runDistressScan(): Promise<{ listings: any[]; totalDdfScanned: number }> {
+    const { scoreDistress } = await import("@shared/distressScoring");
+    const { searchDdfByRemarks, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+
+    const allCategoryKeys = Object.keys(SEARCH_TERMS_BY_CATEGORY);
+    const searchTerms: string[] = [];
+    for (const cat of allCategoryKeys) {
+      searchTerms.push(...(SEARCH_TERMS_BY_CATEGORY[cat] || []));
+    }
+    const uniqueTerms = [...new Set(searchTerms)];
+
+    const allListings = new Map<string, any>();
+    let totalDdfScanned = 0;
+
+    const CONCURRENCY = 2;
+    const TERM_TIMEOUT = 60000;
+    for (let c = 0; c < uniqueTerms.length; c += CONCURRENCY) {
+      const termChunk = uniqueTerms.slice(c, c + CONCURRENCY);
+      const results = await Promise.allSettled(
+        termChunk.map(term => {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), TERM_TIMEOUT);
+          return searchDdfByRemarks({
+            searchTerms: [term],
+            top: 200,
+            signal: controller.signal,
+          }).finally(() => clearTimeout(timer));
+        })
+      );
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        if (r.status === "fulfilled") {
+          totalDdfScanned += r.value.count;
+          for (const raw of r.value.listings) {
+            const key = raw.ListingKey || raw.ListingId || "";
+            if (key && !allListings.has(key)) {
+              allListings.set(key, raw);
+            }
+          }
+          console.log(`[distress-scan] "${termChunk[i]}": ${r.value.count} matches, ${r.value.listings.length} fetched`);
+        } else {
+          console.error(`[distress-scan] "${termChunk[i]}" error:`, (r.reason as any)?.message || r.reason);
+        }
+      }
+    }
+    console.log(`[distress-scan] Total: ${allListings.size} unique listings from ${uniqueTerms.length} searches`);
+
+    const allScored = Array.from(allListings.values()).map(raw => {
+      const normalized = normalizeDdfToRepliersFormat(raw);
+      const remarks = raw.PublicRemarks || "";
+      const listingProvince = raw.StateOrProvince || "";
+      const distress = scoreDistress(remarks, listingProvince);
+      return { ...normalized, distress, rawRemarks: remarks };
+    });
+
+    allScored.sort((a, b) => b.distress.distressScore - a.distress.distressScore);
+
+    const cacheKey = `distress-v5:all`;
+    const cacheData = { listings: allScored, totalDdfScanned };
+
+    await db.insert(dataCache).values({
+      key: cacheKey,
+      valueJson: cacheData,
+      source: "distress-deals",
+    }).onConflictDoUpdate({
+      target: dataCache.key,
+      set: { valueJson: cacheData, fetchedAt: new Date(), source: "distress-deals" },
+    });
+
+    return cacheData;
+  }
+
+  function triggerBackgroundScan() {
+    if (distressScanInProgress) return;
+    distressScanInProgress = true;
+    console.log("[distress-scan] Starting background scan...");
+    runDistressScan()
+      .then(data => console.log(`[distress-scan] Background scan complete: ${data.listings.length} listings cached`))
+      .catch(err => console.error("[distress-scan] Background scan failed:", err.message))
+      .finally(() => { distressScanInProgress = false; });
+  }
+
   app.get("/api/distress-deals", async (req, res) => {
     req.setTimeout(300000);
     res.setTimeout(300000);
     try {
-      const { scoreDistress } = await import("@shared/distressScoring");
-      const { searchDdfByRemarks, normalizeDdfToRepliersFormat, isDdfConfigured } = await import("./creaDdf");
+      const { isDdfConfigured } = await import("./creaDdf");
 
       if (!isDdfConfigured()) {
         res.status(503).json({ error: "DDF not configured" });
@@ -7660,8 +7743,6 @@ export async function registerRoutes(
       const categories = (req.query.categories as string || "").split(",").filter(Boolean);
       const excludeKeywords = (req.query.excludeKeywords as string || "").split(",").filter(Boolean);
       const minScore = req.query.minScore ? Number(req.query.minScore) : 1;
-
-      const allCategoryKeys = Object.keys(SEARCH_TERMS_BY_CATEGORY);
 
       const cacheKey = `distress-v5:all`;
 
@@ -7700,7 +7781,8 @@ export async function registerRoutes(
       if (staleRow) {
         const staleData = staleRow.valueJson as any;
         const filteredListings = applyFilters(staleData.listings as any[]);
-        console.log(`[distress-deals] Serving stale cache (${filteredListings.length} listings) while pre-warm refreshes`);
+        console.log(`[distress-deals] Serving stale cache (${filteredListings.length} listings) while refreshing`);
+        triggerBackgroundScan();
         res.json({
           listings: filteredListings,
           totalCount: filteredListings.length,
@@ -7710,87 +7792,13 @@ export async function registerRoutes(
         return;
       }
 
+      triggerBackgroundScan();
       res.json({
         listings: [],
         totalCount: 0,
         totalDdfScanned: 0,
         warming: true,
-        message: "Data is being loaded for the first time. Please refresh in a few minutes.",
-      });
-      return;
-
-      /* Legacy live-fetch code removed — all data comes from pre-warm cache */
-      const searchTerms: string[] = [];
-      for (const cat of allCategoryKeys) {
-        searchTerms.push(...(SEARCH_TERMS_BY_CATEGORY[cat] || []));
-      }
-      const uniqueTerms = [...new Set(searchTerms)];
-
-      const allListings = new Map<string, any>();
-      let totalDdfScanned = 0;
-
-      const CONCURRENCY = 2;
-      const TERM_TIMEOUT = 60000;
-      for (let c = 0; c < uniqueTerms.length; c += CONCURRENCY) {
-        const termChunk = uniqueTerms.slice(c, c + CONCURRENCY);
-        const results = await Promise.allSettled(
-          termChunk.map(term => {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), TERM_TIMEOUT);
-            return searchDdfByRemarks({
-              searchTerms: [term],
-              top: 200,
-              signal: controller.signal,
-            }).finally(() => clearTimeout(timer));
-          })
-        );
-        for (let i = 0; i < results.length; i++) {
-          const r = results[i];
-          if (r.status === "fulfilled") {
-            totalDdfScanned += r.value.count;
-            for (const raw of r.value.listings) {
-              const key = raw.ListingKey || raw.ListingId || "";
-              if (key && !allListings.has(key)) {
-                allListings.set(key, raw);
-              }
-            }
-            console.log(`[distress-deals] "${termChunk[i]}": ${r.value.count} matches, ${r.value.listings.length} fetched`);
-          } else {
-            console.error(`[distress-deals] "${termChunk[i]}" error:`, (r.reason as any)?.message || r.reason);
-          }
-        }
-      }
-      console.log(`[distress-deals] Total: ${allListings.size} unique listings from ${uniqueTerms.length} searches`);
-
-      let allScored = Array.from(allListings.values()).map(raw => {
-        const normalized = normalizeDdfToRepliersFormat(raw);
-        const remarks = raw.PublicRemarks || "";
-        const listingProvince = raw.StateOrProvince || "";
-        const distress = scoreDistress(remarks, listingProvince);
-        return { ...normalized, distress, rawRemarks: remarks };
-      });
-
-      allScored.sort((a, b) => b.distress.distressScore - a.distress.distressScore);
-
-      const cacheData = {
-        listings: allScored,
-        totalDdfScanned,
-      };
-
-      await db.insert(dataCache).values({
-        key: cacheKey,
-        valueJson: cacheData,
-        source: "distress-deals",
-      }).onConflictDoUpdate({
-        target: dataCache.key,
-        set: { valueJson: cacheData, fetchedAt: new Date(), source: "distress-deals" },
-      });
-
-      const filtered = applyFilters(allScored);
-      res.json({
-        listings: filtered,
-        totalCount: filtered.length,
-        totalDdfScanned,
+        message: "Scanning DDF listings now. Data will appear automatically.",
       });
     } catch (error: any) {
       console.error("[distress-deals] Error:", error.message);
@@ -7812,20 +7820,19 @@ export async function registerRoutes(
       console.log("[distress-prewarm] Cache fresh, skipping");
       return;
     }
+    if (distressScanInProgress) {
+      console.log("[distress-prewarm] Scan already in progress, skipping");
+      return;
+    }
+    distressScanInProgress = true;
     console.log("[distress-prewarm] Warming all distress deals...");
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 600000);
-      const resp = await fetch("http://localhost:5000/api/distress-deals?limit=9999", { signal: controller.signal });
-      clearTimeout(timer);
-      if (!resp.ok) {
-        console.error(`[distress-prewarm] Failed: HTTP ${resp.status}`);
-        return;
-      }
-      const data = await resp.json();
-      console.log(`[distress-prewarm] Warmed ${data.totalCount} listings`);
+      const data = await runDistressScan();
+      console.log(`[distress-prewarm] Warmed ${data.listings.length} listings`);
     } catch (err: any) {
       console.error(`[distress-prewarm] Failed:`, err.message);
+    } finally {
+      distressScanInProgress = false;
     }
   }
 
