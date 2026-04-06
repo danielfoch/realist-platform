@@ -5,6 +5,9 @@ import { RealtorDashboard } from './pages/RealtorDashboard'
 import { BlogListPage, BlogPostPage } from './pages/BlogPage'
 import { GuidesListPage, GuidePage } from './pages/GuidesPage'
 import { CityYieldPage } from './pages/CityYieldPage'
+import { SixixplexPage } from './pages/SixixplexPage'
+import { SixixplexReportPage } from './pages/SixixplexReportPage'
+import { SixixplexListingsPage } from './pages/SixixplexListingsPage'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -53,6 +56,11 @@ function App() {
             
             {/* City Yield Rankings */}
             <Route path="/insights/city-yields" element={<CityYieldPage />} />
+            
+            {/* 6ixplex */}
+            <Route path="/6ixplex" element={<SixixplexPage />} />
+            <Route path="/6ixplex/report" element={<SixixplexReportPage />} />
+            <Route path="/6ixplex/listings" element={<SixixplexListingsPage />} />
           </Routes>
         </main>
         
