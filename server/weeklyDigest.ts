@@ -46,6 +46,14 @@ function getLastWeekBounds(): { weekStart: string; weekEnd: string } {
   return { weekStart: lastMonday.toISOString(), weekEnd: lastSunday.toISOString() };
 }
 
+interface AllTimeStats {
+  totalDeals: number;
+  avgCapRate: number | null;
+  avgCashOnCash: number | null;
+  avgDscr: number | null;
+  totalUsers: number;
+}
+
 async function getPlatformWeeklyStats(): Promise<WeeklyStats> {
   const { weekStart, weekEnd } = getLastWeekBounds();
 
@@ -77,6 +85,31 @@ async function getPlatformWeeklyStats(): Promise<WeeklyStats> {
     avgDscr: stats?.avgDscr != null ? Math.round(Number(stats.avgDscr) * 100) / 100 : null,
     mostActiveCity: cityResult.length > 0 ? cityResult[0].city : null,
     mostActiveCityDeals: cityResult.length > 0 ? Number(cityResult[0].dealCount) : 0,
+  };
+}
+
+async function getAllTimeStats(): Promise<AllTimeStats> {
+  const [stats] = await db
+    .select({
+      totalDeals: count(analyses.id),
+      avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+      avgCashOnCash: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'cashOnCash')::numeric ELSE NULL END)`,
+      avgDscr: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'dscr') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'dscr')::numeric ELSE NULL END)`,
+    })
+    .from(analyses)
+    .where(sql`${analyses.resultsJson} IS NOT NULL`);
+
+  const [userCount] = await db
+    .select({ total: sql<number>`COUNT(DISTINCT ${analyses.userId})` })
+    .from(analyses)
+    .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`);
+
+  return {
+    totalDeals: Number(stats?.totalDeals || 0),
+    avgCapRate: stats?.avgCapRate != null ? Math.round(Number(stats.avgCapRate) * 100) / 100 : null,
+    avgCashOnCash: stats?.avgCashOnCash != null ? Math.round(Number(stats.avgCashOnCash) * 100) / 100 : null,
+    avgDscr: stats?.avgDscr != null ? Math.round(Number(stats.avgDscr) * 100) / 100 : null,
+    totalUsers: Number(userCount?.total || 0),
   };
 }
 
@@ -114,16 +147,20 @@ async function getUserWeeklyStats(userId: string): Promise<UserWeeklyStats> {
 function getWeekDateRange(): { start: string; end: string } {
   const { weekStart, weekEnd } = getLastWeekBounds();
   const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return { start: fmt(weekStart), end: fmt(weekEnd) };
+  const inclusiveEnd = new Date(weekEnd);
+  inclusiveEnd.setDate(inclusiveEnd.getDate() - 1);
+  return { start: fmt(weekStart), end: fmt(inclusiveEnd.toISOString()) };
 }
 
 function buildDigestHtml(
   firstName: string,
   platform: WeeklyStats,
   user: UserWeeklyStats,
+  allTime: AllTimeStats,
   unsubscribeUrl: string
 ): string {
   const { start, end } = getWeekDateRange();
+  const isQuietWeek = platform.totalDeals === 0;
 
   const kpiCard = (label: string, value: string, color: string) => `
     <td style="width: 50%; padding: 8px;">
@@ -132,6 +169,52 @@ function buildDigestHtml(
         <p style="margin: 4px 0 0 0; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">${label}</p>
       </div>
     </td>
+  `;
+
+  const weeklySection = isQuietWeek ? `
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; text-align: center;">
+      <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1e293b;">This Week on the Platform</p>
+      <p style="margin: 0; font-size: 13px; color: #64748b;">Quiet week — no deals were analyzed. Be the first to break the streak!</p>
+    </div>
+  ` : `
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+      <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #1e293b;">This Week</p>
+      <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
+        <tr>
+          ${kpiCard('Deals Analyzed', String(platform.totalDeals), '#8b5cf6')}
+          ${kpiCard('Avg Cap Rate', platform.avgCapRate != null ? platform.avgCapRate.toFixed(1) + '%' : '\u2014', '#f59e0b')}
+        </tr>
+        <tr>
+          ${kpiCard('Avg Cash-on-Cash', platform.avgCashOnCash != null ? platform.avgCashOnCash.toFixed(1) + '%' : '\u2014', '#10b981')}
+          ${kpiCard('Avg DSCR', platform.avgDscr != null ? platform.avgDscr.toFixed(2) + 'x' : '\u2014', '#3b82f6')}
+        </tr>
+      </table>
+      ${platform.mostActiveCity ? `
+        <p style="margin: 12px 0 0 0; font-size: 13px; color: #475569; text-align: center;">
+          Hottest market: <strong>${platform.mostActiveCity}</strong> (${platform.mostActiveCityDeals} deals)
+        </p>
+      ` : ''}
+    </div>
+  `;
+
+  const allTimeSection = `
+    <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 16px; margin: 16px 0;">
+      <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #581c87;">All-Time Platform Stats</p>
+      <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
+        <tr>
+          ${kpiCard('Total Deals', String(allTime.totalDeals), '#7c3aed')}
+          ${kpiCard('Active Analysts', String(allTime.totalUsers), '#6d28d9')}
+        </tr>
+        <tr>
+          ${kpiCard('Avg Cap Rate', allTime.avgCapRate != null ? allTime.avgCapRate.toFixed(1) + '%' : '\u2014', '#f59e0b')}
+          ${kpiCard('Avg Cash-on-Cash', allTime.avgCashOnCash != null ? allTime.avgCashOnCash.toFixed(1) + '%' : '\u2014', '#10b981')}
+        </tr>
+        <tr>
+          ${kpiCard('Avg DSCR', allTime.avgDscr != null ? allTime.avgDscr.toFixed(2) + 'x' : '\u2014', '#3b82f6')}
+          <td style="width: 50%; padding: 8px;"></td>
+        </tr>
+      </table>
+    </div>
   `;
 
   const userSection = user.userDeals > 0 ? `
@@ -163,28 +246,11 @@ function buildDigestHtml(
           Hey ${firstName || 'there'},
         </p>
         <p style="margin: 0 0 20px 0; font-size: 14px; color: #374151; line-height: 1.6;">
-          Here's what happened on Realist.ca last week:
+          Here's your weekly update from Realist.ca:
         </p>
 
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
-          <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #1e293b;">Platform Highlights</p>
-          <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
-            <tr>
-              ${kpiCard('Total Deals', String(platform.totalDeals), '#8b5cf6')}
-              ${kpiCard('Avg Cap Rate', platform.avgCapRate != null ? platform.avgCapRate.toFixed(1) + '%' : '\u2014', '#f59e0b')}
-            </tr>
-            <tr>
-              ${kpiCard('Avg Cash-on-Cash', platform.avgCashOnCash != null ? platform.avgCashOnCash.toFixed(1) + '%' : '\u2014', '#10b981')}
-              ${kpiCard('Avg DSCR', platform.avgDscr != null ? platform.avgDscr.toFixed(2) + 'x' : '\u2014', '#3b82f6')}
-            </tr>
-          </table>
-          ${platform.mostActiveCity ? `
-            <p style="margin: 12px 0 0 0; font-size: 13px; color: #475569; text-align: center;">
-              Hottest market: <strong>${platform.mostActiveCity}</strong> (${platform.mostActiveCityDeals} deals)
-            </p>
-          ` : ''}
-        </div>
-
+        ${weeklySection}
+        ${allTimeSection}
         ${userSection}
 
         <div style="text-align: center; margin: 24px 0;">
@@ -217,12 +283,8 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
   console.log("[weekly-digest] Starting weekly digest...");
 
   const platform = await getPlatformWeeklyStats();
-  console.log(`[weekly-digest] Platform stats: ${platform.totalDeals} deals, cap rate ${platform.avgCapRate}%`);
-
-  if (platform.totalDeals === 0) {
-    console.log("[weekly-digest] No deals analyzed last week, skipping digest");
-    return { sent: 0, skipped: 0, errors: 0 };
-  }
+  const allTime = await getAllTimeStats();
+  console.log(`[weekly-digest] Platform stats: ${platform.totalDeals} weekly deals, ${allTime.totalDeals} all-time deals, cap rate ${platform.avgCapRate}%`);
 
   const recipients = await db
     .select({
@@ -263,15 +325,20 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
         recipient.firstName || '',
         platform,
         userStats,
+        allTime,
         unsubscribeUrl
       );
 
       const { start, end } = getWeekDateRange();
 
+      const subject = platform.totalDeals > 0
+        ? `Realist Weekly: ${platform.totalDeals} deals analyzed (${start}\u2013${end})`
+        : `Realist Weekly: Your ${start}\u2013${end} update (${allTime.totalDeals} deals all-time)`;
+
       const result = await resendClient.client.emails.send({
         from: resendClient.fromEmail,
         to: recipient.email,
-        subject: `Realist Weekly: ${platform.totalDeals} deals analyzed (${start}\u2013${end})`,
+        subject,
         html,
       });
 
