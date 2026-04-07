@@ -1,7 +1,7 @@
 // Stripe Webhook Handlers
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { storage } from './storage';
-import { sendMasterclassWelcomeEmail } from './resend';
+import { sendMasterclassWelcomeEmail, sendCommunityInviteEmail } from './resend';
 import { db } from './db';
 import { courseEnrollments, users } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
@@ -55,6 +55,18 @@ export class WebhookHandlers {
                 customerName,
               });
               console.log(`[webhook] Masterclass welcome email sent to ${customerEmail}`);
+
+              setTimeout(async () => {
+                try {
+                  await sendCommunityInviteEmail({
+                    toEmail: customerEmail,
+                    customerName,
+                  });
+                  console.log(`[webhook] Community invite email sent to ${customerEmail}`);
+                } catch (communityErr) {
+                  console.error(`[webhook] Failed to send community invite email:`, communityErr);
+                }
+              }, 10 * 60 * 1000);
             } catch (err) {
               console.error(`[webhook] Failed to send masterclass welcome email to ${customerEmail}:`, (err as Error).message);
             }

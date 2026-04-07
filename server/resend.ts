@@ -543,6 +543,80 @@ export async function sendMasterclassWelcomeEmail(params: {
   }
 }
 
+export async function sendCommunityInviteEmail(params: {
+  toEmail: string;
+  customerName: string;
+}) {
+  try {
+    const { client, fromEmail } = await getResendClient();
+    const firstName = params.customerName?.split(' ')[0] || 'there';
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); padding: 32px 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">Join the Investor Community</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px;">This is where deals actually happen.</p>
+        </div>
+        
+        <div style="background: #f9fafb; padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="color: #111827; font-size: 16px; margin: 0 0 16px 0;">
+            Hey ${firstName},
+          </p>
+          
+          <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 0 0 16px 0;">
+            You're in the course — but this is where things actually get interesting.
+          </p>
+
+          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
+            <p style="margin: 0 0 12px 0; font-weight: 600; color: #111827; font-size: 15px;">Inside the community:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">&#128200; People sharing real deals</td></tr>
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">&#9889; Questions getting answered fast</td></tr>
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">&#128736; Investors & builders actively working on projects</td></tr>
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">&#128161; Behind-the-scenes insights we don't put in the course</td></tr>
+            </table>
+          </div>
+
+          <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 0 0 24px 0;">
+            If you're serious about doing your first (or next) multiplex, you'll want to be in there.
+          </p>
+          
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="https://www.skool.com/realist/about" style="display: inline-block; background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 700; font-size: 18px;">
+              Join 1,300+ Investors on Skool
+            </a>
+          </div>
+
+          <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 16px 0 0 0;">
+            See you inside,<br/>
+            <strong>— Dan</strong>
+          </p>
+        </div>
+        
+        ${emailFooter()}
+      </div>
+    `;
+
+    const { data, error } = await client.emails.send({
+      from: fromEmail,
+      to: params.toEmail,
+      subject: `Join the investor community (this is where deals happen)`,
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send community invite email:', error);
+      throw error;
+    }
+
+    console.log(`Community invite email sent to: ${params.toEmail}`);
+    return data;
+  } catch (err) {
+    console.error('Community invite email error:', err);
+    throw err;
+  }
+}
+
 // Send a generic notification email (backwards compatible)
 export async function sendNotificationEmail(params: {
   to: string;
