@@ -457,6 +457,86 @@ export async function sendRealtorLeadAlert(params: {
   return data;
 }
 
+export async function sendMasterclassWelcomeEmail(params: {
+  toEmail: string;
+  customerName: string;
+}) {
+  try {
+    const { client, fromEmail } = await getResendClient();
+    const firstName = params.customerName?.split(' ')[0] || 'there';
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); padding: 32px 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">Welcome to the Multiplex Masterclass</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px;">You're in. Let's build.</p>
+        </div>
+        
+        <div style="background: #f9fafb; padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="color: #111827; font-size: 16px; margin: 0 0 16px 0;">
+            Hi ${firstName},
+          </p>
+          
+          <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 0 0 16px 0;">
+            Thank you for purchasing the Multiplex Masterclass Canada. Your payment has been confirmed and you now have full access to the course, community, and weekly coaching calls.
+          </p>
+
+          <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 0 0 24px 0;">
+            Click the button below to join the Realist community on Skool, where you'll find all the course materials, connect with other students, and access the coaching schedule:
+          </p>
+          
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="https://www.skool.com/realist/about" style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 700; font-size: 18px;">
+              Access Your Course on Skool
+            </a>
+          </div>
+
+          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <p style="margin: 0 0 12px 0; font-weight: 600; color: #111827; font-size: 15px;">What's included:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">✅ Full Multiplex Masterclass course</td></tr>
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">✅ Weekly group coaching calls</td></tr>
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">✅ Underwriting templates & financial models</td></tr>
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">✅ Private community access</td></tr>
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">✅ Access to a team of professionals</td></tr>
+              <tr><td style="padding: 6px 0; color: #374151; font-size: 14px;">✅ Lifetime access — no recurring fees</td></tr>
+            </table>
+          </div>
+
+          <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 0 0 8px 0;">
+            If you have any questions, just reply to this email. We're here to help.
+          </p>
+
+          <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 16px 0 0 0;">
+            See you inside,<br/>
+            <strong>The Realist Team</strong>
+          </p>
+        </div>
+        
+        ${emailFooter()}
+      </div>
+    `;
+
+    const { data, error } = await client.emails.send({
+      from: fromEmail,
+      to: params.toEmail,
+      subject: `Your Multiplex Masterclass Access — Welcome, ${firstName}!`,
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send masterclass welcome email:', error);
+      throw error;
+    }
+
+    console.log(`Masterclass welcome email sent to: ${params.toEmail}`);
+    return data;
+  } catch (err) {
+    console.error('Masterclass welcome email error:', err);
+    throw err;
+  }
+}
+
 // Send a generic notification email (backwards compatible)
 export async function sendNotificationEmail(params: {
   to: string;

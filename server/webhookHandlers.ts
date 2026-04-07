@@ -1,6 +1,7 @@
 // Stripe Webhook Handlers
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { storage } from './storage';
+import { sendMasterclassWelcomeEmail } from './resend';
 import Stripe from 'stripe';
 
 export class WebhookHandlers {
@@ -39,6 +40,25 @@ export class WebhookHandlers {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+        
+        if (session.metadata?.product === 'multiplex_masterclass') {
+          const customerEmail = session.customer_email || session.customer_details?.email;
+          const customerName = session.metadata?.customerName || session.customer_details?.name || '';
+          
+          if (customerEmail) {
+            try {
+              await sendMasterclassWelcomeEmail({
+                toEmail: customerEmail,
+                customerName,
+              });
+              console.log(`[webhook] Masterclass welcome email sent to ${customerEmail}`);
+            } catch (err) {
+              console.error(`[webhook] Failed to send masterclass welcome email to ${customerEmail}:`, (err as Error).message);
+            }
+          } else {
+            console.error('[webhook] Masterclass purchase completed but no customer email found');
+          }
+        }
         
         if (session.metadata?.type === 'featured_expert' && session.metadata?.userId) {
           const userId = session.metadata.userId;
