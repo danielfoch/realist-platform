@@ -269,7 +269,7 @@ export default function MultiplexMasterclass() {
                     <MapPin className="w-6 h-6 text-red-500" />
                   </div>
                   <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Zoning is Changing</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Toronto, Vancouver, Calgary, and more are allowing up to 4 units on single-family lots. First movers win.</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Toronto, Vancouver, Calgary, and more are allowing 4+ units on single-family lots. First movers win.</p>
                 </CardContent>
               </Card>
               <Card className="border-0 shadow-md bg-white dark:bg-gray-800" data-testid="opportunity-card-financing">
