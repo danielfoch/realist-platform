@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +20,18 @@ import {
   BookOpen, Shield, TrendingUp, MapPin, Loader2,
   Play, Award, Calendar, Phone, Zap, Target, Star,
   GraduationCap, Hammer, FileText, Calculator, Video,
-  ChevronDown, X
+  ChevronDown, X, BarChart3, Activity
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+
+interface PlatformStats {
+  totalDeals: number;
+  communityMembers: number;
+  marketsCovered: number;
+  avgCapRate: number | null;
+  avgCashOnCash: number | null;
+  avgDscr: number | null;
+}
 
 const PRICE = 999;
 const CURRENCY = "CAD";
@@ -40,6 +50,11 @@ export default function MultiplexMasterclass() {
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const { data: stats } = useQuery<PlatformStats>({
+    queryKey: ["/api/platform-stats"],
+    staleTime: 1000 * 60 * 30,
+  });
 
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -127,7 +142,11 @@ export default function MultiplexMasterclass() {
               Financing, zoning, construction, and CMHC rebates — simplified into one actionable program.
             </p>
             <p className="text-sm text-gray-400 mb-8">
-              Join 200+ Canadian investors who are building wealth through missing middle housing.
+              {stats ? (
+                <>Join {stats.communityMembers}+ members who have analyzed {stats.totalDeals}+ deals across {stats.marketsCovered}+ Canadian markets.</>
+              ) : (
+                <>Join hundreds of Canadian investors who are building wealth through missing middle housing.</>
+              )}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
@@ -139,10 +158,10 @@ export default function MultiplexMasterclass() {
                 Get Instant Access <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </div>
-            <div className="mt-8 flex items-center justify-center gap-6 text-sm text-gray-400">
+            <div className="mt-8 flex items-center justify-center gap-6 text-sm text-gray-400 flex-wrap">
               <span className="flex items-center gap-1.5"><Shield className="w-4 h-4" /> 30-Day Guarantee</span>
               <span className="flex items-center gap-1.5"><Play className="w-4 h-4" /> Instant Access</span>
-              <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> 200+ Students</span>
+              <span className="flex items-center gap-1.5"><BarChart3 className="w-4 h-4" /> {stats ? `${stats.totalDeals}+` : "Dozens of"} Deals Analyzed</span>
             </div>
           </div>
         </section>
@@ -208,7 +227,7 @@ export default function MultiplexMasterclass() {
                 { icon: MapPin, title: "Zoning Rules by City", desc: "Detailed zoning breakdown for Toronto, Vancouver, Ottawa, Calgary, and other major markets. Know what's buildable." },
                 { icon: Target, title: "Site Selection", desc: "How to find and evaluate land. Lot dimensions, setbacks, FSI calculations, and the math behind site viability." },
                 { icon: Hammer, title: "Construction & Costs", desc: "Hard costs, soft costs, timelines, and how to manage contractors. Real budgets from real projects across Canada." },
-                { icon: Calculator, title: "Underwriting & Returns", desc: "Run the numbers like a pro. Cap rates, cash-on-cash, IRR, and how to stress-test your deal before committing." },
+                { icon: Calculator, title: "Underwriting & Returns", desc: `Run the numbers like a pro. Cap rates, cash-on-cash, DSCR, and how to stress-test your deal before committing.${stats ? ` Our community has underwritten ${stats.totalDeals}+ deals and counting.` : ""}` },
                 { icon: FileText, title: "Real Deal Walkthroughs", desc: "Step-by-step breakdowns of completed multiplex projects. See what worked, what didn't, and the actual financials." },
               ].map((item, i) => (
                 <div key={i} className="flex gap-4 p-5 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-colors" data-testid={`curriculum-item-${i}`}>
@@ -258,20 +277,23 @@ export default function MultiplexMasterclass() {
           <div className="max-w-5xl mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Real Results, Real People
+                Backed by Real Data
               </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                This isn't theory — Realist.ca is Canada's most active deal analysis platform. Our community runs the numbers every day.
+              </p>
             </div>
-            <div className="grid md:grid-cols-4 gap-6 mb-12">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-12">
               {[
-                { value: "200+", label: "Event Attendees", icon: Users },
-                { value: "$50M+", label: "Deals Analyzed", icon: DollarSign },
-                { value: "35+", label: "Markets Covered", icon: MapPin },
-                { value: "4.9/5", label: "Student Rating", icon: Star },
+                { value: stats ? `${stats.totalDeals}+` : "—", label: "Deals Analyzed", icon: BarChart3 },
+                { value: stats ? `${stats.communityMembers}+` : "—", label: "Community Members", icon: Users },
+                { value: stats ? `${stats.marketsCovered}+` : "—", label: "Markets Covered", icon: MapPin },
+                { value: stats?.avgCapRate != null ? `${stats.avgCapRate}%` : "—", label: "Avg Cap Rate", icon: TrendingUp },
               ].map((stat, i) => (
-                <div key={i} className="text-center p-6 rounded-xl bg-gray-50 dark:bg-gray-800" data-testid={`proof-stat-${i}`}>
+                <div key={i} className="text-center p-5 md:p-6 rounded-xl bg-gray-50 dark:bg-gray-800" data-testid={`proof-stat-${i}`}>
                   <stat.icon className="w-6 h-6 text-red-500 mx-auto mb-2" />
-                  <div className="text-3xl font-bold text-gray-900 dark:text-white font-mono">{stat.value}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{stat.label}</div>
+                  <div className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white font-mono">{stat.value}</div>
+                  <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -295,16 +317,20 @@ export default function MultiplexMasterclass() {
               <Card className="border-0 shadow-md bg-white dark:bg-gray-800" data-testid="proof-credibility-2">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-orange-500" />
+                    <div className="w-10 h-10 rounded-full bg-violet-500/10 flex items-center justify-center">
+                      <Activity className="w-5 h-5 text-violet-500" />
                     </div>
                     <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">Live Events Sellout</div>
-                      <div className="text-xs text-gray-500">200+ Attendees</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">Live Platform KPIs</div>
+                      <div className="text-xs text-gray-500">Updated in Real-Time</div>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Our live masterclass events consistently sell out with 200+ attendees per session. This online program gives you everything from those events — and more — on your own schedule.
+                    {stats ? (
+                      <>{stats.communityMembers}+ members have analyzed {stats.totalDeals}+ deals across {stats.marketsCovered}+ cities{stats.avgDscr != null ? `, with an average DSCR of ${stats.avgDscr}x` : ''}. These are real numbers from real Canadian investors running real underwriting — and you'll learn exactly how they do it.</>
+                    ) : (
+                      <>Our community runs deal analysis across Canadian markets every day. The stats above come from real underwriting by real investors — and you'll learn exactly how they do it.</>
+                    )}
                   </p>
                 </CardContent>
               </Card>
@@ -337,6 +363,7 @@ export default function MultiplexMasterclass() {
                     "Site selection checklists & zoning guides",
                     "Real deal breakdowns with actual numbers",
                     "Private community access",
+                    `Full access to Realist.ca deal analyzer${stats ? ` (${stats.totalDeals}+ deals analyzed to date)` : ""}`,
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-3" data-testid={`offer-item-${i}`}>
                       <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />

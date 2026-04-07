@@ -6157,6 +6157,41 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platform-stats", async (req, res) => {
+    try {
+      const [dealStats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)::numeric, 1)`,
+          avgCashOnCash: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'cashOnCash')::numeric ELSE NULL END)::numeric, 1)`,
+          avgDscr: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'dscr') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'dscr')::numeric ELSE NULL END)::numeric, 2)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL`);
+
+      const [analystCount] = await db
+        .select({ total: count(users.id) })
+        .from(users);
+
+      const [cityCount] = await db
+        .select({ total: sql<number>`COUNT(DISTINCT ${analyses.city})` })
+        .from(analyses)
+        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`);
+
+      res.json({
+        totalDeals: Number(dealStats?.totalDeals || 0),
+        communityMembers: Number(analystCount?.total || 0),
+        marketsCovered: Number(cityCount?.total || 0),
+        avgCapRate: dealStats?.avgCapRate != null ? Number(dealStats.avgCapRate) : null,
+        avgCashOnCash: dealStats?.avgCashOnCash != null ? Number(dealStats.avgCashOnCash) : null,
+        avgDscr: dealStats?.avgDscr != null ? Number(dealStats.avgDscr) : null,
+      });
+    } catch (error: any) {
+      console.error("Error fetching platform stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
   app.get("/api/leaderboard", async (req, res) => {
     try {
       const period = req.query.period as string;
