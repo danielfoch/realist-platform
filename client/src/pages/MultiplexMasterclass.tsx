@@ -23,6 +23,7 @@ import {
   ChevronDown, X, BarChart3, Activity
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import podcastImage from "@assets/image_1775558547324.png";
 
 interface PlatformStats {
   totalDeals: number;
@@ -215,6 +216,37 @@ export default function MultiplexMasterclass() {
               <span className="flex items-center gap-1.5"><Shield className="w-4 h-4" /> 30-Day Guarantee</span>
               <span className="flex items-center gap-1.5"><Play className="w-4 h-4" /> Instant Access</span>
               <span className="flex items-center gap-1.5"><BarChart3 className="w-4 h-4" /> {stats ? `${stats.totalDeals}+` : "Dozens of"} Deals Analyzed</span>
+            </div>
+          </div>
+        </section>
+
+        {/* PODCAST CREDIBILITY */}
+        <section className="py-12 md:py-16 bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800" data-testid="podcast-section">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
+              <div className="w-48 h-48 md:w-56 md:h-56 flex-shrink-0 rounded-2xl overflow-hidden shadow-xl">
+                <img
+                  src={podcastImage}
+                  alt="The Canadian Real Estate Investor Podcast"
+                  className="w-full h-full object-cover"
+                  data-testid="podcast-image"
+                />
+              </div>
+              <div className="text-center md:text-left">
+                <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 mb-4">
+                  From the Hosts
+                </Badge>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                  Brought to you by the hosts of Canada's #1 real estate podcast
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300 text-base md:text-lg leading-relaxed mb-4">
+                  The Canadian Real Estate Investor podcast has helped thousands of investors across the country make smarter decisions. Now, the same team is giving you the complete playbook for building multiplexes.
+                </p>
+                <div className="flex items-center gap-4 justify-center md:justify-start text-sm text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-yellow-500" /> #1 in Canada</span>
+                  <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> Thousands of listeners</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
