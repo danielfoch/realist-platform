@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,36 @@ interface PlatformStats {
 
 const PRICE = 999;
 const CURRENCY = "CAD";
+const META_PIXEL_ID = "2277841159406713";
+
+function initMetaPixel() {
+  if (typeof window === "undefined") return;
+  if ((window as any).fbq) return;
+
+  const f = window as any;
+  const n = (f.fbq = function (...args: any[]) {
+    n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args);
+  });
+  if (!f._fbq) f._fbq = n;
+  n.push = n;
+  n.loaded = true;
+  n.version = "2.0";
+  n.queue = [];
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "https://connect.facebook.net/en_US/fbevents.js";
+  document.head.appendChild(script);
+
+  (window as any).fbq("init", META_PIXEL_ID);
+  (window as any).fbq("track", "PageView");
+}
+
+function trackMetaEvent(event: string, data?: Record<string, any>) {
+  if ((window as any).fbq) {
+    (window as any).fbq("track", event, data);
+  }
+}
 
 export default function MultiplexMasterclass() {
   const [formData, setFormData] = useState({
@@ -51,6 +81,10 @@ export default function MultiplexMasterclass() {
   const formRef = useRef<HTMLDivElement>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  useEffect(() => {
+    initMetaPixel();
+  }, []);
+
   const { data: stats } = useQuery<PlatformStats>({
     queryKey: ["/api/platform-stats"],
     staleTime: 1000 * 60 * 30,
@@ -58,6 +92,12 @@ export default function MultiplexMasterclass() {
 
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    trackMetaEvent("ViewContent", {
+      content_name: "Multiplex Masterclass - Enroll Form",
+      content_category: "Course",
+      value: PRICE,
+      currency: CURRENCY,
+    });
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -70,6 +110,12 @@ export default function MultiplexMasterclass() {
     try {
       await apiRequest("POST", "/api/masterclass/lead", formData);
       setFormSubmitted(true);
+      trackMetaEvent("Lead", {
+        content_name: "Multiplex Masterclass",
+        content_category: "Course",
+        value: PRICE,
+        currency: CURRENCY,
+      });
       toast({ title: "Information saved! Proceeding to checkout..." });
     } catch (err: any) {
       toast({ title: "Something went wrong. Please try again.", variant: "destructive" });
@@ -80,6 +126,13 @@ export default function MultiplexMasterclass() {
 
   const handleCheckout = async () => {
     setIsCheckingOut(true);
+    trackMetaEvent("InitiateCheckout", {
+      content_name: "Multiplex Masterclass",
+      content_category: "Course",
+      value: PRICE,
+      currency: CURRENCY,
+      num_items: 1,
+    });
     try {
       const res = await apiRequest("POST", "/api/masterclass/checkout", {
         email: formData.email,
