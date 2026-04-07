@@ -482,12 +482,18 @@ export async function sendMasterclassWelcomeEmail(params: {
           </p>
 
           <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 0 0 24px 0;">
-            Click the button below to join the Realist community on Skool, where you'll find all the course materials, connect with other students, and access the coaching schedule:
+            Your course is ready on Realist.ca. Log in with your account to start learning immediately:
           </p>
           
           <div style="text-align: center; margin: 24px 0;">
-            <a href="https://www.skool.com/realist/about" style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 700; font-size: 18px;">
-              Access Your Course on Skool
+            <a href="https://realist.ca/course" style="display: inline-block; background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 700; font-size: 18px;">
+              Start the Course
+            </a>
+          </div>
+
+          <div style="text-align: center; margin: 0 0 24px 0;">
+            <a href="https://www.skool.com/realist/about" style="color: #6b21a8; text-decoration: underline; font-size: 14px;">
+              Join the Skool Community (1,300+ investors) &rarr;
             </a>
           </div>
 

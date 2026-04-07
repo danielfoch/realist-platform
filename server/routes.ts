@@ -38,6 +38,10 @@ import {
   dataCache,
   distressSnapshots,
   cityYieldHistory,
+  courseModules,
+  courseLessons,
+  courseEnrollments,
+  courseProgress,
 } from "@shared/schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
@@ -8056,6 +8060,231 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: "Failed to resubscribe" });
+    }
+  });
+
+  app.get("/api/course/enrollment", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const [enrollment] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, userId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (!enrollment) {
+        return res.json({ enrolled: false });
+      }
+
+      const coachingExpired = enrollment.expiresAt && new Date(enrollment.expiresAt) < new Date();
+
+      res.json({
+        enrolled: true,
+        enrolledAt: enrollment.enrolledAt,
+        expiresAt: enrollment.expiresAt,
+        coachingExpired: !!coachingExpired,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to check enrollment" });
+    }
+  });
+
+  app.get("/api/course/modules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const [enrollment] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, userId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (!enrollment) {
+        return res.status(403).json({ error: "Not enrolled" });
+      }
+
+      const modules = await db
+        .select()
+        .from(courseModules)
+        .orderBy(courseModules.sortOrder);
+
+      const lessons = await db
+        .select()
+        .from(courseLessons)
+        .orderBy(courseLessons.sortOrder);
+
+      const progress = await db
+        .select()
+        .from(courseProgress)
+        .where(eq(courseProgress.userId, userId));
+
+      const completedLessonIds = new Set(progress.map(p => p.lessonId));
+
+      const result = modules.map(mod => ({
+        ...mod,
+        lessons: lessons
+          .filter(l => l.moduleId === mod.id)
+          .map(l => ({
+            ...l,
+            completed: completedLessonIds.has(l.id),
+          })),
+      }));
+
+      const totalLessons = lessons.length;
+      const completedCount = progress.length;
+
+      res.json({ modules: result, progress: { completed: completedCount, total: totalLessons } });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch course" });
+    }
+  });
+
+  app.get("/api/course/lessons/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const [enrollment] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, userId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (!enrollment) {
+        return res.status(403).json({ error: "Not enrolled" });
+      }
+
+      const [lesson] = await db
+        .select()
+        .from(courseLessons)
+        .where(eq(courseLessons.id, req.params.id));
+
+      if (!lesson) return res.status(404).json({ error: "Lesson not found" });
+
+      const [prog] = await db
+        .select()
+        .from(courseProgress)
+        .where(and(
+          eq(courseProgress.userId, userId),
+          eq(courseProgress.lessonId, lesson.id)
+        ))
+        .limit(1);
+
+      res.json({ ...lesson, completed: !!prog });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch lesson" });
+    }
+  });
+
+  app.post("/api/course/progress/:lessonId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const lessonId = req.params.lessonId;
+
+      const [enrollment] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, userId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (!enrollment) return res.status(403).json({ error: "Not enrolled" });
+
+      const [lesson] = await db
+        .select()
+        .from(courseLessons)
+        .where(eq(courseLessons.id, lessonId))
+        .limit(1);
+
+      if (!lesson) return res.status(404).json({ error: "Lesson not found" });
+
+      const [existing] = await db
+        .select()
+        .from(courseProgress)
+        .where(and(
+          eq(courseProgress.userId, userId),
+          eq(courseProgress.lessonId, lessonId)
+        ))
+        .limit(1);
+
+      if (existing) {
+        await db.delete(courseProgress).where(eq(courseProgress.id, existing.id));
+        return res.json({ completed: false });
+      }
+
+      await db.insert(courseProgress).values({ userId, lessonId });
+      res.json({ completed: true });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to update progress" });
+    }
+  });
+
+  app.patch("/api/admin/course/lessons/:id", isAdmin, async (req: any, res) => {
+    try {
+      const { videoUrl, description, videoDuration, title } = req.body;
+      const updates: any = {};
+      if (videoUrl !== undefined) updates.videoUrl = videoUrl;
+      if (description !== undefined) updates.description = description;
+      if (videoDuration !== undefined) updates.videoDuration = videoDuration;
+      if (title !== undefined) updates.title = title;
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No fields to update" });
+      }
+
+      const [updated] = await db
+        .update(courseLessons)
+        .set(updates)
+        .where(eq(courseLessons.id, req.params.id))
+        .returning();
+
+      if (!updated) return res.status(404).json({ error: "Lesson not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to update lesson" });
+    }
+  });
+
+  app.post("/api/admin/course/enroll", isAdmin, async (req: any, res) => {
+    try {
+      const { userId, email } = req.body;
+      let targetUserId = userId;
+
+      if (!targetUserId && email) {
+        const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+        if (!user) return res.status(404).json({ error: "User not found" });
+        targetUserId = user.id;
+      }
+
+      if (!targetUserId) return res.status(400).json({ error: "userId or email required" });
+
+      const [existing] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, targetUserId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (existing) return res.json({ message: "Already enrolled", enrollment: existing });
+
+      const [enrollment] = await db.insert(courseEnrollments).values({
+        userId: targetUserId,
+        courseId: "multiplex_masterclass",
+      }).returning();
+
+      res.json({ message: "Enrolled", enrollment });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to enroll" });
     }
   });
 

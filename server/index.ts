@@ -6,6 +6,7 @@ import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { seedGeographies } from "./seedGeographies";
+import { seedCourseContent } from "./courseSeed";
 
 const app = express();
 // Trust proxy for secure cookies behind Replit's reverse proxy
@@ -163,6 +164,7 @@ async function initStripe() {
     () => {
       log(`serving on port ${port}`);
       seedGeographies().catch((err) => log(`Seed error: ${err.message}`, "seed"));
+      seedCourseContent().catch((err) => log(`Course seed error: ${err.message}`, "course-seed"));
       import("./weeklyDigest").then(({ scheduleWeeklyDigest }) => {
         scheduleWeeklyDigest();
       }).catch((err) => log(`Weekly digest schedule error: ${err.message}`, "digest"));

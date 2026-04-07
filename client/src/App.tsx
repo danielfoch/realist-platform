@@ -55,6 +55,7 @@ import DistressDeals from "@/pages/DistressDeals";
 import DistressReport from "@/pages/DistressReport";
 import MultiplexFit from "@/pages/MultiplexFit";
 import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
+import Course from "@/pages/Course";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
 import JoinRealtors from "@/pages/JoinRealtors";
 import JoinLenders from "@/pages/JoinLenders";
@@ -98,6 +99,7 @@ function Router() {
       <Route path="/tools/distress-deals" component={DistressDeals} />
       <Route path="/multiplex-investor-fit" component={MultiplexFit} />
       <Route path="/masterclass" component={MultiplexMasterclass} />
+      <Route path="/course" component={Course} />
       <Route path="/insights/distress-report" component={DistressReport} />
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/my-performance" component={MyPerformance} />

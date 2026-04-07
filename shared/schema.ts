@@ -2376,6 +2376,69 @@ export const insertAreaScoreSchema = createInsertSchema(areaScores).omit({
 export type InsertAreaScore = z.infer<typeof insertAreaScoreSchema>;
 export type AreaScore = typeof areaScores.$inferSelect;
 
+export const courseModules = pgTable("course_modules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCourseModuleSchema = createInsertSchema(courseModules).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertCourseModule = z.infer<typeof insertCourseModuleSchema>;
+export type CourseModule = typeof courseModules.$inferSelect;
+
+export const courseLessons = pgTable("course_lessons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  moduleId: varchar("module_id").references(() => courseModules.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  videoUrl: text("video_url"),
+  videoDuration: text("video_duration"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCourseLessonSchema = createInsertSchema(courseLessons).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertCourseLesson = z.infer<typeof insertCourseLessonSchema>;
+export type CourseLesson = typeof courseLessons.$inferSelect;
+
+export const courseEnrollments = pgTable("course_enrollments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  courseId: varchar("course_id").notNull().default("multiplex_masterclass"),
+  stripeSessionId: varchar("stripe_session_id"),
+  enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"),
+});
+
+export const insertCourseEnrollmentSchema = createInsertSchema(courseEnrollments).omit({
+  id: true,
+  enrolledAt: true,
+});
+export type InsertCourseEnrollment = z.infer<typeof insertCourseEnrollmentSchema>;
+export type CourseEnrollment = typeof courseEnrollments.$inferSelect;
+
+export const courseProgress = pgTable("course_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  lessonId: varchar("lesson_id").references(() => courseLessons.id).notNull(),
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
+});
+
+export const insertCourseProgressSchema = createInsertSchema(courseProgress).omit({
+  id: true,
+  completedAt: true,
+});
+export type InsertCourseProgress = z.infer<typeof insertCourseProgressSchema>;
+export type CourseProgress = typeof courseProgress.$inferSelect;
+
 export const savedReports = pgTable("saved_reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id"),

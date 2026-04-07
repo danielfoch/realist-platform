@@ -2,6 +2,9 @@
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { storage } from './storage';
 import { sendMasterclassWelcomeEmail } from './resend';
+import { db } from './db';
+import { courseEnrollments, users } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
 import Stripe from 'stripe';
 
 export class WebhookHandlers {
@@ -54,6 +57,27 @@ export class WebhookHandlers {
               console.log(`[webhook] Masterclass welcome email sent to ${customerEmail}`);
             } catch (err) {
               console.error(`[webhook] Failed to send masterclass welcome email to ${customerEmail}:`, (err as Error).message);
+            }
+
+            try {
+              const [user] = await db.select().from(users).where(eq(users.email, customerEmail)).limit(1);
+              if (user) {
+                const [existing] = await db.select().from(courseEnrollments)
+                  .where(and(eq(courseEnrollments.userId, user.id), eq(courseEnrollments.courseId, "multiplex_masterclass")))
+                  .limit(1);
+                if (!existing) {
+                  await db.insert(courseEnrollments).values({
+                    userId: user.id,
+                    courseId: "multiplex_masterclass",
+                    stripeSessionId: session.id,
+                  });
+                  console.log(`[webhook] Auto-enrolled ${customerEmail} in masterclass course`);
+                }
+              } else {
+                console.log(`[webhook] No Realist account found for ${customerEmail} — will need manual enrollment`);
+              }
+            } catch (err) {
+              console.error(`[webhook] Failed to auto-enroll ${customerEmail}:`, (err as Error).message);
             }
           } else {
             console.error('[webhook] Masterclass purchase completed but no customer email found');
