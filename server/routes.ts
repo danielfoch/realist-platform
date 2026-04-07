@@ -7563,6 +7563,123 @@ export async function registerRoutes(
     ],
   };
 
+  // ─── Multiplex Masterclass Lead + Checkout ─────────────────────
+  app.post("/api/masterclass/lead", async (req, res) => {
+    try {
+      const { name, email, phone, intent, consent } = req.body;
+
+      if (!name || !email || !phone) {
+        res.status(400).json({ error: "Name, email, and phone are required" });
+        return;
+      }
+
+      const lead = await storage.createLead({
+        name,
+        email,
+        phone,
+        consent: consent || false,
+        leadSource: "Multiplex Masterclass Sales Page",
+      });
+
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) return '+' + cleaned;
+        if (cleaned.length === 10) return '+1' + cleaned;
+        return '+' + cleaned;
+      };
+
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const tags = ["multiplex_masterclass", "masterclass_inquiry"];
+      if (intent) tags.push(`intent_${intent}`);
+
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName,
+        fullName: name,
+        phone: formatPhoneE164(phone),
+        consent: consent || false,
+        leadSource: "Multiplex Masterclass Sales Page",
+        formTag: "multiplex_masterclass",
+        tags,
+        intent: intent || "",
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Masterclass webhook error:", err));
+
+      sendToGoogleSheets({
+        email,
+        firstName,
+        lastName,
+        phone,
+        source: "Multiplex Masterclass Sales Page",
+        tags,
+      }).catch(err => console.error("Google Sheets error:", err));
+
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName: lastName || undefined,
+        phone,
+        leadSource: "Multiplex Masterclass Sales Page",
+      }).catch(err => console.error("Auto-enroll error:", err));
+
+      res.json({ success: true, leadId: lead.id });
+    } catch (error: any) {
+      console.error("Masterclass lead error:", error);
+      res.status(500).json({ error: "Submission failed" });
+    }
+  });
+
+  app.post("/api/masterclass/checkout", async (req, res) => {
+    try {
+      const { email, name } = req.body;
+      if (!email) {
+        res.status(400).json({ error: "Email is required" });
+        return;
+      }
+
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.REPL_SLUG
+          ? `https://${process.env.REPL_SLUG}.replit.app`
+          : "https://realist.ca";
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: "cad",
+            product_data: {
+              name: "Multiplex Masterclass Canada",
+              description: "Complete program: financing, zoning, construction, coaching, and community access.",
+            },
+            unit_amount: 99900,
+          },
+          quantity: 1,
+        }],
+        mode: "payment",
+        success_url: `${baseUrl}/masterclass?success=true`,
+        cancel_url: `${baseUrl}/masterclass?canceled=true`,
+        metadata: {
+          product: "multiplex_masterclass",
+          customerName: name || "",
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Masterclass checkout error:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
   app.post("/api/multiplex-fit", async (req, res) => {
     try {
       const { name, email, phone, consent, assessmentData, fitScore, fitTier, recommendation } = req.body;
