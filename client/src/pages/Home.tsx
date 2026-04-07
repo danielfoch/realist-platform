@@ -479,30 +479,40 @@ export default function Home({ embedded }: { embedded?: boolean }) {
           <RenoQuoteWizard />
         ) : (
           <>
-            <div className="grid lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-1 space-y-6">
-                <ListingImport onImport={handleListingImport} />
-                <AddressInput
-                  value={address}
-                  onChange={setAddress}
-                  onCityChange={setCity}
-                  onRegionChange={setRegion}
-                  onCountryChange={setCountry}
-                  onPostalCodeChange={setPostalCode}
-                  country={country}
-                />
-                <StrategySelector selected={strategy} onSelect={setStrategy} />
-                <DealInputs
-                  inputs={inputs}
-                  onChange={setInputs}
-                  strategy={strategy}
-                  country={country}
-                  city={city}
-                  region={region}
-                  listingPrice={listingPrice || undefined}
-                />
-              </div>
-              <div className="lg:col-span-2 space-y-6">
+            <div className="max-w-2xl mx-auto space-y-6">
+              <ListingImport onImport={handleListingImport} />
+              <AddressInput
+                value={address}
+                onChange={setAddress}
+                onCityChange={setCity}
+                onRegionChange={setRegion}
+                onCountryChange={setCountry}
+                onPostalCodeChange={setPostalCode}
+                country={country}
+              />
+              <StrategySelector selected={strategy} onSelect={setStrategy} />
+              <DealInputs
+                inputs={inputs}
+                onChange={setInputs}
+                strategy={strategy}
+                country={country}
+                city={city}
+                region={region}
+                listingPrice={listingPrice || undefined}
+              />
+              <Button
+                size="lg"
+                className="w-full h-14 text-lg gap-2"
+                onClick={handleCalculate}
+                data-testid="button-embedded-calculate"
+              >
+                <Calculator className="h-5 w-5" />
+                {leadCaptured ? "Update Analysis" : "Analyze This Deal"}
+              </Button>
+            </div>
+
+            {showResults && leadCaptured && (
+              <div className="mt-10 space-y-6">
                 <MetricCards
                   capRate={results.capRate}
                   cashOnCash={results.cashOnCash}
@@ -512,7 +522,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                 />
                 <AnalysisCharts results={results} inputs={inputs} />
               </div>
-            </div>
+            )}
           </>
         )}
 
