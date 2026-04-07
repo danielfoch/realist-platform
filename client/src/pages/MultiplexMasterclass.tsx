@@ -244,7 +244,7 @@ export default function MultiplexMasterclass() {
                 </p>
                 <div className="flex items-center gap-4 justify-center md:justify-start text-sm text-gray-500 dark:text-gray-400">
                   <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-yellow-500" /> #1 in Canada</span>
-                  <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> Thousands of listeners</span>
+                  <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> Over 3 million downloads</span>
                 </div>
               </div>
             </div>
