@@ -408,7 +408,7 @@ export default function MultiplexMasterclass() {
                 { q: "Do I need construction experience?", a: "No. We walk you through every step from site selection to managing contractors. The program is designed for investors and homeowners, not builders." },
                 { q: "How long do I have access?", a: "Lifetime. Once you purchase, you have permanent access to all course materials, future updates, and the private community." },
                 { q: "What if I'm not satisfied?", a: "We offer a full 30-day money-back guarantee. If the program doesn't meet your expectations, email us for a complete refund — no questions asked." },
-                { q: "Are the coaching calls included?", a: "Yes. Weekly group coaching calls are included with your purchase. You'll be able to ask questions and get live feedback from the team." },
+                { q: "Are the coaching calls included?", a: "Yes. Weekly group coaching calls are included with your purchase for up to 1 year. You'll be able to ask questions and get live feedback from the team." },
               ].map((faq, i) => (
                 <div key={i} className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden" data-testid={`faq-item-${i}`}>
                   <button
