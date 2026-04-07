@@ -526,6 +526,7 @@ export async function sendMasterclassWelcomeEmail(params: {
     const { data, error } = await client.emails.send({
       from: fromEmail,
       to: params.toEmail,
+      bcc: "danielfoch@gmail.com",
       subject: `Your Multiplex Masterclass Access — Welcome, ${firstName}!`,
       html,
     });
