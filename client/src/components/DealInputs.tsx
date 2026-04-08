@@ -29,7 +29,6 @@ import type { BuyHoldInputs } from "@shared/schema";
 import { CashbackDisplay } from "@/components/CashbackDisplay";
 import { MortgageConsultationButton } from "@/components/MortgageConsultationButton";
 import { FinancingExpertPanel } from "@/components/FinancingExpertPanel";
-import { PropertyManagerPanel } from "@/components/PropertyManagerPanel";
 
 interface DealInputsProps {
   inputs: BuyHoldInputs;
@@ -426,6 +425,7 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
           <CardContent className="space-y-4">
             <CurrencyInput id="monthlyRent" label="Monthly Rent" value={inputs.monthlyRent} onChange={(v) => updateInput("monthlyRent", v)} testId="input-monthly-rent" />
             <PercentInput id="vacancy" label="Vacancy Rate" value={inputs.vacancyPercent} onChange={(v) => updateInput("vacancyPercent", v)} testId="slider-vacancy" min={0} max={20} step={0.5} />
+            <PercentInput id="rentGrowthIncome" label="Annual Rent Growth" value={inputs.rentGrowthPercent} onChange={(v) => updateInput("rentGrowthPercent", v)} testId="slider-rent-growth-income" min={-5} max={10} step={0.5} />
           </CardContent>
         </Card>
 
@@ -443,22 +443,6 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
             <PercentInput id="maintenance" label="Maintenance (% of Rent)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-maintenance" min={0} max={15} step={0.5} />
             <PercentInput id="capex" label="CapEx Reserve (% of Rent)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-capex" min={0} max={15} step={0.5} />
             <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
-            
-            {country === "canada" && (
-              <PropertyManagerPanel
-                region={region}
-                city={city}
-                country="canada"
-                dealInfo={{
-                  address: address || "",
-                  purchasePrice: inputs.purchasePrice,
-                  monthlyRent: inputs.monthlyRent,
-                  cashFlow: 0,
-                  capRate: 0,
-                }}
-                defaultValues={defaultLeadInfo}
-              />
-            )}
           </CardContent>
         </Card>
       </div>
@@ -474,7 +458,6 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
         <CollapsibleContent className="pt-4 space-y-4">
           <Card>
             <CardContent className="pt-6 space-y-4">
-              <PercentInput id="rentGrowth" label="Annual Rent Growth" value={inputs.rentGrowthPercent} onChange={(v) => updateInput("rentGrowthPercent", v)} testId="slider-rent-growth" min={-5} max={10} step={0.5} />
               <PercentInput id="expenseInflation" label="Expense Inflation" value={inputs.expenseInflationPercent} onChange={(v) => updateInput("expenseInflationPercent", v)} testId="slider-expense-inflation" min={0} max={10} step={0.5} />
               <PercentInput id="appreciation" label="Property Appreciation" value={inputs.appreciationPercent} onChange={(v) => updateInput("appreciationPercent", v)} testId="slider-appreciation" min={-5} max={15} step={0.5} />
               <div className="space-y-2">
@@ -1029,6 +1012,7 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
               <span className="text-sm text-muted-foreground">Average rent per unit: ${Math.round(inputs.monthlyRent / numUnits).toLocaleString()}/mo</span>
             </div>
             <PercentInput id="vacancy" label="Vacancy Rate" value={inputs.vacancyPercent} onChange={(v) => updateInput("vacancyPercent", v)} testId="slider-vacancy" min={0} max={20} step={0.5} />
+            <PercentInput id="rentGrowthIncome" label="Annual Rent Growth" value={inputs.rentGrowthPercent} onChange={(v) => updateInput("rentGrowthPercent", v)} testId="slider-rent-growth-income" min={-5} max={10} step={0.5} />
           </CardContent>
         </Card>
 
@@ -1046,22 +1030,6 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
             <PercentInput id="maintenance" label="Maintenance (% of Rent)" value={inputs.maintenancePercent} onChange={(v) => updateInput("maintenancePercent", v)} testId="slider-maintenance" min={0} max={15} step={0.5} />
             <PercentInput id="capex" label="CapEx Reserve (% of Rent)" value={inputs.capexReservePercent} onChange={(v) => updateInput("capexReservePercent", v)} testId="slider-capex" min={0} max={15} step={0.5} />
             <PercentInput id="management" label="Property Management (% of Rent)" value={inputs.managementPercent} onChange={(v) => updateInput("managementPercent", v)} testId="slider-management" min={0} max={15} step={0.5} />
-            
-            {country === "canada" && (
-              <PropertyManagerPanel
-                region={region}
-                city={city}
-                country="canada"
-                dealInfo={{
-                  address: address || "",
-                  purchasePrice: inputs.purchasePrice,
-                  monthlyRent: inputs.monthlyRent,
-                  cashFlow: 0,
-                  capRate: 0,
-                }}
-                defaultValues={defaultLeadInfo}
-              />
-            )}
           </CardContent>
         </Card>
       </div>
