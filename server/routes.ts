@@ -465,15 +465,18 @@ export async function registerRoutes(
         tags: ["deal_analyzer", property.region || "unknown_region"],
       }).catch(err => console.error("Google Sheets backup error:", err));
 
-      // Send email notification
-      sendLeadNotification({
-        name: lead.name,
-        email: lead.email,
-        phone: lead.phone,
-        address: property.formattedAddress,
-        strategy: analysis.strategyType,
-        source: lead.leadSource || 'Deal Analyzer',
-      }).catch(err => console.error("Email notification error:", err));
+      // Send email notification only for the first lead from this email
+      const existingLeadCount = await storage.getLeadCountByEmail(lead.email);
+      if (existingLeadCount <= 1) {
+        sendLeadNotification({
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          address: property.formattedAddress,
+          strategy: analysis.strategyType,
+          source: lead.leadSource || 'Deal Analyzer',
+        }).catch(err => console.error("Email notification error:", err));
+      }
 
       // Notify realtors who have claimed this market
       if (property.city && property.region) {
@@ -734,14 +737,17 @@ export async function registerRoutes(
         tags: allTags,
       }).catch(err => console.error("Google Sheets backup error:", err));
 
-      // Send email notification
-      sendLeadNotification({
-        name,
-        email,
-        phone,
-        strategy: formType,
-        source: formTag || formType || 'Deal Engagement',
-      }).catch(err => console.error("Email notification error:", err));
+      // Send email notification only for the first lead from this email
+      const engagementLeadCount = await storage.getLeadCountByEmail(email);
+      if (engagementLeadCount <= 1) {
+        sendLeadNotification({
+          name,
+          email,
+          phone,
+          strategy: formType,
+          source: formTag || formType || 'Deal Engagement',
+        }).catch(err => console.error("Email notification error:", err));
+      }
 
       autoEnrollLeadAsUser({
         email,

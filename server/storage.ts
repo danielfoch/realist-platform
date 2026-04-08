@@ -167,6 +167,7 @@ export interface IStorage {
   createLead(lead: InsertLead): Promise<Lead>;
   getLead(id: string): Promise<Lead | undefined>;
   getLeadByEmail(email: string): Promise<Lead | undefined>;
+  getLeadCountByEmail(email: string): Promise<number>;
   getAllLeads(): Promise<Lead[]>;
   getLeadsCount(): Promise<number>;
   getTodayLeadsCount(): Promise<number>;
@@ -473,6 +474,11 @@ export class DatabaseStorage implements IStorage {
   async getLeadByEmail(email: string): Promise<Lead | undefined> {
     const [lead] = await db.select().from(leads).where(eq(leads.email, email));
     return lead || undefined;
+  }
+
+  async getLeadCountByEmail(email: string): Promise<number> {
+    const [result] = await db.select({ count: sql<number>`count(*)` }).from(leads).where(eq(leads.email, email));
+    return Number(result?.count || 0);
   }
 
   async getAllLeads(): Promise<Lead[]> {
