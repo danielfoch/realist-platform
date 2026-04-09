@@ -60,6 +60,7 @@ import MarketReportBuilder from "@/pages/MarketReportBuilder";
 import JoinRealtors from "@/pages/JoinRealtors";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
+import ThankYouVancouver from "@/pages/ThankYouVancouver";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -128,6 +129,7 @@ function Router() {
       <Route path="/about/programs">{() => <Redirect to="/about" />}</Route>
       <Route path="/about/shop" component={Shop} />
       <Route path="/about/contact" component={ContactPage} />
+      <Route path="/thank-you/vancouver-multiplex-2026" component={ThankYouVancouver} />
       
       {/* Redirects from old routes to new routes */}
       <Route path="/buybox">{() => <Redirect to="/tools/buybox" />}</Route>

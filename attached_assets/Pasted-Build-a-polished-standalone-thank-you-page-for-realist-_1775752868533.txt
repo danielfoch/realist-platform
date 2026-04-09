@@ -1,0 +1,256 @@
+Build a polished standalone thank-you page for realist.ca for attendees of our event:
+
+EVENT:
+Unpacking Multiplexes Vancouver
+Hosted by The Canadian Real Estate Investor Podcast
+Date: April 8, 2026
+Location: Roundhouse Community Arts & Recreation Centre, Vancouver, BC
+
+GOAL:
+Create a thank-you page that we can send by direct link and in follow-up email to everyone who attended the event. The page should:
+1. Thank attendees warmly
+2. Recap the event and momentum
+3. Highlight upcoming 2026 cities
+4. Let people connect directly with sponsors and panelists from inside the page
+5. Drive clicks out to sponsor and panelist websites
+6. Feel premium, modern, and on-brand for Realist / Canadian Real Estate Investor / multiplex investor audience
+
+TECH:
+- Use our existing realist.ca stack and styling conventions
+- Make it responsive and fast
+- SEO-friendly
+- Clean modern UI, slightly editorial, slightly “event landing page”
+- No cheesy animations
+- Good mobile experience
+- Add subtle hover states to cards/buttons
+- Use reusable data arrays for sponsors and panelists
+- Make it easy for us to swap logos, headshots, URLs, and bios later
+- Build as a route/page component we can link directly, something like:
+  /thank-you/vancouver-multiplex-2026
+- Include meta title, meta description, and OG tags
+- Include optional UTM preservation on outbound links if present in URL
+
+PAGE STRUCTURE:
+
+1. HERO
+Headline:
+THANK YOU VANCOUVER.
+
+Subheadline:
+From the bottom of our hearts.
+
+Body copy:
+Nick Hill, Jonathan Woo and I are so grateful to have been so warmly welcomed in launching this event in a new city.
+
+It was an absolute honour and privilege to have a sold out room for our first Multiplex Vancouver event.
+
+It was a pleasure meeting so many people who are as passionate about this housing typology as we are. There is real energy in the multiplex scene in BC. It feels materially different from Toronto, where we started these events.
+
+Part of that is because Vancouver’s multiplex ecosystem is more tied to homebuilding for ownership, not just rental. Strata title has existed for a long time, and it is a simple, familiar product for buyers to understand.
+
+CTA buttons:
+- Explore Sponsors
+- Meet the Panelists
+- See Upcoming Events
+
+Hero visual treatment:
+- Strong background image or gradient overlay
+- Optional event photo collage area
+- Optional “Sold Out” badge
+
+2. EVENT HIGHLIGHTS / QUICK STATS
+Create a clean stat strip with items like:
+- Sold Out Event
+- Vancouver, BC
+- 200+ investors, builders, lenders, architects, and operators
+- 3 more cities in 2026
+
+3. UPCOMING EVENTS SECTION
+Headline:
+We’re just getting started.
+
+Cards:
+- Alberta — June 2026
+- Toronto — September 2026
+- Montreal — November 2026
+
+Each card should have:
+- city name
+- month
+- short teaser text
+- optional “Join waitlist” or “Learn more” placeholder button
+
+4. SPONSORS SECTION
+Headline:
+Thank you to our sponsors who made this possible.
+
+Intro text:
+These organizations helped make Multiplex Vancouver happen. Please support the people helping move housing and real estate development forward.
+
+Render sponsor cards in a clean grid.
+Each sponsor card should include:
+- logo placeholder
+- company name
+- short description
+- key contact(s)
+- CTA button: Visit Website
+
+Sponsors to include:
+1. CMHC / SCHL
+   Contacts: Joel Allaert, Charles Sauriol
+   Description: National housing finance and policy leadership
+
+2. Vancity
+   Contact: Ryan McKinley
+   Description: Multiplex construction financing and lending solutions
+
+3. Forefront Multiplex Project Marketing
+   Contact: Aman Khurana
+   Description: Multiplex-focused project marketing expertise
+
+4. Theorem Developments
+   Contact: Suraj Jhuty, P.Eng.
+   Description: Real-world development execution and construction insight
+
+5. Greater Vancouver Tenant & Property Management Ltd.
+   Contact: Keaton Bessey
+   Description: Property management and operational expertise
+
+6. Burke By Burke
+   Contact: Jamie Burke
+   Description: Brand / development / project support
+
+7. BLD Financial
+   Contacts: Ehren Laycock, Josh Findlay
+   Description: Financing strategy and real estate capital advisory
+
+8. Siegrist Architecture Inc.
+   Description: Architectural design and planning expertise
+
+IMPORTANT:
+- For each sponsor, include a placeholder field for website URL and logo asset
+- Make all sponsor cards clickable
+- Add external link icon
+- Open outbound links in new tab
+- Add rel=noopener noreferrer
+
+5. PANELISTS / SPEAKERS SECTION
+Headline:
+Meet the panelists and speakers.
+
+Intro text:
+These are the people who shared real-world financing, zoning, construction, design, and marketing insight at the event.
+
+Create speaker cards with:
+- headshot placeholder
+- name
+- title
+- company
+- short bio
+- button: Visit Website or Company
+- optional LinkedIn placeholder
+
+Panelists / speakers:
+- Joel Allaert — CMHC
+- Charles Sauriol — CMHC
+- Ryan McKinley — Vancity
+- Aman Khurana — Forefront Multiplex Project Marketing / Oakwyn Realty
+- Suraj Jhuty — Theorem Developments
+- Keaton Bessey — Greater Vancouver Tenant & Property Management Ltd.
+- Jamie Burke — Burke By Burke
+- Ehren Laycock — BLD Financial
+- Josh Findlay — BLD Financial
+- Duane Siegrist — Siegrist Architecture
+- Nick Hill — The Canadian Real Estate Investor Podcast
+- Daniel Foch — The Canadian Real Estate Investor Podcast
+- Jonathan Woo — include if participating in event recap / host context
+
+6. MOMENTUM / COMMUNITY SECTION
+Headline:
+Let’s keep the momentum going.
+
+Body:
+This conversation is just getting started. Multiplex housing is becoming one of the most important forms of housing delivery in Canada, and Vancouver made it clear there is real demand for practical, operator-level conversations around financing, approvals, design, construction, and sales.
+
+Add CTA options:
+- Follow Realist
+- Join the next event
+- Contact us about sponsoring a future city
+
+7. FOOTER CTA
+Headline:
+Know someone who should be part of the next one?
+
+Body:
+Tag someone we should involve in Alberta.
+
+Buttons:
+- Share This Page
+- Contact Us
+- Sponsor a Future Event
+
+FUNCTIONAL REQUIREMENTS:
+- Create sponsor data as a structured array/object
+- Create panelist data as a structured array/object
+- Make it very easy to edit names, bios, URLs, logos, and headshots
+- Support optional missing fields gracefully
+- If no logo/headshot exists, show tasteful placeholder
+- Add basic analytics tracking hooks for outbound clicks:
+  track link clicks by type:
+  - sponsor_click
+  - panelist_click
+  - upcoming_event_click
+- Track which sponsor/panelist was clicked
+- If site already uses analytics, plug into existing event tracking pattern
+- If not, create a simple helper abstraction
+
+DESIGN DIRECTION:
+- Feels like premium Canadian real estate / housing media
+- Slightly urban, slightly professional, slightly investor-facing
+- Not too corporate, not too startup cheesy
+- Strong typography
+- Spacious cards
+- Neutral palette with one strong accent color pulled from existing brand
+- Optional section dividers
+- Good hierarchy and easy scanning
+
+SEO:
+Meta title:
+Thank You Vancouver | Unpacking Multiplexes Vancouver | Realist
+
+Meta description:
+Thank you to everyone who joined us for Unpacking Multiplexes Vancouver. Connect with sponsors, panelists, and speakers, and stay involved as we bring the event series to Alberta, Toronto, and Montreal.
+
+OG title:
+Thank You Vancouver
+
+OG description:
+Explore the sponsors, panelists, and next stops for the Unpacking Multiplexes event series.
+
+DELIVERABLES:
+1. Build the page
+2. Add all content and structure
+3. Use placeholder URLs for sponsor/panelist websites where needed, clearly marked for replacement
+4. Use placeholder headshots/logos where needed
+5. Keep code clean and modular
+6. At the end, tell me:
+   - what route the page lives at
+   - where to edit sponsor and panelist data
+   - what assets/URLs I still need to add manually
+
+IMPORTANT COPY TO USE ON PAGE:
+“THANK YOU VANCOUVER.”
+“From the bottom of our hearts.”
+“Nick Hill, Jonathan Woo and I are so grateful to be so welcomed well received in launching this event in a new city.”
+“Absolute honour and a privilege to have a sold out room for our first MULTIPLEX VANCOUVER event.”
+“It was a pleasure meeting so many people who are as passionate about this housing typology as we are.”
+“There is a real energy in the multiplex scene in BC.”
+“We are doing 3 more of these events in 2026: Alberta in June, Toronto in September, Montreal in November.”
+“Let’s keep the momentum up on this.”
+
+BONUS:
+If the site already has CMS-like patterns or JSON-backed content blocks, use them.
+If there is an email capture component already on the site, add an optional section:
+“Get notified about the next city.”
+
+Please implement directly, not just a mockup.
