@@ -336,7 +336,7 @@ export default function MapHomepage() {
                     <span data-testid="link-leaderboard">Leaderboard</span>
                   </Link>
                   <a
-                    href="https://www.skool.com/realistgroup"
+                    href="https://www.skool.com/realist"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline underline-offset-2"

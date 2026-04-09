@@ -67,7 +67,7 @@ export function LeadCaptureModal({
   };
 
   const handleSkoolClick = () => {
-    window.open("https://www.skool.com/realistgroup", "_blank");
+    window.open("https://www.skool.com/realist", "_blank");
     setStep("form");
     form.reset();
     onOpenChange(false);

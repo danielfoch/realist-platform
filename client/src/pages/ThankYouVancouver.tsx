@@ -405,7 +405,7 @@ export default function ThankYouVancouver() {
             This conversation is just getting started. Multiplex housing is becoming one of the most important forms of housing delivery in Canada, and Vancouver made it clear there is real demand for practical, operator-level conversations around financing, approvals, design, construction, and sales.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a href="https://www.skool.com/realistgroup" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.skool.com/realist" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" className="gap-2" data-testid="button-follow-realist">
                 <Users className="h-4 w-4" /> Follow Realist
               </Button>
