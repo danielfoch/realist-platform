@@ -736,10 +736,10 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
         blogResults = await database.query(
           `SELECT id, title, slug, excerpt, 'blog' as type, published_at
            FROM blog_posts 
-           WHERE status = 'published' AND search_vector @@ plainto_tsquery('english', $1)
-           ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1)) DESC
+           WHERE status = 'published' AND (title ILIKE $1 OR excerpt ILIKE $1 OR content ILIKE $1)
+           ORDER BY published_at DESC
            LIMIT $2`,
-          [q, Number(limit)]
+          [`%${q}%`, Number(limit)]
         );
       }
       
@@ -747,10 +747,10 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
         guideResults = await database.query(
           `SELECT id, title, slug, excerpt, 'guide' as type, published_at
            FROM guides 
-           WHERE status = 'published' AND search_vector @@ plainto_tsquery('english', $1)
-           ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1)) DESC
+           WHERE status = 'published' AND (title ILIKE $1 OR excerpt ILIKE $1 OR content ILIKE $1)
+           ORDER BY published_at DESC
            LIMIT $2`,
-          [q, Number(limit)]
+          [`%${q}%`, Number(limit)]
         );
       }
       

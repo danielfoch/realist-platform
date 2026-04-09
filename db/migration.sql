@@ -61,3 +61,57 @@ CREATE INDEX IF NOT EXISTS idx_lenders_status ON lenders(status);
 CREATE INDEX IF NOT EXISTS idx_lenders_email ON lenders(email);
 CREATE INDEX IF NOT EXISTS idx_deal_leads_status ON deal_leads(status);
 CREATE INDEX IF NOT EXISTS idx_deal_leads_city_province ON deal_leads(city, province);
+
+-- Blog Posts table for SEO content
+CREATE TABLE IF NOT EXISTS blog_posts (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  excerpt TEXT,
+  content TEXT NOT NULL,
+  featured_image TEXT,
+  author TEXT DEFAULT 'Realist Team',
+  status TEXT DEFAULT 'draft',
+  category TEXT,
+  tags TEXT[],
+  meta_title TEXT,
+  meta_description TEXT,
+  canonical_url TEXT,
+  view_count INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT FALSE,
+  published_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_blog_slug ON blog_posts(slug);
+CREATE INDEX IF NOT EXISTS idx_blog_status ON blog_posts(status);
+CREATE INDEX IF NOT EXISTS idx_blog_published ON blog_posts(published_at DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_blog_category ON blog_posts(category);
+
+-- Guides table for SEO content
+CREATE TABLE IF NOT EXISTS guides (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  excerpt TEXT,
+  content TEXT NOT NULL,
+  featured_image TEXT,
+  author TEXT DEFAULT 'Realist Team',
+  status TEXT DEFAULT 'draft',
+  category TEXT NOT NULL,
+  difficulty TEXT,
+  estimated_read_time_minutes INTEGER,
+  meta_title TEXT,
+  meta_description TEXT,
+  canonical_url TEXT,
+  view_count INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT FALSE,
+  published_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_guides_slug ON guides(slug);
+CREATE INDEX IF NOT EXISTS idx_guides_status ON guides(status);
+CREATE INDEX IF NOT EXISTS idx_guides_category ON guides(category);
