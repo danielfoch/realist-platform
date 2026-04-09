@@ -162,8 +162,8 @@ export default function ThankYouVancouver() {
         phone: formData.phone || "",
         consent: true,
         formType: modalType === "sponsor" ? "2027 Vancouver Sponsor Interest" : "2027 Vancouver Ticket Reserve",
-        formTag: "2027vancouversponsorlead",
-        tags: ["2027vancouversponsorlead", modalType === "sponsor" ? "sponsor_interest" : "ticket_reserve"],
+        formTag: modalType === "sponsor" ? "2027vancouversponsorlead" : "2027vancouverticket",
+        tags: modalType === "sponsor" ? ["2027vancouversponsorlead"] : ["2027vancouverticket"],
       });
       setSubmitted(true);
       trackClick("form_submit", `2027_vancouver_${modalType}`);
