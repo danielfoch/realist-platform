@@ -24,6 +24,7 @@ import {
 } from '../ui/dialog';
 import { useToast } from '../../hooks/use-toast';
 import { Loader2, Building2, TrendingUp, Home, Users } from 'lucide-react';
+import { track } from '../../lib/event-tracking';
 
 interface InvestorLeadFormProps {
   trigger?: React.ReactNode;
@@ -154,6 +155,7 @@ export function InvestorLeadForm({
       const result = await response.json();
 
       if (result.success) {
+        track('lead_form_submitted', { investment_type: formData.investment_type, target_cities: formData.target_cities });
         toast({
           title: "You're matched! 🎉",
           description: result.data.message || 'We\'ve notified realtors in your target area.',

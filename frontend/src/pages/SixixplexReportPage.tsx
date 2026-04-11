@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { track } from "../lib/event-tracking";
 
 interface LeadData {
   id: string;
@@ -131,6 +132,7 @@ export function SixixplexReportPage() {
     const generatedReport = analyzeTorontoProperty(storedLead.address);
     setReport(generatedReport);
     setIsLoading(false);
+    track('deal_analyzer_report_generated', { address: storedLead.address, score: generatedReport.score });
   }, [navigate]);
 
   function handleNewSearch() {

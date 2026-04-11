@@ -17,6 +17,7 @@ import leadRouter from './lead-routes';
 import realtorRouter from './realtor-routes';
 import investorLeadRouter from './investor-lead-routes';
 import { handleStripeWebhook } from './stripe-integration';
+import { handleTrackEvent, handleGetEvents, handleGetEventSummary } from './event-tracking';
 
 dotenv.config();
 
@@ -75,6 +76,11 @@ app.use('/api/leads', leadRouter);
 app.use('/api/realtor', realtorRouter);
 app.use('/api/investor', investorLeadRouter);
 app.use('/api', createContentRouter());
+
+// Event tracking routes
+app.post('/api/events/track', handleTrackEvent);
+app.get('/api/events', handleGetEvents);
+app.get('/api/events/summary', handleGetEventSummary);
 
 // Stripe webhook endpoint (must be after raw body middleware)
 app.post('/api/webhook/stripe', async (req: Request, res: Response) => {

@@ -16,6 +16,7 @@ import {
   CreateUserInput,
 } from './user-model';
 import { generateToken, authenticateToken, AuthRequest } from './auth-middleware';
+import { trackEvent } from './event-tracking';
 
 export function createAuthRouter(): Router {
   const router = Router();
@@ -73,6 +74,9 @@ export function createAuthRouter(): Router {
         // Update last login
         await updateUser(user.id, { last_login_at: new Date() });
 
+        // Track signup event
+        await trackEvent({ user_id: user.id, event: 'signup_completed', properties: { role: 'general' }, ip_address: req.ip || req.socket.remoteAddress, user_agent: req.headers['user-agent'] || null });
+
         res.status(201).json({
           success: true,
           data: {
@@ -120,6 +124,9 @@ export function createAuthRouter(): Router {
 
         // Update last login
         await updateUser(user.id, { last_login_at: new Date() });
+
+        // Track login event
+        await trackEvent({ user_id: user.id, event: 'login', properties: { role: 'general' }, ip_address: req.ip || req.socket.remoteAddress, user_agent: req.headers['user-agent'] || null });
 
         // Generate token
         const token = generateToken({

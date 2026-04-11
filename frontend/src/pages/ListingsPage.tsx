@@ -7,6 +7,7 @@ import { ListingCard, ListingCardSkeleton } from '@/components/ListingCard'
 import { ListingsMap } from '@/components/ListingsMap'
 import { Pagination } from '@/components/Pagination'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { track } from '@/lib/event-tracking'
 
 interface Listing {
   id: number
@@ -72,6 +73,7 @@ export const ListingsPage: React.FC = () => {
 
   useEffect(() => {
     setFavorites(readFavorites())
+    track('page_view', { page: 'listings' })
   }, [])
 
   const favoriteSet = useMemo(() => new Set(favorites), [favorites])
@@ -81,6 +83,7 @@ export const ListingsPage: React.FC = () => {
       const exists = prev.includes(mlsNumber)
       const next = exists ? prev.filter((value) => value !== mlsNumber) : [...prev, mlsNumber]
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(next))
+      track('listing_favorite', { mls_number: mlsNumber, action: exists ? 'remove' : 'add' })
       return next
     })
   }
@@ -117,6 +120,7 @@ export const ListingsPage: React.FC = () => {
 
   const handleSearch = () => {
     setPagination((prev) => ({ ...prev, page: 1 }))
+    track('listing_search', { ...filters })
   }
 
   const handleListingClick = (listing: Listing) => {

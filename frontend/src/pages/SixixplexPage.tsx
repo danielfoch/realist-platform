@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { track } from "../lib/event-tracking";
 
 interface LeadData {
   id: string;
@@ -52,6 +53,8 @@ export function SixixplexPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validateForm()) return;
+
+    track('deal_analyzer_start', { address: address.trim(), source: sourceParam || undefined });
 
     setIsLoading(true);
     setTimeout(() => {
