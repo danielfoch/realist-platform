@@ -543,6 +543,10 @@ export async function registerRoutes(
           leadSource: lead.leadSource || "Deal Analyzer",
         });
         userId = enrollment.userId;
+
+        if (userId) {
+          await storage.linkAnalysisToUser(analysis.id, userId);
+        }
       } catch (userError) {
         console.error("Auto-enroll user error:", userError);
       }

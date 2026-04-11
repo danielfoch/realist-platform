@@ -180,6 +180,7 @@ export interface IStorage {
   getAnalysis(id: string): Promise<Analysis | undefined>;
   getAnalysesByLead(leadId: string): Promise<Analysis[]>;
   getAnalysisCount(): Promise<number>;
+  linkAnalysisToUser(analysisId: string, userId: string): Promise<void>;
 
   createWebhookLog(log: InsertWebhookLog): Promise<WebhookLog>;
   getWebhookLogsByLead(leadId: string): Promise<WebhookLog[]>;
@@ -526,6 +527,10 @@ export class DatabaseStorage implements IStorage {
   async getAnalysis(id: string): Promise<Analysis | undefined> {
     const [analysis] = await db.select().from(analyses).where(eq(analyses.id, id));
     return analysis || undefined;
+  }
+
+  async linkAnalysisToUser(analysisId: string, userId: string): Promise<void> {
+    await db.update(analyses).set({ userId }).where(eq(analyses.id, analysisId));
   }
 
   async getAnalysesByLead(leadId: string): Promise<Analysis[]> {

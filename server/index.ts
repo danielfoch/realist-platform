@@ -165,6 +165,30 @@ async function initStripe() {
       log(`serving on port ${port}`);
       seedGeographies().catch((err) => log(`Seed error: ${err.message}`, "seed"));
       seedCourseContent().catch((err) => log(`Course seed error: ${err.message}`, "course-seed"));
+
+      (async () => {
+        try {
+          const { db } = await import("./db");
+          const { analyses, leads, users } = await import("@shared/schema");
+          const { sql, eq, isNull } = await import("drizzle-orm");
+          const [{ count }] = await db.select({ count: sql<number>`count(*)` })
+            .from(analyses)
+            .where(isNull(analyses.userId));
+          if (Number(count) > 0) {
+            const result = await db.execute(sql`
+              UPDATE analyses a
+              SET user_id = u.id
+              FROM leads l, users u
+              WHERE a.lead_id = l.id
+                AND LOWER(l.email) = LOWER(u.email)
+                AND a.user_id IS NULL
+            `);
+            log(`Backfilled user_id on ${result.rowCount ?? 0} orphaned analyses`, "analysis-backfill");
+          }
+        } catch (err: any) {
+          log(`Analysis backfill error: ${err.message}`, "analysis-backfill");
+        }
+      })();
       import("./weeklyDigest").then(({ scheduleWeeklyDigest }) => {
         scheduleWeeklyDigest();
       }).catch((err) => log(`Weekly digest schedule error: ${err.message}`, "digest"));

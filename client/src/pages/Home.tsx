@@ -173,11 +173,17 @@ export default function Home({ embedded }: { embedded?: boolean }) {
 
   const [listingPrice, setListingPrice] = useState<number | null>(null);
   const lastTrackedRef = useRef<string>("");
+  const leadSavedAnalysisRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!showResults || !results || inputs.purchasePrice <= 0) return;
     const trackKey = `${inputs.purchasePrice}-${inputs.monthlyRent}-${strategy}-${city}`;
     if (trackKey === lastTrackedRef.current) return;
+    if (leadSavedAnalysisRef.current) {
+      leadSavedAnalysisRef.current = false;
+      lastTrackedRef.current = trackKey;
+      return;
+    }
     lastTrackedRef.current = trackKey;
 
     const formattedAddress = [address, city, region].filter(Boolean).join(", ");
@@ -194,7 +200,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
         city: city || null,
         province: region || null,
       }),
-    }).catch(() => {});
+    }).catch((err) => console.error("Auto-save analysis error:", err));
   }, [showResults, results, inputs.purchasePrice, inputs.monthlyRent, strategy, city]);
 
   const handleListingImport = (listing: {
@@ -228,6 +234,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
 
       const fullName = `${data.firstName} ${data.lastName}`;
 
+      leadSavedAnalysisRef.current = true;
       const response = await apiRequest("POST", "/api/leads", {
         lead: {
           name: fullName,
