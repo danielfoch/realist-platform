@@ -6241,6 +6241,56 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/broadcast-stats", async (_req, res) => {
+    try {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+
+      const [dealStats, cityStats, userStats] = await Promise.all([
+        db.select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`ROUND(AVG((${analyses.resultsJson}->>'capRate')::float)::numeric, 2)`,
+          avgCashOnCash: sql<number>`ROUND(AVG((${analyses.resultsJson}->>'cashOnCashReturn')::float)::numeric, 1)`,
+        })
+          .from(analyses)
+          .where(sql`${analyses.createdAt} >= ${weekAgo.toISOString()}`),
+
+        db.select({
+          city: analyses.city,
+          cnt: count(analyses.id),
+        })
+          .from(analyses)
+          .where(sql`${analyses.createdAt} >= ${weekAgo.toISOString()} AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
+          .groupBy(analyses.city)
+          .orderBy(desc(count(analyses.id)))
+          .limit(1),
+
+        db.select({
+          totalUsers: count(users.id),
+        }).from(users),
+      ]);
+
+      const deals = dealStats[0] || {};
+      const topCity = cityStats[0];
+
+      res.json({
+        success: true,
+        data: {
+          deals_analyzed: Number(deals.totalDeals) || 0,
+          avg_cap_rate: Number(deals.avgCapRate) || 0,
+          avg_cash_on_cash: Number(deals.avgCashOnCash) || 0,
+          top_market: topCity?.city || "Canada",
+          top_property_type: "Multiplex",
+          total_users: Number(userStats[0]?.totalUsers) || 0,
+          period_start: weekAgo.toISOString().split("T")[0],
+        },
+      });
+    } catch (err: any) {
+      console.error("Broadcast stats error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   app.get("/api/leaderboard", async (req, res) => {
     try {
       const period = req.query.period as string;
