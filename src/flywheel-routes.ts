@@ -284,6 +284,96 @@ router.get('/recommendations', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/deals/join - Enroll after deal analyzer and link pre-enrollment analyses
+router.post('/join', async (req: Request, res: Response) => {
+  const { name, email, phone, session_id } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({ error: 'Name and email are required' });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: 'Invalid email address' });
+  }
+
+  try {
+    // 1. Create user session tracking record (for future backfill)
+    if (session_id) {
+      await query(
+        `INSERT INTO user_sessions (session_token, created_at)
+         VALUES ($1, NOW())
+         ON CONFLICT (session_token) DO NOTHING`,
+        [session_id]
+      );
+    }
+
+    // 2. Create user account (or get existing)
+    const existingUser = await getUser(email);
+    if (existingUser) {
+      // User already exists - just link session and backfill
+      if (session_id) {
+        await query(
+          `INSERT INTO user_sessions (user_id, session_token, created_at)
+           VALUES ($1, $2, NOW())
+           ON CONFLICT (session_token) DO UPDATE SET user_id = $1`,
+          [existingUser.id, session_id]
+        );
+        // Backfill existing analyses with this session to the user
+        await query(
+          `UPDATE analyzed_deals SET user_id = $1
+           WHERE session_id = $2 AND user_id IS NULL`,
+          [existingUser.id, session_id]
+        );
+      }
+      return res.status(200).json({ success: true, user: existingUser });
+    }
+
+    // Create new user via user-model
+    const bcrypt = await import('bcrypt');
+    const tempPassword = crypto.randomBytes(16).toString('hex');
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    const result = await query(
+      `INSERT INTO users (name, email, password_hash, created_at, updated_at)
+       VALUES ($1, $2, $3, NOW(), NOW())
+       ON CONFLICT (email) DO UPDATE SET updated_at = NOW()
+       RETURNING id, name, email`,
+      [name, email, hashedPassword]
+    );
+
+    const user = result.rows[0];
+
+    // 3. Link session token to user and backfill analyses
+    if (session_id) {
+      await query(
+        `INSERT INTO user_sessions (user_id, session_token, created_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (session_token) DO UPDATE SET user_id = $1`,
+        [user.id, session_id]
+      );
+
+      // Backfill all analyses submitted with this session to the new user
+      const backfillResult = await query(
+        `UPDATE analyzed_deals SET user_id = $1
+         WHERE session_id = $2 AND user_id IS NULL
+         RETURNING id`,
+        [user.id, session_id]
+      );
+
+      console.log(`[flywheel] Linked ${backfillResult.rowCount} analyses to user ${user.id} via session ${session_id}`);
+    }
+
+    return res.status(201).json({
+      success: true,
+      user: { id: user.id, name: user.name, email: user.email },
+      message: session_id ? `Linked ${session_id} analyses to your account` : 'Account created'
+    });
+  } catch (error) {
+    console.error('Error in /api/deals/join:', error);
+    return res.status(500).json({ error: 'Failed to create account' });
+  }
+});
+
 // Helper function to calculate badges
 function calculateBadges(totalDeals: number, avgCapRate: number, avgCashOnCash: number): string[] {
   const badges = [];
@@ -292,7 +382,7 @@ function calculateBadges(totalDeals: number, avgCapRate: number, avgCashOnCash: 
   if (totalDeals >= 10) badges.push("📊 Analyst");
   if (totalDeals >= 50) badges.push("🏆 Pro Analyst");
   if (totalDeals >= 100) badges.push("👑 Deal Machine");
-  
+
   if (totalDeals >= 10 && avgCapRate >= 7.0) badges.push("🎯 Cap Rate King");
   if (totalDeals >= 10 && avgCashOnCash >= 15) badges.push("💰 Cash Flow Master");
 

@@ -391,3 +391,16 @@ COMMENT ON TABLE blog_posts IS 'SEO blog posts for content marketing';
 COMMENT ON TABLE guides IS 'Evergreen how-to guides for real estate investing';
 COMMENT ON TABLE rent_pulse IS 'City-level rent data for cap rate and yield calculations';
 COMMENT ON TABLE rent_listings IS 'Individual rental listings from scrapers';
+
+-- User sessions table: links localStorage session tokens to authenticated user accounts
+-- Enables backfilling pre-enrollment deal analyses to the correct user
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  session_token VARCHAR(255) UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
