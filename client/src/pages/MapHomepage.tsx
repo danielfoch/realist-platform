@@ -40,10 +40,23 @@ function GeolocateOnMount() {
   useEffect(() => {
     if (attempted.current) return;
     attempted.current = true;
+
+    setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch {}
+    }, 200);
+
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        map.flyTo([pos.coords.latitude, pos.coords.longitude], 8, { duration: 1.5 });
+        try {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          if (isFinite(lat) && isFinite(lng)) {
+            map.flyTo([lat, lng], 8, { duration: 1.5 });
+          }
+        } catch {}
       },
       () => {},
       { timeout: 5000, maximumAge: 300000 }
