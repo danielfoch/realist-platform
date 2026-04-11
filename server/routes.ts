@@ -171,8 +171,8 @@ async function sendWebhook(leadId: string, payload: object) {
 }
 
 async function sendDealAnalysisWebhookToGHL(data: {
-  userId: number | null;
-  analysisId: number;
+  userId: string | null;
+  analysisId: string;
   strategyType: string;
   address?: string;
   city?: string;
@@ -196,7 +196,16 @@ async function sendDealAnalysisWebhookToGHL(data: {
     }
   }
 
+  if (!email) {
+    console.log(`[ghl-analysis] Skipping webhook for analysis ${data.analysisId}: no email to match in GHL`);
+    return;
+  }
+
   const results = data.resultsJson || {};
+  const dealCount = data.userId
+    ? await db.select({ count: count(analyses.id) }).from(analyses).where(eq(analyses.userId, data.userId)).then(r => Number(r[0]?.count || 0))
+    : 0;
+
   const payload = {
     email,
     firstName,
@@ -213,6 +222,7 @@ async function sendDealAnalysisWebhookToGHL(data: {
     capRate: results.capRate || "",
     cashOnCash: results.cashOnCash || "",
     purchasePrice: data.inputsJson?.purchasePrice || "",
+    totalDealsAnalyzed: dealCount,
   };
 
   try {
@@ -436,24 +446,7 @@ export async function registerRoutes(
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      // GHL expects these specific fields in the JSON body
-      sendWebhook(lead.id, {
-        email: lead.email,
-        firstName: firstName,
-        lastName: lastName,
-        phone: formatPhoneE164(lead.phone),
-        fullName: lead.name,
-        consent: lead.consent,
-        leadSource: lead.leadSource,
-        formTag: "deal_analyzer",
-        propertyAddress: property.formattedAddress,
-        propertyCity: property.city,
-        propertyRegion: property.region,
-        propertyCountry: property.country,
-        analysisStrategy: analysis.strategyType,
-        analysisCountryMode: analysis.countryMode,
-        createdAt: lead.createdAt,
-      }).catch(err => console.error("Webhook error:", err));
+      // GHL webhook is sent after auto-enrollment below so userId and deal count are available
 
       // Backup to Google Sheets
       sendToGoogleSheets({
@@ -550,6 +543,35 @@ export async function registerRoutes(
       } catch (userError) {
         console.error("Auto-enroll user error:", userError);
       }
+
+      // Send GHL webhook with full analysis data and deal count
+      const analysisResults = (analysis.resultsJson || {}) as Record<string, any>;
+      const analysisInputs = (analysis.inputsJson || {}) as Record<string, any>;
+      const userDealCount = userId
+        ? await db.select({ count: count(analyses.id) }).from(analyses).where(eq(analyses.userId, userId)).then(r => Number(r[0]?.count || 0))
+        : 1;
+      sendWebhook(lead.id, {
+        email: lead.email,
+        firstName,
+        lastName,
+        phone: formatPhoneE164(lead.phone),
+        fullName: lead.name,
+        consent: lead.consent,
+        leadSource: lead.leadSource,
+        formTag: "deal_analyzer",
+        propertyAddress: property.formattedAddress,
+        propertyCity: property.city,
+        propertyRegion: property.region,
+        propertyCountry: property.country,
+        analysisStrategy: analysis.strategyType,
+        analysisCountryMode: analysis.countryMode,
+        capRate: analysisResults.capRate || "",
+        cashOnCash: analysisResults.cashOnCash || "",
+        dscr: analysisResults.dscr || "",
+        purchasePrice: analysisInputs.purchasePrice || "",
+        totalDealsAnalyzed: userDealCount,
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Webhook error:", err));
 
       res.json({
         success: true,
