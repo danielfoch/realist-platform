@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import axios from 'axios';
+import { spawn } from 'child_process';
 import { db } from './db';
 
 export interface LeadSubmission {
@@ -179,6 +180,22 @@ export function createLeadRouter(): Router {
           response.message = 'Lead saved and synced to CRM';
         } else {
           response.message = 'Lead saved locally (CRM not configured)';
+        }
+
+        // Enroll in realtor onboarding campaign if partnership type (non-blocking)
+        if (lead.inquiry_type === 'partnership') {
+          const nameParts = (lead.full_name || '').trim().split(' ');
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+          spawn('/opt/homebrew/bin/python3', [
+            '/Users/clyde/.openclaw/campaigns/enroll-lead.py',
+            `--email=${lead.email}`,
+            `--campaign=realtor-onboarding`,
+            `--first_name=${firstName}`,
+            `--last_name=${lastName}`,
+            `--company=${lead.company || ''}`,
+            `--source=${lead.source || 'website-form'}`,
+          ], { detached: true, stdio: 'ignore' }).unref();
         }
 
         res.status(201).json(response);

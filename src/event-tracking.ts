@@ -199,3 +199,49 @@ export async function handleGetEventSummary(req: Request, res: Response): Promis
     res.status(500).json({ success: false, error: message });
   }
 }
+
+export async function handleGetBroadcastStats(req: Request, res: Response) {
+  try {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const [eventsResult, dealsResult] = await Promise.all([
+      db.query(
+        `SELECT COUNT(*)::int as count FROM user_events
+         WHERE event_name = 'deal_analyzer_report_generated'
+         AND created_at >= $1`,
+        [weekAgo.toISOString()]
+      ),
+      db.query(
+        `SELECT
+           COUNT(*)::int as total_deals,
+           AVG(cap_rate)::float as avg_cap_rate,
+           AVG(irr)::float as avg_irr,
+           MODE() WITHIN GROUP (ORDER BY city) as top_market,
+           MODE() WITHIN GROUP (ORDER BY property_type) as top_property_type
+         FROM analyzed_deals
+         WHERE analyzed_at >= $1`,
+        [weekAgo.toISOString()]
+      )
+    ]);
+
+    const events = eventsResult.rows[0]?.count || 0;
+    const deals = dealsResult.rows[0];
+
+    res.json({
+      success: true,
+      data: {
+        deals_analyzed: events,
+        total_analyzed_deals: parseInt(deals?.total_deals) || 0,
+        avg_cap_rate: parseFloat((deals?.avg_cap_rate || 0).toFixed(2)),
+        avg_irr: parseFloat((deals?.avg_irr || 0).toFixed(1)),
+        top_market: deals?.top_market || 'Canada',
+        top_property_type: deals?.top_property_type || 'Multiplex',
+        period_start: weekAgo.toISOString().split('T')[0],
+      }
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, error: message });
+  }
+}

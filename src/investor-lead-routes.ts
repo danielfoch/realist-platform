@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
+import { spawn } from 'child_process';
 import { db } from './db';
 
 const GHL_API_BASE = process.env.GHL_API_BASE || 'https://rest.gohighlevel.com/v1';
@@ -120,6 +121,21 @@ export function createInvestorLeadRouter(): Router {
           `SELECT id, status FROM investor_leads WHERE email = $1`,
           [email]
         );
+
+        // Enroll in investor onboarding campaign (non-blocking)
+        const nameParts = (full_name || '').trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        const campaignCity = (preferred_cities as string) || '';
+        spawn('/opt/homebrew/bin/python3', [
+          '/Users/clyde/.openclaw/campaigns/enroll-lead.py',
+          `--email=${email}`,
+          `--campaign=investor-onboarding`,
+          `--first_name=${firstName}`,
+          `--last_name=${lastName}`,
+          `--city=${campaignCity}`,
+          `--source=realist-signup`,
+        ], { detached: true, stdio: 'ignore' }).unref();
 
         res.status(201).json({
           success: true,
