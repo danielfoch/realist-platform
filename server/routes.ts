@@ -409,6 +409,7 @@ export async function registerRoutes(
         leadId: lead.id,
         propertyId: property.id,
         userId: (req.session as any)?.userId || null,
+        sessionId: rawBody?.sessionId || null,
         address: propertyData.formattedAddress || null,
         city: propertyData.city || null,
         province: propertyData.region || null,
@@ -539,6 +540,17 @@ export async function registerRoutes(
 
         if (userId) {
           await storage.linkAnalysisToUser(analysis.id, userId);
+
+          const sessionId = rawBody?.sessionId;
+          if (sessionId) {
+            const backfilled = await db.execute(sql`
+              UPDATE analyses SET user_id = ${userId}
+              WHERE session_id = ${sessionId} AND user_id IS NULL
+            `);
+            if (backfilled.rowCount && backfilled.rowCount > 0) {
+              console.log(`[lead-enroll] Backfilled ${backfilled.rowCount} analyses for session ${sessionId} → user ${userId}`);
+            }
+          }
         }
       } catch (userError) {
         console.error("Auto-enroll user error:", userError);
@@ -1508,7 +1520,7 @@ export async function registerRoutes(
 
   app.post("/api/analyses", async (req, res) => {
     try {
-      const { countryMode, strategyType, inputsJson, resultsJson, address, city, province } = req.body;
+      const { countryMode, strategyType, inputsJson, resultsJson, address, city, province, sessionId } = req.body;
       if (!countryMode || !strategyType || !inputsJson) {
         return res.status(400).json({ error: "Missing required fields" });
       }
@@ -1519,6 +1531,7 @@ export async function registerRoutes(
         inputsJson,
         resultsJson: resultsJson || null,
         userId,
+        sessionId: sessionId || null,
         address: address || null,
         city: city || null,
         province: province || null,

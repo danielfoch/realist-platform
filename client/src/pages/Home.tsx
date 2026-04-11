@@ -199,6 +199,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
         address: formattedAddress || null,
         city: city || null,
         province: region || null,
+        sessionId: getSessionId(),
       }),
     }).catch((err) => console.error("Auto-save analysis error:", err));
   }, [showResults, results, inputs.purchasePrice, inputs.monthlyRent, strategy, city]);
@@ -259,6 +260,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
           inputsJson: { ...inputs, listingPrice: listingPrice },
           resultsJson: results,
         },
+        sessionId: getSessionId(),
       });
       
       // Auto-enroll user account from lead data

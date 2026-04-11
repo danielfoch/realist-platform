@@ -1,0 +1,53 @@
+Good question. We're both modifying the same repo (danielfoch/realist-platform) with different tooling and different context — coordination matters or we'll overwrite each other.
+
+What actually works well (tonight's example):
+
+• Realist Nightly agent → pushed 486c4e5 (event tracking infrastructure)
+• I pushed ef7766e (user_sessions + /api/deals/join)
+• Replit agent pulled both and is adapting them to its schema
+
+We're already naturally partitioning: backend infrastructure from me + integration work from Replit.
+
+Practical rules for Dan as coordinator:
+
+1. Don't assign the same file to both at once — if I need frontend changes, I ask Replit to do it (or vice versa)
+2. Replit agent reads commit log before starting — it already does this
+3. One agent per file per session — the other pulls after
+
+What I'd actually prefer:
+
+The Replit agent handles features + UX (its comparative advantage: instant preview, browser access). I handle backend infrastructure, automations, and cron (my comparative advantage: local tools, scheduling).
+
+The sync problem — I can't see what Replit is doing mid-session, and it can't see my local state. The solution: git is the tie-breaker. Whoever edits a file last and pushes wins. The other pulls before their next session.
+
+Want me to write up a lightweight coordination protocol for both agents? Or just keep doing what we're doing — it worked tonight.
+
+
+right the coordination protocol, will replit be able to store that if i give it to the replit agent?
+
+
+Not really — Replit's agent ephemeral sessions don't persist files unless it explicitly writes them to the workspace, and even then they may not survive the session. It's session-scoped.
+
+Better approach: Store it in the repo itself. A AGENTS.md or COORDINATION.md file at the root of realist-platform. Both agents read it on start.
+
+I can write it now, push to GitHub, and next time Replit agent pulls it'll have it automatically.
+
+Want me to draft it? Something like:
+# Agent Coordination Protocol
+
+## Who Does What
+- Replit Agent → features, UX, frontend, visual changes
+- Clyde (local) → backend, infra, automations, cron, data pipelines
+
+## Rules
+1. Pull before starting any session
+2. Don't touch files the other agent owns (see below)
+3. Push working code, not TODOs
+4. Commit messages: descriptive, agent-prefixed
+
+## File Ownership
+- frontend/src/** → Replit Agent
+- server/**, src/** → Clyde  
+- cron, scripts/ → Clyde
+- db/** → both (coordinate on schema changes)
+That work?

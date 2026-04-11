@@ -55,6 +55,7 @@ export const analyses = pgTable("analyses", {
   leadId: varchar("lead_id").references(() => leads.id),
   propertyId: varchar("property_id").references(() => properties.id),
   userId: varchar("user_id"),
+  sessionId: varchar("session_id"),
   countryMode: text("country_mode").notNull(),
   strategyType: text("strategy_type").notNull(),
   address: text("address"),
