@@ -8,6 +8,8 @@ import { CityYieldPage } from './pages/CityYieldPage'
 import { SixixplexPage } from './pages/SixixplexPage'
 import { SixixplexReportPage } from './pages/SixixplexReportPage'
 import { SixixplexListingsPage } from './pages/SixixplexListingsPage'
+import { InvestorAuthPage } from './pages/InvestorAuthPage'
+import { InvestorDashboard } from './pages/InvestorDashboard'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -34,6 +36,9 @@ function App() {
               </Link>
               <Link to="/realtor" className="text-sm font-medium hover:text-primary">
                 Realtor Portal
+              </Link>
+              <Link to="/investor" className="text-sm font-medium hover:text-primary">
+                Investors
               </Link>
               <Link to="/6ixplex" className="text-sm font-medium hover:text-primary">
                 Tools
@@ -64,6 +69,11 @@ function App() {
             <Route path="/6ixplex" element={<SixixplexPage />} />
             <Route path="/6ixplex/report" element={<SixixplexReportPage />} />
             <Route path="/6ixplex/listings" element={<SixixplexListingsPage />} />
+            
+            {/* Investor Routes */}
+            <Route path="/investor" element={<InvestorAuthPage />} />
+            <Route path="/investor/login" element={<InvestorAuthPage />} />
+            <Route path="/investor/dashboard" element={<InvestorDashboard />} />
           </Routes>
         </main>
         

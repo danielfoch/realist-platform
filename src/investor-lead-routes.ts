@@ -31,6 +31,206 @@ export function createInvestorLeadRouter(): Router {
     return true;
   };
 
+  // ==================== INVESTOR REGISTRATION ====================
+  router.post(
+    '/register',
+    async (req: Request, res: Response) => {
+      const { full_name, email, phone, password, strategy, preferred_cities, budget_range, property_types, experience_level, agreed_to_platform_terms, agreed_to_referral_terms, source } = req.body;
+
+      if (!full_name || !email || !password) {
+        res.status(400).json({ success: false, error: 'Name, email, and password are required' });
+        return;
+      }
+
+      if (password.length < 8) {
+        res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+        return;
+      }
+
+      if (!agreed_to_platform_terms || !agreed_to_referral_terms) {
+        res.status(400).json({ success: false, error: 'You must accept both the platform terms and referral agreement' });
+        return;
+      }
+
+      const bcrypt = await import('bcrypt');
+
+      try {
+        // Check if email already exists
+        const existing = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (existing.rows.length > 0) {
+          res.status(409).json({ success: false, error: 'An account with this email already exists' });
+          return;
+        }
+
+        const passwordHash = await bcrypt.hash(password, 12);
+
+        // Create user (shared auth table)
+        const userResult = await db.query(
+          `INSERT INTO users (full_name, email, phone, password_hash, role, created_at, updated_at) VALUES ($1, $2, $3, $4, 'investor', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id, full_name, email, phone, role`,
+          [full_name, email, phone || null, passwordHash]
+        );
+        const user = userResult.rows[0];
+
+        // Create investor profile
+        await db.query(
+          `INSERT INTO investor_profiles (user_id, strategy, preferred_cities, budget_range, property_types, experience_level, lead_source, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id`,
+          [user.id, strategy || null, preferred_cities || null, budget_range || null, property_types || null, experience_level || null, source || 'organic']
+        );
+
+        // Log agreement acceptance
+        await db.query(
+          `INSERT INTO agreement_acceptances (user_id, agreement_type, accepted_at, ip_address, user_agent) VALUES ($1, 'platform_terms', CURRENT_TIMESTAMP, $2, $3)`,
+          [user.id, req.ip || null, req.get('user-agent') || null]
+        );
+        await db.query(
+          `INSERT INTO agreement_acceptances (user_id, agreement_type, accepted_at, ip_address, user_agent) VALUES ($1, 'referral_agreement', CURRENT_TIMESTAMP, $2, $3)`,
+          [user.id, req.ip || null, req.get('user-agent') || null]
+        );
+
+        // Sync to GHL if configured
+        if (GHL_API_KEY && GHL_LOCATION_ID) {
+          try {
+            await fetch(`${GHL_API_BASE}/contacts/`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${GHL_API_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                locationId: GHL_LOCATION_ID,
+                name: full_name,
+                email,
+                phone,
+                tags: ['realist.ca', 'investorMember', ...(strategy || [])],
+                source: 'Realist.ca Investor Signup',
+              }),
+            }).catch(() => { /* ignore GHL failures */ });
+          } catch { /* ignore */ }
+        }
+
+        // Generate a simple JWT-like token (same approach as realtor auth)
+        const token = Buffer.from(`${user.id}:${Date.now()}:${Math.random()}`).toString('base64');
+
+        // Fetch full profile for response
+        const profileResult = await db.query(
+          `SELECT id, user_id, strategy, preferred_cities, budget_range, property_types, experience_level FROM investor_profiles WHERE user_id = $1`,
+          [user.id]
+        );
+        const profile = profileResult.rows?.[0];
+
+        // Also fetch leads for this user if any
+        const leadsResult = await db.query(
+          `SELECT id, status FROM investor_leads WHERE email = $1`,
+          [email]
+        );
+
+        res.status(201).json({
+          success: true,
+          data: {
+            user: { ...user, profile, leads: leadsResult.rows },
+            token,
+          },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        res.status(500).json({ success: false, error: message });
+      }
+    }
+  );
+
+  // ==================== INVESTOR LOGIN ====================
+  router.post(
+    '/login',
+    async (req: Request, res: Response) => {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        res.status(400).json({ success: false, error: 'Email and password are required' });
+        return;
+      }
+
+      const bcrypt = await import('bcrypt');
+
+      try {
+        const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (result.rows.length === 0) {
+          res.status(401).json({ success: false, error: 'Invalid email or password' });
+          return;
+        }
+        const user = result.rows[0];
+        const valid = await bcrypt.compare(password, user.password_hash);
+        if (!valid) {
+          res.status(401).json({ success: false, error: 'Invalid email or password' });
+          return;
+        }
+
+        // Fetch investor profile
+        const profileResult = await db.query(
+          `SELECT id, user_id, strategy, preferred_cities, budget_range, property_types, experience_level FROM investor_profiles WHERE user_id = $1`,
+          [user.id]
+        );
+        const profile = profileResult.rows?.[0];
+
+        // Also fetch leads for this user if any
+        const leadsResult = await db.query(
+          `SELECT id, status FROM investor_leads WHERE email = $1`,
+          [email]
+        );
+
+        const token = Buffer.from(`${user.id}:${Date.now()}:${Math.random()}`).toString('base64');
+
+        // Sanitize user for response
+        const { password_hash, ...safeUser } = user;
+
+        res.json({
+          success: true,
+          data: { user: { ...safeUser, profile, leads: leadsResult.rows }, token },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        res.status(500).json({ success: false, error: message });
+      }
+    }
+  );
+
+  // ==================== GET INVESTOR DEALS ====================
+  router.get(
+    '/deals',
+    async (req: Request, res: Response) => {
+      const { limit = 20, offset = 0 } = req.query;
+
+      // For now return all analyzed deals (no auth enforcement yet)
+      try {
+        const [dealsResult, totalResult] = await Promise.all([
+          db.query(
+            `SELECT * FROM analyzed_deals ORDER BY analyzed_at DESC LIMIT $1 OFFSET $2`,
+            [Number(limit), Number(offset)]
+          ),
+          db.query(`SELECT COUNT(*) FROM analyzed_deals`),
+        ]);
+
+        const total = Number(totalResult.rows?.[0]?.count || 0);
+        const deals = dealsResult.rows;
+
+        // Averages
+        const avgResult = await db.query(
+          `SELECT AVG(cap_rate) as avg_cap, AVG(cash_on_cash) as avg_coc, AVG(monthly_cash_flow) as avg_cf FROM analyzed_deals`
+        );
+        const avg = avgResult.rows?.[0] || {};
+
+        res.json({
+          success: true,
+          deals,
+          pagination: { total, limit: Number(limit), offset: Number(offset) },
+          avg_cap_rate: parseFloat(avg?.avg_cap || 0).toFixed(2),
+          avg_cash_on_cash: parseFloat(avg?.avg_coc || 0).toFixed(2),
+          avg_cash_flow: parseFloat(avg?.avg_cf || 0).toFixed(2),
+        });
+      } catch (error) {
+        // If table doesn't exist yet, return empty
+        console.log('[WARN] analyzed_deals table not ready:', error);
+        res.json({ success: true, deals: [], pagination: { total: 0, limit: 20, offset: 0 }, avg_cap_rate: 0, avg_cash_on_cash: 0, avg_cash_flow: 0 });
+      }
+    }
+  );
+
   // ==================== SUBMIT INVESTOR LEAD ====================
   router.post(
     '/submit',
