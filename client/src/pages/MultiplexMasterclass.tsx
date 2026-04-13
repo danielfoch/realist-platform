@@ -34,7 +34,7 @@ interface PlatformStats {
   avgDscr: number | null;
 }
 
-const PRICE = 999;
+const PRICE = 499;
 const CURRENCY = "CAD";
 const META_PIXEL_ID = "2277841159406713";
 

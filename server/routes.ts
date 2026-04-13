@@ -7794,7 +7794,7 @@ export async function registerRoutes(
               name: "Multiplex Masterclass Canada",
               description: "Complete program: financing, zoning, construction, coaching, and community access.",
             },
-            unit_amount: 99900,
+            unit_amount: 49900,
           },
           quantity: 1,
         }],
