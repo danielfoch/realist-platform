@@ -57,6 +57,7 @@ import MultiplexFit from "@/pages/MultiplexFit";
 import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
 import Course from "@/pages/Course";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
+import BuildingPermitsReport from "@/pages/BuildingPermitsReport";
 import JoinRealtors from "@/pages/JoinRealtors";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
@@ -107,6 +108,7 @@ function Router() {
       <Route path="/insights/market-report" component={MarketReport} />
       <Route path="/insights/mortgage-rates" component={MortgageRates} />
       <Route path="/insights/market-report-builder" component={MarketReportBuilder} />
+      <Route path="/insights/building-permits" component={BuildingPermitsReport} />
       <Route path="/premium" component={Premium} />
       <Route path="/premium/branding" component={PremiumBranding} />
       

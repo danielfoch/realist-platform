@@ -842,6 +842,30 @@ export default function MarketReport() {
                 DDF listing data is crawled automatically each month across {latestYieldForCities.length || 34} Canadian markets.
               </p>
             </div>
+
+            <div className="mt-16 border-t pt-12" data-testid="section-macro-reports">
+              <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
+              <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Link href="/insights/building-permits">
+                  <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-building-permits">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                          <Building2 className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">Feb 2026</Badge>
+                      </div>
+                      <h3 className="font-bold text-sm mb-1">Building Permits</h3>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Total permits fell 8.4% to $12.1B. Non-residential down 24%, residential up 1.7%.
+                      </p>
+                      <span className="text-xs text-primary font-medium">View Report →</span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </div>
+            </div>
           </>
         )}
       </div>
