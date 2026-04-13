@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Link, useSearch } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
@@ -73,6 +73,8 @@ export default function Home({ embedded }: { embedded?: boolean }) {
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
   const searchString = useSearch();
+  const [location] = useLocation();
+  const isStandaloneTool = location === "/tools/analyzer" || location === "/deal-analyzer";
   const analyzerRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -558,11 +560,11 @@ export default function Home({ embedded }: { embedded?: boolean }) {
       <Navigation />
       
       <main>
-        <HeroSection onAnalyzeClick={handleAnalyzeClick} />
+        {!isStandaloneTool && <HeroSection onAnalyzeClick={handleAnalyzeClick} />}
 
         <section 
           ref={analyzerRef}
-          className="py-16 md:py-24 border-t border-border/50"
+          className={isStandaloneTool ? "py-8 md:py-12" : "py-16 md:py-24 border-t border-border/50"}
           id="analyzer"
         >
           <div className="max-w-7xl mx-auto px-4 md:px-6 overflow-x-hidden">
