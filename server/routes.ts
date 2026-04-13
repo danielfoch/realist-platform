@@ -6249,8 +6249,8 @@ export async function registerRoutes(
       const [dealStats, cityStats, userStats] = await Promise.all([
         db.select({
           totalDeals: count(analyses.id),
-          avgCapRate: sql<number>`ROUND(AVG((${analyses.resultsJson}->>'capRate')::float)::numeric, 2)`,
-          avgCashOnCash: sql<number>`ROUND(AVG((${analyses.resultsJson}->>'cashOnCashReturn')::float)::numeric, 1)`,
+          avgCapRate: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)::numeric, 2)`,
+          avgCashOnCash: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'cashOnCash')::numeric ELSE NULL END)::numeric, 1)`,
         })
           .from(analyses)
           .where(sql`${analyses.createdAt} >= ${weekAgo.toISOString()}`),

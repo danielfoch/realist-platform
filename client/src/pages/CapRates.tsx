@@ -898,33 +898,45 @@ export default function CapRates() {
               <span>NOI: {formatPrice(listing.annualNOI)}/yr</span>
             </div>
 
-            {(() => {
-              const agg = aggregatesMap[listing.mlsNumber];
-              if (agg && ((agg.analysisCount ?? 0) > 0 || (agg.commentCount ?? 0) > 0)) {
-                const ac = agg.analysisCount ?? 0;
-                const cc = agg.commentCount ?? 0;
+            <div className="flex items-center justify-between mt-1">
+              {(() => {
+                const agg = aggregatesMap[listing.mlsNumber];
+                if (agg && ((agg.analysisCount ?? 0) > 0 || (agg.commentCount ?? 0) > 0)) {
+                  const ac = agg.analysisCount ?? 0;
+                  const cc = agg.commentCount ?? 0;
+                  return (
+                    <div className="flex items-center gap-2">
+                      {agg.communityCapRate != null && (
+                        <Badge variant="secondary" className="text-[9px] px-1 py-0" data-testid={`badge-community-cap-${listing.mlsNumber}`}>
+                          <Users className="h-2.5 w-2.5 mr-0.5" />
+                          {agg.communityCapRate.toFixed(1)}%
+                        </Badge>
+                      )}
+                      <span className="text-[9px] text-muted-foreground" data-testid={`text-community-stats-${listing.mlsNumber}`}>
+                        {ac} {ac === 1 ? "analysis" : "analyses"} · {cc} {cc === 1 ? "note" : "notes"}
+                      </span>
+                    </div>
+                  );
+                }
                 return (
-                  <div className="flex items-center gap-2 mt-1">
-                    {agg.communityCapRate != null && (
-                      <Badge variant="secondary" className="text-[9px] px-1 py-0" data-testid={`badge-community-cap-${listing.mlsNumber}`}>
-                        <Users className="h-2.5 w-2.5 mr-0.5" />
-                        {agg.communityCapRate.toFixed(1)}%
-                      </Badge>
-                    )}
-                    <span className="text-[9px] text-muted-foreground" data-testid={`text-community-stats-${listing.mlsNumber}`}>
-                      {ac} {ac === 1 ? "analysis" : "analyses"} · {cc} {cc === 1 ? "note" : "notes"}
-                    </span>
-                  </div>
-                );
-              }
-              return (
-                <div className="mt-1">
                   <span className="text-[9px] text-primary cursor-pointer" data-testid={`link-first-analyze-${listing.mlsNumber}`}>
                     Be first to analyze
                   </span>
-                </div>
-              );
-            })()}
+                );
+              })()}
+              <Badge
+                variant="outline"
+                className="text-[9px] px-1.5 py-0 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors flex-shrink-0"
+                data-testid={`badge-analyze-deal-${listing.mlsNumber}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAnalyzeListing(listing);
+                }}
+              >
+                <Calculator className="h-2.5 w-2.5 mr-0.5" />
+                Analyze Deal
+              </Badge>
+            </div>
           </div>
         </div>
       </div>
