@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen, CheckCircle2, Circle, ChevronRight, ChevronDown,
   Play, Lock, ArrowRight, Users, ExternalLink, Menu, X, LogIn,
-  BarChart3, MessageSquare, Rocket
+  BarChart3, MessageSquare, Rocket, Clock
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -42,6 +42,8 @@ interface CourseData {
 interface EnrollmentData {
   enrolled: boolean;
   coachingExpired?: boolean;
+  accessExpired?: boolean;
+  accessType?: string;
   enrolledAt?: string;
   expiresAt?: string | null;
 }
@@ -107,6 +109,38 @@ function LoginPrompt() {
   );
 }
 
+function AccessExpired({ expiresAt }: { expiresAt?: string | null }) {
+  const [, navigate] = useLocation();
+  const expiredDate = expiresAt ? new Date(expiresAt).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }) : null;
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
+      <Card className="max-w-lg w-full border-0 shadow-xl" data-testid="course-expired">
+        <CardContent className="p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
+            <Clock className="w-8 h-8 text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+            Access Expired
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
+            Your access to the Multiplex Masterclass ended{expiredDate ? ` on ${expiredDate}` : ""}.
+          </p>
+          <p className="text-gray-500 dark:text-gray-500 text-sm mb-6">
+            Renew your access to continue learning and stay connected with the community.
+          </p>
+          <Button
+            onClick={() => navigate("/masterclass")}
+            className="bg-red-500 hover:bg-red-600 text-white px-8 py-3"
+            data-testid="course-renew-cta"
+          >
+            Renew Access <ArrowRight className="ml-2 w-4 h-4" />
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function Course() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -160,6 +194,10 @@ export default function Course() {
 
   if (enrollmentError) {
     return <LoginPrompt />;
+  }
+
+  if (enrollment?.accessExpired) {
+    return <AccessExpired expiresAt={enrollment.expiresAt} />;
   }
 
   if (!enrollment?.enrolled) {

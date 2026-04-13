@@ -462,7 +462,7 @@ export default function MultiplexMasterclass() {
                     ${PRICE}
                     <span className="text-lg font-normal text-gray-500 ml-1">{CURRENCY}</span>
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">Lifetime access · No recurring fees</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">1 Year Access · No recurring fees</div>
                   <Button
                     size="lg"
                     onClick={scrollToForm}
@@ -491,7 +491,7 @@ export default function MultiplexMasterclass() {
               {[
                 { q: "Is this relevant outside of Toronto?", a: "Yes. The program covers zoning and financing across all major Canadian markets including Vancouver, Calgary, Ottawa, Montreal, and more. We include province-specific guidance for every module." },
                 { q: "Do I need construction experience?", a: "No. We walk you through every step from site selection to managing contractors. The program is designed for investors and homeowners, not builders." },
-                { q: "How long do I have access?", a: "Lifetime. Once you purchase, you have permanent access to all course materials, future updates, and the private community." },
+                { q: "How long do I have access?", a: "Your purchase includes 1 full year of access to all course materials, updates, and the private community. You can renew after your year is up." },
                 { q: "What if I'm not satisfied?", a: "We offer a full 30-day money-back guarantee. If the program doesn't meet your expectations, email us for a complete refund — no questions asked." },
                 { q: "Are the coaching calls included?", a: "Yes. Weekly group coaching calls are included with your purchase for up to 1 year. You'll be able to ask questions and get live feedback from the team." },
               ].map((faq, i) => (
@@ -630,7 +630,7 @@ export default function MultiplexMasterclass() {
                   <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 mb-6">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Total</div>
                     <div className="text-3xl font-bold text-gray-900 dark:text-white font-mono">${PRICE} <span className="text-base font-normal text-gray-500">{CURRENCY}</span></div>
-                    <div className="text-xs text-gray-400 mt-1">One-time payment · Lifetime access</div>
+                    <div className="text-xs text-gray-400 mt-1">One-time payment · 1 Year Access</div>
                   </div>
                   <Button
                     size="lg"

@@ -8174,13 +8174,15 @@ export async function registerRoutes(
         return res.json({ enrolled: false });
       }
 
-      const coachingExpired = enrollment.expiresAt && new Date(enrollment.expiresAt) < new Date();
+      const now = new Date();
+      const accessExpired = enrollment.expiresAt && new Date(enrollment.expiresAt) < now;
 
       res.json({
-        enrolled: true,
+        enrolled: !accessExpired,
         enrolledAt: enrollment.enrolledAt,
         expiresAt: enrollment.expiresAt,
-        coachingExpired: !!coachingExpired,
+        accessExpired: !!accessExpired,
+        accessType: enrollment.stripeSessionId ? "paid" : "trial",
       });
     } catch (error: any) {
       res.status(500).json({ error: "Failed to check enrollment" });
@@ -8201,6 +8203,11 @@ export async function registerRoutes(
 
       if (!enrollment) {
         return res.status(403).json({ error: "Not enrolled" });
+      }
+
+      const accessExpired = enrollment.expiresAt && new Date(enrollment.expiresAt) < new Date();
+      if (accessExpired) {
+        return res.status(403).json({ error: "Access expired", expired: true });
       }
 
       const modules = await db
@@ -8350,7 +8357,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/course/enroll", isAdmin, async (req: any, res) => {
     try {
-      const { userId, email } = req.body;
+      const { userId, email, durationMonths } = req.body;
       let targetUserId = userId;
 
       if (!targetUserId && email) {
@@ -8361,6 +8368,10 @@ export async function registerRoutes(
 
       if (!targetUserId) return res.status(400).json({ error: "userId or email required" });
 
+      const months = durationMonths || 12;
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + months);
+
       const [existing] = await db
         .select()
         .from(courseEnrollments)
@@ -8370,16 +8381,86 @@ export async function registerRoutes(
         ))
         .limit(1);
 
-      if (existing) return res.json({ message: "Already enrolled", enrollment: existing });
+      if (existing) {
+        const existingExpired = existing.expiresAt && new Date(existing.expiresAt) < new Date();
+        if (!existingExpired) {
+          return res.json({ message: "Already enrolled and active", enrollment: existing });
+        }
+        const [updated] = await db.update(courseEnrollments)
+          .set({ expiresAt, enrolledAt: new Date() })
+          .where(eq(courseEnrollments.id, existing.id))
+          .returning();
+        return res.json({ message: `Re-enrolled for ${months} months`, enrollment: updated });
+      }
 
       const [enrollment] = await db.insert(courseEnrollments).values({
         userId: targetUserId,
         courseId: "multiplex_masterclass",
+        expiresAt,
       }).returning();
 
-      res.json({ message: "Enrolled", enrollment });
+      res.json({ message: `Enrolled for ${months} months (expires ${expiresAt.toISOString().split('T')[0]})`, enrollment });
     } catch (error: any) {
       res.status(500).json({ error: "Failed to enroll" });
+    }
+  });
+
+  app.post("/api/admin/course/grant-trial", isAdmin, async (req: any, res) => {
+    try {
+      const { emails, durationMonths } = req.body;
+      if (!emails || !Array.isArray(emails) || emails.length === 0) {
+        return res.status(400).json({ error: "emails array required" });
+      }
+
+      const months = durationMonths || 1;
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + months);
+
+      const results: { email: string; status: string }[] = [];
+
+      for (const email of emails) {
+        try {
+          const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase().trim())).limit(1);
+          if (!user) {
+            results.push({ email, status: "no_account" });
+            continue;
+          }
+
+          const [existing] = await db.select().from(courseEnrollments)
+            .where(and(eq(courseEnrollments.userId, user.id), eq(courseEnrollments.courseId, "multiplex_masterclass")))
+            .limit(1);
+
+          if (existing) {
+            const existingExpired = existing.expiresAt && new Date(existing.expiresAt) < new Date();
+            if (!existingExpired) {
+              results.push({ email, status: "already_active" });
+              continue;
+            }
+            await db.update(courseEnrollments)
+              .set({ expiresAt, enrolledAt: new Date() })
+              .where(eq(courseEnrollments.id, existing.id));
+            results.push({ email, status: "reactivated" });
+          } else {
+            await db.insert(courseEnrollments).values({
+              userId: user.id,
+              courseId: "multiplex_masterclass",
+              expiresAt,
+            });
+            results.push({ email, status: "granted" });
+          }
+        } catch (err) {
+          results.push({ email, status: "error" });
+        }
+      }
+
+      const granted = results.filter(r => r.status === "granted" || r.status === "reactivated").length;
+      res.json({
+        message: `Granted ${months}-month trial to ${granted}/${emails.length} users`,
+        expiresAt: expiresAt.toISOString().split("T")[0],
+        results,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to grant trials" });
     }
   });
 

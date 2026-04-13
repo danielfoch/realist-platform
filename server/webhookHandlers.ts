@@ -97,12 +97,22 @@ export class WebhookHandlers {
                   .where(and(eq(courseEnrollments.userId, user.id), eq(courseEnrollments.courseId, "multiplex_masterclass")))
                   .limit(1);
                 if (!existing) {
+                  const oneYearFromNow = new Date();
+                  oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
                   await db.insert(courseEnrollments).values({
                     userId: user.id,
                     courseId: "multiplex_masterclass",
                     stripeSessionId: session.id,
+                    expiresAt: oneYearFromNow,
                   });
-                  console.log(`[webhook] Auto-enrolled ${customerEmail} in masterclass course`);
+                  console.log(`[webhook] Auto-enrolled ${customerEmail} in masterclass course (expires ${oneYearFromNow.toISOString().split('T')[0]})`);
+                } else if (!existing.expiresAt) {
+                  const oneYearFromNow = new Date();
+                  oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+                  await db.update(courseEnrollments)
+                    .set({ expiresAt: oneYearFromNow, stripeSessionId: session.id })
+                    .where(eq(courseEnrollments.id, existing.id));
+                  console.log(`[webhook] Updated ${customerEmail} enrollment with 1-year expiry`);
                 }
               } else {
                 console.log(`[webhook] No Realist account found for ${customerEmail} — will need manual enrollment`);
