@@ -21,6 +21,8 @@ type EventName =
   | 'deal_analyzer_start'
   | 'deal_analyzer_report_generated'
   | 'deal_analyzer_saved'
+  | 'listing_analyze_click'
+  | 'listing_lead_submitted'
   | 'investor_signup_started'
   | 'investor_signup_completed'
   | 'lead_form_started'
