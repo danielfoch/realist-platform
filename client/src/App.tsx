@@ -58,6 +58,7 @@ import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
 import Course from "@/pages/Course";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
 import BuildingPermitsReport from "@/pages/BuildingPermitsReport";
+import ProductivityGapReport from "@/pages/ProductivityGapReport";
 import JoinRealtors from "@/pages/JoinRealtors";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
@@ -109,6 +110,7 @@ function Router() {
       <Route path="/insights/mortgage-rates" component={MortgageRates} />
       <Route path="/insights/market-report-builder" component={MarketReportBuilder} />
       <Route path="/insights/building-permits" component={BuildingPermitsReport} />
+      <Route path="/insights/productivity-gap" component={ProductivityGapReport} />
       <Route path="/premium" component={Premium} />
       <Route path="/premium/branding" component={PremiumBranding} />
       
