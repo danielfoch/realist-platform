@@ -11,6 +11,7 @@ interface FormData {
   assetTypes: string[];
   dealTypes: string[];
   avgDealSize: string;
+  referralFee: string;
   referralAgreement: boolean;
 }
 
@@ -34,11 +35,16 @@ const AVG_DEAL_SIZES = [
   'Under $500K', '$500K - $1M', '$1M - $2M', '$2M - $5M', 'Over $5M'
 ];
 
+const REFERRAL_FEES = [
+  '20%', '25%', '30%', '35%', '40%', 'Custom'
+];
+
 const STEPS = [
   { id: 1, title: 'Contact Info' },
   { id: 2, title: 'Business Info' },
   { id: 3, title: 'Preferences' },
-  { id: 4, title: 'Agreement' },
+  { id: 4, title: 'Referral Fee' },
+  { id: 5, title: 'Agreement' },
 ];
 
 export function JoinRealtorsPage() {
@@ -57,6 +63,7 @@ export function JoinRealtorsPage() {
     assetTypes: [],
     dealTypes: [],
     avgDealSize: '',
+    referralFee: '',
     referralAgreement: false,
   });
 
@@ -94,6 +101,8 @@ export function JoinRealtorsPage() {
       case 3:
         return !!formData.avgDealSize;
       case 4:
+        return !!formData.referralFee;
+      case 5:
         return formData.referralAgreement;
       default:
         return true;
@@ -101,7 +110,11 @@ export function JoinRealtorsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(4)) {
+    if (!formData.referralFee) {
+      setError('Please select your referral fee');
+      return;
+    }
+    if (!formData.referralAgreement) {
       setError('Please accept the referral agreement');
       return;
     }
@@ -284,6 +297,34 @@ export function JoinRealtorsPage() {
 
           {step === 4 && (
             <div className="form-step">
+              <h2>Referral Fee</h2>
+              <div className="agreement-box">
+                <p>What referral fee do you offer Realist for qualified leads?</p>
+                <ul>
+                  <li>This sets expectations and helps us prioritize your referrals</li>
+                  <li>Standard rates are 25-30% — higher rates get preferred routing</li>
+                </ul>
+              </div>
+              <div className="form-group">
+                <label>Referral Fee Percentage *</label>
+                <select
+                  value={formData.referralFee}
+                  onChange={e => updateField('referralFee', e.target.value)}
+                >
+                  <option value="">Select your referral fee</option>
+                  {REFERRAL_FEES.map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </div>
+              <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '1rem' }}>
+                Your fee is visible to matched investors when appropriate. You can update it anytime.
+              </p>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="form-step">
               <h2>Agreement</h2>
               <div className="agreement-box">
                 <p>By checking the box below, you agree to:</p>
@@ -291,6 +332,7 @@ export function JoinRealtorsPage() {
                   <li>Receive referral leads from Realist investors</li>
                   <li>Provide competitive pricing and service</li>
                   <li>Participate in market feedback and reviews</li>
+                  <li>Honor the referral fee you selected for qualifying leads</li>
                 </ul>
               </div>
               <div className="form-group checkbox-group">
@@ -318,7 +360,7 @@ export function JoinRealtorsPage() {
                 Back
               </button>
             )}
-            {step < 4 ? (
+            {step < 5 ? (
               <button
                 onClick={() => setStep(s => s + 1)}
                 className="btn-primary"

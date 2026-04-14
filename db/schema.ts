@@ -15,6 +15,8 @@ export const realtors = pgTable('realtors', {
   assetTypes: jsonb('asset_types').notNull().default([]),
   dealTypes: jsonb('deal_types').notNull().default([]),
   avgDealSize: text('avg_deal_size'),
+  // Referral fee percentage offered for Realist-sourced leads (structured data for marketplace economics)
+  referralFee: text('referral_fee'),
   referralAgreement: boolean('referral_agreement').default(false),
   status: text('status').default('active'),
   createdAt: timestamp('created_at').defaultNow(),
@@ -49,6 +51,8 @@ export const dealLeads = pgTable('deal_leads', {
   purchasePrice: integer('purchase_price'),
   financingNotes: text('financing_notes'),
   investorGoals: text('investor_goals'),
+  // Referral fee percentage offered by matching realtor (structured data for marketplace economics)
+  referralFeePct: real('referral_fee_pct'),
   status: text('status').default('new'),
   matchedRealtorId: integer('matched_realtor_id').references(() => realtors.id),
   matchedLenderId: integer('matched_lender_id').references(() => lenders.id),

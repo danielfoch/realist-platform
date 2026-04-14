@@ -19,6 +19,7 @@ interface JoinRealtorBody {
   assetTypes: string[];
   dealTypes: string[];
   avgDealSize: string;
+  referralFee: string;
   referralAgreement: boolean;
 }
 
@@ -64,6 +65,9 @@ router.post('/realtors/join', async (req, res) => {
     if (!body.dealTypes?.length) {
       return res.status(400).json({ error: 'At least one deal type is required' });
     }
+    if (!body.referralFee) {
+      return res.status(400).json({ error: 'Referral fee selection is required' });
+    }
     if (!body.referralAgreement) {
       return res.status(400).json({ error: 'Referral agreement is required' });
     }
@@ -86,6 +90,7 @@ router.post('/realtors/join', async (req, res) => {
       assetTypes: body.assetTypes,
       dealTypes: body.dealTypes,
       avgDealSize: body.avgDealSize || null,
+      referralFee: body.referralFee,
       referralAgreement: body.referralAgreement,
       status: 'active',
     }).returning();
