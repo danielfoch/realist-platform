@@ -346,8 +346,6 @@ export interface TrueCostInput {
 
 export interface CostBreakdown {
   homeValue: number;
-  landCost: number;
-  constructionCost: number;
   developmentCharges: number;
   provincialLTT: number;
   municipalLTT: number;
@@ -365,15 +363,9 @@ export interface CostBreakdown {
   oldRebateComparison: number;
   enhancedSavings: number;
   taxOnTax: number;
-  developerMargin: number;
   totalCosts: number;
   fmvWithHST: number;
   matchedMunicipality: string | null;
-  breakdown: {
-    category: string;
-    amount: number;
-    percentage: number;
-  }[];
 }
 
 // Fuzzy match a user-entered city/address to a known municipality
@@ -543,15 +535,9 @@ function calculateHSTRebate(
 }
 
 export function calculateTrueCost(input: TrueCostInput): CostBreakdown {
-  const { homeValue, city, isNewConstruction, buyerType, homeType, squareFootage = 1200 } = input;
+  const { homeValue, city, isNewConstruction, buyerType, homeType } = input;
 
   const matchedMuni = matchMunicipality(city);
-
-  const landCost = Math.round(homeValue * 0.30);
-
-  const costRange = constructionCosts[homeType] || constructionCosts["Detached"];
-  const avgCostPerSqFt = (costRange.min + costRange.max) / 2;
-  const constructionCost = isNewConstruction ? Math.round(avgCostPerSqFt * squareFootage) : 0;
 
   const devCharges = isNewConstruction ? (matchedMuni?.developmentCharge || 0) : 0;
 
@@ -576,10 +562,6 @@ export function calculateTrueCost(input: TrueCostInput): CostBreakdown {
 
   const taxOnTax = isNewConstruction ? Math.round(devCharges * hstGstRules.taxRates.HST) : 0;
 
-  const developerMargin = isNewConstruction 
-    ? Math.round((landCost + constructionCost + devCharges) * 0.10)
-    : 0;
-
   const totalCosts = 
     (totalLTT - lttRebate) + 
     hstResult.netHST + 
@@ -587,24 +569,8 @@ export function calculateTrueCost(input: TrueCostInput): CostBreakdown {
 
   const fmvWithHST = homeValue + hstResult.netHST;
 
-  const breakdown = [
-    { category: "Land Value", amount: landCost, percentage: 0 },
-    { category: "Construction", amount: constructionCost, percentage: 0 },
-    { category: "Development Charges", amount: devCharges, percentage: 0 },
-    { category: "Land Transfer Tax", amount: totalLTT - lttRebate, percentage: 0 },
-    { category: "HST (Net)", amount: hstResult.netHST, percentage: 0 },
-    { category: "Developer Margin", amount: developerMargin, percentage: 0 },
-  ].filter(item => item.amount > 0);
-
-  const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
-  breakdown.forEach(item => {
-    item.percentage = total > 0 ? Math.round((item.amount / total) * 100) : 0;
-  });
-
   return {
     homeValue,
-    landCost,
-    constructionCost,
     developmentCharges: devCharges,
     provincialLTT,
     municipalLTT,
@@ -622,10 +588,8 @@ export function calculateTrueCost(input: TrueCostInput): CostBreakdown {
     oldRebateComparison: hstResult.oldRebateComparison,
     enhancedSavings: hstResult.enhancedSavings,
     taxOnTax,
-    developerMargin,
     totalCosts,
     fmvWithHST,
     matchedMunicipality: matchedMuni?.name || null,
-    breakdown,
   };
 }

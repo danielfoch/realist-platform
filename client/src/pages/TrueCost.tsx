@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import {
   Form,
   FormControl,
@@ -45,15 +44,12 @@ const formSchema = z.object({
   isNewConstruction: z.boolean(),
   buyerType: z.string().min(1, "Buyer type is required"),
   homeType: z.string().min(1, "Home type is required"),
-  squareFootage: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 interface CostBreakdown {
   homeValue: number;
-  landCost: number;
-  constructionCost: number;
   developmentCharges: number;
   provincialLTT: number;
   municipalLTT: number;
@@ -71,25 +67,11 @@ interface CostBreakdown {
   oldRebateComparison: number;
   enhancedSavings: number;
   taxOnTax: number;
-  developerMargin: number;
   totalCosts: number;
   fmvWithHST: number;
   matchedMunicipality: string | null;
-  breakdown: {
-    category: string;
-    amount: number;
-    percentage: number;
-  }[];
 }
 
-const CHART_COLORS = [
-  "#3b82f6",
-  "#22c55e",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#06b6d4",
-];
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-CA", {
@@ -174,7 +156,6 @@ export default function TrueCost() {
       isNewConstruction: boolean;
       buyerType: string;
       homeType: string;
-      squareFootage?: number;
     }) => {
       const response = await apiRequest("POST", "/api/true-cost/calculate", data);
       return response.json();
@@ -194,15 +175,11 @@ export default function TrueCost() {
       isNewConstruction: true,
       buyerType: "First-Time",
       homeType: "Detached",
-      squareFootage: "1200",
     },
   });
 
   const onSubmit = (data: FormValues) => {
     const homeValue = parseFloat(data.homeValue.replace(/[^0-9.-]+/g, ""));
-    const squareFootage = data.squareFootage
-      ? parseFloat(data.squareFootage.replace(/[^0-9.-]+/g, ""))
-      : undefined;
 
     calculateMutation.mutate({
       homeValue,
@@ -210,7 +187,6 @@ export default function TrueCost() {
       isNewConstruction: data.isNewConstruction,
       buyerType: data.buyerType,
       homeType: data.homeType,
-      squareFootage,
     });
   };
 
@@ -398,37 +374,6 @@ export default function TrueCost() {
                     )}
                   />
 
-                  {isNewConstruction && (
-                    <FormField
-                      control={form.control}
-                      name="squareFootage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            Square Footage
-                            <UITooltip>
-                              <TooltipTrigger asChild>
-                                <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Used to estimate construction costs</p>
-                              </TooltipContent>
-                            </UITooltip>
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="1,200"
-                              className="h-12 font-mono"
-                              data-testid="input-square-footage"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
                   <Button
                     type="submit"
                     className="w-full h-12"
@@ -481,43 +426,6 @@ export default function TrueCost() {
                       </Card>
                     </div>
                   )}
-                  <Card className={showTeaser && !isAuthenticated ? "blur-sm pointer-events-none" : ""}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Cost Breakdown</CardTitle>
-                      <CardDescription>
-                        How your home price breaks down
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={result.breakdown}
-                              dataKey="amount"
-                              nameKey="category"
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={100}
-                              paddingAngle={2}
-                            >
-                              {result.breakdown.map((entry, index) => (
-                                <Cell
-                                  key={`cell-${index}`}
-                                  fill={CHART_COLORS[index % CHART_COLORS.length]}
-                                />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(value: number) => formatCurrency(value)}
-                            />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
 
                 <Card className={showTeaser && !isAuthenticated ? "blur-sm pointer-events-none" : ""}>
@@ -531,24 +439,6 @@ export default function TrueCost() {
                         {formatCurrency(result.homeValue)}
                       </span>
                     </div>
-
-                    {result.landCost > 0 && (
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-muted-foreground">Land Value (Est. 30%)</span>
-                        <span className="font-mono">
-                          {formatCurrency(result.landCost)}
-                        </span>
-                      </div>
-                    )}
-
-                    {result.constructionCost > 0 && (
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-muted-foreground">Construction Cost</span>
-                        <span className="font-mono">
-                          {formatCurrency(result.constructionCost)}
-                        </span>
-                      </div>
-                    )}
 
                     {result.developmentCharges > 0 && (
                       <div className="flex justify-between py-2 border-b">
@@ -681,15 +571,6 @@ export default function TrueCost() {
                       </>
                     )}
 
-                    {result.developerMargin > 0 && (
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-muted-foreground">Developer Margin (10%)</span>
-                        <span className="font-mono">
-                          {formatCurrency(result.developerMargin)}
-                        </span>
-                      </div>
-                    )}
-
                     <div className="flex justify-between py-3 bg-muted/50 rounded-lg px-3 mt-4">
                       <span className="font-semibold">Additional Closing Costs</span>
                       <span className="font-mono font-bold text-lg">
@@ -706,10 +587,10 @@ export default function TrueCost() {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground text-center">
-                  Estimates based on 2025-2026 Ontario rates (BILD/Altus, CMHC, CRA). Reflects the Enhanced GST/HST New Housing Rebate 
-                  (MNP / Ministry of Finance, April 2026). HST rebate = original $24K Ontario base + enhanced federal ($50K max) and Ontario ($56K max additional).
-                  "Tax on tax" reflects HST charged on the portion of the purchase price attributable to development charges. Actual costs may vary.
-                  This is for educational purposes only and not financial advice.
+                  Land transfer tax brackets: <a href="https://www.ontario.ca/document/land-transfer-tax" className="underline" target="_blank" rel="noopener noreferrer">Ontario Ministry of Finance</a>.
+                  {" "}Development charges: <a href="https://bildgta.ca/what-we-do/government-relations/municipal-benchmarking-study/" className="underline" target="_blank" rel="noopener noreferrer">BILD / Altus Group (2024)</a>.
+                  {" "}Enhanced GST/HST New Housing Rebate: <a href="https://www.canada.ca/en/department-finance/news/2025/03/making-housing-more-affordable.html" className="underline" target="_blank" rel="noopener noreferrer">Dept. of Finance / MNP (April 2026)</a>.
+                  {" "}Actual costs may vary. This is for educational purposes only and not financial advice.
                 </p>
               </>
             ) : (
