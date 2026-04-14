@@ -64,10 +64,16 @@ interface CostBreakdown {
   netHST: number;
   federalGST: number;
   provincialPST: number;
-  gstPaused: boolean;
-  pstPaused: boolean;
+  federalRebate: number;
+  ontarioBaseRebate: number;
+  ontarioEnhancedRebate: number;
+  totalOntarioRebate: number;
+  oldRebateComparison: number;
+  enhancedSavings: number;
+  taxOnTax: number;
   developerMargin: number;
   totalCosts: number;
+  fmvWithHST: number;
   matchedMunicipality: string | null;
   breakdown: {
     category: string;
@@ -580,55 +586,98 @@ export default function TrueCost() {
 
                     {result.grossHST > 0 && (
                       <>
-                        {result.gstPaused && (
-                          <div className="flex items-center gap-2 py-2 px-3 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 mb-1" data-testid="hst-pause-banner">
+                        <div className="flex items-center gap-2 py-2 px-3 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 mb-1" data-testid="enhanced-rebate-banner">
+                          <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                          <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                            Enhanced GST/HST New Housing Rebate — Up to $130K total rebate (MNP / Ministry of Finance, April 2026)
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between py-2 border-b">
+                          <span className="text-muted-foreground">Gross HST (13%)</span>
+                          <span className="font-mono" data-testid="amount-gross-hst">
+                            {formatCurrency(result.grossHST)}
+                          </span>
+                        </div>
+
+                        <div className="pl-4 space-y-0">
+                          <div className="flex justify-between py-1.5 text-sm">
+                            <span className="text-muted-foreground">Federal GST (5%)</span>
+                            <span className="font-mono text-muted-foreground" data-testid="amount-federal-gst">{formatCurrency(result.federalGST)}</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 text-sm border-b">
+                            <span className="text-muted-foreground">Ontario PST (8%)</span>
+                            <span className="font-mono text-muted-foreground" data-testid="amount-provincial-pst">{formatCurrency(result.provincialPST)}</span>
+                          </div>
+                        </div>
+
+                        {result.hstRebate > 0 && (
+                          <>
+                            <div className="flex justify-between py-2 border-b text-green-600 dark:text-green-400">
+                              <span className="font-medium">Federal Enhanced NHR</span>
+                              <span className="font-mono" data-testid="amount-federal-rebate">
+                                -{formatCurrency(result.federalRebate)}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between py-2 text-green-600 dark:text-green-400">
+                              <span className="font-medium">Ontario NHR (Total)</span>
+                              <span className="font-mono" data-testid="amount-ontario-total-rebate">
+                                -{formatCurrency(result.totalOntarioRebate)}
+                              </span>
+                            </div>
+
+                            <div className="pl-4 space-y-0 border-b pb-1">
+                              <div className="flex justify-between py-1 text-sm text-green-600/80 dark:text-green-400/80">
+                                <span>Base Ontario Rebate (75% of PST, max $24K)</span>
+                                <span className="font-mono" data-testid="amount-ontario-base">-{formatCurrency(result.ontarioBaseRebate)}</span>
+                              </div>
+                              <div className="flex justify-between py-1 text-sm text-green-600/80 dark:text-green-400/80">
+                                <span>Enhanced Additional NHR</span>
+                                <span className="font-mono" data-testid="amount-ontario-enhanced">-{formatCurrency(result.ontarioEnhancedRebate)}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between py-2 border-b font-semibold text-green-600 dark:text-green-400">
+                              <span>Total Enhanced Rebate</span>
+                              <span className="font-mono" data-testid="amount-total-rebate">
+                                -{formatCurrency(result.hstRebate)}
+                              </span>
+                            </div>
+                          </>
+                        )}
+
+                        <div className="flex justify-between py-2 border-b font-semibold">
+                          <span>Net HST Payable</span>
+                          <span className="font-mono" data-testid="amount-net-hst">
+                            {formatCurrency(result.netHST)}
+                          </span>
+                        </div>
+
+                        {result.enhancedSavings > 0 && (
+                          <div className="flex items-center gap-2 py-2 px-3 rounded-md bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 mt-1" data-testid="enhanced-savings-banner">
                             <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
-                            <span className="text-xs text-green-700 dark:text-green-300 font-medium">
-                              1-Year HST/GST Pause on New Builds — Federal GST (5%) and Ontario PST (8%) temporarily suspended
+                            <span className="text-xs text-green-700 dark:text-green-300">
+                              You save <span className="font-bold">{formatCurrency(result.enhancedSavings)}</span> more vs. the old rebate (was {formatCurrency(result.oldRebateComparison)})
                             </span>
                           </div>
                         )}
 
-                        <div className="flex justify-between py-2 border-b">
-                          <span className={result.gstPaused ? "text-muted-foreground/50" : "text-muted-foreground"}>
-                            Federal GST (5%)
-                            {result.gstPaused && <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 border-green-500 text-green-600 dark:text-green-400">PAUSED</Badge>}
-                          </span>
-                          <span className={`font-mono ${result.gstPaused ? "line-through text-muted-foreground/50" : ""}`} data-testid="amount-federal-gst">
-                            {formatCurrency(result.federalGST)}
+                        {result.taxOnTax > 0 && (
+                          <div className="flex items-center gap-2 py-2 px-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 mt-1" data-testid="tax-on-tax-banner">
+                            <HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <span className="text-xs text-amber-700 dark:text-amber-300">
+                              <span className="font-semibold">Tax on tax:</span> {formatCurrency(result.taxOnTax)} of your HST is charged on the embedded development charges ({formatCurrency(result.developmentCharges)}) — a government levy taxed again at 13%.
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between py-2 border-b mt-1">
+                          <span className="text-muted-foreground">FMV + Net HST</span>
+                          <span className="font-mono font-semibold" data-testid="amount-fmv-with-hst">
+                            {formatCurrency(result.fmvWithHST)}
                           </span>
                         </div>
-
-                        <div className="flex justify-between py-2 border-b">
-                          <span className={result.pstPaused ? "text-muted-foreground/50" : "text-muted-foreground"}>
-                            Ontario PST (8%)
-                            {result.pstPaused && <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 border-green-500 text-green-600 dark:text-green-400">PAUSED</Badge>}
-                          </span>
-                          <span className={`font-mono ${result.pstPaused ? "line-through text-muted-foreground/50" : ""}`} data-testid="amount-provincial-pst">
-                            {formatCurrency(result.provincialPST)}
-                          </span>
-                        </div>
-
-                        {result.hstRebate > 0 && !result.gstPaused && !result.pstPaused && (
-                          <div className="flex justify-between py-2 border-b text-green-600 dark:text-green-400">
-                            <span>New Home HST Rebate</span>
-                            <span className="font-mono">
-                              -{formatCurrency(result.hstRebate)}
-                            </span>
-                          </div>
-                        )}
-
-                        {(result.gstPaused || result.pstPaused) && (
-                          <div className="flex justify-between py-2 border-b text-green-600 dark:text-green-400">
-                            <span>HST Savings (Pause)</span>
-                            <span className="font-mono font-semibold" data-testid="hst-savings">
-                              -{formatCurrency(
-                                (result.gstPaused ? result.federalGST : 0) +
-                                (result.pstPaused ? result.provincialPST : 0)
-                              )}
-                            </span>
-                          </div>
-                        )}
                       </>
                     )}
 
@@ -657,7 +706,9 @@ export default function TrueCost() {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground text-center">
-                  Estimates based on 2024-2025 Ontario rates (BILD/Altus, CMHC, CRA). Reflects the 1-year federal/provincial HST pause on new construction. Actual costs may vary. 
+                  Estimates based on 2025-2026 Ontario rates (BILD/Altus, CMHC, CRA). Reflects the Enhanced GST/HST New Housing Rebate 
+                  (MNP / Ministry of Finance, April 2026). HST rebate = original $24K Ontario base + enhanced federal ($50K max) and Ontario ($56K max additional).
+                  "Tax on tax" reflects HST charged on the portion of the purchase price attributable to development charges. Actual costs may vary.
                   This is for educational purposes only and not financial advice.
                 </p>
               </>

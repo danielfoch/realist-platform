@@ -236,7 +236,7 @@ export const hstGstRules = {
     PST: 0.08,
     HST: 0.13,
   },
-  rebates: {
+  oldRebates: {
     federalNewHome: {
       maxRebate: 6300,
       rebatePercent: 0.36,
@@ -246,19 +246,22 @@ export const hstGstRules = {
     ontarioNewHome: {
       maxRebate: 24000,
       rebatePercent: 0.75,
-      maxValueForFullRebate: 450000,
     },
   },
-  firstTimeProposed: {
+  enhancedRebates: {
     federal: {
-      fullUpTo: 1000000,
-      phaseOutEnd: 1500000,
       maxRebate: 50000,
+      fullUpTo: 1500000,
+      phaseOutEnd: 1850000,
     },
-    ontario: {
-      fullUpTo: 1000000,
-      phaseOutEnd: 1500000,
-      maxRebate: 80000,
+    ontarioBase: {
+      maxRebate: 24000,
+      rebatePercent: 0.75,
+    },
+    ontarioEnhanced: {
+      maxAdditional: 56000,
+      fullUpTo: 1500000,
+      phaseOutEnd: 1850000,
     },
   },
   rentalRebates: {
@@ -355,10 +358,16 @@ export interface CostBreakdown {
   netHST: number;
   federalGST: number;
   provincialPST: number;
-  gstPaused: boolean;
-  pstPaused: boolean;
+  federalRebate: number;
+  ontarioBaseRebate: number;
+  ontarioEnhancedRebate: number;
+  totalOntarioRebate: number;
+  oldRebateComparison: number;
+  enhancedSavings: number;
+  taxOnTax: number;
   developerMargin: number;
   totalCosts: number;
+  fmvWithHST: number;
   matchedMunicipality: string | null;
   breakdown: {
     category: string;
@@ -434,54 +443,89 @@ function calculateLTT(
   return Math.round(tax);
 }
 
+interface HSTResult {
+  grossHST: number;
+  rebate: number;
+  netHST: number;
+  federalGST: number;
+  provincialPST: number;
+  federalRebate: number;
+  ontarioBaseRebate: number;
+  ontarioEnhancedRebate: number;
+  totalOntarioRebate: number;
+  oldRebateComparison: number;
+  enhancedSavings: number;
+}
+
+function calculateOldRebate(homeValue: number): number {
+  const gstPaid = homeValue * hstGstRules.taxRates.GST;
+  const pstPaid = homeValue * hstGstRules.taxRates.PST;
+  const old = hstGstRules.oldRebates;
+
+  let oldFederal = 0;
+  if (homeValue <= old.federalNewHome.phaseOutStart) {
+    oldFederal = Math.min(gstPaid * old.federalNewHome.rebatePercent, old.federalNewHome.maxRebate);
+  } else if (homeValue < old.federalNewHome.phaseOutEnd) {
+    const factor = (old.federalNewHome.phaseOutEnd - homeValue) / (old.federalNewHome.phaseOutEnd - old.federalNewHome.phaseOutStart);
+    oldFederal = Math.min(gstPaid * old.federalNewHome.rebatePercent * factor, old.federalNewHome.maxRebate * factor);
+  }
+
+  const oldOntario = Math.min(pstPaid * old.ontarioNewHome.rebatePercent, old.ontarioNewHome.maxRebate);
+
+  return Math.round(oldFederal + oldOntario);
+}
+
 function calculateHSTRebate(
   homeValue: number,
   isNewConstruction: boolean,
   buyerType: BuyerType,
   homeType: HomeType
-): { grossHST: number; rebate: number; netHST: number; federalGST: number; provincialPST: number; gstPaused: boolean; pstPaused: boolean } {
-  if (!isNewConstruction) {
-    return { grossHST: 0, rebate: 0, netHST: 0, federalGST: 0, provincialPST: 0, gstPaused: false, pstPaused: false };
-  }
+): HSTResult {
+  const zero: HSTResult = { grossHST: 0, rebate: 0, netHST: 0, federalGST: 0, provincialPST: 0, federalRebate: 0, ontarioBaseRebate: 0, ontarioEnhancedRebate: 0, totalOntarioRebate: 0, oldRebateComparison: 0, enhancedSavings: 0 };
+  if (!isNewConstruction) return zero;
 
   const federalGST = Math.round(homeValue * hstGstRules.taxRates.GST);
   const provincialPST = Math.round(homeValue * hstGstRules.taxRates.PST);
   const grossHST = federalGST + provincialPST;
 
-  const pauseExpiry = new Date("2027-04-01");
-  const isPauseActive = new Date() < pauseExpiry;
-  const gstPaused = isPauseActive;
-  const pstPaused = isPauseActive;
-
   if (homeType === "PBR") {
-    return { grossHST, rebate: grossHST, netHST: 0, federalGST, provincialPST, gstPaused, pstPaused };
+    return { ...zero, grossHST, rebate: grossHST, netHST: 0, federalGST, provincialPST, federalRebate: federalGST, ontarioBaseRebate: provincialPST, totalOntarioRebate: provincialPST, oldRebateComparison: grossHST, enhancedSavings: 0 };
   }
+
+  const enh = hstGstRules.enhancedRebates;
 
   let federalRebate = 0;
-  let provincialRebate = 0;
+  if (homeValue <= enh.federal.fullUpTo) {
+    federalRebate = enh.federal.maxRebate;
+  } else if (homeValue < enh.federal.phaseOutEnd) {
+    federalRebate = Math.round(enh.federal.maxRebate * (enh.federal.phaseOutEnd - homeValue) / (enh.federal.phaseOutEnd - enh.federal.fullUpTo));
+  }
+  federalRebate = Math.min(federalRebate, federalGST);
 
-  const federal = hstGstRules.rebates.federalNewHome;
-  const provincial = hstGstRules.rebates.ontarioNewHome;
+  const ontarioBaseRebate = Math.min(provincialPST * enh.ontarioBase.rebatePercent, enh.ontarioBase.maxRebate);
 
-  const gstPaid = homeValue * hstGstRules.taxRates.GST;
-  const pstPaid = homeValue * hstGstRules.taxRates.PST;
-
-  if (homeValue <= federal.phaseOutStart) {
-    federalRebate = Math.min(gstPaid * federal.rebatePercent, federal.maxRebate);
-  } else if (homeValue < federal.phaseOutEnd) {
-    const factor = (federal.phaseOutEnd - homeValue) / (federal.phaseOutEnd - federal.phaseOutStart);
-    federalRebate = Math.min(gstPaid * federal.rebatePercent * factor, federal.maxRebate * factor);
+  let ontarioEnhancedRebate = 0;
+  if (homeValue <= enh.ontarioEnhanced.fullUpTo) {
+    ontarioEnhancedRebate = enh.ontarioEnhanced.maxAdditional;
+  } else if (homeValue < enh.ontarioEnhanced.phaseOutEnd) {
+    ontarioEnhancedRebate = Math.round(enh.ontarioEnhanced.maxAdditional * (enh.ontarioEnhanced.phaseOutEnd - homeValue) / (enh.ontarioEnhanced.phaseOutEnd - enh.ontarioEnhanced.fullUpTo));
   }
 
-  if (homeValue <= provincial.maxValueForFullRebate) {
-    provincialRebate = Math.min(pstPaid * provincial.rebatePercent, provincial.maxRebate);
+  let totalOntarioRebate = ontarioBaseRebate + ontarioEnhancedRebate;
+  let finalOntarioBase = ontarioBaseRebate;
+  let finalOntarioEnhanced = ontarioEnhancedRebate;
+  if (totalOntarioRebate > provincialPST) {
+    const scale = provincialPST / totalOntarioRebate;
+    finalOntarioBase = Math.round(ontarioBaseRebate * scale);
+    finalOntarioEnhanced = Math.round(provincialPST - finalOntarioBase);
+    totalOntarioRebate = provincialPST;
   }
 
-  const totalRebate = Math.round(federalRebate + provincialRebate);
+  const totalRebate = federalRebate + Math.round(totalOntarioRebate);
+  const netHST = Math.max(0, grossHST - totalRebate);
 
-  const netHSTBeforePause = grossHST - totalRebate;
-  const pausedAmount = (gstPaused ? federalGST : 0) + (pstPaused ? provincialPST : 0);
-  const netHST = Math.max(0, netHSTBeforePause - pausedAmount);
+  const oldRebateComparison = calculateOldRebate(homeValue);
+  const enhancedSavings = Math.max(0, totalRebate - oldRebateComparison);
 
   return {
     grossHST,
@@ -489,15 +533,18 @@ function calculateHSTRebate(
     netHST,
     federalGST,
     provincialPST,
-    gstPaused,
-    pstPaused,
+    federalRebate,
+    ontarioBaseRebate: Math.round(finalOntarioBase),
+    ontarioEnhancedRebate: Math.round(finalOntarioEnhanced),
+    totalOntarioRebate: Math.round(totalOntarioRebate),
+    oldRebateComparison,
+    enhancedSavings,
   };
 }
 
 export function calculateTrueCost(input: TrueCostInput): CostBreakdown {
   const { homeValue, city, isNewConstruction, buyerType, homeType, squareFootage = 1200 } = input;
 
-  // Match municipality from input
   const matchedMuni = matchMunicipality(city);
 
   const landCost = Math.round(homeValue * 0.30);
@@ -527,6 +574,8 @@ export function calculateTrueCost(input: TrueCostInput): CostBreakdown {
 
   const hstResult = calculateHSTRebate(homeValue, isNewConstruction, buyerType, homeType);
 
+  const taxOnTax = isNewConstruction ? Math.round(devCharges * hstGstRules.taxRates.HST) : 0;
+
   const developerMargin = isNewConstruction 
     ? Math.round((landCost + constructionCost + devCharges) * 0.10)
     : 0;
@@ -535,6 +584,8 @@ export function calculateTrueCost(input: TrueCostInput): CostBreakdown {
     (totalLTT - lttRebate) + 
     hstResult.netHST + 
     (isNewConstruction ? devCharges : 0);
+
+  const fmvWithHST = homeValue + hstResult.netHST;
 
   const breakdown = [
     { category: "Land Value", amount: landCost, percentage: 0 },
@@ -564,10 +615,16 @@ export function calculateTrueCost(input: TrueCostInput): CostBreakdown {
     netHST: hstResult.netHST,
     federalGST: hstResult.federalGST,
     provincialPST: hstResult.provincialPST,
-    gstPaused: hstResult.gstPaused,
-    pstPaused: hstResult.pstPaused,
+    federalRebate: hstResult.federalRebate,
+    ontarioBaseRebate: hstResult.ontarioBaseRebate,
+    ontarioEnhancedRebate: hstResult.ontarioEnhancedRebate,
+    totalOntarioRebate: hstResult.totalOntarioRebate,
+    oldRebateComparison: hstResult.oldRebateComparison,
+    enhancedSavings: hstResult.enhancedSavings,
+    taxOnTax,
     developerMargin,
     totalCosts,
+    fmvWithHST,
     matchedMunicipality: matchedMuni?.name || null,
     breakdown,
   };
