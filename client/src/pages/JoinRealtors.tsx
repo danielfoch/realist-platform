@@ -15,6 +15,7 @@ import { Users, TrendingUp, BarChart3, CheckCircle2, ArrowRight, Building2, MapP
 
 const ASSET_TYPES = ["Residential", "Multiplex (2-4 units)", "Multi-Family (5+)", "Commercial", "Mixed-Use", "Land", "Pre-Construction"];
 const DEAL_TYPES = ["Investment", "End User", "Off-Market", "Assignment", "Pre-Construction"];
+const REFERRAL_FEES = ["20%", "25%", "30%", "35%", "40%", "Custom"];
 const CANADIAN_MARKETS = [
   "Toronto, ON", "Vancouver, BC", "Calgary, AB", "Edmonton, AB", "Ottawa, ON",
   "Montreal, QC", "Winnipeg, MB", "Hamilton, ON", "Kitchener, ON", "London, ON",
@@ -34,12 +35,19 @@ export default function JoinRealtors() {
     assetTypes: [] as string[],
     dealTypes: [] as string[],
     avgDealSize: "",
+    referralFee: "",
+    customReferralFee: "",
     referralAgreement: false,
   });
 
   const mutation = useMutation({
     mutationFn: async (data: typeof form) => {
-      const res = await apiRequest("POST", "/api/join/realtor", data);
+      const { customReferralFee, ...rest } = data;
+      const payload = {
+        ...rest,
+        referralFee: data.referralFee === "Custom" ? customReferralFee : data.referralFee,
+      };
+      const res = await apiRequest("POST", "/api/join/realtor", payload);
       return res.json();
     },
     onSuccess: () => {
@@ -228,6 +236,35 @@ export default function JoinRealtors() {
                 </Select>
               </div>
 
+              <div>
+                <Label>Referral Fee</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  What referral fee do you offer Realist for qualified investor leads? Standard rates are 25-30%. Higher rates get preferred lead routing.
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2" data-testid="select-realtor-referral-fee">
+                  {REFERRAL_FEES.map(fee => (
+                    <Badge
+                      key={fee}
+                      variant={form.referralFee === fee ? "default" : "outline"}
+                      className="cursor-pointer transition-colors"
+                      onClick={() => setForm(p => ({ ...p, referralFee: fee }))}
+                      data-testid={`referral-fee-${fee.replace("%", "")}`}
+                    >
+                      {fee}
+                    </Badge>
+                  ))}
+                </div>
+                {form.referralFee === "Custom" && (
+                  <Input
+                    className="mt-3 max-w-xs"
+                    value={form.customReferralFee}
+                    onChange={e => setForm(p => ({ ...p, customReferralFee: e.target.value }))}
+                    placeholder="Enter your referral fee (e.g. 15%)"
+                    data-testid="input-realtor-custom-fee"
+                  />
+                )}
+              </div>
+
               <div className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30">
                 <Checkbox
                   id="referral"
@@ -236,8 +273,7 @@ export default function JoinRealtors() {
                   data-testid="checkbox-realtor-referral"
                 />
                 <Label htmlFor="referral" className="text-sm leading-relaxed cursor-pointer">
-                  I agree to pay a referral fee on closed deals from investor leads provided through Realist.ca.
-                  Standard referral rate is 25% of gross commission.
+                  I agree to pay the above referral fee on closed deals from investor leads provided through Realist.ca.
                 </Label>
               </div>
 

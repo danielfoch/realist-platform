@@ -521,6 +521,7 @@ export const realtorApplications = pgTable("realtor_applications", {
   assetTypes: text("asset_types").array(),
   dealTypes: text("deal_types").array(),
   avgDealSize: text("avg_deal_size"),
+  referralFee: text("referral_fee"),
   referralAgreement: boolean("referral_agreement").default(false),
   status: text("status").default("pending"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
