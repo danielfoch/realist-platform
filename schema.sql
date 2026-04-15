@@ -404,3 +404,70 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+
+-- ==================== DEAL ANALYSIS MEMORY ====================
+-- Non-Negotiable #4: Persist user underwriting activity
+CREATE TABLE IF NOT EXISTS deal_analyses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES member_profiles(id) ON DELETE CASCADE,
+  session_token VARCHAR(255),  -- for pre-auth analyses
+  listing_id UUID REFERENCES listings(id) ON DELETE SET NULL,
+
+  -- Property identity
+  address TEXT NOT NULL,
+  city TEXT,
+  province TEXT,
+  postal_code TEXT,
+  property_type TEXT,
+  bedrooms INTEGER,
+  bathrooms NUMERIC(3,1),
+  sqft INTEGER,
+
+  -- Underwriting inputs
+  list_price NUMERIC(12,2) NOT NULL,
+  down_payment NUMERIC(12,2),
+  down_payment_pct NUMERIC(5,2),
+  mortgage_rate NUMERIC(5,3),
+  amortization_years INTEGER,
+  monthly_rent NUMERIC(10,2),
+  annual_vacancy NUMERIC(5,2),
+  annual_appreciation NUMERIC(5,2),
+  closing_costs NUMERIC(10,2),
+  renovation_costs NUMERIC(10,2),
+  property_taxes NUMERIC(10,2),
+  property_insurance NUMERIC(10,2),
+  maintenance_pct NUMERIC(5,2),
+  management_pct NUMERIC(5,2),
+
+  -- Computed outputs (persisted for fast queries)
+  cap_rate NUMERIC(5,2),
+  cash_flow NUMERIC(10,2),
+  cash_on_cash NUMERIC(5,2),
+  monthly_mortgage NUMERIC(10,2),
+  gross_income NUMERIC(12,2),
+  net_income NUMERIC(12,2),
+  total_operating_expenses NUMERIC(12,2),
+  debt_service NUMERIC(10,2),
+  annual_cash_flow NUMERIC(10,2),
+  appreciation NUMERIC(10,2),
+  equity_buildup NUMERIC(10,2),
+  total_return NUMERIC(10,2),
+  total_roi NUMERIC(5,2),
+  is_investment_property BOOLEAN DEFAULT false,
+
+  -- Verdict & notes
+  verdict_check TEXT,  -- '✅ Strong', '⚠️ Moderate', '❌ Weak'
+  notes TEXT,
+  tags JSONB DEFAULT '[]',
+
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_da_user ON deal_analyses(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_da_session ON deal_analyses(session_token) WHERE session_token IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_da_listing ON deal_analyses(listing_id);
+CREATE INDEX IF NOT EXISTS idx_da_city_price ON deal_analyses(city, list_price);
+CREATE INDEX IF NOT EXISTS idx_da_cap ON deal_analyses(cap_rate DESC NULLS LAST);
+
+COMMENT ON TABLE deal_analyses IS 'Persistent deal analysis history — core of the analysis memory layer';

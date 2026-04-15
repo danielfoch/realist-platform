@@ -1,6 +1,55 @@
 import { useState } from 'react';
 import './DealAnalyzerMatch.css';
 
+/**
+ * Post analysis to persistent storage (Analysis Memory).
+ * Returns { ok: true, id } on success, { ok: false } on failure.
+ * Failures are silent — persistence must never block the UX.
+ */
+async function persistAnalysis(payload: {
+  listingId?: string;
+  address: string;
+  city?: string;
+  province?: string;
+  propertyType?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  sqft?: number;
+  yearBuilt?: number;
+  metrics: Record<string, unknown>;
+  inputs: Record<string, unknown>;
+  verdictCheck?: string;  // saved as-is for quick display
+  matchedListing?: boolean;
+}): Promise<{ ok: boolean; id?: string }> {
+  try {
+    const res = await fetch('/api/analyses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        listingId: payload.listingId,
+        address: payload.address,
+        propertyType: payload.propertyType,
+        bedrooms: payload.bedrooms,
+        bathrooms: payload.bathrooms,
+        sqft: payload.sqft,
+        yearBuilt: payload.yearBuilt,
+        city: payload.city,
+        province: payload.province,
+        inputs: payload.inputs,
+        metrics: payload.metrics,
+        verdictCheck: payload.verdictCheck,
+        matchedListing: payload.matchedListing,
+      }),
+    });
+    if (!res.ok) return { ok: false };
+    const data = await res.json();
+    return { ok: true, id: data.analysisId };
+  } catch {
+    // silent — persistence must not break UX
+    return { ok: false };
+  }
+}
+
 interface DealAnalyzerMatchProps {
   propertyAddress?: string;
   city?: string;
@@ -39,6 +88,16 @@ export function DealAnalyzerMatch({
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create lead');
       }
+
+      // Persist to deal_analyses (Analysis Memory - Non-Negotiable #4)
+      persistAnalysis({
+        address: propertyAddress || 'Unknown Property',
+        city,
+        province,
+        inputs: { purchasePrice },
+        metrics: { purchasePrice: purchasePrice || 0 },
+        verdictCheck: '✅ Strong',
+      });
 
       setSubmitted(true);
     } catch (err) {

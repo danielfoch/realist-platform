@@ -16,6 +16,7 @@ import authRouter from './auth-routes';
 import leadRouter from './lead-routes';
 import realtorRouter from './realtor-routes';
 import investorLeadRouter from './investor-lead-routes';
+import analysisRouter from './analysis-routes';
 import { handleStripeWebhook } from './stripe-integration';
 import { handleTrackEvent, handleGetEvents, handleGetEventSummary, handleGetBroadcastStats } from './event-tracking';
 
@@ -75,6 +76,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/leads', leadRouter);
 app.use('/api/realtor', realtorRouter);
 app.use('/api/investor', investorLeadRouter);
+app.use('/api/analyses', analysisRouter);
 app.use('/api', createContentRouter());
 
 // Event tracking routes

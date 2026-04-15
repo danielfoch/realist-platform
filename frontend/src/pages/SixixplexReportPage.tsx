@@ -132,6 +132,23 @@ export function SixixplexReportPage() {
     const generatedReport = analyzeTorontoProperty(storedLead.address);
     setReport(generatedReport);
     setIsLoading(false);
+
+    // Persist to deal_analyses (Analysis Memory - Non-Negotiable #4)
+    const storedToken = localStorage.getItem('session_token') || crypto.randomUUID();
+    if (!localStorage.getItem('session_token')) {
+      localStorage.setItem('session_token', storedToken);
+    }
+    fetch('/api/analyses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        address: storedLead.address,
+        propertyType: 'Multi-Family',
+        inputs: { score: generatedReport.score, sections: generatedReport.sections.length },
+        metrics: { score: generatedReport.score },
+        verdictCheck: generatedReport.score >= 80 ? '✅ Strong' : generatedReport.score >= 65 ? '⚠️ Moderate' : '❌ Weak',
+      }),
+    }).catch(() => {/* silent — persistence must not break UX */});
     track('deal_analyzer_report_generated', { address: storedLead.address, score: generatedReport.score });
   }, [navigate]);
 
