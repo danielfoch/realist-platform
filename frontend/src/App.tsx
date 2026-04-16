@@ -10,6 +10,7 @@ import { SixixplexReportPage } from './pages/SixixplexReportPage'
 import { SixixplexListingsPage } from './pages/SixixplexListingsPage'
 import { InvestorAuthPage } from './pages/InvestorAuthPage'
 import { InvestorDashboard } from './pages/InvestorDashboard'
+import { AnalysisHistoryPage } from './pages/AnalysisHistory'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -43,6 +44,9 @@ function App() {
               <Link to="/6ixplex" className="text-sm font-medium hover:text-primary">
                 Tools
               </Link>
+              <Link to="/investor/analyses" className="text-sm font-medium hover:text-primary">
+                My Analyses
+              </Link>
             </nav>
           </div>
         </header>
@@ -74,6 +78,7 @@ function App() {
             <Route path="/investor" element={<InvestorAuthPage />} />
             <Route path="/investor/login" element={<InvestorAuthPage />} />
             <Route path="/investor/dashboard" element={<InvestorDashboard />} />
+            <Route path="/investor/analyses" element={<AnalysisHistoryPage />} />
           </Routes>
         </main>
         
