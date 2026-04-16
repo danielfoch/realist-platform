@@ -4,7 +4,13 @@
  */
 
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { db } from './db';
+import { getUserByEmail } from './user-model';
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 const router = Router();
 
@@ -299,7 +305,7 @@ router.post('/join', async (req: Request, res: Response) => {
   try {
     // 1. Create user session tracking record (for future backfill)
     if (session_id) {
-      await query(
+      await db.query(
         `INSERT INTO user_sessions (session_token, created_at)
          VALUES ($1, NOW())
          ON CONFLICT (session_token) DO NOTHING`,
@@ -308,18 +314,18 @@ router.post('/join', async (req: Request, res: Response) => {
     }
 
     // 2. Create user account (or get existing)
-    const existingUser = await getUser(email);
+    const existingUser = await getUserByEmail(email);
     if (existingUser) {
       // User already exists - just link session and backfill
       if (session_id) {
-        await query(
+        await db.query(
           `INSERT INTO user_sessions (user_id, session_token, created_at)
            VALUES ($1, $2, NOW())
            ON CONFLICT (session_token) DO UPDATE SET user_id = $1`,
           [existingUser.id, session_id]
         );
         // Backfill existing analyses with this session to the user
-        await query(
+        await db.query(
           `UPDATE analyzed_deals SET user_id = $1
            WHERE session_id = $2 AND user_id IS NULL`,
           [existingUser.id, session_id]
@@ -333,7 +339,7 @@ router.post('/join', async (req: Request, res: Response) => {
     const tempPassword = crypto.randomBytes(16).toString('hex');
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-    const result = await query(
+    const result = await db.query(
       `INSERT INTO users (name, email, password_hash, created_at, updated_at)
        VALUES ($1, $2, $3, NOW(), NOW())
        ON CONFLICT (email) DO UPDATE SET updated_at = NOW()
@@ -345,7 +351,7 @@ router.post('/join', async (req: Request, res: Response) => {
 
     // 3. Link session token to user and backfill analyses
     if (session_id) {
-      await query(
+      await db.query(
         `INSERT INTO user_sessions (user_id, session_token, created_at)
          VALUES ($1, $2, NOW())
          ON CONFLICT (session_token) DO UPDATE SET user_id = $1`,
@@ -353,7 +359,7 @@ router.post('/join', async (req: Request, res: Response) => {
       );
 
       // Backfill all analyses submitted with this session to the new user
-      const backfillResult = await query(
+      const backfillResult = await db.query(
         `UPDATE analyzed_deals SET user_id = $1
          WHERE session_id = $2 AND user_id IS NULL
          RETURNING id`,
