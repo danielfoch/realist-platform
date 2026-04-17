@@ -109,15 +109,22 @@ export function InvestorDashboard() {
         }));
       }
 
-      // Fetch saved listings count
+      // Fetch saved listings count from API
       try {
-        const raw = localStorage.getItem('realist.favoriteListings');
-        if (raw) {
-          const favs = JSON.parse(raw);
-          setStats((prev) => ({ ...prev, saved_listings: favs.length || 0 }));
+        const savedRes = await fetch('/api/saved-listings/count', { headers });
+        if (savedRes.ok) {
+          const savedData = await savedRes.json();
+          setStats((prev) => ({ ...prev, saved_listings: savedData.count || 0 }));
         }
       } catch {
-        // ignore
+        // Fallback to localStorage
+        try {
+          const raw = localStorage.getItem('realist.favoriteListings');
+          if (raw) {
+            const favs = JSON.parse(raw);
+            setStats((prev) => ({ ...prev, saved_listings: favs.length || 0 }));
+          }
+        } catch { /* ignore */ }
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -191,6 +198,7 @@ export function InvestorDashboard() {
             title="Saved Listings"
             value={stats.saved_listings.toString()}
             icon={<BookmarkIcon className="h-5 w-5" />}
+            onClick={() => navigate('/investor/saved')}
           />
         </div>
 
@@ -286,13 +294,15 @@ function StatCard({
   title,
   value,
   icon,
+  onClick,
 }: {
   title: string;
   value: string;
   icon: React.ReactNode;
+  onClick?: () => void;
 }) {
   return (
-    <Card>
+    <Card className={`cursor-pointer transition-shadow hover:shadow-md${onClick ? '' : ''}`} onClick={onClick}>
       <CardContent className="pt-5">
         <div className="flex items-center justify-between">
           <div>

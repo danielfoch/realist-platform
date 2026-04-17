@@ -74,18 +74,75 @@ export const ListingsPage: React.FC = () => {
   useEffect(() => {
     setFavorites(readFavorites())
     track('page_view', { page: 'listings' })
+
+    // Sync saved listings from server when authenticated
+    const token = localStorage.getItem('investor_token')
+    if (token) {
+      fetch('/api/saved-listings?page=1&limit=100', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data?.saved_listings) {
+            const serverMlsNumbers = data.data.saved_listings
+              .map((sl: any) => sl.mls_number)
+              .filter(Boolean) as string[]
+            setFavorites((prev) => {
+              const merged = new Set([...prev, ...serverMlsNumbers])
+              return Array.from(merged)
+            })
+          }
+        })
+        .catch(() => { /* ignore */ })
+    }
   }, [])
 
   const favoriteSet = useMemo(() => new Set(favorites), [favorites])
 
-  const toggleFavorite = (mlsNumber: string) => {
-    setFavorites((prev) => {
-      const exists = prev.includes(mlsNumber)
-      const next = exists ? prev.filter((value) => value !== mlsNumber) : [...prev, mlsNumber]
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(next))
-      track('listing_favorite', { mls_number: mlsNumber, action: exists ? 'remove' : 'add' })
-      return next
-    })
+  const toggleFavorite = async (mlsNumber: string) => {
+    const exists = favorites.includes(mlsNumber)
+    const next = exists ? favorites.filter((value) => value !== mlsNumber) : [...favorites, mlsNumber]
+    setFavorites(next)
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(next))
+    track('listing_favorite', { mls_number: mlsNumber, action: exists ? 'remove' : 'add' })
+
+    // Persist to server when authenticated
+    const token = localStorage.getItem('investor_token')
+    if (token) {
+      const listing = listings.find((l) => l.mls_number === mlsNumber)
+      try {
+        if (!exists && listing) {
+          await fetch('/api/saved-listings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              listing_id: listing.id,
+              address: listing.address_street || 'Unknown',
+              city: listing.address_city || '',
+              province: listing.address_province || '',
+              price: listing.list_price || null,
+              property_type: listing.property_type || null,
+              bedrooms: listing.bedrooms || null,
+              bathrooms: listing.bathrooms_full || null,
+              sqft: listing.square_footage || null,
+            }),
+          })
+        } else {
+          const savedListingId = listing?.id
+          if (savedListingId) {
+            await fetch(`/api/saved-listings/${savedListingId}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` },
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync favorite to server:', err)
+      }
+    }
   }
 
   const fetchListings = async () => {

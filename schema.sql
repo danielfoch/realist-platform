@@ -471,3 +471,26 @@ CREATE INDEX IF NOT EXISTS idx_da_city_price ON deal_analyses(city, list_price);
 CREATE INDEX IF NOT EXISTS idx_da_cap ON deal_analyses(cap_rate DESC NULLS LAST);
 
 COMMENT ON TABLE deal_analyses IS 'Persistent deal analysis history — core of the analysis memory layer';
+
+-- ==================== SAVED LISTINGS ====================
+-- Persistent bookmarking of listings by authenticated users
+CREATE TABLE IF NOT EXISTS saved_listings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  listing_id INTEGER REFERENCES listings(id) ON DELETE SET NULL,
+  address TEXT NOT NULL,
+  city VARCHAR(100) NOT NULL DEFAULT '',
+  province VARCHAR(2) NOT NULL DEFAULT '',
+  price BIGINT,
+  property_type VARCHAR(50),
+  bedrooms INTEGER,
+  bathrooms INTEGER,
+  sqft INTEGER,
+  saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notes TEXT,
+  UNIQUE(user_id, listing_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_listings_user ON saved_listings(user_id, saved_at DESC);
+
+COMMENT ON TABLE saved_listings IS 'Saved/bookmarked listings by authenticated investors';
