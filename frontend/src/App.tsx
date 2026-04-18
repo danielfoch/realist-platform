@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { HomePage } from './pages/HomePage'
 import { ListingsPage } from './pages/ListingsPage'
 import { RealtorAuthPage } from './pages/RealtorAuthPage'
 import { RealtorDashboard } from './pages/RealtorDashboard'
@@ -24,7 +25,7 @@ function App() {
               <Link to="/">Realist.ca</Link>
             </h1>
             <nav className="flex gap-4">
-              <Link to="/" className="text-sm font-medium hover:text-primary">
+              <Link to="/properties" className="text-sm font-medium hover:text-primary">
                 Browse Listings
               </Link>
               <Link to="/insights/blog" className="text-sm font-medium hover:text-primary">
@@ -57,7 +58,8 @@ function App() {
         
         <main>
           <Routes>
-            <Route path="/" element={<ListingsPage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/properties" element={<ListingsPage />} />
             <Route path="/realtor" element={<RealtorAuthPage />} />
             <Route path="/realtor/login" element={<RealtorAuthPage />} />
             <Route path="/realtor/dashboard" element={<RealtorDashboard />} />

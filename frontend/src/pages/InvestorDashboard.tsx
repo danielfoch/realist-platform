@@ -164,7 +164,7 @@ export function InvestorDashboard() {
             <p className="text-gray-600">Welcome back, {displayName}</p>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/">
+            <Link to="/properties">
               <Button variant="outline" size="sm">
                 Browse Listings
               </Button>
@@ -229,7 +229,7 @@ export function InvestorDashboard() {
                   </div>
                 </div>
               )}
-              <Link to="/">
+              <Link to="/6ixplex">
                 <Button className="w-full mt-4" variant="default">
                   Analyze a Deal
                   <ChevronRight className="ml-1 h-4 w-4" />
@@ -252,7 +252,7 @@ export function InvestorDashboard() {
                   <p className="text-sm text-gray-500 mt-1">
                     Browse listings and use the deal analyzer to get started.
                   </p>
-                  <Link to="/">
+                  <Link to="/properties">
                     <Button className="mt-3">Browse Listings</Button>
                   </Link>
                 </div>
