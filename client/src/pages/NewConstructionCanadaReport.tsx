@@ -420,38 +420,6 @@ export default function NewConstructionCanadaReport() {
           </CardContent>
         </Card>
 
-        <Card className="mb-8" data-testid="card-top-expensive">
-          <CardHeader>
-            <CardTitle>Most Expensive New Construction Listings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 px-2 font-medium">MLS#</th>
-                    <th className="text-left py-2 px-2 font-medium">Address</th>
-                    <th className="text-left py-2 px-2 font-medium">City</th>
-                    <th className="text-right py-2 px-2 font-medium">Price</th>
-                    <th className="text-right py-2 px-2 font-medium">$/sqft</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.topExpensive.slice(0, 15).map((l) => (
-                    <tr key={l.listingKey} className="border-b hover:bg-muted/30">
-                      <td className="py-2 px-2 font-mono text-xs">{l.listingId || l.listingKey}</td>
-                      <td className="py-2 px-2">{l.address || "—"}</td>
-                      <td className="py-2 px-2 text-muted-foreground">{l.city}, {l.province}</td>
-                      <td className="text-right py-2 px-2 font-mono">{formatCurrency(l.price)}</td>
-                      <td className="text-right py-2 px-2 font-mono">{l.psf ? `$${formatNum(l.psf)}` : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-lg">Methodology</CardTitle>
