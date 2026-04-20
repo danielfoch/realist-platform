@@ -206,12 +206,6 @@ export function Navigation() {
                     Sign In
                   </Button>
                 )}
-                <Link href="/premium">
-                  <Button variant="default" size="sm" data-testid="button-nav-premium">
-                    <Crown className="mr-2 h-4 w-4" />
-                    Premium
-                  </Button>
-                </Link>
               </div>
             )}
 
