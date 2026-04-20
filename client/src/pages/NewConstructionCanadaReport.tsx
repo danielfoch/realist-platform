@@ -344,9 +344,8 @@ export default function NewConstructionCanadaReport() {
                       dataKey="count"
                       nameKey="type"
                       cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      label={(entry) => entry.type}
+                      cy="45%"
+                      outerRadius={90}
                       labelLine={false}
                     >
                       {typeChartData.map((_, i) => (
@@ -354,6 +353,13 @@ export default function NewConstructionCanadaReport() {
                       ))}
                     </Pie>
                     <Tooltip formatter={(v: number) => formatNum(v) + " listings"} />
+                    <Legend
+                      verticalAlign="bottom"
+                      align="center"
+                      layout="horizontal"
+                      iconType="circle"
+                      wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
