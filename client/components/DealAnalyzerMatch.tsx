@@ -90,14 +90,36 @@ export function DealAnalyzerMatch({
       }
 
       // Persist to deal_analyses (Analysis Memory - Non-Negotiable #4)
+      // API requires metrics.listPrice — send both so it persists
       persistAnalysis({
         address: propertyAddress || 'Unknown Property',
         city,
         province,
         inputs: { purchasePrice },
-        metrics: { purchasePrice: purchasePrice || 0 },
+        metrics: { listPrice: purchasePrice || 0, purchasePrice: purchasePrice || 0 },
         verdictCheck: '✅ Strong',
+        matchedListing: true,
       });
+
+      // Track the deal-lead event for intent data capture (Data Moat)
+      try {
+        await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'deal_lead_created',
+            properties: {
+              propertyAddress,
+              city,
+              province,
+              purchasePrice,
+              leadId: data.id,
+            },
+          }),
+        });
+      } catch {
+        // event tracking is fire-and-forget
+      }
 
       setSubmitted(true);
     } catch (err) {
