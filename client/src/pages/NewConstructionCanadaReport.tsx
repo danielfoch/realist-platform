@@ -394,6 +394,26 @@ export default function NewConstructionCanadaReport() {
           </Card>
         </div>
 
+        <Card className="mb-8 border-dashed" data-testid="card-price-reductions">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Price Reductions — Not Available from CREA DDF
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-3">
+            <p>
+              CREA's national DDF feed only exposes the current <code className="text-xs bg-muted px-1 rounded">ListPrice</code>. It does <strong>not</strong> publish <code className="text-xs bg-muted px-1 rounded">OriginalListPrice</code> or <code className="text-xs bg-muted px-1 rounded">PreviousListPrice</code>, so we cannot detect price reductions from a single snapshot.
+            </p>
+            <p>
+              To measure reductions properly we'd need to snapshot ListPrice per MLS# over time and diff between snapshots. Regional RESO Web API feeds (TRREB/CREB/REBGV) do expose original price, but they're licensed per-board and not nationwide.
+            </p>
+            <p className="text-xs">
+              Roadmap: a scheduled job that persists daily ListPrice snapshots per listing, enabling 7-day / 30-day / since-listing reduction metrics going forward.
+            </p>
+          </CardContent>
+        </Card>
+
         <Card className="mb-8" data-testid="card-top-expensive">
           <CardHeader>
             <CardTitle>Most Expensive New Construction Listings</CardTitle>
