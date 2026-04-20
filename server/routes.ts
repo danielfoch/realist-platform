@@ -5192,6 +5192,19 @@ export async function registerRoutes(
     squareFootage: z.number().min(200).max(20000).optional(),
   });
 
+  app.get("/api/insights/new-construction-canada", async (req, res) => {
+    try {
+      const { getNewConstructionCanadaReport } = await import("./newConstructionReport");
+      const isAdminUser = req.isAuthenticated?.() && (req.user as any)?.isAdmin === true;
+      const forceRefresh = req.query.refresh === "1" && isAdminUser;
+      const report = await getNewConstructionCanadaReport(forceRefresh);
+      res.json(report);
+    } catch (error) {
+      console.error("New construction report error:", error);
+      res.status(500).json({ error: "Failed to generate new construction report", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   app.post("/api/true-cost/calculate", async (req, res) => {
     try {
       const input = trueCostInputSchema.parse(req.body);

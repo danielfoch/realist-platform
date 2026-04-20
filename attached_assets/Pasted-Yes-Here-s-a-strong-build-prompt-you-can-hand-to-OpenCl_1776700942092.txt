@@ -1,0 +1,433 @@
+Yes. Here’s a strong build prompt you can hand to OpenClaw, Codex, or Replit to turn your Realist.ca DDF plugin into a Canada-wide version of that report.
+
+---
+
+## Prompt
+
+Build a Canada-wide new construction / pre-con pricing movement report inside the Realist.ca DDF plugin, modeled on the structure and usability of the TRREB new-builds report, but generalized across all available Canadian board / feed coverage.
+
+### Objective
+
+I want the plugin to pull listing and project data across Canada and generate a market report showing pricing movement, inventory movement, and affordability change for new construction / pre-construction housing, at the project and unit level where possible.
+
+The output should be a public-facing, chart-heavy report page similar to:
+
+* the existing TRREB new-builds report
+* Red Bricks style pricing movement summaries
+* an analyst dashboard, not a generic MLS search page
+
+The goal is to answer questions like:
+
+* Are builders cutting or raising prices?
+* Where in Canada are price cuts concentrated?
+* Are condo markets weaker than low-rise markets?
+* How much of the recent HST/GST relief is being offset by price increases?
+* Which projects, developers, markets, and product types are repricing most aggressively?
+
+---
+
+## Core requirement
+
+Use the Realist.ca DDF plugin and all available CREA DDF / board-level listing data to identify and track:
+
+1. new construction listings
+2. pre-construction / assignment / builder inventory where available
+3. project-level and unit-level pricing changes over time
+4. geographic concentration of changes
+5. property type / building type / unit-type patterns
+6. inventory accumulation and pricing compression
+
+This needs to work across Canada, not just TRREB.
+
+---
+
+## Deliverables
+
+Build a working report page and supporting data pipeline that produces:
+
+### 1. National summary
+
+* total active new-build / pre-con listings analyzed
+* total projects analyzed
+* number and share of listings / floorplans / units with:
+
+  * price increases
+  * price decreases
+  * unchanged pricing
+* cut-to-raise ratio
+* average increase magnitude
+* average decrease magnitude
+* median increase / decrease
+* largest increase
+* largest decrease
+
+### 2. Regional breakdown
+
+Break out results by:
+
+* province
+* CMA / metro
+* board / feed
+* city
+* postal FSA if available
+
+Important target regions:
+
+* GTA / GTHA
+* Vancouver / Lower Mainland
+* Calgary
+* Edmonton
+* Ottawa
+* Montreal
+* Halifax
+* Kitchener-Waterloo / Cambridge
+* Hamilton
+* London
+* Winnipeg
+* Fraser Valley
+* Peel / York / Durham / Halton if detectable
+
+### 3. Product segmentation
+
+Segment pricing movement by:
+
+* condo apartment
+* condo townhouse
+* freehold townhouse
+* semi-detached
+* detached
+* multiplex / small multi-residential if available
+* high-rise vs low-rise vs mid-rise
+* bedroom count if inferable
+* price band
+* developer / builder name if available
+* project name if available
+
+### 4. Affordability / rebate lens
+
+For Ontario and any other jurisdictions with relevant tax relief:
+
+* estimate whether observed price increases exceed the value of the applicable GST/HST rebate
+* flag units where sticker price rose by more than the rebate benchmark
+* count how many units:
+
+  * got cheaper
+  * stayed flat but are effectively cheaper net of rebate
+  * rose less than rebate amount
+  * rose more than rebate amount
+
+This should be benchmark-driven, not overclaimed.
+Use clear assumptions and keep the methodology explicit.
+
+### 5. “Big movers” tables
+
+Generate ranked tables for:
+
+* top 25 biggest price cuts by percentage
+* top 25 biggest price cuts by dollar amount
+* top 25 biggest price increases by percentage
+* top 25 biggest price increases by dollar amount
+* projects with the most cuts
+* projects with the most raises
+* developers with the deepest average cuts
+* markets with the weakest pricing power
+
+### 6. Time-series views
+
+Support rolling analysis over:
+
+* 14 days
+* 30 days
+* 45 days
+* 90 days
+* custom date range
+
+Need historical snapshots or anchor logic so we can compare “as of” pricing across two dates.
+
+---
+
+## Data logic
+
+### Primary job
+
+Create a repeatable pipeline that:
+
+1. extracts all active new-build / builder / pre-con relevant records from DDF coverage
+2. normalizes them into canonical projects and canonical unit types where possible
+3. stores daily or scheduled price snapshots
+4. compares current price to prior anchor dates
+5. filters noise and false changes
+6. outputs analytics tables and charts
+
+### Required fields to capture where available
+
+* listing id
+* project name
+* builder / developer
+* address
+* city
+* province
+* board / source
+* property type
+* building type
+* style
+* beds
+* baths
+* sqft
+* lot dimensions if applicable
+* condo / freehold flag
+* maintenance fees if available
+* asking price
+* price per square foot where possible
+* original list date
+* update date
+* status
+* occupancy date if present
+* remarks / public remarks
+* new construction / assignment / builder keywords
+* photos
+* geolocation
+
+### Identification logic
+
+I need robust logic to identify new construction and pre-con product, using:
+
+* structured DDF fields where available
+* keyword detection in remarks and project names
+* builder / developer naming patterns
+* occupancy phrases
+* assignment keywords
+* “to be built”, “pre-construction”, “new build”, “platinum”, “builder inventory”, etc.
+
+Need a confidence score for classification:
+
+* high confidence new construction
+* probable new construction
+* ambiguous
+
+Do not overcount false positives.
+
+---
+
+## Canonical project and unit matching
+
+A major problem is duplicate / messy feeds. Solve this.
+
+Create canonical matching logic that groups listings into projects and, where possible, into repeat unit / floorplan types using:
+
+* normalized project name
+* normalized address
+* builder name
+* postal code
+* lat / lng proximity
+* sqft range
+* bed / bath count
+* model name / plan name if present in remarks
+* repeated description patterns
+
+Need a matching confidence score and a manual override table.
+
+If floorplan-level matching is not possible nationally, support two levels:
+
+1. project-level pricing movement
+2. listing-level pricing movement
+
+The report should clearly distinguish these.
+
+---
+
+## Noise filters
+
+Add strong guardrails so bad data does not create fake price moves.
+
+Required filters:
+
+* exclude listings with stale anchors beyond a configurable threshold
+* exclude impossible PSF changes, eg extreme outliers due to bad sqft or remeasurement
+* exclude duplicate reposts where possible
+* exclude status changes that are not real repricing
+* flag cases where price movement may actually be a new unit, new elevation, new lot premium, or packaging change
+* add intra-project freshness checks so one stale listing does not distort the project move
+
+Build a rules file for thresholds so I can tune them.
+
+---
+
+## Methodology page
+
+Create a methodology section on the report page that explains:
+
+* how new construction listings are identified
+* how project matching works
+* how anchor pricing works
+* what filters are applied
+* how rebates are benchmarked
+* what the limitations are
+
+I want this written like a proper analyst report, not generic product copy.
+
+---
+
+## UI / output requirements
+
+Build a clean, public-facing web report page with:
+
+### Hero stats row
+
+* units analyzed
+* projects analyzed
+* prices changed
+* cut:raise ratio
+* share cut
+* share raised
+* share unchanged
+
+### Charts
+
+* stacked bar: cut / raise / unchanged
+* histogram of price change distribution
+* average change by region
+* average change by property type
+* map of Canada with market-level change intensity
+* top movers tables
+* rebate benchmark chart
+* time-series of share of listings cutting vs raising
+* months of supply / active inventory where possible
+
+### Filters
+
+* province
+* city / metro
+* board / feed
+* property type
+* developer
+* date range
+* new construction confidence level
+
+### Export
+
+* CSV export
+* downloadable summary JSON
+* embeddable chart cards
+* screenshot-ready cards for social / Substack / YouTube
+
+---
+
+## Analytics outputs I care about most
+
+Make sure the pipeline can produce these statements with numbers behind them:
+
+* price cuts outnumber raises by X:1
+* average cut is deeper than average raise by X multiple
+* X per cent of listings saw cuts
+* X per cent were unchanged
+* among changed listings, X per cent were cuts
+* only X listings rose by more than the local rebate benchmark
+* X markets are seeing broad-based price compression
+* condo pricing behaves differently from low-rise
+* suburban fringe markets are weaker than core markets, if supported by data
+* unchanged sticker prices still imply net affordability improvement where rebate applies
+
+Every narrative claim needs to be traceable to an underlying query or metric table.
+
+---
+
+## Technical requirements
+
+Use the existing Realist.ca stack and integrate with the DDF plugin architecture already used for the TRREB new-builds page.
+
+Need:
+
+* scheduled ingestion job
+* normalized warehouse tables
+* snapshot table for daily pricing
+* canonical project table
+* analytics views / materialized views
+* report API endpoints
+* frontend report page
+
+Suggested table structure:
+
+* raw_ddf_listings
+* normalized_newbuild_listings
+* project_master
+* unit_master
+* listing_price_snapshots
+* project_price_snapshots
+* analytics_market_summary
+* analytics_project_movers
+* analytics_rebate_benchmark
+
+---
+
+## Rebate logic
+
+Build a configurable rebate rules engine by province / policy period.
+
+For each jurisdiction:
+
+* define tax relief benchmark
+* define eligibility assumptions
+* define effective max rebate percentage / dollar amount
+* compare observed listing price change against that benchmark
+
+Important:
+Do not hardcode one national assumption.
+Ontario should be configurable separately from federal GST relief and any future provincial changes.
+
+---
+
+## QA requirements
+
+Before publishing, run validation checks:
+
+* spot check top movers against raw listing history
+* detect duplicate project grouping errors
+* inspect outliers manually
+* compare a sample of projects to source MLS pages
+* generate a QA table of suspicious moves needing review
+
+Create an admin page or CSV for “needs review” items.
+
+---
+
+## Nice-to-have features
+
+* detect incentive language in remarks: free parking, capped levies, rental guarantee, cashback, decorator credits
+* compare sticker price changes vs incentive-heavy marketing periods
+* sentiment tag public remarks for urgency language
+* developer leaderboard
+* “market stress index” combining cuts, inventory, and stagnant time on market
+* public permalink for each region
+
+---
+
+## Final output I want from you
+
+1. A proposed architecture for doing this with Realist.ca DDF data
+2. A field map of which DDF fields can support this nationally
+3. A confidence-ranked approach for identifying new construction across boards
+4. SQL / ETL plan for building canonical projects and pricing snapshots
+5. A draft schema
+6. API endpoint plan
+7. Frontend report wireframe
+8. First-pass MVP build plan
+9. Clear notes on what is and is not possible from DDF alone versus what requires supplemental builder / project data
+
+If DDF alone is insufficient for true floorplan-level tracking nationally, design the system in layers:
+
+* Layer 1: listing-level national report from DDF
+* Layer 2: project-level grouping from DDF + heuristics
+* Layer 3: unit / floorplan-level precision from supplemental builder / API sources like Red Bricks where available
+
+Prioritize shipping a credible MVP fast, then improving accuracy.
+
+---
+
+## Shorter version for a more execution-focused coding agent
+
+Build a Canada-wide new-build pricing movement report for Realist.ca using CREA DDF and board-level feed data. Detect new construction listings, normalize them into projects, store daily price snapshots, and generate a public analytics page showing cuts vs raises, average price movement, regional breakdowns, property-type splits, and rebate-adjusted affordability change. Match the usability and visual quality of the TRREB new-builds report, but scale it nationally. Be explicit about methodology, confidence levels, and DDF limitations. Ship an MVP first using listing-level data, then layer in project-level and floorplan-level matching where possible.
+
+---
+
+If you want, I can also turn this into a tighter **AGENTS.md-style implementation brief** with exact tasks, acceptance criteria, and table schemas.
