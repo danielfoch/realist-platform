@@ -8103,6 +8103,26 @@ export async function registerRoutes(
   setTimeout(() => prewarmDistressDeals(), 15000);
   setInterval(() => prewarmDistressDeals(), 12 * 60 * 60 * 1000);
 
+  // ─── New Construction Report Pre-Warm ─────────────────────
+  async function prewarmNewConstructionReport() {
+    const { isDdfConfigured } = await import("./creaDdf");
+    if (!isDdfConfigured()) {
+      console.log("[new-construction-prewarm] DDF not configured, skipping");
+      return;
+    }
+    try {
+      console.log("[new-construction-prewarm] Warming new construction report...");
+      const { getNewConstructionCanadaReport } = await import("./newConstructionReport");
+      const report = await getNewConstructionCanadaReport();
+      console.log(`[new-construction-prewarm] Warmed ${report.totalListings} listings`);
+    } catch (err: any) {
+      console.error(`[new-construction-prewarm] Failed:`, err.message);
+    }
+  }
+
+  setTimeout(() => prewarmNewConstructionReport(), 20000);
+  setInterval(() => prewarmNewConstructionReport(), 6 * 60 * 60 * 1000);
+
   // ─── Distress Report API ─────────────────────
   app.get("/api/distress-snapshots", async (req, res) => {
     try {
