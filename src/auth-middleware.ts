@@ -13,6 +13,7 @@ export interface AuthRequest extends Request {
     tier: string;
     subscription_status: string;
   };
+  userId?: number | null;
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -73,6 +74,7 @@ export async function authenticateToken(
       tier: user.tier,
       subscription_status: user.subscription_status,
     };
+    (req as AuthRequest).userId = user.id;
     
     next();
   } catch (error) {
@@ -160,5 +162,57 @@ export function requireActiveSubscription(
     return;
   }
   
+  next();
+}
+
+/**
+ * Optional authentication — attaches userId if token is present and valid,
+ * but does NOT block the request if no token. Use for open endpoints
+ * that want optional user context (e.g. POST analysis save).
+ *
+ * Sets `req.userId` (number | null) for downstream handlers.
+ * Also attaches `req.user` if decoded successfully.
+ */
+export async function authenticateOptional(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    (req as AuthRequest).userId = null;
+    next();
+    return;
+  }
+
+  try {
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+    const jwt = await import('jsonwebtoken');
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      id: number;
+      email: string;
+      tier: string;
+      subscription_status: string;
+    };
+
+    const user = await getUserById(decoded.id);
+    if (user) {
+      (req as AuthRequest).user = {
+        id: user.id,
+        email: user.email,
+        tier: user.tier,
+        subscription_status: user.subscription_status,
+      };
+      (req as AuthRequest).userId = user.id;
+    } else {
+      (req as AuthRequest).userId = null;
+    }
+  } catch {
+    // Token invalid or expired — silently allow anonymous
+    (req as AuthRequest).userId = null;
+  }
+
   next();
 }
