@@ -864,6 +864,23 @@ export default function MarketReport() {
                     </CardContent>
                   </Card>
                 </Link>
+                <Link href="/insights/gta-precon-pricing">
+                  <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-precon-pricing">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                          <BarChart3 className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">Apr 2026</Badge>
+                      </div>
+                      <h3 className="font-bold text-sm mb-1">GTA Pre-Construction Pricing Movement</h3>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Floorplan-level cuts vs raises across 1,000+ active GTA pre-con units. Builder pricing power, rebate benchmark, resale implications.
+                      </p>
+                      <span className="text-xs text-primary font-medium">View Report →</span>
+                    </CardContent>
+                  </Card>
+                </Link>
                 <Link href="/insights/new-construction-canada">
                   <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-new-construction">
                     <CardContent className="p-5">

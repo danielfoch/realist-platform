@@ -493,15 +493,22 @@ export default function Home({ embedded }: { embedded?: boolean }) {
             <div className="max-w-2xl mx-auto space-y-6">
               <ListingImport onImport={handleListingImport} />
               <AddressInput
-                value={address}
-                onChange={setAddress}
+                address={address}
+                city={city}
+                region={region}
+                country={country}
+                postalCode={postalCode}
+                onAddressChange={setAddress}
                 onCityChange={setCity}
                 onRegionChange={setRegion}
                 onCountryChange={setCountry}
                 onPostalCodeChange={setPostalCode}
-                country={country}
               />
-              <StrategySelector selected={strategy} onSelect={setStrategy} />
+              <StrategySelector
+                country={country}
+                selectedStrategy={strategy}
+                onStrategyChange={setStrategy}
+              />
               <DealInputs
                 inputs={inputs}
                 onChange={setInputs}
@@ -509,7 +516,6 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                 country={country}
                 city={city}
                 region={region}
-                listingPrice={listingPrice || undefined}
               />
               <Button
                 size="lg"
@@ -531,7 +537,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                   irr={results.irr}
                   monthlyCashFlow={results.monthlyCashFlow}
                 />
-                <AnalysisCharts results={results} inputs={inputs} />
+                <AnalysisCharts results={results} />
               </div>
             )}
           </>

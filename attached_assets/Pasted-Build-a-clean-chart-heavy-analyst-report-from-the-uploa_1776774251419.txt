@@ -1,0 +1,266 @@
+Build a clean, chart-heavy analyst report from the uploaded pricing files.
+
+Goal
+
+Create a polished, public-facing report page and supporting data pipeline using the uploaded files, which include:
+
+pricing_by_project CSV
+pricing_floorplans CSV
+Pricing Data Analysis Excel workbook
+Pricing Brief PDF
+
+The report should explain:
+
+what the data is
+how the methodology works
+what the key findings are
+what the limitations are
+what buyers, builders, and the resale market should take from it
+
+This should feel like a serious housing-market research report, not a generic dashboard.
+
+Main thesis to support
+
+The Ontario / GTA pre-construction market is weak enough that many builders are cutting prices, and the new GST/HST rebate gives them more room to do that. This is not bullish for the resale market. Better pricing and tax-adjusted affordability on new inventory likely pulls demand away from resale and puts downward pressure on resale pricing over the next year.
+
+At the same time, do not overstate the claim that builders are broadly “capturing” the rebate. The report should show what the uploaded data actually supports:
+
+cuts outnumber raises
+cuts are deeper than raises
+many prices are unchanged
+unchanged prices can still imply improved affordability for buyers if rebate treatment improved
+only a small number of increases appear to exceed the rough rebate benchmark
+
+Use cautious language where causality is not fully proven.
+
+Files to ingest
+
+Assume the uploaded files contain:
+
+floorplan-level pricing changes
+project-level pricing changes
+workbook tabs with summary calculations
+a one-page methodology brief PDF
+
+The app should automatically detect the uploaded files, inspect sheet names / columns, and build a unified normalized dataset.
+
+Deliverables
+1. Public-facing HTML report page
+
+Build a polished single-page report with:
+
+title
+subtitle
+executive summary
+methodology section
+key findings section
+charts
+top movers tables
+limitations
+conclusion / implications
+2. Data pipeline
+
+Build a repeatable parser that:
+
+loads CSV, XLSX, and PDF metadata
+normalizes column names
+reconciles overlapping metrics between files
+uses the most detailed and most current dataset available
+outputs clean chart-ready summary tables as JSON and CSV
+3. Analyst-style charts
+
+Create clear charts for:
+
+price cuts vs raises vs unchanged
+cut-to-raise ratio
+average cut magnitude vs average raise magnitude
+histogram / distribution of price changes
+top 10 price cuts
+top 10 price increases
+changes by geography if available
+changes by product type if available
+changes by bedroom count if available
+changes by developer if available
+compare price increases against a rebate benchmark threshold
+4. Tables
+
+Include sortable tables for:
+
+biggest cuts by percentage
+biggest raises by percentage
+projects with the most cuts
+projects with the most raises
+developers with the deepest average cuts
+any floorplans with increases greater than the rebate threshold
+projects with the best apparent pricing relative to resale if that field can be inferred or calculated
+Required narrative sections
+Section 1: What this report is
+
+Explain that this report analyzes active GTA / Ontario pre-construction pricing movement using uploaded floorplan-level and project-level pricing data, plus the provided methodology brief.
+
+Section 2: Methodology
+
+Write this clearly and simply.
+
+Explain concepts like:
+
+anchor dates
+from-date and to-date comparison
+floorplan-level tracking
+price-per-square-foot changes
+stale-data guards
+outlier filtering
+canonical floorplan matching if present in the source data
+limits of builder / listing data
+difference between sticker-price changes and effective buyer affordability
+
+If the PDF contains methodology language, summarize it in plain English rather than copying it verbatim.
+
+Section 3: Key findings
+
+Generate concise analyst commentary based on the actual uploaded numbers, such as:
+
+total floorplans analyzed
+number and share with cuts
+number and share with raises
+number and share unchanged
+cut-to-raise ratio
+average increase
+average decrease
+biggest cut
+biggest raise
+whether the majority of raises are below a rough HST rebate benchmark
+what unchanged pricing means for buyers if tax treatment improved
+Section 4: Interpretation
+
+Explain that:
+
+builders appear to have weak pricing power
+some are cutting to move inventory
+some are holding sticker prices while the rebate improves effective affordability
+this is likely bearish for resale in the short term because discounted or tax-advantaged new inventory competes with resale stock
+Section 5: Limitations
+
+Be explicit:
+
+this is not a perfect causal study of the rebate
+date windows matter
+pricing movement is not the same as closed-sale pricing
+incentives may not be fully captured
+unchanged sticker prices may still mask economic concessions
+some product categories are harder to compare apples-to-apples
+Rebate benchmark logic
+
+Add a configurable rebate benchmark module.
+
+For now, use a simple Ontario benchmark:
+
+compare observed price increases to a rough 13 percent benchmark
+classify price increases into:
+below rebate benchmark
+above rebate benchmark
+
+Do not overclaim legal precision here.
+Present this as a rough analytical benchmark, not tax advice.
+
+Also add a note that unchanged pricing may still imply a buyer is better off if rebate treatment improved.
+
+Design requirements
+
+Make the page look like a proper market research microsite:
+
+clean white background
+strong typography
+cards for key stats
+elegant charts
+responsive layout
+minimal clutter
+export-friendly
+easy to screenshot for YouTube / Substack / X
+
+Add a small hero section with:
+
+main title
+one-paragraph summary
+4 to 6 key headline stats
+Technical requirements
+
+Use Python for the data pipeline and a simple web stack for the report page.
+
+Preferred stack:
+
+Python
+pandas
+openpyxl
+plotly or matplotlib
+Flask or FastAPI for serving data
+simple HTML/CSS/JS frontend, or a lightweight React frontend if faster
+
+The app should:
+
+auto-detect uploaded files in a /data or /uploads folder
+parse them robustly even if column names differ slightly
+log assumptions
+fail gracefully if a file is missing
+generate cleaned outputs into /output
+Output files to generate
+
+Please generate:
+
+/output/clean_floorplans.csv
+/output/clean_projects.csv
+/output/summary_metrics.json
+/output/chart_data.json
+/output/report.html
+
+Optional:
+
+/output/top_movers.csv
+/output/developer_summary.csv
+/output/geography_summary.csv
+Important behavior
+
+Do not invent metrics if they cannot be supported by the uploaded files.
+If multiple files conflict, prefer the file with the more detailed row-level data and log the discrepancy.
+If the PDF and workbook summary numbers differ, surface that in a notes section.
+Always distinguish between:
+
+observed price changes
+inferred buyer affordability improvement
+broader market interpretation
+Tone of the written report
+
+Write like a smart housing analyst, not a salesman.
+
+Tone should be:
+
+clear
+direct
+slightly skeptical
+data-first
+readable for an informed general audience
+
+Avoid hype.
+Avoid “this isn’t X, it’s Y” framing.
+Avoid sounding like marketing copy.
+
+Final app behavior
+
+When the app starts:
+
+inspect the uploaded files
+identify relevant sheets / columns
+build cleaned datasets
+compute summary stats
+generate charts
+write the report narrative automatically based on the data
+serve the report locally and save it as a static HTML file
+
+At the end, show me:
+
+what files were detected
+what sheets were used
+what assumptions were made
+and where the final report file is located
+
+If the structure of the uploaded files is unclear, first build a file-inspection step that prints all filenames, sheet names, columns, and sample rows before proceeding with full report generation.

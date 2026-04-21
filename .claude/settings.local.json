@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 60 npx tsc --noEmit)",
+      "Bash(curl *)"
+    ]
+  }
+}

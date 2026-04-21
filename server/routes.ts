@@ -5195,7 +5195,11 @@ export async function registerRoutes(
   app.get("/api/insights/new-construction-canada", async (req, res) => {
     try {
       const { getNewConstructionCanadaReport } = await import("./newConstructionReport");
-      const isAdminUser = req.isAuthenticated?.() && (req.user as any)?.isAdmin === true;
+      let isAdminUser = false;
+      if (req.query.refresh === "1" && req.session.userId) {
+        const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, req.session.userId)).limit(1);
+        isAdminUser = u?.role === "admin";
+      }
       const forceRefresh = req.query.refresh === "1" && isAdminUser;
       const report = await getNewConstructionCanadaReport(forceRefresh);
       res.json(report);
@@ -5205,16 +5209,27 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/insights/gta-precon-pricing", async (_req, res) => {
+    try {
+      const { getPreconPricingReport } = await import("./preconPricingReport");
+      const report = getPreconPricingReport();
+      res.json(report);
+    } catch (error) {
+      console.error("GTA pre-construction pricing report error:", error);
+      res.status(500).json({ error: "Failed to generate pre-construction pricing report", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   app.post("/api/true-cost/calculate", async (req, res) => {
     try {
       const input = trueCostInputSchema.parse(req.body);
       const breakdown = calculateTrueCost(input as TrueCostInput);
       
       // If user is authenticated, save inquiry and breakdown to database
-      const isLoggedIn = req.isAuthenticated?.() && req.user;
-      if (isLoggedIn && req.user) {
+      const userId = req.session.userId;
+      if (userId) {
         const [inquiry] = await db.insert(trueCostInquiries).values({
-          userId: req.user.id,
+          userId,
           homeValue: input.homeValue,
           city: input.city,
           homeType: input.homeType,
@@ -5298,15 +5313,16 @@ export async function registerRoutes(
   });
 
   app.get("/api/true-cost/my-inquiries", async (req, res) => {
-    if (!req.isAuthenticated() || !req.user) {
+    const userId = req.session.userId;
+    if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    
+
     try {
       const inquiries = await db
         .select()
         .from(trueCostInquiries)
-        .where(eq(trueCostInquiries.userId, req.user.id))
+        .where(eq(trueCostInquiries.userId, userId))
         .orderBy(sql`${trueCostInquiries.createdAt} DESC`);
       
       res.json(inquiries);
@@ -5762,15 +5778,16 @@ export async function registerRoutes(
 
   // Get all projects for current user
   app.get("/api/capstone/projects", async (req, res) => {
-    if (!req.isAuthenticated?.() || !req.user) {
+    const userId = req.session.userId;
+    if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    
+
     try {
       const projects = await db
         .select()
         .from(capstoneProjects)
-        .where(eq(capstoneProjects.userId, req.user.id))
+        .where(eq(capstoneProjects.userId, userId))
         .orderBy(sql`${capstoneProjects.updatedAt} DESC`);
       
       // Fetch related data for each project
@@ -5809,19 +5826,20 @@ export async function registerRoutes(
 
   // Get single project by ID
   app.get("/api/capstone/projects/:id", async (req, res) => {
-    if (!req.isAuthenticated?.() || !req.user) {
+    const userId = req.session.userId;
+    if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    
+
     try {
       const { id } = req.params;
-      
+
       const [project] = await db
         .select()
         .from(capstoneProjects)
         .where(and(
           eq(capstoneProjects.id, id),
-          eq(capstoneProjects.userId, req.user.id)
+          eq(capstoneProjects.userId, userId)
         ));
       
       if (!project) {
@@ -5857,15 +5875,16 @@ export async function registerRoutes(
 
   // Create new project
   app.post("/api/capstone/projects", async (req, res) => {
-    if (!req.isAuthenticated?.() || !req.user) {
+    const userId = req.session.userId;
+    if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    
+
     try {
       const [project] = await db
         .insert(capstoneProjects)
         .values({
-          userId: req.user.id,
+          userId,
           status: "draft",
           currentStep: 1,
         })
@@ -5880,21 +5899,22 @@ export async function registerRoutes(
 
   // Update project
   app.patch("/api/capstone/projects/:id", async (req, res) => {
-    if (!req.isAuthenticated?.() || !req.user) {
+    const userId = req.session.userId;
+    if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    
+
     try {
       const { id } = req.params;
       const { strategy, currentStep, status, completedAt, title } = req.body;
-      
+
       // Verify ownership
       const [existing] = await db
         .select()
         .from(capstoneProjects)
         .where(and(
           eq(capstoneProjects.id, id),
-          eq(capstoneProjects.userId, req.user.id)
+          eq(capstoneProjects.userId, userId)
         ));
       
       if (!existing) {
@@ -5923,20 +5943,21 @@ export async function registerRoutes(
 
   // Save property to project
   app.post("/api/capstone/projects/:id/property", async (req, res) => {
-    if (!req.isAuthenticated?.() || !req.user) {
+    const userId = req.session.userId;
+    if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    
+
     try {
       const { id } = req.params;
-      
+
       // Verify ownership
       const [project] = await db
         .select()
         .from(capstoneProjects)
         .where(and(
           eq(capstoneProjects.id, id),
-          eq(capstoneProjects.userId, req.user.id)
+          eq(capstoneProjects.userId, userId)
         ));
       
       if (!project) {
@@ -5990,20 +6011,21 @@ export async function registerRoutes(
 
   // Save cost model
   app.post("/api/capstone/projects/:id/cost-model", async (req, res) => {
-    if (!req.isAuthenticated?.() || !req.user) {
+    const userId = req.session.userId;
+    if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    
+
     try {
       const { id } = req.params;
-      
+
       // Verify ownership
       const [project] = await db
         .select()
         .from(capstoneProjects)
         .where(and(
           eq(capstoneProjects.id, id),
-          eq(capstoneProjects.userId, req.user.id)
+          eq(capstoneProjects.userId, userId)
         ));
       
       if (!project) {
@@ -6033,20 +6055,21 @@ export async function registerRoutes(
 
   // Save proforma/results
   app.post("/api/capstone/projects/:id/proforma", async (req, res) => {
-    if (!req.isAuthenticated?.() || !req.user) {
+    const userId = req.session.userId;
+    if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    
+
     try {
       const { id } = req.params;
-      
+
       // Verify ownership
       const [project] = await db
         .select()
         .from(capstoneProjects)
         .where(and(
           eq(capstoneProjects.id, id),
-          eq(capstoneProjects.userId, req.user.id)
+          eq(capstoneProjects.userId, userId)
         ));
       
       if (!project) {

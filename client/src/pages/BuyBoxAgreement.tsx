@@ -173,25 +173,22 @@ export default function BuyBoxAgreement() {
     mutationFn: async () => {
       const termEndDate = addDays(new Date(), formData.termDays);
       
-      const response = await apiRequest("/api/buybox/submit", {
-        method: "POST",
-        body: JSON.stringify({
-          agreement: {
-            signedName: formData.signedName,
-            signatureDataUrl,
-            termEndDate: termEndDate.toISOString(),
-            holdoverDays: formData.holdoverDays,
-            commissionPercent: formData.commissionPercent,
-            agreedToTerms: formData.agreedToTerms,
-            extendedTermConsent: formData.extendedTermConsent,
-          },
-          mandate: {
-            polygonGeoJson,
-            centroidLat: centroid?.lat,
-            centroidLng: centroid?.lng,
-            ...mandateData,
-          },
-        }),
+      const response = await apiRequest("POST", "/api/buybox/submit", {
+        agreement: {
+          signedName: formData.signedName,
+          signatureDataUrl,
+          termEndDate: termEndDate.toISOString(),
+          holdoverDays: formData.holdoverDays,
+          commissionPercent: formData.commissionPercent,
+          agreedToTerms: formData.agreedToTerms,
+          extendedTermConsent: formData.extendedTermConsent,
+        },
+        mandate: {
+          polygonGeoJson,
+          centroidLat: centroid?.lat,
+          centroidLng: centroid?.lng,
+          ...mandateData,
+        },
       });
       return response;
     },

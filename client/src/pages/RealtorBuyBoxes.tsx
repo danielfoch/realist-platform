@@ -48,10 +48,7 @@ export default function RealtorBuyBoxes() {
       propertyAddress?: string;
       propertyLink?: string;
     }) => {
-      return apiRequest(`/api/buybox/${mandateId}/respond`, {
-        method: "POST",
-        body: JSON.stringify({ message, propertyAddress, propertyLink }),
-      });
+      return apiRequest("POST", `/api/buybox/${mandateId}/respond`, { message, propertyAddress, propertyLink });
     },
     onSuccess: () => {
       toast({

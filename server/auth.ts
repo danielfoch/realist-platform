@@ -11,7 +11,7 @@ import { storage } from "./storage";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
 import { sendWelcomeAccountEmail } from "./resend";
 
-async function sendLoginWebhookToGHL(user: { id: number; email: string; firstName: string | null; lastName: string | null; phone?: string | null }) {
+async function sendLoginWebhookToGHL(user: { id: string; email: string; firstName: string | null; lastName: string | null; phone?: string | null }) {
   const webhookUrl = process.env.GHL_WEBHOOK_URL;
   if (!webhookUrl) return;
 
