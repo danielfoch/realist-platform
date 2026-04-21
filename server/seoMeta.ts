@@ -70,7 +70,15 @@ const STATIC_META: Record<string, PageMeta> = {
   },
   "/tools/distress-deals": {
     title: "Canadian Distress Deals - Power of Sale & Foreclosure Tracker",
-    description: "Live tracker of distressed Canadian listings: power of sale, foreclosure, court order sale, motivated sellers.",
+    description: "Live tracker of distressed Canadian listings: power of sale, foreclosure, court order sale, motivated sellers. Updated daily.",
+  },
+  "/tools/hst-rebate": {
+    title: "Ontario HST Rebate Calculator (New Construction & Investment)",
+    description: "Calculate your Ontario new home HST rebate — owner-occupied or rental (NRRP). Free, instant, no signup.",
+  },
+  "/tools/hst-calculator": {
+    title: "Canadian HST Calculator for Real Estate - Realist.ca",
+    description: "Calculate HST on Canadian real estate transactions: new construction, assignments, commercial, and investment property.",
   },
   // Course / Community
   "/course": {
@@ -207,7 +215,21 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrl: string, origin: string): string {
+function normalizeCanonical(url: string): string {
+  // Strip trailing slash unless it's the root
+  try {
+    const u = new URL(url);
+    if (u.pathname.length > 1 && u.pathname.endsWith("/")) {
+      u.pathname = u.pathname.replace(/\/+$/, "");
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw: string, origin: string): string {
+  const canonicalUrl = normalizeCanonical(canonicalUrlRaw);
   const fullTitle = meta.title.includes("Realist") ? meta.title : `${meta.title} | Realist.ca`;
   const desc = escapeHtml(meta.description);
   const titleEsc = escapeHtml(fullTitle);
@@ -249,6 +271,54 @@ export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrl: s
   replaceMeta("name", "twitter:title", fullTitle);
   replaceMeta("name", "twitter:description", meta.description);
   replaceMeta("name", "twitter:image", ogImage);
+
+  // JSON-LD structured data
+  const ldBlocks: any[] = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Realist.ca",
+      url: origin,
+      logo: `${origin}/favicon.png`,
+      sameAs: [
+        "https://www.youtube.com/@CanadianRealEstateInvestor",
+        "https://twitter.com/RealistCA",
+        "https://www.instagram.com/realist.ca/",
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Realist.ca",
+      url: origin,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${origin}/search?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ];
+  if (ogType === "article") {
+    ldBlocks.push({
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: fullTitle,
+      description: meta.description,
+      image: ogImage,
+      url: canonicalUrl,
+      publisher: {
+        "@type": "Organization",
+        name: "Realist.ca",
+        logo: { "@type": "ImageObject", url: `${origin}/favicon.png` },
+      },
+    });
+  }
+  const ldScript = ldBlocks
+    .map((b) => `<script type="application/ld+json">${JSON.stringify(b).replace(/</g, "\\u003c")}</script>`)
+    .join("\n    ");
+  // Strip any previously-injected ld+json from the template, then add fresh
+  out = out.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>\s*/gi, "");
+  out = out.replace("</head>", `    ${ldScript}\n  </head>`);
 
   return out;
 }
