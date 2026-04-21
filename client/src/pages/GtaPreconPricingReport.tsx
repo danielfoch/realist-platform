@@ -119,9 +119,14 @@ export default function GtaPreconPricingReport() {
 
         {/* Hero */}
         <div className="mb-10">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <Badge variant="outline">GTA / Ontario</Badge>
             <Badge variant="outline">{fmtDate(data.windowFrom)} – {fmtDate(data.windowTo)}</Badge>
+            <Badge variant="outline" className="text-xs">
+              Source: <a href="https://redbricksdata.com" target="_blank" rel="noopener noreferrer" className="ml-1 underline hover:text-foreground">Red Bricks Data</a>
+              <span className="mx-1">·</span>
+              <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Valery.ca</a>
+            </Badge>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4" data-testid="text-report-title">
             GTA Pre-Construction Pricing Movement

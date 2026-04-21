@@ -5209,6 +5209,79 @@ export async function registerRoutes(
     }
   });
 
+  // Dynamic sitemap.xml — overrides static client/public/sitemap.xml
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const BASE = "https://realist.ca";
+      const today = new Date().toISOString().slice(0, 10);
+      const staticPages: Array<{ path: string; priority: number; changefreq: string; lastmod?: string }> = [
+        { path: "/", priority: 1.0, changefreq: "daily" },
+        { path: "/about", priority: 0.9, changefreq: "monthly" },
+        { path: "/about/contact", priority: 0.6, changefreq: "monthly" },
+        { path: "/about/shop", priority: 0.6, changefreq: "weekly" },
+        { path: "/tools", priority: 0.9, changefreq: "weekly" },
+        { path: "/tools/analyzer", priority: 0.95, changefreq: "weekly" },
+        { path: "/tools/buybox", priority: 0.7, changefreq: "weekly" },
+        { path: "/tools/coinvest", priority: 0.7, changefreq: "weekly" },
+        { path: "/tools/true-cost", priority: 0.8, changefreq: "monthly" },
+        { path: "/tools/rent-vs-buy", priority: 0.8, changefreq: "monthly" },
+        { path: "/tools/cap-rates", priority: 0.8, changefreq: "weekly" },
+        { path: "/tools/will-it-plex", priority: 0.7, changefreq: "monthly" },
+        { path: "/tools/fixed-vs-variable", priority: 0.7, changefreq: "weekly" },
+        { path: "/tools/land-claim-screener", priority: 0.7, changefreq: "monthly" },
+        { path: "/tools/distress-deals", priority: 0.8, changefreq: "daily" },
+        { path: "/course", priority: 0.9, changefreq: "weekly" },
+        { path: "/community", priority: 0.8, changefreq: "weekly" },
+        { path: "/community/leaderboard", priority: 0.8, changefreq: "daily" },
+        { path: "/community/events", priority: 0.8, changefreq: "weekly" },
+        { path: "/community/network", priority: 0.7, changefreq: "weekly" },
+        { path: "/insights", priority: 0.9, changefreq: "weekly" },
+        { path: "/insights/market-report", priority: 0.9, changefreq: "weekly" },
+        { path: "/insights/distress-report", priority: 0.85, changefreq: "daily" },
+        { path: "/insights/mortgage-rates", priority: 0.85, changefreq: "daily" },
+        { path: "/insights/building-permits", priority: 0.8, changefreq: "monthly" },
+        { path: "/insights/productivity-gap", priority: 0.7, changefreq: "monthly" },
+        { path: "/insights/new-construction-canada", priority: 0.85, changefreq: "weekly" },
+        { path: "/insights/gta-precon-pricing", priority: 0.85, changefreq: "weekly" },
+        { path: "/insights/podcast", priority: 0.8, changefreq: "weekly" },
+        { path: "/insights/blog", priority: 0.8, changefreq: "weekly" },
+        { path: "/insights/guides", priority: 0.8, changefreq: "weekly" },
+        { path: "/join/realtors", priority: 0.7, changefreq: "monthly" },
+        { path: "/join/lenders", priority: 0.7, changefreq: "monthly" },
+      ];
+
+      const urls: string[] = staticPages.map(p =>
+        `  <url>\n    <loc>${BASE}${p.path}</loc>\n    <lastmod>${p.lastmod ?? today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority.toFixed(2)}</priority>\n  </url>`
+      );
+
+      // Published blog posts
+      try {
+        const posts = await storage.getBlogPosts({ status: "published" });
+        for (const p of posts) {
+          const lastmod = (p.updatedAt || p.publishedAt || new Date()).toISOString().slice(0, 10);
+          urls.push(`  <url>\n    <loc>${BASE}/insights/blog/${p.slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.70</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip if storage unavailable */ }
+
+      // Published guides
+      try {
+        const gs = await storage.getGuides({ status: "published" });
+        for (const g of gs) {
+          const lastmod = (g.updatedAt || g.publishedAt || new Date()).toISOString().slice(0, 10);
+          urls.push(`  <url>\n    <loc>${BASE}/insights/guides/${g.slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.70</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip if storage unavailable */ }
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.send(xml);
+    } catch (err: any) {
+      console.error("[sitemap] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
   app.get("/api/insights/gta-precon-pricing", async (_req, res) => {
     try {
       const { getPreconPricingReport } = await import("./preconPricingReport");
