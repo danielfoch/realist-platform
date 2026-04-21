@@ -5243,6 +5243,10 @@ export async function registerRoutes(
         { path: "/insights/productivity-gap", priority: 0.7, changefreq: "monthly" },
         { path: "/insights/new-construction-canada", priority: 0.85, changefreq: "weekly" },
         { path: "/insights/gta-precon-pricing", priority: 0.85, changefreq: "weekly" },
+        { path: "/canada-housing-market", priority: 0.9, changefreq: "weekly" },
+        { path: "/toronto-housing-market", priority: 0.9, changefreq: "weekly" },
+        { path: "/toronto-condo-prices-dropping", priority: 0.85, changefreq: "weekly" },
+        { path: "/biggest-price-drops-gta", priority: 0.85, changefreq: "daily" },
         { path: "/insights/podcast", priority: 0.8, changefreq: "weekly" },
         { path: "/insights/blog", priority: 0.8, changefreq: "weekly" },
         { path: "/insights/guides", priority: 0.8, changefreq: "weekly" },
@@ -5263,6 +5267,18 @@ export async function registerRoutes(
         }
       } catch (e) { /* skip if storage unavailable */ }
 
+      // SEO project landing pages — top movers (cap at 50 to stay focused)
+      try {
+        const { getProjectSummaries } = await import("./preconPricingReport");
+        const projects = getProjectSummaries()
+          .filter(p => p.cuts > 0 || p.raises > 0)
+          .sort((a, b) => Math.abs(b.avgDeltaPct) - Math.abs(a.avgDeltaPct))
+          .slice(0, 50);
+        for (const p of projects) {
+          urls.push(`  <url>\n    <loc>${BASE}/projects/${p.slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.65</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip */ }
+
       // Published guides
       try {
         const gs = await storage.getGuides({ status: "published" });
@@ -5279,6 +5295,42 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("[sitemap] error:", err.message);
       res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
+  app.get("/api/seo/precon-scope", async (req, res) => {
+    try {
+      const { getScopedPreconReport } = await import("./preconPricingReport");
+      const city = typeof req.query.city === "string" ? req.query.city : undefined;
+      const region = typeof req.query.region === "string" ? req.query.region : undefined;
+      const scopeLabel = typeof req.query.label === "string" ? req.query.label : (city || region || "Greater Toronto Area");
+      const report = getScopedPreconReport({ city, region, scopeLabel });
+      res.set("Cache-Control", "public, max-age=3600");
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate scoped report", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/seo/projects", async (_req, res) => {
+    try {
+      const { getProjectSummaries } = await import("./preconPricingReport");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.json(getProjectSummaries());
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load projects", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/seo/projects/:slug", async (req, res) => {
+    try {
+      const { getProjectDetail } = await import("./preconPricingReport");
+      const detail = getProjectDetail(req.params.slug);
+      if (!detail) return res.status(404).json({ error: "Project not found" });
+      res.set("Cache-Control", "public, max-age=3600");
+      res.json(detail);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load project", message: error instanceof Error ? error.message : String(error) });
     }
   });
 

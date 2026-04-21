@@ -135,6 +135,26 @@ const STATIC_META: Record<string, PageMeta> = {
     description: "Floorplan-level analysis of 768 active GTA pre-construction units across 83 projects. Cuts outnumber raises 2.9 to 1. Implications for the resale market.",
     ogType: "article",
   },
+  "/canada-housing-market": {
+    title: "Canada Housing Market 2026 - Live Data & Analysis | Realist.ca",
+    description: "Live Canada housing market data. New construction inventory, pre-construction price movement, and what it signals for the resale market across major Canadian cities.",
+    ogType: "article",
+  },
+  "/toronto-housing-market": {
+    title: "Toronto Housing Market 2026 - Live Pre-Construction Data | Realist.ca",
+    description: "Live Toronto housing market data: pre-construction price cuts vs raises across active developments. Average PSF change, biggest discounts, by city.",
+    ogType: "article",
+  },
+  "/toronto-condo-prices-dropping": {
+    title: "Are Toronto Condo Prices Dropping? Live 2026 Data | Realist.ca",
+    description: "Yes — Toronto condo prices are dropping. Live floorplan-level data shows hundreds of pre-construction price cuts vs few raises. See the data, by project.",
+    ogType: "article",
+  },
+  "/biggest-price-drops-gta": {
+    title: "Biggest GTA Pre-Construction Price Drops 2026 | Realist.ca",
+    description: "Live ranking of the biggest pre-construction price drops in the GTA. Top floorplan cuts, projects with the most reductions, deepest discounts. Updated daily.",
+    ogType: "article",
+  },
   "/insights/podcast": {
     title: "The Canadian Real Estate Investor Podcast - Daniel Foch & Nick Hill",
     description: "Canada's #1 real estate podcast. Weekly episodes on the Canadian housing market, mortgages, investing strategy, and policy.",
@@ -181,6 +201,24 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
           title: post.metaTitle || `${post.title} | Realist.ca`,
           description: post.metaDescription || post.excerpt,
           ogImage: post.coverImage || undefined,
+          ogType: "article",
+        };
+      }
+    } catch { /* fall through */ }
+  }
+
+  // Dynamic project landing
+  const projectMatch = path.match(/^\/projects\/([^\/]+)$/);
+  if (projectMatch) {
+    try {
+      const { getProjectDetail } = await import("./preconPricingReport");
+      const detail = getProjectDetail(projectMatch[1]);
+      if (detail) {
+        const s = detail.summary;
+        const dir = s.avgDeltaPct < -1 ? "Cuts" : s.avgDeltaPct > 1 ? "Raises" : "Holds";
+        return {
+          title: `${s.project} ${s.city} - Pre-Construction Prices & ${dir} | Realist.ca`,
+          description: `${s.project} by ${s.developer} in ${s.city}. ${s.cuts} price cuts, ${s.raises} raises across ${s.totalFloorplans} active floorplans. Avg PSF change ${s.avgDeltaPct >= 0 ? "+" : ""}${s.avgDeltaPct.toFixed(1)}%.`,
           ogType: "article",
         };
       }

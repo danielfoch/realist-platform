@@ -245,6 +245,217 @@ function loadProjects(): Project[] {
 }
 
 let cached: PreconPricingReport | null = null;
+let allFloorplansCache: Floorplan[] | null = null;
+let allProjectsCache: Project[] | null = null;
+
+function getAllFloorplans(): Floorplan[] {
+  if (!allFloorplansCache) allFloorplansCache = loadFloorplans();
+  return allFloorplansCache;
+}
+function getAllProjects(): Project[] {
+  if (!allProjectsCache) allProjectsCache = loadProjects();
+  return allProjectsCache;
+}
+
+export function slugify(s: string): string {
+  return s.toLowerCase().trim()
+    .replace(/['']/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export interface ProjectSummary {
+  slug: string;
+  project: string;
+  developer: string;
+  city: string;
+  region: string;
+  category: string;
+  totalFloorplans: number;
+  cuts: number;
+  raises: number;
+  flat: number;
+  avgDeltaPct: number;
+  maxCutPct: number | null;
+  maxRaisePct: number | null;
+}
+
+export function getProjectSummaries(): ProjectSummary[] {
+  const projects = getAllProjects();
+  return projects.map(p => ({
+    slug: slugify(`${p.project_name}-${p.city}`),
+    project: p.project_name,
+    developer: p.developer_name,
+    city: p.city,
+    region: p.region,
+    category: p.building_category,
+    totalFloorplans: p.floorplans_total,
+    cuts: p.floorplans_cut,
+    raises: p.floorplans_raised,
+    flat: p.floorplans_flat,
+    avgDeltaPct: p.avg_delta_pct,
+    maxCutPct: p.max_cut_pct,
+    maxRaisePct: p.max_raise_pct,
+  }));
+}
+
+export interface ProjectDetail {
+  summary: ProjectSummary;
+  floorplans: Array<{
+    floorplan: string;
+    bed: string;
+    fromPsf: number;
+    toPsf: number;
+    deltaPct: number;
+    direction: "CUT" | "RAISE" | "FLAT";
+    fromDate: string;
+    toDate: string;
+  }>;
+  comparableProjects: ProjectSummary[];
+}
+
+export function getProjectDetail(slug: string): ProjectDetail | null {
+  const summaries = getProjectSummaries();
+  const summary = summaries.find(s => s.slug === slug);
+  if (!summary) return null;
+  const fps = getAllFloorplans()
+    .filter(f => f.project_name === summary.project && f.city === summary.city)
+    .map(f => ({
+      floorplan: f.floorplan_name,
+      bed: f.bed_type,
+      fromPsf: f.from_psf,
+      toPsf: f.to_psf,
+      deltaPct: f.delta_pct,
+      direction: f.direction,
+      fromDate: f.from_date,
+      toDate: f.to_date,
+    }))
+    .sort((a, b) => a.deltaPct - b.deltaPct);
+  // Comparables: same region + same category, excluding self
+  const comparableProjects = summaries
+    .filter(s => s.region === summary.region && s.category === summary.category && s.slug !== slug)
+    .sort((a, b) => Math.abs(a.avgDeltaPct - summary.avgDeltaPct) - Math.abs(b.avgDeltaPct - summary.avgDeltaPct))
+    .slice(0, 6);
+  return { summary, floorplans: fps, comparableProjects };
+}
+
+export interface MarketScopeReport {
+  scope: string;
+  scopeLabel: string;
+  totals: PreconPricingReport["totals"];
+  byCity: PreconPricingReport["byCity"];
+  byBuildingCategory: PreconPricingReport["byBuildingCategory"];
+  byBedType: PreconPricingReport["byBedType"];
+  topCuts: PreconPricingReport["topCuts"];
+  topRaises: PreconPricingReport["topRaises"];
+  projectsMostCuts: PreconPricingReport["projectsMostCuts"];
+  windowFrom: string;
+  windowTo: string;
+}
+
+export function getScopedPreconReport(opts: { city?: string; region?: string; scopeLabel: string }): MarketScopeReport {
+  const all = getAllFloorplans();
+  const allProjects = getAllProjects();
+  const floorplans = all.filter(f =>
+    (opts.city ? f.city.toLowerCase() === opts.city.toLowerCase() : true) &&
+    (opts.region ? f.region.toLowerCase() === opts.region.toLowerCase() : true)
+  );
+  const projects = allProjects.filter(p =>
+    (opts.city ? p.city.toLowerCase() === opts.city.toLowerCase() : true) &&
+    (opts.region ? p.region.toLowerCase() === opts.region.toLowerCase() : true)
+  );
+  const cuts = floorplans.filter(f => f.direction === "CUT");
+  const raises = floorplans.filter(f => f.direction === "RAISE");
+  const flat = floorplans.filter(f => f.direction === "FLAT");
+  const cutPcts = cuts.map(f => f.delta_pct);
+  const raisePcts = raises.map(f => f.delta_pct);
+  const allFromDates = floorplans.map(f => f.from_date).filter(Boolean).sort();
+  const allToDates = floorplans.map(f => f.to_date).filter(Boolean).sort();
+
+  function groupBy<T extends string>(key: (f: Floorplan) => T) {
+    const m = new Map<T, Floorplan[]>();
+    for (const f of floorplans) { const k = key(f); if (!m.has(k)) m.set(k, []); m.get(k)!.push(f); }
+    return m;
+  }
+  const cityMap = groupBy(f => `${f.city}|${f.region}`);
+  const byCity = Array.from(cityMap.entries()).map(([key, list]) => {
+    const [city, region] = key.split("|");
+    return {
+      city, region,
+      floorplans: list.length,
+      cuts: list.filter(f => f.direction === "CUT").length,
+      raises: list.filter(f => f.direction === "RAISE").length,
+      flat: list.filter(f => f.direction === "FLAT").length,
+      avgDeltaPct: list.reduce((s, f) => s + f.delta_pct, 0) / list.length,
+    };
+  }).filter(c => c.floorplans >= 2).sort((a, b) => a.avgDeltaPct - b.avgDeltaPct);
+
+  const catMap = groupBy(f => f.building_category);
+  const byBuildingCategory = Array.from(catMap.entries()).map(([category, list]) => ({
+    category,
+    floorplans: list.length,
+    cuts: list.filter(f => f.direction === "CUT").length,
+    raises: list.filter(f => f.direction === "RAISE").length,
+    flat: list.filter(f => f.direction === "FLAT").length,
+    avgDeltaPct: list.reduce((s, f) => s + f.delta_pct, 0) / list.length,
+  })).sort((a, b) => b.floorplans - a.floorplans);
+
+  const bedMap = groupBy(f => f.bed_type);
+  const byBedType = Array.from(bedMap.entries()).map(([bed, list]) => ({
+    bed,
+    floorplans: list.length,
+    cuts: list.filter(f => f.direction === "CUT").length,
+    raises: list.filter(f => f.direction === "RAISE").length,
+    flat: list.filter(f => f.direction === "FLAT").length,
+    avgDeltaPct: list.reduce((s, f) => s + f.delta_pct, 0) / list.length,
+  })).filter(b => b.floorplans >= 2).sort((a, b) => b.floorplans - a.floorplans);
+
+  const topCuts = [...cuts].sort((a, b) => a.delta_pct - b.delta_pct).slice(0, 15).map(f => ({
+    project: f.project_name, developer: f.developer_name, city: f.city, region: f.region,
+    floorplan: f.floorplan_name, bed: f.bed_type, fromPsf: f.from_psf, toPsf: f.to_psf, deltaPct: f.delta_pct,
+  }));
+  const topRaises = [...raises].sort((a, b) => b.delta_pct - a.delta_pct).slice(0, 15).map(f => ({
+    project: f.project_name, developer: f.developer_name, city: f.city, region: f.region,
+    floorplan: f.floorplan_name, bed: f.bed_type, fromPsf: f.from_psf, toPsf: f.to_psf, deltaPct: f.delta_pct,
+  }));
+
+  const projectsMostCuts = [...projects]
+    .filter(p => p.floorplans_cut > 0)
+    .sort((a, b) => b.floorplans_cut - a.floorplans_cut || a.avg_delta_pct - b.avg_delta_pct)
+    .slice(0, 15)
+    .map(p => ({
+      project: p.project_name, developer: p.developer_name, city: p.city, region: p.region,
+      cuts: p.floorplans_cut, total: p.floorplans_total, avgDeltaPct: p.avg_delta_pct, maxCutPct: p.max_cut_pct,
+    }));
+
+  return {
+    scope: opts.city || opts.region || "all",
+    scopeLabel: opts.scopeLabel,
+    totals: {
+      floorplans: floorplans.length,
+      projects: projects.length,
+      projectsWithMovement: projects.filter(p => p.floorplans_cut > 0 || p.floorplans_raised > 0).length,
+      cuts: cuts.length,
+      raises: raises.length,
+      flat: flat.length,
+      cutSharePct: floorplans.length > 0 ? (cuts.length / floorplans.length) * 100 : 0,
+      raiseSharePct: floorplans.length > 0 ? (raises.length / floorplans.length) * 100 : 0,
+      flatSharePct: floorplans.length > 0 ? (flat.length / floorplans.length) * 100 : 0,
+      cutToRaiseRatio: raises.length > 0 ? cuts.length / raises.length : null,
+      avgCutPct: cutPcts.length > 0 ? cutPcts.reduce((s, n) => s + n, 0) / cutPcts.length : 0,
+      avgRaisePct: raisePcts.length > 0 ? raisePcts.reduce((s, n) => s + n, 0) / raisePcts.length : 0,
+      medianCutPct: median(cutPcts),
+      medianRaisePct: median(raisePcts),
+      biggestCutPct: cutPcts.length > 0 ? Math.min(...cutPcts) : 0,
+      biggestRaisePct: raisePcts.length > 0 ? Math.max(...raisePcts) : 0,
+      raisesAboveRebate: raises.filter(f => f.delta_pct > REBATE_BENCHMARK_PCT).length,
+      raisesBelowRebate: raises.filter(f => f.delta_pct <= REBATE_BENCHMARK_PCT).length,
+    },
+    byCity, byBuildingCategory, byBedType, topCuts, topRaises, projectsMostCuts,
+    windowFrom: allFromDates[0] || "",
+    windowTo: allToDates[allToDates.length - 1] || "",
+  };
+}
 
 export function getPreconPricingReport(): PreconPricingReport {
   if (cached) return cached;

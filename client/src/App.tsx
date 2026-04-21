@@ -61,6 +61,13 @@ import BuildingPermitsReport from "@/pages/BuildingPermitsReport";
 import ProductivityGapReport from "@/pages/ProductivityGapReport";
 import NewConstructionCanadaReport from "@/pages/NewConstructionCanadaReport";
 import GtaPreconPricingReport from "@/pages/GtaPreconPricingReport";
+import SeoProjectDetail from "@/pages/SeoProjectDetail";
+import {
+  TorontoHousingMarketPage,
+  TorontoCondoPricesDroppingPage,
+  BiggestPriceDropsGtaPage,
+  CanadaHousingMarketPage,
+} from "@/pages/seo/MarketPages";
 import JoinRealtors from "@/pages/JoinRealtors";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
@@ -115,6 +122,12 @@ function Router() {
       <Route path="/insights/productivity-gap" component={ProductivityGapReport} />
       <Route path="/insights/new-construction-canada" component={NewConstructionCanadaReport} />
       <Route path="/insights/gta-precon-pricing" component={GtaPreconPricingReport} />
+      {/* SEO landing pages — programmatic + query-driven */}
+      <Route path="/canada-housing-market" component={CanadaHousingMarketPage} />
+      <Route path="/toronto-housing-market" component={TorontoHousingMarketPage} />
+      <Route path="/toronto-condo-prices-dropping" component={TorontoCondoPricesDroppingPage} />
+      <Route path="/biggest-price-drops-gta" component={BiggestPriceDropsGtaPage} />
+      <Route path="/projects/:slug" component={SeoProjectDetail} />
       <Route path="/premium" component={Premium} />
       <Route path="/premium/branding" component={PremiumBranding} />
       
