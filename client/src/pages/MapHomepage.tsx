@@ -1,5 +1,5 @@
-import { useRef, useEffect, useState, lazy, Suspense } from "react";
-import { Link } from "wouter";
+import { useRef, useEffect, useState, lazy, Suspense, useCallback } from "react";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
@@ -8,9 +8,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { track } from "@/lib/analytics";
 import {
   ArrowRight, Users, MapPin, TrendingUp, GraduationCap,
-  Calculator, Map, Eye, MessageSquare, Award, Trophy, BarChart3, Crown, Medal,
+  Calculator, Map, Trophy, BarChart3, Crown, Medal, Search,
+  Building2, DollarSign, Zap, BarChart2, BookOpen, Radio,
+  ChevronRight, MessageSquare, Award,
 } from "lucide-react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -40,22 +43,13 @@ function GeolocateOnMount() {
   useEffect(() => {
     if (attempted.current) return;
     attempted.current = true;
-
-    setTimeout(() => {
-      try {
-        map.invalidateSize();
-      } catch {}
-    }, 200);
-
+    setTimeout(() => { try { map.invalidateSize(); } catch {} }, 200);
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         try {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          if (isFinite(lat) && isFinite(lng)) {
-            map.flyTo([lat, lng], 8, { duration: 1.5 });
-          }
+          const { latitude: lat, longitude: lng } = pos.coords;
+          if (isFinite(lat) && isFinite(lng)) map.flyTo([lat, lng], 8, { duration: 1.5 });
         } catch {}
       },
       () => {},
@@ -65,11 +59,20 @@ function GeolocateOnMount() {
   return null;
 }
 
+const NL_EXAMPLES = [
+  "Find cash-flowing duplexes in Ontario under $900k",
+  "Analyze this fourplex as a BRRR strategy",
+  "What are cap rates in Hamilton vs Kitchener right now?",
+  "Show me distress deals near Toronto with VTB potential",
+  "Best neighbourhoods for legal secondary suites in BC?",
+  "How does this listing perform as short-term rental?",
+];
+
 const stats = [
-  { icon: Users, value: "11,000+", label: "meetup members" },
-  { icon: GraduationCap, value: "1,200+", label: "skool members" },
+  { icon: Users, value: "11,000+", label: "investors" },
+  { icon: TrendingUp, value: "$2.6B", label: "deals analyzed" },
   { icon: MapPin, value: "26", label: "Canadian cities" },
-  { icon: TrendingUp, value: "$2.6B", label: "in deals analyzed" },
+  { icon: GraduationCap, value: "1,200+", label: "Skool members" },
 ];
 
 const mediaLogos = [
@@ -80,7 +83,7 @@ const mediaLogos = [
   { name: "Globe and Mail", image: globeMailLogo, url: "https://www.theglobeandmail.com/real-estate/article-for-a-few-homeowners-the-end-of-the-road-is-a-power-of-sale/" },
   { name: "CBC", image: cbcLogo, url: "https://www.cbc.ca/news/business/housing-prices-april-1.6454728" },
   { name: "Financial Post", image: financialPostLogo, url: "https://financialpost.com/news/canadians-down-payments-family-money-housing-market" },
-  { name: "Toronto Star", image: torontoStarLogo, url: "https://www.thestar.com/real-estate/more-than-25-ontario-housing-developers-saw-projects-go-bust-this-year-a-higher-number/article_054d5bb4-60b5-11ef-abf2-6772c8215759.html" },
+  { name: "Toronto Star", image: torontoStarLogo, url: "https://www.thestar.com/real-estate" },
   { name: "BNN Bloomberg", image: bnnBloombergLogo, url: "https://www.bnnbloomberg.ca/video/shows/taking-stock/2024/09/06/taking-stock-what-the-bank-of-canadas-cut-might-do-to-the-housing-market/" },
   { name: "CTV", image: ctvLogo, url: "https://www.ctvnews.ca/video/c2839217-mortgage-agent--interest-payments-up-90-" },
   { name: "HGTV", image: hgtvLogo, url: "https://www.hgtv.ca" },
@@ -89,21 +92,65 @@ const mediaLogos = [
   { name: "Storeys", image: storeysLogo, url: "https://storeys.com" },
 ];
 
-const howItWorksSteps = [
+const capabilities = [
   {
-    icon: Eye,
-    title: "Browse Listings",
-    description: "Explore active Canadian listings on an interactive yield map. Every property shows estimated gross yields using CMHC and market rent data.",
+    icon: Calculator,
+    title: "Deal Analyzer",
+    description: "Run institutional-grade underwriting on any Canadian property in under two minutes. Buy & hold, BRRR, multiplex, flip.",
+    href: "/tools/analyzer",
+    cta: "Analyze a Deal",
+    badge: "Free",
   },
   {
-    icon: MessageSquare,
-    title: "Underwrite & Comment",
-    description: "Submit your own rent estimates, vacancy rates, and expense ratios. The community votes on the best analyses to surface consensus yields.",
+    icon: Map,
+    title: "Yield Map",
+    description: "Browse active MLS listings on an interactive map showing estimated gross yields using CMHC and community rent data.",
+    href: "/tools/cap-rates",
+    cta: "Explore Map",
+    badge: "Live",
   },
   {
-    icon: Award,
-    title: "Earn Recognition",
-    description: "Climb the leaderboard by contributing quality underwriting notes and comments. Top analysts earn badges and community credibility.",
+    icon: BarChart2,
+    title: "Market Intelligence",
+    description: "Monthly market reports, mortgage rate tracking, CPI analysis, and distress deal data — all interpreted for investors.",
+    href: "/insights",
+    cta: "View Insights",
+    badge: "Updated Monthly",
+  },
+  {
+    icon: Building2,
+    title: "Find Distress Deals",
+    description: "Search power of sale, foreclosures, and motivated seller opportunities across Canadian markets.",
+    href: "/tools/distress-deals",
+    cta: "Find Deals",
+    badge: "New",
+  },
+];
+
+const insightPreviews = [
+  {
+    href: "/insights/mortgage-rates",
+    label: "Mortgage Rates",
+    description: "Best current rates in Canada",
+    icon: TrendingUp,
+  },
+  {
+    href: "/insights/cpi-march-2026",
+    label: "CPI Report",
+    description: "What March 2026 inflation means for investors",
+    icon: BarChart3,
+  },
+  {
+    href: "/insights/podcast",
+    label: "Podcast",
+    description: "Real estate investor conversations",
+    icon: Radio,
+  },
+  {
+    href: "/insights/blog",
+    label: "Blog & Research",
+    description: "Market analysis and strategies",
+    icon: BookOpen,
   },
 ];
 
@@ -150,18 +197,15 @@ function LeaderboardPreview() {
   const isLoading = tab === "deals" ? dealsLoading : contribLoading;
 
   return (
-    <section className="py-16 md:py-24 border-t border-border/50 bg-muted/30" data-testid="section-leaderboard-preview">
+    <section className="py-16 md:py-24 border-t border-border/50 bg-muted/20" data-testid="section-leaderboard-preview">
       <div className="max-w-3xl mx-auto px-4 md:px-6">
         <div className="text-center mb-8">
-          <h2
-            className="text-3xl md:text-4xl font-bold mb-4"
-            data-testid="text-leaderboard-preview-title"
-          >
-            <Trophy className="inline-block h-8 w-8 mr-2 text-yellow-500 -mt-1" />
-            Leaderboard
+          <h2 className="text-3xl md:text-4xl font-bold mb-3" data-testid="text-leaderboard-preview-title">
+            <Trophy className="inline-block h-7 w-7 mr-2 text-yellow-500 -mt-1" />
+            Top Analysts
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Top analysts earning recognition for quality underwriting and deal analysis.
+          <p className="text-muted-foreground max-w-xl mx-auto">
+            Investors earning recognition for quality underwriting and deal analysis.
           </p>
         </div>
 
@@ -259,26 +303,110 @@ function LeaderboardPreview() {
   );
 }
 
+// ─── NL Command Bar ────────────────────────────────────────────────────────────
+
+function NLCommandBar() {
+  const [query, setQuery] = useState("");
+  const [placeholder, setPlaceholder] = useState(NL_EXAMPLES[0]);
+  const [, navigate] = useLocation();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Cycle through example placeholders
+  useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      i = (i + 1) % NL_EXAMPLES.length;
+      setPlaceholder(NL_EXAMPLES[i]);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    track({ event: "nl_query_submitted", query: q });
+    track({ event: "search_submitted", query: q, source: "homepage_hero" });
+    // Route to deal analyzer with query pre-filled via URL param
+    navigate(`/tools/analyzer?q=${encodeURIComponent(q)}`);
+  }, [query, navigate]);
+
+  const handleExampleClick = useCallback((example: string) => {
+    setQuery(example);
+    inputRef.current?.focus();
+    track({ event: "cta_clicked", cta: "nl_example", location: "hero", destination: example });
+  }, []);
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
+      <div className="relative flex items-center">
+        <Search className="absolute left-4 h-5 w-5 text-muted-foreground pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder={placeholder}
+          className="w-full pl-11 pr-28 py-4 text-base rounded-xl border border-border/60 bg-card/90 backdrop-blur-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground/60 transition-all"
+          data-testid="input-nl-query"
+        />
+        <Button
+          type="submit"
+          size="sm"
+          className="absolute right-2 px-5"
+          data-testid="button-nl-submit"
+        >
+          Analyze
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 justify-center">
+        {NL_EXAMPLES.slice(0, 3).map((ex) => (
+          <button
+            key={ex}
+            type="button"
+            onClick={() => handleExampleClick(ex)}
+            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors cursor-pointer truncate max-w-[200px]"
+            data-testid="button-nl-example"
+            title={ex}
+          >
+            {ex.length > 38 ? ex.slice(0, 38) + "…" : ex}
+          </button>
+        ))}
+      </div>
+    </form>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function MapHomepage() {
   const combinedSchema = {
     "@context": "https://schema.org",
     "@graph": [organizationSchema, websiteSchema, softwareSchema],
   };
 
+  // Track page view on mount
+  useEffect(() => {
+    track({ event: "page_viewed", path: "/", title: "Home" });
+  }, []);
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <SEO
-        title="Realist.ca - Analyze Real Estate Deals to Train Ai That Investors Use"
-        description="Canada's most researched real estate program. Browse listings with community-sourced yield estimates, analyze deals, and connect with 11,000+ investors."
-        keywords="canadian real estate, yield map, real estate investing in canada, community underwriting, toronto real estate, daniel foch"
+        title="Realist.ca — AI-Powered Real Estate Investing Platform for Canada"
+        description="Find deals, run institutional-grade underwriting, and track the Canadian market. Free deal analyzer used by 11,000+ investors across 26 cities."
+        keywords="canadian real estate investing, deal analyzer, yield map, real estate AI, toronto real estate, BRRR, cap rates canada, multiplex investing"
         canonicalUrl="/"
         structuredData={combinedSchema}
       />
       <Navigation />
 
-      <section className="relative" style={{ minHeight: "80vh" }}>
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <section className="relative" style={{ minHeight: "82vh" }}>
+        {/* Background map - muted */}
         <div className="absolute inset-0 z-0">
-          <div className="w-full h-full saturate-[0.3] blur-[2px]" style={{ pointerEvents: "none" }}>
+          <div className="w-full h-full saturate-[0.25] blur-[3px]" style={{ pointerEvents: "none" }}>
             <MapContainer
               center={TORONTO_CENTER}
               zoom={6}
@@ -287,223 +415,366 @@ export default function MapHomepage() {
               zoomControl={false}
               doubleClickZoom={false}
               touchZoom={false}
-              style={{ width: "100%", height: "100%", minHeight: "80vh" }}
+              style={{ width: "100%", height: "100%", minHeight: "82vh" }}
               attributionControl={false}
             >
               <GeolocateOnMount />
-              <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                attribution=""
-              />
+              <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="" />
             </MapContainer>
           </div>
         </div>
 
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-background/70 via-background/50 to-background/80 dark:from-background/80 dark:via-background/60 dark:to-background/90" />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-b from-background/75 via-background/55 to-background/85 dark:from-background/85 dark:via-background/65 dark:to-background/90" />
 
-        <div className="relative z-20 flex items-center justify-center px-4" style={{ minHeight: "80vh" }}>
-          <div className="max-w-2xl w-full">
-            <Card className="backdrop-blur-md bg-card/80 dark:bg-card/70 border-border/60">
-              <CardContent className="p-8 md:p-12 text-center space-y-6">
-                <h1
-                  className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight"
-                  data-testid="text-map-hero-headline"
+        {/* Hero content */}
+        <div className="relative z-20 flex items-center justify-center px-4" style={{ minHeight: "82vh" }}>
+          <div className="max-w-3xl w-full text-center space-y-8">
+            <div className="space-y-4">
+              <Badge variant="secondary" className="text-xs px-3 py-1 font-medium">
+                <Zap className="h-3 w-3 mr-1.5 text-primary" />
+                AI-powered investing tools for Canadian real estate
+              </Badge>
+              <h1
+                className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]"
+                data-testid="text-map-hero-headline"
+              >
+                The investing platform
+                <br />
+                <span className="text-gradient">Canadian investors trust</span>
+              </h1>
+              <p
+                className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
+                data-testid="text-map-hero-subhead"
+              >
+                Find deals, run the numbers, understand the market.
+                Free tools and intelligence used by 11,000+ investors across Canada.
+              </p>
+            </div>
+
+            {/* NL Command Bar */}
+            <NLCommandBar />
+
+            {/* Secondary CTAs */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link href="/tools/analyzer">
+                <Button
+                  size="lg"
+                  className="gap-2 px-8 h-11"
+                  data-testid="button-analyze-deal"
+                  onClick={() => track({ event: "cta_clicked", cta: "analyze_deal", location: "hero_secondary" })}
                 >
-                  Analyze real estate deals to train{" "}
-                  <span className="text-gradient">Ai that investors use</span>
-                </h1>
-                <p
-                  className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto"
-                  data-testid="text-map-hero-subhead"
+                  <Calculator className="h-4 w-4" />
+                  Analyze a Deal
+                </Button>
+              </Link>
+              <Link href="/tools/cap-rates">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="gap-2 px-8 h-11 bg-card/60 backdrop-blur-sm"
+                  data-testid="button-open-map"
+                  onClick={() => track({ event: "cta_clicked", cta: "yield_map", location: "hero_secondary" })}
                 >
-                  Real-time yield estimates powered by CMHC data and community underwriting.
-                  See what investors are really paying attention to.
-                </p>
-
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
-                  <Link href="/tools/cap-rates">
-                    <Button
-                      size="lg"
-                      className="gap-2 px-8"
-                      data-testid="button-open-map"
-                    >
-                      <Map className="h-5 w-5" />
-                      Open Yield Map
-                    </Button>
-                  </Link>
-                  <Link href="/deal-analyzer">
-                    <Button
-                      variant="secondary"
-                      size="lg"
-                      className="gap-2 px-8"
-                      data-testid="button-analyze-deal"
-                    >
-                      <Calculator className="h-5 w-5" />
-                      Analyze a Deal
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
-                  <Link href="/community/leaderboard" className="underline underline-offset-2">
-                    <span data-testid="link-leaderboard">Leaderboard</span>
-                  </Link>
-                  <a
-                    href="https://www.skool.com/realist"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2"
-                  >
-                    <span data-testid="link-join-community">Join Community</span>
-                  </a>
-                </div>
-              </CardContent>
-            </Card>
+                  <Map className="h-4 w-4" />
+                  Yield Map
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      <>
-          <section className="py-12 border-t border-border/50">
-            <div className="max-w-7xl mx-auto px-4 md:px-6">
-              <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-                {stats.map((stat, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3"
-                    data-testid={`stat-${stat.label.replace(/\s+/g, "-")}`}
-                  >
-                    <stat.icon className="h-5 w-5 text-muted-foreground" />
-                    <div className="text-left">
-                      <div className="font-bold text-lg md:text-xl font-mono">
-                        {stat.value}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {stat.label}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="py-8 border-t border-border/50">
-            <div className="max-w-4xl mx-auto px-4 md:px-6 text-center space-y-4">
-              <h3 className="text-2xl font-bold text-gradient" data-testid="text-as-seen-on">
-                As seen on:
-              </h3>
-              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 md:gap-4 max-w-4xl mx-auto">
-                {mediaLogos.map((media) => (
-                  <a
-                    key={media.name}
-                    href={media.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group hover-elevate px-2 py-2 rounded-md flex items-center justify-center"
-                    data-testid={`link-media-${media.name.toLowerCase().replace(/\s+/g, "-")}`}
-                    title={media.name}
-                  >
-                    <img
-                      src={media.image}
-                      alt={media.name}
-                      className="h-4 md:h-5 w-auto max-w-full object-contain grayscale opacity-60 transition-all group-hover:grayscale-0 group-hover:opacity-100"
-                    />
-                  </a>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="py-16 md:py-24 border-t border-border/50" data-testid="section-deal-analyzer-embed">
-            <div className="max-w-7xl mx-auto px-4 md:px-6">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4" data-testid="text-analyzer-section-title">
-                  Analyze Any Deal
-                </h2>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Underwrite buy & hold, BRRR, flip, Airbnb, and multiplex strategies with institutional-grade financial projections.
-                </p>
-              </div>
-              <Suspense fallback={
-                <div className="flex items-center justify-center py-20">
-                  <div className="text-center space-y-3">
-                    <Calculator className="h-8 w-8 mx-auto text-muted-foreground animate-pulse" />
-                    <p className="text-sm text-muted-foreground">Loading Deal Analyzer...</p>
-                  </div>
+      {/* ── Stats Bar ─────────────────────────────────────────────────────── */}
+      <section className="py-10 border-t border-border/40 bg-muted/20">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
+          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-14">
+            {stats.map((stat) => (
+              <div key={stat.label} className="flex items-center gap-3" data-testid={`stat-${stat.label.replace(/\s+/g, "-")}`}>
+                <stat.icon className="h-5 w-5 text-muted-foreground" />
+                <div className="text-left">
+                  <div className="font-bold text-lg md:text-xl font-mono">{stat.value}</div>
+                  <div className="text-sm text-muted-foreground">{stat.label}</div>
                 </div>
-              }>
-                <Home embedded />
-              </Suspense>
-            </div>
-          </section>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-          <section className="py-16 md:py-24 border-t border-border/50">
-            <div className="max-w-5xl mx-auto px-4 md:px-6">
-              <div className="text-center mb-12">
-                <h2
-                  className="text-3xl md:text-4xl font-bold mb-4"
-                  data-testid="text-how-it-works-title"
+      {/* ── Media Logos ───────────────────────────────────────────────────── */}
+      <section className="py-8 border-t border-border/40">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 text-center space-y-4">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest" data-testid="text-as-seen-on">
+            As seen on
+          </p>
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 md:gap-4">
+            {mediaLogos.map((media) => (
+              <a
+                key={media.name}
+                href={media.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group hover-elevate px-2 py-2 rounded-md flex items-center justify-center"
+                data-testid={`link-media-${media.name.toLowerCase().replace(/\s+/g, "-")}`}
+                title={media.name}
+              >
+                <img
+                  src={media.image}
+                  alt={media.name}
+                  className="h-4 md:h-5 w-auto max-w-full object-contain grayscale opacity-55 transition-all group-hover:grayscale-0 group-hover:opacity-100"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Capability Cards ──────────────────────────────────────────────── */}
+      <section className="py-16 md:py-24 border-t border-border/40">
+        <div className="max-w-6xl mx-auto px-4 md:px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-3">
+              Everything investors need in one place
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              From finding opportunities to running the numbers to connecting with experts — built for serious Canadian investors.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {capabilities.map((cap) => (
+              <Link key={cap.href} href={cap.href}>
+                <Card
+                  className="h-full hover-elevate cursor-pointer group border-border/60 transition-all"
+                  onClick={() => track({ event: "feature_used", feature: cap.title, details: { source: "homepage_capabilities" } })}
                 >
-                  How community underwriting works
-                </h2>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Combine public data with investor expertise to surface the most accurate yields in Canada.
-                </p>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-6">
-                {howItWorksSteps.map((step, idx) => (
-                  <Card key={idx}>
-                    <CardContent className="p-6 text-center space-y-4">
-                      <div className="mx-auto w-12 h-12 rounded-md bg-primary/10 flex items-center justify-center">
-                        <step.icon className="h-6 w-6 text-primary" />
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <cap.icon className="h-5 w-5 text-primary" />
                       </div>
-                      <Badge variant="secondary">Step {idx + 1}</Badge>
-                      <h3 className="text-lg font-semibold" data-testid={`text-step-title-${idx + 1}`}>
-                        {step.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {step.description}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">{cap.badge}</Badge>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-base mb-1.5">{cap.title}</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{cap.description}</p>
+                    </div>
+                    <div className="flex items-center text-sm font-medium text-primary gap-1 group-hover:gap-2 transition-all">
+                      {cap.cta}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Deal Analyzer Embed ───────────────────────────────────────────── */}
+      <section className="py-16 md:py-24 border-t border-border/40 bg-muted/10" data-testid="section-deal-analyzer-embed">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="text-center mb-10">
+            <Badge variant="outline" className="mb-3 text-xs">Free Tool</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-3" data-testid="text-analyzer-section-title">
+              Underwrite any deal in minutes
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Institutional-grade financial modelling for buy &amp; hold, BRRR, multiplex, flip, and Airbnb strategies.
+              Used by 11,000+ Canadian investors.
+            </p>
+          </div>
+          <Suspense fallback={
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center space-y-3">
+                <Calculator className="h-8 w-8 mx-auto text-muted-foreground animate-pulse" />
+                <p className="text-sm text-muted-foreground">Loading Deal Analyzer…</p>
               </div>
             </div>
-          </section>
+          }>
+            <Home embedded />
+          </Suspense>
+        </div>
+      </section>
 
-          <LeaderboardPreview />
+      {/* ── Market Intelligence Teaser ────────────────────────────────────── */}
+      <section className="py-16 md:py-24 border-t border-border/40">
+        <div className="max-w-5xl mx-auto px-4 md:px-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Market Intelligence</h2>
+              <p className="text-muted-foreground">Data and analysis interpreted for real estate investors.</p>
+            </div>
+            <Link href="/insights">
+              <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
+                All Insights <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
 
-          <footer className="py-12 border-t border-border/50">
-            <div className="max-w-7xl mx-auto px-4 md:px-6">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="text-center md:text-left">
-                  <p className="font-bold text-lg">Realist.ca</p>
-                  <p className="text-sm text-muted-foreground">
-                    Canada's most researched real estate program.
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
-                  <Link href="/about">About</Link>
-                  <Link href="/about/contact">Contact</Link>
-                  <Link href="/privacy">Privacy</Link>
-                  <Link href="/terms">Terms</Link>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {insightPreviews.map((item) => (
+              <Link key={item.href} href={item.href}>
+                <Card
+                  className="hover-elevate cursor-pointer group h-full border-border/60"
+                  onClick={() => track({ event: "cta_clicked", cta: item.label, location: "homepage_insights", destination: item.href })}
+                >
+                  <CardContent className="p-5 space-y-3">
+                    <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center">
+                      <item.icon className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">{item.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.description}</p>
+                    </div>
+                    <div className="flex items-center text-xs text-primary gap-1 group-hover:gap-1.5 transition-all font-medium">
+                      Read more <ChevronRight className="h-3 w-3" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+
+          {/* Content → Action bridge */}
+          <div className="mt-10 p-6 rounded-xl border border-border/60 bg-muted/30 flex flex-col sm:flex-row items-center gap-4 justify-between">
+            <div>
+              <p className="font-semibold text-sm">Seen something in the market?</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Run the numbers on a specific deal or neighbourhood right now.</p>
+            </div>
+            <Link href="/tools/analyzer">
+              <Button
+                size="sm"
+                className="gap-2 shrink-0"
+                onClick={() => track({ event: "cta_clicked", cta: "analyze_from_insights", location: "homepage_insights_bridge" })}
+              >
+                <Calculator className="h-4 w-4" />
+                Analyze a Deal
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── How Community Underwriting Works ─────────────────────────────── */}
+      <section className="py-16 md:py-24 border-t border-border/40 bg-muted/10">
+        <div className="max-w-5xl mx-auto px-4 md:px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-3" data-testid="text-how-it-works-title">
+              Community underwriting
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Investors analyzing deals together — improving assumptions, surfacing consensus yields, and building the best real estate data in Canada.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            {[
+              {
+                icon: Map,
+                step: "01",
+                title: "Browse the Yield Map",
+                description: "Active listings with estimated gross yields from CMHC rent data and community estimates. Updated in real time.",
+              },
+              {
+                icon: Calculator,
+                step: "02",
+                title: "Underwrite & Comment",
+                description: "Submit your rent and expense assumptions. The best analyses surface to the top. Community votes improve the data.",
+              },
+              {
+                icon: Award,
+                step: "03",
+                title: "Earn Recognition",
+                description: "Top analysts earn leaderboard rank and community credibility. Quality underwriting gets seen by 11,000+ investors.",
+              },
+            ].map((step) => (
+              <Card key={step.step} className="border-border/60">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <step.icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="text-3xl font-bold text-muted-foreground/20 font-mono">{step.step}</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1.5" data-testid={`text-step-title-${step.step}`}>
+                      {step.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <Link href="/tools/cap-rates">
+              <Button variant="outline" size="lg" className="gap-2">
+                <Map className="h-4 w-4" />
+                Open the Yield Map
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Leaderboard ───────────────────────────────────────────────────── */}
+      <LeaderboardPreview />
+
+      {/* ── Footer ────────────────────────────────────────────────────────── */}
+      <footer className="py-12 border-t border-border/50">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-8">
+            <div className="max-w-xs">
+              <p className="font-bold text-lg mb-1.5">Realist.ca</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                The AI-powered platform Canadian real estate investors use to find deals, run the numbers, and understand the market.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-12 gap-y-4 text-sm">
+              <div className="space-y-3">
+                <p className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Tools</p>
+                <div className="space-y-2 text-muted-foreground">
+                  <Link href="/tools/analyzer" className="block hover:text-foreground transition-colors">Deal Analyzer</Link>
+                  <Link href="/tools/cap-rates" className="block hover:text-foreground transition-colors">Yield Map</Link>
+                  <Link href="/tools/distress-deals" className="block hover:text-foreground transition-colors">Distress Deals</Link>
+                  <Link href="/tools" className="block hover:text-foreground transition-colors">All Tools</Link>
                 </div>
               </div>
-              <div className="mt-6 pt-4 border-t border-border/30 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-muted-foreground/70">
-                <p>© {new Date().getFullYear()} Realist Inc. All rights reserved.</p>
-                <p>
-                  Real estate listings powered by{" "}
-                  <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
-                    valery.ca
-                  </a>
-                  {" / Valery Real Estate Inc."}
-                </p>
+              <div className="space-y-3">
+                <p className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Insights</p>
+                <div className="space-y-2 text-muted-foreground">
+                  <Link href="/insights/market-report" className="block hover:text-foreground transition-colors">Market Report</Link>
+                  <Link href="/insights/mortgage-rates" className="block hover:text-foreground transition-colors">Mortgage Rates</Link>
+                  <Link href="/insights/podcast" className="block hover:text-foreground transition-colors">Podcast</Link>
+                  <Link href="/insights/blog" className="block hover:text-foreground transition-colors">Blog</Link>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <p className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Company</p>
+                <div className="space-y-2 text-muted-foreground">
+                  <Link href="/about" className="block hover:text-foreground transition-colors">About</Link>
+                  <Link href="/community/events" className="block hover:text-foreground transition-colors">Events</Link>
+                  <Link href="/about/contact" className="block hover:text-foreground transition-colors">Contact</Link>
+                  <Link href="/privacy" className="block hover:text-foreground transition-colors">Privacy</Link>
+                </div>
               </div>
             </div>
-          </footer>
-      </>
+          </div>
+
+          <div className="pt-6 border-t border-border/30 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-muted-foreground/70">
+            <p>© {new Date().getFullYear()} Realist Inc. All rights reserved.</p>
+            <p>
+              Listings powered by{" "}
+              <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+                Valery Real Estate Inc.
+              </a>
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

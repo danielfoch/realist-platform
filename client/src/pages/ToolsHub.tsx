@@ -21,11 +21,17 @@ const tools = [
     badge: "New",
   },
   {
-    href: "/tools/will-it-plex",
-    title: "Will It Plex?",
-    description: "Interactive capstone tool to analyze Buy & Hold or Multiplex strategies. Import listings, configure financing, and export your analysis.",
+    href: "/tools/multiplex-feasibility",
+    title: "Multiplex Feasibility",
+    description: "Screen any property for multiplex development potential. Ontario Bill 23 + Toronto multiplex by-law logic, confidence scoring, and envelope math.",
     icon: Building2,
     badge: "New",
+  },
+  {
+    href: "/tools/will-it-plex",
+    title: "Will It Plex?",
+    description: "Full financial pro forma for multiplex strategies. Import listings, configure financing, MLI Select points, and export your analysis.",
+    icon: Building2,
   },
   {
     href: "/tools/true-cost",

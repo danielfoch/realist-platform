@@ -382,11 +382,73 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  
+
   // Set up email/password authentication
   setupAuth(app);
   registerAuthRoutes(app);
-  
+
+  // ─── Event Tracking ───────────────────────────────────────────────────────
+  // Lightweight behavioral event capture for AI training data pipeline.
+  // Every event here is a future labeled data point:
+  //   - NL queries + clicked results → search relevance labels
+  //   - Analyzer inputs + assumptions → underwriting norm dataset
+  //   - Saved listings + outcomes → investor preference dataset
+  //   - Conversion events → intent classification labels
+  // Schema for future migration: see /docs/PLATFORM_AI_STRATEGY.md
+  app.post("/api/events/track", async (req, res) => {
+    try {
+      const { event, ts, session_id, page, referrer, ...properties } = req.body;
+      if (!event || typeof event !== "string" || event.length > 100) {
+        return res.status(400).json({ ok: false });
+      }
+      const userId = (req as any).user?.id || null;
+      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+
+      // Log structured event for future pipeline ingestion
+      console.log(JSON.stringify({
+        type: "realist_event",
+        event,
+        session_id,
+        user_id: userId,
+        page,
+        referrer,
+        ip_hash: ip ? crypto.createHash("sha256").update(ip).digest("hex").slice(0, 16) : null,
+        properties,
+        server_ts: new Date().toISOString(),
+      }));
+
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ ok: false });
+    }
+  });
+
+  // ─── Multiplex Feasibility Engine ─────────────────────────────────────────
+  // Computes a confidence-scored multiplex development screening for any address.
+  // Ontario-first, Toronto-priority. See server/multiplexFeasibility.ts for docs.
+  app.post("/api/multiplex-feasibility", async (req, res) => {
+    try {
+      const { computeMultiplexFeasibility } = await import("./multiplexFeasibility");
+      const input = req.body;
+
+      // Basic guard — require at least city or address
+      if (!input?.address && !input?.city && !input?.province) {
+        return res.status(400).json({ error: "Provide at least address, city, or province" });
+      }
+
+      // Sanitize numeric inputs
+      if (input.lotFrontage) input.lotFrontage = parseFloat(input.lotFrontage) || undefined;
+      if (input.lotDepth) input.lotDepth = parseFloat(input.lotDepth) || undefined;
+      if (input.lotArea) input.lotArea = parseFloat(input.lotArea) || undefined;
+
+      const result = computeMultiplexFeasibility(input);
+      res.json(result);
+    } catch (err) {
+      console.error("Multiplex feasibility error:", err);
+      res.status(500).json({ error: "Failed to compute feasibility" });
+    }
+  });
+
   app.post("/api/leads", async (req, res) => {
     try {
       const validatedData = createLeadRequestSchema.parse(req.body);
@@ -5243,6 +5305,7 @@ export async function registerRoutes(
         { path: "/insights/productivity-gap", priority: 0.7, changefreq: "monthly" },
         { path: "/insights/new-construction-canada", priority: 0.85, changefreq: "weekly" },
         { path: "/insights/gta-precon-pricing", priority: 0.85, changefreq: "weekly" },
+        { path: "/insights/cpi-march-2026", priority: 0.8, changefreq: "monthly" },
         { path: "/canada-housing-market", priority: 0.9, changefreq: "weekly" },
         { path: "/toronto-housing-market", priority: 0.9, changefreq: "weekly" },
         { path: "/toronto-condo-prices-dropping", priority: 0.85, changefreq: "weekly" },
@@ -5342,6 +5405,23 @@ export async function registerRoutes(
     } catch (error) {
       console.error("GTA pre-construction pricing report error:", error);
       res.status(500).json({ error: "Failed to generate pre-construction pricing report", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/insights/cpi-march-2026", async (req, res) => {
+    try {
+      const { getCpiReport } = await import("./cpiReport");
+      let isAdminUser = false;
+      if (req.query.refresh === "1" && req.session.userId) {
+        const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, req.session.userId)).limit(1);
+        isAdminUser = u?.role === "admin";
+      }
+      const forceRefresh = req.query.refresh === "1" && isAdminUser;
+      const report = await getCpiReport(forceRefresh);
+      res.json(report);
+    } catch (error) {
+      console.error("CPI report error:", error);
+      res.status(500).json({ error: "Failed to generate CPI report", message: error instanceof Error ? error.message : String(error) });
     }
   });
 

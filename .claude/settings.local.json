@@ -3,7 +3,11 @@
     "allow": [
       "Bash(timeout 60 npx tsc --noEmit)",
       "Bash(curl *)",
-      "WebFetch(domain:www150.statcan.gc.ca)"
+      "WebFetch(domain:www150.statcan.gc.ca)",
+      "Bash(curl -s -X POST https://www150.statcan.gc.ca/t1/wds/rest/getCubeMetadata -H 'Content-Type: application/json' -d '[{\"productId\":18100004}]')",
+      "Bash(python3 -c ' *)",
+      "Bash(node *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

@@ -55,12 +55,14 @@ import DistressDeals from "@/pages/DistressDeals";
 import DistressReport from "@/pages/DistressReport";
 import MultiplexFit from "@/pages/MultiplexFit";
 import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
+import MultiplexFeasibilityPage from "@/pages/MultiplexFeasibilityPage";
 import Course from "@/pages/Course";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
 import BuildingPermitsReport from "@/pages/BuildingPermitsReport";
 import ProductivityGapReport from "@/pages/ProductivityGapReport";
 import NewConstructionCanadaReport from "@/pages/NewConstructionCanadaReport";
 import GtaPreconPricingReport from "@/pages/GtaPreconPricingReport";
+import CpiInflationReport from "@/pages/CpiInflationReport";
 import SeoProjectDetail from "@/pages/SeoProjectDetail";
 import {
   TorontoHousingMarketPage,
@@ -109,6 +111,7 @@ function Router() {
       <Route path="/tools/fixed-vs-variable" component={FixedVsVariable} />
       <Route path="/tools/land-claim-screener" component={LandClaimScreener} />
       <Route path="/tools/distress-deals" component={DistressDeals} />
+      <Route path="/tools/multiplex-feasibility" component={MultiplexFeasibilityPage} />
       <Route path="/multiplex-investor-fit" component={MultiplexFit} />
       <Route path="/masterclass" component={MultiplexMasterclass} />
       <Route path="/course" component={Course} />
@@ -122,6 +125,7 @@ function Router() {
       <Route path="/insights/productivity-gap" component={ProductivityGapReport} />
       <Route path="/insights/new-construction-canada" component={NewConstructionCanadaReport} />
       <Route path="/insights/gta-precon-pricing" component={GtaPreconPricingReport} />
+      <Route path="/insights/cpi-march-2026" component={CpiInflationReport} />
       {/* SEO landing pages — programmatic + query-driven */}
       <Route path="/canada-housing-market" component={CanadaHousingMarketPage} />
       <Route path="/toronto-housing-market" component={TorontoHousingMarketPage} />

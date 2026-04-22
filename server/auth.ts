@@ -38,6 +38,33 @@ async function sendLoginWebhookToGHL(user: { id: string; email: string; firstNam
   }
 }
 
+async function sendSignupWebhookToGHL(user: { id: string; email: string; firstName: string | null; lastName: string | null; phone?: string | null }) {
+  const webhookUrl = process.env.GHL_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  const payload = {
+    email: user.email,
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    phone: user.phone || "",
+    formTag: "realist_signup",
+    tags: ["realist-user", "new-signup", `signup-${new Date().toISOString().slice(0, 7)}`],
+    source: "realist.ca",
+    signupTimestamp: new Date().toISOString(),
+  };
+
+  try {
+    const resp = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    console.log(`[ghl-signup] Webhook sent for ${user.email}: ${resp.status}`);
+  } catch (err: any) {
+    console.error(`[ghl-signup] Webhook failed for ${user.email}:`, err.message);
+  }
+}
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_AUTH_REDIRECT_URI = process.env.NODE_ENV === "production"
@@ -87,6 +114,11 @@ export function getSession() {
 
 export function setupAuth(app: Express) {
   app.use(getSession());
+  console.log(
+    process.env.GHL_WEBHOOK_URL
+      ? "[ghl] GHL_WEBHOOK_URL is set — CRM webhooks enabled"
+      : "[ghl] GHL_WEBHOOK_URL is NOT set — CRM webhooks disabled"
+  );
 }
 
 export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
@@ -146,6 +178,10 @@ export function registerAuthRoutes(app: Express): void {
         firstName: newUser.firstName,
         lastName: newUser.lastName,
       });
+
+      sendSignupWebhookToGHL(newUser).catch(err =>
+        console.error("[ghl-signup] webhook error:", err.message)
+      );
     } catch (error: any) {
       console.error("Signup error:", error);
       if (error.name === "ZodError") {
