@@ -13,6 +13,7 @@ import { InvestorAuthPage } from './pages/InvestorAuthPage'
 import { InvestorDashboard } from './pages/InvestorDashboard'
 import { AnalysisHistoryPage } from './pages/AnalysisHistory'
 import { SavedListingsPage } from './pages/SavedListingsPage'
+import CreaStatsPage from './pages/CreaStatsPage'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -36,6 +37,9 @@ function App() {
               </Link>
               <Link to="/insights/city-yields" className="text-sm font-medium hover:text-primary">
                 City Yields
+              </Link>
+              <Link to="/insights/crea-stats" className="text-sm font-medium hover:text-primary">
+                CREA Stats
               </Link>
               <Link to="/realtor" className="text-sm font-medium hover:text-primary">
                 Realtor Portal
@@ -74,6 +78,9 @@ function App() {
             
             {/* City Yield Rankings */}
             <Route path="/insights/city-yields" element={<CityYieldPage />} />
+            
+            {/* CREA Market Stats */}
+            <Route path="/insights/crea-stats" element={<CreaStatsPage />} />
             
             {/* 6ixplex */}
             <Route path="/6ixplex" element={<SixixplexPage />} />

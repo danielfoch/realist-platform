@@ -20,6 +20,7 @@ import analysisRouter from './analysis-routes';
 import { handleStripeWebhook } from './stripe-integration';
 import { handleTrackEvent, handleGetEvents, handleGetEventSummary, handleGetBroadcastStats } from './event-tracking';
 import { savedListingsRouter } from './saved-listings-routes';
+import creaRouter from './crea-routes';
 
 dotenv.config();
 
@@ -78,6 +79,7 @@ app.use('/api/leads', leadRouter);
 app.use('/api/realtor', realtorRouter);
 app.use('/api/investor', investorLeadRouter);
 app.use('/api/analyses', analysisRouter);
+app.use('/api/crea', creaRouter);
 app.use('/api/saved-listings', savedListingsRouter);
 app.use('/api', createContentRouter());
 
