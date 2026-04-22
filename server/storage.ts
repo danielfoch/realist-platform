@@ -5,6 +5,7 @@ import {
   webhookLogs,
   dataCache,
   savedDeals,
+  discoverySignals,
   podcastQuestions,
   coachingWaitlist,
   investorProfiles,
@@ -50,6 +51,8 @@ import {
   type InsertDataCache,
   type SavedDeal,
   type InsertSavedDeal,
+  type DiscoverySignal,
+  type InsertDiscoverySignal,
   type PodcastQuestion,
   type InsertPodcastQuestion,
   type CoachingWaitlist,
@@ -179,6 +182,7 @@ export interface IStorage {
   createAnalysis(analysis: InsertAnalysis): Promise<Analysis>;
   getAnalysis(id: string): Promise<Analysis | undefined>;
   getAnalysesByLead(leadId: string): Promise<Analysis[]>;
+  getAnalysesByUser(userId: string): Promise<Analysis[]>;
   getAnalysisCount(): Promise<number>;
   linkAnalysisToUser(analysisId: string, userId: string): Promise<void>;
 
@@ -194,6 +198,9 @@ export interface IStorage {
   getSavedDealsBySession(sessionId: string): Promise<SavedDeal[]>;
   getSavedDealsByUser(userId: string): Promise<SavedDeal[]>;
   deleteSavedDeal(id: string): Promise<void>;
+  getDiscoverySignalsByUser(userId: string): Promise<DiscoverySignal[]>;
+  upsertDiscoverySignals(signals: InsertDiscoverySignal[]): Promise<DiscoverySignal[]>;
+  deleteDiscoverySignal(userId: string, signalType: string, signalKey: string): Promise<void>;
 
   createPodcastQuestion(question: InsertPodcastQuestion): Promise<PodcastQuestion>;
   getPodcastQuestions(): Promise<PodcastQuestion[]>;
@@ -537,6 +544,10 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(analyses).where(eq(analyses.leadId, leadId));
   }
 
+  async getAnalysesByUser(userId: string): Promise<Analysis[]> {
+    return db.select().from(analyses).where(eq(analyses.userId, userId)).orderBy(desc(analyses.createdAt));
+  }
+
   async getAnalysisCount(): Promise<number> {
     const [result] = await db.select({ count: sql<number>`count(*)` }).from(analyses);
     return Number(result?.count || 0);
@@ -599,6 +610,45 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSavedDeal(id: string): Promise<void> {
     await db.delete(savedDeals).where(eq(savedDeals.id, id));
+  }
+
+  async getDiscoverySignalsByUser(userId: string): Promise<DiscoverySignal[]> {
+    return db.select().from(discoverySignals)
+      .where(eq(discoverySignals.userId, userId))
+      .orderBy(desc(discoverySignals.updatedAt));
+  }
+
+  async upsertDiscoverySignals(signals: InsertDiscoverySignal[]): Promise<DiscoverySignal[]> {
+    if (!signals.length) return [];
+
+    const results = await Promise.all(
+      signals.map(async (signal) => {
+        const [result] = await db
+          .insert(discoverySignals)
+          .values(signal)
+          .onConflictDoUpdate({
+            target: [discoverySignals.userId, discoverySignals.signalType, discoverySignals.signalKey],
+            set: {
+              payloadJson: signal.payloadJson,
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+        return result;
+      }),
+    );
+
+    return results;
+  }
+
+  async deleteDiscoverySignal(userId: string, signalType: string, signalKey: string): Promise<void> {
+    await db.delete(discoverySignals).where(
+      and(
+        eq(discoverySignals.userId, userId),
+        eq(discoverySignals.signalType, signalType),
+        eq(discoverySignals.signalKey, signalKey),
+      ),
+    );
   }
 
   async createPodcastQuestion(insertQuestion: InsertPodcastQuestion): Promise<PodcastQuestion> {

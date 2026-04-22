@@ -110,6 +110,94 @@ const createLeadRequestSchema = z.object({
   analysis: insertAnalysisSchema.omit({ leadId: true, propertyId: true }),
 });
 
+const savedSearchSignalSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  label: z.string(),
+  query: z.string().optional(),
+  geography: z.string().optional(),
+  strategy: z.string().optional(),
+  propertyType: z.string().optional(),
+  budgetMax: z.number().optional(),
+  targetGrossYield: z.number().optional(),
+  targetCashOnCash: z.number().optional(),
+  targetIrr: z.number().optional(),
+  financingIntent: z.boolean().optional(),
+  renovationIntent: z.boolean().optional(),
+});
+
+const savedListingSignalSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  label: z.string(),
+  listingId: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  strategy: z.string().optional(),
+  propertyType: z.string().optional(),
+  price: z.number().optional(),
+  monthlyCashFlow: z.number().optional(),
+  capRate: z.number().optional(),
+  source: z.string().optional(),
+});
+
+const discoverySignalsSyncSchema = z.object({
+  savedSearches: z.array(savedSearchSignalSchema).default([]),
+  savedListings: z.array(savedListingSignalSchema).default([]),
+  recentViewedListings: z.array(savedListingSignalSchema).default([]),
+});
+
+const discoverySignalTypeSchema = z.enum([
+  "saved_search",
+  "saved_listing",
+  "recent_viewed_listing",
+]);
+
+function getTopSignalValue(values: Array<string | undefined | null>): string | null {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    const normalized = value?.trim();
+    if (!normalized) continue;
+    counts.set(normalized, (counts.get(normalized) || 0) + 1);
+  }
+
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  return ranked[0]?.[0] || null;
+}
+
+function buildAnalyzerHref(signal: z.infer<typeof savedListingSignalSchema>): string {
+  const params = new URLSearchParams();
+  if (signal.address) params.set("address", signal.address);
+  if (signal.city) params.set("city", signal.city);
+  if (signal.price) params.set("price", String(signal.price));
+  if (signal.listingId) params.set("mls", signal.listingId);
+  return `/tools/analyzer${params.toString() ? `?${params.toString()}` : ""}`;
+}
+
+function buildDiscoveryHref(input: {
+  geography?: string | null;
+  strategy?: string | null;
+  propertyType?: string | null;
+  query?: string | null;
+  budgetMax?: number | null;
+}): string {
+  const prompt = [
+    input.query,
+    input.strategy ? String(input.strategy).replace(/_/g, " ") : null,
+    input.propertyType,
+    input.geography,
+    input.budgetMax ? `under $${Math.round(input.budgetMax).toLocaleString()}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const params = new URLSearchParams();
+  if (prompt) {
+    params.set("q", prompt);
+  }
+  return `/tools/cap-rates${params.toString() ? `?${params.toString()}` : ""}`;
+}
+
 async function sendWebhook(leadId: string, payload: object) {
   const webhookUrl = process.env.GHL_WEBHOOK_URL;
   if (!webhookUrl) {
@@ -2237,6 +2325,252 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching user saved deals:", error);
       res.status(500).json({ error: "Failed to fetch saved deals" });
+    }
+  });
+
+  app.post("/api/user/discovery-signals/sync", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const payload = discoverySignalsSyncSchema.parse(req.body);
+
+      const records = [
+        ...payload.savedSearches.map((signal) => ({
+          userId,
+          signalType: "saved_search",
+          signalKey: signal.id,
+          payloadJson: signal,
+        })),
+        ...payload.savedListings.map((signal) => ({
+          userId,
+          signalType: "saved_listing",
+          signalKey: signal.listingId || signal.address || signal.id,
+          payloadJson: signal,
+        })),
+        ...payload.recentViewedListings.map((signal) => ({
+          userId,
+          signalType: "recent_viewed_listing",
+          signalKey: signal.listingId || signal.address || signal.id,
+          payloadJson: signal,
+        })),
+      ];
+
+      await storage.upsertDiscoverySignals(records);
+      const mergedSignals = await storage.getDiscoverySignalsByUser(userId);
+
+      res.json({
+        savedSearches: mergedSignals
+          .filter((signal) => signal.signalType === "saved_search")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 25),
+        savedListings: mergedSignals
+          .filter((signal) => signal.signalType === "saved_listing")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 25),
+        recentViewedListings: mergedSignals
+          .filter((signal) => signal.signalType === "recent_viewed_listing")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 12),
+      });
+    } catch (error) {
+      console.error("Error syncing discovery signals:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid discovery signal payload", details: error.errors });
+        return;
+      }
+      res.status(500).json({ error: "Failed to sync discovery signals" });
+    }
+  });
+
+  app.get("/api/user/discovery-signals", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const mergedSignals = await storage.getDiscoverySignalsByUser(userId);
+
+      res.json({
+        savedSearches: mergedSignals
+          .filter((signal) => signal.signalType === "saved_search")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 25),
+        savedListings: mergedSignals
+          .filter((signal) => signal.signalType === "saved_listing")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 25),
+        recentViewedListings: mergedSignals
+          .filter((signal) => signal.signalType === "recent_viewed_listing")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 12),
+      });
+    } catch (error) {
+      console.error("Error fetching discovery signals:", error);
+      res.status(500).json({ error: "Failed to fetch discovery signals" });
+    }
+  });
+
+  app.delete("/api/user/discovery-signals/:signalType/:signalKey", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const signalType = discoverySignalTypeSchema.parse(req.params.signalType);
+      const signalKey = decodeURIComponent(req.params.signalKey);
+
+      await storage.deleteDiscoverySignal(userId, signalType, signalKey);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting discovery signal:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid discovery signal type", details: error.errors });
+        return;
+      }
+      res.status(500).json({ error: "Failed to delete discovery signal" });
+    }
+  });
+
+  app.get("/api/user/investor-workspace", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const [mergedSignals, savedDeals, analysesByUser, profile, kyc] = await Promise.all([
+        storage.getDiscoverySignalsByUser(userId),
+        storage.getSavedDealsByUser(userId),
+        storage.getAnalysesByUser(userId),
+        storage.getInvestorProfile(userId),
+        storage.getInvestorKyc(userId),
+      ]);
+
+      const savedSearches = mergedSignals
+        .filter((signal) => signal.signalType === "saved_search")
+        .map((signal) => savedSearchSignalSchema.parse(signal.payloadJson))
+        .slice(0, 25);
+      const savedListings = mergedSignals
+        .filter((signal) => signal.signalType === "saved_listing")
+        .map((signal) => savedListingSignalSchema.parse(signal.payloadJson))
+        .slice(0, 25);
+      const recentViewedListings = mergedSignals
+        .filter((signal) => signal.signalType === "recent_viewed_listing")
+        .map((signal) => savedListingSignalSchema.parse(signal.payloadJson))
+        .slice(0, 12);
+
+      const dominantGeography = getTopSignalValue([
+        ...savedSearches.map((signal) => signal.geography),
+        ...savedListings.map((signal) => signal.city),
+        ...recentViewedListings.map((signal) => signal.city),
+        ...savedDeals.map((deal) => deal.city),
+        ...analysesByUser.map((analysis) => analysis.city),
+        profile?.city,
+      ]);
+
+      const dominantStrategy = getTopSignalValue([
+        ...savedSearches.map((signal) => signal.strategy),
+        ...savedListings.map((signal) => signal.strategy),
+        ...savedDeals.map((deal) => deal.strategyType),
+        ...analysesByUser.map((analysis) => analysis.strategyType),
+      ]);
+
+      const dominantPropertyType = getTopSignalValue([
+        ...savedSearches.map((signal) => signal.propertyType),
+        ...savedListings.map((signal) => signal.propertyType),
+      ]);
+
+      const budgetSignals = [
+        ...savedSearches.map((signal) => signal.budgetMax).filter((value): value is number => typeof value === "number" && Number.isFinite(value)),
+        ...savedListings.map((signal) => signal.price).filter((value): value is number => typeof value === "number" && Number.isFinite(value)),
+      ];
+      const targetBudget = budgetSignals.length
+        ? Math.round(budgetSignals.reduce((sum, value) => sum + value, 0) / budgetSignals.length)
+        : null;
+
+      const recommendationCandidates = [
+        savedSearches[0] && {
+          id: `resume-search-${savedSearches[0].id}`,
+          score: 100,
+          title: "Resume your highest-intent search",
+          reason: "You already saved a search, which is the clearest repeat-usage signal.",
+          href: buildDiscoveryHref({
+            query: savedSearches[0].query,
+            geography: savedSearches[0].geography,
+            strategy: savedSearches[0].strategy,
+            propertyType: savedSearches[0].propertyType,
+            budgetMax: savedSearches[0].budgetMax,
+          }),
+          cta: "Open saved search",
+        },
+        savedListings[0] && {
+          id: `analyze-shortlist-${savedListings[0].listingId || savedListings[0].id}`,
+          score: 92,
+          title: "Underwrite your top shortlisted property",
+          reason: "A saved listing is a stronger purchase signal than a casual view.",
+          href: buildAnalyzerHref(savedListings[0]),
+          cta: "Analyze shortlisted deal",
+        },
+        !savedListings[0] && recentViewedListings[0] && {
+          id: `revisit-recent-${recentViewedListings[0].listingId || recentViewedListings[0].id}`,
+          score: 84,
+          title: "Revisit the last property you viewed",
+          reason: "Recent listing views are the fastest path back into active discovery.",
+          href: buildAnalyzerHref(recentViewedListings[0]),
+          cta: "Review property",
+        },
+        dominantStrategy && dominantGeography && {
+          id: "strategy-expansion",
+          score: dominantStrategy === "multiplex" ? 82 : 74,
+          title: dominantStrategy === "multiplex"
+            ? "Search more multiplex opportunities"
+            : `Find more ${String(dominantStrategy).replace(/_/g, " ")} deals`,
+          reason: "This recommendation is ranked from repeated geography and strategy signals.",
+          href: buildDiscoveryHref({
+            geography: dominantGeography,
+            strategy: dominantStrategy,
+            propertyType: dominantPropertyType,
+            budgetMax: targetBudget,
+          }),
+          cta: "Explore matching deals",
+        },
+        analysesByUser[0] && {
+          id: `compare-last-analysis-${analysesByUser[0].id}`,
+          score: 68,
+          title: "Compare your next deal against recent analyses",
+          reason: "You already have underwriting history, so the next win is better comps and repeats.",
+          href: "/compare",
+          cta: "Compare deals",
+        },
+      ].filter(Boolean);
+
+      const recommendations = recommendationCandidates
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 4);
+
+      res.json({
+        discovery: {
+          savedSearches,
+          savedListings,
+          recentViewedListings,
+        },
+        savedDeals: savedDeals.slice(0, 25),
+        recentAnalyses: analysesByUser.slice(0, 8),
+        intentSummary: {
+          geography: dominantGeography,
+          strategy: dominantStrategy,
+          propertyType: dominantPropertyType,
+          targetBudget,
+          signalCounts: {
+            savedSearches: savedSearches.length,
+            savedListings: savedListings.length,
+            recentViewedListings: recentViewedListings.length,
+            savedDeals: savedDeals.length,
+            analyses: analysesByUser.length,
+          },
+        },
+        recommendations,
+        profileCompletion: {
+          hasProfile: Boolean(profile),
+          hasKyc: Boolean(kyc),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching investor workspace:", error);
+      if (error instanceof z.ZodError) {
+        res.status(500).json({ error: "Stored discovery signals failed validation", details: error.errors });
+        return;
+      }
+      res.status(500).json({ error: "Failed to fetch investor workspace" });
     }
   });
 
@@ -5387,7 +5721,9 @@ export async function registerRoutes(
       "Sitemap: https://realist.ca/sitemap.xml",
       "",
     ].join("\n");
-    res.type("text/plain").send(body);
+    res.set("Content-Type", "text/plain; charset=utf-8");
+    res.set("X-Content-Type-Options", "nosniff");
+    res.send(body);
   });
 
   // Dynamic sitemap.xml — overrides static client/public/sitemap.xml
@@ -5485,9 +5821,11 @@ export async function registerRoutes(
       } catch (e) { /* skip if storage unavailable */ }
 
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+      const cleanXml = xml.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").trim() + "\n";
       res.set("Content-Type", "application/xml; charset=utf-8");
       res.set("Cache-Control", "public, max-age=3600");
-      res.send(xml);
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(cleanXml);
     } catch (err: any) {
       console.error("[sitemap] error:", err.message);
       res.status(500).type("text/plain").send("sitemap error");

@@ -124,9 +124,36 @@ export const savedDeals = pgTable("saved_deals", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const discoverySignals = pgTable(
+  "discovery_signals",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    signalType: text("signal_type").notNull(),
+    signalKey: text("signal_key").notNull(),
+    payloadJson: jsonb("payload_json").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userSignalUnique: uniqueIndex("discovery_signals_user_signal_unique").on(
+      table.userId,
+      table.signalType,
+      table.signalKey,
+    ),
+  }),
+);
+
 export const savedDealsRelations = relations(savedDeals, ({ one }) => ({
   user: one(users, {
     fields: [savedDeals.userId],
+    references: [users.id],
+  }),
+}));
+
+export const discoverySignalsRelations = relations(discoverySignals, ({ one }) => ({
+  user: one(users, {
+    fields: [discoverySignals.userId],
     references: [users.id],
   }),
 }));
@@ -211,6 +238,12 @@ export const insertSavedDealSchema = createInsertSchema(savedDeals).omit({
   createdAt: true,
 });
 
+export const insertDiscoverySignalSchema = createInsertSchema(discoverySignals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertPodcastQuestionSchema = createInsertSchema(podcastQuestions).omit({
   id: true,
   createdAt: true,
@@ -247,6 +280,9 @@ export type DataCache = typeof dataCache.$inferSelect;
 
 export type InsertSavedDeal = z.infer<typeof insertSavedDealSchema>;
 export type SavedDeal = typeof savedDeals.$inferSelect;
+
+export type InsertDiscoverySignal = z.infer<typeof insertDiscoverySignalSchema>;
+export type DiscoverySignal = typeof discoverySignals.$inferSelect;
 
 export type InsertPodcastQuestion = z.infer<typeof insertPodcastQuestionSchema>;
 export type PodcastQuestion = typeof podcastQuestions.$inferSelect;

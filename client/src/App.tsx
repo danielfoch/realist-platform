@@ -9,6 +9,7 @@ import { Redirect } from "@/components/Redirect";
 // Pages
 import MapHomepage from "@/pages/MapHomepage";
 import Home from "@/pages/Home";
+import InvestorStart from "@/pages/InvestorStart";
 import About from "@/pages/About";
 import Events from "@/pages/Events";
 import Blog from "@/pages/Blog";
@@ -94,8 +95,9 @@ import ContactPage from "@/pages/ContactPage";
 function Router() {
   return (
     <Switch>
-      {/* Main entry - Map or Deal Analyzer based on env var */}
-      <Route path="/" component={import.meta.env.VITE_HOME_VARIANT === "deal" ? Home : MapHomepage} />
+      {/* Main entry - simplified investor homepage */}
+      <Route path="/" component={InvestorStart} />
+      <Route path="/discover" component={MapHomepage} />
       <Route path="/deal-analyzer" component={Home} />
       
       {/* New Tools routes */}

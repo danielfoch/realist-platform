@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,18 @@ import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import {
+  getRecentViewedListingSignals,
+  getSavedSearchSignals,
+  getSavedListingSignals,
+  persistRecentViewedListingSignal,
+  persistSavedSearchSignal,
+  persistSavedListingSignal,
+  syncDiscoverySignalsWithAccount,
+  track,
+  type SavedSearchSignal,
+  type SavedListingSignal,
+} from "@/lib/analytics";
 import { getCmhcRent } from "@shared/cmhcRents";
 import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
 import type { ListingAnalysisAggregate, UnderwritingNote, ListingComment } from "@shared/schema";
@@ -188,6 +200,26 @@ function getCapRateMarkerColor(rate: number): string {
   if (rate >= 4) return "#ca8a04";
   if (rate >= 2) return "#ea580c";
   return "#dc2626";
+}
+
+function buildListingSignal(listing: RepliersListing & {
+  capRate?: number;
+  estimatedMonthlyRent?: number;
+  unitCount?: number;
+}, source: string): SavedListingSignal {
+  const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+  return {
+    id: listing.mlsNumber || `${formatShortAddress(listing.address)}-${source}`,
+    createdAt: new Date().toISOString(),
+    label: formatShortAddress(listing.address),
+    listingId: listing.mlsNumber || undefined,
+    address: formatAddress(listing.address),
+    city: listing.address?.city || undefined,
+    propertyType: listing.details?.propertyType || listing.type || undefined,
+    price: Number.isFinite(price) ? price : undefined,
+    capRate: typeof listing.capRate === "number" ? listing.capRate : undefined,
+    source,
+  };
 }
 
 function createCapRateIcon(capRate: number, isSelected: boolean): L.DivIcon {
@@ -410,6 +442,7 @@ function GeolocateOnMount() {
 
 export default function CapRates() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [minPrice, setMinPrice] = useState("");
@@ -435,6 +468,7 @@ export default function CapRates() {
   const [aggregatesMap, setAggregatesMap] = useState<Record<string, ListingAnalysisAggregate>>({});
   const listingRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const searchInProgress = useRef(false);
+  const initialQueryHandledRef = useRef(false);
 
   const [findDealsQuery, setFindDealsQuery] = useState("");
   const [findDealsResults, setFindDealsResults] = useState<FindDealsResult[]>([]);
@@ -443,6 +477,10 @@ export default function CapRates() {
   const [findDealsFilters, setFindDealsFilters] = useState<Record<string, any>>({});
   const [showTopDealsOnly, setShowTopDealsOnly] = useState(false);
   const [selectedDealResult, setSelectedDealResult] = useState<FindDealsResult | null>(null);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [savedSearches, setSavedSearches] = useState<SavedSearchSignal[]>(() => getSavedSearchSignals().slice(0, 4));
+  const [savedShortlist, setSavedShortlist] = useState<SavedListingSignal[]>(() => getSavedListingSignals().slice(0, 4));
+  const [recentViewedListings, setRecentViewedListings] = useState<SavedListingSignal[]>(() => getRecentViewedListingSignals().slice(0, 4));
 
   const [uwUnitCount, setUwUnitCount] = useState("1");
   const [uwRentPerUnit, setUwRentPerUnit] = useState("");
@@ -738,6 +776,32 @@ export default function CapRates() {
     }
   }, [findDealsQuery, mapBounds, toast]);
 
+  useEffect(() => {
+    if (initialQueryHandledRef.current || !search) return;
+    const params = new URLSearchParams(search);
+    const q = params.get("q");
+    if (!q) {
+      initialQueryHandledRef.current = true;
+      return;
+    }
+    setFindDealsQuery(q);
+  }, [search]);
+
+  useEffect(() => {
+    if (initialQueryHandledRef.current || !mapBounds || !findDealsQuery.trim()) return;
+    initialQueryHandledRef.current = true;
+    handleFindDeals();
+  }, [findDealsQuery, mapBounds, handleFindDeals]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    syncDiscoverySignalsWithAccount().then(() => {
+      setSavedSearches(getSavedSearchSignals().slice(0, 4));
+      setSavedShortlist(getSavedListingSignals().slice(0, 4));
+      setRecentViewedListings(getRecentViewedListingSignals().slice(0, 4));
+    });
+  }, [isAuthenticated]);
+
   const handleClearFindDeals = () => {
     setFindDealsActive(false);
     setFindDealsResults([]);
@@ -760,6 +824,18 @@ export default function CapRates() {
       : findDealsResults;
     return results.slice(0, 20);
   }, [findDealsActive, findDealsResults, showTopDealsOnly]);
+
+  const activeFilterCount = useMemo(() => {
+    return [
+      Boolean(minPrice),
+      Boolean(maxPrice),
+      minBeds !== "any",
+      minUnits !== "any",
+      propertyType !== "all",
+      minCapRate !== "any",
+      sortBy !== "capRate",
+    ].filter(Boolean).length;
+  }, [minPrice, maxPrice, minBeds, minUnits, propertyType, minCapRate, sortBy]);
 
   const handleRefresh = () => {
     if (mapBounds) {
@@ -796,6 +872,82 @@ export default function CapRates() {
     setLocation(`/tools/analyzer?${params.toString()}`);
   };
 
+  const handleSaveCurrentSearch = () => {
+    const normalizedQuery = findDealsQuery.trim();
+    const inferredGeography = selectedListing?.address?.city || recentViewedListings[0]?.city || undefined;
+    const savedSearch: SavedSearchSignal = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      label: normalizedQuery
+        ? `Map search · ${normalizedQuery}`
+        : [
+            propertyType !== "all" ? propertyType : null,
+            minCapRate !== "any" ? `${minCapRate}%+ cap` : null,
+            minPrice ? `from $${Number(minPrice).toLocaleString()}` : null,
+            maxPrice ? `to $${Number(maxPrice).toLocaleString()}` : null,
+          ].filter(Boolean).join(" · ") || "Saved map search",
+      query: normalizedQuery || undefined,
+      geography: inferredGeography,
+      strategy: normalizedQuery.toLowerCase().includes("multiplex")
+        ? "multiplex"
+        : normalizedQuery.toLowerCase().includes("brrr")
+          ? "brrr"
+          : undefined,
+      propertyType: propertyType !== "all" ? propertyType : undefined,
+      budgetMax: maxPrice ? Number(maxPrice) : undefined,
+      targetGrossYield: minCapRate !== "any" ? Number(minCapRate) : undefined,
+      financingIntent: true,
+      renovationIntent: normalizedQuery.toLowerCase().includes("flip") || normalizedQuery.toLowerCase().includes("brrr"),
+    };
+
+    persistSavedSearchSignal(savedSearch);
+    setSavedSearches(getSavedSearchSignals().slice(0, 4));
+    if (isAuthenticated) {
+      void syncDiscoverySignalsWithAccount();
+    }
+    track({
+      event: "saved_search",
+      geography: savedSearch.geography,
+      filters: {
+        query: savedSearch.query,
+        strategy: savedSearch.strategy,
+        propertyType: savedSearch.propertyType,
+        budgetMax: savedSearch.budgetMax,
+        targetGrossYield: savedSearch.targetGrossYield,
+        minPrice: minPrice || undefined,
+        maxPrice: maxPrice || undefined,
+        minBeds,
+        minUnits,
+        sortBy,
+      },
+    });
+    toast({
+      title: "Search saved",
+      description: "This search now appears in your investor workspace.",
+    });
+  };
+
+  const handleSaveShortlist = (listing: ListingWithCapRate) => {
+    const signal = buildListingSignal(listing, "map_shortlist");
+    persistSavedListingSignal(signal);
+    setSavedShortlist(getSavedListingSignals().slice(0, 4));
+    if (isAuthenticated) {
+      void syncDiscoverySignalsWithAccount();
+    }
+    track({
+      event: "saved_listing",
+      listing_id: listing.mlsNumber || signal.address,
+      city: listing.address?.city || undefined,
+      price: signal.price,
+      property_type: signal.propertyType,
+      source: "map_shortlist",
+    });
+    toast({
+      title: "Saved to shortlist",
+      description: "This property is saved as a discovery shortcut.",
+    });
+  };
+
   const handleSelectListing = (listing: ListingWithCapRate) => {
     setSelectedListing(listing);
     setDetailTab("overview");
@@ -807,6 +959,19 @@ export default function CapRates() {
     if (listing.map?.latitude && listing.map?.longitude) {
       setFlyTo({ lat: listing.map.latitude, lng: listing.map.longitude });
     }
+    persistRecentViewedListingSignal(buildListingSignal(listing, "map_recent_view"));
+    setRecentViewedListings(getRecentViewedListingSignals().slice(0, 4));
+    if (isAuthenticated) {
+      void syncDiscoverySignalsWithAccount();
+    }
+    track({
+      event: "listing_viewed",
+      listing_id: listing.mlsNumber,
+      city: listing.address?.city || undefined,
+      property_type: listing.details?.propertyType || listing.type || undefined,
+      price: typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice,
+      gross_yield: listing.capRate,
+    });
     const ref = listingRefs.current[listing.mlsNumber];
     if (ref) {
       ref.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -1112,7 +1277,16 @@ export default function CapRates() {
                   data-testid="button-analyze-listing"
                 >
                   <Calculator className="h-4 w-4 mr-2" />
-                  Full Analysis in Deal Analyzer
+                  Open in Deal Analyzer
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleSaveShortlist(selectedListing)}
+                  data-testid="button-save-shortlist"
+                >
+                  <Star className="h-4 w-4 mr-2" />
+                  Save to shortlist
                 </Button>
 
                 <Separator />
@@ -1544,6 +1718,63 @@ export default function CapRates() {
         </div>
       ) : (
         <div className="overflow-y-auto flex-1 space-y-2 p-3">
+          {(savedSearches.length > 0 || savedShortlist.length > 0 || recentViewedListings.length > 0) && (
+            <Card className="border-border/60">
+              <CardContent className="p-3 space-y-3">
+                {savedSearches.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Saved searches</p>
+                    {savedSearches.slice(0, 2).map((search) => (
+                      <button
+                        key={`saved-search-${search.id}`}
+                        className="w-full rounded-md border border-border/60 px-2.5 py-2 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
+                        onClick={() => {
+                          setFindDealsQuery(search.query || "");
+                          if (search.propertyType) setPropertyType(search.propertyType);
+                          if (search.budgetMax) setMaxPrice(String(search.budgetMax));
+                          if (search.targetGrossYield) setMinCapRate(String(search.targetGrossYield));
+                        }}
+                        data-testid={`button-resume-saved-search-${search.id}`}
+                      >
+                        <p className="text-xs font-medium">{search.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{search.query || search.geography || "Saved search"}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {savedShortlist.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Shortlist</p>
+                    {savedShortlist.slice(0, 2).map((listing) => (
+                      <div key={`shortlist-${listing.id}`} className="rounded-md border border-border/60 px-2.5 py-2">
+                        <p className="text-xs font-medium">{listing.label}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {[listing.city, listing.capRate != null ? `${listing.capRate.toFixed(1)}% cap` : null, listing.price ? formatPrice(listing.price) : null]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {recentViewedListings.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recently viewed</p>
+                    {recentViewedListings.slice(0, 2).map((listing) => (
+                      <div key={`recent-${listing.id}`} className="rounded-md border border-border/60 px-2.5 py-2">
+                        <p className="text-xs font-medium">{listing.label}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {[listing.city, listing.capRate != null ? `${listing.capRate.toFixed(1)}% cap` : null, listing.price ? formatPrice(listing.price) : null]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
           {isSearching ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="rounded-lg border p-2">
@@ -1609,12 +1840,36 @@ export default function CapRates() {
     </>
   );
 
+  const resultSummaryLabel = hasSearched
+    ? totalCount > 0
+      ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
+      : "No properties found"
+    : "Move the map or run a search to start";
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
 
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-[1000] relative">
-        <div className="px-3 py-2 space-y-2">
+        <div className="px-3 py-3 space-y-3">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Deal sourcing</p>
+              <p className="text-sm text-muted-foreground">Search broadly, shortlist quickly, then hand the winner into underwriting.</p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="text-[10px]" data-testid="badge-results-summary">
+                {resultSummaryLabel}
+              </Badge>
+              {dataSource && (
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0" data-testid="badge-data-source">
+                  {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
+                </Badge>
+              )}
+              {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+          </div>
+
           <div className="flex gap-2 items-center">
             <div className="flex-1 relative">
               <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
@@ -1641,6 +1896,16 @@ export default function CapRates() {
               )}
               Find Deals
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={handleSaveCurrentSearch}
+              data-testid="button-save-current-search"
+            >
+              <Star className="h-3.5 w-3.5" />
+              Save Search
+            </Button>
             {findDealsActive && (
               <Button
                 variant="outline"
@@ -1652,6 +1917,17 @@ export default function CapRates() {
                 <X className="h-4 w-4" />
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={() => setShowAdvancedFilters((value) => !value)}
+              data-testid="button-toggle-advanced-filters"
+            >
+              Filters
+              {activeFilterCount > 0 && <Badge variant="secondary" className="px-1 py-0 text-[9px]">{activeFilterCount}</Badge>}
+              {showAdvancedFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </Button>
           </div>
 
           {findDealsActive && Object.keys(findDealsFilters).length > 0 && (
@@ -1692,7 +1968,8 @@ export default function CapRates() {
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2 items-end">
+          {showAdvancedFilters && (
+          <div className="flex flex-wrap gap-2 items-end rounded-xl border border-border/60 bg-muted/20 p-3">
             <div className="min-w-[100px]">
               <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Price</Label>
               <Input
@@ -1804,22 +2081,26 @@ export default function CapRates() {
               <RefreshCw className="h-3.5 w-3.5 mr-1" />
               Apply
             </Button>
-            {hasSearched && (
-              <div className="flex items-center gap-1.5 ml-auto">
-                <p className="text-xs text-muted-foreground" data-testid="text-results-count">
-                  {totalCount > 0
-                    ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()}`
-                    : "No results"}
-                </p>
-                {dataSource && (
-                  <Badge variant="outline" className="text-[9px] px-1 py-0" data-testid="badge-data-source">
-                    {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
-                  </Badge>
-                )}
-                {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-              </div>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                setMinPrice("");
+                setMaxPrice("");
+                setMinBeds("any");
+                setMinUnits("any");
+                setPropertyType("all");
+                setMinCapRate("any");
+                setSortBy("capRate");
+              }}
+              disabled={activeFilterCount === 0}
+              data-testid="button-reset-filters"
+            >
+              Reset
+            </Button>
           </div>
+          )}
         </div>
       </div>
 
@@ -1923,21 +2204,32 @@ export default function CapRates() {
 
         <div className="hidden lg:flex lg:w-[380px] xl:w-[420px] flex-shrink-0 flex-col border-l bg-background overflow-hidden">
           <div className="px-3 py-2 border-b flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <p className="text-xs font-medium" data-testid="text-sidebar-count">
-                {hasSearched
-                  ? totalCount > 0
-                    ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
-                    : "No properties"
-                  : "Move map to search"}
-              </p>
-              {dataSource && (
-                <Badge variant="outline" className="text-[9px] px-1 py-0">
-                  {dataSource === "crea_ddf" ? "DDF" : "Repliers"}
-                </Badge>
-              )}
-            </div>
-            {isSearching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            {selectedListing ? (
+              <div className="flex items-center justify-between gap-2 w-full">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Selected property</p>
+                  <p className="text-sm font-medium truncate">{formatShortAddress(selectedListing.address)}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setSelectedListing(null)}
+                  data-testid="button-back-to-results"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Results
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2 w-full">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Search results</p>
+                  <p className="text-sm font-medium" data-testid="text-sidebar-count">{resultSummaryLabel}</p>
+                </div>
+                {isSearching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              </div>
+            )}
           </div>
           {sidebarContent}
         </div>

@@ -104,9 +104,16 @@ export interface SavedListingSignal {
   source?: string;
 }
 
+export interface DiscoverySignalsPayload {
+  savedSearches: SavedSearchSignal[];
+  savedListings: SavedListingSignal[];
+  recentViewedListings: SavedListingSignal[];
+}
+
 const INVESTOR_PREFERENCE_KEY = "_rip";
 const SAVED_SEARCHES_KEY = "realist_saved_searches";
 const SAVED_LISTINGS_KEY = "realist_saved_listing_drafts";
+const RECENT_VIEWED_LISTINGS_KEY = "realist_recent_viewed_listings";
 
 function uniqueStrings(values: Array<string | undefined>): string[] | undefined {
   const normalized = values
@@ -178,6 +185,14 @@ export function persistSavedSearchSignal(search: SavedSearchSignal): void {
   writeLocalArray(SAVED_SEARCHES_KEY, [search, ...existing.filter((item) => item.id !== search.id)].slice(0, 25));
 }
 
+export function removeSavedSearchSignal(searchId: string): void {
+  const existing = getSavedSearchSignals();
+  writeLocalArray(
+    SAVED_SEARCHES_KEY,
+    existing.filter((item) => item.id !== searchId),
+  );
+}
+
 export function getSavedListingSignals(): SavedListingSignal[] {
   return readLocalArray<SavedListingSignal>(SAVED_LISTINGS_KEY);
 }
@@ -185,6 +200,92 @@ export function getSavedListingSignals(): SavedListingSignal[] {
 export function persistSavedListingSignal(listing: SavedListingSignal): void {
   const existing = getSavedListingSignals();
   writeLocalArray(SAVED_LISTINGS_KEY, [listing, ...existing.filter((item) => item.id !== listing.id)].slice(0, 25));
+}
+
+export function removeSavedListingSignal(listingKey: string): void {
+  const existing = getSavedListingSignals();
+  writeLocalArray(
+    SAVED_LISTINGS_KEY,
+    existing.filter((item) => (item.listingId || item.address || item.id) !== listingKey),
+  );
+}
+
+export function getRecentViewedListingSignals(): SavedListingSignal[] {
+  return readLocalArray<SavedListingSignal>(RECENT_VIEWED_LISTINGS_KEY);
+}
+
+export function persistRecentViewedListingSignal(listing: SavedListingSignal): void {
+  const existing = getRecentViewedListingSignals();
+  const dedupeKey = (item: SavedListingSignal) => item.listingId || item.address || item.id;
+  writeLocalArray(
+    RECENT_VIEWED_LISTINGS_KEY,
+    [listing, ...existing.filter((item) => dedupeKey(item) !== dedupeKey(listing))].slice(0, 12),
+  );
+}
+
+export function removeRecentViewedListingSignal(listingKey: string): void {
+  const existing = getRecentViewedListingSignals();
+  writeLocalArray(
+    RECENT_VIEWED_LISTINGS_KEY,
+    existing.filter((item) => (item.listingId || item.address || item.id) !== listingKey),
+  );
+}
+
+export function getDiscoverySignalsPayload(): DiscoverySignalsPayload {
+  return {
+    savedSearches: getSavedSearchSignals(),
+    savedListings: getSavedListingSignals(),
+    recentViewedListings: getRecentViewedListingSignals(),
+  };
+}
+
+export function hydrateDiscoverySignals(payload: Partial<DiscoverySignalsPayload>): void {
+  if (payload.savedSearches) {
+    writeLocalArray(SAVED_SEARCHES_KEY, payload.savedSearches.slice(0, 25));
+  }
+  if (payload.savedListings) {
+    writeLocalArray(SAVED_LISTINGS_KEY, payload.savedListings.slice(0, 25));
+  }
+  if (payload.recentViewedListings) {
+    writeLocalArray(RECENT_VIEWED_LISTINGS_KEY, payload.recentViewedListings.slice(0, 12));
+  }
+}
+
+let discoverySyncPromise: Promise<DiscoverySignalsPayload | null> | null = null;
+
+export async function syncDiscoverySignalsWithAccount(): Promise<DiscoverySignalsPayload | null> {
+  if (discoverySyncPromise) {
+    return discoverySyncPromise;
+  }
+
+  discoverySyncPromise = (async () => {
+    try {
+      const response = await fetch("/api/user/discovery-signals/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(getDiscoverySignalsPayload()),
+        credentials: "include",
+      });
+
+      if (response.status === 401) {
+        return null;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Discovery sync failed: ${response.status}`);
+      }
+
+      const payload = await response.json() as DiscoverySignalsPayload;
+      hydrateDiscoverySignals(payload);
+      return payload;
+    } catch {
+      return null;
+    } finally {
+      discoverySyncPromise = null;
+    }
+  })();
+
+  return discoverySyncPromise;
 }
 
 // ─── Core Track Function ──────────────────────────────────────────────────────

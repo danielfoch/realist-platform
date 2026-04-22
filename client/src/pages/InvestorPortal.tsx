@@ -15,12 +15,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
-import { useLocation } from "wouter";
-import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink, Settings, GitCompare, MoreHorizontal } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink, Settings, GitCompare, MoreHorizontal, Search, Compass, Bookmark, ArrowRight, Clock3, Target } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { GoogleConnectionCard } from "@/components/GoogleConnectionCard";
 import { useState } from "react";
 import type { InvestorProfile, InvestorKyc, PortfolioProperty, SavedDeal } from "@shared/schema";
+import {
+  removeRecentViewedListingSignal,
+  removeSavedListingSignal,
+  removeSavedSearchSignal,
+  type SavedListingSignal,
+  type SavedSearchSignal,
+} from "@/lib/analytics";
 
 const PROVINCES = [
   { value: "ON", label: "Ontario" },
@@ -42,6 +49,73 @@ const STRATEGY_TYPES = [
   { value: "airbnb", label: "Airbnb/Short-term Rental" },
   { value: "multiplex", label: "Multiplex" },
 ];
+
+interface WorkspaceRecommendation {
+  id: string;
+  score: number;
+  title: string;
+  reason: string;
+  href: string;
+  cta: string;
+}
+
+interface InvestorWorkspace {
+  discovery: {
+    savedSearches: SavedSearchSignal[];
+    savedListings: SavedListingSignal[];
+    recentViewedListings: SavedListingSignal[];
+  };
+  savedDeals: SavedDeal[];
+  recentAnalyses: Array<{
+    id: string;
+    address: string | null;
+    city: string | null;
+    province: string | null;
+    strategyType: string;
+    createdAt: string;
+  }>;
+  intentSummary: {
+    geography: string | null;
+    strategy: string | null;
+    propertyType: string | null;
+    targetBudget: number | null;
+    signalCounts: {
+      savedSearches: number;
+      savedListings: number;
+      recentViewedListings: number;
+      savedDeals: number;
+      analyses: number;
+    };
+  };
+  recommendations: WorkspaceRecommendation[];
+  profileCompletion: {
+    hasProfile: boolean;
+    hasKyc: boolean;
+  };
+}
+
+function buildSearchHref(search: SavedSearchSignal): string {
+  const prompt = [
+    search.query,
+    search.strategy?.replace(/_/g, " "),
+    search.propertyType,
+    search.geography,
+    search.budgetMax ? `under $${Math.round(search.budgetMax).toLocaleString()}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return prompt ? `/tools/cap-rates?q=${encodeURIComponent(prompt)}` : "/tools/cap-rates";
+}
+
+function buildAnalyzerHref(listing: SavedListingSignal): string {
+  const params = new URLSearchParams();
+  if (listing.address) params.set("address", listing.address);
+  if (listing.city) params.set("city", listing.city);
+  if (listing.price) params.set("price", String(listing.price));
+  if (listing.listingId) params.set("mls", listing.listingId);
+  return `/tools/analyzer${params.toString() ? `?${params.toString()}` : ""}`;
+}
 
 export default function InvestorPortal() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
@@ -67,6 +141,11 @@ export default function InvestorPortal() {
 
   const { data: savedDeals, isLoading: savedDealsLoading } = useQuery<SavedDeal[]>({
     queryKey: ["/api/user/saved-deals"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: workspace, isLoading: workspaceLoading } = useQuery<InvestorWorkspace>({
+    queryKey: ["/api/user/investor-workspace"],
     enabled: isAuthenticated,
   });
 
@@ -131,6 +210,25 @@ export default function InvestorPortal() {
     },
   });
 
+  const deleteDiscoverySignalMutation = useMutation({
+    mutationFn: async ({ signalType, signalKey }: { signalType: string; signalKey: string }) =>
+      apiRequest("DELETE", `/api/user/discovery-signals/${signalType}/${encodeURIComponent(signalKey)}`),
+    onSuccess: (_, variables) => {
+      if (variables.signalType === "saved_search") {
+        removeSavedSearchSignal(variables.signalKey);
+      } else if (variables.signalType === "saved_listing") {
+        removeSavedListingSignal(variables.signalKey);
+      } else if (variables.signalType === "recent_viewed_listing") {
+        removeRecentViewedListingSignal(variables.signalKey);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/user/investor-workspace"] });
+      toast({ title: "Removed from workspace" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update workspace", variant: "destructive" });
+    },
+  });
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -171,6 +269,9 @@ export default function InvestorPortal() {
   const monthlyRent = portfolio?.reduce((sum, p) => sum + (p.monthlyRent || 0), 0) || 0;
   const monthlyExpenses = portfolio?.reduce((sum, p) => sum + (p.monthlyExpenses || 0), 0) || 0;
   const monthlyCashflow = monthlyRent - monthlyExpenses;
+  const savedSearchCount = workspace?.intentSummary.signalCounts.savedSearches || 0;
+  const shortlistCount = workspace?.intentSummary.signalCounts.savedListings || 0;
+  const savedDealCount = workspace?.intentSummary.signalCounts.savedDeals || savedDeals?.length || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -193,11 +294,53 @@ export default function InvestorPortal() {
           </div>
 
           <div className="grid md:grid-cols-4 gap-4">
-            <Card data-testid="stat-portfolio-value">
+            <Card data-testid="stat-saved-searches">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Building className="h-6 w-6 text-primary" />
+                    <Search className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Saved Searches</p>
+                    <p className="text-2xl font-bold font-mono">{savedSearchCount}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="stat-shortlist-count">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
+                    <Bookmark className="h-6 w-6 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Shortlist</p>
+                    <p className="text-2xl font-bold font-mono">{shortlistCount}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="stat-saved-deal-count">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-chart-3/10 flex items-center justify-center">
+                    <Calculator className="h-6 w-6 text-chart-3" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Saved Analyses</p>
+                    <p className="text-2xl font-bold font-mono">{savedDealCount}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="stat-portfolio-value">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-chart-4/10 flex items-center justify-center">
+                    <DollarSign className="h-6 w-6 text-chart-4" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Portfolio Value</p>
@@ -206,58 +349,287 @@ export default function InvestorPortal() {
                 </div>
               </CardContent>
             </Card>
-
-            <Card data-testid="stat-monthly-rent">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Monthly Rent</p>
-                    <p className="text-2xl font-bold font-mono">${monthlyRent.toLocaleString()}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="stat-monthly-cashflow">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-chart-3/10 flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-chart-3" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Monthly Cashflow</p>
-                    <p className="text-2xl font-bold font-mono">${monthlyCashflow.toLocaleString()}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="stat-property-count">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-chart-4/10 flex items-center justify-center">
-                    <Home className="h-6 w-6 text-chart-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Properties</p>
-                    <p className="text-2xl font-bold font-mono">{portfolio?.length || 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
-          <Tabs defaultValue="saved-deals" className="space-y-6">
+          <Tabs defaultValue="workspace" className="space-y-6">
             <TabsList data-testid="investor-tabs">
+              <TabsTrigger value="workspace" data-testid="tab-workspace">Workspace</TabsTrigger>
+              <TabsTrigger value="saved-deals" data-testid="tab-saved-deals">Analyses</TabsTrigger>
               <TabsTrigger value="portfolio" data-testid="tab-portfolio">Portfolio</TabsTrigger>
-              <TabsTrigger value="saved-deals" data-testid="tab-saved-deals">Saved Deals</TabsTrigger>
               <TabsTrigger value="profile" data-testid="tab-profile">Profile</TabsTrigger>
               <TabsTrigger value="kyc" data-testid="tab-kyc">KYC / Accreditation</TabsTrigger>
               <TabsTrigger value="settings" data-testid="tab-settings">Settings</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="workspace" className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+                <Card className="border-primary/20 bg-gradient-to-r from-background via-primary/5 to-accent/10">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                          <Compass className="h-4 w-4" />
+                          Continue the investor loop
+                        </div>
+                        <h2 className="text-2xl font-semibold">Two clear paths, one account-backed workspace</h2>
+                        <p className="text-muted-foreground">
+                          Analyze your own deal when you have an address. Search the map when you want opportunities. Your searches, shortlist, and analyses now feed the same workspace.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <Link href="/tools/analyzer">
+                          <Button className="gap-2" data-testid="button-workspace-analyze">
+                            <Calculator className="h-4 w-4" />
+                            Analyze my own deal
+                          </Button>
+                        </Link>
+                        <Link href="/tools/cap-rates">
+                          <Button variant="outline" className="gap-2" data-testid="button-workspace-search-map">
+                            <Search className="h-4 w-4" />
+                            Search deals on map
+                          </Button>
+                        </Link>
+                        <Link href="/compare">
+                          <Button variant="ghost" className="gap-2" data-testid="button-workspace-compare">
+                            <GitCompare className="h-4 w-4" />
+                            Compare deals
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Intent Summary</CardTitle>
+                    <CardDescription>Structured signals currently driving recommendations.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {workspace?.intentSummary.geography && <Badge variant="secondary">{workspace.intentSummary.geography}</Badge>}
+                      {workspace?.intentSummary.strategy && <Badge variant="secondary">{workspace.intentSummary.strategy.replace(/_/g, " ")}</Badge>}
+                      {workspace?.intentSummary.propertyType && <Badge variant="secondary">{workspace.intentSummary.propertyType}</Badge>}
+                      {workspace?.intentSummary.targetBudget && <Badge variant="secondary">Budget ${workspace.intentSummary.targetBudget.toLocaleString()}</Badge>}
+                    </div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p>{savedSearchCount} saved searches</p>
+                      <p>{shortlistCount} shortlisted listings</p>
+                      <p>{workspace?.intentSummary.signalCounts.recentViewedListings || 0} recent listing views</p>
+                      <p>{workspace?.intentSummary.signalCounts.analyses || 0} recorded analyses</p>
+                    </div>
+                    {!workspace?.profileCompletion.hasProfile && (
+                      <p className="text-sm text-muted-foreground">
+                        Completing your profile will sharpen future recommendations and partner routing.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {workspaceLoading ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Skeleton className="h-64 w-full" />
+                  <Skeleton className="h-64 w-full" />
+                  <Skeleton className="h-64 w-full" />
+                  <Skeleton className="h-64 w-full" />
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Target className="h-5 w-5" />
+                        Recommended Next Steps
+                      </CardTitle>
+                      <CardDescription>Ranked from your captured search, shortlist, and analysis intent.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {workspace?.recommendations.length ? workspace.recommendations.map((recommendation) => (
+                        <div key={recommendation.id} className="rounded-lg border p-4 space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium">{recommendation.title}</p>
+                              <p className="text-sm text-muted-foreground">{recommendation.reason}</p>
+                            </div>
+                            <Badge variant="outline">{recommendation.score}</Badge>
+                          </div>
+                          <Link href={recommendation.href}>
+                            <Button variant="outline" size="sm" className="gap-2" data-testid={`button-recommendation-${recommendation.id}`}>
+                              {recommendation.cta}
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        </div>
+                      )) : (
+                        <div className="rounded-lg border border-dashed p-6 text-center">
+                          <p className="font-medium">No recommendations yet</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Run a search or save a listing and this workspace will start ranking your next best action.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Search className="h-5 w-5" />
+                        Saved Searches
+                      </CardTitle>
+                      <CardDescription>First-class discovery intents you can reopen or prune.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {workspace?.discovery.savedSearches.length ? workspace.discovery.savedSearches.slice(0, 5).map((search) => (
+                        <div key={search.id} className="rounded-lg border p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <p className="font-medium">{search.label}</p>
+                              <p className="text-sm text-muted-foreground">{search.query || search.geography || "Saved search"}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteDiscoverySignalMutation.mutate({ signalType: "saved_search", signalKey: search.id })}
+                              data-testid={`button-remove-saved-search-${search.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {search.strategy && <Badge variant="secondary">{search.strategy.replace(/_/g, " ")}</Badge>}
+                            {search.propertyType && <Badge variant="secondary">{search.propertyType}</Badge>}
+                            {search.budgetMax && <Badge variant="outline">Up to ${search.budgetMax.toLocaleString()}</Badge>}
+                          </div>
+                          <div className="mt-3">
+                            <Link href={buildSearchHref(search)}>
+                              <Button variant="outline" size="sm" className="gap-2" data-testid={`button-open-saved-search-${search.id}`}>
+                                Open search
+                                <ArrowRight className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="rounded-lg border border-dashed p-6 text-center">
+                          <p className="font-medium">No saved searches yet</p>
+                          <p className="text-sm text-muted-foreground mt-1">Save a search from the analyzer or map to build repeat usage.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Bookmark className="h-5 w-5" />
+                        Shortlist
+                      </CardTitle>
+                      <CardDescription>Properties worth another look or full underwriting.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {workspace?.discovery.savedListings.length ? workspace.discovery.savedListings.slice(0, 5).map((listing) => {
+                        const signalKey = listing.listingId || listing.address || listing.id;
+                        return (
+                          <div key={signalKey} className="rounded-lg border p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <p className="font-medium">{listing.label}</p>
+                                <p className="text-sm text-muted-foreground">{listing.address || listing.city || "Saved listing"}</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteDiscoverySignalMutation.mutate({ signalType: "saved_listing", signalKey })}
+                                data-testid={`button-remove-shortlist-${signalKey}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {listing.price && <Badge variant="outline">${listing.price.toLocaleString()}</Badge>}
+                              {typeof listing.capRate === "number" && <Badge variant="secondary">{listing.capRate.toFixed(1)}% cap</Badge>}
+                              {listing.propertyType && <Badge variant="secondary">{listing.propertyType}</Badge>}
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Link href={buildAnalyzerHref(listing)}>
+                                <Button variant="outline" size="sm" className="gap-2" data-testid={`button-analyze-shortlist-${signalKey}`}>
+                                  Analyze
+                                  <ArrowRight className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              {listing.city && (
+                                <Link href={`/tools/cap-rates?q=${encodeURIComponent(listing.city)}`}>
+                                  <Button variant="ghost" size="sm" data-testid={`button-search-area-${signalKey}`}>
+                                    Search area
+                                  </Button>
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }) : (
+                        <div className="rounded-lg border border-dashed p-6 text-center">
+                          <p className="font-medium">No shortlisted listings yet</p>
+                          <p className="text-sm text-muted-foreground mt-1">Save a listing from the map or analyzer and it will show up here.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Clock3 className="h-5 w-5" />
+                        Recently Viewed
+                      </CardTitle>
+                      <CardDescription>Fast path back into listings you already explored.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {workspace?.discovery.recentViewedListings.length ? workspace.discovery.recentViewedListings.slice(0, 5).map((listing) => {
+                        const signalKey = listing.listingId || listing.address || listing.id;
+                        return (
+                          <div key={signalKey} className="rounded-lg border p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <p className="font-medium">{listing.label}</p>
+                                <p className="text-sm text-muted-foreground">{listing.address || listing.city || "Recent view"}</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteDiscoverySignalMutation.mutate({ signalType: "recent_viewed_listing", signalKey })}
+                                data-testid={`button-remove-recent-${signalKey}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {listing.price && <Badge variant="outline">${listing.price.toLocaleString()}</Badge>}
+                              {typeof listing.capRate === "number" && <Badge variant="secondary">{listing.capRate.toFixed(1)}% cap</Badge>}
+                            </div>
+                            <div className="mt-3">
+                              <Link href={buildAnalyzerHref(listing)}>
+                                <Button variant="outline" size="sm" className="gap-2" data-testid={`button-open-recent-${signalKey}`}>
+                                  Review property
+                                  <ArrowRight className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      }) : (
+                        <div className="rounded-lg border border-dashed p-6 text-center">
+                          <p className="font-medium">No recent views yet</p>
+                          <p className="text-sm text-muted-foreground mt-1">Browse the map and recently viewed listings will appear here.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </TabsContent>
 
             <TabsContent value="portfolio" className="space-y-4">
               <div className="flex items-center justify-between gap-4">

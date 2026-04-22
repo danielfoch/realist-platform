@@ -1,24 +1,29 @@
-import { useRef, useEffect, useState, lazy, Suspense, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { captureInvestorPreference, track } from "@/lib/analytics";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  captureInvestorPreference,
+  getRecentViewedListingSignals,
+  getSavedListingSignals,
+  syncDiscoverySignalsWithAccount,
+  track,
+} from "@/lib/analytics";
 import {
   ArrowRight, Users, MapPin, TrendingUp, GraduationCap,
   Calculator, Map, Trophy, BarChart3, Crown, Medal, Search,
-  Building2, DollarSign, Zap, BarChart2, BookOpen, Radio,
+  Building2, Zap,
   ChevronRight, MessageSquare, Award,
 } from "lucide-react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-
-const Home = lazy(() => import("@/pages/Home"));
 
 import reutersLogo from "@assets/image_1767559636706.png";
 import wsjLogo from "@assets/image_1767563210169.png";
@@ -121,98 +126,27 @@ const mediaLogos = [
   { name: "Storeys", image: storeysLogo, url: "https://storeys.com" },
 ];
 
-const capabilities = [
-  {
-    icon: Calculator,
-    title: "Deal Analyzer",
-    description: "Turn a listing, address, or thesis into an underwriting decision. Stress-test rents, financing, and returns in minutes.",
-    href: "/tools/analyzer",
-    cta: "Analyze a Deal",
-    badge: "Free",
-  },
+const sourcingPaths = [
   {
     icon: Map,
-    title: "Find Deals",
-    description: "Scan live opportunities with map-based yield context, distress filters, and investor-first search paths.",
+    title: "Open the yield map",
+    description: "Pan into a market, screen live listings, and send promising properties into the analyzer.",
     href: "/tools/cap-rates",
-    cta: "Find Opportunities",
-    badge: "Live",
-  },
-  {
-    icon: Users,
-    title: "Expert Matching",
-    description: "Move from analysis to execution with operator, lender, and market-expert pathways when you are ready to act.",
-    href: "/about/contact",
-    cta: "Talk to an Expert",
-    badge: "High Intent",
+    cta: "Open map",
   },
   {
     icon: Building2,
-    title: "Distress Pipeline",
-    description: "Search power of sale, foreclosure, and motivated-seller inventory when you want off-consensus entry points.",
+    title: "Browse distress deals",
+    description: "Look for power of sale, motivated sellers, and off-consensus entry points worth underwriting.",
     href: "/tools/distress-deals",
-    cta: "Search Distress",
-    badge: "New",
-  },
-];
-
-const proofPillars = [
-  {
-    title: "Screen faster",
-    description: "Start with plain-English search, a map workflow, or a known address and get to the right tool without hunting through menus.",
+    cta: "Search distress",
   },
   {
-    title: "Underwrite with context",
-    description: "Run the deal against yield, rent, financing, and strategy assumptions before you book calls or make offers.",
-  },
-  {
-    title: "Act with conviction",
-    description: "When a deal survives the numbers, route into experts, lenders, and next-step workflows instead of stalling out in research.",
-  },
-];
-
-const insightPreviews = [
-  {
-    href: "/insights/mortgage-rates",
-    label: "Mortgage Rates",
-    description: "Best current rates in Canada",
-    icon: TrendingUp,
-  },
-  {
-    href: "/insights/cpi-march-2026",
-    label: "CPI Report",
-    description: "What March 2026 inflation means for investors",
-    icon: BarChart3,
-  },
-  {
-    href: "/insights/podcast",
-    label: "Podcast",
-    description: "Real estate investor conversations",
-    icon: Radio,
-  },
-  {
-    href: "/insights/blog",
-    label: "Blog & Research",
-    description: "Market analysis and strategies",
-    icon: BookOpen,
-  },
-];
-
-const seoHubs = [
-  {
-    href: "/reports",
-    title: "Reports",
-    description: "Indexable market and housing intelligence pages.",
-  },
-  {
-    href: "/markets",
-    title: "Markets",
-    description: "City pages for Toronto, Hamilton, Vancouver, Calgary, and more.",
-  },
-  {
-    href: "/investing",
-    title: "Strategies",
-    description: "Multiplex, BRRR, buy-and-hold, and distress strategy hubs.",
+    icon: Calculator,
+    title: "Already have a property?",
+    description: "Skip sourcing and move straight into underwriting when you already know the address or listing.",
+    href: "/tools/analyzer",
+    cta: "Open analyzer",
   },
 ];
 
@@ -388,9 +322,8 @@ function NLCommandBar() {
     const q = query.trim();
     if (!q) return;
     track({ event: "nl_query_submitted", query: q });
-    track({ event: "search_submitted", query: q, source: "homepage_hero" });
-    // Route to deal analyzer with query pre-filled via URL param
-    navigate(`/tools/analyzer?q=${encodeURIComponent(q)}`);
+    track({ event: "search_submitted", query: q, source: "discover_hero" });
+    navigate(`/tools/cap-rates?q=${encodeURIComponent(q)}`);
   }, [query, navigate]);
 
   const handleExampleClick = useCallback((example: string) => {
@@ -443,7 +376,7 @@ function NLCommandBar() {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="text-left">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Start fast</p>
-            <p className="text-sm text-muted-foreground">Choose an investor path and carry the intent straight into the analyzer.</p>
+            <p className="text-sm text-muted-foreground">Pick a sourcing brief and carry it straight into the map search.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {QUICK_STARTS.map((start) => (
@@ -473,7 +406,7 @@ function NLCommandBar() {
                     target_gross_yield: start.targetGrossYield,
                     source: "homepage_quick_start",
                   });
-                  navigate(`/tools/analyzer?q=${encodeURIComponent(start.query)}`);
+                  navigate(`/tools/cap-rates?q=${encodeURIComponent(start.query)}`);
                 }}
                 data-testid={`button-quick-start-${start.label.toLowerCase().replace(/\s+/g, "-")}`}
               >
@@ -490,6 +423,9 @@ function NLCommandBar() {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function MapHomepage() {
+  const { isAuthenticated } = useAuth();
+  const [recentShortlist, setRecentShortlist] = useState(() => getSavedListingSignals().slice(0, 2));
+  const [recentViewed, setRecentViewed] = useState(() => getRecentViewedListingSignals().slice(0, 2));
   const combinedSchema = {
     "@context": "https://schema.org",
     "@graph": [organizationSchema, websiteSchema, softwareSchema],
@@ -497,16 +433,24 @@ export default function MapHomepage() {
 
   // Track page view on mount
   useEffect(() => {
-    track({ event: "page_viewed", path: "/", title: "Home" });
+    track({ event: "page_viewed", path: "/discover", title: "Discover" });
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    syncDiscoverySignalsWithAccount().then(() => {
+      setRecentShortlist(getSavedListingSignals().slice(0, 2));
+      setRecentViewed(getRecentViewedListingSignals().slice(0, 2));
+    });
+  }, [isAuthenticated]);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <SEO
-        title="Realist.ca — AI-Powered Real Estate Investing Platform for Canada"
-        description="Find deals, run institutional-grade underwriting, and track the Canadian market. Free deal analyzer used by 11,000+ investors across 26 cities."
-        keywords="canadian real estate investing, deal analyzer, yield map, real estate AI, toronto real estate, BRRR, cap rates canada, multiplex investing"
-        canonicalUrl="/"
+        title="Discover Real Estate Deals | Realist.ca"
+        description="Search for Canadian real estate deals with the yield map, distress filters, and natural-language sourcing workflows."
+        keywords="canadian real estate deals, yield map, distress deals, cap rates canada, real estate sourcing, investment property search"
+        canonicalUrl="/discover"
         structuredData={combinedSchema}
       />
       <Navigation />
@@ -542,22 +486,22 @@ export default function MapHomepage() {
             <div className="space-y-4">
               <Badge variant="secondary" className="text-xs px-3 py-1 font-medium">
                 <Zap className="h-3 w-3 mr-1.5 text-primary" />
-                AI-native acquisition workflow for Canadian real estate investors
+                Discovery workflow for Canadian real estate investors
               </Badge>
               <h1
                 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]"
                 data-testid="text-map-hero-headline"
               >
-                Source the deal.
+                Find the deal.
                 <br />
-                <span className="text-gradient">Underwrite it. Act fast.</span>
+                <span className="text-gradient">Shortlist it. Then underwrite it.</span>
               </h1>
               <p
                 className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
                 data-testid="text-map-hero-subhead"
               >
-                Search in plain English, pressure-test any property, and move into the next action with investor-grade data.
-                Built for Canadian investors who need conviction before they spend time, debt capacity, or equity.
+                Start with a sourcing brief, move into the map, and narrow toward properties worth underwriting.
+                Built for investors who want clearer discovery before they commit time or capital.
               </p>
             </div>
 
@@ -566,15 +510,15 @@ export default function MapHomepage() {
 
             {/* Secondary CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
-              <Link href="/tools/analyzer">
+              <Link href="/tools/cap-rates">
                 <Button
                   size="lg"
                   className="gap-2 px-8 h-11"
-                  data-testid="button-analyze-deal"
-                  onClick={() => track({ event: "cta_clicked", cta: "analyze_deal", location: "hero_secondary" })}
+                  data-testid="button-open-yield-map"
+                  onClick={() => track({ event: "cta_clicked", cta: "open_yield_map", location: "discover_hero" })}
                 >
-                  <Calculator className="h-4 w-4" />
-                  Analyze a Deal
+                  <Map className="h-4 w-4" />
+                  Open Yield Map
                 </Button>
               </Link>
               <Link href="/tools/distress-deals">
@@ -583,35 +527,32 @@ export default function MapHomepage() {
                   size="lg"
                   className="gap-2 px-8 h-11 bg-card/60 backdrop-blur-sm"
                   data-testid="button-find-deals"
-                  onClick={() => track({ event: "cta_clicked", cta: "find_deals", location: "hero_secondary" })}
+                  onClick={() => track({ event: "cta_clicked", cta: "find_distress", location: "discover_hero" })}
                 >
                   <Building2 className="h-4 w-4" />
-                  Find Deals
+                  Browse Distress Deals
                 </Button>
               </Link>
-              <Link href="/about/contact">
+              <Link href="/tools/analyzer">
                 <Button
                   variant="ghost"
                   size="lg"
                   className="gap-2 px-6 h-11"
-                  data-testid="button-talk-expert"
-                  onClick={() => {
-                    track({ event: "cta_clicked", cta: "expert_matching", location: "hero_secondary" });
-                    track({ event: "consultation_requested", type: "general", context: "homepage_hero" });
-                  }}
+                  data-testid="button-switch-to-analyzer"
+                  onClick={() => track({ event: "cta_clicked", cta: "switch_to_analyzer", location: "discover_hero" })}
                 >
-                  <Users className="h-4 w-4" />
-                  Talk to an Expert
+                  <Calculator className="h-4 w-4" />
+                  I already have a property
                 </Button>
               </Link>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
-              <span>Natural-language search</span>
+              <span>Natural-language sourcing</span>
               <span className="hidden sm:inline text-border">•</span>
-              <span>Deal analysis in minutes</span>
+              <span>Map-first screening</span>
               <span className="hidden sm:inline text-border">•</span>
-              <span>Expert execution paths</span>
+              <span>Analyzer handoff</span>
             </div>
           </div>
         </div>
@@ -662,54 +603,29 @@ export default function MapHomepage() {
         </div>
       </section>
 
-      {/* ── Trust / Proof ─────────────────────────────────────────────────── */}
-      <section className="py-12 border-t border-border/40 bg-muted/20">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="text-center mb-8">
-                    <h2 className="text-2xl md:text-3xl font-bold mb-3">Built for the investor decision, not just the listing click</h2>
-                    <p className="text-muted-foreground max-w-2xl mx-auto">
-              Realist is structured around the loop that matters most: source an opportunity, validate the numbers, and decide the next move quickly.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-4">
-            {proofPillars.map((pillar) => (
-              <Card key={pillar.title} className="border-border/60 bg-card/70 backdrop-blur-sm">
-                <CardContent className="p-6 space-y-3">
-                  <p className="text-sm font-semibold">{pillar.title}</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{pillar.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Capability Cards ──────────────────────────────────────────────── */}
       <section className="py-16 md:py-24 border-t border-border/40">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-3">
-              Start with the workflow that matches your intent
+              Choose your sourcing path
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Realist works best when it routes you quickly into the right next step: sourcing, underwriting, or execution.
+              Discovery should help you narrow the field fast, then pass the winners into underwriting.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {capabilities.map((cap) => (
+          <div className="grid md:grid-cols-3 gap-5">
+            {sourcingPaths.map((cap) => (
               <Link key={cap.href} href={cap.href}>
                 <Card
                   className="h-full hover-elevate cursor-pointer group border-border/60 transition-all"
-                  onClick={() => track({ event: "feature_used", feature: cap.title, details: { source: "homepage_capabilities" } })}
+                  onClick={() => track({ event: "feature_used", feature: cap.title, details: { source: "discover_paths" } })}
                 >
                   <CardContent className="p-6 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                         <cap.icon className="h-5 w-5 text-primary" />
                       </div>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">{cap.badge}</Badge>
                     </div>
                     <div>
                       <h3 className="font-semibold text-base mb-1.5">{cap.title}</h3>
@@ -727,125 +643,68 @@ export default function MapHomepage() {
         </div>
       </section>
 
-      {/* ── Deal Analyzer Embed ───────────────────────────────────────────── */}
-      <section className="py-16 md:py-24 border-t border-border/40 bg-muted/10" data-testid="section-deal-analyzer-embed">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="text-center mb-10">
-            <Badge variant="outline" className="mb-3 text-xs">Free Tool</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold mb-3" data-testid="text-analyzer-section-title">
-              Underwrite any deal in minutes
-            </h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-              Enter an address, import a listing, or carry over an idea from the homepage search bar.
-              Stress-test the deal before you spend time on calls, tours, or offers.
-            </p>
-          </div>
-          <Suspense fallback={
-            <div className="flex items-center justify-center py-20">
-              <div className="text-center space-y-3">
-                <Calculator className="h-8 w-8 mx-auto text-muted-foreground animate-pulse" />
-                <p className="text-sm text-muted-foreground">Loading Deal Analyzer…</p>
+      {(recentShortlist.length > 0 || recentViewed.length > 0) && (
+        <section className="py-12 border-t border-border/40 bg-muted/10">
+          <div className="max-w-5xl mx-auto px-4 md:px-6">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold mb-2">Resume discovery</h2>
+                <p className="text-muted-foreground">Your shortlist and recently viewed properties stay handy while you move between discovery and analysis.</p>
               </div>
             </div>
-          }>
-            <Home embedded />
-          </Suspense>
-        </div>
-      </section>
-
-      {/* ── Market Intelligence Teaser ────────────────────────────────────── */}
-      <section className="py-16 md:py-24 border-t border-border/40">
-        <div className="max-w-5xl mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Market Intelligence</h2>
-              <p className="text-muted-foreground">Data and analysis interpreted for investors who need timing, pricing, and financing context.</p>
-            </div>
-            <Link href="/insights">
-              <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
-                All Insights <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </Link>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {insightPreviews.map((item) => (
-              <Link key={item.href} href={item.href}>
-                <Card
-                  className="hover-elevate cursor-pointer group h-full border-border/60"
-                  onClick={() => track({ event: "cta_clicked", cta: item.label, location: "homepage_insights", destination: item.href })}
-                >
-                  <CardContent className="p-5 space-y-3">
-                    <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center">
-                      <item.icon className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">{item.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.description}</p>
-                    </div>
-                    <div className="flex items-center text-xs text-primary gap-1 group-hover:gap-1.5 transition-all font-medium">
-                      Read more <ChevronRight className="h-3 w-3" />
-                    </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {recentShortlist.length > 0 && (
+                <Card className="border-border/60">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Shortlist</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {recentShortlist.map((listing) => (
+                      <div key={`discover-shortlist-${listing.id}`} className="rounded-lg border border-border/60 px-4 py-3">
+                        <p className="font-medium">{listing.label}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {[listing.city, listing.capRate != null ? `${listing.capRate.toFixed(1)}% cap` : null, listing.price ? new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(listing.price) : null]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                    ))}
                   </CardContent>
                 </Card>
-              </Link>
-            ))}
-          </div>
-
-          {/* Content → Action bridge */}
-          <div className="mt-10 p-6 rounded-xl border border-border/60 bg-muted/30 flex flex-col sm:flex-row items-center gap-4 justify-between">
-            <div>
-              <p className="font-semibold text-sm">Seen something in the market?</p>
-              <p className="text-sm text-muted-foreground mt-0.5">Run the numbers on a specific deal or neighbourhood right now.</p>
-            </div>
-            <Link href="/tools/analyzer">
-              <Button
-                size="sm"
-                className="gap-2 shrink-0"
-                onClick={() => track({ event: "cta_clicked", cta: "analyze_from_insights", location: "homepage_insights_bridge" })}
-              >
-                <Calculator className="h-4 w-4" />
-                Analyze a Deal
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 border-t border-border/40 bg-muted/10">
-        <div className="max-w-5xl mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-8">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Research Surfaces</h2>
-              <p className="text-muted-foreground max-w-2xl">
-                Browse the crawlable content layer behind Realist: reports, market pages, and investor strategy hubs.
-              </p>
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {seoHubs.map((hub) => (
-              <Link key={hub.href} href={hub.href}>
-                <Card className="h-full hover-elevate cursor-pointer border-border/60">
-                  <CardContent className="p-5">
-                    <h3 className="font-semibold mb-2">{hub.title}</h3>
-                    <p className="text-sm text-muted-foreground">{hub.description}</p>
+              )}
+              {recentViewed.length > 0 && (
+                <Card className="border-border/60">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Recently viewed</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {recentViewed.map((listing) => (
+                      <div key={`discover-recent-${listing.id}`} className="rounded-lg border border-border/60 px-4 py-3">
+                        <p className="font-medium">{listing.label}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {[listing.city, listing.capRate != null ? `${listing.capRate.toFixed(1)}% cap` : null, listing.price ? new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(listing.price) : null]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                    ))}
                   </CardContent>
                 </Card>
-              </Link>
-            ))}
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── How Community Underwriting Works ─────────────────────────────── */}
       <section className="py-16 md:py-24 border-t border-border/40 bg-muted/10">
         <div className="max-w-5xl mx-auto px-4 md:px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-3" data-testid="text-how-it-works-title">
-              Community underwriting
+              Discovery to underwriting
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Investors analyzing deals together — improving assumptions, surfacing consensus yields, and building the best real estate data in Canada.
+              Use Realist to search broadly, narrow the shortlist, and carry the strongest properties into deeper analysis.
             </p>
           </div>
 
@@ -854,20 +713,20 @@ export default function MapHomepage() {
               {
                 icon: Map,
                 step: "01",
-                title: "Browse the Yield Map",
-                description: "Active listings with estimated gross yields from CMHC rent data and community estimates. Updated in real time.",
+                title: "Search the market",
+                description: "Start with the yield map or a natural-language brief to surface the part of the market you want to screen.",
               },
               {
                 icon: Calculator,
                 step: "02",
-                title: "Underwrite & Comment",
-                description: "Submit your rent and expense assumptions. The best analyses surface to the top. Community votes improve the data.",
+                title: "Shortlist the best fits",
+                description: "Use yield, filters, and context to narrow the field to the few properties worth serious attention.",
               },
               {
                 icon: Award,
                 step: "03",
-                title: "Earn Recognition",
-                description: "Top analysts earn leaderboard rank and community credibility. Quality underwriting gets seen by 11,000+ investors.",
+                title: "Hand off to analysis",
+                description: "Open the selected property in the analyzer and move from sourcing into underwriting without re-entering the basics.",
               },
             ].map((step) => (
               <Card key={step.step} className="border-border/60">
@@ -890,18 +749,23 @@ export default function MapHomepage() {
           </div>
 
           <div className="text-center mt-8">
-            <Link href="/tools/cap-rates">
-              <Button variant="outline" size="lg" className="gap-2">
-                <Map className="h-4 w-4" />
-                Open the Yield Map
-              </Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link href="/tools/cap-rates">
+                <Button variant="outline" size="lg" className="gap-2">
+                  <Map className="h-4 w-4" />
+                  Open the Yield Map
+                </Button>
+              </Link>
+              <Link href="/tools/analyzer">
+                <Button size="lg" className="gap-2">
+                  <Calculator className="h-4 w-4" />
+                  Analyze a property
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
-
-      {/* ── Leaderboard ───────────────────────────────────────────────────── */}
-      <LeaderboardPreview />
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
       <footer className="py-12 border-t border-border/50">

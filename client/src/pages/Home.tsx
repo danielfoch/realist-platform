@@ -7,7 +7,6 @@ import { HeroSection } from "@/components/HeroSection";
 import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
 import { CalculatorSelector, type CalculatorType } from "@/components/CalculatorSelector";
-import { MarketExpertPanel } from "@/components/MarketExpertPanel";
 import { DealInputs } from "@/components/DealInputs";
 import { MetricCards } from "@/components/MetricCards";
 import { AnalysisCharts } from "@/components/AnalysisCharts";
@@ -37,13 +36,14 @@ import {
   getSavedSearchSignals,
   persistSavedListingSignal,
   persistSavedSearchSignal,
+  syncDiscoverySignalsWithAccount,
   track,
   type SavedListingSignal,
   type SavedSearchSignal,
 } from "@/lib/analytics";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
-import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight, Sparkles, MapPinned, Target } from "lucide-react";
+import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight, Sparkles, MapPinned, Target } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
 
 function getSessionId(): string {
@@ -119,6 +119,14 @@ export default function Home({ embedded }: { embedded?: boolean }) {
   const [propertyType, setPropertyType] = useState("");
   const [recentSavedSearches, setRecentSavedSearches] = useState<SavedSearchSignal[]>(() => getSavedSearchSignals().slice(0, 3));
   const [recentSavedListings, setRecentSavedListings] = useState<SavedListingSignal[]>(() => getSavedListingSignals().slice(0, 3));
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    syncDiscoverySignalsWithAccount().then(() => {
+      setRecentSavedSearches(getSavedSearchSignals().slice(0, 3));
+      setRecentSavedListings(getSavedListingSignals().slice(0, 3));
+    });
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!searchString) return;
@@ -500,6 +508,28 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     track({ event: "cta_clicked", cta: "analyze_another_property", location: "results_next_steps" });
   };
 
+  const handleSearchMatchingDeals = () => {
+    const prompt = [
+      strategy.replace(/_/g, " "),
+      propertyType || null,
+      city || null,
+      inputs.purchasePrice ? `under $${Math.round(inputs.purchasePrice).toLocaleString()}` : null,
+      typeof results.capRate === "number" && Number.isFinite(results.capRate)
+        ? `around ${results.capRate.toFixed(1)}% cap`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    track({
+      event: "cta_clicked",
+      cta: "find_matching_deals",
+      location: "results_next_steps",
+      destination: "/tools/cap-rates",
+    });
+    window.location.href = `/tools/cap-rates${prompt ? `?q=${encodeURIComponent(prompt)}` : ""}`;
+  };
+
   const handleSaveSearch = () => {
     const savedSearch: SavedSearchSignal = {
       id: crypto.randomUUID(),
@@ -519,6 +549,9 @@ export default function Home({ embedded }: { embedded?: boolean }) {
 
     persistSavedSearchSignal(savedSearch);
     setRecentSavedSearches(getSavedSearchSignals().slice(0, 3));
+    if (isAuthenticated) {
+      void syncDiscoverySignalsWithAccount();
+    }
     track({
       event: "saved_search",
       geography: savedSearch.geography,
@@ -658,6 +691,9 @@ export default function Home({ embedded }: { embedded?: boolean }) {
         source: "account_saved_deal",
       });
       setRecentSavedListings(getSavedListingSignals().slice(0, 3));
+      if (isAuthenticated) {
+        void syncDiscoverySignalsWithAccount();
+      }
       track({
         event: "saved_listing",
         listing_id: mlsNumber || [address, city, region].filter(Boolean).join(", ") || dealName,
@@ -701,6 +737,9 @@ export default function Home({ embedded }: { embedded?: boolean }) {
         source: "local_draft",
       });
       setRecentSavedListings(getSavedListingSignals().slice(0, 3));
+      if (isAuthenticated) {
+        void syncDiscoverySignalsWithAccount();
+      }
       track({
         event: "saved_listing",
         listing_id: mlsNumber || propertyLabel,
@@ -960,31 +999,40 @@ export default function Home({ embedded }: { embedded?: boolean }) {
               </Card>
             )}
 
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Analyze the opportunity
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Choose the workflow that matches your strategy, then move from assumptions to a clear decision quickly.
-              </p>
+            <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-3">
+                  Deal analyzer
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold">
+                  Underwrite a property without the noise
+                </h2>
+                <p className="text-lg text-muted-foreground mt-3">
+                  Start with a listing, address, or rough deal thesis. We&apos;ll get you to first-pass cash flow and yield quickly.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                <Link href="/tools/cap-rates">
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => track({ event: "cta_clicked", cta: "switch_to_map_from_analyzer", location: "analyzer_header", destination: "/tools/cap-rates" })}
+                  >
+                    Search the map instead
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/tools/distress-deals">
+                  <Button
+                    variant="ghost"
+                    className="gap-2"
+                    onClick={() => track({ event: "cta_clicked", cta: "switch_to_distress_from_analyzer", location: "analyzer_header", destination: "/tools/distress-deals" })}
+                  >
+                    Browse distress deals
+                  </Button>
+                </Link>
+              </div>
             </div>
-
-            <Card className="mb-8 border-border/60 bg-muted/20">
-              <CardContent className="p-5 md:p-6 grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">1. Bring the opportunity</p>
-                  <p className="font-medium">Paste a listing URL, MLS number, or a rough address and your rent thesis.</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">2. Get the first value fast</p>
-                  <p className="font-medium">See headline cash flow and yield before you decide whether the deal is worth saving.</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">3. Save intent when it matters</p>
-                  <p className="font-medium">Keep the deal, your criteria, and your next step when you are ready to continue.</p>
-                </div>
-              </CardContent>
-            </Card>
 
             <div className="flex justify-center mb-8">
               <CalculatorSelector
@@ -1007,7 +1055,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <BarChart3 className="h-5 w-5" />
-                      Property & Strategy
+                      Property details
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -1032,22 +1080,6 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                       selectedStrategy={strategy}
                       onStrategyChange={setStrategy}
                     />
-
-                    {country === "canada" && (
-                      <MarketExpertPanel
-                        region={region || "Ontario"}
-                        city={city}
-                        country="canada"
-                        dealInfo={{
-                          address: address,
-                          purchasePrice: 0,
-                          monthlyRent: 0,
-                          cashFlow: 0,
-                          capRate: 0,
-                        }}
-                        defaultValues={getSavedLeadInfo() || undefined}
-                      />
-                    )}
                   </CardContent>
                 </Card>
 
@@ -1125,125 +1157,68 @@ export default function Home({ embedded }: { embedded?: boolean }) {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Investor Intent</CardTitle>
+                      <CardTitle className="text-lg">Need to source first?</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex flex-wrap gap-2">
-                        {inferredIntentChips.map((chip) => (
-                          <Badge key={chip} variant="secondary" className="text-xs">
-                            {chip}
-                          </Badge>
-                        ))}
-                      </div>
                       <p className="text-sm text-muted-foreground">
-                        Realist is inferring the market, strategy, budget, and return profile behind this deal so the next recommendation can be more relevant.
+                        If you don&apos;t have a specific property yet, switch into discovery and come back here once you find something worth underwriting.
                       </p>
+                      <div className="flex flex-col gap-2">
+                        <Link href="/tools/cap-rates">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between"
+                            onClick={() => track({ event: "cta_clicked", cta: "open_map_from_sidebar", location: "analyzer_sidebar", destination: "/tools/cap-rates" })}
+                          >
+                            Open yield map
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Link href="/tools/distress-deals">
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-between"
+                            onClick={() => track({ event: "cta_clicked", cta: "open_distress_from_sidebar", location: "analyzer_sidebar", destination: "/tools/distress-deals" })}
+                          >
+                            Browse distress deals
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
                     </CardContent>
                   </Card>
 
-                  {!leadCaptured && (
-                    <Card className="overflow-hidden">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg">Full Breakdown</CardTitle>
+                  {(recentSavedListings.length > 0 || recentSavedSearches.length > 0) && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Resume recent work</CardTitle>
                       </CardHeader>
-                      <CardContent className="relative">
-                        <div className="blur-[6px] pointer-events-none select-none space-y-3">
-                          <div className="h-28 bg-muted/30 rounded-lg p-3">
-                            <div className="text-xs text-muted-foreground mb-2">Equity Growth</div>
-                            <div className="flex items-end gap-0.5 h-16">
-                              {[20, 28, 35, 42, 50, 58, 68, 78, 88, 100].map((h, i) => (
-                                <div 
-                                  key={i} 
-                                  className="flex-1 bg-gradient-to-t from-primary/80 to-primary/40 rounded-t"
-                                  style={{ height: `${h}%` }}
-                                />
-                              ))}
-                            </div>
+                      <CardContent className="space-y-4">
+                        {recentSavedListings[0] && (
+                          <div className="rounded-lg border border-border/60 px-3 py-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recent deal</p>
+                            <p className="text-sm font-medium mt-2">{recentSavedListings[0].label}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {[recentSavedListings[0].city, recentSavedListings[0].strategy?.replace(/_/g, " "), recentSavedListings[0].capRate != null ? `${recentSavedListings[0].capRate.toFixed(1)}% cap` : null]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
                           </div>
-                          <div className="h-24 bg-muted/30 rounded-lg p-3 flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/60 via-accent/40 to-primary/20" />
-                            <div className="flex-1 space-y-2">
-                              <div className="h-2 w-3/4 bg-muted rounded" />
-                              <div className="h-2 w-1/2 bg-muted rounded" />
-                              <div className="h-2 w-2/3 bg-muted rounded" />
-                            </div>
+                        )}
+                        {recentSavedSearches[0] && (
+                          <div className="rounded-lg border border-border/60 px-3 py-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recent search</p>
+                            <p className="text-sm font-medium mt-2">{recentSavedSearches[0].label}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {[recentSavedSearches[0].geography, recentSavedSearches[0].query || recentSavedSearches[0].strategy?.replace(/_/g, " "), recentSavedSearches[0].budgetMax ? `Up to ${formatCurrency(recentSavedSearches[0].budgetMax)}` : null]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
                           </div>
-                          <div className="h-20 bg-muted/30 rounded-lg p-3">
-                            <div className="text-xs text-muted-foreground mb-2">Cash Flow</div>
-                            <div className="h-10 flex items-center">
-                              <svg className="w-full h-full" viewBox="0 0 100 30">
-                                <path 
-                                  d="M0,25 Q10,20 20,22 T40,18 T60,15 T80,10 T100,5" 
-                                  fill="none" 
-                                  stroke="hsl(var(--accent))" 
-                                  strokeWidth="2"
-                                  opacity="0.6"
-                                />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-[1px]">
-                          <p className="text-sm font-medium text-center mb-3 px-4">
-                            Get the full breakdown, saved deals, and follow-up actions
-                          </p>
-                          <Button 
-                            size="sm" 
-                            onClick={() => setLeadCaptureOpen(true)}
-                            data-testid="button-preview-signup"
-                          >
-                            Get Full Analysis
-                          </Button>
-                        </div>
+                        )}
                       </CardContent>
                     </Card>
                   )}
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Saved for later</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {recentSavedListings.length === 0 && recentSavedSearches.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-border/70 px-4 py-5 text-sm text-muted-foreground">
-                          Save a deal or search and it will appear here as a repeat-usage shortcut.
-                        </div>
-                      ) : (
-                        <>
-                          {recentSavedListings.length > 0 && (
-                            <div className="space-y-2">
-                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recent deals</p>
-                              {recentSavedListings.map((listing) => (
-                                <div key={listing.id} className="rounded-lg border border-border/60 px-3 py-3">
-                                  <p className="text-sm font-medium">{listing.label}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {[listing.city, listing.strategy?.replace(/_/g, " "), listing.capRate != null ? `${listing.capRate.toFixed(1)}% cap` : null]
-                                      .filter(Boolean)
-                                      .join(" · ")}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {recentSavedSearches.length > 0 && (
-                            <div className="space-y-2">
-                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recent searches</p>
-                              {recentSavedSearches.map((savedSearch) => (
-                                <div key={savedSearch.id} className="rounded-lg border border-border/60 px-3 py-3">
-                                  <p className="text-sm font-medium">{savedSearch.label}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {[savedSearch.geography, savedSearch.query || savedSearch.strategy?.replace(/_/g, " "), savedSearch.budgetMax ? `Up to ${formatCurrency(savedSearch.budgetMax)}` : null]
-                                      .filter(Boolean)
-                                      .join(" · ")}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
                 </div>
               </div>
             </div>
@@ -1266,20 +1241,14 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="gap-2" onClick={handleSaveDeal} data-testid="button-save-deal">
+                  <Button size="sm" className="gap-2" onClick={handleSaveDeal} data-testid="button-save-deal">
                     <Save className="h-4 w-4" />
-                    {leadCaptured ? "Save Deal" : "Save Deal"}
+                    Save deal
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-2" onClick={handleSaveSearch} data-testid="button-save-search">
-                    <Save className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="gap-2" onClick={handleSaveSearch} data-testid="button-save-search">
+                    <MapPinned className="h-4 w-4" />
                     Save Search
                   </Button>
-                  <Link href="/compare">
-                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-compare">
-                      <GitCompare className="h-4 w-4" />
-                      Compare Deals
-                    </Button>
-                  </Link>
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -1310,10 +1279,6 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                     )}
                     {isExportingSheets ? "Exporting..." : "Google Sheets"}
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-2" data-testid="button-share">
-                    <Share2 className="h-4 w-4" />
-                    Share
-                  </Button>
                 </div>
               </div>
 
@@ -1339,28 +1304,32 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                         ))}
                       </div>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:w-[420px]">
-                      <Button className="gap-2" onClick={handleSaveDeal} data-testid="button-next-save-deal">
-                        <Save className="h-4 w-4" />
-                        Save this deal
-                      </Button>
-                      <Button variant="outline" className="gap-2" onClick={handleSaveSearch} data-testid="button-next-save-search">
-                        <MapPinned className="h-4 w-4" />
-                        Save this search
-                      </Button>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:w-[440px]">
                       {!leadCaptured ? (
-                        <Button variant="outline" className="gap-2" onClick={() => setLeadCaptureOpen(true)} data-testid="button-next-capture-account">
+                        <Button className="gap-2" onClick={() => setLeadCaptureOpen(true)} data-testid="button-next-capture-account">
                           <Target className="h-4 w-4" />
-                          Create account / save progress
+                          Save progress
                         </Button>
                       ) : (
-                        <Link href="/investor-portal">
-                          <Button variant="outline" className="gap-2 w-full" data-testid="button-next-investor-portal">
+                        <Link href="/investor">
+                          <Button className="gap-2 w-full" data-testid="button-next-investor-portal">
                             <Target className="h-4 w-4" />
                             Open investor portal
                           </Button>
                         </Link>
                       )}
+                      <Button variant="outline" className="gap-2" onClick={handleSaveDeal} data-testid="button-next-save-deal">
+                        <Save className="h-4 w-4" />
+                        Save this deal
+                      </Button>
+                      <Button variant="ghost" className="gap-2" onClick={handleSearchMatchingDeals} data-testid="button-next-search-matching">
+                        <MapPinned className="h-4 w-4" />
+                        Find matching deals
+                      </Button>
+                      <Button variant="ghost" className="gap-2" onClick={handleSaveSearch} data-testid="button-next-save-search">
+                        <MapPinned className="h-4 w-4" />
+                        Save search
+                      </Button>
                       <Button variant="ghost" className="gap-2" onClick={handleAnalyzeAnother} data-testid="button-next-analyze-another">
                         <ArrowRight className="h-4 w-4" />
                         Analyze another property
@@ -1389,54 +1358,6 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                   irr={results.irr}
                   monthlyCashFlow={results.monthlyCashFlow}
                 />
-              )}
-
-              {!leadCaptured && !isCalculating && (
-                <Card className="border-primary/25 bg-gradient-to-r from-background via-primary/5 to-accent/10">
-                  <CardContent className="p-6 md:p-8">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                      <div className="space-y-2 max-w-2xl">
-                        <p className="text-sm font-semibold">First value unlocked</p>
-                        <h3 className="text-2xl font-bold">You have the headline deal signals. Save the work and keep going.</h3>
-                        <p className="text-muted-foreground">
-                          Your initial underwriting is ready. Create an account or leave your details to save this deal,
-                          keep your search criteria, export the model, and get matched when you are ready to act.
-                        </p>
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <Button
-                          size="lg"
-                          className="gap-2"
-                          onClick={() => setLeadCaptureOpen(true)}
-                          data-testid="button-results-capture"
-                        >
-                          Save My Progress
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                        <Link href="/create-account">
-                          <Button
-                            size="lg"
-                            variant="outline"
-                            className="gap-2"
-                            onClick={() => track({ event: "cta_clicked", cta: "create_account_after_value", location: "results_gate" })}
-                            data-testid="button-results-create-account"
-                          >
-                            Create Account
-                          </Button>
-                        </Link>
-                        <Button
-                          size="lg"
-                          variant="ghost"
-                          className="gap-2"
-                          onClick={handleAnalyzeAnother}
-                          data-testid="button-results-analyze-another"
-                        >
-                          Analyze Another
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               )}
 
               {!isCalculating && (
@@ -1494,9 +1415,9 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                   <CardContent className="p-6 md:p-8">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
                       <div className="space-y-2">
-                        <h3 className="text-xl font-bold">Full breakdown ready on the next click</h3>
+                        <h3 className="text-xl font-bold">Want the full model and saved workflow?</h3>
                         <p className="text-muted-foreground max-w-2xl">
-                          Unlock the full pro forma, charts, export tools, and saved-deal comparison once you save your progress.
+                          Save your progress to unlock the full pro forma, deeper charts, exports, and repeat-use shortcuts.
                         </p>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-3">
@@ -1505,7 +1426,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                           className="gap-2"
                           data-testid="button-unlock-breakdown"
                         >
-                          Unlock Full Breakdown
+                          Save My Progress
                           <ArrowRight className="h-4 w-4" />
                         </Button>
                         <Button
@@ -1524,7 +1445,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
 
               {!isCalculating && <DealTimeline />}
 
-              {!isCalculating && (
+              {!isCalculating && leadCaptured && (
               <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-background to-primary/5">
                 <CardContent className="p-6 md:p-8">
                   <div className="text-center space-y-4">
