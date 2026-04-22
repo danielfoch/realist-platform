@@ -96,34 +96,49 @@ const capabilities = [
   {
     icon: Calculator,
     title: "Deal Analyzer",
-    description: "Run institutional-grade underwriting on any Canadian property in under two minutes. Buy & hold, BRRR, multiplex, flip.",
+    description: "Turn a listing, address, or thesis into an underwriting decision. Stress-test rents, financing, and returns in minutes.",
     href: "/tools/analyzer",
     cta: "Analyze a Deal",
     badge: "Free",
   },
   {
     icon: Map,
-    title: "Yield Map",
-    description: "Browse active MLS listings on an interactive map showing estimated gross yields using CMHC and community rent data.",
+    title: "Find Deals",
+    description: "Scan live opportunities with map-based yield context, distress filters, and investor-first search paths.",
     href: "/tools/cap-rates",
-    cta: "Explore Map",
+    cta: "Find Opportunities",
     badge: "Live",
   },
   {
-    icon: BarChart2,
-    title: "Market Intelligence",
-    description: "Monthly market reports, mortgage rate tracking, CPI analysis, and distress deal data — all interpreted for investors.",
-    href: "/insights",
-    cta: "View Insights",
-    badge: "Updated Monthly",
+    icon: Users,
+    title: "Expert Matching",
+    description: "Move from analysis to execution with operator, lender, and market-expert pathways when you are ready to act.",
+    href: "/about/contact",
+    cta: "Talk to an Expert",
+    badge: "High Intent",
   },
   {
     icon: Building2,
-    title: "Find Distress Deals",
-    description: "Search power of sale, foreclosures, and motivated seller opportunities across Canadian markets.",
+    title: "Distress Pipeline",
+    description: "Search power of sale, foreclosure, and motivated-seller inventory when you want off-consensus entry points.",
     href: "/tools/distress-deals",
-    cta: "Find Deals",
+    cta: "Search Distress",
     badge: "New",
+  },
+];
+
+const proofPillars = [
+  {
+    title: "Screen faster",
+    description: "Start with plain-English search, a map workflow, or a known address and get to the right tool without hunting through menus.",
+  },
+  {
+    title: "Underwrite with context",
+    description: "Run the deal against yield, rent, financing, and strategy assumptions before you book calls or make offers.",
+  },
+  {
+    title: "Act with conviction",
+    description: "When a deal survives the numbers, route into experts, lenders, and next-step workflows instead of stalling out in research.",
   },
 ];
 
@@ -433,30 +448,38 @@ export default function MapHomepage() {
             <div className="space-y-4">
               <Badge variant="secondary" className="text-xs px-3 py-1 font-medium">
                 <Zap className="h-3 w-3 mr-1.5 text-primary" />
-                AI-powered investing tools for Canadian real estate
+                AI-native acquisition workflow for Canadian real estate investors
               </Badge>
               <h1
                 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]"
                 data-testid="text-map-hero-headline"
               >
-                The investing platform
+                Find the deal.
                 <br />
-                <span className="text-gradient">Canadian investors trust</span>
+                <span className="text-gradient">Underwrite it. Move.</span>
               </h1>
               <p
                 className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
                 data-testid="text-map-hero-subhead"
               >
-                Find deals, run the numbers, understand the market.
-                Free tools and intelligence used by 11,000+ investors across Canada.
+                Search in plain English, pressure-test any property, and route into the next action with investor-grade data.
+                Built for serious Canadian investors who need clarity before they commit capital.
               </p>
             </div>
 
             {/* NL Command Bar */}
             <NLCommandBar />
 
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+              <span>Natural-language deal search</span>
+              <span className="hidden sm:inline text-border">•</span>
+              <span>Institutional-style underwriting</span>
+              <span className="hidden sm:inline text-border">•</span>
+              <span>Expert next steps when you are ready</span>
+            </div>
+
             {/* Secondary CTAs */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
               <Link href="/tools/analyzer">
                 <Button
                   size="lg"
@@ -468,16 +491,28 @@ export default function MapHomepage() {
                   Analyze a Deal
                 </Button>
               </Link>
-              <Link href="/tools/cap-rates">
+              <Link href="/tools/distress-deals">
                 <Button
                   variant="outline"
                   size="lg"
                   className="gap-2 px-8 h-11 bg-card/60 backdrop-blur-sm"
-                  data-testid="button-open-map"
-                  onClick={() => track({ event: "cta_clicked", cta: "yield_map", location: "hero_secondary" })}
+                  data-testid="button-find-deals"
+                  onClick={() => track({ event: "cta_clicked", cta: "find_deals", location: "hero_secondary" })}
                 >
-                  <Map className="h-4 w-4" />
-                  Yield Map
+                  <Building2 className="h-4 w-4" />
+                  Find Deals
+                </Button>
+              </Link>
+              <Link href="/about/contact">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="gap-2 px-6 h-11"
+                  data-testid="button-talk-expert"
+                  onClick={() => track({ event: "cta_clicked", cta: "expert_matching", location: "hero_secondary" })}
+                >
+                  <Users className="h-4 w-4" />
+                  Talk to an Expert
                 </Button>
               </Link>
             </div>
@@ -530,15 +565,38 @@ export default function MapHomepage() {
         </div>
       </section>
 
+      {/* ── Trust / Proof ─────────────────────────────────────────────────── */}
+      <section className="py-12 border-t border-border/40 bg-muted/20">
+        <div className="max-w-6xl mx-auto px-4 md:px-6">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Built for the investor decision, not just the listing click</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Realist is structured around the core loop that matters: find an opportunity, understand the numbers, and decide what to do next.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            {proofPillars.map((pillar) => (
+              <Card key={pillar.title} className="border-border/60 bg-card/70 backdrop-blur-sm">
+                <CardContent className="p-6 space-y-3">
+                  <p className="text-sm font-semibold">{pillar.title}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{pillar.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Capability Cards ──────────────────────────────────────────────── */}
       <section className="py-16 md:py-24 border-t border-border/40">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-3">
-              Everything investors need in one place
+              Start with the workflow that matches your intent
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              From finding opportunities to running the numbers to connecting with experts — built for serious Canadian investors.
+              Realist works best when it routes you quickly into the right next step: sourcing, underwriting, or execution.
             </p>
           </div>
 
@@ -580,9 +638,9 @@ export default function MapHomepage() {
             <h2 className="text-3xl md:text-4xl font-bold mb-3" data-testid="text-analyzer-section-title">
               Underwrite any deal in minutes
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Institutional-grade financial modelling for buy &amp; hold, BRRR, multiplex, flip, and Airbnb strategies.
-              Used by 11,000+ Canadian investors.
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+              Enter an address, import a listing, or carry over an idea from the homepage search bar.
+              Stress-test the deal before you spend time on calls, tours, or offers.
             </p>
           </div>
           <Suspense fallback={
@@ -604,7 +662,7 @@ export default function MapHomepage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10">
             <div>
               <h2 className="text-3xl font-bold mb-2">Market Intelligence</h2>
-              <p className="text-muted-foreground">Data and analysis interpreted for real estate investors.</p>
+              <p className="text-muted-foreground">Data and analysis interpreted for investors who need timing, pricing, and financing context.</p>
             </div>
             <Link href="/insights">
               <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
