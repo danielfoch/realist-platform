@@ -154,7 +154,7 @@ export function JoinInvestorsPage() {
 
       // Store token for session continuity
       if (data.token) {
-        localStorage.setItem('realist_token', data.token);
+        localStorage.setItem('investor_token', data.token);
       }
 
       setSuccess(true);
