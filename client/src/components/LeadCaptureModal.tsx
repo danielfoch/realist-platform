@@ -94,12 +94,18 @@ export function LeadCaptureModal({
           <>
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold">
-                Unlock Your Analysis
+                Save Your Progress
               </DialogTitle>
               <DialogDescription className="text-base">
-                Enter your details to see your complete deal analysis with metrics, charts, and export options.
+                You already have the first-pass result. Add your details to keep this deal, unlock the full breakdown, and pick up where you left off.
               </DialogDescription>
             </DialogHeader>
+
+            <div className="grid grid-cols-1 gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground sm:grid-cols-3">
+              <div>Save this deal and your search criteria</div>
+              <div>Unlock exports, charts, and comparison tools</div>
+              <div>Get matched to lenders or local experts later</div>
+            </div>
 
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -215,7 +221,7 @@ export function LeadCaptureModal({
                       Processing...
                     </>
                   ) : (
-                    "View My Analysis"
+                    "Save And Continue"
                   )}
                 </Button>
 
@@ -232,7 +238,7 @@ export function LeadCaptureModal({
 
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-3">
                   <Lock className="h-3 w-3" />
-                  <span>Your information is secure and will never be shared.</span>
+                  <span>Your information stays private and lets Realist save your workflow across sessions.</span>
                 </div>
               </form>
             </Form>

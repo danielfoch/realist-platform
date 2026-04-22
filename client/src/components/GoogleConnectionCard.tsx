@@ -33,7 +33,8 @@ export function GoogleConnectionCard() {
   });
 
   const handleConnect = () => {
-    window.location.href = "/api/google/authorize";
+    const returnUrl = encodeURIComponent(window.location.href);
+    window.location.href = `/api/google/authorize?returnUrl=${returnUrl}`;
   };
 
   const handleDisconnect = () => {

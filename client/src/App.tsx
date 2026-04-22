@@ -82,6 +82,12 @@ import CommunityHub from "@/pages/CommunityHub";
 import InsightsHub from "@/pages/InsightsHub";
 import GuidesHub from "@/pages/GuidesHub";
 import GuidePage from "@/pages/GuidePage";
+import ReportsHub from "@/pages/ReportsHub";
+import ReportPage from "@/pages/ReportPage";
+import MarketsHub from "@/pages/MarketsHub";
+import ProgrammaticMarketPage from "@/pages/ProgrammaticMarketPage";
+import StrategiesHub from "@/pages/StrategiesHub";
+import ProgrammaticStrategyPage from "@/pages/ProgrammaticStrategyPage";
 import NetworkHub from "@/pages/NetworkHub";
 import ContactPage from "@/pages/ContactPage";
 
@@ -147,6 +153,12 @@ function Router() {
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />
       <Route path="/insights/guides/:slug" component={GuidePage} />
+      <Route path="/reports" component={ReportsHub} />
+      <Route path="/reports/:slug" component={ReportPage} />
+      <Route path="/markets" component={MarketsHub} />
+      <Route path="/markets/:city" component={ProgrammaticMarketPage} />
+      <Route path="/investing" component={StrategiesHub} />
+      <Route path="/investing/:strategy" component={ProgrammaticStrategyPage} />
       
       {/* New About routes */}
       <Route path="/about" component={About} />

@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { getProgrammaticMarket, getProgrammaticStrategy } from "@shared/programmaticSeo";
 
 export interface PageMeta {
   title: string;
@@ -6,6 +7,8 @@ export interface PageMeta {
   ogImage?: string;
   ogType?: "website" | "article" | "product";
   keywords?: string;
+  canonicalPath?: string;
+  structuredData?: object | object[];
 }
 
 const DEFAULT: PageMeta = {
@@ -163,6 +166,18 @@ const STATIC_META: Record<string, PageMeta> = {
     title: "Realist Blog - Canadian Real Estate Analysis & Commentary",
     description: "Original Canadian real estate analysis from the Realist.ca team and the Canadian Real Estate Investor Podcast.",
   },
+  "/reports": {
+    title: "Canadian Real Estate Reports - Realist.ca",
+    description: "Crawlable index of Realist market reports, data-driven housing insights, and investor research.",
+  },
+  "/markets": {
+    title: "Canadian Real Estate Markets - Realist.ca",
+    description: "Programmatic market pages for major Canadian cities, connected to reports, strategies, and underwriting workflows.",
+  },
+  "/investing": {
+    title: "Canadian Real Estate Investing Strategies - Realist.ca",
+    description: "Strategy pages for multiplex, BRRR, buy-and-hold, and distress investing on Realist.ca.",
+  },
   "/insights/guides": {
     title: "Canadian Real Estate Guides - Realist.ca",
     description: "Plain-English guides to Canadian real estate investing: BRRR, multiplex, HST, financing, taxes, and strategy.",
@@ -202,9 +217,48 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
           description: post.metaDescription || post.excerpt,
           ogImage: post.coverImage || undefined,
           ogType: "article",
+          canonicalPath: post.category === "market-analysis" ? `/reports/${post.slug}` : `/insights/blog/${post.slug}`,
+          structuredData: [
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Home", item: "https://realist.ca/" },
+                { "@type": "ListItem", position: 2, name: post.category === "market-analysis" ? "Reports" : "Blog", item: `https://realist.ca/${post.category === "market-analysis" ? "reports" : "insights/blog"}` },
+                { "@type": "ListItem", position: 3, name: post.title, item: `https://realist.ca/${post.category === "market-analysis" ? `reports/${post.slug}` : `insights/blog/${post.slug}`}` },
+              ],
+            },
+          ],
         };
       }
     } catch { /* fall through */ }
+  }
+
+  const reportMatch = path.match(/^\/reports\/([^\/]+)$/);
+  if (reportMatch) {
+    try {
+      const post = await storage.getBlogPostBySlug(reportMatch[1]);
+      if (post) {
+        return {
+          title: post.metaTitle || `${post.title} | Realist.ca`,
+          description: post.metaDescription || post.excerpt,
+          ogImage: post.coverImage || undefined,
+          ogType: "article",
+          canonicalPath: `/reports/${post.slug}`,
+          structuredData: [
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Home", item: "https://realist.ca/" },
+                { "@type": "ListItem", position: 2, name: "Reports", item: "https://realist.ca/reports" },
+                { "@type": "ListItem", position: 3, name: post.title, item: `https://realist.ca/reports/${post.slug}` },
+              ],
+            },
+          ],
+        };
+      }
+    } catch {}
   }
 
   // Dynamic project landing
@@ -236,9 +290,65 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
           description: guide.metaDescription || guide.excerpt,
           ogImage: guide.coverImage || undefined,
           ogType: "article",
+          canonicalPath: `/insights/guides/${guide.slug}`,
+          structuredData: [
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Home", item: "https://realist.ca/" },
+                { "@type": "ListItem", position: 2, name: "Guides", item: "https://realist.ca/insights/guides" },
+                { "@type": "ListItem", position: 3, name: guide.title, item: `https://realist.ca/insights/guides/${guide.slug}` },
+              ],
+            },
+          ],
         };
       }
     } catch { /* fall through */ }
+  }
+
+  const marketMatch = path.match(/^\/markets\/([^\/]+)$/);
+  if (marketMatch) {
+    const market = getProgrammaticMarket(marketMatch[1]);
+    if (market) {
+      return {
+        title: `${market.title} | Realist.ca`,
+        description: market.description,
+        ogType: "article",
+        canonicalPath: `/markets/${market.slug}`,
+        structuredData: {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: "https://realist.ca/" },
+            { "@type": "ListItem", position: 2, name: "Markets", item: "https://realist.ca/markets" },
+            { "@type": "ListItem", position: 3, name: market.city, item: `https://realist.ca/markets/${market.slug}` },
+          ],
+        },
+      };
+    }
+  }
+
+  const strategyMatch = path.match(/^\/investing\/([^\/]+)$/);
+  if (strategyMatch) {
+    const strategy = getProgrammaticStrategy(strategyMatch[1]);
+    if (strategy) {
+      return {
+        title: `${strategy.title} | Realist.ca`,
+        description: strategy.description,
+        ogType: "article",
+        canonicalPath: `/investing/${strategy.slug}`,
+        structuredData: {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: "https://realist.ca/" },
+            { "@type": "ListItem", position: 2, name: "Investing", item: "https://realist.ca/investing" },
+            { "@type": "ListItem", position: 3, name: strategy.title, item: `https://realist.ca/investing/${strategy.slug}` },
+          ],
+        },
+      };
+    }
   }
 
   return DEFAULT;
@@ -267,7 +377,7 @@ function normalizeCanonical(url: string): string {
 }
 
 export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw: string, origin: string): string {
-  const canonicalUrl = normalizeCanonical(canonicalUrlRaw);
+  const canonicalUrl = normalizeCanonical(meta.canonicalPath ? `${origin}${meta.canonicalPath}` : canonicalUrlRaw);
   const fullTitle = meta.title.includes("Realist") ? meta.title : `${meta.title} | Realist.ca`;
   const desc = escapeHtml(meta.description);
   const titleEsc = escapeHtml(fullTitle);
@@ -350,6 +460,10 @@ export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw
         logo: { "@type": "ImageObject", url: `${origin}/favicon.png` },
       },
     });
+  }
+  if (meta.structuredData) {
+    const customBlocks = Array.isArray(meta.structuredData) ? meta.structuredData : [meta.structuredData];
+    ldBlocks.push(...customBlocks);
   }
   const ldScript = ldBlocks
     .map((b) => `<script type="application/ld+json">${JSON.stringify(b).replace(/</g, "\\u003c")}</script>`)

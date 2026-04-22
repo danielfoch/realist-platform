@@ -26,30 +26,25 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { calculateBuyHoldAnalysis, calculateStressTest, formatCurrency } from "@/lib/calculations";
-import { captureInvestorPreference, track } from "@/lib/analytics";
+import {
+  captureInvestorPreference,
+  getSavedListingSignals,
+  getSavedSearchSignals,
+  persistSavedListingSignal,
+  persistSavedSearchSignal,
+  track,
+  type SavedListingSignal,
+  type SavedSearchSignal,
+} from "@/lib/analytics";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
-import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight } from "lucide-react";
+import { Calculator, FileDown, Share2, BarChart3, Save, GitCompare, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight, Sparkles, MapPinned, Target } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
-import { MortgageConsultationButton } from "@/components/DealPromotions";
-
-type SavedSearchDraft = {
-  id: string;
-  createdAt: string;
-  query?: string;
-  geography?: string;
-  strategy?: string;
-  budgetMax?: number;
-  propertyType?: string;
-  targetGrossYield?: number;
-  targetCashOnCash?: number;
-  targetIrr?: number;
-  financingIntent?: boolean;
-  renovationIntent?: boolean;
-};
 
 function getSessionId(): string {
   let sessionId = localStorage.getItem("realist_session_id");
@@ -58,25 +53,6 @@ function getSessionId(): string {
     localStorage.setItem("realist_session_id", sessionId);
   }
   return sessionId;
-}
-
-function getSavedSearches(): SavedSearchDraft[] {
-  try {
-    const raw = localStorage.getItem("realist_saved_searches");
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function persistSavedSearch(search: SavedSearchDraft): void {
-  try {
-    const existing = getSavedSearches();
-    const next = [search, ...existing].slice(0, 25);
-    localStorage.setItem("realist_saved_searches", JSON.stringify(next));
-  } catch {}
 }
 
 
@@ -123,6 +99,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
   const [calculatorType, setCalculatorType] = useState<CalculatorType>("deal_analyzer");
   const [inputs, setInputs] = useState<BuyHoldInputs>(defaultInputs);
   const [showResults, setShowResults] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
   const [leadCapturedLocal, setLeadCapturedLocal] = useState(() => {
     const savedLead = localStorage.getItem("realist_lead_info");
@@ -140,6 +117,8 @@ export default function Home({ embedded }: { embedded?: boolean }) {
   const [nlPrompt, setNlPrompt] = useState("");
   const [entrySource, setEntrySource] = useState("direct");
   const [propertyType, setPropertyType] = useState("");
+  const [recentSavedSearches, setRecentSavedSearches] = useState<SavedSearchSignal[]>(() => getSavedSearchSignals().slice(0, 3));
+  const [recentSavedListings, setRecentSavedListings] = useState<SavedListingSignal[]>(() => getSavedListingSignals().slice(0, 3));
 
   useEffect(() => {
     if (!searchString) return;
@@ -160,6 +139,10 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     if (prompt) {
       setNlPrompt(prompt);
       setEntrySource("homepage_nl_query");
+      captureInvestorPreference({
+        search_query: prompt,
+        financing_intent: true,
+      });
       const normalized = prompt.toLowerCase();
       if (normalized.includes("brrr")) setStrategy("brrr");
       if (normalized.includes("flip")) setStrategy("flip");
@@ -231,6 +214,40 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     return calculateBuyHoldAnalysis(inputs);
   }, [inputs]);
 
+  const propertyLabel = [address, city, region].filter(Boolean).join(", ") || "Your Property";
+  const resultVerdict = useMemo(() => {
+    if (results.monthlyCashFlow >= 250 && results.capRate >= 5.5) {
+      return {
+        title: "Promising at first pass",
+        description: "The current assumptions show positive cash flow and a yield that is worth carrying into the next decision.",
+        tone: "text-emerald-600",
+      };
+    }
+    if (results.monthlyCashFlow >= 0) {
+      return {
+        title: "Borderline, but workable",
+        description: "The deal is close enough that financing, rent upside, or negotiated price could change the outcome.",
+        tone: "text-amber-600",
+      };
+    }
+    return {
+      title: "Needs a tighter basis",
+      description: "The current numbers suggest this opportunity needs a lower entry price, stronger rent, or a different strategy.",
+      tone: "text-rose-600",
+    };
+  }, [results.capRate, results.monthlyCashFlow]);
+
+  const inferredIntentChips = useMemo(() => {
+    return [
+      city ? `Market: ${city}` : region ? `Market: ${region}` : null,
+      strategy ? `Strategy: ${strategy.replace(/_/g, " ")}` : null,
+      propertyType ? `Property: ${propertyType}` : null,
+      inputs.purchasePrice ? `Budget: up to ${formatCurrency(inputs.purchasePrice)}` : null,
+      Number.isFinite(results.capRate) ? `Target yield: ${results.capRate.toFixed(1)}%` : null,
+      strategy === "brrr" || strategy === "flip" ? "Renovation intent" : "Stabilized hold intent",
+    ].filter(Boolean) as string[];
+  }, [city, region, strategy, propertyType, inputs.purchasePrice, results.capRate]);
+
   const stressTestResults = useMemo(() => {
     return calculateStressTest(inputs);
   }, [inputs]);
@@ -300,6 +317,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
       price: inputs.purchasePrice,
       city: city || undefined,
       province: region || undefined,
+      property_type: propertyType || undefined,
       gross_yield: results.capRate,
       cash_on_cash: results.cashOnCash,
       irr: typeof results.irr === "number" ? results.irr : undefined,
@@ -309,14 +327,22 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     captureInvestorPreference({
       strategy: strategy as "buy_hold" | "brrr" | "multiplex" | "flip" | "airbnb",
       geography: city || undefined,
+      preferred_geographies: [city, [city, region].filter(Boolean).join(", ")].filter(Boolean) as string[],
       province: region || undefined,
       budget_max: inputs.purchasePrice || undefined,
       property_type: propertyType || undefined,
+      property_types: propertyType ? [propertyType] : undefined,
+      target_returns: [
+        Number.isFinite(results.capRate) ? `cap_rate:${results.capRate.toFixed(1)}` : undefined,
+        Number.isFinite(results.cashOnCash) ? `cash_on_cash:${results.cashOnCash.toFixed(1)}` : undefined,
+      ].filter(Boolean) as string[],
       target_gross_yield: Number.isFinite(results.capRate) ? results.capRate : undefined,
       target_coc: Number.isFinite(results.cashOnCash) ? results.cashOnCash : undefined,
       target_irr: typeof results.irr === "number" && Number.isFinite(results.irr) ? results.irr : undefined,
       financing_intent: true,
       renovation_intent: strategy === "brrr" || strategy === "flip",
+      development_intent: strategy === "multiplex",
+      search_query: nlPrompt || undefined,
     });
   }, [showResults, leadCaptured, calculatorType, strategy, inputs.purchasePrice, inputs.monthlyRent, city, region, propertyType, results.capRate, results.cashOnCash, results.irr]);
 
@@ -342,6 +368,15 @@ export default function Home({ embedded }: { embedded?: boolean }) {
       }));
     }
     setPropertyType(listing.propertyType || listing.buildingType || "");
+    captureInvestorPreference({
+      geography: listing.city || undefined,
+      preferred_geographies: [listing.city, [listing.city, listing.province].filter(Boolean).join(", ")].filter(Boolean) as string[],
+      province: listing.province || undefined,
+      budget_max: listing.price || undefined,
+      property_type: listing.propertyType || listing.buildingType || undefined,
+      property_types: [listing.propertyType, listing.buildingType].filter(Boolean) as string[],
+      financing_intent: true,
+    });
 
     track({
       event: "listing_viewed",
@@ -420,7 +455,13 @@ export default function Home({ embedded }: { embedded?: boolean }) {
       setLeadCapturedLocal(true);
       setLeadCaptureOpen(false);
       setShowResults(true);
-      track({ event: "lead_captured", source: "deal_analyzer", strategy });
+      track({
+        event: "lead_captured",
+        source: "deal_analyzer",
+        strategy,
+        geography: [city, region].filter(Boolean).join(", ") || undefined,
+        budget_max: inputs.purchasePrice || undefined,
+      });
       
       // Check if user needs to set password
       const leadInfo = getSavedLeadInfo();
@@ -460,9 +501,10 @@ export default function Home({ embedded }: { embedded?: boolean }) {
   };
 
   const handleSaveSearch = () => {
-    const savedSearch: SavedSearchDraft = {
+    const savedSearch: SavedSearchSignal = {
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
+      label: [city, propertyType || strategy.replace(/_/g, " ")].filter(Boolean).join(" · ") || "Saved investment intent",
       query: nlPrompt || undefined,
       geography: [city, region].filter(Boolean).join(", ") || undefined,
       strategy,
@@ -475,7 +517,8 @@ export default function Home({ embedded }: { embedded?: boolean }) {
       renovationIntent: strategy === "brrr" || strategy === "flip",
     };
 
-    persistSavedSearch(savedSearch);
+    persistSavedSearchSignal(savedSearch);
+    setRecentSavedSearches(getSavedSearchSignals().slice(0, 3));
     track({
       event: "saved_search",
       geography: savedSearch.geography,
@@ -495,38 +538,52 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     captureInvestorPreference({
       strategy: strategy as "buy_hold" | "brrr" | "multiplex" | "flip" | "airbnb",
       geography: city || undefined,
+      preferred_geographies: [city, [city, region].filter(Boolean).join(", ")].filter(Boolean) as string[],
       province: region || undefined,
       budget_max: inputs.purchasePrice || undefined,
       property_type: propertyType || undefined,
+      property_types: propertyType ? [propertyType] : undefined,
       target_gross_yield: Number.isFinite(results.capRate) ? results.capRate : undefined,
       target_coc: Number.isFinite(results.cashOnCash) ? results.cashOnCash : undefined,
       target_irr: typeof results.irr === "number" && Number.isFinite(results.irr) ? results.irr : undefined,
       financing_intent: true,
       renovation_intent: strategy === "brrr" || strategy === "flip",
+      development_intent: strategy === "multiplex",
+      search_query: nlPrompt || undefined,
     });
 
     toast({
       title: "Search Saved",
-      description: "Your current deal criteria have been saved in this browser for follow-up and future account linking.",
+      description: leadCaptured
+        ? "Your current criteria are saved for follow-up and repeat underwriting."
+        : "Your current criteria are saved in this browser now. Create an account later to sync them across sessions.",
     });
   };
 
   const handleCalculate = async () => {
+    setIsCalculating(true);
     track({
       event: "analyzer_started",
       address: [address, city, region].filter(Boolean).join(", ") || undefined,
       strategy,
+      geography: [city, region].filter(Boolean).join(", ") || undefined,
+      budget_max: inputs.purchasePrice || undefined,
+      property_type: propertyType || undefined,
       source: nlPrompt ? entrySource : (isStandaloneTool ? "standalone_tool" : "homepage_embed"),
     });
 
     captureInvestorPreference({
       strategy: strategy as "buy_hold" | "brrr" | "multiplex" | "flip" | "airbnb",
       geography: city || undefined,
+      preferred_geographies: [city, [city, region].filter(Boolean).join(", ")].filter(Boolean) as string[],
       province: region || undefined,
       budget_max: inputs.purchasePrice || undefined,
       property_type: propertyType || undefined,
+      property_types: propertyType ? [propertyType] : undefined,
       financing_intent: true,
       renovation_intent: strategy === "brrr" || strategy === "flip",
+      development_intent: strategy === "multiplex",
+      search_query: nlPrompt || undefined,
     });
 
     setShowResults(true);
@@ -534,22 +591,29 @@ export default function Home({ embedded }: { embedded?: boolean }) {
       resultsRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 100);
 
-    if (leadCaptured) {
-      // If user is authenticated, auto-submit lead data to ensure they're captured
-      if (isAuthenticated && user && user.email) {
-        try {
-          await leadMutation.mutateAsync({
-            firstName: user.firstName || "",
-            lastName: user.lastName || "",
-            email: user.email,
-            phone: user.phone || "",
-            consent: true,
-          });
-        } catch (err) {
-          // Silently continue if lead capture fails - don't block the analysis
-          console.error("Auto lead capture error:", err);
-        }
-      }
+    try {
+      await Promise.allSettled([
+        new Promise((resolve) => setTimeout(resolve, 450)),
+        (async () => {
+          if (!leadCaptured) return;
+          if (isAuthenticated && user && user.email) {
+            try {
+              await leadMutation.mutateAsync({
+                firstName: user.firstName || "",
+                lastName: user.lastName || "",
+                email: user.email,
+                phone: user.phone || "",
+                consent: true,
+              });
+            } catch (err) {
+              // Silently continue if lead capture fails - don't block the analysis
+              console.error("Auto lead capture error:", err);
+            }
+          }
+        })(),
+      ]);
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -578,11 +642,30 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     onSuccess: () => {
       setSaveDialogOpen(false);
       setDealName("");
+      const draftLabel = [address, city].filter(Boolean).join(", ") || "Saved deal";
+      persistSavedListingSignal({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        label: draftLabel,
+        listingId: mlsNumber || undefined,
+        address: propertyLabel,
+        city: city || undefined,
+        strategy,
+        propertyType: propertyType || undefined,
+        price: inputs.purchasePrice || undefined,
+        monthlyCashFlow: results.monthlyCashFlow,
+        capRate: results.capRate,
+        source: "account_saved_deal",
+      });
+      setRecentSavedListings(getSavedListingSignals().slice(0, 3));
       track({
         event: "saved_listing",
         listing_id: mlsNumber || [address, city, region].filter(Boolean).join(", ") || dealName,
         city: city || undefined,
         price: inputs.purchasePrice || undefined,
+        strategy,
+        property_type: propertyType || undefined,
+        source: "account_saved_deal",
       });
       toast({
         title: "Deal Saved!",
@@ -602,7 +685,49 @@ export default function Home({ embedded }: { embedded?: boolean }) {
 
   const handleSaveDeal = () => {
     if (!leadCaptured) {
-      setLeadCaptureOpen(true);
+      const draftLabel = [address, city].filter(Boolean).join(", ") || `Deal ${new Date().toLocaleDateString()}`;
+      persistSavedListingSignal({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        label: draftLabel,
+        listingId: mlsNumber || undefined,
+        address: propertyLabel,
+        city: city || undefined,
+        strategy,
+        propertyType: propertyType || undefined,
+        price: inputs.purchasePrice || undefined,
+        monthlyCashFlow: results.monthlyCashFlow,
+        capRate: results.capRate,
+        source: "local_draft",
+      });
+      setRecentSavedListings(getSavedListingSignals().slice(0, 3));
+      track({
+        event: "saved_listing",
+        listing_id: mlsNumber || propertyLabel,
+        city: city || undefined,
+        price: inputs.purchasePrice || undefined,
+        strategy,
+        property_type: propertyType || undefined,
+        source: "local_draft",
+      });
+      captureInvestorPreference({
+        strategy: strategy as "buy_hold" | "brrr" | "multiplex" | "flip" | "airbnb",
+        geography: city || undefined,
+        province: region || undefined,
+        preferred_geographies: [city, [city, region].filter(Boolean).join(", ")].filter(Boolean) as string[],
+        budget_max: inputs.purchasePrice || undefined,
+        property_type: propertyType || undefined,
+        property_types: propertyType ? [propertyType] : undefined,
+        target_gross_yield: Number.isFinite(results.capRate) ? results.capRate : undefined,
+        target_coc: Number.isFinite(results.cashOnCash) ? results.cashOnCash : undefined,
+        target_irr: typeof results.irr === "number" && Number.isFinite(results.irr) ? results.irr : undefined,
+        financing_intent: true,
+        renovation_intent: strategy === "brrr" || strategy === "flip",
+      });
+      toast({
+        title: "Deal Draft Saved",
+        description: "Saved in this browser now. Create an account when you want synced deals, exports, and follow-up support.",
+      });
       return;
     }
     const defaultName = [address, city].filter(Boolean).join(", ") || `Deal ${new Date().toLocaleDateString()}`;
@@ -667,7 +792,9 @@ export default function Home({ embedded }: { embedded?: boolean }) {
         window.open(data.url, "_blank");
         toast({
           title: "Spreadsheet Created!",
-          description: "Your financial model has been exported to Google Sheets.",
+          description: data.exportedToUserAccount
+            ? "Your financial model was exported to your Google Drive."
+            : "Your financial model was exported to Google Sheets.",
         });
       } else {
         throw new Error(data.message || "Export failed");
@@ -737,10 +864,15 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                 size="lg"
                 className="w-full h-14 text-lg gap-2"
                 onClick={handleCalculate}
+                disabled={isCalculating}
                 data-testid="button-embedded-calculate"
               >
-                <Calculator className="h-5 w-5" />
-                {leadCaptured ? "Update Analysis" : "Analyze This Deal"}
+                {isCalculating ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Calculator className="h-5 w-5" />
+                )}
+                {isCalculating ? "Running Analysis..." : leadCaptured ? "Update Analysis" : "Analyze This Deal"}
               </Button>
             </div>
 
@@ -837,6 +969,23 @@ export default function Home({ embedded }: { embedded?: boolean }) {
               </p>
             </div>
 
+            <Card className="mb-8 border-border/60 bg-muted/20">
+              <CardContent className="p-5 md:p-6 grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">1. Bring the opportunity</p>
+                  <p className="font-medium">Paste a listing URL, MLS number, or a rough address and your rent thesis.</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">2. Get the first value fast</p>
+                  <p className="font-medium">See headline cash flow and yield before you decide whether the deal is worth saving.</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">3. Save intent when it matters</p>
+                  <p className="font-medium">Keep the deal, your criteria, and your next step when you are ready to continue.</p>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="flex justify-center mb-8">
               <CalculatorSelector
                 selected={calculatorType}
@@ -917,10 +1066,15 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                   size="lg"
                   className="w-full h-14 text-lg gap-2"
                   onClick={handleCalculate}
+                  disabled={isCalculating}
                   data-testid="button-calculate"
                 >
-                  <Calculator className="h-5 w-5" />
-                  {leadCaptured ? "Update Analysis" : "Calculate & View Results"}
+                  {isCalculating ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Calculator className="h-5 w-5" />
+                  )}
+                  {isCalculating ? "Running Analysis..." : leadCaptured ? "Update Analysis" : "Calculate & View Results"}
                 </Button>
               </div>
 
@@ -969,9 +1123,26 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                     </CardContent>
                   </Card>
 
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Investor Intent</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex flex-wrap gap-2">
+                        {inferredIntentChips.map((chip) => (
+                          <Badge key={chip} variant="secondary" className="text-xs">
+                            {chip}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Realist is inferring the market, strategy, budget, and return profile behind this deal so the next recommendation can be more relevant.
+                      </p>
+                    </CardContent>
+                  </Card>
 
                   {!leadCaptured && (
-                    <Card className="mt-4 overflow-hidden">
+                    <Card className="overflow-hidden">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-lg">Full Breakdown</CardTitle>
                       </CardHeader>
@@ -1027,6 +1198,52 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                       </CardContent>
                     </Card>
                   )}
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Saved for later</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {recentSavedListings.length === 0 && recentSavedSearches.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-border/70 px-4 py-5 text-sm text-muted-foreground">
+                          Save a deal or search and it will appear here as a repeat-usage shortcut.
+                        </div>
+                      ) : (
+                        <>
+                          {recentSavedListings.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recent deals</p>
+                              {recentSavedListings.map((listing) => (
+                                <div key={listing.id} className="rounded-lg border border-border/60 px-3 py-3">
+                                  <p className="text-sm font-medium">{listing.label}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {[listing.city, listing.strategy?.replace(/_/g, " "), listing.capRate != null ? `${listing.capRate.toFixed(1)}% cap` : null]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {recentSavedSearches.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recent searches</p>
+                              {recentSavedSearches.map((savedSearch) => (
+                                <div key={savedSearch.id} className="rounded-lg border border-border/60 px-3 py-3">
+                                  <p className="text-sm font-medium">{savedSearch.label}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {[savedSearch.geography, savedSearch.query || savedSearch.strategy?.replace(/_/g, " "), savedSearch.budgetMax ? `Up to ${formatCurrency(savedSearch.budgetMax)}` : null]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             </div>
@@ -1045,7 +1262,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                 <div>
                   <h2 className="text-3xl md:text-4xl font-bold">Analysis Results</h2>
                   <p className="text-muted-foreground mt-1">
-                    {[address, city, region].filter(Boolean).join(", ") || "Your Property"}
+                    {propertyLabel}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1100,15 +1317,81 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                 </div>
               </div>
 
-              <MetricCards
-                capRate={results.capRate}
-                cashOnCash={results.cashOnCash}
-                dscr={results.dscr}
-                irr={results.irr}
-                monthlyCashFlow={results.monthlyCashFlow}
-              />
+              <Card className="border-primary/25 bg-gradient-to-r from-background via-primary/5 to-accent/10">
+                <CardContent className="p-6 md:p-8">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-3 max-w-3xl">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <Sparkles className={`h-4 w-4 ${resultVerdict.tone}`} />
+                        <span className={resultVerdict.tone}>{resultVerdict.title}</span>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold">First value moment: the deal now has a direction</h3>
+                        <p className="text-muted-foreground mt-1">
+                          {resultVerdict.description}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {inferredIntentChips.map((chip) => (
+                          <Badge key={`results-${chip}`} variant="secondary" className="text-xs">
+                            {chip}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:w-[420px]">
+                      <Button className="gap-2" onClick={handleSaveDeal} data-testid="button-next-save-deal">
+                        <Save className="h-4 w-4" />
+                        Save this deal
+                      </Button>
+                      <Button variant="outline" className="gap-2" onClick={handleSaveSearch} data-testid="button-next-save-search">
+                        <MapPinned className="h-4 w-4" />
+                        Save this search
+                      </Button>
+                      {!leadCaptured ? (
+                        <Button variant="outline" className="gap-2" onClick={() => setLeadCaptureOpen(true)} data-testid="button-next-capture-account">
+                          <Target className="h-4 w-4" />
+                          Create account / save progress
+                        </Button>
+                      ) : (
+                        <Link href="/investor-portal">
+                          <Button variant="outline" className="gap-2 w-full" data-testid="button-next-investor-portal">
+                            <Target className="h-4 w-4" />
+                            Open investor portal
+                          </Button>
+                        </Link>
+                      )}
+                      <Button variant="ghost" className="gap-2" onClick={handleAnalyzeAnother} data-testid="button-next-analyze-another">
+                        <ArrowRight className="h-4 w-4" />
+                        Analyze another property
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              {!leadCaptured && (
+              {isCalculating ? (
+                <Card>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="grid gap-4 md:grid-cols-5">
+                      {[...Array(5)].map((_, index) => (
+                        <Skeleton key={index} className="h-24 rounded-xl" />
+                      ))}
+                    </div>
+                    <Skeleton className="h-40 rounded-xl" />
+                  </CardContent>
+                </Card>
+              ) : (
+                <MetricCards
+                  capRate={results.capRate}
+                  cashOnCash={results.cashOnCash}
+                  dscr={results.dscr}
+                  irr={results.irr}
+                  monthlyCashFlow={results.monthlyCashFlow}
+                />
+              )}
+
+              {!leadCaptured && !isCalculating && (
                 <Card className="border-primary/25 bg-gradient-to-r from-background via-primary/5 to-accent/10">
                   <CardContent className="p-6 md:p-8">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -1156,14 +1439,16 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                 </Card>
               )}
 
-              <ResultsSummary
-                inputs={inputs}
-                results={results}
-                address={[address, city, region].filter(Boolean).join(", ")}
-                stressTest={stressTestResults}
-              />
+              {!isCalculating && (
+                <ResultsSummary
+                  inputs={inputs}
+                  results={results}
+                  address={[address, city, region].filter(Boolean).join(", ")}
+                  stressTest={stressTestResults}
+                />
+              )}
 
-              {leadCaptured ? (
+              {!isCalculating && (leadCaptured ? (
                 <>
                   <SourcesUsesWaterfall
                     inputs={inputs}
@@ -1235,10 +1520,11 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                     </div>
                   </CardContent>
                 </Card>
-              )}
+              ))}
 
-              <DealTimeline />
+              {!isCalculating && <DealTimeline />}
 
+              {!isCalculating && (
               <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-background to-primary/5">
                 <CardContent className="p-6 md:p-8">
                   <div className="text-center space-y-4">
@@ -1254,7 +1540,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                           size="lg"
                           className="gap-2 w-full sm:w-auto"
                           data-testid="button-match-realtor"
-                          onClick={() => track({ event: "consultation_requested", type: "realtor" })}
+                          onClick={() => track({ event: "consultation_requested", type: "realtor", context: "analysis_results", city: city || undefined, strategy })}
                         >
                           <Users className="h-4 w-4" />
                           Find a Realtor
@@ -1267,7 +1553,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                           variant="outline"
                           className="gap-2 w-full sm:w-auto"
                           data-testid="button-match-lender"
-                          onClick={() => track({ event: "consultation_requested", type: "mortgage" })}
+                          onClick={() => track({ event: "consultation_requested", type: "mortgage", context: "analysis_results", city: city || undefined, strategy })}
                         >
                           <Landmark className="h-4 w-4" />
                           Find a Lender
@@ -1278,6 +1564,7 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                   </div>
                 </CardContent>
               </Card>
+              )}
             </div>
           </section>
         )}

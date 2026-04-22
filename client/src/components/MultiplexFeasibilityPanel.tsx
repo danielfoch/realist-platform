@@ -54,6 +54,21 @@ interface RiskFlag {
   details: string;
 }
 
+interface RuleLayerTrace {
+  layer: "province_baseline" | "municipality_rules" | "zone_standards" | "overlays" | "property_caveats";
+  label: string;
+  status: "direct" | "heuristic" | "missing";
+  impact: string;
+  confidence: "high" | "medium" | "low";
+  source_names: string[];
+}
+
+interface AssumptionTrace {
+  label: string;
+  value: string;
+  certainty: "direct" | "inferred" | "unknown";
+}
+
 interface MultiplexFeasibilityResult {
   address: string;
   municipality: string;
@@ -81,10 +96,12 @@ interface MultiplexFeasibilityResult {
     effective_baseline_units: number;
     likely_units_low: number;
     likely_units_high: number;
+    likely_range_label: string;
     aru_possible: boolean;
     garden_suite_possible: boolean;
     laneway_suite_possible: boolean;
     six_unit_area_possible: boolean;
+    six_unit_area_status: "not_applicable" | "possible_unverified" | "more_likely_area";
     approval_path: string;
     scenarios: FeasibilityScenario[];
     approval_notes: string[];
@@ -105,6 +122,13 @@ interface MultiplexFeasibilityResult {
     calculation_notes: string[];
   };
   risk_flags: RiskFlag[];
+  rules_hierarchy: RuleLayerTrace[];
+  assumptions: AssumptionTrace[];
+  source_summary: {
+    direct_sources: number;
+    heuristic_sources: number;
+    total_sources: number;
+  };
   sources: PolicySource[];
   confidence_breakdown: Record<string, { score: number; reason: string }>;
   confidence_score: number;
@@ -299,11 +323,109 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
         )}
       </div>
 
-      {/* Skip compact view after this */}
       {props.compact && (
-        <p className="text-xs text-center text-muted-foreground">
-          Full assessment available on the property page.
-        </p>
+        <>
+          <Card className="border-border/60">
+            <CardContent className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="text-[11px] text-muted-foreground">Baseline</p>
+                  <p className="text-lg font-semibold">{d.permissions.effective_baseline_units} units</p>
+                  <p className="text-[10px] text-muted-foreground">likely starting point</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="text-[11px] text-muted-foreground">Possible range</p>
+                  <p className="text-lg font-semibold">{d.permissions.likely_range_label}</p>
+                  <p className="text-[10px] text-muted-foreground">screening only</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="text-[11px] text-muted-foreground">Accessory units</p>
+                  <p className="text-lg font-semibold">
+                    {[
+                      d.permissions.laneway_suite_possible ? "Laneway" : null,
+                      d.permissions.garden_suite_possible ? "Garden" : null,
+                      d.permissions.aru_possible ? "ARU" : null,
+                    ].filter(Boolean).slice(0, 2).join(" + ") || "None shown"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">verify lot conditions</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="text-[11px] text-muted-foreground">Practical GFA</p>
+                  <p className="text-lg font-semibold">{d.envelope.estimated_practical_gfa_sqft ? `~${d.envelope.estimated_practical_gfa_sqft.toLocaleString()}` : "Unknown"}</p>
+                  <p className="text-[10px] text-muted-foreground">sqft screening</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rules hierarchy</p>
+                <div className="space-y-2">
+                  {d.rules_hierarchy.map((rule) => (
+                    <div key={rule.layer} className="rounded-lg border border-border/50 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">{rule.label}</p>
+                        <Badge variant={rule.status === "direct" ? "default" : "outline"} className="text-[10px] capitalize">
+                          {rule.status}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{rule.impact}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-border/50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Key assumptions</p>
+                  <div className="space-y-2">
+                    {d.assumptions.slice(0, 4).map((assumption) => (
+                      <div key={assumption.label} className="text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium">{assumption.label}</span>
+                          <Badge variant="outline" className="text-[9px] capitalize">{assumption.certainty}</Badge>
+                        </div>
+                        <p className="text-muted-foreground mt-0.5">{assumption.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-950/20 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300 mb-2">Buyer beware</p>
+                  <div className="space-y-2">
+                    {d.risk_flags.slice(0, 3).map((flag) => (
+                      <div key={flag.flag} className="text-xs">
+                        <p className="font-medium text-amber-900 dark:text-amber-200">{flag.flag}</p>
+                        <p className="text-amber-700 dark:text-amber-400 leading-relaxed">{flag.details}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border/50 bg-muted/20 p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="text-xs text-muted-foreground">
+                  <p>
+                    {d.source_summary.direct_sources} direct source{d.source_summary.direct_sources === 1 ? "" : "s"} + {d.source_summary.heuristic_sources} heuristic assumption{d.source_summary.heuristic_sources === 1 ? "" : "s"} applied.
+                  </p>
+                  <p className="mt-1">Realist does not guarantee zoning accuracy or development feasibility. Buyer to verify with municipality and professionals.</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      track({ event: "feature_used", feature: "multiplex_overlay_full_tool" });
+                      window.location.href = `/tools/multiplex-feasibility?city=${encodeURIComponent(props.city || "")}&province=${encodeURIComponent(props.province || "")}&address=${encodeURIComponent(props.address || "")}`;
+                    }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Full Tool
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {!props.compact && (
@@ -363,10 +485,14 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
               {/* 6-unit note */}
               {d.permissions.six_unit_area_possible && (
                 <div className="rounded-lg border border-blue-200 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs text-blue-800 dark:text-blue-300 space-y-1">
-                  <p className="font-semibold">6-Unit Area — Possible</p>
+                  <p className="font-semibold">
+                    6-Unit Area — {d.permissions.six_unit_area_status === "more_likely_area" ? "More Likely" : "Possible"}
+                  </p>
                   <p className="text-blue-700 dark:text-blue-400 leading-relaxed">
                     Properties in the Toronto &amp; East York community council area and Ward 23 (Scarborough North – Don Mills) may be eligible for up to 6 units.
-                    Buyer must verify the property falls within this boundary using Toronto's zoning map.
+                    {d.permissions.six_unit_area_status === "more_likely_area"
+                      ? " The current address context looks more aligned with Toronto & East York, but buyer must still verify the exact boundary."
+                      : " Buyer must verify the property falls within this boundary using Toronto's zoning map."}
                   </p>
                 </div>
               )}
@@ -458,6 +584,33 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
               {d.zoning.official_plan_note && (
                 <p className="text-xs text-muted-foreground italic">{d.zoning.official_plan_note}</p>
               )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Zap className="h-4 w-4 text-primary" />
+                Rules Hierarchy
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {d.rules_hierarchy.map((rule) => (
+                <div key={rule.layer} className="rounded-lg border border-border/50 p-3 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{rule.label}</p>
+                    <Badge variant={rule.status === "direct" ? "default" : "outline"} className="text-[10px] capitalize">
+                      {rule.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{rule.impact}</p>
+                  {rule.source_names.length > 0 && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Sources: {rule.source_names.join(" · ")}
+                    </p>
+                  )}
+                </div>
+              ))}
             </CardContent>
           </Card>
 
@@ -619,6 +772,21 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
                     </div>
                   </div>
 
+                  <div className="rounded-lg bg-muted/20 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground">Assumptions Snapshot</p>
+                    {d.assumptions.map((assumption) => (
+                      <div key={assumption.label} className="flex items-start justify-between gap-3 text-xs">
+                        <div>
+                          <p className="font-medium">{assumption.label}</p>
+                          <p className="text-muted-foreground">{assumption.value}</p>
+                        </div>
+                        <Badge variant="outline" className="text-[9px] capitalize shrink-0">
+                          {assumption.certainty}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+
                   {/* Policy sources */}
                   <div className="space-y-2">
                     {d.sources.map((s, i) => (
@@ -644,6 +812,9 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
                     ))}
                   </div>
 
+                  <p className="text-[10px] text-muted-foreground">
+                    Traceability: {d.source_summary.direct_sources} direct source{d.source_summary.direct_sources === 1 ? "" : "s"}, {d.source_summary.heuristic_sources} heuristic source{d.source_summary.heuristic_sources === 1 ? "" : "s"}.
+                  </p>
                   <p className="text-[10px] text-muted-foreground">
                     Computed: {new Date(d.computed_at).toLocaleString()}
                   </p>

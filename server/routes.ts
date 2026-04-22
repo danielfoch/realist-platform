@@ -2331,13 +2331,45 @@ export async function registerRoutes(
       console.log("[Google Sheets Export] Exporting to:", exportedToUserAccount ? "user account" : "shared account");
       console.log("[Google Sheets Export] User info:", userInfo);
 
-      const spreadsheetUrl = await exportToGoogleSheets({
-        address: address || "Property Analysis",
-        strategy: strategy || "buy_hold",
-        userInfo,
-        inputs,
-        results,
-      }, userTokens || undefined);
+      let spreadsheetUrl: string;
+
+      try {
+        const exportResult = await exportToGoogleSheets({
+          address: address || "Property Analysis",
+          strategy: strategy || "buy_hold",
+          userInfo,
+          inputs,
+          results,
+        }, userTokens || undefined);
+
+        spreadsheetUrl = exportResult.spreadsheetUrl;
+
+        if (userId && userTokens && exportResult.refreshedTokens) {
+          const existingToken = await storage.getGoogleOAuthToken(userId);
+          await storage.upsertGoogleOAuthToken({
+            userId,
+            accessToken: exportResult.refreshedTokens.accessToken,
+            refreshToken: exportResult.refreshedTokens.refreshToken || userTokens.refreshToken || null,
+            tokenType: existingToken?.tokenType || "Bearer",
+            expiresAt: exportResult.refreshedTokens.expiresAt || null,
+            scope: existingToken?.scope || GOOGLE_SCOPES.join(" "),
+            googleEmail: existingToken?.googleEmail || null,
+          });
+        }
+      } catch (error) {
+        if (userId && userTokens && isGoogleReconnectRequiredError(error)) {
+          console.warn("[Google Sheets Export] Stored Google token is no longer valid; user needs to reconnect", error);
+          await storage.deleteGoogleOAuthToken(userId);
+          res.status(401).json({
+            error: "Google connection expired",
+            code: "GOOGLE_RECONNECT_REQUIRED",
+            message: "Your Google connection expired. Reconnect Google and try the export again.",
+          });
+          return;
+        }
+
+        throw error;
+      }
 
       // Send email notification to danielfoch@gmail.com
       try {
@@ -2432,6 +2464,62 @@ export async function registerRoutes(
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/userinfo.email",
   ];
+  const GOOGLE_SHEETS_DEFAULT_RETURN_URL = "/investor";
+
+  const normalizeGoogleSheetsReturnUrl = (rawUrl?: string) => {
+    if (!rawUrl) {
+      return GOOGLE_SHEETS_DEFAULT_RETURN_URL;
+    }
+
+    try {
+      if (rawUrl.startsWith("/")) {
+        return rawUrl;
+      }
+
+      const parsed = new URL(rawUrl);
+      const allowedHosts = new Set(["realist.ca", "www.realist.ca"]);
+      if (allowedHosts.has(parsed.host)) {
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      }
+    } catch {
+      // Ignore malformed or off-site return URLs.
+    }
+
+    return GOOGLE_SHEETS_DEFAULT_RETURN_URL;
+  };
+
+  const withGoogleSheetsStatus = (url: string, key: string, value: string) =>
+    `${url}${url.includes("?") ? "&" : "?"}${key}=${encodeURIComponent(value)}`;
+
+  const isGoogleReconnectRequiredError = (error: unknown) => {
+    const candidate = error as {
+      status?: number;
+      message?: string;
+      response?: { status?: number; data?: { error?: string; error_description?: string } };
+      errors?: Array<{ reason?: string; message?: string }>;
+    };
+
+    const status = candidate?.status ?? candidate?.response?.status;
+    const message = [
+      candidate?.message,
+      candidate?.response?.data?.error,
+      candidate?.response?.data?.error_description,
+      ...(candidate?.errors?.map((entry) => `${entry.reason || ""} ${entry.message || ""}`.trim()) || []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      status === 401 ||
+      message.includes("invalid_grant") ||
+      message.includes("invalid credentials") ||
+      message.includes("unauthorized") ||
+      message.includes("reauth") ||
+      message.includes("token has been expired") ||
+      message.includes("access token")
+    );
+  };
 
   // Check if Google OAuth is configured
   app.get("/api/google/status", isAuthenticated, async (req, res) => {
@@ -2471,15 +2559,29 @@ export async function registerRoutes(
       GOOGLE_REDIRECT_URI
     );
 
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: "offline",
-      scope: GOOGLE_SCOPES,
-      prompt: "consent",
-      state: req.session?.userId,
-    });
+    const state = crypto.randomBytes(32).toString("hex");
+    req.session.googleSheetsAuthState = state;
+    req.session.googleSheetsAuthReturnUrl = normalizeGoogleSheetsReturnUrl(
+      typeof req.query.returnUrl === "string" ? req.query.returnUrl : req.get("referer"),
+    );
 
-    console.log("[Google Sheets OAuth] Auth URL:", authUrl);
-    res.redirect(authUrl);
+    req.session.save((err) => {
+      if (err) {
+        console.error("[Google Sheets OAuth] Failed to persist session before redirect", err);
+        res.status(500).json({ error: "Failed to start Google authorization" });
+        return;
+      }
+
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: "offline",
+        scope: GOOGLE_SCOPES,
+        prompt: "consent",
+        state,
+      });
+
+      console.log("[Google Sheets OAuth] Auth URL:", authUrl);
+      res.redirect(authUrl);
+    });
   });
 
   // Handle Google OAuth callback
@@ -2487,28 +2589,30 @@ export async function registerRoutes(
     try {
       const { code, state } = req.query;
       const sessionUserId = req.session?.userId;
+      const returnUrl = normalizeGoogleSheetsReturnUrl(req.session.googleSheetsAuthReturnUrl);
       
       // Validate session and state match to prevent CSRF attacks
       if (!sessionUserId) {
         console.error("Google OAuth callback: No session user ID");
-        res.redirect("/investor?error=google_auth_failed&reason=no_session");
+        res.redirect(withGoogleSheetsStatus(withGoogleSheetsStatus(GOOGLE_SHEETS_DEFAULT_RETURN_URL, "error", "google_auth_failed"), "reason", "no_session"));
         return;
       }
       
       if (!code || !state || typeof code !== "string" || typeof state !== "string") {
-        res.redirect("/investor?error=google_auth_failed");
+        res.redirect(withGoogleSheetsStatus(returnUrl, "error", "google_auth_failed"));
         return;
       }
       
-      // Critical security check: Ensure the state matches the session user
-      if (state !== sessionUserId) {
-        console.error(`Google OAuth callback: State mismatch. State: ${state}, Session: ${sessionUserId}`);
-        res.redirect("/investor?error=google_auth_failed&reason=state_mismatch");
+      if (state !== req.session.googleSheetsAuthState) {
+        console.error(`Google OAuth callback: State mismatch. State: ${state}, Session state: ${req.session.googleSheetsAuthState}`);
+        res.redirect(withGoogleSheetsStatus(withGoogleSheetsStatus(returnUrl, "error", "google_auth_failed"), "reason", "state_mismatch"));
         return;
       }
 
+      delete req.session.googleSheetsAuthState;
+
       if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-        res.redirect("/investor?error=google_not_configured");
+        res.redirect(withGoogleSheetsStatus(returnUrl, "error", "google_not_configured"));
         return;
       }
 
@@ -2525,12 +2629,13 @@ export async function registerRoutes(
       const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
       const userInfo = await oauth2.userinfo.get();
       const googleEmail = userInfo.data.email;
+      const existingToken = await storage.getGoogleOAuthToken(sessionUserId);
 
       // Save tokens to database using verified session user ID
       await storage.upsertGoogleOAuthToken({
         userId: sessionUserId,
         accessToken: tokens.access_token!,
-        refreshToken: tokens.refresh_token || null,
+        refreshToken: tokens.refresh_token || existingToken?.refreshToken || null,
         tokenType: tokens.token_type || "Bearer",
         expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
         scope: tokens.scope || GOOGLE_SCOPES.join(" "),
@@ -2538,7 +2643,8 @@ export async function registerRoutes(
       });
 
       console.log(`Google OAuth connected for user ${sessionUserId} (${googleEmail})`);
-      res.redirect("/investor?google=connected");
+      delete req.session.googleSheetsAuthReturnUrl;
+      res.redirect(withGoogleSheetsStatus(returnUrl, "google", "connected"));
     } catch (error) {
       console.error("Error in Google OAuth callback:", error);
       res.redirect("/investor?error=google_auth_failed");
@@ -5271,6 +5377,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/robots.txt", async (_req, res) => {
+    const body = [
+      "User-agent: *",
+      "Allow: /",
+      "Disallow: /api/",
+      "Disallow: /admin",
+      "",
+      "Sitemap: https://realist.ca/sitemap.xml",
+      "",
+    ].join("\n");
+    res.type("text/plain").send(body);
+  });
+
   // Dynamic sitemap.xml — overrides static client/public/sitemap.xml
   app.get("/sitemap.xml", async (_req, res) => {
     try {
@@ -5278,6 +5397,9 @@ export async function registerRoutes(
       const today = new Date().toISOString().slice(0, 10);
       const staticPages: Array<{ path: string; priority: number; changefreq: string; lastmod?: string }> = [
         { path: "/", priority: 1.0, changefreq: "daily" },
+        { path: "/reports", priority: 0.9, changefreq: "weekly" },
+        { path: "/markets", priority: 0.85, changefreq: "weekly" },
+        { path: "/investing", priority: 0.85, changefreq: "weekly" },
         { path: "/about", priority: 0.9, changefreq: "monthly" },
         { path: "/about/contact", priority: 0.6, changefreq: "monthly" },
         { path: "/about/shop", priority: 0.6, changefreq: "weekly" },
@@ -5321,12 +5443,23 @@ export async function registerRoutes(
         `  <url>\n    <loc>${BASE}${p.path}</loc>\n    <lastmod>${p.lastmod ?? today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority.toFixed(2)}</priority>\n  </url>`
       );
 
+      try {
+        const { PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } = await import("@shared/programmaticSeo");
+        for (const market of PROGRAMMATIC_MARKETS) {
+          urls.push(`  <url>\n    <loc>${BASE}/markets/${market.slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.72</priority>\n  </url>`);
+        }
+        for (const strategy of PROGRAMMATIC_STRATEGIES) {
+          urls.push(`  <url>\n    <loc>${BASE}/investing/${strategy.slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.72</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip */ }
+
       // Published blog posts
       try {
         const posts = await storage.getBlogPosts({ status: "published" });
         for (const p of posts) {
           const lastmod = (p.updatedAt || p.publishedAt || new Date()).toISOString().slice(0, 10);
-          urls.push(`  <url>\n    <loc>${BASE}/insights/blog/${p.slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.70</priority>\n  </url>`);
+          const reportUrl = p.category === "market-analysis" ? `${BASE}/reports/${p.slug}` : `${BASE}/insights/blog/${p.slug}`;
+          urls.push(`  <url>\n    <loc>${reportUrl}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.70</priority>\n  </url>`);
         }
       } catch (e) { /* skip if storage unavailable */ }
 

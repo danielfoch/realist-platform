@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { track } from "@/lib/analytics";
+import { captureInvestorPreference, track } from "@/lib/analytics";
 import {
   ArrowRight, Users, MapPin, TrendingUp, GraduationCap,
   Calculator, Map, Trophy, BarChart3, Crown, Medal, Search,
@@ -66,6 +66,35 @@ const NL_EXAMPLES = [
   "Show me distress deals near Toronto with VTB potential",
   "Best neighbourhoods for legal secondary suites in BC?",
   "How does this listing perform as short-term rental?",
+];
+
+const QUICK_STARTS = [
+  {
+    label: "Ontario buy & hold",
+    query: "Find buy and hold rental opportunities in Ontario under $1M",
+    strategy: "buy_hold",
+    geography: "Ontario",
+    budgetMax: 1000000,
+  },
+  {
+    label: "BRRR candidates",
+    query: "Show BRRR properties with value-add upside near Toronto",
+    strategy: "brrr",
+    geography: "Greater Toronto Area",
+  },
+  {
+    label: "Multiplex plays",
+    query: "Analyze a multiplex acquisition in Hamilton or Kitchener",
+    strategy: "multiplex",
+    geography: "Southwestern Ontario",
+  },
+  {
+    label: "Cash-flow focus",
+    query: "Find higher-yield rental properties in Alberta",
+    strategy: "buy_hold",
+    geography: "Alberta",
+    targetGrossYield: 6,
+  },
 ];
 
 const stats = [
@@ -166,6 +195,24 @@ const insightPreviews = [
     label: "Blog & Research",
     description: "Market analysis and strategies",
     icon: BookOpen,
+  },
+];
+
+const seoHubs = [
+  {
+    href: "/reports",
+    title: "Reports",
+    description: "Indexable market and housing intelligence pages.",
+  },
+  {
+    href: "/markets",
+    title: "Markets",
+    description: "City pages for Toronto, Hamilton, Vancouver, Calgary, and more.",
+  },
+  {
+    href: "/investing",
+    title: "Strategies",
+    description: "Multiplex, BRRR, buy-and-hold, and distress strategy hubs.",
   },
 ];
 
@@ -353,8 +400,9 @@ function NLCommandBar() {
   }, []);
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
-      <div className="relative flex items-center">
+    <div className="w-full max-w-3xl mx-auto space-y-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
+        <div className="relative flex items-center">
         <Search className="absolute left-4 h-5 w-5 text-muted-foreground pointer-events-none" />
         <input
           ref={inputRef}
@@ -374,22 +422,68 @@ function NLCommandBar() {
           Analyze
           <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 justify-center">
+          {NL_EXAMPLES.slice(0, 3).map((ex) => (
+            <button
+              key={ex}
+              type="button"
+              onClick={() => handleExampleClick(ex)}
+              className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors cursor-pointer truncate max-w-[200px]"
+              data-testid="button-nl-example"
+              title={ex}
+            >
+              {ex.length > 38 ? ex.slice(0, 38) + "…" : ex}
+            </button>
+          ))}
+        </div>
+      </form>
+
+      <div className="rounded-2xl border border-border/60 bg-card/70 p-4 backdrop-blur-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="text-left">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Start fast</p>
+            <p className="text-sm text-muted-foreground">Choose an investor path and carry the intent straight into the analyzer.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_STARTS.map((start) => (
+              <Button
+                key={start.label}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="bg-background/70"
+                onClick={() => {
+                  captureInvestorPreference({
+                    strategy: start.strategy as "buy_hold" | "brrr" | "multiplex" | "flip" | "airbnb",
+                    geography: start.geography,
+                    preferred_geographies: [start.geography],
+                    budget_max: start.budgetMax,
+                    target_gross_yield: start.targetGrossYield,
+                    financing_intent: true,
+                    renovation_intent: start.strategy === "brrr",
+                    search_query: start.query,
+                  });
+                  track({
+                    event: "search_submitted",
+                    query: start.query,
+                    geography: start.geography,
+                    budget_max: start.budgetMax,
+                    strategy: start.strategy,
+                    target_gross_yield: start.targetGrossYield,
+                    source: "homepage_quick_start",
+                  });
+                  navigate(`/tools/analyzer?q=${encodeURIComponent(start.query)}`);
+                }}
+                data-testid={`button-quick-start-${start.label.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                {start.label}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2 justify-center">
-        {NL_EXAMPLES.slice(0, 3).map((ex) => (
-          <button
-            key={ex}
-            type="button"
-            onClick={() => handleExampleClick(ex)}
-            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors cursor-pointer truncate max-w-[200px]"
-            data-testid="button-nl-example"
-            title={ex}
-          >
-            {ex.length > 38 ? ex.slice(0, 38) + "…" : ex}
-          </button>
-        ))}
-      </div>
-    </form>
+    </div>
   );
 }
 
@@ -501,7 +595,10 @@ export default function MapHomepage() {
                   size="lg"
                   className="gap-2 px-6 h-11"
                   data-testid="button-talk-expert"
-                  onClick={() => track({ event: "cta_clicked", cta: "expert_matching", location: "hero_secondary" })}
+                  onClick={() => {
+                    track({ event: "cta_clicked", cta: "expert_matching", location: "hero_secondary" });
+                    track({ event: "consultation_requested", type: "general", context: "homepage_hero" });
+                  }}
                 >
                   <Users className="h-4 w-4" />
                   Talk to an Expert
@@ -711,6 +808,31 @@ export default function MapHomepage() {
                 Analyze a Deal
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 border-t border-border/40 bg-muted/10">
+        <div className="max-w-5xl mx-auto px-4 md:px-6">
+          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 mb-8">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Research Surfaces</h2>
+              <p className="text-muted-foreground max-w-2xl">
+                Browse the crawlable content layer behind Realist: reports, market pages, and investor strategy hubs.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {seoHubs.map((hub) => (
+              <Link key={hub.href} href={hub.href}>
+                <Card className="h-full hover-elevate cursor-pointer border-border/60">
+                  <CardContent className="p-5">
+                    <h3 className="font-semibold mb-2">{hub.title}</h3>
+                    <p className="text-sm text-muted-foreground">{hub.description}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

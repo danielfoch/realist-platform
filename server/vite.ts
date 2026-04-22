@@ -8,6 +8,13 @@ import { nanoid } from "nanoid";
 
 const viteLogger = createLogger();
 
+function injectSeoFallback(html: string, fallback: string | null): string {
+  return html.replace(
+    /<div id="seo-static-fallback">[\s\S]*?<\/div>/i,
+    `<div id="seo-static-fallback">${fallback || ""}</div>`,
+  );
+}
+
 export async function setupVite(server: Server, app: Express) {
   const serverOptions = {
     middlewareMode: true,
@@ -65,10 +72,12 @@ export async function setupVite(server: Server, app: Express) {
       let page = await vite.transformIndexHtml(url, template);
       try {
         const { getMetaForPath, injectMetaIntoHtml } = await import("./seoMeta");
+        const { renderSeoFallback } = await import("./seoRender");
         const reqPath = (req.originalUrl || "/").split("?")[0];
         const meta = await getMetaForPath(reqPath);
         const canonical = `${origin}${reqPath === "/" ? "" : reqPath}`;
         page = injectMetaIntoHtml(page, meta, canonical, origin);
+        page = injectSeoFallback(page, await renderSeoFallback(reqPath));
       } catch (e) { /* fall through with default html */ }
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {

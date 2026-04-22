@@ -25,6 +25,7 @@ import {
 import { DISTRESS_CATEGORIES, type DistressResult, type MatchedTerm, getProvincialNuance } from "@shared/distressScoring";
 import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
 import { Separator } from "@/components/ui/separator";
+import { MultiplexFeasibilityPanel } from "@/components/MultiplexFeasibilityPanel";
 
 const CANADA_CENTER: [number, number] = [51.0, -85.0];
 const DEFAULT_ZOOM = 5;
@@ -345,6 +346,26 @@ function ListingDetailModal({
               Full Analysis in Deal Analyzer
             </a>
           </Button>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-sm">Multiplex Potential Overlay</h3>
+                <p className="text-xs text-muted-foreground">
+                  Ontario-first screening for gentle-density upside, envelope math, confidence, and buyer-beware caveats.
+                </p>
+              </div>
+              <Badge variant="outline" className="text-[10px]">
+                Screening only
+              </Badge>
+            </div>
+            <MultiplexFeasibilityPanel
+              compact
+              address={formatAddress(listing.address)}
+              city={listing.address.city}
+              province={listing.address.state}
+            />
+          </div>
 
           {listing.distress.matchedTerms.length > 0 && (
             <div>
@@ -781,7 +802,14 @@ export default function DistressDeals() {
                                   <DistressScoreBadge score={listing.distress.distressScore} confidence={listing.distress.confidence} />
                                 </div>
                                 <div className="flex items-center justify-between mt-1.5">
-                                  <CategoryBadges categories={listing.distress.categoriesTriggered} />
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <CategoryBadges categories={listing.distress.categoriesTriggered} />
+                                    {["ON", "Ontario"].includes(listing.address.state) && (
+                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                        Multiplex Overlay
+                                      </Badge>
+                                    )}
+                                  </div>
                                   <div className="text-[10px] text-muted-foreground whitespace-nowrap">
                                     {listing.details.numBedrooms && `${listing.details.numBedrooms}bd`}
                                     {listing.details.numBathrooms && ` ${listing.details.numBathrooms}ba`}

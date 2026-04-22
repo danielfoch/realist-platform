@@ -11,6 +11,11 @@ interface UserOAuthTokens {
   expiresAt?: Date | null;
 }
 
+export interface GoogleSheetsExportResult {
+  spreadsheetUrl: string;
+  refreshedTokens?: UserOAuthTokens;
+}
+
 async function getAccessToken() {
   if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
     return connectionSettings.settings.access_token;
@@ -68,9 +73,13 @@ export async function getUncachableGoogleDriveClient() {
 }
 
 // Get a Google Drive client using user's own OAuth tokens
-export function getUserGoogleDriveClient(tokens: UserOAuthTokens) {
+async function getAuthorizedUserOAuthClient(tokens: UserOAuthTokens) {
   const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
   const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    throw new Error("Google OAuth not configured");
+  }
 
   const oauth2Client = new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
@@ -83,26 +92,45 @@ export function getUserGoogleDriveClient(tokens: UserOAuthTokens) {
     expiry_date: tokens.expiresAt ? tokens.expiresAt.getTime() : undefined,
   });
 
-  return google.drive({ version: 'v3', auth: oauth2Client });
+  const shouldRefresh =
+    Boolean(tokens.refreshToken) &&
+    (!tokens.expiresAt || tokens.expiresAt.getTime() <= Date.now() + 5 * 60 * 1000);
+
+  if (shouldRefresh) {
+    await oauth2Client.getAccessToken();
+  }
+
+  const credentials = oauth2Client.credentials;
+  const refreshedTokens: UserOAuthTokens = {
+    accessToken: credentials.access_token || tokens.accessToken,
+    refreshToken: credentials.refresh_token || tokens.refreshToken || null,
+    expiresAt:
+      typeof credentials.expiry_date === "number"
+        ? new Date(credentials.expiry_date)
+        : tokens.expiresAt || null,
+  };
+
+  return { oauth2Client, refreshedTokens };
+}
+
+// Get a Google Drive client using user's own OAuth tokens
+export async function getUserGoogleDriveClient(tokens: UserOAuthTokens) {
+  const { oauth2Client, refreshedTokens } = await getAuthorizedUserOAuthClient(tokens);
+
+  return {
+    drive: google.drive({ version: 'v3', auth: oauth2Client }),
+    refreshedTokens,
+  };
 }
 
 // Get a Google Sheets client using user's own OAuth tokens
-export function getUserGoogleSheetClient(tokens: UserOAuthTokens) {
-  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+export async function getUserGoogleSheetClient(tokens: UserOAuthTokens) {
+  const { oauth2Client, refreshedTokens } = await getAuthorizedUserOAuthClient(tokens);
 
-  const oauth2Client = new google.auth.OAuth2(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET
-  );
-
-  oauth2Client.setCredentials({
-    access_token: tokens.accessToken,
-    refresh_token: tokens.refreshToken || undefined,
-    expiry_date: tokens.expiresAt ? tokens.expiresAt.getTime() : undefined,
-  });
-
-  return google.sheets({ version: 'v4', auth: oauth2Client });
+  return {
+    sheets: google.sheets({ version: 'v4', auth: oauth2Client }),
+    refreshedTokens,
+  };
 }
 
 interface UserInfo {
@@ -191,11 +219,15 @@ interface ExportData {
   };
 }
 
-export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOAuthTokens): Promise<string> {
+export async function exportToGoogleSheets(
+  data: ExportData,
+  userTokens?: UserOAuthTokens,
+): Promise<GoogleSheetsExportResult> {
   // Use user's own tokens if provided, otherwise fall back to Replit connector
-  const sheets = userTokens 
-    ? getUserGoogleSheetClient(userTokens)
-    : await getUncachableGoogleSheetClient();
+  const userSheetsClient = userTokens
+    ? await getUserGoogleSheetClient(userTokens)
+    : null;
+  const sheets = userSheetsClient?.sheets ?? await getUncachableGoogleSheetClient();
   
   const title = `Realist Analysis - ${data.address || 'Property'} - ${new Date().toLocaleDateString()}`;
   
@@ -755,9 +787,10 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
 
   // Make the spreadsheet publicly accessible (anyone with link can view)
   try {
-    const drive = userTokens 
-      ? getUserGoogleDriveClient(userTokens)
-      : await getUncachableGoogleDriveClient();
+    const userDriveClient = userTokens
+      ? await getUserGoogleDriveClient(userTokens)
+      : null;
+    const drive = userDriveClient?.drive ?? await getUncachableGoogleDriveClient();
     
     await drive.permissions.create({
       fileId: spreadsheetId,
@@ -772,7 +805,10 @@ export async function exportToGoogleSheets(data: ExportData, userTokens?: UserOA
     // Continue anyway - sheet is still created, just private
   }
 
-  return spreadsheetUrl;
+  return {
+    spreadsheetUrl,
+    refreshedTokens: userSheetsClient?.refreshedTokens,
+  };
 }
 
 // MLI Select Export Types
@@ -844,9 +880,10 @@ interface MLIExportData {
 }
 
 export async function exportMLIToGoogleSheets(data: MLIExportData, userTokens?: UserOAuthTokens): Promise<string> {
-  const sheets = userTokens 
-    ? getUserGoogleSheetClient(userTokens)
-    : await getUncachableGoogleSheetClient();
+  const userSheetsClient = userTokens
+    ? await getUserGoogleSheetClient(userTokens)
+    : null;
+  const sheets = userSheetsClient?.sheets ?? await getUncachableGoogleSheetClient();
   
   const title = `Realist MLI Select - ${data.projectName || data.location || 'Project'} - ${new Date().toLocaleDateString()}`;
   
@@ -1037,9 +1074,10 @@ export async function exportMLIToGoogleSheets(data: MLIExportData, userTokens?: 
 
   // Make public
   try {
-    const drive = userTokens 
-      ? getUserGoogleDriveClient(userTokens)
-      : await getUncachableGoogleDriveClient();
+    const userDriveClient = userTokens
+      ? await getUserGoogleDriveClient(userTokens)
+      : null;
+    const drive = userDriveClient?.drive ?? await getUncachableGoogleDriveClient();
     
     await drive.permissions.create({
       fileId: spreadsheetId,

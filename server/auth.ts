@@ -80,6 +80,8 @@ declare module "express-session" {
     userId?: string;
     googleAuthState?: string;
     googleAuthReturnUrl?: string;
+    googleSheetsAuthState?: string;
+    googleSheetsAuthReturnUrl?: string;
   }
 }
 
@@ -91,6 +93,7 @@ export function getSession() {
   }
   
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const cookieDomain = process.env.NODE_ENV === "production" ? ".realist.ca" : undefined;
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -108,6 +111,7 @@ export function getSession() {
       secure: process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
       sameSite: "lax",
+      domain: cookieDomain,
     },
   });
 }

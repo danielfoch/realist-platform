@@ -157,7 +157,7 @@ export default function Blog() {
               {filteredPosts.map((post) => (
                 <Link
                   key={post.slug}
-                  href={`/insights/blog/${post.slug}`}
+                  href={post.category === "market-analysis" ? `/reports/${post.slug}` : `/insights/blog/${post.slug}`}
                   className="block group"
                   data-testid={`link-db-post-${post.slug}`}
                 >

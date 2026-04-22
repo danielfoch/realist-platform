@@ -66,6 +66,21 @@ export interface RiskFlag {
   details: string;
 }
 
+export interface RuleLayerTrace {
+  layer: "province_baseline" | "municipality_rules" | "zone_standards" | "overlays" | "property_caveats";
+  label: string;
+  status: "direct" | "heuristic" | "missing";
+  impact: string;
+  confidence: "high" | "medium" | "low";
+  source_names: string[];
+}
+
+export interface AssumptionTrace {
+  label: string;
+  value: string;
+  certainty: "direct" | "inferred" | "unknown";
+}
+
 export interface MultiplexFeasibilityResult {
   // Identity
   address: string;
@@ -100,10 +115,12 @@ export interface MultiplexFeasibilityResult {
     effective_baseline_units: number;
     likely_units_low: number;
     likely_units_high: number;
+    likely_range_label: string;
     aru_possible: boolean;
     garden_suite_possible: boolean;
     laneway_suite_possible: boolean;
     six_unit_area_possible: boolean;
+    six_unit_area_status: "not_applicable" | "possible_unverified" | "more_likely_area";
     approval_path: "as_of_right" | "minor_variance_likely" | "rezoning_required" | "complex" | "unknown";
     scenarios: FeasibilityScenario[];
     approval_notes: string[];
@@ -128,6 +145,15 @@ export interface MultiplexFeasibilityResult {
 
   // Risk flags
   risk_flags: RiskFlag[];
+
+  // Rules + assumptions traceability
+  rules_hierarchy: RuleLayerTrace[];
+  assumptions: AssumptionTrace[];
+  source_summary: {
+    direct_sources: number;
+    heuristic_sources: number;
+    total_sources: number;
+  };
 
   // Sources
   sources: PolicySource[];
@@ -701,6 +727,30 @@ function detectProvince(input: FeasibilityInput): {
   return { key: null, rule: null, confidence_contribution: 0 };
 }
 
+function inferTorontoSixUnitStatus(input: FeasibilityInput, munRule: MunicipalityRule | null): "not_applicable" | "possible_unverified" | "more_likely_area" {
+  if (munRule?.name !== "City of Toronto" || !munRule.six_unit_area_possible) return "not_applicable";
+
+  const city = (input.city || "").toLowerCase().trim();
+  const address = (input.address || "").toLowerCase();
+  const postal = (input.postalCode || "").toUpperCase().replace(/\s+/g, "");
+  const search = `${city} ${address}`;
+
+  if (
+    city === "east york" ||
+    city === "york" ||
+    search.includes("east york") ||
+    search.includes("toronto and east york")
+  ) {
+    return "more_likely_area";
+  }
+
+  if (city === "scarborough" || search.includes("ward 23") || /^M2N|^M3A|^M3B|^M3C/.test(postal)) {
+    return "possible_unverified";
+  }
+
+  return "possible_unverified";
+}
+
 // ─── Confidence Scoring ─────────────────────────────────────────────────────
 
 function computeConfidence(
@@ -1083,6 +1133,121 @@ function detectRiskFlags(
   return flags;
 }
 
+function buildRuleHierarchy(
+  input: FeasibilityInput,
+  provRule: ProvinceRule | null,
+  munRule: MunicipalityRule | null,
+  zoneHint: ZoneHint | null,
+  sixUnitStatus: "not_applicable" | "possible_unverified" | "more_likely_area",
+): RuleLayerTrace[] {
+  const layers: RuleLayerTrace[] = [];
+
+  layers.push({
+    layer: "province_baseline",
+    label: provRule ? `${provRule.name} baseline` : "Province baseline",
+    status: provRule ? "direct" : "missing",
+    impact: provRule
+      ? `Provincial screening baseline supports about ${provRule.baseline_units} units before municipality-specific overrides.`
+      : "Province not recognized, so no reliable baseline legislation was applied.",
+    confidence: provRule ? "high" : "low",
+    source_names: provRule?.sources.map((source) => source.name) || [],
+  });
+
+  layers.push({
+    layer: "municipality_rules",
+    label: munRule ? munRule.name : "Municipality rules",
+    status: munRule ? (munRule.supportLevel === "province_only" ? "heuristic" : "direct") : "missing",
+    impact: munRule
+      ? munRule.name === "City of Toronto"
+        ? `Toronto city-wide 4-unit permissions are applied. 6-unit status is ${sixUnitStatus === "more_likely_area" ? "more likely" : "possible but unverified"} based on limited location data.`
+        : `${munRule.name} currently uses ${munRule.supportLevel === "province_only" ? "province-level baseline logic with municipality fallbacks" : "municipality-specific rules"} in this screening model.`
+      : "Municipality not yet normalized, so only province logic and generic heuristics were used.",
+    confidence: munRule ? (munRule.supportLevel === "province_only" ? "medium" : "high") : "low",
+    source_names: munRule?.sources.map((source) => source.name) || [],
+  });
+
+  layers.push({
+    layer: "zone_standards",
+    label: input.zoneCode ? `Zone ${input.zoneCode}` : "Zone standards",
+    status: zoneHint ? "direct" : input.zoneCode ? "heuristic" : "missing",
+    impact: zoneHint
+      ? `${zoneHint.description} was classified and used to shape lot coverage and storey assumptions.`
+      : input.zoneCode
+        ? "A zone code was provided but not fully classified, so municipality-level form assumptions were used."
+        : "No zone code was provided, so lot coverage and form assumptions rely on municipality defaults.",
+    confidence: zoneHint ? "medium" : input.zoneCode ? "low" : "low",
+    source_names: zoneHint ? [`Realist zone classifier (${zoneHint.category})`] : [SOURCES.inferred.name],
+  });
+
+  layers.push({
+    layer: "overlays",
+    label: "Overlay constraints",
+    status: input.heritageFlag || input.floodplainFlag ? "direct" : "heuristic",
+    impact: input.heritageFlag || input.floodplainFlag
+      ? "Explicit heritage and/or floodplain constraints reduce confidence and practical envelope assumptions."
+      : "No overlay inputs were supplied, so the model assumes no known major overlay constraints.",
+    confidence: input.heritageFlag || input.floodplainFlag ? "high" : "low",
+    source_names: input.heritageFlag || input.floodplainFlag ? ["User / property-level flag"] : [SOURCES.inferred.name],
+  });
+
+  layers.push({
+    layer: "property_caveats",
+    label: "Property-specific caveats",
+    status: input.lotArea || (input.lotFrontage && input.lotDepth) ? "direct" : "heuristic",
+    impact: input.lotArea || (input.lotFrontage && input.lotDepth)
+      ? "Lot dimensions directly inform footprint, GFA, and unit-size screening."
+      : "Without lot dimensions, footprint and GFA remain broad screening estimates only.",
+    confidence: input.lotArea || (input.lotFrontage && input.lotDepth) ? "high" : "low",
+    source_names: input.lotArea || (input.lotFrontage && input.lotDepth) ? ["User / listing input"] : [SOURCES.inferred.name],
+  });
+
+  return layers;
+}
+
+function buildAssumptions(
+  input: FeasibilityInput,
+  lotAreaResult: { area: number | null; frontage: number | null; depth: number | null; basis: "provided" | "calculated" | "estimated" },
+  envelope: {
+    coverage_ratio: number;
+    coverage_basis: "bylaw" | "zone_rule" | "municipality_fallback" | "province_fallback";
+    storeys: number;
+  },
+  sixUnitStatus: "not_applicable" | "possible_unverified" | "more_likely_area",
+): AssumptionTrace[] {
+  return [
+    {
+      label: "Lot area basis",
+      value: lotAreaResult.area ? `${Math.round(lotAreaResult.area).toLocaleString()} sqft (${lotAreaResult.basis})` : "Unknown lot area",
+      certainty: lotAreaResult.basis === "provided" ? "direct" : lotAreaResult.basis === "calculated" ? "inferred" : "unknown",
+    },
+    {
+      label: "Lot coverage ratio",
+      value: `${Math.round(envelope.coverage_ratio * 100)}% (${envelope.coverage_basis.replace(/_/g, " ")})`,
+      certainty: envelope.coverage_basis === "zone_rule" ? "direct" : envelope.coverage_basis === "municipality_fallback" ? "inferred" : "unknown",
+    },
+    {
+      label: "Storey assumption",
+      value: `${envelope.storeys} storeys assumed for GFA screening`,
+      certainty: "inferred",
+    },
+    {
+      label: "Toronto 6-unit status",
+      value:
+        sixUnitStatus === "more_likely_area"
+          ? "Address context suggests Toronto & East York linkage, but still verify."
+          : sixUnitStatus === "possible_unverified"
+            ? "6-unit permissions may apply in limited Toronto subareas; location not confirmed."
+            : "Not applicable to this property.",
+      certainty: sixUnitStatus === "not_applicable" ? "direct" : "unknown",
+    },
+    {
+      label: "Overlay status",
+      value: input.heritageFlag || input.floodplainFlag ? "Overlay flags were supplied and applied." : "No heritage/floodplain inputs supplied.",
+      certainty: input.heritageFlag || input.floodplainFlag ? "direct" : "unknown",
+    },
+  ];
+}
+
 // ─── Main Computation Function ───────────────────────────────────────────────
 
 export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexFeasibilityResult {
@@ -1120,9 +1285,11 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
   // 7. Unit count range
   const unitsLow = Math.min(2, effectiveBaseline);
   const unitsHigh = munRule?.six_unit_area_possible ? effectiveBaseline + 2 : effectiveBaseline;
+  const likelyRangeLabel = `${unitsLow}-${unitsHigh} units`;
 
   // 8. Build scenarios
   const scenarios = buildScenarios(munRule, provRule, envelope.practical_gfa, input);
+  const sixUnitStatus = inferTorontoSixUnitStatus(input, munRule);
 
   // 9. Unit GFA scenarios
   const unitScenarios = [2, effectiveBaseline, ...(munRule?.six_unit_area_possible ? [6] : [])].map(u => ({
@@ -1133,6 +1300,8 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
 
   // 10. Detect risk flags
   const riskFlags = detectRiskFlags(input, munRule ? { ...munRule, key: munKey } as any : null, lotAreaResult);
+  const rulesHierarchy = buildRuleHierarchy(input, provRule, munRule, zoneHint, sixUnitStatus);
+  const assumptions = buildAssumptions(input, lotAreaResult, envelope, sixUnitStatus);
 
   // 11. Approval path assessment
   let approvalPath: "as_of_right" | "minor_variance_likely" | "rezoning_required" | "complex" | "unknown" = "unknown";
@@ -1162,10 +1331,12 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
 
   const keyFacts: string[] = [];
   if (munRule) keyFacts.push(`Municipality: ${munRule.name}`);
+  keyFacts.push(`Likely screening range: ${likelyRangeLabel}`);
   if (lotAreaResult.area) keyFacts.push(`Estimated lot area: ${Math.round(lotAreaResult.area).toLocaleString()} sqft`);
   if (envelope.practical_gfa) keyFacts.push(`Rough practical GFA: ~${envelope.practical_gfa.toLocaleString()} sqft (see envelope math)`);
   if (munRule?.laneway_suite_possible) keyFacts.push("Laneway suite possible (verify lane access)");
   if (munRule?.garden_suite_possible || provRule?.garden_suite_possible) keyFacts.push("Garden suite likely possible");
+  if (sixUnitStatus === "more_likely_area") keyFacts.push("Toronto 6-unit subarea looks more plausible from address context");
 
   const keyBlockers: string[] = [];
   if (input.heritageFlag) keyBlockers.push("Heritage flag — major constraint");
@@ -1213,10 +1384,12 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
       effective_baseline_units: effectiveBaseline,
       likely_units_low: unitsLow,
       likely_units_high: unitsHigh,
+      likely_range_label: likelyRangeLabel,
       aru_possible: munRule?.aru_possible || provRule?.aru_possible || false,
       garden_suite_possible: munRule?.garden_suite_possible || provRule?.garden_suite_possible || false,
       laneway_suite_possible: munRule?.laneway_suite_possible || false,
       six_unit_area_possible: munRule?.six_unit_area_possible || false,
+      six_unit_area_status: sixUnitStatus,
       approval_path: approvalPath,
       scenarios,
       approval_notes: munRule?.approval_notes || provRule?.baseline_notes || [],
@@ -1239,6 +1412,13 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
     },
 
     risk_flags: riskFlags,
+    rules_hierarchy: rulesHierarchy,
+    assumptions,
+    source_summary: {
+      direct_sources: allSources.filter((source) => source.confidence !== "low").length,
+      heuristic_sources: allSources.filter((source) => source.confidence === "low").length,
+      total_sources: allSources.length,
+    },
     sources: allSources,
     confidence_breakdown: breakdown,
     confidence_score: confidenceScore,

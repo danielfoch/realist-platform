@@ -44,7 +44,7 @@ export default function BlogPost() {
       <SEO
         title={post?.metaTitle || post?.title || "Blog Post"}
         description={post?.metaDescription || post?.excerpt || "Read this article on Realist.ca"}
-        canonicalUrl={`/insights/blog/${slug}`}
+        canonicalUrl={post?.category === "market-analysis" ? `/reports/${slug}` : `/insights/blog/${slug}`}
         ogImage={post?.coverImage || undefined}
         ogType="article"
       />
@@ -160,7 +160,7 @@ export default function BlogPost() {
             </h2>
             <div className="grid gap-6 md:grid-cols-3">
               {relatedPosts.map((rp) => (
-                <Link key={rp.slug} href={`/insights/blog/${rp.slug}`}>
+                <Link key={rp.slug} href={rp.category === "market-analysis" ? `/reports/${rp.slug}` : `/insights/blog/${rp.slug}`}>
                   <Card className="h-full hover-elevate transition-all duration-200" data-testid={`card-related-${rp.slug}`}>
                     {rp.coverImage && (
                       <div className="aspect-video overflow-hidden">
