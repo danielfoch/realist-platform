@@ -454,29 +454,21 @@ export default function MapHomepage() {
                 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]"
                 data-testid="text-map-hero-headline"
               >
-                Find the deal.
+                Source the deal.
                 <br />
-                <span className="text-gradient">Underwrite it. Move.</span>
+                <span className="text-gradient">Underwrite it. Act fast.</span>
               </h1>
               <p
                 className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
                 data-testid="text-map-hero-subhead"
               >
-                Search in plain English, pressure-test any property, and route into the next action with investor-grade data.
-                Built for serious Canadian investors who need clarity before they commit capital.
+                Search in plain English, pressure-test any property, and move into the next action with investor-grade data.
+                Built for Canadian investors who need conviction before they spend time, debt capacity, or equity.
               </p>
             </div>
 
             {/* NL Command Bar */}
             <NLCommandBar />
-
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
-              <span>Natural-language deal search</span>
-              <span className="hidden sm:inline text-border">•</span>
-              <span>Institutional-style underwriting</span>
-              <span className="hidden sm:inline text-border">•</span>
-              <span>Expert next steps when you are ready</span>
-            </div>
 
             {/* Secondary CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
@@ -515,6 +507,14 @@ export default function MapHomepage() {
                   Talk to an Expert
                 </Button>
               </Link>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+              <span>Natural-language search</span>
+              <span className="hidden sm:inline text-border">•</span>
+              <span>Deal analysis in minutes</span>
+              <span className="hidden sm:inline text-border">•</span>
+              <span>Expert execution paths</span>
             </div>
           </div>
         </div>
@@ -569,9 +569,9 @@ export default function MapHomepage() {
       <section className="py-12 border-t border-border/40 bg-muted/20">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Built for the investor decision, not just the listing click</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Realist is structured around the core loop that matters: find an opportunity, understand the numbers, and decide what to do next.
+                    <h2 className="text-2xl md:text-3xl font-bold mb-3">Built for the investor decision, not just the listing click</h2>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">
+              Realist is structured around the loop that matters most: source an opportunity, validate the numbers, and decide the next move quickly.
             </p>
           </div>
 

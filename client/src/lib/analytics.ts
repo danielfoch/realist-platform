@@ -21,26 +21,26 @@
 
 export type RealistEvent =
   // Discovery
-  | { event: "search_submitted"; query: string; geography?: string; asset_type?: string; budget_max?: number; source?: string }
+  | { event: "search_submitted"; query: string; geography?: string; asset_type?: string; budget_max?: number; strategy?: string; property_type?: string; target_gross_yield?: number; source?: string }
   | { event: "nl_query_submitted"; query: string; matched_intent?: string }
   | { event: "listing_viewed"; listing_id: string; city?: string; property_type?: string; price?: number; gross_yield?: number }
   | { event: "geography_selected"; city: string; province?: string; source?: string }
   | { event: "asset_type_selected"; type: string; source?: string }
 
   // Deal Analyzer
-  | { event: "analyzer_started"; address?: string; strategy?: string; source?: string }
-  | { event: "analyzer_completed"; strategy: string; price?: number; city?: string; province?: string; gross_yield?: number; cash_on_cash?: number; irr?: number; cap_rate?: number }
+  | { event: "analyzer_started"; address?: string; strategy?: string; geography?: string; budget_max?: number; property_type?: string; source?: string }
+  | { event: "analyzer_completed"; strategy: string; price?: number; city?: string; province?: string; property_type?: string; gross_yield?: number; cash_on_cash?: number; irr?: number; cap_rate?: number }
   | { event: "analyzer_shared"; share_token: string }
   | { event: "analyzer_exported"; format: "pdf" | "sheets" }
 
   // Saves
-  | { event: "saved_listing"; listing_id?: string; city?: string; price?: number }
+  | { event: "saved_listing"; listing_id?: string; city?: string; price?: number; strategy?: string; property_type?: string; source?: string }
   | { event: "saved_search"; filters: Record<string, unknown>; geography?: string }
 
   // Conversions
-  | { event: "lead_captured"; source: string; strategy?: string }
+  | { event: "lead_captured"; source: string; strategy?: string; geography?: string; budget_max?: number }
   | { event: "newsletter_signup"; source?: string; page?: string }
-  | { event: "consultation_requested"; type: "mortgage" | "realtor" | "coaching" | "general" }
+  | { event: "consultation_requested"; type: "mortgage" | "realtor" | "coaching" | "general"; context?: string; city?: string; strategy?: string }
   | { event: "partner_interest"; partner_type: "realtor" | "lender" | "investor" | "service" }
   | { event: "account_created"; method: "email" | "google" }
 
@@ -56,6 +56,7 @@ export type RealistEvent =
 export interface InvestorPreferenceSignal {
   strategy?: "buy_hold" | "brrr" | "multiplex" | "flip" | "airbnb";
   geography?: string;
+  preferred_geographies?: string[];
   province?: string;
   budget_min?: number;
   budget_max?: number;
@@ -63,19 +64,127 @@ export interface InvestorPreferenceSignal {
   target_coc?: number;
   target_irr?: number;
   property_type?: string;
+  property_types?: string[];
+  target_returns?: string[];
   financing_intent?: boolean;
   renovation_intent?: boolean;
+  development_intent?: boolean;
+  search_query?: string;
   timeline?: string;
+}
+
+export interface SavedSearchSignal {
+  id: string;
+  createdAt: string;
+  label: string;
+  query?: string;
+  geography?: string;
+  strategy?: string;
+  propertyType?: string;
+  budgetMax?: number;
+  targetGrossYield?: number;
+  targetCashOnCash?: number;
+  targetIrr?: number;
+  financingIntent?: boolean;
+  renovationIntent?: boolean;
+}
+
+export interface SavedListingSignal {
+  id: string;
+  createdAt: string;
+  label: string;
+  listingId?: string;
+  address?: string;
+  city?: string;
+  strategy?: string;
+  propertyType?: string;
+  price?: number;
+  monthlyCashFlow?: number;
+  capRate?: number;
+  source?: string;
+}
+
+const INVESTOR_PREFERENCE_KEY = "_rip";
+const SAVED_SEARCHES_KEY = "realist_saved_searches";
+const SAVED_LISTINGS_KEY = "realist_saved_listing_drafts";
+
+function uniqueStrings(values: Array<string | undefined>): string[] | undefined {
+  const normalized = values
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+  if (!normalized.length) return undefined;
+  return Array.from(new Set(normalized));
 }
 
 export function captureInvestorPreference(signal: InvestorPreferenceSignal): void {
   try {
-    const existing = JSON.parse(sessionStorage.getItem("_rip") || "{}");
-    const merged = { ...existing, ...signal, updated_at: Date.now() };
-    sessionStorage.setItem("_rip", JSON.stringify(merged));
+    const existing = JSON.parse(sessionStorage.getItem(INVESTOR_PREFERENCE_KEY) || "{}");
+    const merged = {
+      ...existing,
+      ...signal,
+      preferred_geographies: uniqueStrings([
+        ...(Array.isArray(existing.preferred_geographies) ? existing.preferred_geographies : []),
+        ...(Array.isArray(signal.preferred_geographies) ? signal.preferred_geographies : []),
+        signal.geography,
+      ]),
+      property_types: uniqueStrings([
+        ...(Array.isArray(existing.property_types) ? existing.property_types : []),
+        ...(Array.isArray(signal.property_types) ? signal.property_types : []),
+        signal.property_type,
+      ]),
+      target_returns: uniqueStrings([
+        ...(Array.isArray(existing.target_returns) ? existing.target_returns : []),
+        ...(Array.isArray(signal.target_returns) ? signal.target_returns : []),
+      ]),
+      updated_at: Date.now(),
+    };
+    sessionStorage.setItem(INVESTOR_PREFERENCE_KEY, JSON.stringify(merged));
     // Also ship to server so it survives session
     track({ event: "feature_used", feature: "preference_signal", details: merged });
   } catch {}
+}
+
+export function getInvestorPreferenceSnapshot(): Record<string, unknown> {
+  try {
+    return JSON.parse(sessionStorage.getItem(INVESTOR_PREFERENCE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function readLocalArray<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalArray<T>(key: string, value: T[]): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
+export function getSavedSearchSignals(): SavedSearchSignal[] {
+  return readLocalArray<SavedSearchSignal>(SAVED_SEARCHES_KEY);
+}
+
+export function persistSavedSearchSignal(search: SavedSearchSignal): void {
+  const existing = getSavedSearchSignals();
+  writeLocalArray(SAVED_SEARCHES_KEY, [search, ...existing.filter((item) => item.id !== search.id)].slice(0, 25));
+}
+
+export function getSavedListingSignals(): SavedListingSignal[] {
+  return readLocalArray<SavedListingSignal>(SAVED_LISTINGS_KEY);
+}
+
+export function persistSavedListingSignal(listing: SavedListingSignal): void {
+  const existing = getSavedListingSignals();
+  writeLocalArray(SAVED_LISTINGS_KEY, [listing, ...existing.filter((item) => item.id !== listing.id)].slice(0, 25));
 }
 
 // ─── Core Track Function ──────────────────────────────────────────────────────
