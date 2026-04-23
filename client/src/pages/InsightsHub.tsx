@@ -7,7 +7,7 @@ import { Link } from "wouter";
 import { track } from "@/lib/analytics";
 import {
   Radio, BookOpen, FileText, TrendingUp, AlertTriangle, LineChart,
-  Calculator, ArrowRight, BarChart3, ChevronRight,
+  Calculator, ArrowRight, BarChart3, ChevronRight, Building2,
 } from "lucide-react";
 
 const insightItems = [
@@ -34,6 +34,14 @@ const insightItems = [
     icon: FileText,
     badge: "Education",
     cta: "View Guides",
+  },
+  {
+    href: "/reports/cmhc-land-use-regulations-housing-canada-2026",
+    title: "CMHC Land Use Regulations Report",
+    description: "What CMHC's 2026 research says about zoning, approval rules, house prices, and housing supply growth in Canada.",
+    icon: Building2,
+    badge: "CMHC 2026",
+    cta: "Read Report",
   },
   {
     href: "/insights/mortgage-rates",

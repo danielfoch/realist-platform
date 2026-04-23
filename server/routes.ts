@@ -470,6 +470,128 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Keep crawler control files independent of auth/session middleware.
+  // Google Search Console can report transient "Couldn't fetch" when sitemap
+  // requests inherit private cache/session behavior from the app stack.
+  app.get("/robots.txt", async (_req, res) => {
+    const body = [
+      "User-agent: *",
+      "Allow: /",
+      "Disallow: /api/",
+      "Disallow: /admin",
+      "",
+      "Sitemap: https://realist.ca/sitemap.xml",
+      "",
+    ].join("\n");
+    res.removeHeader("Set-Cookie");
+    res.set("Content-Type", "text/plain; charset=utf-8");
+    res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+    res.set("X-Content-Type-Options", "nosniff");
+    res.status(200).send(body);
+  });
+
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const BASE = "https://realist.ca";
+      const today = new Date().toISOString().slice(0, 10);
+      const staticPages: Array<{ path: string; priority: number; changefreq: string; lastmod?: string }> = [
+        { path: "/", priority: 1.0, changefreq: "daily" },
+        { path: "/reports", priority: 0.9, changefreq: "weekly" },
+        { path: "/markets", priority: 0.85, changefreq: "weekly" },
+        { path: "/investing", priority: 0.85, changefreq: "weekly" },
+        { path: "/about", priority: 0.9, changefreq: "monthly" },
+        { path: "/about/contact", priority: 0.6, changefreq: "monthly" },
+        { path: "/about/shop", priority: 0.6, changefreq: "weekly" },
+        { path: "/tools", priority: 0.9, changefreq: "weekly" },
+        { path: "/tools/analyzer", priority: 0.95, changefreq: "weekly" },
+        { path: "/tools/buybox", priority: 0.7, changefreq: "weekly" },
+        { path: "/tools/coinvest", priority: 0.7, changefreq: "weekly" },
+        { path: "/tools/true-cost", priority: 0.8, changefreq: "monthly" },
+        { path: "/tools/rent-vs-buy", priority: 0.8, changefreq: "monthly" },
+        { path: "/tools/cap-rates", priority: 0.8, changefreq: "weekly" },
+        { path: "/tools/will-it-plex", priority: 0.7, changefreq: "monthly" },
+        { path: "/tools/fixed-vs-variable", priority: 0.7, changefreq: "weekly" },
+        { path: "/tools/land-claim-screener", priority: 0.7, changefreq: "monthly" },
+        { path: "/tools/distress-deals", priority: 0.8, changefreq: "daily" },
+        { path: "/course", priority: 0.9, changefreq: "weekly" },
+        { path: "/community", priority: 0.8, changefreq: "weekly" },
+        { path: "/community/leaderboard", priority: 0.8, changefreq: "daily" },
+        { path: "/community/events", priority: 0.8, changefreq: "weekly" },
+        { path: "/community/network", priority: 0.7, changefreq: "weekly" },
+        { path: "/insights", priority: 0.9, changefreq: "weekly" },
+        { path: "/insights/market-report", priority: 0.9, changefreq: "weekly" },
+        { path: "/insights/distress-report", priority: 0.85, changefreq: "daily" },
+        { path: "/insights/mortgage-rates", priority: 0.85, changefreq: "daily" },
+        { path: "/insights/building-permits", priority: 0.8, changefreq: "monthly" },
+        { path: "/insights/productivity-gap", priority: 0.7, changefreq: "monthly" },
+        { path: "/insights/new-construction-canada", priority: 0.85, changefreq: "weekly" },
+        { path: "/insights/gta-precon-pricing", priority: 0.85, changefreq: "weekly" },
+        { path: "/insights/cpi-march-2026", priority: 0.8, changefreq: "monthly" },
+        { path: "/canada-housing-market", priority: 0.9, changefreq: "weekly" },
+        { path: "/toronto-housing-market", priority: 0.9, changefreq: "weekly" },
+        { path: "/toronto-condo-prices-dropping", priority: 0.85, changefreq: "weekly" },
+        { path: "/biggest-price-drops-gta", priority: 0.85, changefreq: "daily" },
+        { path: "/insights/podcast", priority: 0.8, changefreq: "weekly" },
+        { path: "/insights/blog", priority: 0.8, changefreq: "weekly" },
+        { path: "/insights/guides", priority: 0.8, changefreq: "weekly" },
+        { path: "/join/realtors", priority: 0.7, changefreq: "monthly" },
+        { path: "/join/lenders", priority: 0.7, changefreq: "monthly" },
+      ];
+
+      const urls: string[] = staticPages.map(p =>
+        `  <url>\n    <loc>${BASE}${p.path}</loc>\n    <lastmod>${p.lastmod ?? today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority.toFixed(2)}</priority>\n  </url>`
+      );
+
+      try {
+        const { PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } = await import("@shared/programmaticSeo");
+        for (const market of PROGRAMMATIC_MARKETS) {
+          urls.push(`  <url>\n    <loc>${BASE}/markets/${market.slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.72</priority>\n  </url>`);
+        }
+        for (const strategy of PROGRAMMATIC_STRATEGIES) {
+          urls.push(`  <url>\n    <loc>${BASE}/investing/${strategy.slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.72</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip */ }
+
+      try {
+        const posts = await storage.getBlogPosts({ status: "published" });
+        for (const p of posts) {
+          const lastmod = (p.updatedAt || p.publishedAt || new Date()).toISOString().slice(0, 10);
+          const reportUrl = p.category === "market-analysis" ? `${BASE}/reports/${p.slug}` : `${BASE}/insights/blog/${p.slug}`;
+          urls.push(`  <url>\n    <loc>${reportUrl}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.70</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip if storage unavailable */ }
+
+      try {
+        const { getProjectSummaries } = await import("./preconPricingReport");
+        const projects = getProjectSummaries()
+          .filter(p => p.cuts > 0 || p.raises > 0)
+          .sort((a, b) => Math.abs(b.avgDeltaPct) - Math.abs(a.avgDeltaPct))
+          .slice(0, 50);
+        for (const p of projects) {
+          urls.push(`  <url>\n    <loc>${BASE}/projects/${p.slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.65</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip */ }
+
+      try {
+        const gs = await storage.getGuides({ status: "published" });
+        for (const g of gs) {
+          const lastmod = (g.updatedAt || g.publishedAt || new Date()).toISOString().slice(0, 10);
+          urls.push(`  <url>\n    <loc>${BASE}/insights/guides/${g.slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.70</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip if storage unavailable */ }
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+      const cleanXml = xml.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").trim() + "\n";
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(cleanXml);
+    } catch (err: any) {
+      console.error("[sitemap] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
 
   // Set up email/password authentication
   setupAuth(app);

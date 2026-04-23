@@ -142,6 +142,34 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
     `);
   }
 
+  if (reqPath === "/insights") {
+    const latestReports = await storage.getBlogPosts({ status: "published", category: "market-analysis", limit: 6 });
+    return renderShell(`
+      <header>
+        <h1 style="font-size:40px;margin:0 0 12px;">Canadian Real Estate Insights & Reports</h1>
+        <p style="font-size:18px;color:#4b5563;max-width:760px;line-height:1.7;">Original research, market reports, mortgage commentary, and macro analysis for Canadian real estate investors.</p>
+      </header>
+      <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:28px 0;">
+        ${[
+          { title: "Reports", body: "Crawlable Canadian housing reports and market intelligence.", href: "/reports" },
+          { title: "CMHC Land Use Regulations Report", body: "Analysis of CMHC's 2026 research on zoning, approvals, affordability, and housing supply.", href: "/reports/cmhc-land-use-regulations-housing-canada-2026" },
+          { title: "Mortgage Rates", body: "Current Canadian mortgage rate context for investors.", href: "/insights/mortgage-rates" },
+          { title: "Distress Report", body: "Monthly power of sale, foreclosure, and motivated-seller signals.", href: "/insights/distress-report" },
+        ].map((item) => `
+          <article style="border:1px solid #e5e7eb;border-radius:16px;padding:18px;">
+            <h2 style="font-size:20px;margin:0 0 10px;">${escapeHtml(item.title)}</h2>
+            <p style="margin:0 0 12px;color:#4b5563;line-height:1.6;">${escapeHtml(item.body)}</p>
+            <a href="${item.href}" style="color:#0f766e;text-decoration:none;">Open</a>
+          </article>
+        `).join("")}
+      </section>
+      <section style="margin-top:36px;">
+        <h2 style="font-size:28px;margin-bottom:12px;">Latest Reports</h2>
+        ${renderLinkList(latestReports.map((report) => ({ href: `/reports/${report.slug}`, label: report.title })))}
+      </section>
+    `);
+  }
+
   if (reqPath === "/reports") {
     const reports = await storage.getBlogPosts({ status: "published", category: "market-analysis", limit: 24 });
     return renderShell(`

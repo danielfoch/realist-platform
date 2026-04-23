@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
 import { Navigation } from "@/components/Navigation";
-import { SEO } from "@/components/SEO";
+import { SEO, organizationSchema, websiteSchema } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -34,15 +34,63 @@ export default function ReportPage() {
   });
 
   const related = relatedReports.filter((item) => item.slug !== slug).slice(0, 3);
+  const canonicalPath = `/reports/${slug}`;
+  const structuredData = post
+    ? {
+        "@context": "https://schema.org",
+        "@graph": [
+          organizationSchema,
+          websiteSchema,
+          {
+            "@type": "Report",
+            "@id": `https://realist.ca${canonicalPath}#report`,
+            "headline": post.title,
+            "description": post.metaDescription || post.excerpt,
+            "url": `https://realist.ca${canonicalPath}`,
+            "datePublished": post.publishedAt ? new Date(post.publishedAt).toISOString() : undefined,
+            "dateModified": post.updatedAt ? new Date(post.updatedAt).toISOString() : undefined,
+            "author": {
+              "@type": "Organization",
+              "name": post.authorName || "Realist Research",
+            },
+            "publisher": {
+              "@id": "https://realist.ca/#organization",
+            },
+            "mainEntityOfPage": {
+              "@type": "WebPage",
+              "@id": `https://realist.ca${canonicalPath}`,
+            },
+          },
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Reports",
+                "item": "https://realist.ca/reports",
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": post.title,
+                "item": `https://realist.ca${canonicalPath}`,
+              },
+            ],
+          },
+        ],
+      }
+    : undefined;
 
   return (
     <div className="min-h-screen bg-background">
       <SEO
         title={post?.metaTitle || post?.title || "Report"}
         description={post?.metaDescription || post?.excerpt || "Read this Realist report."}
-        canonicalUrl={`/reports/${slug}`}
+        canonicalUrl={canonicalPath}
         ogImage={post?.coverImage || undefined}
         ogType="article"
+        structuredData={structuredData}
       />
       <Navigation />
       <main className="max-w-4xl mx-auto px-4 md:px-6 py-8">
