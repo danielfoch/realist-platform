@@ -83,6 +83,8 @@ export function AnalysisHistoryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [expandedNotes, setExpandedNotes] = useState<number | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState("");
 
   useEffect(() => {
     fetchAnalyses(page);
@@ -131,6 +133,31 @@ export function AnalysisHistoryPage() {
     } catch {
       setError('Failed to delete analysis');
     }
+  };
+
+  const handleSaveNote = async (id: number) => {
+    try {
+      const res = await fetch(`/api/analyses/${id}/notes`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: editingNoteText || null }),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+      setAnalyses((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, notes: editingNoteText || null } : a)),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save note');
+    } finally {
+      setEditingNoteId(null);
+      setEditingNoteText("");
+    }
+  };
+
+  const startEditingNote = (id: number, currentNotes: string | null) => {
+    setEditingNoteId(id);
+    setEditingNoteText(currentNotes || "");
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -249,7 +276,44 @@ export function AnalysisHistoryPage() {
                           display: expandedNotes === a.id ? 'block' : 'none',
                         }}
                       >
-                        {a.notes}
+                        {editingNoteId === a.id ? (
+                          <div className="note-editor" onClick={(e) => e.stopPropagation()}>
+                            <textarea
+                              value={editingNoteText}
+                              onChange={(e) => setEditingNoteText(e.target.value)}
+                              maxLength={500}
+                              className="note-editor-textarea"
+                              placeholder="Add your underwriting notes..."
+                            />
+                            <div className="note-editor-actions">
+                              <span className="note-char-count">{editingNoteText.length}/500</span>
+                              <div>
+                                <button
+                                  className="note-btn-save"
+                                  onClick={() => handleSaveNote(a.id)}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  className="note-btn-cancel"
+                                  onClick={() => { setEditingNoteId(null); setEditingNoteText(""); }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="analysis-note-text">{a.notes}</p>
+                            <button
+                              className="note-edit-toggle"
+                              onClick={(e) => { e.stopPropagation(); startEditingNote(a.id, a.notes); }}
+                            >
+                              ✎ Edit
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                     <div className="analysis-actions">

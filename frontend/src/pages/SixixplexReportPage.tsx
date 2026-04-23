@@ -121,6 +121,7 @@ export function SixixplexReportPage() {
   const [lead, setLead] = useState<LeadData | null>(null);
   const [report, setReport] = useState<PropertyReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [notes, setNotes] = useState<string>("");
 
   useEffect(() => {
     const storedLead = getLead();
@@ -147,6 +148,7 @@ export function SixixplexReportPage() {
         inputs: { score: generatedReport.score, sections: generatedReport.sections.length },
         metrics: { score: generatedReport.score },
         verdictCheck: generatedReport.score >= 80 ? '✅ Strong' : generatedReport.score >= 65 ? '⚠️ Moderate' : '❌ Weak',
+        notes: notes.trim() || null,
       }),
     }).catch(() => {/* silent — persistence must not break UX */});
     track('deal_analyzer_report_generated', { address: storedLead.address, score: generatedReport.score });
@@ -223,6 +225,43 @@ export function SixixplexReportPage() {
 
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <p className="text-xs text-[#64748B]">{report.disclaimer}</p>
+        </div>
+
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-[#0F172A] mb-2">📝 Notes</h3>
+          <p className="text-sm text-[#64748B] mb-3">Capture your thoughts on this property — they'll be saved to your analysis history.</p>
+          <textarea
+            className="w-full h-24 px-3 py-2 border border-[#E2E8F0] rounded-md text-sm text-[#0F172A] bg-[#FAFAFA] focus:outline-none focus:ring-2 focus:ring-[#F59E0B]/30 focus:border-[#F59E0B] resize-none"
+            placeholder="e.g., Good lot depth but needs zoning verification. Comparable sold at $1.2M on this street..."
+            value={notes}
+            onChange={(e) => {
+              const val = e.target.value;
+              setNotes(val);
+            }}
+            onBlur={() => {
+              if (notes.trim() && lead) {
+                // Auto-save notes when user types and leaves the field
+                const storedToken = localStorage.getItem('session_token') || crypto.randomUUID();
+                fetch('/api/analyses', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    address: lead.address,
+                    propertyType: 'Multi-Family',
+                    inputs: { score: report.score, sections: report.sections.length },
+                    metrics: { score: report.score },
+                    verdictCheck: report.score >= 80 ? '✅ Strong' : report.score >= 65 ? '⚠️ Moderate' : '❌ Weak',
+                    notes: notes.trim() || null,
+                  }),
+                }).catch(() => {});
+              }
+            }}
+            maxLength={500}
+          />
+          <div className="flex justify-between items-center mt-1">
+            <span className="text-xs text-[#94A3B8]">{notes.length}/500</span>
+            {notes.trim() && <span className="text-xs text-emerald-600">Notes saved ✓</span>}
+          </div>
         </div>
       </main>
     </div>
