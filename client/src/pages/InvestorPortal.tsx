@@ -380,7 +380,7 @@ export default function InvestorPortal() {
                         <Link href="/tools/analyzer">
                           <Button className="gap-2" data-testid="button-workspace-analyze">
                             <Calculator className="h-4 w-4" />
-                            Analyze my own deal
+                            Use our AI calculator
                           </Button>
                         </Link>
                         <Link href="/tools/cap-rates">

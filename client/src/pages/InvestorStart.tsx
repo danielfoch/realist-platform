@@ -61,11 +61,11 @@ export default function InvestorStart() {
                 {greeting}
               </p>
               <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.02] text-balance">
-                Two clear ways to use Realist.
+                Analyze your own deal, or find one worth analyzing.
               </h1>
               <p className="mt-5 text-lg md:text-xl text-muted-foreground max-w-2xl">
-                Bring your own property into underwriting, or search the map for investable opportunities.
-                Start in one path, then move into the other when you need it.
+                Realist helps investors move from property idea to underwriting faster: bring a listing you already have,
+                or search for opportunities that deserve a closer look.
               </p>
             </div>
 
@@ -74,28 +74,28 @@ export default function InvestorStart() {
                 <CardHeader className="space-y-4">
                   <Badge className="w-fit gap-1 bg-primary text-primary-foreground hover:bg-primary">
                     <BarChart3 className="h-3.5 w-3.5" />
-                    Analyze my own deal
+                    Use our AI calculator
                   </Badge>
                   <div className="space-y-2">
-                    <CardTitle className="text-2xl">Underwrite a property you already have</CardTitle>
+                    <CardTitle className="text-2xl">Analyze your own deal</CardTitle>
                     <p className="text-muted-foreground">
-                      Paste an address, listing URL, or MLS number and get to cash flow, yield, and next steps quickly.
+                      Enter an address, listing, or MLS number and see the investor numbers that matter.
                     </p>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-xl border border-border/60 bg-background/80 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Input</p>
-                      <p className="mt-2 text-sm font-medium">Address, listing, or thesis</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Add</p>
+                      <p className="mt-2 text-sm font-medium">Property details</p>
                     </div>
                     <div className="rounded-xl border border-border/60 bg-background/80 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Value</p>
-                      <p className="mt-2 text-sm font-medium">Cash flow, cap rate, stress test</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Review</p>
+                      <p className="mt-2 text-sm font-medium">Cash flow and yield</p>
                     </div>
                     <div className="rounded-xl border border-border/60 bg-background/80 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Next step</p>
-                      <p className="mt-2 text-sm font-medium">Save, export, or connect</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Decide</p>
+                      <p className="mt-2 text-sm font-medium">Save or compare</p>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3">
@@ -106,7 +106,7 @@ export default function InvestorStart() {
                         onClick={() => track({ event: "cta_clicked", cta: "homepage_path_analyze", location: "homepage", destination: "/tools/analyzer" })}
                         data-testid="button-home-analyze-path"
                       >
-                        Open deal analyzer
+                        Analyze a deal
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -134,9 +134,9 @@ export default function InvestorStart() {
                     Search for deals on the map
                   </Badge>
                   <div className="space-y-2">
-                    <CardTitle className="text-2xl">Discover opportunities before you underwrite</CardTitle>
+                    <CardTitle className="text-2xl">Find a deal to analyze</CardTitle>
                     <p className="text-muted-foreground">
-                      Browse the map, screen geographies, and look for deal flow worth pulling into analysis.
+                      Search investor-focused listings, yields, and distress signals, then send the best fits into analysis.
                     </p>
                   </div>
                 </CardHeader>
@@ -144,15 +144,15 @@ export default function InvestorStart() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-xl border border-border/60 bg-background/80 p-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Search</p>
-                      <p className="mt-2 text-sm font-medium">Map-based investor discovery</p>
+                      <p className="mt-2 text-sm font-medium">Markets and listings</p>
                     </div>
                     <div className="rounded-xl border border-border/60 bg-background/80 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Filter</p>
-                      <p className="mt-2 text-sm font-medium">Markets, yields, distress, fit</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Screen</p>
+                      <p className="mt-2 text-sm font-medium">Yield and risk signals</p>
                     </div>
                     <div className="rounded-xl border border-border/60 bg-background/80 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Handoff</p>
-                      <p className="mt-2 text-sm font-medium">Send winners into underwriting</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Analyze</p>
+                      <p className="mt-2 text-sm font-medium">Open the best fit</p>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3">
@@ -164,7 +164,7 @@ export default function InvestorStart() {
                         onClick={() => track({ event: "cta_clicked", cta: "homepage_path_map", location: "homepage", destination: "/tools/cap-rates" })}
                         data-testid="button-home-map-path"
                       >
-                        Open the map
+                        Find deals
                         <Compass className="h-4 w-4" />
                       </Button>
                     </Link>
