@@ -1448,7 +1448,7 @@ export default function CapRates() {
     params.set("vacancy", String(EXPENSE_ASSUMPTIONS.vacancyPercent));
     params.set("maintenance", String(EXPENSE_ASSUMPTIONS.maintenancePercent));
     params.set("management", String(EXPENSE_ASSUMPTIONS.managementPercent));
-    params.set("insurance", String(EXPENSE_ASSUMPTIONS.insurancePerUnit * 12));
+    params.set("insurance", String(EXPENSE_ASSUMPTIONS.insurancePerUnit * Math.max(1, listing.unitCount || 1)));
     const tax = listing.taxes?.annualAmount || (price ? price * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100 : 0);
     if (tax) params.set("propertyTax", String(Math.round(tax)));
     setLocation(`/tools/analyzer?${params.toString()}`);
@@ -1566,6 +1566,11 @@ export default function CapRates() {
     const imgUrl = getImageUrl(listing.images);
     const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
     const isSelected = selectedListing?.mlsNumber === listing.mlsNumber;
+    const aggregate = aggregatesMap[listing.mlsNumber];
+    const myMetrics = myAnalysisMetricsMap[listing.mlsNumber];
+    const primaryMetricValue = getListingMetricValue(listing, sortMetric, aggregate, metricSource, myMetrics);
+    const primaryMetricLabel = metricLabel(sortMetric);
+    const primaryMetricConfidence = getMetricPrimaryConfidence(listing, sortMetric);
 
     return (
       <div
@@ -1602,13 +1607,16 @@ export default function CapRates() {
               <span className="text-sm font-bold" data-testid={`text-price-${listing.mlsNumber}`}>
                 {formatPrice(price)}
               </span>
-              <Badge
-                variant={getCapRateBadgeVariant(listing.capRate)}
-                className="text-[10px] flex-shrink-0"
-                data-testid={`badge-cap-rate-${listing.mlsNumber}`}
-              >
-                {listing.capRate.toFixed(1)}%
-              </Badge>
+              <div className="flex flex-col items-end gap-1">
+                <Badge
+                  variant={sortMetric === "price" ? "outline" : getCapRateBadgeVariant((typeof primaryMetricValue === "number" ? primaryMetricValue : listing.capRate) || 0)}
+                  className="text-[10px] flex-shrink-0"
+                  data-testid={`badge-cap-rate-${listing.mlsNumber}`}
+                >
+                  {formatMetricValue(sortMetric, primaryMetricValue, aggregate?.consensusLabel, aggregate?.publicAnalysisCount)}
+                </Badge>
+                <span className="text-[9px] text-muted-foreground">{primaryMetricLabel}</span>
+              </div>
             </div>
 
             <p className="text-[11px] text-muted-foreground truncate mb-1" data-testid={`text-address-${listing.mlsNumber}`}>
@@ -1642,22 +1650,39 @@ export default function CapRates() {
               )}
             </div>
 
+            <div className="mt-1 rounded-md bg-muted/40 px-2 py-1.5">
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-muted-foreground">{primaryMetricLabel}</span>
+                <span className="font-semibold">
+                  {formatMetricValue(sortMetric, primaryMetricValue, aggregate?.consensusLabel, aggregate?.publicAnalysisCount)}
+                </span>
+              </div>
+              {primaryMetricConfidence && (
+                <div className={`mt-1 text-[9px] ${getMetricConfidenceTone(primaryMetricConfidence)}`}>
+                  {primaryMetricConfidence === "low" ? "Low-confidence estimate" : `${primaryMetricConfidence[0].toUpperCase()}${primaryMetricConfidence.slice(1)} confidence`}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between mt-1 text-[10px] text-muted-foreground">
+              <span>Gross yield: {listing.grossYield != null ? `${listing.grossYield.toFixed(1)}%` : "N/A"}</span>
+              <span>Cap rate: {listing.capRate != null ? `${listing.capRate.toFixed(1)}%` : "N/A"}</span>
+            </div>
             <div className="flex items-center justify-between mt-1 text-[10px] text-muted-foreground">
               <span>Rent: {formatPrice(listing.estimatedMonthlyRent)}/mo{listing.unitCount > 1 ? ` (${listing.unitCount}×${formatPrice(Math.round(listing.estimatedMonthlyRent / listing.unitCount))})` : ""}</span>
-              <span>NOI: {formatPrice(listing.annualNOI)}/yr</span>
+              <span>CF: {formatCompactCurrency(listing.monthlyCashFlow)}</span>
             </div>
 
             <div className="flex items-center justify-between mt-1">
               {(() => {
-                const agg = aggregatesMap[listing.mlsNumber];
-                if (agg && ((agg.publicAnalysisCount ?? 0) > 0 || (agg.publicCommentCount ?? 0) > 0)) {
+                if (aggregate && ((aggregate.publicAnalysisCount ?? 0) > 0 || (aggregate.publicCommentCount ?? 0) > 0)) {
                   return (
                     <div className="flex flex-col items-start gap-1">
-                      <CommunityAnalysisBadge aggregate={agg} />
+                      <CommunityAnalysisBadge aggregate={aggregate} />
                       <div className="flex flex-wrap gap-2 text-[9px] text-muted-foreground" data-testid={`text-community-stats-${listing.mlsNumber}`}>
-                        <span>By {agg.uniquePublicUserCount || 0} users</span>
-                        {agg.medianCapRate != null && <span>{agg.medianCapRate.toFixed(1)}% median cap</span>}
-                        {agg.medianMonthlyCashFlow != null && <span>${Math.round(agg.medianMonthlyCashFlow).toLocaleString()}/mo median CF</span>}
+                        <span>By {aggregate.uniquePublicUserCount || 0} users</span>
+                        {aggregate.medianCapRate != null && <span>{aggregate.medianCapRate.toFixed(1)}% median cap</span>}
+                        {aggregate.medianMonthlyCashFlow != null && <span>${Math.round(aggregate.medianMonthlyCashFlow).toLocaleString()}/mo median CF</span>}
                       </div>
                     </div>
                   );
@@ -2347,7 +2372,7 @@ export default function CapRates() {
                           setFindDealsQuery(search.query || "");
                           if (search.propertyType) setPropertyType(search.propertyType);
                           if (search.budgetMax) setMaxPrice(String(search.budgetMax));
-                          if (search.targetGrossYield) setMinCapRate(String(search.targetGrossYield));
+                          if (search.targetGrossYield) setMinGrossYield(String(search.targetGrossYield));
                         }}
                         data-testid={`button-resume-saved-search-${search.id}`}
                       >
@@ -2581,6 +2606,48 @@ export default function CapRates() {
 
           {showAdvancedFilters && (
           <div className="flex flex-wrap gap-2 items-end rounded-xl border border-border/60 bg-muted/20 p-3">
+            <div className="min-w-[180px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Search by</Label>
+              <Select value={sortMetric} onValueChange={(v) => setSortMetric(v as InvestmentMetricKey)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="price">Price</SelectItem>
+                  <SelectItem value="gross_yield">Gross yield</SelectItem>
+                  {INVESTMENT_METRIC_FLAGS.ENABLE_CAP_RATE_SEARCH && <SelectItem value="cap_rate">Cap rate</SelectItem>}
+                  <SelectItem value="cash_on_cash">Cash-on-cash</SelectItem>
+                  {INVESTMENT_METRIC_FLAGS.ENABLE_IRR_SEARCH && <SelectItem value="irr">IRR</SelectItem>}
+                  <SelectItem value="monthly_cash_flow">Monthly cash flow</SelectItem>
+                  <SelectItem value="community_consensus">Community consensus</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[180px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Metric source</Label>
+              <Select value={metricSource} onValueChange={(v) => setMetricSource(v as InvestmentMetricSource)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="realist_estimate">Realist estimate</SelectItem>
+                  {INVESTMENT_METRIC_FLAGS.ENABLE_COMMUNITY_METRIC_SEARCH && <SelectItem value="community_median">Community median</SelectItem>}
+                  {INVESTMENT_METRIC_FLAGS.ENABLE_MY_ANALYSIS_SEARCH && <SelectItem value="my_saved_analyses">My saved analyses</SelectItem>}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-w-[120px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Direction</Label>
+              <Select value={sortDirection} onValueChange={(v) => setSortDirection(v as "asc" | "desc")}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desc">Highest first</SelectItem>
+                  <SelectItem value="asc">Lowest first</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="min-w-[100px]">
               <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Price</Label>
               <Input
@@ -2653,34 +2720,66 @@ export default function CapRates() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="min-w-[90px]">
-              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Yield</Label>
-              <Select value={minCapRate} onValueChange={setMinCapRate}>
-                <SelectTrigger className="h-8 text-xs" data-testid="select-min-cap-rate">
-                  <SelectValue placeholder="Any" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any</SelectItem>
-                  <SelectItem value="2">2%+</SelectItem>
-                  <SelectItem value="4">4%+</SelectItem>
-                  <SelectItem value="6">6%+</SelectItem>
-                  <SelectItem value="8">8%+</SelectItem>
-                  <SelectItem value="10">10%+</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="min-w-[92px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Gross Yield</Label>
+              <Input type="number" placeholder="Any" value={minGrossYield} onChange={(e) => setMinGrossYield(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="min-w-[92px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Max Gross Yield</Label>
+              <Input type="number" placeholder="Any" value={maxGrossYield} onChange={(e) => setMaxGrossYield(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="min-w-[92px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Cap Rate</Label>
+              <Input type="number" placeholder="Any" value={minCapRate} onChange={(e) => setMinCapRate(e.target.value)} className="h-8 text-xs" data-testid="select-min-cap-rate" />
+            </div>
+            <div className="min-w-[92px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Max Cap Rate</Label>
+              <Input type="number" placeholder="Any" value={maxCapRate} onChange={(e) => setMaxCapRate(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="min-w-[92px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Cash-on-Cash</Label>
+              <Input type="number" placeholder="Any" value={minCashOnCash} onChange={(e) => setMinCashOnCash(e.target.value)} className="h-8 text-xs" />
+            </div>
+            {INVESTMENT_METRIC_FLAGS.ENABLE_IRR_SEARCH && (
+              <>
+                <div className="min-w-[92px]">
+                  <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min IRR</Label>
+                  <Input type="number" placeholder="Any" value={minIrr} onChange={(e) => setMinIrr(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div className="min-w-[92px]">
+                  <Label className="text-[10px] text-muted-foreground mb-0.5 block">Max IRR</Label>
+                  <Input type="number" placeholder="Any" value={maxIrr} onChange={(e) => setMaxIrr(e.target.value)} className="h-8 text-xs" />
+                </div>
+              </>
+            )}
+            <div className="min-w-[110px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Monthly CF</Label>
+              <Input type="number" placeholder="Any" value={minMonthlyCashFlow} onChange={(e) => setMinMonthlyCashFlow(e.target.value)} className="h-8 text-xs" />
             </div>
             <div className="min-w-[110px]">
-              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Sort</Label>
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-                <SelectTrigger className="h-8 text-xs" data-testid="select-sort">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Min Analyses</Label>
+              <Input type="number" placeholder="Any" value={minAnalysisCount} onChange={(e) => setMinAnalysisCount(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="min-w-[130px]">
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Consensus</Label>
+              <Select value={consensusLabelFilter} onValueChange={(v) => setConsensusLabelFilter(v as any)}>
+                <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="capRate">Yield</SelectItem>
-                  <SelectItem value="priceAsc">Price ↑</SelectItem>
-                  <SelectItem value="priceDesc">Price ↓</SelectItem>
+                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="bullish">Bullish</SelectItem>
+                  <SelectItem value="neutral">Neutral</SelectItem>
+                  <SelectItem value="bearish">Bearish</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex min-w-[220px] items-center gap-2 rounded-md border border-border/60 bg-background px-3 py-2">
+              <Switch checked={includeUnavailableMetrics} onCheckedChange={setIncludeUnavailableMetrics} />
+              <div>
+                <p className="text-[11px] font-medium">Include unavailable estimates</p>
+                <p className="text-[10px] text-muted-foreground">Keep listings even when this metric is missing.</p>
+              </div>
             </div>
             <Button
               size="sm"
@@ -2702,8 +2801,20 @@ export default function CapRates() {
                 setMinBeds("any");
                 setMinUnits("any");
                 setPropertyType("all");
-                setMinCapRate("any");
-                setSortBy("capRate");
+                setSortMetric("gross_yield");
+                setSortDirection("desc");
+                setMetricSource("realist_estimate");
+                setMinGrossYield("");
+                setMaxGrossYield("");
+                setMinCapRate("");
+                setMaxCapRate("");
+                setMinIrr("");
+                setMaxIrr("");
+                setMinCashOnCash("");
+                setMinMonthlyCashFlow("");
+                setMinAnalysisCount("");
+                setConsensusLabelFilter("any");
+                setIncludeUnavailableMetrics(false);
               }}
               disabled={activeFilterCount === 0}
               data-testid="button-reset-filters"
@@ -2768,6 +2879,9 @@ export default function CapRates() {
                 selectedListingId={selectedListing?.mlsNumber}
                 onSelectListing={handleSelectListing}
                 aggregatesMap={aggregatesMap}
+                metric={sortMetric}
+                metricSource={metricSource}
+                myMetricsMap={myAnalysisMetricsMap}
               />
             )}
             <NeighbourhoodOverlay layers={mapLayers} />
