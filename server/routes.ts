@@ -4216,12 +4216,17 @@ export async function registerRoutes(
         skip,
       });
 
-      const normalizedListings = result.listings.map(normalizeDdfToRepliersFormat);
+      const normalizedListings = result.listings
+        .map(normalizeDdfToRepliersFormat)
+        .filter((listing: any) => {
+          const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
+          return Number.isFinite(price) && price > 1;
+        });
 
       res.json({
         listings: normalizedListings,
-        count: result.count,
-        numPages: result.numPages,
+        count: normalizedListings.length,
+        numPages: normalizedListings.length > 0 ? Math.ceil(normalizedListings.length / top) : 0,
         page: result.page,
         source: "crea_ddf",
       });
@@ -4536,7 +4541,12 @@ export async function registerRoutes(
       }
 
       const result = await searchDdfListings(searchParams);
-      const normalizedListings = result.listings.map(normalizeDdfToRepliersFormat);
+      const normalizedListings = result.listings
+        .map(normalizeDdfToRepliersFormat)
+        .filter((listing: any) => {
+          const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
+          return Number.isFinite(price) && price > 1;
+        });
 
       const { getCmhcRent } = await import("../shared/cmhcRents");
 
@@ -4544,6 +4554,7 @@ export async function registerRoutes(
         .filter((l: any) => l.map?.latitude && l.map?.longitude)
         .map((listing: any) => {
           const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+          if (!(price > 1)) return null;
           const beds = listing.details?.numBedrooms || 2;
           const units = listing.numberOfUnitsTotal || 1;
 
@@ -4623,6 +4634,7 @@ export async function registerRoutes(
             numberOfUnitsTotal: units,
           };
         })
+        .filter((listing: any) => listing != null)
         .sort((a: any, b: any) => b.final_score - a.final_score);
 
       let responseBounds = null;
@@ -4740,7 +4752,21 @@ export async function registerRoutes(
       }
 
       const data = await response.json();
-      res.json(data);
+      const filteredListings = Array.isArray(data.listings)
+        ? data.listings.filter((listing: any) => {
+            const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
+            return Number.isFinite(price) && price > 1;
+          })
+        : [];
+
+      res.json({
+        ...data,
+        listings: filteredListings,
+        count: filteredListings.length,
+        numPages: filteredListings.length > 0
+          ? Math.ceil(filteredListings.length / Math.max(Number(resultsPerPage) || 50, 1))
+          : 0,
+      });
     } catch (error) {
       console.error("Error proxying Repliers listings:", error);
       res.status(500).json({ error: "Failed to fetch listings" });
@@ -8650,6 +8676,56 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching user analyses:", error);
       res.status(500).json({ error: "Failed to fetch your analyses" });
+    }
+  });
+
+  app.post("/api/community/my-analysis-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const parsed = z.object({
+        mlsNumbers: z.array(z.string().min(1)).max(250),
+      }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid listing batch", details: parsed.error.issues });
+
+      const rows = await db.select().from(propertyAnalyses).where(and(
+        eq(propertyAnalyses.userId, userId),
+        inArray(propertyAnalyses.listingMlsNumber, parsed.data.mlsNumbers),
+        sql`${propertyAnalyses.isDeleted} = false`,
+        sql`${propertyAnalyses.isAnonymized} = false`,
+      ));
+
+      const medianValue = (values: Array<number | null | undefined>) => {
+        const normalized = values
+          .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+          .sort((a, b) => a - b);
+        if (!normalized.length) return null;
+        const middle = Math.floor(normalized.length / 2);
+        return normalized.length % 2 === 1
+          ? normalized[middle]
+          : (normalized[middle - 1] + normalized[middle]) / 2;
+      };
+
+      const grouped = rows.reduce<Record<string, any[]>>((acc, row) => {
+        acc[row.listingMlsNumber] = acc[row.listingMlsNumber] || [];
+        acc[row.listingMlsNumber].push(row);
+        return acc;
+      }, {});
+
+      const response = Object.fromEntries(Object.entries(grouped).map(([mlsNumber, analyses]) => {
+        const metrics = analyses.map((analysis) => (analysis.calculatedMetrics || {}) as Record<string, any>);
+        return [mlsNumber, {
+          analysisCount: analyses.length,
+          medianCapRate: medianValue(metrics.map((metric) => getAnalysisMetricNumber(metric, ["capRate", "cap_rate"]))),
+          medianCashOnCash: medianValue(metrics.map((metric) => getAnalysisMetricNumber(metric, ["cashOnCash", "cash_on_cash"]))),
+          medianMonthlyCashFlow: medianValue(metrics.map((metric) => getAnalysisMetricNumber(metric, ["monthlyCashFlow", "monthly_cash_flow"]))),
+          medianIrr: medianValue(metrics.map((metric) => getAnalysisMetricNumber(metric, ["irr"]))),
+        }];
+      }));
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching my analysis metrics:", error);
+      res.status(500).json({ error: "Failed to fetch your analysis metrics" });
     }
   });
 

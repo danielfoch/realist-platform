@@ -306,7 +306,7 @@ export function calculateInvestmentMetrics(price: number, rawAssumptions: Invest
     grossYield,
     capRate,
     cashOnCashReturn,
-    irr: INVESTMENT_METRIC_FLAGS.ENABLE_IRR_SEARCH ? irr : null,
+    irr,
     noi: roundMetric(noi, 0),
     annualGrossRent: roundMetric(annualGrossRent, 0),
     annualOperatingExpenses: roundMetric(annualOperatingExpenses, 0),

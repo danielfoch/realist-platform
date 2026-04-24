@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
@@ -14,11 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   TrendingUp, Search, Building, BedDouble, Bath, Maximize,
-  DollarSign, MapPin, ChevronRight, ChevronLeft, ArrowUpDown,
+  ChevronRight, ChevronLeft,
   Calculator, X, Loader2, ArrowRight, Map, LayoutGrid,
   RefreshCw, ChevronDown, ChevronUp, List, Users, MessageSquare,
-  ThumbsUp, ThumbsDown, Send, PenLine, Sparkles, Eye, EyeOff,
-  Star, Target, Zap,
+  Send, PenLine, Sparkles,
+  Star, Target,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -54,11 +54,9 @@ import { CommunityMetricsSummary } from "@/components/CommunityMetricsSummary";
 import { CommunityAnalysisModal } from "@/components/CommunityAnalysisModal";
 import { ListingCommentsSection } from "@/components/ListingCommentsSection";
 import { ListingCommentCountBadge } from "@/components/ListingCommentCountBadge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   calculateInvestmentMetrics,
   INVESTMENT_METRIC_FLAGS,
-  metricHigherIsBetter,
   metricLabel,
   type CalculatedInvestmentMetrics,
   type InvestmentMetricKey,
@@ -626,7 +624,6 @@ function createClusterIcon(label: string, count: number, metric: InvestmentMetri
 
 function ClusteredListingsLayer({
   listings,
-  selectedListingId,
   onSelectListing,
   aggregatesMap,
   metric,
@@ -634,8 +631,7 @@ function ClusteredListingsLayer({
   myMetricsMap,
 }: {
   listings: ListingWithCapRate[];
-  selectedListingId?: string;
-  onSelectListing: (listing: ListingWithCapRate) => void;
+  onSelectListing: (listing: ListingWithCapRate, source?: "map" | "list") => void;
   aggregatesMap: Record<string, ListingAnalysisAggregate>;
   metric: InvestmentMetricKey;
   metricSource: InvestmentMetricSource;
@@ -653,9 +649,11 @@ function ClusteredListingsLayer({
       maxClusterRadius: 70,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
+      zoomToBoundsOnClick: false,
       chunkedLoading: true,
       disableClusteringAtZoom: 14,
+      animate: false,
+      spiderfyDistanceMultiplier: 1.15,
       iconCreateFunction: (clusterGroup: any) => {
         const children = clusterGroup.getAllChildMarkers() as Array<L.Marker & { options: { metricValue?: number; consensusLabel?: string } }>;
         const values = children
@@ -679,6 +677,10 @@ function ClusteredListingsLayer({
       },
     });
 
+    cluster.on("clusterclick", (event: any) => {
+      event.layer.spiderfy();
+    });
+
     for (const listing of listings) {
       if (!listing.map?.latitude || !listing.map?.longitude) continue;
       const aggregate = aggregatesMap[listing.mlsNumber];
@@ -691,7 +693,7 @@ function ClusteredListingsLayer({
             metric,
             numericValue: metricValue,
             label: formatMetricValue(metric, metricValue, consensusLabel, aggregate?.publicAnalysisCount),
-            isSelected: selectedListingId === listing.mlsNumber,
+            isSelected: false,
             aggregate,
             consensusLabel,
           }),
@@ -699,20 +701,7 @@ function ClusteredListingsLayer({
           consensusLabel: consensusLabel ?? undefined,
         } as L.MarkerOptions & { metricValue?: number; consensusLabel?: string },
       );
-
-      marker.bindPopup(`
-        <div style="min-width:200px">
-          <p style="margin:0;font-weight:700;font-size:14px">${formatPrice(listing.listPrice)}</p>
-          <p style="margin:4px 0 0;font-size:12px;color:#4b5563">${formatShortAddress(listing.address)}, ${listing.address?.city || ""}</p>
-          <p style="margin:6px 0 0;font-size:12px;font-weight:700;color:${getMetricMarkerColor(metric, metricValue, consensusLabel)}">${metricLabel(metric)}: ${formatMetricValue(metric, metricValue, consensusLabel, aggregate?.publicAnalysisCount)}</p>
-          ${listing.grossYield != null ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563">Gross yield: ${listing.grossYield.toFixed(1)}%</p>` : ""}
-          ${listing.capRate != null ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563">Cap rate: ${listing.capRate.toFixed(1)}%</p>` : ""}
-          ${aggregate ? `<p style="margin:6px 0 0;font-size:12px;color:#111827">${aggregate.publicAnalysisCount || 0} analyses · ${aggregate.publicCommentCount || 0} comments</p>` : ""}
-          ${aggregate?.medianMonthlyCashFlow != null ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563">Median CF: $${Math.round(aggregate.medianMonthlyCashFlow).toLocaleString()}/mo</p>` : ""}
-          ${aggregate?.consensusLabel ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563;text-transform:capitalize">Consensus: ${aggregate.consensusLabel}</p>` : ""}
-        </div>
-      `);
-      marker.on("click", () => onSelectListing(listing));
+      marker.on("click", () => onSelectListing(listing, "map"));
       cluster.addLayer(marker);
     }
 
@@ -725,7 +714,7 @@ function ClusteredListingsLayer({
       }
       clusterRef.current = null;
     };
-  }, [aggregatesMap, listings, map, metric, metricSource, myMetricsMap, onSelectListing, selectedListingId]);
+  }, [aggregatesMap, listings, map, metric, metricSource, myMetricsMap, onSelectListing]);
 
   return null;
 }
@@ -746,6 +735,66 @@ function GeolocateOnMount() {
     );
   }, [map]);
   return null;
+}
+
+function MapQuickCardOverlay({
+  listing,
+  children,
+}: {
+  listing: ListingWithCapRate | null;
+  children: ReactNode;
+}) {
+  const map = useMap();
+  const [style, setStyle] = useState<React.CSSProperties>({});
+
+  useEffect(() => {
+    if (!listing?.map?.latitude || !listing?.map?.longitude) return;
+
+    const updatePosition = () => {
+      const point = map.latLngToContainerPoint([listing.map!.latitude, listing.map!.longitude]);
+      const mapSize = map.getSize();
+      const cardWidth = 320;
+      const cardHeight = 190;
+      const margin = 16;
+
+      let left = point.x + 18;
+      let top = point.y - 12;
+
+      if (left + cardWidth > mapSize.x - margin) {
+        left = point.x - cardWidth - 18;
+      }
+      if (left < margin) {
+        left = Math.max(margin, Math.min(mapSize.x - cardWidth - margin, point.x - (cardWidth / 2)));
+      }
+      if (top + cardHeight > mapSize.y - margin) {
+        top = mapSize.y - cardHeight - margin;
+      }
+      if (top < margin) {
+        top = margin;
+      }
+
+      setStyle({
+        left: `${left}px`,
+        top: `${top}px`,
+      });
+    };
+
+    updatePosition();
+    map.on("move zoom resize", updatePosition);
+    return () => {
+      map.off("move zoom resize", updatePosition);
+    };
+  }, [listing, map]);
+
+  if (!listing) return null;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[950]">
+      <div className="pointer-events-auto absolute w-[320px] max-w-[calc(100%-2rem)]" style={style}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export default function CapRates() {
@@ -1097,6 +1146,7 @@ export default function CapRates() {
     return listings
       .map((listing: any) => {
         const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+        if (!(price > 1)) return null;
         const bedrooms = listing.details?.numBedrooms || 2;
         const units = listing.numberOfUnitsTotal || 1;
 
@@ -1149,6 +1199,7 @@ export default function CapRates() {
           unitCount: units,
         };
       })
+      .filter((listing): listing is ListingWithCapRate => Boolean(listing))
       .filter((l) => {
         const aggregate = aggregatesMap[l.mlsNumber];
         const myMetrics = myAnalysisMetricsMap[l.mlsNumber];
@@ -1532,7 +1583,7 @@ export default function CapRates() {
     });
   };
 
-  const handleSelectListing = (listing: ListingWithCapRate) => {
+  const handleSelectListing = (listing: ListingWithCapRate, source: "map" | "list" = "list") => {
     setSelectedListing(listing);
     setDetailTab("overview");
     setUwUnitCount(String(listing.unitCount || 1));
@@ -1540,7 +1591,7 @@ export default function CapRates() {
       ? Math.round(listing.estimatedMonthlyRent / listing.unitCount)
       : Math.round(listing.estimatedMonthlyRent);
     setUwRentPerUnit(String(perUnitRent));
-    if (listing.map?.latitude && listing.map?.longitude) {
+    if (source === "list" && listing.map?.latitude && listing.map?.longitude) {
       setFlyTo({ lat: listing.map.latitude, lng: listing.map.longitude });
     }
     persistRecentViewedListingSignal(buildListingSignal(listing, "map_recent_view"));
@@ -1557,7 +1608,7 @@ export default function CapRates() {
       gross_yield: listing.grossYield || undefined,
     });
     const ref = listingRefs.current[listing.mlsNumber];
-    if (ref) {
+    if (source === "list" && ref) {
       ref.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   };
@@ -1581,7 +1632,7 @@ export default function CapRates() {
             ? "border-primary bg-primary/5 ring-1 ring-primary"
             : "border-border hover:border-primary/50 hover:shadow-sm"
         }`}
-        onClick={() => handleSelectListing(listing)}
+        onClick={() => handleSelectListing(listing, "list")}
         data-testid={`card-listing-${listing.mlsNumber}`}
       >
         <div className="flex gap-3 p-2.5">
@@ -1786,6 +1837,7 @@ export default function CapRates() {
       },
       sourceContext: {
         source: "cap_rates_map",
+        selectedGrossYield: selectedListing.grossYield,
         selectedCapRate: selectedListing.capRate,
         selectedEstimatedRent: selectedListing.estimatedMonthlyRent,
       },
@@ -1834,6 +1886,9 @@ export default function CapRates() {
   const renderDetailPanel = () => {
     if (!selectedListing) return null;
     const agg = aggregatesMap[selectedListing.mlsNumber];
+    const myMetrics = myAnalysisMetricsMap[selectedListing.mlsNumber];
+    const primaryMetricValue = getListingMetricValue(selectedListing, sortMetric, agg, metricSource, myMetrics);
+    const primaryMetricConfidence = getMetricPrimaryConfidence(selectedListing, sortMetric);
     const uwCalc = computeUwCapRate();
 
     return (
@@ -1846,8 +1901,8 @@ export default function CapRates() {
                   <CardTitle className="text-xl">
                     {formatPriceFull(selectedListing.listPrice)}
                   </CardTitle>
-                  <Badge variant={getCapRateBadgeVariant(selectedListing.capRate)} data-testid="badge-detail-cap-rate">
-                    {selectedListing.capRate.toFixed(1)}% yield
+                  <Badge variant={getCapRateBadgeVariant((typeof primaryMetricValue === "number" ? primaryMetricValue : selectedListing.capRate) || 0)} data-testid="badge-detail-cap-rate">
+                    {formatMetricValue(sortMetric, primaryMetricValue, agg?.consensusLabel, agg?.publicAnalysisCount)} {metricShortLabel(sortMetric)}
                   </Badge>
                   {agg?.medianCapRate != null && (
                     <Badge variant="secondary" className="text-[10px]" data-testid="badge-detail-community-cap">
@@ -1964,6 +2019,26 @@ export default function CapRates() {
                   Save to shortlist
                 </Button>
                 <CommunityMetricsSummary aggregate={agg} />
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">{metricLabel(sortMetric)}</span>
+                    <span className="font-semibold">{formatMetricValue(sortMetric, primaryMetricValue, agg?.consensusLabel, agg?.publicAnalysisCount)}</span>
+                  </div>
+                  {metricSource === "realist_estimate" && (
+                    <p className="mt-1 text-muted-foreground">Based on Realist assumptions.</p>
+                  )}
+                  {metricSource === "community_median" && (
+                    <p className="mt-1 text-muted-foreground">Based on public community median where available.</p>
+                  )}
+                  {metricSource === "my_saved_analyses" && (
+                    <p className="mt-1 text-muted-foreground">Based on your saved analyses where available.</p>
+                  )}
+                  {primaryMetricConfidence && (
+                    <p className={`mt-1 ${getMetricConfidenceTone(primaryMetricConfidence)}`}>
+                      {primaryMetricConfidence === "low" ? "Low-confidence estimate" : `${primaryMetricConfidence[0].toUpperCase()}${primaryMetricConfidence.slice(1)} confidence`}
+                    </p>
+                  )}
+                </div>
                 {(agg?.publicAnalysisCount || 0) > 0 && (
                   <Button variant="outline" className="w-full" onClick={() => setShowCommunityModal(true)}>
                     View community analyses
@@ -1975,7 +2050,7 @@ export default function CapRates() {
                 <div>
                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
-                    Yield Breakdown
+                    Estimated Metrics
                   </h4>
                   <div className="space-y-2 text-sm">
                     {selectedListing.unitCount > 1 && (
@@ -2014,6 +2089,10 @@ export default function CapRates() {
                       <span className="text-muted-foreground">Gross Annual Rent</span>
                       <span className="font-medium">{formatPriceFull(selectedListing.estimatedMonthlyRent * 12)}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Estimated gross yield</span>
+                      <span className="font-medium">{selectedListing.grossYield != null ? `${selectedListing.grossYield.toFixed(2)}%` : "N/A"}</span>
+                    </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Vacancy ({EXPENSE_ASSUMPTIONS.vacancyPercent}%)</span>
                       <span className="text-red-500">-{formatPriceFull(selectedListing.estimatedMonthlyRent * 12 * EXPENSE_ASSUMPTIONS.vacancyPercent / 100)}</span>
@@ -2028,7 +2107,7 @@ export default function CapRates() {
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Insurance</span>
-                      <span className="text-red-500">-{formatPriceFull(EXPENSE_ASSUMPTIONS.insurancePerUnit * 12)}</span>
+                      <span className="text-red-500">-{formatPriceFull(EXPENSE_ASSUMPTIONS.insurancePerUnit * Math.max(1, selectedListing.unitCount || 1))}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Property Tax</span>
@@ -2047,13 +2126,61 @@ export default function CapRates() {
                       </span>
                     </div>
                     <div className="flex justify-between font-bold text-lg">
-                      <span>Gross Yield</span>
+                      <span>Estimated cap rate</span>
                       <span className={getCapRateColor(selectedListing.capRate)}>
                         {selectedListing.capRate.toFixed(2)}%
                       </span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Estimated monthly cash flow</span>
+                      <span className={selectedListing.monthlyCashFlow != null && selectedListing.monthlyCashFlow >= 0 ? "text-green-600" : "text-red-600"}>
+                        {formatCompactCurrency(selectedListing.monthlyCashFlow)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Estimated cash-on-cash</span>
+                      <span>{selectedListing.cashOnCashReturn != null ? `${selectedListing.cashOnCashReturn.toFixed(2)}%` : "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">DSCR</span>
+                      <span>{selectedListing.dscr != null ? selectedListing.dscr.toFixed(2) : "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Estimated IRR</span>
+                      <span>{selectedListing.irr != null ? `${selectedListing.irr.toFixed(2)}%` : "IRR unavailable"}</span>
+                    </div>
                   </div>
                 </div>
+
+                <details className="rounded-lg border border-border/60 p-3 text-xs">
+                  <summary className="cursor-pointer font-semibold">View assumptions</summary>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Purchase price</span><span>{formatPriceFull(selectedListing.listPrice)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Estimated rent</span><span>{formatPriceFull(selectedListing.assumptionsUsed.monthlyRent)}/mo</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Vacancy</span><span>{selectedListing.assumptionsUsed.vacancyPercent}%</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Maintenance</span><span>{selectedListing.assumptionsUsed.maintenancePercent}%</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Management</span><span>{selectedListing.assumptionsUsed.managementPercent}%</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Property tax</span><span>{formatPriceFull(selectedListing.assumptionsUsed.annualPropertyTax || 0)}/yr</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Insurance</span><span>{formatPriceFull(selectedListing.assumptionsUsed.annualInsurance || 0)}/yr</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Down payment</span><span>{selectedListing.assumptionsUsed.downPaymentPercent}%</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Interest rate</span><span>{selectedListing.assumptionsUsed.interestRate}%</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Amortization</span><span>{selectedListing.assumptionsUsed.amortizationYears} yrs</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Hold period</span><span>{selectedListing.assumptionsUsed.holdPeriodYears} yrs</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Exit appreciation</span><span>{selectedListing.assumptionsUsed.annualAppreciationPercent}%</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Calculation version</span><span>{selectedListing.assumptionsComplete ? "realist-investment-metrics-v1" : "Missing assumptions"}</span></div>
+                    {agg?.medianProjectedRent != null && (
+                      <div className="flex justify-between"><span className="text-muted-foreground">Community median rent</span><span>{formatPriceFull(agg.medianProjectedRent)}/mo</span></div>
+                    )}
+                    {agg?.medianExpenseRatio != null && (
+                      <div className="flex justify-between"><span className="text-muted-foreground">Community median expense ratio</span><span>{agg.medianExpenseRatio.toFixed(1)}%</span></div>
+                    )}
+                    {selectedListing.calculationWarnings.length > 0 && (
+                      <div className="rounded-md bg-amber-50 p-2 text-amber-900">
+                        {selectedListing.calculationWarnings.join(" ")}
+                      </div>
+                    )}
+                  </div>
+                </details>
 
                 <Separator />
 
@@ -2335,6 +2462,63 @@ export default function CapRates() {
     );
   };
 
+  const renderMapQuickCard = () => {
+    if (!selectedListing) return null;
+    const aggregate = aggregatesMap[selectedListing.mlsNumber];
+    const myMetrics = myAnalysisMetricsMap[selectedListing.mlsNumber];
+    const primaryMetricValue = getListingMetricValue(selectedListing, sortMetric, aggregate, metricSource, myMetrics);
+    const imgUrl = getImageUrl(selectedListing.images);
+
+    return (
+      <div className="rounded-2xl border border-border/70 bg-background/96 p-3 shadow-2xl backdrop-blur">
+        <div className="flex items-start gap-3">
+          {imgUrl ? (
+            <img
+              src={imgUrl}
+              alt={formatShortAddress(selectedListing.address)}
+              className="h-20 w-24 rounded-lg object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          ) : (
+            <div className="flex h-20 w-24 items-center justify-center rounded-lg bg-muted">
+              <Building className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{formatShortAddress(selectedListing.address)}</p>
+                <p className="text-xs text-muted-foreground">{selectedListing.address?.city}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setSelectedListing(null)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <Badge variant="outline">{formatPrice(selectedListing.listPrice)}</Badge>
+              <Badge variant="secondary">{formatMetricValue(sortMetric, primaryMetricValue, aggregate?.consensusLabel, aggregate?.publicAnalysisCount)}</Badge>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+              <span>Gross: {selectedListing.grossYield != null ? `${selectedListing.grossYield.toFixed(1)}%` : "N/A"}</span>
+              <span>Cap: {selectedListing.capRate != null ? `${selectedListing.capRate.toFixed(1)}%` : "N/A"}</span>
+              <span>CF: {formatCompactCurrency(selectedListing.monthlyCashFlow)}</span>
+              <span>{aggregate?.publicAnalysisCount || 0} analyses</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button size="sm" className="flex-1" onClick={() => handleAnalyzeListing(selectedListing)}>
+            <Calculator className="mr-1.5 h-3.5 w-3.5" />
+            Analyze
+          </Button>
+          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleSelectListing(selectedListing, "list")}>
+            Open details
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   const resultSummaryLabel = hasSearched
     ? totalCount > 0
       ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
@@ -2344,12 +2528,12 @@ export default function CapRates() {
   const sidebarContent = (
     <>
       {selectedListing ? (
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3">
+        <div className="h-full overflow-y-auto overscroll-contain p-3">
           {renderDetailPanel()}
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3">
-          <div className="flex min-h-full flex-col rounded-2xl border border-border/60 bg-muted/10 p-2 shadow-sm">
+        <div className="h-full p-3">
+          <div className="flex h-full min-h-0 flex-col rounded-2xl border border-border/60 bg-muted/10 p-2 shadow-sm">
             <div className="mb-2 flex items-center justify-between rounded-xl border border-border/60 bg-background px-3 py-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Search results</p>
@@ -2876,7 +3060,6 @@ export default function CapRates() {
             ) : (
               <ClusteredListingsLayer
                 listings={mappableListings}
-                selectedListingId={selectedListing?.mlsNumber}
                 onSelectListing={handleSelectListing}
                 aggregatesMap={aggregatesMap}
                 metric={sortMetric}
@@ -2889,6 +3072,10 @@ export default function CapRates() {
             <GeolocateOnMount />
             {flyTo && <FlyToLocation lat={flyTo.lat} lng={flyTo.lng} />}
           </MapContainer>
+
+          <MapQuickCardOverlay listing={selectedListing}>
+            {renderMapQuickCard()}
+          </MapQuickCardOverlay>
 
           <MapLayersPanel layers={mapLayers} onLayersChange={setMapLayers} />
 
