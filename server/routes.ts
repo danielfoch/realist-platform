@@ -75,6 +75,8 @@ import {
   buildSavedSearchMatchPayload,
   queueAnalysisNotification,
   queueCommentNotification,
+  queueSavedSearchMatchNotifications,
+  queueUsListingChangeNotifications,
   syncWatchersFromDiscoverySignals,
   upsertWatcherFromSavedDeal,
 } from "./notifications";
@@ -700,6 +702,15 @@ export async function registerRoutes(
 
       const rows = parsed.data.listings;
       const now = new Date();
+      const uniqueSources = Array.from(new Set(rows.map((row) => row.source)));
+      const uniqueSourceIds = Array.from(new Set(rows.map((row) => row.sourceId)));
+      const existingRows = uniqueSources.length && uniqueSourceIds.length
+        ? await db.select().from(usListings).where(and(
+          inArray(usListings.source, uniqueSources),
+          inArray(usListings.sourceId, uniqueSourceIds),
+        ))
+        : [];
+      const existingByKey = new Map(existingRows.map((row) => [`${row.source}:${row.sourceId}`, row]));
 
       const result = await db
         .insert(usListings)
@@ -737,6 +748,28 @@ export async function registerRoutes(
           },
         })
         .returning({ id: usListings.id, source: usListings.source, sourceId: usListings.sourceId });
+
+      const currentRows = uniqueSources.length && uniqueSourceIds.length
+        ? await db.select().from(usListings).where(and(
+          inArray(usListings.source, uniqueSources),
+          inArray(usListings.sourceId, uniqueSourceIds),
+        ))
+        : [];
+      const changedRows = currentRows.flatMap((row) => {
+        const previous = existingByKey.get(`${row.source}:${row.sourceId}`);
+        if (!previous) return [];
+        if (previous.listPrice === row.listPrice && previous.status === row.status) return [];
+        return [{ previous, current: row }];
+      });
+
+      await Promise.all([
+        queueSavedSearchMatchNotifications(currentRows).catch((error) => {
+          console.error("[/api/ingest/us-listings] saved-search notifications error:", error);
+        }),
+        queueUsListingChangeNotifications(changedRows).catch((error) => {
+          console.error("[/api/ingest/us-listings] listing-change notifications error:", error);
+        }),
+      ]);
 
       return res.status(200).json({
         ok: true,

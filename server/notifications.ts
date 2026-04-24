@@ -1,7 +1,19 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
-import { analyses, listingAnalysisAggregates, type DiscoverySignal, type ListingAnalysisAggregate, type ListingComment, type PropertyAnalysis, type SavedDeal } from "@shared/schema";
+import {
+  analyses,
+  discoverySignals,
+  listingAnalysisAggregates,
+  listingWatchers,
+  notificationQueue,
+  type DiscoverySignal,
+  type ListingAnalysisAggregate,
+  type ListingComment,
+  type PropertyAnalysis,
+  type SavedDeal,
+  type UsListing,
+} from "@shared/schema";
 import { users } from "@shared/models/auth";
 
 type WatchedListingSignal = {
@@ -90,6 +102,83 @@ function buildFullName(firstName?: string | null, lastName?: string | null): str
 
 function buildAnalysisUrl(mlsNumber?: string | null): string {
   return mlsNumber ? `https://realist.ca/tools/cap-rates?mls=${encodeURIComponent(mlsNumber)}&tab=community` : "https://realist.ca/tools/cap-rates";
+}
+
+function buildMarketSearchUrl(area?: string | null, propertyType?: string | null): string {
+  const query = [propertyType, area].filter(Boolean).join(" ").trim();
+  if (!query) return "https://realist.ca/tools/cap-rates";
+  return `https://realist.ca/tools/cap-rates?q=${encodeURIComponent(query)}`;
+}
+
+function buildUsListingUrl(listing: Pick<UsListing, "sourceId" | "sourceUrl" | "city" | "propertyType">): string {
+  if (listing.sourceId) {
+    return buildAnalysisUrl(listing.sourceId);
+  }
+  if (listing.sourceUrl) return listing.sourceUrl;
+  return buildMarketSearchUrl(listing.city, listing.propertyType);
+}
+
+function normalizeText(value: string | null | undefined): string {
+  return (value || "").trim().toLowerCase();
+}
+
+function safeString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function getSignalSearchArea(signal?: DiscoverySignal): string | undefined {
+  if (!signal) return undefined;
+  const payload = (signal.payloadJson || {}) as Record<string, unknown>;
+  return safeString(payload.geography) || safeString(payload.query) || safeString(payload.label);
+}
+
+function getSignalPropertyType(signal?: DiscoverySignal): string | undefined {
+  if (!signal) return undefined;
+  const payload = (signal.payloadJson || {}) as Record<string, unknown>;
+  return safeString(payload.propertyType);
+}
+
+function getSignalBudgetMax(signal?: DiscoverySignal): number | undefined {
+  if (!signal) return undefined;
+  const payload = (signal.payloadJson || {}) as Record<string, unknown>;
+  return typeof payload.budgetMax === "number" && Number.isFinite(payload.budgetMax) ? payload.budgetMax : undefined;
+}
+
+function getSignalStrategy(signal?: DiscoverySignal): string | undefined {
+  if (!signal) return undefined;
+  const payload = (signal.payloadJson || {}) as Record<string, unknown>;
+  return safeString(payload.strategy);
+}
+
+function matchesSavedSearch(signal: DiscoverySignal, listing: UsListing): boolean {
+  const area = normalizeText(getSignalSearchArea(signal));
+  const propertyType = normalizeText(getSignalPropertyType(signal));
+  const budgetMax = getSignalBudgetMax(signal);
+  const listingArea = normalizeText([listing.city, listing.state, listing.formattedAddress].filter(Boolean).join(" "));
+  const listingType = normalizeText(listing.propertyType);
+
+  if (area && !listingArea.includes(area)) return false;
+  if (propertyType && !listingType.includes(propertyType) && !propertyType.includes(listingType)) return false;
+  if (budgetMax != null && listing.listPrice != null && listing.listPrice > Math.round(budgetMax * 1.05)) return false;
+  if (listing.delistedAt) return false;
+  return true;
+}
+
+function buildPriceChangeReason(previous: UsListing, current: UsListing): string | null {
+  if (previous.listPrice == null || current.listPrice == null || previous.listPrice === current.listPrice) return null;
+  const delta = current.listPrice - previous.listPrice;
+  const absDelta = Math.abs(delta);
+  const percentDelta = previous.listPrice > 0 ? (absDelta / previous.listPrice) * 100 : 0;
+  if (absDelta < 5000 && percentDelta < 1.5) return null;
+  if (delta < 0) {
+    return `This listing dropped in price by ${formatCurrency(absDelta)}.`;
+  }
+  return `This listing increased in price by ${formatCurrency(absDelta)}.`;
+}
+
+function buildStatusChangeReason(previous: UsListing, current: UsListing): string | null {
+  if (!previous.status || !current.status || previous.status === current.status) return null;
+  return `Status changed from ${previous.status} to ${current.status}.`;
 }
 
 function buildConsensusReason(before?: ListingAnalysisAggregate | null, after?: ListingAnalysisAggregate | null): string | null {
@@ -647,6 +736,309 @@ export async function buildAnalysisCompletedPayload(params: {
     ghlTags: ["realist-user", "analysis-complete"],
     leadScoreDelta: 8,
   };
+}
+
+export async function queueSavedSearchMatchNotifications(listings: UsListing[]): Promise<number> {
+  if (!listings.length) return 0;
+
+  const savedSearchSignals = await db.select().from(discoverySignals)
+    .where(eq(discoverySignals.signalType, "saved_search"));
+
+  const groupedMatches = new Map<string, {
+    userId: string;
+    signal: DiscoverySignal;
+    matches: UsListing[];
+  }>();
+
+  for (const signal of savedSearchSignals) {
+    const matches = listings.filter((listing) => matchesSavedSearch(signal, listing));
+    if (!matches.length) continue;
+    const key = `${signal.userId}:${signal.signalKey}`;
+    groupedMatches.set(key, {
+      userId: signal.userId,
+      signal,
+      matches,
+    });
+  }
+
+  let queued = 0;
+  for (const grouped of groupedMatches.values()) {
+    if (!(await recipientAllows(grouped.userId, "listing"))) continue;
+    const recipient = await getRecipient(grouped.userId);
+    if (!recipient?.email) continue;
+
+    const searchArea = getSignalSearchArea(grouped.signal) || grouped.matches[0]?.city || "your market";
+    const propertyType = getSignalPropertyType(grouped.signal) || grouped.matches[0]?.propertyType || "investment";
+    const payload = await buildSavedSearchMatchPayload({
+      email: recipient.email,
+      firstName: recipient.firstName || "there",
+      searchArea,
+      propertyType,
+      matchCount: grouped.matches.length,
+      ctaUrl: buildMarketSearchUrl(searchArea, propertyType),
+    });
+
+    const dedupeKey = `saved_search_match:${grouped.userId}:${grouped.signal.signalKey}:${grouped.matches.map((listing) => `${listing.source}:${listing.sourceId}`).join(",")}`;
+    await enqueueForRecipients({
+      eventType: "saved_search_match",
+      city: grouped.matches[0]?.city || null,
+      rawPayload: {
+        signalKey: grouped.signal.signalKey,
+        matches: grouped.matches.map((listing) => ({
+          source: listing.source,
+          sourceId: listing.sourceId,
+          city: listing.city,
+          propertyType: listing.propertyType,
+        })),
+      },
+      recipients: [{
+        userId: grouped.userId,
+        payload: {
+          ...payload,
+          ghlTags: Array.from(new Set([
+            ...payload.ghlTags,
+            ...(searchArea ? [`city-${searchArea.toLowerCase().replace(/\s+/g, "-")}`] : []),
+            ...(getSignalStrategy(grouped.signal) ? [`strategy-${getSignalStrategy(grouped.signal)!.toLowerCase().replace(/\s+/g, "_")}`] : []),
+          ])),
+        },
+        dedupeKey,
+      }],
+    });
+    queued++;
+  }
+
+  return queued;
+}
+
+export async function queueUsListingChangeNotifications(changes: Array<{
+  previous: UsListing;
+  current: UsListing;
+}>): Promise<number> {
+  let queued = 0;
+
+  for (const change of changes) {
+    const listingMlsNumber = change.current.sourceId;
+    const watchers = await storage.getListingWatchersByListing(listingMlsNumber);
+    const watcherIds = Array.from(new Set(
+      watchers
+        .filter((watcher) => watcher.userId && (watcher.watchPriceUpdates || watcher.watchStatusUpdates))
+        .map((watcher) => watcher.userId),
+    ));
+
+    const priceReason = buildPriceChangeReason(change.previous, change.current);
+    const statusReason = buildStatusChangeReason(change.previous, change.current);
+    const events: Array<{ eventType: "listing_price_changed" | "listing_status_changed"; reasonText: string }> = [];
+    if (priceReason) events.push({ eventType: "listing_price_changed", reasonText: priceReason });
+    if (statusReason) events.push({ eventType: "listing_status_changed", reasonText: statusReason });
+
+    for (const event of events) {
+      const recipients: Array<{
+        userId: string;
+        payload: Omit<GhlNotificationPayload, "sendEmail" | "eventId" | "eventTs">;
+        dedupeKey: string;
+      }> = [];
+
+      for (const userId of watcherIds) {
+        if (!(await recipientAllows(userId, "listing"))) continue;
+        const recipient = await getRecipient(userId);
+        if (!recipient?.email) continue;
+
+        recipients.push({
+          userId,
+          payload: buildPayload({
+            recipient,
+            eventType: event.eventType,
+            reasonText: event.reasonText,
+            ctaLabel: "See listing",
+            ctaUrl: buildUsListingUrl(change.current),
+            subjectLine: `Update on ${change.current.formattedAddress || change.current.sourceId}`,
+            previewText: "A listing you are watching just changed.",
+            listingMlsNumber,
+            listingAddress: change.current.formattedAddress || change.current.sourceId,
+            listingCity: change.current.city,
+            listingProvince: change.current.state,
+            listingPrice: change.current.listPrice,
+            propertyType: change.current.propertyType,
+            ghlTags: ["realist-user", event.eventType],
+            leadScoreDelta: event.eventType === "listing_price_changed" ? 5 : 4,
+          }),
+          dedupeKey: `${event.eventType}:${userId}:${listingMlsNumber}:${event.eventType === "listing_price_changed" ? change.current.listPrice : change.current.status}`,
+        });
+      }
+
+      if (!recipients.length) continue;
+
+      await enqueueForRecipients({
+        eventType: event.eventType,
+        listingMlsNumber,
+        city: change.current.city,
+        rawPayload: {
+          listingMlsNumber,
+          previousPrice: change.previous.listPrice,
+          currentPrice: change.current.listPrice,
+          previousStatus: change.previous.status,
+          currentStatus: change.current.status,
+        },
+        recipients,
+      });
+      queued += recipients.length;
+    }
+  }
+
+  return queued;
+}
+
+export async function queueDailyDigestNotifications(): Promise<number> {
+  const now = new Date();
+  const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const sentQueue = await db.select().from(notificationQueue).where(and(
+    eq(notificationQueue.channel, "ghl_webhook"),
+    eq(notificationQueue.status, "sent"),
+    gte(notificationQueue.sentAt, since),
+  ));
+
+  const grouped = new Map<string, typeof sentQueue>();
+  for (const item of sentQueue) {
+    if (item.templateKey === "daily_digest_ready") continue;
+    if (!item.recipientUserId) continue;
+    const current = grouped.get(item.recipientUserId) || [];
+    current.push(item);
+    grouped.set(item.recipientUserId, current);
+  }
+
+  let queued = 0;
+  for (const [userId, items] of grouped.entries()) {
+    if (items.length < 2) continue;
+    if (!(await recipientAllows(userId, "digest"))) continue;
+
+    const existing = await db.select({ id: notificationQueue.id }).from(notificationQueue).where(and(
+      eq(notificationQueue.recipientUserId, userId),
+      eq(notificationQueue.templateKey, "daily_digest_ready"),
+      gte(notificationQueue.createdAt, since),
+    )).limit(1);
+    if (existing.length) continue;
+
+    const recipient = await getRecipient(userId);
+    if (!recipient?.email) continue;
+
+    const topReasons = items.slice(0, 3).map((item) => {
+      const payload = (item.payloadJson || {}) as Record<string, unknown>;
+      return safeString(payload.subjectLine) || safeString(payload.reasonText) || "New activity on Realist";
+    }).filter(Boolean);
+    if (!topReasons.length) continue;
+
+    const payload = buildPayload({
+      recipient,
+      eventType: "daily_digest_ready",
+      reasonText: topReasons.join(" | "),
+      ctaLabel: "Open Realist",
+      ctaUrl: "https://realist.ca",
+      subjectLine: "Your Realist daily update",
+      previewText: "New activity relevant to your workflow.",
+      ghlTags: ["realist-user", "daily-digest"],
+      leadScoreDelta: 1,
+    });
+
+    await enqueueForRecipients({
+      eventType: "daily_digest_ready",
+      rawPayload: {
+        itemCount: items.length,
+        highlights: topReasons,
+      },
+      recipients: [{
+        userId,
+        payload,
+        dedupeKey: `daily_digest_ready:${userId}:${now.toISOString().slice(0, 10)}`,
+      }],
+    });
+    queued++;
+  }
+
+  return queued;
+}
+
+export async function queueInactiveHighIntentNotifications(): Promise<number> {
+  const now = new Date();
+  const staleThreshold = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const lookbackThreshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const weeklyThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const staleWatchers = await db.select().from(listingWatchers).where(and(
+    lte(listingWatchers.lastSeenAt, staleThreshold),
+    gte(listingWatchers.lastSeenAt, lookbackThreshold),
+  ));
+
+  const latestWatcherByUser = new Map<string, typeof staleWatchers[number]>();
+  for (const watcher of staleWatchers) {
+    const existing = latestWatcherByUser.get(watcher.userId);
+    if (!existing || existing.lastSeenAt < watcher.lastSeenAt) {
+      latestWatcherByUser.set(watcher.userId, watcher);
+    }
+  }
+
+  let queued = 0;
+  for (const [userId, watcher] of latestWatcherByUser.entries()) {
+    if (!(await recipientAllows(userId, "listing"))) continue;
+
+    const recentAnalysis = await db.select({ id: analyses.id }).from(analyses).where(and(
+      eq(analyses.userId, userId),
+      gte(analyses.createdAt, staleThreshold),
+    )).limit(1);
+    if (recentAnalysis.length) continue;
+
+    const recentNotification = await db.select({ id: notificationQueue.id }).from(notificationQueue).where(and(
+      eq(notificationQueue.recipientUserId, userId),
+      eq(notificationQueue.templateKey, "inactive_high_intent"),
+      gte(notificationQueue.createdAt, weeklyThreshold),
+    )).limit(1);
+    if (recentNotification.length) continue;
+
+    const recipient = await getRecipient(userId);
+    if (!recipient?.email) continue;
+
+    const userSignals = await db.select().from(discoverySignals).where(eq(discoverySignals.userId, userId));
+    const savedSearch = userSignals.find((signal) => signal.signalType === "saved_search");
+    const savedListing = userSignals.find((signal) => signal.signalType === "saved_listing");
+    const latestAnalysis = await getLatestAnalysisForUser(userId);
+    const city = getSignalSearchArea(savedSearch) || safeString((savedListing?.payloadJson as Record<string, unknown> | undefined)?.city) || latestAnalysis?.city || "your market";
+    const strategy = getSignalStrategy(savedSearch)
+      || safeString((savedListing?.payloadJson as Record<string, unknown> | undefined)?.strategy)
+      || latestAnalysis?.strategyType
+      || "real estate";
+
+    const payload = buildPayload({
+      recipient,
+      eventType: "inactive_high_intent",
+      reasonText: `You were actively looking at ${strategy} opportunities in ${city} and have not been back.`,
+      ctaLabel: "Pick up where you left off",
+      ctaUrl: buildMarketSearchUrl(city, safeString((savedSearch?.payloadJson as Record<string, unknown> | undefined)?.propertyType) || latestAnalysis?.strategyType || null),
+      subjectLine: "Pick up where you left off",
+      previewText: "Your next best move is waiting.",
+      listingMlsNumber: watcher.listingMlsNumber,
+      listingCity: city,
+      strategyType: strategy,
+      ghlTags: ["realist-user", "reactivation"],
+      leadScoreDelta: 0,
+    });
+
+    await enqueueForRecipients({
+      eventType: "inactive_high_intent",
+      listingMlsNumber: watcher.listingMlsNumber,
+      city,
+      rawPayload: {
+        listingMlsNumber: watcher.listingMlsNumber,
+        lastSeenAt: watcher.lastSeenAt,
+      },
+      recipients: [{
+        userId,
+        payload,
+        dedupeKey: `inactive_high_intent:${userId}:${now.toISOString().slice(0, 10)}`,
+      }],
+    });
+    queued++;
+  }
+
+  return queued;
 }
 
 export async function getLatestAnalysisForUser(userId: string) {

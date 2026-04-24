@@ -7,7 +7,11 @@ import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { seedGeographies } from "./seedGeographies";
 import { seedCourseContent } from "./courseSeed";
-import { processPendingGhlNotifications } from "./notifications";
+import {
+  processPendingGhlNotifications,
+  queueDailyDigestNotifications,
+  queueInactiveHighIntentNotifications,
+} from "./notifications";
 
 const app = express();
 // Trust proxy for secure cookies behind Replit's reverse proxy
@@ -527,6 +531,21 @@ async function ensureAppTables() {
       };
       drainNotifications();
       setInterval(drainNotifications, 60 * 1000);
+      const runLifecycleJobs = async () => {
+        try {
+          const [digestQueued, reactivationQueued] = await Promise.all([
+            queueDailyDigestNotifications(),
+            queueInactiveHighIntentNotifications(),
+          ]);
+          if (digestQueued || reactivationQueued) {
+            log(`Lifecycle jobs queued: digest=${digestQueued}, reactivation=${reactivationQueued}`, "notifications");
+          }
+        } catch (err: any) {
+          log(`Lifecycle jobs error: ${err.message}`, "notifications");
+        }
+      };
+      runLifecycleJobs();
+      setInterval(runLifecycleJobs, 60 * 60 * 1000);
     },
   );
 })();
