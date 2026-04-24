@@ -1891,8 +1891,132 @@ export const listingComments = pgTable("listing_comments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   listingMlsNumber: text("listing_mls_number").notNull(),
   userId: varchar("user_id").references(() => users.id).notNull(),
+  parentCommentId: varchar("parent_comment_id"),
+  referencedAnalysisId: varchar("referenced_analysis_id"),
   body: text("body").notNull(),
+  visibility: text("visibility").default("public").notNull(),
+  status: text("status").default("active").notNull(),
   score: integer("score").default(0),
+  helpfulCount: integer("helpful_count").default(0),
+  replyCount: integer("reply_count").default(0),
+  reportCount: integer("report_count").default(0),
+  isPinned: boolean("is_pinned").default(false).notNull(),
+  userDisplaySnapshot: text("user_display_snapshot"),
+  metadataJson: jsonb("metadata_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  editedAt: timestamp("edited_at"),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const propertyAnalyses = pgTable("property_analyses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  propertyId: varchar("property_id").references(() => properties.id),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  parentAnalysisId: varchar("parent_analysis_id"),
+  sourceAnalysisId: varchar("source_analysis_id"),
+  visibility: text("visibility").default("public").notNull(),
+  title: text("title"),
+  summary: text("summary"),
+  userNotes: text("user_notes"),
+  aiAnalysisText: text("ai_analysis_text"),
+  userAnalysisText: text("user_analysis_text"),
+  sentiment: text("sentiment"),
+  city: text("city"),
+  province: text("province"),
+  market: text("market"),
+  neighbourhood: text("neighbourhood"),
+  propertyType: text("property_type"),
+  listingPrice: real("listing_price"),
+  listingSnapshot: jsonb("listing_snapshot"),
+  sourceContext: jsonb("source_context"),
+  assumptions: jsonb("assumptions"),
+  calculatedMetrics: jsonb("calculated_metrics"),
+  aiAssumptions: jsonb("ai_assumptions"),
+  finalAssumptions: jsonb("final_assumptions"),
+  dataUseConsent: jsonb("data_use_consent"),
+  modelVersion: text("model_version"),
+  promptVersion: text("prompt_version"),
+  isDeleted: boolean("is_deleted").default(false).notNull(),
+  isAnonymized: boolean("is_anonymized").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const analysisAssumptionChanges = pgTable("analysis_assumption_changes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  fieldName: text("field_name").notNull(),
+  aiValue: jsonb("ai_value"),
+  userValue: jsonb("user_value"),
+  deltaValue: jsonb("delta_value"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const analysisFeedback = pgTable("analysis_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  feedbackType: text("feedback_type").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const analysisConsentEvents = pgTable("analysis_consent_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  visibility: text("visibility").notNull(),
+  useForProductImprovement: boolean("use_for_product_improvement").default(false).notNull(),
+  useForAiTraining: boolean("use_for_ai_training").default(false).notNull(),
+  useForAnonymizedMarketDataset: boolean("use_for_anonymized_market_dataset").default(false).notNull(),
+  allowCommercialDataLicensing: boolean("allow_commercial_data_licensing").default(false).notNull(),
+  consentTextVersion: text("consent_text_version").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const analysisEvents = pgTable("analysis_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  eventType: text("event_type").notNull(),
+  visibility: text("visibility"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const underwritingAssumptionSnapshots = pgTable("underwriting_assumption_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  snapshotType: text("snapshot_type").notNull(),
+  assumptions: jsonb("assumptions").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const aiPromptVersions = pgTable("ai_prompt_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  version: text("version").notNull(),
+  promptTemplate: text("prompt_template"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const aiOutputVersions = pgTable("ai_output_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  promptVersion: text("prompt_version"),
+  modelVersion: text("model_version"),
+  outputText: text("output_text"),
+  outputJson: jsonb("output_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const communityMetricSnapshots = pgTable("community_metric_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  aggregateJson: jsonb("aggregate_json").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -1924,6 +2048,29 @@ export const listingAnalysisAggregates = pgTable("listing_analysis_aggregates", 
   rentsUsedJson: jsonb("rents_used_json"),
   analysisCount: integer("analysis_count").default(0),
   commentCount: integer("comment_count").default(0),
+  totalAnalysisCount: integer("total_analysis_count").default(0),
+  publicAnalysisCount: integer("public_analysis_count").default(0),
+  uniquePublicUserCount: integer("unique_public_user_count").default(0),
+  publicCommentCount: integer("public_comment_count").default(0),
+  uniquePublicCommentUserCount: integer("unique_public_comment_user_count").default(0),
+  latestPublicCommentAt: timestamp("latest_public_comment_at"),
+  latestPublicAnalysisAt: timestamp("latest_public_analysis_at"),
+  latestCommentPreview: text("latest_comment_preview"),
+  latestCommentAt: timestamp("latest_comment_at"),
+  medianCapRate: real("median_cap_rate"),
+  medianCashOnCash: real("median_cash_on_cash"),
+  medianProjectedRent: real("median_projected_rent"),
+  medianNoi: real("median_noi"),
+  medianMonthlyCashFlow: real("median_monthly_cash_flow"),
+  medianExpenseRatio: real("median_expense_ratio"),
+  bullishCount: integer("bullish_count").default(0),
+  neutralCount: integer("neutral_count").default(0),
+  bearishCount: integer("bearish_count").default(0),
+  consensusLabel: text("consensus_label"),
+  confidenceScore: real("confidence_score"),
+  latestPrivateNoteAt: timestamp("latest_private_note_at"),
+  pinnedCommentCount: integer("pinned_comment_count").default(0),
+  reportedCommentCount: integer("reported_comment_count").default(0),
   lastAnalysisAt: timestamp("last_analysis_at"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1934,6 +2081,11 @@ export const underwritingNotesRelations = relations(underwritingNotes, ({ one })
 
 export const listingCommentsRelations = relations(listingComments, ({ one }) => ({
   user: one(users, { fields: [listingComments.userId], references: [users.id] }),
+}));
+
+export const propertyAnalysesRelations = relations(propertyAnalyses, ({ one }) => ({
+  user: one(users, { fields: [propertyAnalyses.userId], references: [users.id] }),
+  property: one(properties, { fields: [propertyAnalyses.propertyId], references: [properties.id] }),
 }));
 
 export const votesRelations = relations(votes, ({ one }) => ({
@@ -1954,7 +2106,61 @@ export const insertUnderwritingNoteSchema = createInsertSchema(underwritingNotes
 export const insertListingCommentSchema = createInsertSchema(listingComments).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
+  editedAt: true,
+  deletedAt: true,
   score: true,
+  helpfulCount: true,
+  replyCount: true,
+  reportCount: true,
+});
+
+export const insertPropertyAnalysisSchema = createInsertSchema(propertyAnalyses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isDeleted: true,
+  isAnonymized: true,
+});
+
+export const insertAnalysisAssumptionChangeSchema = createInsertSchema(analysisAssumptionChanges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnalysisFeedbackSchema = createInsertSchema(analysisFeedback).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnalysisConsentEventSchema = createInsertSchema(analysisConsentEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnalysisEventSchema = createInsertSchema(analysisEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUnderwritingAssumptionSnapshotSchema = createInsertSchema(underwritingAssumptionSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAiPromptVersionSchema = createInsertSchema(aiPromptVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAiOutputVersionSchema = createInsertSchema(aiOutputVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCommunityMetricSnapshotSchema = createInsertSchema(communityMetricSnapshots).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertVoteSchema = createInsertSchema(votes).omit({
@@ -1977,6 +2183,33 @@ export type UnderwritingNote = typeof underwritingNotes.$inferSelect;
 
 export type InsertListingComment = z.infer<typeof insertListingCommentSchema>;
 export type ListingComment = typeof listingComments.$inferSelect;
+
+export type InsertPropertyAnalysis = z.infer<typeof insertPropertyAnalysisSchema>;
+export type PropertyAnalysis = typeof propertyAnalyses.$inferSelect;
+
+export type InsertAnalysisAssumptionChange = z.infer<typeof insertAnalysisAssumptionChangeSchema>;
+export type AnalysisAssumptionChange = typeof analysisAssumptionChanges.$inferSelect;
+
+export type InsertAnalysisFeedback = z.infer<typeof insertAnalysisFeedbackSchema>;
+export type AnalysisFeedback = typeof analysisFeedback.$inferSelect;
+
+export type InsertAnalysisConsentEvent = z.infer<typeof insertAnalysisConsentEventSchema>;
+export type AnalysisConsentEvent = typeof analysisConsentEvents.$inferSelect;
+
+export type InsertAnalysisEvent = z.infer<typeof insertAnalysisEventSchema>;
+export type AnalysisEvent = typeof analysisEvents.$inferSelect;
+
+export type InsertUnderwritingAssumptionSnapshot = z.infer<typeof insertUnderwritingAssumptionSnapshotSchema>;
+export type UnderwritingAssumptionSnapshot = typeof underwritingAssumptionSnapshots.$inferSelect;
+
+export type InsertAiPromptVersion = z.infer<typeof insertAiPromptVersionSchema>;
+export type AiPromptVersion = typeof aiPromptVersions.$inferSelect;
+
+export type InsertAiOutputVersion = z.infer<typeof insertAiOutputVersionSchema>;
+export type AiOutputVersion = typeof aiOutputVersions.$inferSelect;
+
+export type InsertCommunityMetricSnapshot = z.infer<typeof insertCommunityMetricSnapshotSchema>;
+export type CommunityMetricSnapshot = typeof communityMetricSnapshots.$inferSelect;
 
 export type InsertVote = z.infer<typeof insertVoteSchema>;
 export type Vote = typeof votes.$inferSelect;

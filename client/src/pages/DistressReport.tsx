@@ -96,8 +96,6 @@ interface InventoryRow {
 
 export default function DistressReport() {
   const [selectedMonth, setSelectedMonth] = useState<string>("");
-  const [provinceChartMode, setProvinceChartMode] = useState<"total" | "percent">("total");
-  const [cityChartMode, setCityChartMode] = useState<"total" | "percent">("total");
   const [trendProvince, setTrendProvince] = useState<string>("national");
   const [trendCity, setTrendCity] = useState<string>("all");
 
@@ -285,7 +283,6 @@ export default function DistressReport() {
   }, [cityInventory]);
 
   const provinceChartData = provinceSnapshots
-    .sort((a, b) => b.totalListings - a.totalListings)
     .map(p => ({
       province: p.province,
       name: PROVINCE_NAMES[p.province] || p.province,
@@ -295,9 +292,13 @@ export default function DistressReport() {
       total: p.totalListings,
       activeInventory: provinceInventoryMap.get(p.province) || 0,
       distressRate: provinceInventoryMap.get(p.province)
-        ? Number(((p.totalListings / (provinceInventoryMap.get(p.province) || 1)) * 100).toFixed(2))
+        ? (p.totalListings / (provinceInventoryMap.get(p.province) || 1)) * 100
         : 0,
-    }));
+      distressRateBps: provinceInventoryMap.get(p.province)
+        ? (p.totalListings / (provinceInventoryMap.get(p.province) || 1)) * 10000
+        : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
 
   const categoryPieData = [
     { name: "Foreclosure/POS", value: totalForeclosure, color: "#ef4444" },
@@ -319,7 +320,7 @@ export default function DistressReport() {
         city: row.city || "Unknown",
         distressListings: row.totalListings,
         activeInventory: inventory,
-        distressRate: inventory ? Number(((row.totalListings / inventory) * 100).toFixed(2)) : 0,
+        distressRate: inventory ? (row.totalListings / inventory) * 100 : 0,
       };
     })
     .sort((a, b) => b.distressListings - a.distressListings)
@@ -366,7 +367,7 @@ export default function DistressReport() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight" data-testid="report-title">
               <AlertTriangle className="inline-block w-8 h-8 mr-2 text-red-500" />
-              Canadian Distress Deals Report
+              Canadian Motivated Sellers Report
             </h1>
             <p className="text-muted-foreground mt-1">
               Monthly snapshot of foreclosures, power of sale, motivated sellers, and VTB opportunities across Canada
@@ -503,20 +504,12 @@ export default function DistressReport() {
 
             <div className="grid gap-6 md:grid-cols-2 mb-8">
               <Card>
-                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <CardHeader>
                   <div>
                     <CardTitle className="text-lg">Distress Deals by Province</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Toggle between total flagged listings and distress share of each province's active inventory.
+                      Total flagged distress listings by province.
                     </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant={provinceChartMode === "total" ? "default" : "outline"} onClick={() => setProvinceChartMode("total")}>
-                      Total
-                    </Button>
-                    <Button size="sm" variant={provinceChartMode === "percent" ? "default" : "outline"} onClick={() => setProvinceChartMode("percent")}>
-                      % of Total
-                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -527,27 +520,17 @@ export default function DistressReport() {
                         <XAxis type="number" />
                         <YAxis type="category" dataKey="province" width={30} />
                         <Tooltip
-                          formatter={(value: number, name: string, item: any) => {
-                            if (provinceChartMode === "percent") {
-                              return [`${Number(value).toFixed(2)}%`, name];
-                            }
-                            if (name === "Distress share") {
-                              return [`${Number(item?.payload?.distressRate || 0).toFixed(2)}%`, name];
-                            }
+                          formatter={(value: number, name: string) => {
                             return [fmt(value), name];
                           }}
                           labelFormatter={(label: string) => PROVINCE_NAMES[label] || label}
                         />
                         <Legend />
-                        {provinceChartMode === "total" ? (
-                          <>
-                            <Bar dataKey="foreclosure" name="Foreclosure/POS" fill="#ef4444" stackId="a" />
-                            <Bar dataKey="motivated" name="Motivated" fill="#f59e0b" stackId="a" />
-                            <Bar dataKey="vtb" name="VTB" fill="#3b82f6" stackId="a" />
-                          </>
-                        ) : (
-                          <Bar dataKey="distressRate" name="Distress share" fill="#ef4444" radius={[0, 4, 4, 0]} />
-                        )}
+                        <>
+                          <Bar dataKey="foreclosure" name="Foreclosure/POS" fill="#ef4444" stackId="a" />
+                          <Bar dataKey="motivated" name="Motivated" fill="#f59e0b" stackId="a" />
+                          <Bar dataKey="vtb" name="VTB" fill="#3b82f6" stackId="a" />
+                        </>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -592,23 +575,15 @@ export default function DistressReport() {
             </div>
 
             <Card className="mb-8">
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <CardHeader>
                 <div>
                   <CardTitle className="text-lg">
                     <MapPin className="inline-block w-5 h-5 mr-2" />
                     Top Cities in Canada
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Ranked by total distress volume, with an option to switch to distress share of total city inventory.
+                    Ranked by total distress listing volume.
                   </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant={cityChartMode === "total" ? "default" : "outline"} onClick={() => setCityChartMode("total")}>
-                    Total
-                  </Button>
-                  <Button size="sm" variant={cityChartMode === "percent" ? "default" : "outline"} onClick={() => setCityChartMode("percent")}>
-                    % of Total
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -626,9 +601,6 @@ export default function DistressReport() {
                       <YAxis />
                       <Tooltip
                         formatter={(value: number, _name: string, item: any) => {
-                          if (cityChartMode === "percent") {
-                            return [`${Number(value).toFixed(2)}%`, "Distress share"];
-                          }
                           return [
                             fmt(value),
                             `${item?.payload?.province ? `${item.payload.city}, ${item.payload.province}` : "Distress listings"}`,
@@ -640,8 +612,8 @@ export default function DistressReport() {
                         }}
                       />
                       <Bar
-                        dataKey={cityChartMode === "total" ? "distressListings" : "distressRate"}
-                        name={cityChartMode === "total" ? "Distress Listings" : "Distress Share"}
+                        dataKey="distressListings"
+                        name="Distress Listings"
                         fill="#ef4444"
                         radius={[4, 4, 0, 0]}
                       />

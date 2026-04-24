@@ -1814,14 +1814,29 @@ export default function CapRates() {
     );
   };
 
+  const resultSummaryLabel = hasSearched
+    ? totalCount > 0
+      ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
+      : "No properties found"
+    : "Move the map or run a search to start";
+
   const sidebarContent = (
     <>
       {selectedListing ? (
-        <div className="overflow-y-auto flex-1 p-3">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3">
           {renderDetailPanel()}
         </div>
       ) : (
-        <div className="overflow-y-auto flex-1 space-y-2 p-3">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3">
+          <div className="flex min-h-full flex-col rounded-2xl border border-border/60 bg-muted/10 p-2 shadow-sm">
+            <div className="mb-2 flex items-center justify-between rounded-xl border border-border/60 bg-background px-3 py-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Search results</p>
+                <p className="text-sm font-medium" data-testid="text-results-panel-count">{resultSummaryLabel}</p>
+              </div>
+              {isSearching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </div>
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
           {(savedSearches.length > 0 || savedShortlist.length > 0 || recentViewedListings.length > 0) && (
             <Card className="border-border/60">
               <CardContent className="p-3 space-y-3">
@@ -1939,22 +1954,18 @@ export default function CapRates() {
               </p>
             </div>
           )}
+            </div>
+          </div>
         </div>
       )}
     </>
   );
 
-  const resultSummaryLabel = hasSearched
-    ? totalCount > 0
-      ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
-      : "No properties found"
-    : "Move the map or run a search to start";
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
 
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-[1000] relative">
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-[1000] relative shrink-0">
         <div className="px-3 py-3 space-y-3">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -2208,8 +2219,8 @@ export default function CapRates() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        <div className="flex-1 relative" data-testid="map-container">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+        <div className="relative flex-1 min-h-0" data-testid="map-container">
           <MapContainer
             center={TORONTO_CENTER}
             zoom={DEFAULT_ZOOM}
@@ -2284,7 +2295,7 @@ export default function CapRates() {
           </div>
         </div>
 
-        <div className="hidden lg:flex lg:w-[380px] xl:w-[420px] flex-shrink-0 flex-col border-l bg-background overflow-hidden">
+        <div className="hidden lg:flex lg:w-[380px] xl:w-[420px] flex-shrink-0 flex-col min-h-0 border-l bg-background overflow-hidden">
           <div className="px-3 py-2 border-b flex items-center justify-between">
             {selectedListing ? (
               <div className="flex items-center justify-between gap-2 w-full">
@@ -2306,10 +2317,9 @@ export default function CapRates() {
             ) : (
               <div className="flex items-center justify-between gap-2 w-full">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Search results</p>
-                  <p className="text-sm font-medium" data-testid="text-sidebar-count">{resultSummaryLabel}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Map workspace</p>
+                  <p className="text-sm font-medium" data-testid="text-sidebar-count">Browse and analyze without losing map position</p>
                 </div>
-                {isSearching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
               </div>
             )}
           </div>
@@ -2317,7 +2327,7 @@ export default function CapRates() {
         </div>
 
         {showMobileList && (
-          <div className="lg:hidden fixed inset-x-0 bottom-0 z-[1000] bg-background border-t rounded-t-2xl shadow-2xl max-h-[60vh] flex flex-col">
+          <div className="lg:hidden fixed inset-x-0 bottom-0 z-[1000] bg-background border-t rounded-t-2xl shadow-2xl max-h-[60vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2 border-b">
               <div className="flex items-center gap-1.5">
                 <p className="text-xs font-medium">
@@ -2340,7 +2350,7 @@ export default function CapRates() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
               {sidebarContent}
             </div>
           </div>

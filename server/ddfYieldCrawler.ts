@@ -232,9 +232,9 @@ export async function crawlDdfForProvince(
         });
       }
 
-      console.log(`[ddf-crawler] ${ddfProvince} page ${page + 1}: ${result.listings.length} kept / ${result.rawPageSize} fetched (total so far: ${snapshots.length}, API count: ${result.count})`);
+      console.log(`[ddf-crawler] ${ddfProvince} page ${page + 1}: ${result.listings.length} kept / ${result.listings.length} fetched (total so far: ${snapshots.length}, API count: ${result.count})`);
 
-      if (result.rawPageSize < pageSize) break;
+      if (result.listings.length < pageSize) break;
 
       await new Promise(r => setTimeout(r, 800));
     } catch (error) {
@@ -321,7 +321,7 @@ export async function crawlDdfForCity(
         });
       }
 
-      if (result.rawPageSize < pageSize) break;
+      if (result.listings.length < pageSize) break;
       await new Promise(r => setTimeout(r, 500));
     } catch (error) {
       console.error(`[ddf-crawler] Error crawling ${city}, ${province} page ${page}:`, error);
@@ -423,7 +423,7 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
           }
 
           const minListingsForYield = 5;
-          for (const [cityName, citySnapshots] of citiesInProvince) {
+          for (const [cityName, citySnapshots] of Array.from(citiesInProvince.entries())) {
             if (citySnapshots.length >= minListingsForYield) {
               const yieldData = await aggregateCityYield(cityName, shortProvince, month, citySnapshots);
               await storage.upsertCityYieldHistory(yieldData);
@@ -442,7 +442,7 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
             postalAreas.get(postalArea)!.push(snapshot);
           }
 
-          for (const [postalArea, postalSnapshots] of postalAreas.entries()) {
+          for (const [postalArea, postalSnapshots] of Array.from(postalAreas.entries())) {
             if (postalSnapshots.length < minListingsForYield) continue;
             const sampleCity = postalSnapshots[0]?.city || postalArea;
             await storage.upsertAreaYieldHistory(
@@ -456,7 +456,7 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
               )
             );
           }
-          console.log(`[ddf-crawler] ${ddfProvince}: yield data for ${citiesInProvince.size} cities (${[...citiesInProvince.entries()].filter(([_, s]) => s.length >= minListingsForYield).length} with 5+ listings)`);
+          console.log(`[ddf-crawler] ${ddfProvince}: yield data for ${citiesInProvince.size} cities (${Array.from(citiesInProvince.entries()).filter(([_, s]) => s.length >= minListingsForYield).length} with 5+ listings)`);
         } else {
           console.log(`[ddf-crawler] ${ddfProvince}: no listings found`);
         }

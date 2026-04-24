@@ -83,7 +83,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
     ],
   },
   "/insights/distress-report": {
-    h1: "Canadian Distress Deals Report",
+    h1: "Canadian Motivated Sellers Report",
     intro: "This report summarizes distress-related listing signals across Canada, including power of sale, foreclosure, motivated-seller language, and related opportunity patterns.",
     sections: [
       { title: "Why it exists", body: "Distress is one of the clearest sourcing signals for investors, but it needs context and careful verification." },

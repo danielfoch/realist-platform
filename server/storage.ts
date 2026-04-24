@@ -39,6 +39,15 @@ import {
   votes,
   contributionEvents,
   listingAnalysisAggregates,
+  propertyAnalyses,
+  analysisAssumptionChanges,
+  analysisFeedback,
+  analysisConsentEvents,
+  analysisEvents,
+  underwritingAssumptionSnapshots,
+  aiPromptVersions,
+  aiOutputVersions,
+  communityMetricSnapshots,
   type Lead, 
   type InsertLead,
   type Property,
@@ -118,6 +127,24 @@ import {
   type InsertContributionEvent,
   type ListingAnalysisAggregate,
   type InsertListingAnalysisAggregate,
+  type PropertyAnalysis,
+  type InsertPropertyAnalysis,
+  type AnalysisAssumptionChange,
+  type InsertAnalysisAssumptionChange,
+  type AnalysisFeedback,
+  type InsertAnalysisFeedback,
+  type AnalysisConsentEvent,
+  type InsertAnalysisConsentEvent,
+  type AnalysisEvent,
+  type InsertAnalysisEvent,
+  type UnderwritingAssumptionSnapshot,
+  type InsertUnderwritingAssumptionSnapshot,
+  type AiPromptVersion,
+  type InsertAiPromptVersion,
+  type AiOutputVersion,
+  type InsertAiOutputVersion,
+  type CommunityMetricSnapshot,
+  type InsertCommunityMetricSnapshot,
   marketSnapshots,
   type MarketSnapshot,
   type InsertMarketSnapshot,
@@ -168,6 +195,7 @@ import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte, inArray, asc } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { anonymizeDisplayName, sanitizeUserText, summarizeCommunityMetrics, truncateText, type AnalysisSentiment } from "@shared/community";
 
 export interface IStorage {
   createLead(lead: InsertLead): Promise<Lead>;
@@ -405,6 +433,27 @@ export interface IStorage {
   getListingAggregate(mlsNumber: string): Promise<ListingAnalysisAggregate | undefined>;
   getListingAggregatesBatch(mlsNumbers: string[]): Promise<ListingAnalysisAggregate[]>;
   upsertListingAggregate(data: InsertListingAnalysisAggregate): Promise<ListingAnalysisAggregate>;
+  createPropertyAnalysis(analysis: InsertPropertyAnalysis): Promise<PropertyAnalysis>;
+  updatePropertyAnalysis(id: string, userId: string, updates: Partial<PropertyAnalysis>): Promise<PropertyAnalysis | undefined>;
+  getPropertyAnalysis(id: string): Promise<PropertyAnalysis | undefined>;
+  listPublicPropertyAnalysesByListing(mlsNumber: string): Promise<any[]>;
+  listUserPropertyAnalysesByListing(mlsNumber: string, userId: string): Promise<any[]>;
+  createAnalysisAssumptionChanges(changes: InsertAnalysisAssumptionChange[]): Promise<AnalysisAssumptionChange[]>;
+  createAnalysisFeedback(feedback: InsertAnalysisFeedback): Promise<AnalysisFeedback>;
+  getAnalysisFeedbackByUser(analysisId: string, userId: string, feedbackType: string): Promise<AnalysisFeedback | undefined>;
+  createAnalysisConsentEvent(event: InsertAnalysisConsentEvent): Promise<AnalysisConsentEvent>;
+  createAnalysisEvent(event: InsertAnalysisEvent): Promise<AnalysisEvent>;
+  createUnderwritingAssumptionSnapshot(snapshot: InsertUnderwritingAssumptionSnapshot): Promise<UnderwritingAssumptionSnapshot>;
+  createAiPromptVersion(version: InsertAiPromptVersion): Promise<AiPromptVersion>;
+  createAiOutputVersion(version: InsertAiOutputVersion): Promise<AiOutputVersion>;
+  createCommunityMetricSnapshot(snapshot: InsertCommunityMetricSnapshot): Promise<CommunityMetricSnapshot>;
+  getListingComment(id: string): Promise<ListingComment | undefined>;
+  updateListingComment(id: string, userId: string, updates: Partial<ListingComment>): Promise<ListingComment | undefined>;
+  listPublicListingCommentsByListing(mlsNumber: string, sortBy: "newest" | "oldest" | "most_helpful" | "pinned"): Promise<any[]>;
+  listPrivateListingNotesByListing(mlsNumber: string, userId: string): Promise<any[]>;
+  softDeleteListingComment(id: string, userId: string): Promise<ListingComment | undefined>;
+  markCommentHelpful(commentId: string, userId: string): Promise<boolean>;
+  reportComment(commentId: string, userId: string): Promise<boolean>;
 
   upsertMarketSnapshot(data: InsertMarketSnapshot): Promise<MarketSnapshot>;
   getMarketSnapshots(city?: string, province?: string): Promise<MarketSnapshot[]>;
