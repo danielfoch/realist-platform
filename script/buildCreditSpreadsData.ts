@@ -346,7 +346,7 @@ export async function buildCreditSpreadsData() {
       "The evidence here is directional and framework-building; it should not be read as a single-cause explanation for Canada’s economic performance.",
     ],
     datasets: {
-      officialCreditSpreadSeries,
+      officialCreditSpreadSeries: officialSpreadSeries,
       entrepreneurProxySeries,
       businessDynamism,
       gdpPerCapita,

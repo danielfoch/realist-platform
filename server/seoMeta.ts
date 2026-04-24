@@ -138,6 +138,11 @@ const STATIC_META: Record<string, PageMeta> = {
     description: "Floorplan-level analysis of 768 active GTA pre-construction units across 83 projects. Cuts outnumber raises 2.9 to 1. Implications for the resale market.",
     ogType: "article",
   },
+  "/insights/the-spread-that-ate-the-economy": {
+    title: "The Spread That Ate the Economy - Credit, Housing, and Capital Allocation | Realist.ca",
+    description: "An interactive Realist research report on how Canada’s residential credit system, lower investor yield requirements, and business-credit frictions may have redirected capital toward housing and away from entrepreneurship.",
+    ogType: "article",
+  },
   "/canada-housing-market": {
     title: "Canada Housing Market 2026 - Live Data & Analysis | Realist.ca",
     description: "Live Canada housing market data. New construction inventory, pre-construction price movement, and what it signals for the resale market across major Canadian cities.",
