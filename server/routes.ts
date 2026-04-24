@@ -47,6 +47,8 @@ import {
   courseProgress,
   usListings,
   insertUsListingSchema,
+  usRents,
+  insertUsRentSchema,
 } from "@shared/schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
@@ -784,6 +786,82 @@ export async function registerRoutes(
       });
     } catch (err: any) {
       console.error("[/api/ingest/us-listings] error:", err);
+      return res.status(500).json({ error: "Ingest failed", message: err?.message ?? String(err) });
+    }
+  });
+
+  // ── US Rents ingest endpoint ──────────────────────────────────────────
+  // Auth: same shared secret (`US_LISTINGS_INGEST_TOKEN`) — one token covers
+  //   all first-party scraper inputs from the openclaw pipeline.
+  // Body: { rents: InsertUsRent[] }  — batches of up to 1000
+  // Behavior: idempotent upsert keyed on (source, source_id)
+  const ingestRentsBatchSchema = z.object({
+    rents: z.array(insertUsRentSchema).min(1).max(1000),
+  });
+
+  app.post("/api/ingest/us-rents", async (req, res) => {
+    try {
+      const expected = process.env.US_LISTINGS_INGEST_TOKEN;
+      if (!expected) {
+        return res.status(503).json({ error: "Ingest endpoint not configured (missing token)" });
+      }
+      const provided = req.header("x-ingest-token");
+      if (!provided || provided !== expected) {
+        return res.status(401).json({ error: "Invalid or missing ingest token" });
+      }
+
+      const parsed = ingestRentsBatchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      }
+
+      const rows = parsed.data.rents;
+      const now = new Date();
+
+      const result = await db
+        .insert(usRents)
+        .values(rows.map((r) => ({ ...r, updatedAt: now })))
+        .onConflictDoUpdate({
+          target: [usRents.source, usRents.sourceId],
+          set: {
+            listingUrl: sql`excluded.listing_url`,
+            address: sql`excluded.address`,
+            city: sql`excluded.city`,
+            state: sql`excluded.state`,
+            zipCode: sql`excluded.zip_code`,
+            county: sql`excluded.county`,
+            lat: sql`excluded.lat`,
+            lng: sql`excluded.lng`,
+            propertyType: sql`excluded.property_type`,
+            bedrooms: sql`excluded.bedrooms`,
+            bathrooms: sql`excluded.bathrooms`,
+            sqft: sql`excluded.sqft`,
+            monthlyRent: sql`excluded.monthly_rent`,
+            availableDate: sql`excluded.available_date`,
+            leaseTerms: sql`excluded.lease_terms`,
+            petsAllowed: sql`excluded.pets_allowed`,
+            utilitiesIncluded: sql`excluded.utilities_included`,
+            furnished: sql`excluded.furnished`,
+            parkingSpots: sql`excluded.parking_spots`,
+            laundry: sql`excluded.laundry`,
+            amenities: sql`excluded.amenities`,
+            status: sql`excluded.status`,
+            raw: sql`excluded.raw`,
+            scrapedAt: sql`excluded.scraped_at`,
+            delistedAt: sql`excluded.delisted_at`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        })
+        .returning({ id: usRents.id, source: usRents.source, sourceId: usRents.sourceId });
+
+      return res.status(200).json({
+        ok: true,
+        received: rows.length,
+        upserted: result.length,
+        serverTime: now.toISOString(),
+      });
+    } catch (err: any) {
+      console.error("[/api/ingest/us-rents] error:", err);
       return res.status(500).json({ error: "Ingest failed", message: err?.message ?? String(err) });
     }
   });
@@ -1607,6 +1685,93 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/leaderboard-health", isAdmin, async (_req, res) => {
+    try {
+      const [dbIdentity] = await db.execute(sql`
+        SELECT current_database() AS db_name, current_schema() AS schema_name
+      `);
+
+      const [summary] = await db.execute(sql`
+        SELECT
+          (SELECT COUNT(*)::int FROM users) AS users_count,
+          (SELECT COUNT(*)::int FROM leads) AS leads_count,
+          (SELECT COUNT(*)::int FROM properties) AS properties_count,
+          (SELECT COUNT(*)::int FROM analyses) AS analyses_count,
+          (SELECT COUNT(*)::int FROM analyses WHERE user_id IS NOT NULL AND results_json IS NOT NULL) AS leaderboard_eligible_count,
+          (SELECT COUNT(*)::int FROM analyses WHERE user_id IS NULL) AS orphan_analyses_count,
+          (SELECT MIN(created_at) FROM analyses) AS oldest_analysis_at,
+          (SELECT MAX(created_at) FROM analyses) AS newest_analysis_at
+      `);
+
+      const [eligibleTop] = await db.execute(sql`
+        SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) AS rows
+        FROM (
+          SELECT
+            u.email,
+            u.first_name AS "firstName",
+            u.last_name AS "lastName",
+            COUNT(a.id)::int AS "dealCount"
+          FROM analyses a
+          JOIN users u ON u.id = a.user_id
+          WHERE a.user_id IS NOT NULL
+            AND a.results_json IS NOT NULL
+            AND ${leaderboardEligibleUserFilter}
+          GROUP BY u.email, u.first_name, u.last_name
+          ORDER BY COUNT(a.id) DESC, u.email ASC
+          LIMIT 10
+        ) t
+      `);
+
+      const [allTop] = await db.execute(sql`
+        SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) AS rows
+        FROM (
+          SELECT
+            u.email,
+            u.first_name AS "firstName",
+            u.last_name AS "lastName",
+            COUNT(a.id)::int AS "dealCount"
+          FROM analyses a
+          JOIN users u ON u.id = a.user_id
+          WHERE a.user_id IS NOT NULL
+            AND a.results_json IS NOT NULL
+          GROUP BY u.email, u.first_name, u.last_name
+          ORDER BY COUNT(a.id) DESC, u.email ASC
+          LIMIT 10
+        ) t
+      `);
+
+      const [orphanMatches] = await db.execute(sql`
+        SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) AS rows
+        FROM (
+          SELECT
+            a.id,
+            a.session_id AS "sessionId",
+            l.email AS "leadEmail",
+            u.id AS "matchedUserId",
+            u.email AS "matchedUserEmail",
+            a.created_at AS "createdAt"
+          FROM analyses a
+          LEFT JOIN leads l ON l.id = a.lead_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(l.email)
+          WHERE a.user_id IS NULL
+          ORDER BY a.created_at DESC
+          LIMIT 20
+        ) t
+      `);
+
+      res.json({
+        database: dbIdentity,
+        summary,
+        topEligibleLeaderboardUsers: eligibleTop?.rows || [],
+        topAllLeaderboardUsers: allTop?.rows || [],
+        orphanAnalyses: orphanMatches?.rows || [],
+      });
+    } catch (error) {
+      console.error("Error fetching leaderboard health:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard health" });
+    }
+  });
+
   // ============================================
   // MORTGAGE RATES API ROUTES
   // ============================================
@@ -1959,6 +2124,19 @@ export async function registerRoutes(
           utilities: inputsJson.utilities,
         } : null,
       });
+
+      if (userId && sessionId) {
+        const backfilled = await db.execute(sql`
+          UPDATE analyses
+          SET user_id = ${userId}
+          WHERE session_id = ${sessionId}
+            AND user_id IS NULL
+        `);
+        if ((backfilled.rowCount ?? 0) > 0) {
+          console.log(`[analysis-save] Backfilled ${backfilled.rowCount} anonymous analyses for session ${sessionId} → user ${userId}`);
+        }
+      }
+
       res.json({ id: analysis.id });
 
       sendDealAnalysisWebhookToGHL({

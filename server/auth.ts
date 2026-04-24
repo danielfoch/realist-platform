@@ -6,7 +6,7 @@ import crypto from "crypto";
 import { google } from "googleapis";
 import { db } from "./db";
 import { users, passwordResetTokens, signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, userOAuthAccounts, phoneVerificationSchema, verifyPhoneCodeSchema } from "@shared/models/auth";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, sql } from "drizzle-orm";
 import { storage } from "./storage";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
 import { sendWelcomeAccountEmail } from "./resend";
@@ -74,6 +74,17 @@ const GOOGLE_AUTH_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
+
+async function backfillAnalysesForSession(userId: string, sessionId?: string | null) {
+  if (!sessionId) return 0;
+  const result = await db.execute(sql`
+    UPDATE analyses
+    SET user_id = ${userId}
+    WHERE session_id = ${sessionId}
+      AND user_id IS NULL
+  `);
+  return result.rowCount ?? 0;
+}
 
 declare module "express-session" {
   interface SessionData {
@@ -375,7 +386,7 @@ export function registerAuthRoutes(app: Express): void {
   // Auto-enroll from deal analyzer (creates account if email doesn't exist)
   app.post("/api/auth/lead-enroll", async (req, res) => {
     try {
-      const { email, firstName, lastName, password } = req.body;
+      const { email, firstName, lastName, password, sessionId } = req.body;
       
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
@@ -390,10 +401,12 @@ export function registerAuthRoutes(app: Express): void {
           const validPassword = await bcrypt.compare(password, existingUser.passwordHash);
           if (validPassword) {
             req.session.userId = existingUser.id;
+            const backfilled = await backfillAnalysesForSession(existingUser.id, sessionId);
             return res.json({ 
               user: { id: existingUser.id, email: existingUser.email, firstName: existingUser.firstName, lastName: existingUser.lastName },
               isNewUser: false,
               needsPassword: false,
+              backfilledAnalyses: backfilled,
             });
           }
         }
@@ -428,6 +441,7 @@ export function registerAuthRoutes(app: Express): void {
           user: null,
           isNewUser: false,
           needsPassword: !existingUser.passwordHash,
+          backfilledAnalyses: 0,
           message: existingUser.passwordHash ? "Account exists. Please login." : "Check your email to complete account setup."
         });
       }
@@ -460,11 +474,14 @@ export function registerAuthRoutes(app: Express): void {
         firstName: newUser.firstName || firstName || "there",
         setupLink,
       }).catch(err => console.error("Welcome email error:", err));
+
+      const backfilled = await backfillAnalysesForSession(newUser.id, sessionId);
       
       res.json({
         user: { id: newUser.id, email: newUser.email, firstName: newUser.firstName, lastName: newUser.lastName },
         isNewUser: true,
         needsPassword: true,
+        backfilledAnalyses: backfilled,
         message: "Check your email to complete account setup.",
       });
     } catch (error) {

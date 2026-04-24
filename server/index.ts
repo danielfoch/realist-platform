@@ -512,6 +512,26 @@ async function ensureAppTables() {
             `);
             log(`Backfilled user_id on ${result.rowCount ?? 0} orphaned analyses`, "analysis-backfill");
           }
+
+          const [{ usersCount }] = await db.select({ usersCount: sql<number>`count(*)` }).from(users);
+          const [{ leadsCount }] = await db.select({ leadsCount: sql<number>`count(*)` }).from(leads);
+          const [{ analysesCount, eligibleCount, newestAnalysisAt }] = await db.select({
+            analysesCount: sql<number>`count(*)`,
+            eligibleCount: sql<number>`count(*) filter (where ${analyses.userId} is not null and ${analyses.resultsJson} is not null)`,
+            newestAnalysisAt: sql<string>`max(${analyses.createdAt})`,
+          }).from(analyses);
+
+          log(
+            `DB summary: users=${Number(usersCount || 0)}, leads=${Number(leadsCount || 0)}, analyses=${Number(analysesCount || 0)}, leaderboardEligible=${Number(eligibleCount || 0)}, newestAnalysis=${newestAnalysisAt || "none"}`,
+            "db-health",
+          );
+
+          if (Number(usersCount || 0) >= 50 && Number(analysesCount || 0) < 25) {
+            log(
+              "Suspiciously low analysis volume for current database. Verify DATABASE_URL / active deployment data source.",
+              "db-health",
+            );
+          }
         } catch (err: any) {
           log(`Analysis backfill error: ${err.message}`, "analysis-backfill");
         }

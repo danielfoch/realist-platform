@@ -362,6 +362,54 @@ export const insertUsListingSchema = createInsertSchema(usListings).omit({
 export type InsertUsListing = z.infer<typeof insertUsListingSchema>;
 export type UsListing = typeof usListings.$inferSelect;
 
+export const usRents = pgTable("us_rents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  source: text("source").notNull(),
+  sourceId: text("source_id").notNull(),
+  listingUrl: text("listing_url"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  county: text("county"),
+  lat: real("lat"),
+  lng: real("lng"),
+  propertyType: text("property_type"),
+  bedrooms: real("bedrooms"),
+  bathrooms: real("bathrooms"),
+  sqft: integer("sqft"),
+  monthlyRent: integer("monthly_rent"),
+  availableDate: timestamp("available_date"),
+  leaseTerms: text("lease_terms"),
+  petsAllowed: boolean("pets_allowed"),
+  utilitiesIncluded: text("utilities_included").array(),
+  furnished: boolean("furnished"),
+  parkingSpots: integer("parking_spots"),
+  laundry: text("laundry"),
+  amenities: text("amenities").array(),
+  status: text("status"),
+  raw: jsonb("raw"),
+  scrapedAt: timestamp("scraped_at").notNull(),
+  delistedAt: timestamp("delisted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueSourceRent: uniqueIndex("us_rents_source_source_id_idx").on(table.source, table.sourceId),
+}));
+
+export const insertUsRentSchema = createInsertSchema(usRents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  scrapedAt: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
+  availableDate: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+  delistedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+});
+
+export type InsertUsRent = z.infer<typeof insertUsRentSchema>;
+export type UsRent = typeof usRents.$inferSelect;
+
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
   createdAt: true,

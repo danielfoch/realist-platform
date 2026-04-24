@@ -399,6 +399,7 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
           email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
+          sessionId: getSessionId(),
         });
         const enrollData = await enrollResponse.json();
         
