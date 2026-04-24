@@ -801,7 +801,9 @@ export async function registerRoutes(
 
   app.post("/api/ingest/us-rents", async (req, res) => {
     try {
-      const expected = process.env.US_LISTINGS_INGEST_TOKEN;
+      // Prefer dedicated rents token; fall back to shared listings token so the
+      // existing scraper keeps working until US_RENTS_INGEST_TOKEN is provisioned.
+      const expected = process.env.US_RENTS_INGEST_TOKEN || process.env.US_LISTINGS_INGEST_TOKEN;
       if (!expected) {
         return res.status(503).json({ error: "Ingest endpoint not configured (missing token)" });
       }
