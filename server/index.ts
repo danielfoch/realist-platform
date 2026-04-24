@@ -7,6 +7,7 @@ import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { seedGeographies } from "./seedGeographies";
 import { seedCourseContent } from "./courseSeed";
+import { processPendingGhlNotifications } from "./notifications";
 
 const app = express();
 // Trust proxy for secure cookies behind Replit's reverse proxy
@@ -191,6 +192,89 @@ async function ensureAppTables() {
         event_type text NOT NULL,
         visibility text,
         metadata jsonb,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS listing_watchers (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL,
+        listing_mls_number text NOT NULL,
+        source_type text NOT NULL,
+        source_id varchar,
+        watch_analysis_updates boolean NOT NULL DEFAULT true,
+        watch_comment_updates boolean NOT NULL DEFAULT true,
+        watch_price_updates boolean NOT NULL DEFAULT true,
+        watch_status_updates boolean NOT NULL DEFAULT true,
+        watch_consensus_updates boolean NOT NULL DEFAULT true,
+        last_seen_at timestamp NOT NULL DEFAULT now(),
+        created_at timestamp NOT NULL DEFAULT now(),
+        updated_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS listing_watchers_user_listing_source_idx
+      ON listing_watchers(user_id, listing_mls_number, source_type, source_id)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS listing_watchers_listing_idx
+      ON listing_watchers(listing_mls_number, updated_at)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS notification_events (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_type text NOT NULL,
+        user_id varchar,
+        listing_mls_number text,
+        analysis_id varchar,
+        comment_id varchar,
+        market text,
+        city text,
+        payload_json jsonb NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS notification_events_type_created_idx
+      ON notification_events(event_type, created_at)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS notification_queue (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        recipient_user_id varchar NOT NULL,
+        notification_event_id varchar NOT NULL,
+        channel text NOT NULL,
+        template_key text NOT NULL,
+        dedupe_key text NOT NULL,
+        status text NOT NULL DEFAULT 'pending',
+        scheduled_for timestamp NOT NULL DEFAULT now(),
+        sent_at timestamp,
+        failure_reason text,
+        payload_json jsonb NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS notification_queue_dedupe_idx
+      ON notification_queue(dedupe_key)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS notification_queue_status_schedule_idx
+      ON notification_queue(status, scheduled_for)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS notification_preferences (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL UNIQUE,
+        marketing_email_enabled boolean NOT NULL DEFAULT true,
+        product_updates_enabled boolean NOT NULL DEFAULT true,
+        listing_watch_alerts_enabled boolean NOT NULL DEFAULT true,
+        market_alerts_enabled boolean NOT NULL DEFAULT true,
+        community_alerts_enabled boolean NOT NULL DEFAULT true,
+        digest_enabled boolean NOT NULL DEFAULT true,
+        quiet_hours_start text,
+        quiet_hours_end text,
+        updated_at timestamp NOT NULL DEFAULT now(),
         created_at timestamp NOT NULL DEFAULT now()
       )
     `);
@@ -431,6 +515,18 @@ async function ensureAppTables() {
       import("./weeklyDigest").then(({ scheduleWeeklyDigest }) => {
         scheduleWeeklyDigest();
       }).catch((err) => log(`Weekly digest schedule error: ${err.message}`, "digest"));
+      const drainNotifications = async () => {
+        try {
+          const result = await processPendingGhlNotifications();
+          if (result.sent || result.failed) {
+            log(`Notification queue drained: sent=${result.sent}, failed=${result.failed}`, "notifications");
+          }
+        } catch (err: any) {
+          log(`Notification queue error: ${err.message}`, "notifications");
+        }
+      };
+      drainNotifications();
+      setInterval(drainNotifications, 60 * 1000);
     },
   );
 })();

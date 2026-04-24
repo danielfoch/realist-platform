@@ -70,6 +70,14 @@ import {
   sendWelcomeAccountEmail,
 } from "./resend";
 import { authStorage } from "./replit_integrations/auth/storage";
+import {
+  buildAnalysisCompletedPayload,
+  buildSavedSearchMatchPayload,
+  queueAnalysisNotification,
+  queueCommentNotification,
+  syncWatchersFromDiscoverySignals,
+  upsertWatcherFromSavedDeal,
+} from "./notifications";
 import { 
   calculateTrueCost, 
   cities, 
@@ -2510,6 +2518,11 @@ export async function registerRoutes(
         ? { ...validatedData, userId }
         : validatedData;
       const deal = await storage.createSavedDeal(dealData);
+      if (userId) {
+        upsertWatcherFromSavedDeal(userId, deal).catch((error) => {
+          console.error("Error upserting watcher from saved deal:", error);
+        });
+      }
       res.json({ success: true, data: deal });
     } catch (error) {
       console.error("Error saving deal:", error);
@@ -2574,6 +2587,11 @@ export async function registerRoutes(
       ];
 
       await storage.upsertDiscoverySignals(records);
+      await syncWatchersFromDiscoverySignals({
+        userId,
+        savedListings: payload.savedListings,
+        recentViewedListings: payload.recentViewedListings,
+      });
       const mergedSignals = await storage.getDiscoverySignalsByUser(userId);
 
       res.json({

@@ -144,6 +144,82 @@ export const discoverySignals = pgTable(
   }),
 );
 
+export const listingWatchers = pgTable(
+  "listing_watchers",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    listingMlsNumber: text("listing_mls_number").notNull(),
+    sourceType: text("source_type").notNull(),
+    sourceId: varchar("source_id"),
+    watchAnalysisUpdates: boolean("watch_analysis_updates").default(true).notNull(),
+    watchCommentUpdates: boolean("watch_comment_updates").default(true).notNull(),
+    watchPriceUpdates: boolean("watch_price_updates").default(true).notNull(),
+    watchStatusUpdates: boolean("watch_status_updates").default(true).notNull(),
+    watchConsensusUpdates: boolean("watch_consensus_updates").default(true).notNull(),
+    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userListingSourceUnique: uniqueIndex("listing_watchers_user_listing_source_idx").on(
+      table.userId,
+      table.listingMlsNumber,
+      table.sourceType,
+      table.sourceId,
+    ),
+  }),
+);
+
+export const notificationEvents = pgTable("notification_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: text("event_type").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  listingMlsNumber: text("listing_mls_number"),
+  analysisId: varchar("analysis_id"),
+  commentId: varchar("comment_id"),
+  market: text("market"),
+  city: text("city"),
+  payloadJson: jsonb("payload_json").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const notificationQueue = pgTable(
+  "notification_queue",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    recipientUserId: varchar("recipient_user_id").references(() => users.id).notNull(),
+    notificationEventId: varchar("notification_event_id").references(() => notificationEvents.id).notNull(),
+    channel: text("channel").notNull(),
+    templateKey: text("template_key").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    status: text("status").default("pending").notNull(),
+    scheduledFor: timestamp("scheduled_for").defaultNow().notNull(),
+    sentAt: timestamp("sent_at"),
+    failureReason: text("failure_reason"),
+    payloadJson: jsonb("payload_json").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    dedupeUnique: uniqueIndex("notification_queue_dedupe_idx").on(table.dedupeKey),
+  }),
+);
+
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  marketingEmailEnabled: boolean("marketing_email_enabled").default(true).notNull(),
+  productUpdatesEnabled: boolean("product_updates_enabled").default(true).notNull(),
+  listingWatchAlertsEnabled: boolean("listing_watch_alerts_enabled").default(true).notNull(),
+  marketAlertsEnabled: boolean("market_alerts_enabled").default(true).notNull(),
+  communityAlertsEnabled: boolean("community_alerts_enabled").default(true).notNull(),
+  digestEnabled: boolean("digest_enabled").default(true).notNull(),
+  quietHoursStart: text("quiet_hours_start"),
+  quietHoursEnd: text("quiet_hours_end"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const savedDealsRelations = relations(savedDeals, ({ one }) => ({
   user: one(users, {
     fields: [savedDeals.userId],
@@ -154,6 +230,38 @@ export const savedDealsRelations = relations(savedDeals, ({ one }) => ({
 export const discoverySignalsRelations = relations(discoverySignals, ({ one }) => ({
   user: one(users, {
     fields: [discoverySignals.userId],
+    references: [users.id],
+  }),
+}));
+
+export const listingWatchersRelations = relations(listingWatchers, ({ one }) => ({
+  user: one(users, {
+    fields: [listingWatchers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationEventsRelations = relations(notificationEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationEvents.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationQueueRelations = relations(notificationQueue, ({ one }) => ({
+  recipient: one(users, {
+    fields: [notificationQueue.recipientUserId],
+    references: [users.id],
+  }),
+  event: one(notificationEvents, {
+    fields: [notificationQueue.notificationEventId],
+    references: [notificationEvents.id],
+  }),
+}));
+
+export const notificationPreferencesRelations = relations(notificationPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationPreferences.userId],
     references: [users.id],
   }),
 }));
@@ -293,6 +401,29 @@ export const insertDiscoverySignalSchema = createInsertSchema(discoverySignals).
   updatedAt: true,
 });
 
+export const insertListingWatcherSchema = createInsertSchema(listingWatchers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNotificationEventSchema = createInsertSchema(notificationEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertNotificationQueueSchema = createInsertSchema(notificationQueue).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+});
+
+export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertPodcastQuestionSchema = createInsertSchema(podcastQuestions).omit({
   id: true,
   createdAt: true,
@@ -332,6 +463,18 @@ export type SavedDeal = typeof savedDeals.$inferSelect;
 
 export type InsertDiscoverySignal = z.infer<typeof insertDiscoverySignalSchema>;
 export type DiscoverySignal = typeof discoverySignals.$inferSelect;
+
+export type InsertListingWatcher = z.infer<typeof insertListingWatcherSchema>;
+export type ListingWatcher = typeof listingWatchers.$inferSelect;
+
+export type InsertNotificationEvent = z.infer<typeof insertNotificationEventSchema>;
+export type NotificationEvent = typeof notificationEvents.$inferSelect;
+
+export type InsertNotificationQueue = z.infer<typeof insertNotificationQueueSchema>;
+export type NotificationQueue = typeof notificationQueue.$inferSelect;
+
+export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
 
 export type InsertPodcastQuestion = z.infer<typeof insertPodcastQuestionSchema>;
 export type PodcastQuestion = typeof podcastQuestions.$inferSelect;

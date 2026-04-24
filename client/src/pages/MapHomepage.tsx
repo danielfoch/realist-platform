@@ -489,60 +489,49 @@ export default function MapHomepage() {
                 Discovery workflow for Canadian real estate investors
               </Badge>
               <h1
-                className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]"
+                className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] uppercase"
                 data-testid="text-map-hero-headline"
               >
-                Find the deal.
+                Real estate intelligence
                 <br />
-                <span className="text-gradient">Shortlist it. Then underwrite it.</span>
+                <span className="text-gradient">that compounds.</span>
               </h1>
               <p
-                className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
+                className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed"
                 data-testid="text-map-hero-subhead"
               >
-                Start with a sourcing brief, move into the map, and narrow toward properties worth underwriting.
-                Built for investors who want clearer discovery before they commit time or capital.
+                The real estate AI that gets smarter with every deal you analyze. Analyze any property,
+                find listings worth underwriting, and let Realist learn your buy box from every search,
+                save, and analysis — so the next opportunity is easier to spot than the last.
               </p>
             </div>
 
             {/* NL Command Bar */}
             <NLCommandBar />
 
-            {/* Secondary CTAs */}
+            {/* Primary CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
-              <Link href="/tools/cap-rates">
+              <Link href="/tools/analyzer">
                 <Button
                   size="lg"
                   className="gap-2 px-8 h-11"
-                  data-testid="button-open-yield-map"
-                  onClick={() => track({ event: "cta_clicked", cta: "open_yield_map", location: "discover_hero" })}
+                  data-testid="button-analyze-deal"
+                  onClick={() => track({ event: "cta_clicked", cta: "analyze_deal", location: "discover_hero" })}
                 >
-                  <Map className="h-4 w-4" />
-                  Open Yield Map
+                  <Calculator className="h-4 w-4" />
+                  Analyze a Deal
                 </Button>
               </Link>
-              <Link href="/tools/distress-deals">
+              <Link href="/tools/cap-rates">
                 <Button
                   variant="outline"
                   size="lg"
                   className="gap-2 px-8 h-11 bg-card/60 backdrop-blur-sm"
                   data-testid="button-find-deals"
-                  onClick={() => track({ event: "cta_clicked", cta: "find_distress", location: "discover_hero" })}
+                  onClick={() => track({ event: "cta_clicked", cta: "find_deals_worth_analyzing", location: "discover_hero" })}
                 >
-                  <Building2 className="h-4 w-4" />
-                  Browse Distress Deals
-                </Button>
-              </Link>
-              <Link href="/tools/analyzer">
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  className="gap-2 px-6 h-11"
-                  data-testid="button-switch-to-analyzer"
-                  onClick={() => track({ event: "cta_clicked", cta: "switch_to_analyzer", location: "discover_hero" })}
-                >
-                  <Calculator className="h-4 w-4" />
-                  I already have a property
+                  <Map className="h-4 w-4" />
+                  Find Deals Worth Analyzing
                 </Button>
               </Link>
             </div>

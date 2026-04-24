@@ -6,6 +6,10 @@ import {
   dataCache,
   savedDeals,
   discoverySignals,
+  listingWatchers,
+  notificationEvents,
+  notificationQueue,
+  notificationPreferences,
   podcastQuestions,
   coachingWaitlist,
   investorProfiles,
@@ -62,6 +66,14 @@ import {
   type InsertSavedDeal,
   type DiscoverySignal,
   type InsertDiscoverySignal,
+  type ListingWatcher,
+  type InsertListingWatcher,
+  type NotificationEvent,
+  type InsertNotificationEvent,
+  type NotificationQueue,
+  type InsertNotificationQueue,
+  type NotificationPreferences,
+  type InsertNotificationPreferences,
   type PodcastQuestion,
   type InsertPodcastQuestion,
   type CoachingWaitlist,
@@ -232,6 +244,16 @@ export interface IStorage {
   getDiscoverySignalsByUser(userId: string): Promise<DiscoverySignal[]>;
   upsertDiscoverySignals(signals: InsertDiscoverySignal[]): Promise<DiscoverySignal[]>;
   deleteDiscoverySignal(userId: string, signalType: string, signalKey: string): Promise<void>;
+  upsertListingWatcher(watcher: InsertListingWatcher): Promise<ListingWatcher>;
+  getListingWatchersByListing(mlsNumber: string): Promise<ListingWatcher[]>;
+  getListingWatchersByUser(userId: string): Promise<ListingWatcher[]>;
+  createNotificationEvent(event: InsertNotificationEvent): Promise<NotificationEvent>;
+  createNotificationQueueItem(item: InsertNotificationQueue): Promise<NotificationQueue | undefined>;
+  getPendingNotificationQueue(limit?: number): Promise<NotificationQueue[]>;
+  markNotificationQueueItemSent(id: string): Promise<void>;
+  markNotificationQueueItemFailed(id: string, reason: string): Promise<void>;
+  getNotificationPreference(userId: string): Promise<NotificationPreferences | undefined>;
+  upsertNotificationPreference(pref: InsertNotificationPreferences): Promise<NotificationPreferences>;
 
   createPodcastQuestion(question: InsertPodcastQuestion): Promise<PodcastQuestion>;
   getPodcastQuestions(): Promise<PodcastQuestion[]>;
@@ -703,6 +725,101 @@ export class DatabaseStorage implements IStorage {
         eq(discoverySignals.signalKey, signalKey),
       ),
     );
+  }
+
+  async upsertListingWatcher(watcher: InsertListingWatcher): Promise<ListingWatcher> {
+    const [result] = await db.insert(listingWatchers)
+      .values(watcher)
+      .onConflictDoUpdate({
+        target: [
+          listingWatchers.userId,
+          listingWatchers.listingMlsNumber,
+          listingWatchers.sourceType,
+          listingWatchers.sourceId,
+        ],
+        set: {
+          watchAnalysisUpdates: watcher.watchAnalysisUpdates ?? true,
+          watchCommentUpdates: watcher.watchCommentUpdates ?? true,
+          watchPriceUpdates: watcher.watchPriceUpdates ?? true,
+          watchStatusUpdates: watcher.watchStatusUpdates ?? true,
+          watchConsensusUpdates: watcher.watchConsensusUpdates ?? true,
+          lastSeenAt: watcher.lastSeenAt ?? new Date(),
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async getListingWatchersByListing(mlsNumber: string): Promise<ListingWatcher[]> {
+    return db.select().from(listingWatchers)
+      .where(eq(listingWatchers.listingMlsNumber, mlsNumber))
+      .orderBy(desc(listingWatchers.updatedAt));
+  }
+
+  async getListingWatchersByUser(userId: string): Promise<ListingWatcher[]> {
+    return db.select().from(listingWatchers)
+      .where(eq(listingWatchers.userId, userId))
+      .orderBy(desc(listingWatchers.updatedAt));
+  }
+
+  async createNotificationEvent(event: InsertNotificationEvent): Promise<NotificationEvent> {
+    const [result] = await db.insert(notificationEvents).values(event).returning();
+    return result;
+  }
+
+  async createNotificationQueueItem(item: InsertNotificationQueue): Promise<NotificationQueue | undefined> {
+    const [result] = await db.insert(notificationQueue)
+      .values(item)
+      .onConflictDoNothing({ target: notificationQueue.dedupeKey })
+      .returning();
+    return result;
+  }
+
+  async getPendingNotificationQueue(limit = 50): Promise<NotificationQueue[]> {
+    return db.select().from(notificationQueue)
+      .where(eq(notificationQueue.status, "pending"))
+      .orderBy(asc(notificationQueue.scheduledFor), asc(notificationQueue.createdAt))
+      .limit(limit);
+  }
+
+  async markNotificationQueueItemSent(id: string): Promise<void> {
+    await db.update(notificationQueue)
+      .set({ status: "sent", sentAt: new Date(), failureReason: null as any })
+      .where(eq(notificationQueue.id, id));
+  }
+
+  async markNotificationQueueItemFailed(id: string, reason: string): Promise<void> {
+    await db.update(notificationQueue)
+      .set({ status: "failed", failureReason: reason })
+      .where(eq(notificationQueue.id, id));
+  }
+
+  async getNotificationPreference(userId: string): Promise<NotificationPreferences | undefined> {
+    const [result] = await db.select().from(notificationPreferences)
+      .where(eq(notificationPreferences.userId, userId));
+    return result;
+  }
+
+  async upsertNotificationPreference(pref: InsertNotificationPreferences): Promise<NotificationPreferences> {
+    const [result] = await db.insert(notificationPreferences)
+      .values(pref)
+      .onConflictDoUpdate({
+        target: notificationPreferences.userId,
+        set: {
+          marketingEmailEnabled: pref.marketingEmailEnabled ?? true,
+          productUpdatesEnabled: pref.productUpdatesEnabled ?? true,
+          listingWatchAlertsEnabled: pref.listingWatchAlertsEnabled ?? true,
+          marketAlertsEnabled: pref.marketAlertsEnabled ?? true,
+          communityAlertsEnabled: pref.communityAlertsEnabled ?? true,
+          digestEnabled: pref.digestEnabled ?? true,
+          quietHoursStart: pref.quietHoursStart ?? null,
+          quietHoursEnd: pref.quietHoursEnd ?? null,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
   }
 
   async createPodcastQuestion(insertQuestion: InsertPodcastQuestion): Promise<PodcastQuestion> {
