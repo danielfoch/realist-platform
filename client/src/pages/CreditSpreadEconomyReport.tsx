@@ -696,7 +696,11 @@ export default function CreditSpreadEconomyReport() {
                   />
                   <MetricCard
                     title="2024 housing investment"
-                    value={housingMetrics["Nominal investment in residential housing"] ? `${housingMetrics["Nominal investment in residential housing"].value.toFixed(1)}B` : "—"}
+                    value={
+                      housingMetrics["Nominal investment in residential housing"]
+                        ? formatCompactCurrency(housingMetrics["Nominal investment in residential housing"].value * 1_000_000_000)
+                        : "—"
+                    }
                     subtitle="Nominal CAD billions"
                     icon={Building2}
                   />
@@ -743,6 +747,7 @@ export default function CreditSpreadEconomyReport() {
                   "Less capital into business formation",
                   "Weaker productivity and wage growth",
                   "Greater dependence on housing wealth",
+                  "Back to more housing demand",
                 ].map((step, index, steps) => (
                   <div key={step} className="relative rounded-xl border border-border/60 bg-muted/20 p-4 text-sm">
                     <div className="font-medium">{step}</div>
@@ -814,6 +819,7 @@ export default function CreditSpreadEconomyReport() {
                       <th className="px-3 py-2 font-medium">Source</th>
                       <th className="px-3 py-2 font-medium">Metric / table</th>
                       <th className="px-3 py-2 font-medium">Frequency</th>
+                      <th className="px-3 py-2 font-medium">Data date / status</th>
                       <th className="px-3 py-2 font-medium">Caveat</th>
                     </tr>
                   </thead>
@@ -822,7 +828,6 @@ export default function CreditSpreadEconomyReport() {
                       <tr key={source.datasetId} className="border-b align-top last:border-0">
                         <td className="px-3 py-3">
                           <div className="font-medium">{source.datasetId}</div>
-                          <div className="mt-1 text-xs text-muted-foreground">{source.status}</div>
                         </td>
                         <td className="px-3 py-3">
                           <a href={source.sourcePageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
@@ -832,6 +837,7 @@ export default function CreditSpreadEconomyReport() {
                         </td>
                         <td className="px-3 py-3 text-muted-foreground">{source.officialSeriesOrTable}</td>
                         <td className="px-3 py-3 text-muted-foreground">{source.frequency}</td>
+                        <td className="px-3 py-3 text-muted-foreground">{source.status}</td>
                         <td className="px-3 py-3 text-muted-foreground">{source.notes}</td>
                       </tr>
                     ))}
