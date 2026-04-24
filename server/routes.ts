@@ -93,6 +93,11 @@ import {
 const rateLimit = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
+const leaderboardEligibleUserFilter = sql`
+  LOWER(COALESCE(${users.email}, '')) NOT LIKE '%@example.com'
+  AND LOWER(COALESCE(${users.firstName}, '')) <> 'test'
+  AND LOWER(COALESCE(${users.lastName}, '')) <> 'user'
+`;
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -7347,7 +7352,7 @@ export async function registerRoutes(
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
-        .where(dateFilter)
+        .where(sql`${dateFilter} AND ${leaderboardEligibleUserFilter}`)
         .groupBy(analyses.userId, users.firstName, users.lastName, users.profileImageUrl, users.role)
         .orderBy(desc(count(analyses.id)))
         .limit(Math.min(Number(req.query.limit) || 25, 50));
@@ -7380,7 +7385,8 @@ export async function registerRoutes(
           )`,
         })
         .from(analyses)
-        .where(aggregateDateFilter);
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${aggregateDateFilter} AND ${analyses.userId} IS NOT NULL AND ${leaderboardEligibleUserFilter}`);
 
       res.json({
         analysts: leaderboard,
@@ -7593,7 +7599,8 @@ export async function registerRoutes(
           dealCount: count(analyses.id),
         })
         .from(analyses)
-        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${leaderboardEligibleUserFilter}`)
         .groupBy(analyses.userId)
         .orderBy(desc(count(analyses.id)));
 
@@ -7619,7 +7626,8 @@ export async function registerRoutes(
           dealCount: count(analyses.id),
         })
         .from(analyses)
-        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} < ${weekStr}`)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} < ${weekStr} AND ${leaderboardEligibleUserFilter}`)
         .groupBy(analyses.userId)
         .orderBy(desc(count(analyses.id)));
 
@@ -7715,7 +7723,8 @@ export async function registerRoutes(
           dealCount: count(analyses.id),
         })
         .from(analyses)
-        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr} AND ${leaderboardEligibleUserFilter}`)
         .groupBy(analyses.userId)
         .orderBy(desc(count(analyses.id)));
 
@@ -7725,7 +7734,8 @@ export async function registerRoutes(
           dealCount: count(analyses.id),
         })
         .from(analyses)
-        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${leaderboardEligibleUserFilter}`)
         .groupBy(analyses.userId)
         .orderBy(desc(count(analyses.id)));
 
@@ -7745,7 +7755,7 @@ export async function registerRoutes(
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
-        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`)
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr} AND ${leaderboardEligibleUserFilter}`)
         .groupBy(analyses.userId, users.firstName, users.lastName)
         .orderBy(desc(count(analyses.id)))
         .limit(3);
@@ -7760,7 +7770,7 @@ export async function registerRoutes(
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
-        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`)
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${leaderboardEligibleUserFilter}`)
         .groupBy(analyses.userId, users.firstName, users.lastName)
         .orderBy(desc(count(analyses.id)))
         .limit(3);

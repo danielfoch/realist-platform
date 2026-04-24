@@ -37,7 +37,8 @@ type NotificationKind =
   | "inactive_high_intent"
   | "multiplex_intent"
   | "distress_intent"
-  | "daily_digest_ready";
+  | "daily_digest_ready"
+  | "weekly_leaderboard_digest";
 
 export type GhlNotificationPayload = {
   sendEmail: true;
@@ -70,6 +71,7 @@ export type GhlNotificationPayload = {
   subjectLine: string;
   previewText: string;
   emailBody: string;
+  emailHtml?: string;
   ghlTags: string[];
   leadScoreDelta: number;
 };
@@ -316,6 +318,7 @@ function buildPayload(input: {
     subjectLine: input.subjectLine,
     previewText: input.previewText,
     emailBody: buildEmailBody(firstName, detailLines),
+    emailHtml: undefined,
     ghlTags: input.ghlTags,
     leadScoreDelta: input.leadScoreDelta,
   };

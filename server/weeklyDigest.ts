@@ -1,9 +1,9 @@
 import crypto from "crypto";
 import cron from "node-cron";
 import { db } from "./db";
-import { users, analyses } from "@shared/schema";
-import { sql, eq, count, desc, and, isNotNull, ne } from "drizzle-orm";
-import { getResendClient } from "./resend";
+import { users, analyses, notificationEvents, notificationQueue } from "@shared/schema";
+import { sql, count, desc, and, isNotNull, ne } from "drizzle-orm";
+import { storage } from "./storage";
 
 const UNSUBSCRIBE_SECRET = process.env.SESSION_SECRET || "realist-digest-secret";
 
@@ -31,6 +31,14 @@ interface UserWeeklyStats {
   userAvgCapRate: number | null;
   rank: number | null;
   totalUsers: number;
+}
+
+interface WeeklyLeaderboardEntry {
+  rank: number;
+  userId: string;
+  name: string;
+  dealCount: number;
+  avgCapRate: number | null;
 }
 
 function getLastWeekBounds(): { weekStart: string; weekEnd: string } {
@@ -144,6 +152,32 @@ async function getUserWeeklyStats(userId: string): Promise<UserWeeklyStats> {
   };
 }
 
+async function getWeeklyTopAnalysts(limit = 5): Promise<WeeklyLeaderboardEntry[]> {
+  const { weekStart, weekEnd } = getLastWeekBounds();
+  const rows = await db
+    .select({
+      userId: analyses.userId,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      dealCount: count(analyses.id),
+      avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+    })
+    .from(analyses)
+    .leftJoin(users, sql`${users.id} = ${analyses.userId}`)
+    .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd}`)
+    .groupBy(analyses.userId, users.firstName, users.lastName)
+    .orderBy(desc(count(analyses.id)))
+    .limit(limit);
+
+  return rows.map((row, index) => ({
+    rank: index + 1,
+    userId: row.userId || "",
+    name: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
+    dealCount: Number(row.dealCount || 0),
+    avgCapRate: row.avgCapRate != null ? Math.round(Number(row.avgCapRate) * 10) / 10 : null,
+  }));
+}
+
 function getWeekDateRange(): { start: string; end: string } {
   const { weekStart, weekEnd } = getLastWeekBounds();
   const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -152,11 +186,70 @@ function getWeekDateRange(): { start: string; end: string } {
   return { start: fmt(weekStart), end: fmt(inclusiveEnd.toISOString()) };
 }
 
+function buildTacticalInsight(platform: WeeklyStats, leaderboard: WeeklyLeaderboardEntry[]): string {
+  if (platform.totalDeals === 0) {
+    return "Quiet weeks are where disciplined operators build the most edge. One underwritten deal now puts you ahead of the pack next Monday.";
+  }
+  if (platform.avgCapRate != null && platform.avgCapRate >= 6.5) {
+    return `This week skewed toward yield. With average cap rates around ${platform.avgCapRate.toFixed(1)}%, investors should pressure-test financing assumptions before chasing headline returns.`;
+  }
+  if (platform.mostActiveCity) {
+    return `${platform.mostActiveCity} generated the most underwriting activity this week. When one city leads volume, it usually means more comps, faster feedback loops, and tighter pricing discipline.`;
+  }
+  if (leaderboard.length > 0) {
+    return `Top analysts did ${leaderboard[0].dealCount}+ writeups this week. Consistency is still the clearest advantage on the board.`;
+  }
+  return "The weekly board rewards repetition more than hero bets. A few clean writeups every week compounds faster than sporadic bursts.";
+}
+
+function buildDigestText(
+  firstName: string,
+  platform: WeeklyStats,
+  user: UserWeeklyStats,
+  allTime: AllTimeStats,
+  leaderboard: WeeklyLeaderboardEntry[],
+  insight: string,
+  unsubscribeUrl: string,
+): string {
+  const { start, end } = getWeekDateRange();
+  const lines = [
+    `Hey ${firstName || "there"},`,
+    "",
+    `Your Realist weekly leaderboard update for ${start} to ${end}.`,
+    "",
+    `This week: ${platform.totalDeals} deals analyzed`,
+    `Avg cap rate: ${platform.avgCapRate != null ? `${platform.avgCapRate.toFixed(1)}%` : "n/a"}`,
+    `Avg cash-on-cash: ${platform.avgCashOnCash != null ? `${platform.avgCashOnCash.toFixed(1)}%` : "n/a"}`,
+    `Avg DSCR: ${platform.avgDscr != null ? `${platform.avgDscr.toFixed(2)}x` : "n/a"}`,
+    platform.mostActiveCity ? `Top market: ${platform.mostActiveCity} (${platform.mostActiveCityDeals} deals)` : null,
+    "",
+    `Your week: ${user.userDeals} deals analyzed`,
+    `Your avg cap rate: ${user.userAvgCapRate != null ? `${user.userAvgCapRate.toFixed(1)}%` : "n/a"}`,
+    user.rank ? `Your weekly rank: #${user.rank} of ${user.totalUsers}` : "You were not ranked this week yet.",
+    "",
+    "Top weekly analysts:",
+    ...leaderboard.map((entry) => `#${entry.rank} ${entry.name} - ${entry.dealCount} deals${entry.avgCapRate != null ? ` - ${entry.avgCapRate.toFixed(1)}% avg cap` : ""}`),
+    "",
+    `Investor insight: ${insight}`,
+    "",
+    `All-time: ${allTime.totalDeals} deals analyzed across ${allTime.totalUsers} active analysts.`,
+    "Leaderboard: https://realist.ca/community/leaderboard?source=email",
+    "My Performance: https://realist.ca/my-performance?source=email",
+    "Analyze a Deal: https://realist.ca/tools/cap-rates?source=email",
+    "",
+    `Unsubscribe: ${unsubscribeUrl}`,
+  ].filter(Boolean);
+
+  return lines.join("\n");
+}
+
 function buildDigestHtml(
   firstName: string,
   platform: WeeklyStats,
   user: UserWeeklyStats,
   allTime: AllTimeStats,
+  leaderboard: WeeklyLeaderboardEntry[],
+  insight: string,
   unsubscribeUrl: string
 ): string {
   const { start, end } = getWeekDateRange();
@@ -233,6 +326,43 @@ function buildDigestHtml(
     </div>
   `;
 
+  const leaderboardRows = leaderboard.length > 0 ? leaderboard.map((entry, index) => `
+    <tr>
+      <td style="padding: 12px 10px; border-bottom: ${index === leaderboard.length - 1 ? "none" : "1px solid #e5e7eb"}; font-size: 13px; color: #111827; font-weight: 700;">#${entry.rank}</td>
+      <td style="padding: 12px 10px; border-bottom: ${index === leaderboard.length - 1 ? "none" : "1px solid #e5e7eb"}; font-size: 13px; color: #111827;">${entry.name}</td>
+      <td style="padding: 12px 10px; border-bottom: ${index === leaderboard.length - 1 ? "none" : "1px solid #e5e7eb"}; font-size: 13px; color: #475569; text-align: right;">${entry.dealCount}</td>
+      <td style="padding: 12px 10px; border-bottom: ${index === leaderboard.length - 1 ? "none" : "1px solid #e5e7eb"}; font-size: 13px; color: #475569; text-align: right;">${entry.avgCapRate != null ? `${entry.avgCapRate.toFixed(1)}%` : '\u2014'}</td>
+    </tr>
+  `).join("") : `
+    <tr>
+      <td colspan="4" style="padding: 16px; text-align: center; color: #64748b; font-size: 13px;">No analysts ranked this week yet.</td>
+    </tr>
+  `;
+
+  const leaderboardSection = `
+    <div style="background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%); border: 1px solid #fed7aa; border-radius: 8px; padding: 16px; margin: 16px 0;">
+      <p style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #9a3412;">Weekly Leaderboard</p>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th align="left" style="padding: 0 10px 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af;">Rank</th>
+            <th align="left" style="padding: 0 10px 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af;">Analyst</th>
+            <th align="right" style="padding: 0 10px 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af;">Deals</th>
+            <th align="right" style="padding: 0 10px 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af;">Avg Cap</th>
+          </tr>
+        </thead>
+        <tbody>${leaderboardRows}</tbody>
+      </table>
+    </div>
+  `;
+
+  const insightSection = `
+    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 16px 0;">
+      <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #1d4ed8;">Tactical Investor Insight</p>
+      <p style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.6;">${insight}</p>
+    </div>
+  `;
+
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
       <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 28px 24px; border-radius: 8px 8px 0 0;">
@@ -250,12 +380,17 @@ function buildDigestHtml(
         </p>
 
         ${weeklySection}
+        ${leaderboardSection}
         ${allTimeSection}
         ${userSection}
+        ${insightSection}
 
         <div style="text-align: center; margin: 24px 0;">
-          <a href="https://realist.ca" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 600; font-size: 14px;">
-            Analyze a Deal Now
+          <a href="https://realist.ca/community/leaderboard?source=email" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; margin: 0 6px 12px 6px;">
+            View Full Leaderboard
+          </a>
+          <a href="https://realist.ca/tools/cap-rates?source=email" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; margin: 0 6px 12px 6px;">
+            Analyze a Deal
           </a>
         </div>
         <div style="text-align: center; margin: 12px 0;">
@@ -280,10 +415,12 @@ function buildDigestHtml(
 }
 
 export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: number; errors: number }> {
-  console.log("[weekly-digest] Starting weekly digest...");
+  console.log("[weekly-digest] Starting weekly digest queue...");
 
   const platform = await getPlatformWeeklyStats();
   const allTime = await getAllTimeStats();
+  const leaderboard = await getWeeklyTopAnalysts(5);
+  const insight = buildTacticalInsight(platform, leaderboard);
   console.log(`[weekly-digest] Platform stats: ${platform.totalDeals} weekly deals, ${allTime.totalDeals} all-time deals, cap rate ${platform.avgCapRate}%`);
 
   const recipients = await db
@@ -306,17 +443,32 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
   let sent = 0;
   let skipped = 0;
   let errors = 0;
+  const { weekStart } = getLastWeekBounds();
+  const weekKey = weekStart.slice(0, 10);
+  const { start, end } = getWeekDateRange();
 
-  let resendClient;
-  try {
-    resendClient = await getResendClient();
-  } catch (err) {
-    console.error("[weekly-digest] Failed to get Resend client:", err);
-    return { sent: 0, skipped: 0, errors: recipients.length };
-  }
+  const eventPayload = {
+    weekStart,
+    leaderboard,
+    platform,
+    allTime,
+    insight,
+  };
+
+  const [event] = await db.insert(notificationEvents).values({
+    eventType: "weekly_leaderboard_digest",
+    payloadJson: eventPayload,
+    city: platform.mostActiveCity || null,
+  }).returning({ id: notificationEvents.id });
 
   for (const recipient of recipients) {
     try {
+      const allowsDigest = await storage.getNotificationPreference(recipient.id);
+      if (allowsDigest && !allowsDigest.digestEnabled) {
+        skipped++;
+        continue;
+      }
+
       const userStats = await getUserWeeklyStats(recipient.id);
       const token = generateUnsubscribeToken(recipient.id);
       const unsubscribeUrl = `https://realist.ca/api/email/unsubscribe?uid=${encodeURIComponent(recipient.id)}&token=${token}`;
@@ -326,35 +478,82 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
         platform,
         userStats,
         allTime,
+        leaderboard,
+        insight,
         unsubscribeUrl
       );
-
-      const { start, end } = getWeekDateRange();
+      const text = buildDigestText(
+        recipient.firstName || "",
+        platform,
+        userStats,
+        allTime,
+        leaderboard,
+        insight,
+        unsubscribeUrl,
+      );
 
       const subject = platform.totalDeals > 0
         ? `Realist Weekly: ${platform.totalDeals} deals analyzed (${start}\u2013${end})`
         : `Realist Weekly: Your ${start}\u2013${end} update (${allTime.totalDeals} deals all-time)`;
+      const previewText = userStats.rank
+        ? `You ranked #${userStats.rank} this week. See who is moving on the Realist board.`
+        : "See this week’s Realist leaderboard, platform stats, and tactical investor signal.";
+      const dedupeKey = `weekly_leaderboard_digest:${recipient.id}:${weekKey}`;
 
-      const result = await resendClient.client.emails.send({
-        from: resendClient.fromEmail,
-        to: recipient.email,
-        subject,
-        html,
-      });
+      const inserted = await db.insert(notificationQueue).values({
+        recipientUserId: recipient.id,
+        notificationEventId: event.id,
+        channel: "ghl_webhook",
+        templateKey: "weekly_leaderboard_digest",
+        dedupeKey,
+        payloadJson: {
+          sendEmail: true,
+          eventType: "weekly_leaderboard_digest",
+          eventId: event.id,
+          eventTs: new Date().toISOString(),
+          email: recipient.email,
+          phone: null,
+          firstName: recipient.firstName || "there",
+          reasonText: userStats.rank
+            ? `You ranked #${userStats.rank} out of ${userStats.totalUsers} active analysts this week.`
+            : `Weekly leaderboard update for ${start} to ${end}.`,
+          ctaLabel: "View full leaderboard",
+          ctaUrl: "https://realist.ca/community/leaderboard?source=email",
+          subjectLine: subject,
+          previewText,
+          emailBody: text,
+          emailHtml: html,
+          ghlTags: ["realist-user", "weekly-digest", "weekly-leaderboard"],
+          leadScoreDelta: userStats.userDeals > 0 ? 2 : 0,
+          leaderboardPeriod: "weekly",
+          weeklyRank: userStats.rank,
+          weeklyDeals: userStats.userDeals,
+          weeklyTopAnalysts: leaderboard,
+          platformTotalDeals: platform.totalDeals,
+          platformAvgCapRate: platform.avgCapRate,
+          platformAvgCashOnCash: platform.avgCashOnCash,
+          platformAvgDscr: platform.avgDscr,
+          insight,
+          unsubscribeUrl,
+        },
+        scheduledFor: new Date(),
+      }).onConflictDoNothing({
+        target: notificationQueue.dedupeKey,
+      }).returning({ id: notificationQueue.id });
 
-      if ((result as any)?.error) {
-        console.error(`[weekly-digest] Resend error for ${recipient.email}:`, (result as any).error);
-        errors++;
-      } else {
-        sent++;
+      if (!inserted.length) {
+        skipped++;
+        continue;
       }
+
+      sent++;
     } catch (err) {
-      console.error(`[weekly-digest] Error sending to ${recipient.email}:`, err);
+      console.error(`[weekly-digest] Error queueing for ${recipient.email}:`, err);
       errors++;
     }
   }
 
-  console.log(`[weekly-digest] Complete: ${sent} sent, ${skipped} skipped, ${errors} errors`);
+  console.log(`[weekly-digest] Queue complete: ${sent} queued, ${skipped} skipped, ${errors} errors`);
   return { sent, skipped, errors };
 }
 
