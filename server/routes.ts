@@ -17,6 +17,7 @@ import {
   insertUnderwritingNoteSchema,
   insertListingCommentSchema,
   insertVoteSchema,
+  insertPropertyAnalysisSchema,
   users,
   renoQuoteLineItemSchema,
   renoQuoteAssumptionsSchema,
@@ -29,6 +30,7 @@ import {
   capstoneCostModels,
   capstoneProformas,
   analyses,
+  propertyAnalyses,
   rentPulse,
   rentListings,
   underwritingNotes,
@@ -46,6 +48,7 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
+import { COMMUNITY_DEFAULTS, COMMUNITY_FLAGS, computeConsensusLabel, sanitizeUserText, summarizeCommunityMetrics, truncateText } from "@shared/community";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
 import { passwordResetTokens } from "@shared/models/auth";
@@ -8293,7 +8296,7 @@ export async function registerRoutes(
 
   app.post("/api/community/notes", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.session.userId;
       if (!userId) return res.status(401).json({ error: "Authentication required" });
 
       const parsed = insertUnderwritingNoteSchema.safeParse({ ...req.body, userId });
@@ -8331,23 +8334,390 @@ export async function registerRoutes(
     }
   });
 
+  const analysisConsentSchema = z.object({
+    useForProductImprovement: z.boolean().default(false),
+    useForAiTraining: z.boolean().default(false),
+    useForAnonymizedMarketDataset: z.boolean().default(false),
+    allowCommercialDataLicensing: z.boolean().default(false),
+  });
+
+  const communityAnalysisSchema = insertPropertyAnalysisSchema.extend({
+    listingMlsNumber: z.string().min(1),
+    title: z.string().max(180).optional().nullable(),
+    summary: z.string().max(2000).optional().nullable(),
+    userNotes: z.string().max(COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH).optional().nullable(),
+    aiAnalysisText: z.string().max(COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH).optional().nullable(),
+    userAnalysisText: z.string().max(COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH).optional().nullable(),
+    visibility: z.enum(["public", "private"]).default(COMMUNITY_FLAGS.ENABLE_PUBLIC_ANALYSIS_DEFAULT ? "public" : "private"),
+    dataUseConsent: analysisConsentSchema,
+    assumptions: z.record(z.any()).default({}),
+    calculatedMetrics: z.record(z.any()).default({}),
+    aiAssumptions: z.record(z.any()).optional().nullable(),
+    finalAssumptions: z.record(z.any()).optional().nullable(),
+    listingSnapshot: z.record(z.any()).optional().nullable(),
+    sourceContext: z.record(z.any()).optional().nullable(),
+  });
+
+  const listingCommentCreateSchema = insertListingCommentSchema.extend({
+    listingMlsNumber: z.string().min(1),
+    body: z.string().min(1).max(COMMUNITY_DEFAULTS.COMMENT_MAX_LENGTH),
+    visibility: z.enum(["public", "private"]).default("public"),
+    parentCommentId: z.string().optional().nullable(),
+    referencedAnalysisId: z.string().optional().nullable(),
+    metadataJson: z.record(z.any()).optional().nullable(),
+  });
+
+  const listingCommentUpdateSchema = z.object({
+    body: z.string().min(1).max(COMMUNITY_DEFAULTS.COMMENT_MAX_LENGTH).optional(),
+    visibility: z.enum(["public", "private"]).optional(),
+  });
+
+  function flattenObject(input: Record<string, any>, prefix = ""): Array<{ field: string; value: any }> {
+    return Object.entries(input || {}).flatMap(([key, value]) => {
+      const field = prefix ? `${prefix}.${key}` : key;
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        return flattenObject(value, field);
+      }
+      return [{ field, value }];
+    });
+  }
+
+  function buildAssumptionChanges(aiAssumptions: Record<string, any> | null | undefined, finalAssumptions: Record<string, any> | null | undefined) {
+    const aiEntries = new Map(flattenObject(aiAssumptions || {}).map((item) => [item.field, item.value]));
+    return flattenObject(finalAssumptions || {})
+      .filter((item) => JSON.stringify(aiEntries.get(item.field)) !== JSON.stringify(item.value))
+      .map((item) => ({
+        fieldName: item.field,
+        aiValue: aiEntries.get(item.field) ?? null,
+        userValue: item.value ?? null,
+        deltaValue: {
+          previous: aiEntries.get(item.field) ?? null,
+          next: item.value ?? null,
+        },
+      }));
+  }
+
+  function getAnalysisMetricNumber(source: Record<string, any> | null | undefined, keys: string[]): number | null {
+    for (const key of keys) {
+      const value = source?.[key];
+      if (typeof value === "number" && Number.isFinite(value)) return value;
+    }
+    return null;
+  }
+
+  async function buildCommunityContext(mlsNumber: string, userId?: string | null) {
+    const [aggregate, publicAnalyses, publicComments, myAnalyses, privateNotes] = await Promise.all([
+      storage.getListingAggregate(mlsNumber),
+      storage.listPublicPropertyAnalysesByListing(mlsNumber),
+      storage.listPublicListingCommentsByListing(mlsNumber, "most_helpful"),
+      userId ? storage.listUserPropertyAnalysesByListing(mlsNumber, userId) : Promise.resolve([]),
+      userId ? storage.listPrivateListingNotesByListing(mlsNumber, userId) : Promise.resolve([]),
+    ]);
+
+    return {
+      aggregate,
+      publicAnalyses: publicAnalyses.slice(0, 5),
+      myAnalyses: myAnalyses.slice(0, 5),
+      publicComments: publicComments.slice(0, 5).map((comment) => ({
+        id: comment.id,
+        body: comment.body,
+        createdAt: comment.createdAt,
+        metadataJson: comment.metadataJson || null,
+      })),
+      privateNotes: privateNotes.slice(0, 5),
+    };
+  }
+
+  app.post("/api/community/analyses", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!COMMUNITY_FLAGS.ENABLE_COMMUNITY_ANALYSIS) return res.status(404).json({ error: "Community analysis disabled" });
+      const userId = req.session.userId;
+      const parsed = communityAnalysisSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) return res.status(400).json({ error: "Invalid analysis data", details: parsed.error.issues });
+
+      const data = parsed.data;
+      const analysis = await storage.createPropertyAnalysis({
+        ...data,
+        title: data.title ? sanitizeUserText(data.title, 180) : null,
+        summary: data.summary ? sanitizeUserText(data.summary, 2000) : null,
+        userNotes: data.userNotes ? sanitizeUserText(data.userNotes, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : null,
+        aiAnalysisText: data.aiAnalysisText ? sanitizeUserText(data.aiAnalysisText, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : null,
+        userAnalysisText: data.userAnalysisText ? sanitizeUserText(data.userAnalysisText, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : null,
+        sentiment: data.sentiment || computeConsensusLabel({
+          medianMonthlyCashFlow: getAnalysisMetricNumber(data.calculatedMetrics, ["monthlyCashFlow", "monthly_cash_flow"]),
+          medianCashOnCash: getAnalysisMetricNumber(data.calculatedMetrics, ["cashOnCash", "cash_on_cash"]),
+          medianDscr: getAnalysisMetricNumber(data.calculatedMetrics, ["dscr"]),
+        }),
+      });
+
+      const assumptionChanges = buildAssumptionChanges(data.aiAssumptions as Record<string, any> | undefined, (data.finalAssumptions || data.assumptions) as Record<string, any>);
+      if (assumptionChanges.length) {
+        await storage.createAnalysisAssumptionChanges(assumptionChanges.map((change) => ({
+          analysisId: analysis.id,
+          ...change,
+        })));
+      }
+
+      await Promise.all([
+        storage.createAnalysisConsentEvent({
+          userId,
+          analysisId: analysis.id,
+          visibility: analysis.visibility,
+          ...data.dataUseConsent,
+          consentTextVersion: COMMUNITY_DEFAULTS.CONSENT_TEXT_VERSION,
+        }),
+        storage.createAnalysisEvent({
+          analysisId: analysis.id,
+          listingMlsNumber: analysis.listingMlsNumber,
+          userId,
+          eventType: "created",
+          visibility: analysis.visibility,
+          metadata: {
+            propertyType: analysis.propertyType,
+            market: analysis.market,
+          },
+        }),
+        storage.createUnderwritingAssumptionSnapshot({
+          analysisId: analysis.id,
+          snapshotType: "final",
+          assumptions: data.finalAssumptions || data.assumptions,
+        }),
+      ]);
+
+      if (data.aiAssumptions) {
+        await storage.createUnderwritingAssumptionSnapshot({
+          analysisId: analysis.id,
+          snapshotType: "ai",
+          assumptions: data.aiAssumptions,
+        });
+      }
+
+      await recomputeListingAggregate(analysis.listingMlsNumber);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error creating community analysis:", error);
+      res.status(500).json({ error: "Failed to save analysis" });
+    }
+  });
+
+  app.patch("/api/community/analyses/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const parsed = communityAnalysisSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid analysis update", details: parsed.error.issues });
+      const existing = await storage.getPropertyAnalysis(req.params.id);
+      if (!existing || existing.userId !== userId) return res.status(404).json({ error: "Analysis not found" });
+
+      const updated = await storage.updatePropertyAnalysis(req.params.id, userId, {
+        ...parsed.data,
+        title: parsed.data.title != null ? sanitizeUserText(parsed.data.title, 180) : existing.title,
+        summary: parsed.data.summary != null ? sanitizeUserText(parsed.data.summary, 2000) : existing.summary,
+        userNotes: parsed.data.userNotes != null ? sanitizeUserText(parsed.data.userNotes, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : existing.userNotes,
+        userAnalysisText: parsed.data.userAnalysisText != null ? sanitizeUserText(parsed.data.userAnalysisText, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : existing.userAnalysisText,
+      });
+      if (!updated) return res.status(404).json({ error: "Analysis not found" });
+
+      if (parsed.data.dataUseConsent) {
+        await storage.createAnalysisConsentEvent({
+          userId,
+          analysisId: updated.id,
+          visibility: updated.visibility,
+          ...parsed.data.dataUseConsent,
+          consentTextVersion: COMMUNITY_DEFAULTS.CONSENT_TEXT_VERSION,
+        });
+      }
+
+      await storage.createAnalysisEvent({
+        analysisId: updated.id,
+        listingMlsNumber: updated.listingMlsNumber,
+        userId,
+        eventType: "updated",
+        visibility: updated.visibility,
+        metadata: { fields: Object.keys(parsed.data) },
+      });
+
+      await recomputeListingAggregate(updated.listingMlsNumber);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating community analysis:", error);
+      res.status(500).json({ error: "Failed to update analysis" });
+    }
+  });
+
+  app.get("/api/community/analyses/:mlsNumber", async (req, res) => {
+    try {
+      const sort = (req.query.sort as string) || "newest";
+      const analyses = await storage.listPublicPropertyAnalysesByListing(req.params.mlsNumber);
+      const sorted = [...analyses].sort((a, b) => {
+        const metricsA = (a.calculatedMetrics || {}) as Record<string, any>;
+        const metricsB = (b.calculatedMetrics || {}) as Record<string, any>;
+        if (sort === "highest_cap_rate") return (metricsB.capRate || 0) - (metricsA.capRate || 0);
+        if (sort === "most_bullish") return ((metricsB.monthlyCashFlow || 0) + (metricsB.cashOnCash || 0)) - ((metricsA.monthlyCashFlow || 0) + (metricsA.cashOnCash || 0));
+        if (sort === "most_bearish") return ((metricsA.monthlyCashFlow || 0) + (metricsA.cashOnCash || 0)) - ((metricsB.monthlyCashFlow || 0) + (metricsB.cashOnCash || 0));
+        if (sort === "most_conservative") return (metricsA.projectedRent || metricsA.monthlyRent || 0) - (metricsB.projectedRent || metricsB.monthlyRent || 0);
+        if (sort === "most_useful") return (b.usefulCount || 0) - (a.usefulCount || 0);
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      res.json(sorted);
+    } catch (error) {
+      console.error("Error fetching public analyses:", error);
+      res.status(500).json({ error: "Failed to fetch analyses" });
+    }
+  });
+
+  app.get("/api/community/my-analyses/:mlsNumber", isAuthenticated, async (req: any, res) => {
+    try {
+      const analyses = await storage.listUserPropertyAnalysesByListing(req.params.mlsNumber, req.session.userId);
+      res.json(analyses);
+    } catch (error) {
+      console.error("Error fetching user analyses:", error);
+      res.status(500).json({ error: "Failed to fetch your analyses" });
+    }
+  });
+
+  app.post("/api/community/analyses/:id/duplicate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const source = await storage.getPropertyAnalysis(req.params.id);
+      if (!source || source.isDeleted) return res.status(404).json({ error: "Analysis not found" });
+      if (source.visibility !== "public" && source.userId !== userId) return res.status(403).json({ error: "Not authorized to duplicate this analysis" });
+
+      const duplicate = await storage.createPropertyAnalysis({
+        listingMlsNumber: source.listingMlsNumber,
+        propertyId: source.propertyId,
+        userId,
+        parentAnalysisId: source.parentAnalysisId || source.id,
+        sourceAnalysisId: source.id,
+        visibility: COMMUNITY_FLAGS.ENABLE_PUBLIC_ANALYSIS_DEFAULT ? "public" : "private",
+        title: source.title ? `${source.title} copy` : null,
+        summary: source.summary,
+        userNotes: source.userNotes,
+        aiAnalysisText: source.aiAnalysisText,
+        userAnalysisText: source.userAnalysisText,
+        sentiment: source.sentiment,
+        city: source.city,
+        province: source.province,
+        market: source.market,
+        neighbourhood: source.neighbourhood,
+        propertyType: source.propertyType,
+        listingPrice: source.listingPrice,
+        listingSnapshot: source.listingSnapshot,
+        sourceContext: source.sourceContext,
+        assumptions: source.assumptions,
+        calculatedMetrics: source.calculatedMetrics,
+        aiAssumptions: source.aiAssumptions,
+        finalAssumptions: source.finalAssumptions,
+        dataUseConsent: source.dataUseConsent,
+        modelVersion: source.modelVersion,
+        promptVersion: source.promptVersion,
+      });
+
+      await storage.createAnalysisEvent({
+        analysisId: duplicate.id,
+        listingMlsNumber: duplicate.listingMlsNumber,
+        userId,
+        eventType: "duplicated",
+        visibility: duplicate.visibility,
+        metadata: { sourceAnalysisId: source.id },
+      });
+
+      await recomputeListingAggregate(duplicate.listingMlsNumber);
+      res.json(duplicate);
+    } catch (error) {
+      console.error("Error duplicating analysis:", error);
+      res.status(500).json({ error: "Failed to duplicate analysis" });
+    }
+  });
+
+  app.post("/api/community/analyses/:id/feedback", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const parsed = z.object({
+        feedbackType: z.enum(["useful", "not_useful", "disagree", "report"]),
+        comment: z.string().max(500).optional(),
+      }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid feedback", details: parsed.error.issues });
+      const analysis = await storage.getPropertyAnalysis(req.params.id);
+      if (!analysis || analysis.isDeleted) return res.status(404).json({ error: "Analysis not found" });
+      if (analysis.visibility !== "public" && analysis.userId !== userId) return res.status(403).json({ error: "Not authorized" });
+      const existing = await storage.getAnalysisFeedbackByUser(analysis.id, userId, parsed.data.feedbackType);
+      if (existing) return res.json(existing);
+
+      const feedback = await storage.createAnalysisFeedback({
+        analysisId: analysis.id,
+        userId,
+        feedbackType: parsed.data.feedbackType,
+        comment: parsed.data.comment ? sanitizeUserText(parsed.data.comment, 500) : null,
+      });
+      await storage.createAnalysisEvent({
+        analysisId: analysis.id,
+        listingMlsNumber: analysis.listingMlsNumber,
+        userId,
+        eventType: `feedback:${parsed.data.feedbackType}`,
+        visibility: analysis.visibility,
+        metadata: { comment: feedback.comment || null },
+      });
+      res.json(feedback);
+    } catch (error) {
+      console.error("Error submitting analysis feedback:", error);
+      res.status(500).json({ error: "Failed to submit feedback" });
+    }
+  });
+
+  app.get("/api/community/ai-context/:mlsNumber", async (req: any, res) => {
+    try {
+      if (!COMMUNITY_FLAGS.ENABLE_COMMUNITY_CONTEXT_FOR_AI_ANALYSIS) {
+        return res.json({ enabled: false, context: null });
+      }
+      const userId = req.session?.userId || null;
+      const context = await buildCommunityContext(req.params.mlsNumber, userId);
+      res.json({ enabled: true, context });
+    } catch (error) {
+      console.error("Error building AI community context:", error);
+      res.status(500).json({ error: "Failed to build community context" });
+    }
+  });
+
   app.post("/api/community/comments", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      if (!COMMUNITY_FLAGS.ENABLE_LISTING_COMMENTS) return res.status(404).json({ error: "Listing comments disabled" });
+      const userId = req.session.userId;
       if (!userId) return res.status(401).json({ error: "Authentication required" });
 
-      const parsed = insertListingCommentSchema.safeParse({ ...req.body, userId });
+      const parsed = listingCommentCreateSchema.safeParse({ ...req.body, userId });
       if (!parsed.success) return res.status(400).json({ error: "Invalid data", details: parsed.error.issues });
+      if (parsed.data.visibility === "private" && !COMMUNITY_FLAGS.ENABLE_PRIVATE_LISTING_NOTES) {
+        return res.status(400).json({ error: "Private notes disabled" });
+      }
+
+      if (parsed.data.referencedAnalysisId) {
+        const analysis = await storage.getPropertyAnalysis(parsed.data.referencedAnalysisId);
+        if (!analysis || analysis.listingMlsNumber !== parsed.data.listingMlsNumber) {
+          return res.status(400).json({ error: "Referenced analysis not found for this listing" });
+        }
+        if (analysis.visibility !== "public" && analysis.userId !== userId) {
+          return res.status(403).json({ error: "Cannot reference a private analysis you do not own" });
+        }
+      }
 
       const comment = await storage.createListingComment(parsed.data);
 
       await storage.createContributionEvent({
         userId,
-        type: "comment",
-        points: 1,
+        type: parsed.data.visibility === "private" ? "private_note" : "comment",
+        points: parsed.data.visibility === "private" ? 0 : 1,
         targetType: "listing_comment",
         targetId: comment.id,
       });
+
+      if (comment.parentCommentId) {
+        const parent = await storage.getListingComment(comment.parentCommentId);
+        if (parent) {
+          await storage.updateListingComment(parent.id, parent.userId, {
+            replyCount: (parent.replyCount || 0) + 1,
+          });
+        }
+      }
 
       await recomputeListingAggregate(parsed.data.listingMlsNumber);
 
@@ -8360,7 +8730,8 @@ export async function registerRoutes(
 
   app.get("/api/community/comments/:mlsNumber", async (req, res) => {
     try {
-      const comments = await storage.getListingCommentsByListing(req.params.mlsNumber);
+      const sortBy = ((req.query.sort as string) || "pinned") as "newest" | "oldest" | "most_helpful" | "pinned";
+      const comments = await storage.listPublicListingCommentsByListing(req.params.mlsNumber, sortBy);
       res.json(comments);
     } catch (error) {
       console.error("Error fetching comments:", error);
@@ -8368,9 +8739,83 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/community/private-notes/:mlsNumber", isAuthenticated, async (req: any, res) => {
+    try {
+      const notes = await storage.listPrivateListingNotesByListing(req.params.mlsNumber, req.session.userId);
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching private notes:", error);
+      res.status(500).json({ error: "Failed to fetch private notes" });
+    }
+  });
+
+  app.patch("/api/community/comments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const parsed = listingCommentUpdateSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid comment update", details: parsed.error.issues });
+      const updated = await storage.updateListingComment(req.params.id, req.session.userId, parsed.data as any);
+      if (!updated) return res.status(404).json({ error: "Comment not found" });
+      await recomputeListingAggregate(updated.listingMlsNumber);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      res.status(500).json({ error: "Failed to update comment" });
+    }
+  });
+
+  app.delete("/api/community/comments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const deleted = await storage.softDeleteListingComment(req.params.id, req.session.userId);
+      if (!deleted) return res.status(404).json({ error: "Comment not found" });
+      await recomputeListingAggregate(deleted.listingMlsNumber);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ error: "Failed to delete comment" });
+    }
+  });
+
+  app.post("/api/community/comments/:id/helpful", isAuthenticated, async (req: any, res) => {
+    try {
+      const applied = await storage.markCommentHelpful(req.params.id, req.session.userId);
+      const comment = await storage.getListingComment(req.params.id);
+      if (comment) await recomputeListingAggregate(comment.listingMlsNumber);
+      res.json({ applied });
+    } catch (error) {
+      console.error("Error marking comment helpful:", error);
+      res.status(500).json({ error: "Failed to mark comment helpful" });
+    }
+  });
+
+  app.post("/api/community/comments/:id/report", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!COMMUNITY_FLAGS.ENABLE_COMMENT_REPORTING) return res.status(404).json({ error: "Comment reporting disabled" });
+      const applied = await storage.reportComment(req.params.id, req.session.userId);
+      const comment = await storage.getListingComment(req.params.id);
+      if (comment) await recomputeListingAggregate(comment.listingMlsNumber);
+      res.json({ applied });
+    } catch (error) {
+      console.error("Error reporting comment:", error);
+      res.status(500).json({ error: "Failed to report comment" });
+    }
+  });
+
+  app.get("/api/community/comment-count/:mlsNumber", async (req, res) => {
+    try {
+      const aggregate = await storage.getListingAggregate(req.params.mlsNumber);
+      res.json({
+        publicCommentCount: aggregate?.publicCommentCount || aggregate?.commentCount || 0,
+        latestPublicCommentAt: aggregate?.latestPublicCommentAt || null,
+      });
+    } catch (error) {
+      console.error("Error fetching comment count:", error);
+      res.status(500).json({ error: "Failed to fetch comment count" });
+    }
+  });
+
   app.post("/api/community/vote", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.session.userId;
       if (!userId) return res.status(401).json({ error: "Authentication required" });
 
       const parsed = insertVoteSchema.safeParse({ ...req.body, userId });
@@ -8470,28 +8915,95 @@ export async function registerRoutes(
   async function recomputeListingAggregate(mlsNumber: string) {
     try {
       const notes = await storage.getUnderwritingNotesByListing(mlsNumber);
-      const comments = await storage.getListingCommentsByListing(mlsNumber);
+      const comments = await storage.listPublicListingCommentsByListing(mlsNumber, "pinned");
+      const [allAnalyses, publicAnalyses, privateNotes] = await Promise.all([
+        db.select().from(propertyAnalyses)
+          .where(and(
+            eq(propertyAnalyses.listingMlsNumber, mlsNumber),
+            eq(propertyAnalyses.isDeleted, false),
+          )),
+        storage.listPublicPropertyAnalysesByListing(mlsNumber),
+        db.select().from(listingComments)
+          .where(and(
+            eq(listingComments.listingMlsNumber, mlsNumber),
+            eq(listingComments.visibility, "private"),
+            eq(listingComments.status, "active"),
+          )),
+      ]);
 
       let communityCapRate: number | null = null;
       let rentsUsedJson: any = null;
-
       if (notes.length > 0) {
         const bestNote = notes[0];
-        if (bestNote.rentsJson && bestNote.expenseRatio !== null && bestNote.vacancy !== null) {
-          const rents = bestNote.rentsJson as number[];
-          const totalRent = Array.isArray(rents) ? rents.reduce((a: number, b: number) => a + b, 0) : 0;
+        if (bestNote.rentsJson) {
           rentsUsedJson = bestNote.rentsJson;
-          communityCapRate = null;
         }
       }
 
+      const publicMetrics = publicAnalyses.map((analysis: any) => {
+        const metrics = (analysis.calculatedMetrics || {}) as Record<string, any>;
+        const assumptions = (analysis.assumptions || {}) as Record<string, any>;
+        return {
+          capRate: getAnalysisMetricNumber(metrics, ["capRate", "cap_rate"]),
+          cashOnCash: getAnalysisMetricNumber(metrics, ["cashOnCash", "cash_on_cash"]),
+          projectedRent: getAnalysisMetricNumber(metrics, ["projectedRent", "monthlyRent", "monthly_rent"]),
+          noi: getAnalysisMetricNumber(metrics, ["annualNoi", "noi", "annual_noi"]),
+          monthlyCashFlow: getAnalysisMetricNumber(metrics, ["monthlyCashFlow", "monthly_cash_flow"]),
+          expenseRatio: getAnalysisMetricNumber(assumptions, ["expenseRatio", "expense_ratio"]),
+          dscr: getAnalysisMetricNumber(metrics, ["dscr"]),
+          sentiment: analysis.sentiment,
+        };
+      });
+
+      const summary = summarizeCommunityMetrics(
+        allAnalyses.length,
+        publicAnalyses.map((analysis: any) => analysis.userId).filter(Boolean),
+        publicMetrics,
+      );
+      communityCapRate = summary.medianCapRate;
+      const latestPublicComment = comments[0];
+      const latestPublicAnalysisAt = publicAnalyses.length ? publicAnalyses.reduce((latest: Date | null, analysis: any) => {
+        const createdAt = new Date(analysis.createdAt);
+        return !latest || createdAt > latest ? createdAt : latest;
+      }, null) : null;
       await storage.upsertListingAggregate({
         listingMlsNumber: mlsNumber,
         communityCapRate,
         rentsUsedJson,
-        analysisCount: notes.length,
+        analysisCount: summary.publicAnalysisCount,
         commentCount: comments.length,
-        lastAnalysisAt: notes.length > 0 ? notes[0].createdAt : null,
+        totalAnalysisCount: summary.totalAnalysisCount,
+        publicAnalysisCount: summary.publicAnalysisCount,
+        uniquePublicUserCount: summary.uniquePublicUserCount,
+        publicCommentCount: comments.length,
+        uniquePublicCommentUserCount: new Set(comments.map((comment: any) => comment.userId)).size,
+        latestPublicCommentAt: latestPublicComment?.createdAt || null,
+        latestPublicAnalysisAt,
+        latestCommentPreview: truncateText(latestPublicComment?.body || null, 120),
+        latestCommentAt: latestPublicComment?.createdAt || null,
+        medianCapRate: summary.medianCapRate,
+        medianCashOnCash: summary.medianCashOnCash,
+        medianProjectedRent: summary.medianProjectedRent,
+        medianNoi: summary.medianNoi,
+        medianMonthlyCashFlow: summary.medianMonthlyCashFlow,
+        medianExpenseRatio: summary.medianExpenseRatio,
+        bullishCount: summary.bullishCount,
+        neutralCount: summary.neutralCount,
+        bearishCount: summary.bearishCount,
+        consensusLabel: summary.consensusLabel,
+        confidenceScore: summary.confidenceScore,
+        latestPrivateNoteAt: privateNotes.length ? privateNotes[0].createdAt : null,
+        pinnedCommentCount: comments.filter((comment: any) => comment.isPinned).length,
+        reportedCommentCount: comments.reduce((sum: number, comment: any) => sum + (comment.reportCount || 0), 0),
+        lastAnalysisAt: latestPublicAnalysisAt,
+      });
+      await storage.createCommunityMetricSnapshot({
+        listingMlsNumber: mlsNumber,
+        aggregateJson: {
+          summary,
+          latestPublicCommentAt: latestPublicComment?.createdAt || null,
+          latestPublicAnalysisAt,
+        },
       });
     } catch (error) {
       console.error("Error recomputing listing aggregate:", error);

@@ -107,6 +107,166 @@ async function ensureAppTables() {
       CREATE INDEX IF NOT EXISTS area_yield_history_lookup_idx
       ON area_yield_history(area_type, province, month)
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS property_analyses (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        listing_mls_number text NOT NULL,
+        property_id varchar,
+        user_id varchar NOT NULL,
+        parent_analysis_id varchar,
+        source_analysis_id varchar,
+        visibility text NOT NULL DEFAULT 'public',
+        title text,
+        summary text,
+        user_notes text,
+        ai_analysis_text text,
+        user_analysis_text text,
+        sentiment text,
+        city text,
+        province text,
+        market text,
+        neighbourhood text,
+        property_type text,
+        listing_price real,
+        listing_snapshot jsonb,
+        source_context jsonb,
+        assumptions jsonb,
+        calculated_metrics jsonb,
+        ai_assumptions jsonb,
+        final_assumptions jsonb,
+        data_use_consent jsonb,
+        model_version text,
+        prompt_version text,
+        is_deleted boolean NOT NULL DEFAULT false,
+        is_anonymized boolean NOT NULL DEFAULT false,
+        created_at timestamp NOT NULL DEFAULT now(),
+        updated_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS property_analyses_listing_lookup_idx
+      ON property_analyses(listing_mls_number, visibility, created_at)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS analysis_assumption_changes (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        analysis_id varchar NOT NULL,
+        field_name text NOT NULL,
+        ai_value jsonb,
+        user_value jsonb,
+        delta_value jsonb,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS analysis_feedback (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        analysis_id varchar NOT NULL,
+        user_id varchar NOT NULL,
+        feedback_type text NOT NULL,
+        comment text,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS analysis_consent_events (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL,
+        analysis_id varchar NOT NULL,
+        visibility text NOT NULL,
+        use_for_product_improvement boolean NOT NULL DEFAULT false,
+        use_for_ai_training boolean NOT NULL DEFAULT false,
+        use_for_anonymized_market_dataset boolean NOT NULL DEFAULT false,
+        allow_commercial_data_licensing boolean NOT NULL DEFAULT false,
+        consent_text_version text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS analysis_events (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        analysis_id varchar,
+        listing_mls_number text NOT NULL,
+        user_id varchar,
+        event_type text NOT NULL,
+        visibility text,
+        metadata jsonb,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS underwriting_assumption_snapshots (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        analysis_id varchar NOT NULL,
+        snapshot_type text NOT NULL,
+        assumptions jsonb NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ai_prompt_versions (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        version text NOT NULL,
+        prompt_template text,
+        metadata jsonb,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ai_output_versions (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        analysis_id varchar NOT NULL,
+        prompt_version text,
+        model_version text,
+        output_text text,
+        output_json jsonb,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS community_metric_snapshots (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        listing_mls_number text NOT NULL,
+        aggregate_json jsonb NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS parent_comment_id varchar`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS referenced_analysis_id varchar`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'public'`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active'`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS helpful_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS reply_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS report_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS is_pinned boolean NOT NULL DEFAULT false`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS user_display_snapshot text`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS metadata_json jsonb`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now()`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS edited_at timestamp`);
+    await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS deleted_at timestamp`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS total_analysis_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS public_analysis_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS unique_public_user_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS public_comment_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS unique_public_comment_user_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS latest_public_comment_at timestamp`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS latest_public_analysis_at timestamp`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS latest_comment_preview text`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS latest_comment_at timestamp`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS median_cap_rate real`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS median_cash_on_cash real`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS median_projected_rent real`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS median_noi real`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS median_monthly_cash_flow real`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS median_expense_ratio real`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS bullish_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS neutral_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS bearish_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS consensus_label text`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS confidence_score real`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS latest_private_note_at timestamp`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS pinned_comment_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS reported_comment_count integer NOT NULL DEFAULT 0`);
     log("App reporting tables ready", "db");
   } catch (error: any) {
     log(`Failed to ensure app tables: ${error.message}`, "db");

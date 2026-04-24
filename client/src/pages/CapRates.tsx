@@ -47,6 +47,13 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { MapLayersPanel, DEFAULT_LAYERS, type MapLayer } from "@/components/MapLayersPanel";
 import { NeighbourhoodOverlay } from "@/components/NeighbourhoodOverlay";
+import { CommunityAnalysisBadge } from "@/components/CommunityAnalysisBadge";
+import { AnalysisVisibilityToggle } from "@/components/AnalysisVisibilityToggle";
+import { AnalysisConsentNotice, type AnalysisConsentState } from "@/components/AnalysisConsentNotice";
+import { CommunityMetricsSummary } from "@/components/CommunityMetricsSummary";
+import { CommunityAnalysisModal } from "@/components/CommunityAnalysisModal";
+import { ListingCommentsSection } from "@/components/ListingCommentsSection";
+import { ListingCommentCountBadge } from "@/components/ListingCommentCountBadge";
 
 interface RepliersListing {
   mlsNumber: string;
@@ -225,17 +232,37 @@ function buildListingSignal(listing: RepliersListing & {
   };
 }
 
-function createCapRateIcon(capRate: number, isSelected: boolean): L.DivIcon {
+function createCapRateIcon(capRate: number, isSelected: boolean, aggregate?: ListingAnalysisAggregate | null): L.DivIcon {
   const color = getCapRateMarkerColor(capRate);
   const size = isSelected ? 44 : 36;
   const fontSize = isSelected ? 13 : 11;
   const border = isSelected ? "3px solid #2563eb" : "2px solid white";
   const shadow = isSelected ? "0 0 0 2px #2563eb, 0 2px 8px rgba(0,0,0,0.3)" : "0 2px 6px rgba(0,0,0,0.3)";
   const zIndex = isSelected ? 1000 : 1;
+  const communityCount = (aggregate?.publicAnalysisCount || 0) + (aggregate?.publicCommentCount || 0);
+  const badgeHtml = communityCount > 0
+    ? `<div style="
+        position:absolute;
+        right:-8px;
+        bottom:-6px;
+        min-width:18px;
+        height:18px;
+        padding:0 4px;
+        border-radius:999px;
+        background:#111827;
+        color:white;
+        font-size:10px;
+        font-weight:800;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        border:2px solid white;
+      ">${communityCount}</div>`
+    : "";
 
   return L.divIcon({
     className: "cap-rate-marker",
-    html: `<div style="
+    html: `<div style="position:relative"><div style="
       background: ${color};
       color: white;
       font-weight: 700;
@@ -253,8 +280,8 @@ function createCapRateIcon(capRate: number, isSelected: boolean): L.DivIcon {
       transition: transform 0.15s ease;
       line-height: 1;
       font-family: system-ui, -apple-system, sans-serif;
-    ">${capRate.toFixed(1)}%</div>`,
-    iconSize: [size, size],
+    ">${capRate.toFixed(1)}%</div>${badgeHtml}</div>`,
+    iconSize: [size + 10, size + 10],
     iconAnchor: [size / 2, size / 2],
   });
 }
@@ -459,10 +486,12 @@ function ClusteredListingsLayer({
   listings,
   selectedListingId,
   onSelectListing,
+  aggregatesMap,
 }: {
   listings: ListingWithCapRate[];
   selectedListingId?: string;
   onSelectListing: (listing: ListingWithCapRate) => void;
+  aggregatesMap: Record<string, ListingAnalysisAggregate>;
 }) {
   const map = useMap();
   const clusterRef = useRef<any>(null);
@@ -496,16 +525,20 @@ function ClusteredListingsLayer({
       const marker = L.marker(
         [listing.map.latitude, listing.map.longitude],
         {
-          icon: createCapRateIcon(listing.capRate, selectedListingId === listing.mlsNumber),
+          icon: createCapRateIcon(listing.capRate, selectedListingId === listing.mlsNumber, aggregatesMap[listing.mlsNumber]),
           capRate: listing.capRate,
         } as L.MarkerOptions & { capRate: number },
       );
+      const aggregate = aggregatesMap[listing.mlsNumber];
 
       marker.bindPopup(`
         <div style="min-width:200px">
           <p style="margin:0;font-weight:700;font-size:14px">${formatPrice(listing.listPrice)}</p>
           <p style="margin:4px 0 0;font-size:12px;color:#4b5563">${formatShortAddress(listing.address)}, ${listing.address?.city || ""}</p>
           <p style="margin:6px 0 0;font-size:12px;font-weight:700;color:${getCapRateMarkerColor(listing.capRate)}">${listing.capRate.toFixed(1)}% Yield</p>
+          ${aggregate ? `<p style="margin:6px 0 0;font-size:12px;color:#111827">${aggregate.publicAnalysisCount || 0} analyses · ${aggregate.publicCommentCount || 0} comments</p>` : ""}
+          ${aggregate?.medianMonthlyCashFlow != null ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563">Median CF: $${Math.round(aggregate.medianMonthlyCashFlow).toLocaleString()}/mo</p>` : ""}
+          ${aggregate?.consensusLabel ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563;text-transform:capitalize">Consensus: ${aggregate.consensusLabel}</p>` : ""}
         </div>
       `);
       marker.on("click", () => onSelectListing(listing));
@@ -590,9 +623,20 @@ export default function CapRates() {
   const [uwRentPerUnit, setUwRentPerUnit] = useState("");
   const [uwVacancy, setUwVacancy] = useState("5");
   const [uwExpenseRatio, setUwExpenseRatio] = useState("35");
+  const [uwDownPaymentPercent, setUwDownPaymentPercent] = useState("20");
+  const [uwInterestRate, setUwInterestRate] = useState("5.5");
+  const [uwAmortizationYears, setUwAmortizationYears] = useState("25");
   const [uwNoteText, setUwNoteText] = useState("");
-  const [commentBody, setCommentBody] = useState("");
-  const [communitySortBy, setCommunitySortBy] = useState<"top" | "new">("top");
+  const [analysisVisibility, setAnalysisVisibility] = useState<"public" | "private">("public");
+  const [analysisConsent, setAnalysisConsent] = useState<AnalysisConsentState>({
+    useForProductImprovement: false,
+    useForAiTraining: false,
+    useForAnonymizedMarketDataset: false,
+    allowCommercialDataLicensing: false,
+  });
+  const [communityCommentSort, setCommunityCommentSort] = useState<"newest" | "oldest" | "most_helpful" | "pinned">("pinned");
+  const [analysisSort, setAnalysisSort] = useState<"newest" | "most_useful" | "highest_cap_rate" | "most_conservative" | "most_bullish" | "most_bearish">("newest");
+  const [showCommunityModal, setShowCommunityModal] = useState(false);
 
   const { data: rentData = [] } = useQuery<RentPulseData[]>({
     queryKey: ["/api/rents/pulse"],
@@ -604,24 +648,44 @@ export default function CapRates() {
 
   const selectedMls = selectedListing?.mlsNumber;
 
-  const { data: communityNotes = [], refetch: refetchNotes } = useQuery<(UnderwritingNote & { userName?: string })[]>({
-    queryKey: ["/api/community/notes", selectedMls],
+  const { data: publicAnalyses = [], refetch: refetchPublicAnalyses } = useQuery<any[]>({
+    queryKey: ["/api/community/analyses", selectedMls, analysisSort],
     queryFn: async () => {
       if (!selectedMls) return [];
-      const res = await fetch(`/api/community/notes/${selectedMls}`);
+      const res = await fetch(`/api/community/analyses/${selectedMls}?sort=${analysisSort}`);
       return res.json();
     },
     enabled: !!selectedMls,
   });
 
-  const { data: communityComments = [], refetch: refetchComments } = useQuery<(ListingComment & { userName?: string })[]>({
-    queryKey: ["/api/community/comments", selectedMls],
+  const { data: myAnalyses = [], refetch: refetchMyAnalyses } = useQuery<any[]>({
+    queryKey: ["/api/community/my-analyses", selectedMls],
+    queryFn: async () => {
+      if (!selectedMls || !isAuthenticated) return [];
+      const res = await fetch(`/api/community/my-analyses/${selectedMls}`, { credentials: "include" });
+      return res.json();
+    },
+    enabled: !!selectedMls && isAuthenticated,
+  });
+
+  const { data: communityComments = [], refetch: refetchComments } = useQuery<any[]>({
+    queryKey: ["/api/community/comments", selectedMls, communityCommentSort],
     queryFn: async () => {
       if (!selectedMls) return [];
-      const res = await fetch(`/api/community/comments/${selectedMls}`);
+      const res = await fetch(`/api/community/comments/${selectedMls}?sort=${communityCommentSort}`);
       return res.json();
     },
     enabled: !!selectedMls,
+  });
+
+  const { data: privateNotes = [], refetch: refetchPrivateNotes } = useQuery<any[]>({
+    queryKey: ["/api/community/private-notes", selectedMls],
+    queryFn: async () => {
+      if (!selectedMls || !isAuthenticated) return [];
+      const res = await fetch(`/api/community/private-notes/${selectedMls}`, { credentials: "include" });
+      return res.json();
+    },
+    enabled: !!selectedMls && isAuthenticated,
   });
 
   const fetchAggregatesBatch = useCallback(async (mlsNumbers: string[]) => {
@@ -643,38 +707,48 @@ export default function CapRates() {
     }
   }, [listings, fetchAggregatesBatch]);
 
-  const submitNoteMutation = useMutation({
+  const submitAnalysisMutation = useMutation({
     mutationFn: async (data: {
       listingMlsNumber: string;
-      unitCount: number;
-      rentsJson: number[];
-      vacancy: number;
-      expenseRatio: number;
-      noteText: string;
+      title: string;
+      summary: string;
+      userNotes: string;
+      city?: string;
+      province?: string;
+      market?: string;
+      propertyType?: string;
+      listingPrice?: number;
+      visibility: "public" | "private";
+      assumptions: Record<string, unknown>;
+      calculatedMetrics: Record<string, unknown>;
+      listingSnapshot: Record<string, unknown>;
+      sourceContext: Record<string, unknown>;
+      dataUseConsent: AnalysisConsentState;
     }) => {
-      const res = await apiRequest("POST", "/api/community/notes", data);
+      const res = await apiRequest("POST", "/api/community/analyses", data);
       return res.json();
     },
     onSuccess: (_, variables) => {
-      toast({ title: "Underwriting note submitted", description: "+5 contribution points" });
-      refetchNotes();
+      toast({ title: "Analysis saved", description: variables.visibility === "public" ? "Visible to the community" : "Saved privately" });
+      refetchPublicAnalyses();
+      refetchMyAnalyses();
       setUwNoteText("");
       fetchAggregatesBatch([variables.listingMlsNumber]);
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message || "Failed to submit note", variant: "destructive" });
+      toast({ title: "Error", description: err.message || "Failed to save analysis", variant: "destructive" });
     },
   });
 
   const submitCommentMutation = useMutation({
-    mutationFn: async (data: { listingMlsNumber: string; body: string }) => {
+    mutationFn: async (data: { listingMlsNumber: string; body: string; visibility: "public" | "private"; parentCommentId?: string }) => {
       const res = await apiRequest("POST", "/api/community/comments", data);
       return res.json();
     },
     onSuccess: (_, variables) => {
-      toast({ title: "Comment posted", description: "+1 contribution point" });
+      toast({ title: variables.visibility === "private" ? "Private note saved" : "Comment posted" });
       refetchComments();
-      setCommentBody("");
+      refetchPrivateNotes();
       fetchAggregatesBatch([variables.listingMlsNumber]);
     },
     onError: (err: any) => {
@@ -682,14 +756,58 @@ export default function CapRates() {
     },
   });
 
-  const voteMutation = useMutation({
-    mutationFn: async (data: { targetType: string; targetId: string; value: number }) => {
-      const res = await apiRequest("POST", "/api/community/vote", data);
+  const commentHelpfulMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const res = await apiRequest("POST", `/api/community/comments/${commentId}/helpful`, {});
       return res.json();
     },
     onSuccess: () => {
-      refetchNotes();
       refetchComments();
+      if (selectedMls) fetchAggregatesBatch([selectedMls]);
+    },
+  });
+
+  const commentReportMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const res = await apiRequest("POST", `/api/community/comments/${commentId}/report`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchComments();
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const res = await apiRequest("DELETE", `/api/community/comments/${commentId}`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchComments();
+      refetchPrivateNotes();
+      if (selectedMls) fetchAggregatesBatch([selectedMls]);
+    },
+  });
+
+  const analysisFeedbackMutation = useMutation({
+    mutationFn: async ({ analysisId, feedbackType }: { analysisId: string; feedbackType: "useful" | "not_useful" | "disagree" }) => {
+      const res = await apiRequest("POST", `/api/community/analyses/${analysisId}/feedback`, { feedbackType });
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchPublicAnalyses();
+    },
+  });
+
+  const duplicateAnalysisMutation = useMutation({
+    mutationFn: async (analysisId: string) => {
+      const res = await apiRequest("POST", `/api/community/analyses/${analysisId}/duplicate`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchMyAnalyses();
+      refetchPublicAnalyses();
+      if (selectedMls) fetchAggregatesBatch([selectedMls]);
     },
   });
 
@@ -1170,20 +1288,15 @@ export default function CapRates() {
             <div className="flex items-center justify-between mt-1">
               {(() => {
                 const agg = aggregatesMap[listing.mlsNumber];
-                if (agg && ((agg.analysisCount ?? 0) > 0 || (agg.commentCount ?? 0) > 0)) {
-                  const ac = agg.analysisCount ?? 0;
-                  const cc = agg.commentCount ?? 0;
+                if (agg && ((agg.publicAnalysisCount ?? 0) > 0 || (agg.publicCommentCount ?? 0) > 0)) {
                   return (
-                    <div className="flex items-center gap-2">
-                      {agg.communityCapRate != null && (
-                        <Badge variant="secondary" className="text-[9px] px-1 py-0" data-testid={`badge-community-cap-${listing.mlsNumber}`}>
-                          <Users className="h-2.5 w-2.5 mr-0.5" />
-                          {agg.communityCapRate.toFixed(1)}%
-                        </Badge>
-                      )}
-                      <span className="text-[9px] text-muted-foreground" data-testid={`text-community-stats-${listing.mlsNumber}`}>
-                        {ac} {ac === 1 ? "analysis" : "analyses"} · {cc} {cc === 1 ? "note" : "notes"}
-                      </span>
+                    <div className="flex flex-col items-start gap-1">
+                      <CommunityAnalysisBadge aggregate={agg} />
+                      <div className="flex flex-wrap gap-2 text-[9px] text-muted-foreground" data-testid={`text-community-stats-${listing.mlsNumber}`}>
+                        <span>By {agg.uniquePublicUserCount || 0} users</span>
+                        {agg.medianCapRate != null && <span>{agg.medianCapRate.toFixed(1)}% median cap</span>}
+                        {agg.medianMonthlyCashFlow != null && <span>${Math.round(agg.medianMonthlyCashFlow).toLocaleString()}/mo median CF</span>}
+                      </div>
                     </div>
                   );
                 }
@@ -1206,6 +1319,17 @@ export default function CapRates() {
                 Analyze Deal
               </Badge>
             </div>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              <ListingCommentCountBadge
+                count={aggregatesMap[listing.mlsNumber]?.publicCommentCount}
+                hasRecent={Boolean(aggregatesMap[listing.mlsNumber]?.latestPublicCommentAt)}
+              />
+              {aggregatesMap[listing.mlsNumber]?.latestPublicAnalysisAt && (
+                <Badge variant="outline" className="text-[10px]">
+                  Last analyzed {new Date(aggregatesMap[listing.mlsNumber].latestPublicAnalysisAt as Date | string).toLocaleDateString()}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1216,54 +1340,101 @@ export default function CapRates() {
     if (!selectedListing || !isAuthenticated) return;
     const unitCount = parseInt(uwUnitCount) || 1;
     const rentPerUnit = parseFloat(uwRentPerUnit) || selectedListing.estimatedMonthlyRent;
-    const rents = Array(unitCount).fill(rentPerUnit);
-    submitNoteMutation.mutate({
+    const price = typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice;
+    const metrics = computeUwCapRate();
+    submitAnalysisMutation.mutate({
       listingMlsNumber: selectedListing.mlsNumber,
-      unitCount,
-      rentsJson: rents,
-      vacancy: parseFloat(uwVacancy) || 5,
-      expenseRatio: parseFloat(uwExpenseRatio) || 35,
-      noteText: uwNoteText,
+      title: `${formatShortAddress(selectedListing.address)} underwriting`,
+      summary: metrics.monthlyCashFlow > 0
+        ? "Positive monthly cash flow under current underwriting."
+        : "Negative monthly cash flow under current underwriting.",
+      userNotes: uwNoteText,
+      city: selectedListing.address?.city,
+      province: selectedListing.address?.state,
+      market: selectedListing.address?.city,
+      propertyType: selectedListing.details?.propertyType || selectedListing.type,
+      listingPrice: price,
+      visibility: analysisVisibility,
+      assumptions: {
+        rent: {
+          unitCount,
+          rentPerUnit,
+          projectedMonthlyRent: unitCount * rentPerUnit,
+        },
+        vacancy: { percent: parseFloat(uwVacancy) || 5 },
+        expenses: { expenseRatio: parseFloat(uwExpenseRatio) || 35 },
+        financing: {
+          downPaymentPercent: parseFloat(uwDownPaymentPercent) || 20,
+          interestRate: parseFloat(uwInterestRate) || 5.5,
+          amortizationYears: parseFloat(uwAmortizationYears) || 25,
+        },
+      },
+      calculatedMetrics: {
+        capRate: metrics.capRate,
+        annualNoi: metrics.noi,
+        monthlyCashFlow: metrics.monthlyCashFlow,
+        cashOnCash: metrics.cashOnCash,
+        dscr: metrics.dscr,
+        projectedRent: unitCount * rentPerUnit,
+      },
+      listingSnapshot: {
+        address: selectedListing.address,
+        listPrice: price,
+        details: selectedListing.details,
+        taxes: selectedListing.taxes,
+        mlsNumber: selectedListing.mlsNumber,
+      },
+      sourceContext: {
+        source: "cap_rates_map",
+        selectedCapRate: selectedListing.capRate,
+        selectedEstimatedRent: selectedListing.estimatedMonthlyRent,
+      },
+      dataUseConsent: analysisConsent,
     });
   };
 
-  const handleSubmitComment = () => {
-    if (!selectedListing || !isAuthenticated || !commentBody.trim()) return;
+  const handleSubmitComment = (body: string, visibility: "public" | "private", parentCommentId?: string) => {
+    if (!selectedListing || !isAuthenticated || !body.trim()) return;
     submitCommentMutation.mutate({
       listingMlsNumber: selectedListing.mlsNumber,
-      body: commentBody.trim(),
+      body,
+      visibility,
+      parentCommentId,
     });
   };
 
   const computeUwCapRate = () => {
-    if (!selectedListing) return { capRate: 0, noi: 0, grossRent: 0 };
+    if (!selectedListing) return { capRate: 0, noi: 0, grossRent: 0, monthlyCashFlow: 0, cashOnCash: 0, dscr: 0, monthlyDebtService: 0 };
     const unitCount = parseInt(uwUnitCount) || 1;
     const rentPerUnit = parseFloat(uwRentPerUnit) || selectedListing.estimatedMonthlyRent;
     const vacancy = parseFloat(uwVacancy) || 5;
     const expenseRatio = parseFloat(uwExpenseRatio) || 35;
+    const downPaymentPercent = parseFloat(uwDownPaymentPercent) || 20;
+    const interestRate = parseFloat(uwInterestRate) || 5.5;
+    const amortizationYears = parseFloat(uwAmortizationYears) || 25;
     const price = typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice;
     const grossRent = unitCount * rentPerUnit * 12;
     const effectiveRent = grossRent * (1 - vacancy / 100);
     const expenses = grossRent * (expenseRatio / 100);
     const noi = effectiveRent - expenses;
     const capRate = price > 0 ? (noi / price) * 100 : 0;
-    return { capRate: Math.max(0, capRate), noi, grossRent };
+    const loanAmount = price * (1 - downPaymentPercent / 100);
+    const monthlyRate = interestRate / 100 / 12;
+    const amortizationMonths = amortizationYears * 12;
+    const monthlyDebtService = monthlyRate > 0
+      ? loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, amortizationMonths)) / (Math.pow(1 + monthlyRate, amortizationMonths) - 1)
+      : loanAmount / Math.max(amortizationMonths, 1);
+    const monthlyCashFlow = noi / 12 - monthlyDebtService;
+    const cashInvested = price * (downPaymentPercent / 100);
+    const cashOnCash = cashInvested > 0 ? ((monthlyCashFlow * 12) / cashInvested) * 100 : 0;
+    const dscr = monthlyDebtService > 0 ? (noi / 12) / monthlyDebtService : 0;
+    return { capRate: Math.max(0, capRate), noi, grossRent, monthlyCashFlow, cashOnCash, dscr, monthlyDebtService };
   };
 
   const renderDetailPanel = () => {
     if (!selectedListing) return null;
     const agg = aggregatesMap[selectedListing.mlsNumber];
     const uwCalc = computeUwCapRate();
-
-    const sortedNotes = [...communityNotes].sort((a, b) => {
-      if (communitySortBy === "top") return (b.score || 0) - (a.score || 0);
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-
-    const sortedComments = [...communityComments].sort((a, b) => {
-      if (communitySortBy === "top") return (b.score || 0) - (a.score || 0);
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
 
     return (
       <div data-testid="panel-listing-detail">
@@ -1312,9 +1483,9 @@ export default function CapRates() {
                 <TabsTrigger value="community" className="flex-1 rounded-none text-xs py-2" data-testid="tab-community">
                   <MessageSquare className="h-3 w-3 mr-1" />
                   Community
-                  {agg && ((agg.analysisCount ?? 0) > 0 || (agg.commentCount ?? 0) > 0) && (
+                  {agg && ((agg.publicAnalysisCount ?? 0) > 0 || (agg.publicCommentCount ?? 0) > 0) && (
                     <Badge variant="secondary" className="ml-1 text-[9px] px-1 py-0">
-                      {(agg.analysisCount ?? 0) + (agg.commentCount ?? 0)}
+                      {(agg.publicAnalysisCount ?? 0) + (agg.publicCommentCount ?? 0)}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -1392,6 +1563,12 @@ export default function CapRates() {
                   <Star className="h-4 w-4 mr-2" />
                   Save to shortlist
                 </Button>
+                <CommunityMetricsSummary aggregate={agg} />
+                {(agg?.publicAnalysisCount || 0) > 0 && (
+                  <Button variant="outline" className="w-full" onClick={() => setShowCommunityModal(true)}>
+                    View community analyses
+                  </Button>
+                )}
 
                 <Separator />
 
@@ -1531,10 +1708,10 @@ export default function CapRates() {
                 <div>
                   <h4 className="text-sm font-semibold mb-1 flex items-center gap-2">
                     <PenLine className="h-4 w-4" />
-                    Community Underwriting
+                    Save Your Analysis
                   </h4>
                   <p className="text-xs text-muted-foreground mb-3">
-                    Submit your analysis to help the community value this listing.
+                    Save structured underwriting to this listing. Public analyses appear in community history by default.
                   </p>
                 </div>
 
@@ -1586,6 +1763,18 @@ export default function CapRates() {
                       data-testid="input-uw-expense-ratio"
                     />
                   </div>
+                  <div>
+                    <Label className="text-xs">Down Payment (%)</Label>
+                    <Input type="number" min="0" max="100" value={uwDownPaymentPercent} onChange={(e) => setUwDownPaymentPercent(e.target.value)} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Interest Rate (%)</Label>
+                    <Input type="number" min="0" max="25" value={uwInterestRate} onChange={(e) => setUwInterestRate(e.target.value)} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Amortization (yrs)</Label>
+                    <Input type="number" min="1" max="40" value={uwAmortizationYears} onChange={(e) => setUwAmortizationYears(e.target.value)} className="mt-1" />
+                  </div>
                 </div>
 
                 <Separator />
@@ -1610,16 +1799,34 @@ export default function CapRates() {
                       {formatPriceFull(uwCalc.noi)}
                     </span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Debt Service / mo</span>
+                    <span>{formatPriceFull(uwCalc.monthlyDebtService * 12)}/yr</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Monthly Cash Flow</span>
+                    <span className={uwCalc.monthlyCashFlow >= 0 ? "text-green-600" : "text-red-600"}>
+                      {formatPriceFull(uwCalc.monthlyCashFlow * 12)}/yr
+                    </span>
+                  </div>
                   <div className="flex justify-between font-bold text-lg">
                     <span>Your Yield</span>
                     <span className={getCapRateColor(uwCalc.capRate)}>
                       {uwCalc.capRate.toFixed(2)}%
                     </span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cash-on-Cash</span>
+                    <span>{uwCalc.cashOnCash.toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">DSCR</span>
+                    <span>{uwCalc.dscr.toFixed(2)}</span>
+                  </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs">Notes (optional)</Label>
+                  <Label className="text-xs">Analysis notes</Label>
                   <Textarea
                     value={uwNoteText}
                     onChange={(e) => setUwNoteText(e.target.value)}
@@ -1629,183 +1836,97 @@ export default function CapRates() {
                     data-testid="input-uw-note"
                   />
                 </div>
+                <AnalysisVisibilityToggle visibility={analysisVisibility} onChange={setAnalysisVisibility} />
+                <AnalysisConsentNotice value={analysisConsent} onChange={setAnalysisConsent} />
 
                 {isAuthenticated ? (
                   <Button
                     className="w-full"
                     onClick={handleSubmitUnderwriting}
-                    disabled={submitNoteMutation.isPending}
+                    disabled={submitAnalysisMutation.isPending}
                     data-testid="button-submit-underwriting"
                   >
-                    {submitNoteMutation.isPending ? (
+                    {submitAnalysisMutation.isPending ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
                       <Send className="h-4 w-4 mr-2" />
                     )}
-                    Submit Correction
+                    Save analysis
                   </Button>
                 ) : (
                   <div className="text-center text-xs text-muted-foreground p-3 border rounded-md">
-                    <a href="/login" className="text-primary underline" data-testid="link-login-underwrite">Sign in</a> to submit your underwriting analysis
+                    <a href="/login" className="text-primary underline" data-testid="link-login-underwrite">Sign in</a> to save your underwriting analysis
                   </div>
                 )}
               </TabsContent>
 
               <TabsContent value="community" className="p-4 space-y-4 mt-0">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Community ({(communityNotes.length || 0) + (communityComments.length || 0)})
+                    Community
                   </h4>
-                  <Select value={communitySortBy} onValueChange={(v) => setCommunitySortBy(v as "top" | "new")}>
-                    <SelectTrigger className="h-7 w-[80px] text-[10px]" data-testid="select-community-sort">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="top">Top</SelectItem>
-                      <SelectItem value="new">New</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {sortedNotes.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Underwriting Notes</p>
-                    {sortedNotes.map((note) => {
-                      const rents = Array.isArray(note.rentsJson) ? (note.rentsJson as number[]) : [];
-                      const totalRent = rents.reduce((a, b) => a + b, 0);
-                      return (
-                        <div key={note.id} className="border rounded-md p-2.5 space-y-1.5" data-testid={`card-note-${note.id}`}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium" data-testid={`text-note-user-${note.id}`}>
-                              {(note as any).userName || "Investor"}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => isAuthenticated && voteMutation.mutate({ targetType: "underwriting_note", targetId: note.id, value: 1 })}
-                                data-testid={`button-upvote-note-${note.id}`}
-                              >
-                                <ThumbsUp className="h-3 w-3" />
-                              </Button>
-                              <span className="text-xs font-medium min-w-[16px] text-center" data-testid={`text-note-score-${note.id}`}>
-                                {note.score || 0}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => isAuthenticated && voteMutation.mutate({ targetType: "underwriting_note", targetId: note.id, value: -1 })}
-                                data-testid={`button-downvote-note-${note.id}`}
-                              >
-                                <ThumbsDown className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-                            {note.unitCount && <span>{note.unitCount} units</span>}
-                            {totalRent > 0 && <span>${totalRent.toLocaleString()}/mo total rent</span>}
-                            {note.vacancy != null && <span>{note.vacancy}% vacancy</span>}
-                            {note.expenseRatio != null && <span>{note.expenseRatio}% expenses</span>}
-                          </div>
-                          {note.noteText && (
-                            <p className="text-xs text-muted-foreground">{note.noteText}</p>
-                          )}
-                          <p className="text-[9px] text-muted-foreground">
-                            {new Date(note.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {sortedComments.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Comments</p>
-                    {sortedComments.map((comment) => (
-                      <div key={comment.id} className="border rounded-md p-2.5 space-y-1" data-testid={`card-comment-${comment.id}`}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium" data-testid={`text-comment-user-${comment.id}`}>
-                            {(comment as any).userName || "Investor"}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => isAuthenticated && voteMutation.mutate({ targetType: "listing_comment", targetId: comment.id, value: 1 })}
-                              data-testid={`button-upvote-comment-${comment.id}`}
-                            >
-                              <ThumbsUp className="h-3 w-3" />
-                            </Button>
-                            <span className="text-xs font-medium min-w-[16px] text-center" data-testid={`text-comment-score-${comment.id}`}>
-                              {comment.score || 0}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => isAuthenticated && voteMutation.mutate({ targetType: "listing_comment", targetId: comment.id, value: -1 })}
-                              data-testid={`button-downvote-comment-${comment.id}`}
-                            >
-                              <ThumbsDown className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                        <p className="text-xs">{comment.body}</p>
-                        <p className="text-[9px] text-muted-foreground">
-                          {new Date(comment.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {sortedNotes.length === 0 && sortedComments.length === 0 && (
-                  <div className="text-center py-6">
-                    <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm font-medium mb-1">No community data yet</p>
-                    <p className="text-xs text-muted-foreground">Be the first to underwrite or comment on this listing.</p>
-                  </div>
-                )}
-
-                <Separator />
-
-                {isAuthenticated ? (
-                  <div className="space-y-2">
-                    <Label className="text-xs">Add a comment</Label>
-                    <div className="flex gap-2">
-                      <Textarea
-                        value={commentBody}
-                        onChange={(e) => setCommentBody(e.target.value)}
-                        placeholder="Share your thoughts on this listing..."
-                        className="text-xs resize-none flex-1"
-                        rows={2}
-                        data-testid="input-comment"
-                      />
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={handleSubmitComment}
-                      disabled={!commentBody.trim() || submitCommentMutation.isPending}
-                      data-testid="button-submit-comment"
-                    >
-                      {submitCommentMutation.isPending ? (
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      ) : (
-                        <Send className="h-3 w-3 mr-1" />
-                      )}
-                      Post Comment
+                  <div className="flex gap-2">
+                    <Select value={analysisSort} onValueChange={(v) => setAnalysisSort(v as any)}>
+                      <SelectTrigger className="h-8 w-[150px] text-[11px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest analyses</SelectItem>
+                        <SelectItem value="most_useful">Most useful</SelectItem>
+                        <SelectItem value="highest_cap_rate">Highest cap rate</SelectItem>
+                        <SelectItem value="most_conservative">Most conservative</SelectItem>
+                        <SelectItem value="most_bullish">Most bullish</SelectItem>
+                        <SelectItem value="most_bearish">Most bearish</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="sm" onClick={() => setShowCommunityModal(true)}>
+                      View community analyses
                     </Button>
                   </div>
-                ) : (
-                  <div className="text-center text-xs text-muted-foreground p-3 border rounded-md">
-                    <a href="/login" className="text-primary underline" data-testid="link-login-comment">Sign in</a> to join the discussion
+                </div>
+
+                <CommunityMetricsSummary aggregate={agg} />
+
+                {myAnalyses.length > 0 && (
+                  <div className="rounded-lg border border-border/60 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Your saved analyses</p>
+                    <div className="mt-2 space-y-2">
+                      {myAnalyses.slice(0, 2).map((analysis) => (
+                        <div key={analysis.id} className="rounded-md border border-border/60 p-2">
+                          <p className="text-sm font-medium">{analysis.title || "Saved analysis"}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(analysis.updatedAt || analysis.createdAt).toLocaleString()} · {analysis.visibility}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
+
+                {privateNotes.length > 0 && (
+                  <div className="rounded-lg border border-border/60 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Your private notes</p>
+                    <div className="mt-2 space-y-2">
+                      {privateNotes.slice(0, 3).map((note) => (
+                        <div key={note.id} className="rounded-md border border-border/60 p-2">
+                          <p className="text-sm">{note.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <ListingCommentsSection
+                  comments={communityComments}
+                  currentUserId={(user as any)?.id || null}
+                  sort={communityCommentSort}
+                  onSortChange={setCommunityCommentSort}
+                  onSubmitComment={handleSubmitComment}
+                  onHelpful={(commentId) => commentHelpfulMutation.mutate(commentId)}
+                  onReport={(commentId) => commentReportMutation.mutate(commentId)}
+                  onReply={(commentId, body) => handleSubmitComment(body, "public", commentId)}
+                  onDelete={(commentId) => deleteCommentMutation.mutate(commentId)}
+                  isAuthenticated={isAuthenticated}
+                />
               </TabsContent>
             </Tabs>
           </CardContent>

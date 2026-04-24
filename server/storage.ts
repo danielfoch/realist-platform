@@ -1600,18 +1600,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createListingComment(comment: InsertListingComment): Promise<ListingComment> {
-    const [result] = await db.insert(listingComments).values(comment).returning();
+    const [user] = await db.select({
+      firstName: users.firstName,
+      lastName: users.lastName,
+    }).from(users).where(eq(users.id, comment.userId)).limit(1);
+
+    const [result] = await db.insert(listingComments).values({
+      ...comment,
+      body: sanitizeUserText(comment.body),
+      userDisplaySnapshot: comment.userDisplaySnapshot || anonymizeDisplayName(user?.firstName, user?.lastName),
+      metadataJson: comment.metadataJson || null,
+    }).returning();
     return result;
   }
 
   async getListingCommentsByListing(mlsNumber: string): Promise<(ListingComment & { user: { id: string; name: string | null } })[]> {
     const results = await db.select({
       comment: listingComments,
-      user: { id: users.id, name: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.firstName}, 'Anonymous')` },
+      user: { id: users.id, name: sql<string>`COALESCE(${listingComments.userDisplaySnapshot}, ${users.firstName} || ' ' || ${users.lastName}, ${users.firstName}, 'Anonymous')` },
     }).from(listingComments)
       .innerJoin(users, eq(listingComments.userId, users.id))
-      .where(eq(listingComments.listingMlsNumber, mlsNumber))
-      .orderBy(desc(listingComments.score), desc(listingComments.createdAt));
+      .where(and(
+        eq(listingComments.listingMlsNumber, mlsNumber),
+        eq(listingComments.visibility, "public"),
+        eq(listingComments.status, "active"),
+      ))
+      .orderBy(desc(listingComments.isPinned), desc(listingComments.helpfulCount), desc(listingComments.createdAt));
     return results.map(r => ({ ...r.comment, user: r.user }));
   }
 
@@ -1619,6 +1633,106 @@ export class DatabaseStorage implements IStorage {
     await db.update(listingComments)
       .set({ score: sql`GREATEST(0, COALESCE(${listingComments.score}, 0) + ${delta})` })
       .where(eq(listingComments.id, id));
+  }
+
+  async getListingComment(id: string): Promise<ListingComment | undefined> {
+    const [result] = await db.select().from(listingComments).where(eq(listingComments.id, id));
+    return result;
+  }
+
+  async updateListingComment(id: string, userId: string, updates: Partial<ListingComment>): Promise<ListingComment | undefined> {
+    const [existing] = await db.select().from(listingComments)
+      .where(and(eq(listingComments.id, id), eq(listingComments.userId, userId)))
+      .limit(1);
+    if (!existing) return undefined;
+
+    const [result] = await db.update(listingComments)
+      .set({
+        ...updates,
+        body: updates.body != null ? sanitizeUserText(updates.body) : existing.body,
+        editedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(listingComments.id, id))
+      .returning();
+    return result;
+  }
+
+  async listPublicListingCommentsByListing(mlsNumber: string, sortBy: "newest" | "oldest" | "most_helpful" | "pinned"): Promise<any[]> {
+    let orderByClause: any[] = [desc(listingComments.isPinned)];
+    if (sortBy === "oldest") orderByClause = [desc(listingComments.isPinned), asc(listingComments.createdAt)];
+    if (sortBy === "most_helpful") orderByClause = [desc(listingComments.isPinned), desc(listingComments.helpfulCount), desc(listingComments.createdAt)];
+    if (sortBy === "newest") orderByClause = [desc(listingComments.isPinned), desc(listingComments.createdAt)];
+    if (sortBy === "pinned") orderByClause = [desc(listingComments.isPinned), desc(listingComments.helpfulCount), desc(listingComments.createdAt)];
+
+    const results = await db.select({
+      comment: listingComments,
+      user: {
+        id: users.id,
+        displayName: sql<string>`COALESCE(${listingComments.userDisplaySnapshot}, ${users.firstName} || ' ' || ${users.lastName}, ${users.firstName}, 'Anonymous')`,
+      },
+    }).from(listingComments)
+      .innerJoin(users, eq(listingComments.userId, users.id))
+      .where(and(
+        eq(listingComments.listingMlsNumber, mlsNumber),
+        eq(listingComments.visibility, "public"),
+        eq(listingComments.status, "active"),
+      ))
+      .orderBy(...orderByClause);
+
+    return results.map(({ comment, user }) => ({ ...comment, user }));
+  }
+
+  async listPrivateListingNotesByListing(mlsNumber: string, userId: string): Promise<any[]> {
+    const results = await db.select().from(listingComments)
+      .where(and(
+        eq(listingComments.listingMlsNumber, mlsNumber),
+        eq(listingComments.userId, userId),
+        eq(listingComments.visibility, "private"),
+        eq(listingComments.status, "active"),
+      ))
+      .orderBy(desc(listingComments.updatedAt));
+    return results;
+  }
+
+  async softDeleteListingComment(id: string, userId: string): Promise<ListingComment | undefined> {
+    const [result] = await db.update(listingComments)
+      .set({
+        status: "deleted",
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(listingComments.id, id), eq(listingComments.userId, userId)))
+      .returning();
+    return result;
+  }
+
+  async markCommentHelpful(commentId: string, userId: string): Promise<boolean> {
+    const existing = await this.getVote(userId, "listing_comment_helpful", commentId);
+    if (existing?.value === 1) return false;
+    await this.upsertVote({ userId, targetType: "listing_comment_helpful", targetId: commentId, value: 1 });
+    if (!existing) {
+      await db.update(listingComments)
+        .set({ helpfulCount: sql`COALESCE(${listingComments.helpfulCount}, 0) + 1`, updatedAt: new Date() })
+        .where(eq(listingComments.id, commentId));
+    }
+    return true;
+  }
+
+  async reportComment(commentId: string, userId: string): Promise<boolean> {
+    const existing = await this.getVote(userId, "listing_comment_report", commentId);
+    if (existing?.value === 1) return false;
+    await this.upsertVote({ userId, targetType: "listing_comment_report", targetId: commentId, value: 1 });
+    if (!existing) {
+      await db.update(listingComments)
+        .set({
+          reportCount: sql`COALESCE(${listingComments.reportCount}, 0) + 1`,
+          status: sql`CASE WHEN COALESCE(${listingComments.reportCount}, 0) + 1 >= 3 THEN 'flagged' ELSE ${listingComments.status} END`,
+          updatedAt: new Date(),
+        })
+        .where(eq(listingComments.id, commentId));
+    }
+    return true;
   }
 
   async upsertVote(vote: InsertVote): Promise<Vote> {
@@ -1705,6 +1819,117 @@ export class DatabaseStorage implements IStorage {
       return result;
     }
     const [result] = await db.insert(listingAnalysisAggregates).values(data).returning();
+    return result;
+  }
+
+  async createPropertyAnalysis(analysis: InsertPropertyAnalysis): Promise<PropertyAnalysis> {
+    const [result] = await db.insert(propertyAnalyses).values(analysis).returning();
+    return result;
+  }
+
+  async updatePropertyAnalysis(id: string, userId: string, updates: Partial<PropertyAnalysis>): Promise<PropertyAnalysis | undefined> {
+    const [result] = await db.update(propertyAnalyses)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(propertyAnalyses.id, id), eq(propertyAnalyses.userId, userId)))
+      .returning();
+    return result;
+  }
+
+  async getPropertyAnalysis(id: string): Promise<PropertyAnalysis | undefined> {
+    const [result] = await db.select().from(propertyAnalyses).where(eq(propertyAnalyses.id, id));
+    return result;
+  }
+
+  async listPublicPropertyAnalysesByListing(mlsNumber: string): Promise<any[]> {
+    const rows = await db.select({
+      analysis: propertyAnalyses,
+      user: {
+        id: users.id,
+        displayName: sql<string>`COALESCE(${users.firstName}, 'Community investor')`,
+      },
+      usefulCount: sql<number>`COALESCE(SUM(CASE WHEN ${analysisFeedback.feedbackType} = 'useful' THEN 1 ELSE 0 END), 0)::int`,
+      notUsefulCount: sql<number>`COALESCE(SUM(CASE WHEN ${analysisFeedback.feedbackType} = 'not_useful' THEN 1 ELSE 0 END), 0)::int`,
+      disagreeCount: sql<number>`COALESCE(SUM(CASE WHEN ${analysisFeedback.feedbackType} = 'disagree' THEN 1 ELSE 0 END), 0)::int`,
+    }).from(propertyAnalyses)
+      .innerJoin(users, eq(propertyAnalyses.userId, users.id))
+      .leftJoin(analysisFeedback, eq(analysisFeedback.analysisId, propertyAnalyses.id))
+      .where(and(
+        eq(propertyAnalyses.listingMlsNumber, mlsNumber),
+        eq(propertyAnalyses.visibility, "public"),
+        eq(propertyAnalyses.isDeleted, false),
+      ))
+      .groupBy(propertyAnalyses.id, users.id)
+      .orderBy(desc(propertyAnalyses.createdAt));
+
+    return rows.map(({ analysis, user, usefulCount, notUsefulCount, disagreeCount }) => ({
+      ...analysis,
+      user: {
+        ...user,
+        displayName: anonymizeDisplayName(user.displayName, null),
+      },
+      usefulCount,
+      notUsefulCount,
+      disagreeCount,
+    }));
+  }
+
+  async listUserPropertyAnalysesByListing(mlsNumber: string, userId: string): Promise<any[]> {
+    return db.select().from(propertyAnalyses)
+      .where(and(
+        eq(propertyAnalyses.listingMlsNumber, mlsNumber),
+        eq(propertyAnalyses.userId, userId),
+        eq(propertyAnalyses.isDeleted, false),
+      ))
+      .orderBy(desc(propertyAnalyses.updatedAt));
+  }
+
+  async createAnalysisAssumptionChanges(changes: InsertAnalysisAssumptionChange[]): Promise<AnalysisAssumptionChange[]> {
+    if (changes.length === 0) return [];
+    return db.insert(analysisAssumptionChanges).values(changes).returning();
+  }
+
+  async createAnalysisFeedback(feedback: InsertAnalysisFeedback): Promise<AnalysisFeedback> {
+    const [result] = await db.insert(analysisFeedback).values(feedback).returning();
+    return result;
+  }
+
+  async getAnalysisFeedbackByUser(analysisId: string, userId: string, feedbackType: string): Promise<AnalysisFeedback | undefined> {
+    const [result] = await db.select().from(analysisFeedback)
+      .where(and(
+        eq(analysisFeedback.analysisId, analysisId),
+        eq(analysisFeedback.userId, userId),
+        eq(analysisFeedback.feedbackType, feedbackType),
+      ));
+    return result;
+  }
+
+  async createAnalysisConsentEvent(event: InsertAnalysisConsentEvent): Promise<AnalysisConsentEvent> {
+    const [result] = await db.insert(analysisConsentEvents).values(event).returning();
+    return result;
+  }
+
+  async createAnalysisEvent(event: InsertAnalysisEvent): Promise<AnalysisEvent> {
+    const [result] = await db.insert(analysisEvents).values(event).returning();
+    return result;
+  }
+
+  async createUnderwritingAssumptionSnapshot(snapshot: InsertUnderwritingAssumptionSnapshot): Promise<UnderwritingAssumptionSnapshot> {
+    const [result] = await db.insert(underwritingAssumptionSnapshots).values(snapshot).returning();
+    return result;
+  }
+
+  async createAiPromptVersion(version: InsertAiPromptVersion): Promise<AiPromptVersion> {
+    const [result] = await db.insert(aiPromptVersions).values(version).returning();
+    return result;
+  }
+
+  async createAiOutputVersion(version: InsertAiOutputVersion): Promise<AiOutputVersion> {
+    const [result] = await db.insert(aiOutputVersions).values(version).returning();
+    return result;
+  }
+
+  async createCommunityMetricSnapshot(snapshot: InsertCommunityMetricSnapshot): Promise<CommunityMetricSnapshot> {
+    const [result] = await db.insert(communityMetricSnapshots).values(snapshot).returning();
     return result;
   }
 
