@@ -18,7 +18,6 @@ import { LeadCaptureModal } from "@/components/LeadCaptureModal";
 import { RentVsBuyCalculator } from "@/components/RentVsBuyCalculator";
 import { RenoQuoteWizard } from "@/components/RenoQuoteWizard";
 import { MLISelectCalculator } from "@/components/MLISelectCalculator";
-import { ListingImport } from "@/components/ListingImport";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -353,47 +352,6 @@ export default function Home({ embedded }: { embedded?: boolean }) {
       search_query: nlPrompt || undefined,
     });
   }, [showResults, leadCaptured, calculatorType, strategy, inputs.purchasePrice, inputs.monthlyRent, city, region, propertyType, results.capRate, results.cashOnCash, results.irr]);
-
-  const handleListingImport = (listing: {
-    address: string;
-    city: string;
-    province: string;
-    postalCode: string;
-    country: "canada" | "usa";
-    price: number;
-  }) => {
-    setAddress(listing.address);
-    setCity(listing.city);
-    setRegion(listing.province);
-    setCountry(listing.country);
-    setPostalCode(listing.postalCode);
-    if (listing.price > 0) {
-      setListingPrice(listing.price);
-      setInputs((prev) => ({
-        ...prev,
-        purchasePrice: listing.price,
-        closingCosts: Math.round(listing.price * 0.03),
-      }));
-    }
-    setPropertyType(listing.propertyType || listing.buildingType || "");
-    captureInvestorPreference({
-      geography: listing.city || undefined,
-      preferred_geographies: [listing.city, [listing.city, listing.province].filter(Boolean).join(", ")].filter(Boolean) as string[],
-      province: listing.province || undefined,
-      budget_max: listing.price || undefined,
-      property_type: listing.propertyType || listing.buildingType || undefined,
-      property_types: [listing.propertyType, listing.buildingType].filter(Boolean) as string[],
-      financing_intent: true,
-    });
-
-    track({
-      event: "listing_viewed",
-      listing_id: [listing.address, listing.city, listing.province].filter(Boolean).join(", "),
-      city: listing.city || undefined,
-      property_type: listing.propertyType || listing.buildingType || undefined,
-      price: listing.price || undefined,
-    });
-  };
 
   const leadMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string; email: string; phone: string; consent: boolean }) => {
@@ -873,7 +831,6 @@ export default function Home({ embedded }: { embedded?: boolean }) {
         ) : (
           <>
             <div className="max-w-2xl mx-auto space-y-6">
-              <ListingImport onImport={handleListingImport} />
               <AddressInput
                 address={address}
                 city={city}
@@ -1059,10 +1016,6 @@ export default function Home({ embedded }: { embedded?: boolean }) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <ListingImport onImport={handleListingImport} />
-                    
-                    <Separator />
-                    
                     <AddressInput
                       address={address}
                       city={city}

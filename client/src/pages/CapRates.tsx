@@ -3071,11 +3071,10 @@ export default function CapRates() {
             <MapEventHandler onBoundsChange={handleBoundsChange} />
             <GeolocateOnMount />
             {flyTo && <FlyToLocation lat={flyTo.lat} lng={flyTo.lng} />}
+            <MapQuickCardOverlay listing={selectedListing}>
+              {renderMapQuickCard()}
+            </MapQuickCardOverlay>
           </MapContainer>
-
-          <MapQuickCardOverlay listing={selectedListing}>
-            {renderMapQuickCard()}
-          </MapQuickCardOverlay>
 
           <MapLayersPanel layers={mapLayers} onLayersChange={setMapLayers} />
 
