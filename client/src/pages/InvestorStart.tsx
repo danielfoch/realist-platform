@@ -60,13 +60,13 @@ export default function InvestorStart() {
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-4">
                 {greeting}
               </p>
-              <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.02] text-balance uppercase">
+              <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.02] text-balance">
                 Real estate intelligence that compounds.
               </h1>
               <p className="mt-5 text-lg md:text-xl text-muted-foreground max-w-2xl">
-                The real estate AI that gets smarter with every deal you analyze. Analyze any property,
-                find listings worth underwriting, and let Realist learn your buy box from every search,
-                save, and analysis — so the next opportunity is easier to spot than the last.
+                Paste a listing, search the market, or run the numbers on any property. Realist turns
+                deals into underwriting, market context, risk signals, and next steps — while learning
+                your underwriting from every search, save, and analysis.
               </p>
             </div>
 

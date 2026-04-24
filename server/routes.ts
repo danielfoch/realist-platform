@@ -8570,6 +8570,7 @@ export async function registerRoutes(
     try {
       if (!COMMUNITY_FLAGS.ENABLE_COMMUNITY_ANALYSIS) return res.status(404).json({ error: "Community analysis disabled" });
       const userId = req.session.userId;
+      const beforeAggregate = req.body?.listingMlsNumber ? await storage.getListingAggregate(req.body.listingMlsNumber) : undefined;
       const parsed = communityAnalysisSchema.safeParse({ ...req.body, userId });
       if (!parsed.success) return res.status(400).json({ error: "Invalid analysis data", details: parsed.error.issues });
 
@@ -8630,7 +8631,25 @@ export async function registerRoutes(
         });
       }
 
+      await storage.upsertListingWatcher({
+        userId,
+        listingMlsNumber: analysis.listingMlsNumber,
+        sourceType: "analysis",
+        sourceId: analysis.id,
+        lastSeenAt: new Date(),
+      });
+
       await recomputeListingAggregate(analysis.listingMlsNumber);
+      const afterAggregate = await storage.getListingAggregate(analysis.listingMlsNumber);
+      queueAnalysisNotification({
+        kind: "analysis_created",
+        analysis,
+        actorUserId: userId,
+        beforeAggregate,
+        afterAggregate,
+      }).catch((error) => {
+        console.error("Error queueing analysis-created notification:", error);
+      });
       res.json(analysis);
     } catch (error) {
       console.error("Error creating community analysis:", error);
@@ -8641,9 +8660,10 @@ export async function registerRoutes(
   app.patch("/api/community/analyses/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.userId;
+      const existing = await storage.getPropertyAnalysis(req.params.id);
+      const beforeAggregate = existing ? await storage.getListingAggregate(existing.listingMlsNumber) : undefined;
       const parsed = communityAnalysisSchema.partial().safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid analysis update", details: parsed.error.issues });
-      const existing = await storage.getPropertyAnalysis(req.params.id);
       if (!existing || existing.userId !== userId) return res.status(404).json({ error: "Analysis not found" });
 
       const updated = await storage.updatePropertyAnalysis(req.params.id, userId, {
@@ -8675,6 +8695,16 @@ export async function registerRoutes(
       });
 
       await recomputeListingAggregate(updated.listingMlsNumber);
+      const afterAggregate = await storage.getListingAggregate(updated.listingMlsNumber);
+      queueAnalysisNotification({
+        kind: "analysis_updated",
+        analysis: updated,
+        actorUserId: userId,
+        beforeAggregate,
+        afterAggregate,
+      }).catch((error) => {
+        console.error("Error queueing analysis-updated notification:", error);
+      });
       res.json(updated);
     } catch (error) {
       console.error("Error updating community analysis:", error);
@@ -8871,6 +8901,7 @@ export async function registerRoutes(
       if (!COMMUNITY_FLAGS.ENABLE_LISTING_COMMENTS) return res.status(404).json({ error: "Listing comments disabled" });
       const userId = req.session.userId;
       if (!userId) return res.status(401).json({ error: "Authentication required" });
+      const beforeAggregate = req.body?.listingMlsNumber ? await storage.getListingAggregate(req.body.listingMlsNumber) : undefined;
 
       const parsed = listingCommentCreateSchema.safeParse({ ...req.body, userId });
       if (!parsed.success) return res.status(400).json({ error: "Invalid data", details: parsed.error.issues });
@@ -8889,6 +8920,13 @@ export async function registerRoutes(
       }
 
       const comment = await storage.createListingComment(parsed.data);
+      await storage.upsertListingWatcher({
+        userId,
+        listingMlsNumber: comment.listingMlsNumber,
+        sourceType: parsed.data.visibility === "private" ? "manual_follow" : "comment",
+        sourceId: comment.id,
+        lastSeenAt: new Date(),
+      });
 
       await storage.createContributionEvent({
         userId,
@@ -8908,6 +8946,22 @@ export async function registerRoutes(
       }
 
       await recomputeListingAggregate(parsed.data.listingMlsNumber);
+      const [matchingAnalysis] = comment.referencedAnalysisId
+        ? await db.select().from(propertyAnalyses).where(eq(propertyAnalyses.id, comment.referencedAnalysisId)).limit(1)
+        : [null];
+      const afterAggregate = await storage.getListingAggregate(parsed.data.listingMlsNumber);
+      const parentComment = comment.parentCommentId ? await storage.getListingComment(comment.parentCommentId) : null;
+      queueCommentNotification({
+        comment,
+        actorUserId: userId,
+        listingAddress: matchingAnalysis?.title || parsed.data.listingMlsNumber,
+        listingCity: matchingAnalysis?.city || null,
+        parentComment,
+        beforeAggregate,
+        afterAggregate,
+      }).catch((error) => {
+        console.error("Error queueing comment notification:", error);
+      });
 
       res.json(comment);
     } catch (error) {

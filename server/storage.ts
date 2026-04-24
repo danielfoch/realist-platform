@@ -785,7 +785,7 @@ export class DatabaseStorage implements IStorage {
 
   async markNotificationQueueItemSent(id: string): Promise<void> {
     await db.update(notificationQueue)
-      .set({ status: "sent", sentAt: new Date(), failureReason: null as any })
+      .set({ status: "sent", sentAt: new Date() })
       .where(eq(notificationQueue.id, id));
   }
 
