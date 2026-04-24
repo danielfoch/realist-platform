@@ -80,7 +80,7 @@ const defaultInputs: BuyHoldInputs = {
   cmhcMliPoints: 0,
 };
 
-export default function Home({ embedded }: { embedded?: boolean }) {
+export default function Home({ embedded, seedQuery }: { embedded?: boolean; seedQuery?: string }) {
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
   const searchString = useSearch();
@@ -127,9 +127,12 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     });
   }, [isAuthenticated]);
 
+  const appliedSeedRef = useRef<string>("");
+
   useEffect(() => {
-    if (!searchString) return;
-    const params = new URLSearchParams(searchString);
+    const activeSeed = embedded && seedQuery != null ? seedQuery : searchString;
+    if (!activeSeed || activeSeed === appliedSeedRef.current) return;
+    const params = new URLSearchParams(activeSeed);
     const addr = params.get("address");
     const price = params.get("price");
     const rent = params.get("rent");
@@ -162,11 +165,13 @@ export default function Home({ embedded }: { embedded?: boolean }) {
     }
 
     if (!addr && !price && !prompt) return;
+    appliedSeedRef.current = activeSeed;
 
     if (addr) setAddress(addr);
     if (cityParam) setCity(cityParam);
     if (stateParam) setRegion(stateParam);
     if (mls) setMlsNumber(mls);
+    setShowResults(false);
 
     const priceNum = price ? parseFloat(price) : 0;
     const rentNum = rent ? parseFloat(rent) : 0;
@@ -189,11 +194,10 @@ export default function Home({ embedded }: { embedded?: boolean }) {
         event: "listing_viewed",
         listing_id: mls || [addr, cityParam, stateParam].filter(Boolean).join(", ") || String(priceNum),
         city: cityParam || undefined,
-        property_type: strategy,
         price: priceNum,
       });
     }
-  }, []);
+  }, [embedded, searchString, seedQuery]);
   
   const getSavedLeadInfo = () => {
     // If user is logged in, use their info

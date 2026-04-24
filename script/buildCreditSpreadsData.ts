@@ -32,7 +32,7 @@ interface CreditSpreadPoint {
 
 const INPUT_ROOT = path.resolve(process.cwd(), "data/canada_us_credit_spreads");
 const CSV_ROOT = path.join(INPUT_ROOT, "csv_and_scripts");
-const OUTPUT_ROOT = path.resolve(process.cwd(), "public/data/credit-spreads");
+const OUTPUT_ROOT = path.resolve(process.cwd(), "client/public/data/credit-spreads");
 
 function parseCsv(content: string): CsvRow[] {
   const rows: string[][] = [];

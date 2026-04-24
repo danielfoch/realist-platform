@@ -30,6 +30,14 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function formatSourceLabel(rate: MortgageRate): string {
+  if (rate.source === "wowa.ca") return "Source: wowa.ca";
+  if (rate.source === "bankofcanada.ca") return "Source: Bank of Canada";
+  if (rate.source === "bank-posted") return "Source: major bank posted average";
+  if (rate.source === "market-estimate") return "Source: fallback market estimate";
+  return `Source: ${rate.source}`;
+}
+
 function termSortOrder(term: string): number {
   const order: Record<string, number> = {
     "overnight": 0, "bank-rate": 1, "prime": 2,
@@ -61,6 +69,7 @@ function RateCard({ rate, comparison }: { rate: MortgageRate; comparison?: Mortg
           )}
         </div>
         <p className="text-xs text-muted-foreground">{rate.provider}</p>
+        <p className="text-[11px] text-muted-foreground mt-1">{formatSourceLabel(rate)}</p>
       </div>
       <div className="text-right">
         <span className="text-2xl font-bold text-primary" data-testid="rate-value">
@@ -179,8 +188,13 @@ export default function MortgageRates() {
               Canadian Mortgage Rates
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto" data-testid="page-description">
-              Compare the best mortgage rates in Canada. Updated weekly with data from the Bank of Canada and leading mortgage brokers.
+              Compare the best mortgage rates in Canada. Best-rate snapshots are pulled weekly from wowa.ca, while posted and policy context comes from the Bank of Canada.
             </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline">Best rates: wowa.ca</Badge>
+              <Badge variant="outline">Posted & policy: Bank of Canada</Badge>
+              <Badge variant="outline">Refresh cadence: weekly</Badge>
+            </div>
           </div>
 
           {isLoading ? (
@@ -196,6 +210,7 @@ export default function MortgageRates() {
                     {bestFixed5 ? formatRate(bestFixed5.rate) : "—"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Insured</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">wowa.ca</p>
                 </CardContent>
               </Card>
               <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20" data-testid="stat-best-variable">
@@ -205,6 +220,7 @@ export default function MortgageRates() {
                     {bestVariable5 ? formatRate(bestVariable5.rate) : "—"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Insured</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">wowa.ca</p>
                 </CardContent>
               </Card>
               <Card className="border-0 shadow-md" data-testid="stat-prime">
@@ -222,7 +238,7 @@ export default function MortgageRates() {
                   <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
                     {bankFixed5 ? formatRate(bankFixed5.rate) : "—"}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Big Bank Average</p>
+                  <p className="text-xs text-muted-foreground mt-1">Major bank posted average</p>
                 </CardContent>
               </Card>
             </div>
@@ -247,7 +263,7 @@ export default function MortgageRates() {
                   title="Best Available Rates"
                   icon={TrendingDown}
                   rates={bestRates}
-                  description="The lowest rates available from mortgage brokers and lenders across Canada."
+                  description="Weekly best-rate snapshot sourced from wowa.ca. Treat these as market-leading borrower rates, not guaranteed offers."
                   postedRates={bigBankRates}
                 />
               )}
@@ -264,14 +280,14 @@ export default function MortgageRates() {
                     title="Big Bank Posted Rates"
                     icon={Building2}
                     rates={bigBankRates}
-                    description="Average posted rates from Canada's Big Six banks. These are negotiable — always shop around."
+                    description="Posted-rate benchmark for major banks. These are reference rates, not the same thing as negotiated borrower offers."
                   />
                   {postedRates.filter(r => r.term !== "prime").length > 0 && (
                     <RateSection
                       title="Bank of Canada Posted Rates"
                       icon={Landmark}
                       rates={postedRates.filter(r => r.term !== "prime")}
-                      description="Official conventional mortgage rates as reported by the Bank of Canada."
+                      description="Official posted mortgage context as published by the Bank of Canada."
                     />
                   )}
                 </>

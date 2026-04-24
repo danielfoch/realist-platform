@@ -10,70 +10,88 @@ import {
   Calculator, ArrowRight, BarChart3, ChevronRight, Building2, BriefcaseBusiness,
 } from "lucide-react";
 
-const insightItems = [
+const insightSections = [
   {
-    href: "/insights/podcast",
-    title: "Podcast",
-    description: "In-depth conversations with Canadian real estate investors, analysts, and operators. Real deals, real numbers.",
-    icon: Radio,
-    badge: "Audio",
-    cta: "Listen Now",
+    title: "Live Market Dashboards",
+    description: "Recurring data products and monitoring pages.",
+    items: [
+      {
+        href: "/insights/mortgage-rates",
+        title: "Mortgage Rates",
+        description: "Current best rates across Canada with historical context — fixed vs. variable, insured vs. conventional.",
+        icon: TrendingUp,
+        badge: "Live",
+        cta: "See Rates",
+      },
+      {
+        href: "/insights/distress-report",
+        title: "Distress Report",
+        description: "Monthly snapshot of power of sale, foreclosures, motivated sellers, and VTB opportunities across Canada.",
+        icon: AlertTriangle,
+        badge: "Monthly",
+        cta: "View Report",
+      },
+      {
+        href: "/insights/cpi-march-2026",
+        title: "CPI Report — March 2026",
+        description: "Statistics Canada's latest inflation release with provincial breakdown and investor interpretation.",
+        icon: LineChart,
+        badge: "March 2026",
+        cta: "Read Report",
+      },
+    ],
   },
   {
-    href: "/insights/blog",
-    title: "Blog & Research",
-    description: "Market analysis, investment strategies, and data-driven perspectives for Canadian real estate investors.",
-    icon: BookOpen,
-    badge: "Articles",
-    cta: "Read Articles",
+    title: "Deep Research Reports",
+    description: "Long-form analysis and thesis-driven research notes.",
+    items: [
+      {
+        href: "/insights/the-spread-that-ate-the-economy",
+        title: "The Spread That Ate the Economy",
+        description: "Interactive research on Canadian mortgage vs business credit spreads, yield compression, entrepreneurship, and productivity.",
+        icon: BriefcaseBusiness,
+        badge: "Research",
+        cta: "Open Report",
+      },
+      {
+        href: "/reports/cmhc-land-use-regulations-housing-canada-2026",
+        title: "CMHC Land Use Regulations Report",
+        description: "What CMHC's 2026 research says about zoning, approval rules, house prices, and housing supply growth in Canada.",
+        icon: Building2,
+        badge: "CMHC 2026",
+        cta: "Read Report",
+      },
+    ],
   },
   {
-    href: "/insights/guides",
-    title: "Guides & Resources",
-    description: "Step-by-step guides, templates, and frameworks for underwriting, financing, and operating real estate.",
-    icon: FileText,
-    badge: "Education",
-    cta: "View Guides",
-  },
-  {
-    href: "/reports/cmhc-land-use-regulations-housing-canada-2026",
-    title: "CMHC Land Use Regulations Report",
-    description: "What CMHC's 2026 research says about zoning, approval rules, house prices, and housing supply growth in Canada.",
-    icon: Building2,
-    badge: "CMHC 2026",
-    cta: "Read Report",
-  },
-  {
-    href: "/insights/mortgage-rates",
-    title: "Mortgage Rates",
-    description: "Current best rates across Canada with historical context — fixed vs. variable, insured vs. conventional.",
-    icon: TrendingUp,
-    badge: "Live",
-    cta: "See Rates",
-  },
-  {
-    href: "/insights/distress-report",
-    title: "Distress Report",
-    description: "Monthly snapshot of power of sale, foreclosures, motivated sellers, and VTB opportunities across Canada.",
-    icon: AlertTriangle,
-    badge: "Monthly",
-    cta: "View Report",
-  },
-  {
-    href: "/insights/cpi-march-2026",
-    title: "CPI Report — March 2026",
-    description: "Statistics Canada's latest inflation release with provincial breakdown and investor interpretation.",
-    icon: LineChart,
-    badge: "March 2026",
-    cta: "Read Report",
-  },
-  {
-    href: "/insights/the-spread-that-ate-the-economy",
-    title: "The Spread That Ate the Economy",
-    description: "Interactive research on Canadian mortgage vs business credit spreads, yield compression, entrepreneurship, and productivity.",
-    icon: BriefcaseBusiness,
-    badge: "Research",
-    cta: "Open Report",
+    title: "Media and Education",
+    description: "Ongoing content, education, and archive surfaces.",
+    items: [
+      {
+        href: "/insights/podcast",
+        title: "Podcast",
+        description: "In-depth conversations with Canadian real estate investors, analysts, and operators. Real deals, real numbers.",
+        icon: Radio,
+        badge: "Audio",
+        cta: "Listen Now",
+      },
+      {
+        href: "/insights/blog",
+        title: "Blog & Research",
+        description: "Market analysis, investment strategies, and data-driven perspectives for Canadian real estate investors.",
+        icon: BookOpen,
+        badge: "Articles",
+        cta: "Read Articles",
+      },
+      {
+        href: "/insights/guides",
+        title: "Guides & Resources",
+        description: "Step-by-step guides, templates, and frameworks for underwriting, financing, and operating real estate.",
+        icon: FileText,
+        badge: "Education",
+        cta: "View Guides",
+      },
+    ],
   },
 ];
 
@@ -119,60 +137,69 @@ export default function InsightsHub() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
-          {insightItems.map((item) => {
-            const bridge = contextBridges[item.title];
-            return (
-              <Card
-                key={item.href}
-                className="h-full hover-elevate border-border/60 group flex flex-col"
-              >
-                <CardContent className="p-6 flex flex-col flex-1 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                      <item.icon className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">{item.badge}</Badge>
-                  </div>
+        <div className="space-y-10 mb-12">
+          {insightSections.map((section) => (
+            <section key={section.title} className="space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold">{section.title}</h2>
+                <p className="text-sm text-muted-foreground">{section.description}</p>
+              </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {section.items.map((item) => {
+                  const bridge = contextBridges[item.title];
+                  return (
+                    <Card
+                      key={item.href}
+                      className="h-full hover-elevate border-border/60 group flex flex-col"
+                    >
+                      <CardContent className="p-6 flex flex-col flex-1 space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                            <item.icon className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">{item.badge}</Badge>
+                        </div>
 
-                  <div className="flex-1">
-                    <h2 className="text-base font-semibold mb-1.5">{item.title}</h2>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-                  </div>
+                        <div className="flex-1">
+                          <h3 className="text-base font-semibold mb-1.5">{item.title}</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                        </div>
 
-                  <div className="space-y-2 pt-2">
-                    <Link href={item.href}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full gap-1.5 group-hover:border-primary/40 transition-colors"
-                        data-testid={`button-${item.title.toLowerCase().replace(/[\s–—]+/g, "-")}`}
-                        onClick={() => track({ event: "content_consumed", content_type: "report", content_id: item.href, title: item.title })}
-                      >
-                        {item.cta}
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
+                        <div className="space-y-2 pt-2">
+                          <Link href={item.href}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full gap-1.5 group-hover:border-primary/40 transition-colors"
+                              data-testid={`button-${item.title.toLowerCase().replace(/[\s–—]+/g, "-")}`}
+                              onClick={() => track({ event: "content_consumed", content_type: "report", content_id: item.href, title: item.title })}
+                            >
+                              {item.cta}
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </Button>
+                          </Link>
 
-                    {/* Content → Analyzer bridge */}
-                    {bridge && (
-                      <Link href={bridge.href}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full gap-1.5 text-xs text-muted-foreground hover:text-primary"
-                          onClick={() => track({ event: "cta_clicked", cta: bridge.cta, location: `insights_hub_${item.title}`, destination: bridge.href })}
-                        >
-                          <Calculator className="h-3 w-3" />
-                          {bridge.text}
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                          {bridge && (
+                            <Link href={bridge.href}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full gap-1.5 text-xs text-muted-foreground hover:text-primary"
+                                onClick={() => track({ event: "cta_clicked", cta: bridge.cta, location: `insights_hub_${item.title}`, destination: bridge.href })}
+                              >
+                                <Calculator className="h-3 w-3" />
+                                {bridge.text}
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
 
         {/* Bottom CTA — route users into deal analyzer */}

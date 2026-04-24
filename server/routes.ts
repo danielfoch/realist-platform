@@ -1632,13 +1632,18 @@ export async function registerRoutes(
 
       const matching = rates.filter((r: any) => {
         if (type === "variable") {
-          return r.rateType === "variable" && r.category === "best";
+          return r.rateType === "variable" && r.term === "5-year" && r.category === "best";
         }
         return r.rateType === "fixed" && r.term === termLabel && r.category === "best";
       });
 
       if (matching.length === 0) {
-        const fallback = rates.filter((r: any) => r.rateType === type);
+        const fallback = rates.filter((r: any) => {
+          if (type === "variable") {
+            return r.rateType === "variable" && ["best", "big-bank", "posted"].includes(r.category) && ["5-year", "prime"].includes(r.term);
+          }
+          return r.rateType === "fixed" && r.term === termLabel && ["best", "big-bank", "posted"].includes(r.category);
+        });
         if (fallback.length > 0) {
           const best = fallback.reduce((a: any, b: any) => a.rate < b.rate ? a : b);
           return res.json({ bestRate: best.rate, source: best.source, timestamp: best.lastUpdated, count: fallback.length });
@@ -1940,18 +1945,27 @@ export async function registerRoutes(
         }
       }
 
-      const defaultRates = {
+      const { getAllCurrentRates } = await import("./rateScraper");
+      const rows = await getAllCurrentRates();
+
+      const pickRate = (rateType: string, term: string, categories: string[]) => {
+        const matches = rows.filter((row: any) => row.rateType === rateType && row.term === term && categories.includes(row.category));
+        if (matches.length === 0) return null;
+        return matches.reduce((best: any, current: any) => current.rate < best.rate ? current : best).rate;
+      };
+
+      const derivedRates = {
         conventional: {
-          "1_year_fixed": 6.79,
-          "2_year_fixed": 6.24,
-          "3_year_fixed": 5.59,
-          "5_year_fixed": 5.34,
-          "variable": 5.90,
+          "1_year_fixed": pickRate("fixed", "1-year", ["best", "big-bank"]) ?? 5.59,
+          "2_year_fixed": pickRate("fixed", "2-year", ["best", "big-bank"]) ?? 4.29,
+          "3_year_fixed": pickRate("fixed", "3-year", ["best", "big-bank"]) ?? 3.89,
+          "5_year_fixed": pickRate("fixed", "5-year", ["best", "big-bank", "posted"]) ?? 3.84,
+          "variable": pickRate("variable", "5-year", ["best", "big-bank"]) ?? pickRate("variable", "prime", ["posted"]) ?? 3.70,
         },
         cmhc_mli_select: {
           base_spread: 1.10,
-          bond_yield_estimate: 3.50,
-          effective_rate: 4.60,
+          bond_yield_estimate: pickRate("variable", "bank-rate", ["policy"]) ?? 2.50,
+          effective_rate: (pickRate("fixed", "5-year", ["best", "big-bank", "posted"]) ?? 3.84) + 0.75,
         },
         usa: {
           "30_year_fixed": 6.875,
@@ -1959,16 +1973,16 @@ export async function registerRoutes(
           "arm_5_1": 6.50,
         },
         lastUpdated: new Date().toISOString(),
-        source: "Estimated rates - for illustration only",
+        source: rows.length > 0 ? "Derived from current mortgage rate table" : "Fallback market estimates",
       };
 
       await storage.setDataCache({
         key: "interest_rates",
-        valueJson: defaultRates,
-        source: "fallback",
+        valueJson: derivedRates,
+        source: rows.length > 0 ? "mortgage_rates" : "fallback",
       });
 
-      res.json(defaultRates);
+      res.json(derivedRates);
     } catch (error) {
       console.error("Error fetching rates:", error);
       res.status(500).json({ error: "Failed to fetch rates" });

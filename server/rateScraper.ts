@@ -12,6 +12,17 @@ interface RateEntry {
   isInsured?: boolean;
 }
 
+const MIN_REASONABLE_RATE = 0.1;
+const MAX_REASONABLE_RATE = 15;
+
+function isReasonableRate(rate: number): boolean {
+  return Number.isFinite(rate) && rate >= MIN_REASONABLE_RATE && rate <= MAX_REASONABLE_RATE;
+}
+
+function sanitizeRates(rates: RateEntry[]): RateEntry[] {
+  return rates.filter((entry) => isReasonableRate(entry.rate));
+}
+
 const BOC_SERIES = {
   V80691311: { label: "Prime Rate", rateType: "variable", term: "prime", category: "posted" },
   V80691335: { label: "5-Year Conventional Mortgage", rateType: "fixed", term: "5-year", category: "posted" },
@@ -37,10 +48,12 @@ async function fetchBankOfCanadaRates(): Promise<RateEntry[]> {
 
       const value = obs[seriesId]?.v;
       if (value) {
+        const rate = parseFloat(value);
+        if (!isReasonableRate(rate)) continue;
         rates.push({
           rateType: config.rateType,
           term: config.term,
-          rate: parseFloat(value),
+          rate,
           provider: "Bank of Canada",
           source: "bankofcanada.ca",
           category: config.category,
@@ -76,13 +89,18 @@ async function fetchBestBrokerRates(): Promise<RateEntry[]> {
     const metaMatch = html.match(/best mortgage rates.*?(\d+\.\d+)%.*?(\d+\.\d+)%.*?(\d+\.\d+)%/i);
     if (metaMatch) {
       const [, fiveFixed, threeFixed, fiveVariable] = metaMatch;
-      rates.push(
+      const metaRates = [
         { rateType: "fixed", term: "5-year", rate: parseFloat(fiveFixed), provider: "Best Available", source: "wowa.ca", category: "best", isInsured: true },
         { rateType: "fixed", term: "3-year", rate: parseFloat(threeFixed), provider: "Best Available", source: "wowa.ca", category: "best", isInsured: true },
         { rateType: "variable", term: "5-year", rate: parseFloat(fiveVariable), provider: "Best Available", source: "wowa.ca", category: "best", isInsured: true },
-      );
-      console.log(`[rate-scraper] Parsed ${rates.length} rates from wowa.ca meta`);
-      return rates;
+      ] satisfies RateEntry[];
+      const saneMetaRates = sanitizeRates(metaRates);
+      if (saneMetaRates.length === metaRates.length) {
+        rates.push(...saneMetaRates);
+        console.log(`[rate-scraper] Parsed ${rates.length} rates from wowa.ca meta`);
+        return rates;
+      }
+      console.warn("[rate-scraper] Ignoring invalid wowa.ca meta rates", metaRates);
     }
 
     const ratePatterns = [
@@ -112,8 +130,11 @@ async function fetchBestBrokerRates(): Promise<RateEntry[]> {
     }
 
     if (rates.length > 0) {
-      console.log(`[rate-scraper] Parsed ${rates.length} rates from wowa.ca HTML`);
-      return rates;
+      const saneRates = sanitizeRates(rates);
+      if (saneRates.length > 0) {
+        console.log(`[rate-scraper] Parsed ${saneRates.length} rates from wowa.ca HTML`);
+        return saneRates;
+      }
     }
   } catch (error) {
     console.error("[rate-scraper] wowa.ca scrape failed:", error);
@@ -144,6 +165,9 @@ function getBigBankPostedRates(): RateEntry[] {
 }
 
 async function upsertRate(entry: RateEntry): Promise<void> {
+  if (!isReasonableRate(entry.rate)) {
+    throw new Error(`Refusing to store unreasonable mortgage rate: ${entry.rate}`);
+  }
   const existing = await db.select().from(mortgageRates)
     .where(and(
       eq(mortgageRates.rateType, entry.rateType),
@@ -216,14 +240,16 @@ export async function runRateScrape(): Promise<{ updated: number; sources: strin
 }
 
 export async function getAllCurrentRates(): Promise<any[]> {
-  return db.select().from(mortgageRates).orderBy(mortgageRates.category, mortgageRates.rateType, mortgageRates.term);
+  const rows = await db.select().from(mortgageRates).orderBy(mortgageRates.category, mortgageRates.rateType, mortgageRates.term);
+  return rows.filter((row) => isReasonableRate(row.rate));
 }
 
 export async function getRateHistory(rateType?: string, term?: string): Promise<any[]> {
   const conditions = [];
   if (rateType) conditions.push(eq(mortgageRateHistory.rateType, rateType));
   if (term) conditions.push(eq(mortgageRateHistory.term, term));
-  return db.select().from(mortgageRateHistory)
+  const rows = await db.select().from(mortgageRateHistory)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(mortgageRateHistory.recordedAt);
+  return rows.filter((row) => isReasonableRate(row.rate));
 }

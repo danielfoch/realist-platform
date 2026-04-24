@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { useLocation, useSearch } from "wouter";
+import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,14 @@ import { CommunityMetricsSummary } from "@/components/CommunityMetricsSummary";
 import { CommunityAnalysisModal } from "@/components/CommunityAnalysisModal";
 import { ListingCommentsSection } from "@/components/ListingCommentsSection";
 import { ListingCommentCountBadge } from "@/components/ListingCommentCountBadge";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import Home from "@/pages/Home";
 import {
   calculateInvestmentMetrics,
   INVESTMENT_METRIC_FLAGS,
@@ -798,7 +806,6 @@ function MapQuickCardOverlay({
 }
 
 export default function CapRates() {
-  const [, setLocation] = useLocation();
   const search = useSearch();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -828,6 +835,8 @@ export default function CapRates() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedListing, setSelectedListing] = useState<ListingWithCapRate | null>(null);
+  const [analyzerListing, setAnalyzerListing] = useState<ListingWithCapRate | null>(null);
+  const [analyzerSeedQuery, setAnalyzerSeedQuery] = useState("");
   const [dataSource, setDataSource] = useState<"crea_ddf" | "repliers" | null>(null);
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [showMobileList, setShowMobileList] = useState(false);
@@ -1502,7 +1511,8 @@ export default function CapRates() {
     params.set("insurance", String(EXPENSE_ASSUMPTIONS.insurancePerUnit * Math.max(1, listing.unitCount || 1)));
     const tax = listing.taxes?.annualAmount || (price ? price * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100 : 0);
     if (tax) params.set("propertyTax", String(Math.round(tax)));
-    setLocation(`/tools/analyzer?${params.toString()}`);
+    setAnalyzerSeedQuery(params.toString());
+    setAnalyzerListing(listing);
   };
 
   const handleSaveCurrentSearch = () => {
@@ -2007,7 +2017,7 @@ export default function CapRates() {
                   data-testid="button-analyze-listing"
                 >
                   <Calculator className="h-4 w-4 mr-2" />
-                  Open in Deal Analyzer
+                  Analyze in Map Workspace
                 </Button>
                 <Button
                   variant="outline"
@@ -3153,6 +3163,23 @@ export default function CapRates() {
           </div>
         )}
       </div>
+      <Sheet open={Boolean(analyzerListing)} onOpenChange={(open) => !open && setAnalyzerListing(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0">
+          <div className="border-b px-6 py-4">
+            <SheetHeader className="pr-8">
+              <SheetTitle>Analyze in Map Workspace</SheetTitle>
+              <SheetDescription>
+                {analyzerListing
+                  ? `${formatShortAddress(analyzerListing.address)}${analyzerListing.address?.city ? `, ${analyzerListing.address.city}` : ""}`
+                  : "Run full underwriting without leaving the map."}
+              </SheetDescription>
+            </SheetHeader>
+          </div>
+          <div className="px-4 py-6 sm:px-6">
+            <Home embedded seedQuery={analyzerSeedQuery} />
+          </div>
+        </SheetContent>
+      </Sheet>
       <CommunityAnalysisModal
         open={showCommunityModal}
         onOpenChange={setShowCommunityModal}
