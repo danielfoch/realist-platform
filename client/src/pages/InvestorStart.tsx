@@ -38,7 +38,7 @@ export default function InvestorStart() {
 
   const greeting = isAuthenticated
     ? `Welcome back${user?.firstName ? `, ${user.firstName}` : ""}.`
-    : "Real estate AI for Canadian investors.";
+    : "Real estate intelligence that compounds";
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,7 +61,7 @@ export default function InvestorStart() {
                 {greeting}
               </p>
               <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.02] text-balance">
-                Real estate intelligence that compounds.
+                The real estate AI that gets smarter with every deal you analyze.
               </h1>
               <p className="mt-5 text-lg md:text-xl text-muted-foreground max-w-2xl">
                 Paste a listing, search the market, or run the numbers on any property. Realist returns

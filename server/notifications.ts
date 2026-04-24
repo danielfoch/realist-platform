@@ -163,7 +163,7 @@ function buildPayload(input: {
   return {
     sendEmail: true,
     eventType: input.eventType,
-    eventId: input.eventId,
+    eventId: "preview",
     eventTs: new Date().toISOString(),
     email: input.recipient.email,
     phone: input.recipient.phone,
