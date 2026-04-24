@@ -71,8 +71,51 @@ async function initStripe() {
   }
 }
 
+async function ensureAppTables() {
+  try {
+    const { db } = await import("./db");
+    const { sql } = await import("drizzle-orm");
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS area_yield_history (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        area_type text NOT NULL,
+        area_key text NOT NULL,
+        area_name text NOT NULL,
+        city text,
+        province text NOT NULL,
+        month varchar(7) NOT NULL,
+        listing_count integer NOT NULL DEFAULT 0,
+        avg_gross_yield real,
+        median_gross_yield real,
+        avg_net_yield real,
+        avg_list_price real,
+        median_list_price real,
+        avg_rent_per_unit real,
+        avg_days_on_market real,
+        avg_price_per_sqft real,
+        inventory_count integer DEFAULT 0,
+        avg_beds_per_listing real,
+        yield_trend real,
+        computed_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS area_yield_history_area_month_idx
+      ON area_yield_history(area_type, area_key, province, month)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS area_yield_history_lookup_idx
+      ON area_yield_history(area_type, province, month)
+    `);
+    log("App reporting tables ready", "db");
+  } catch (error: any) {
+    log(`Failed to ensure app tables: ${error.message}`, "db");
+  }
+}
+
 (async () => {
   await initStripe();
+  await ensureAppTables();
 
   app.post(
     '/api/stripe/webhook',

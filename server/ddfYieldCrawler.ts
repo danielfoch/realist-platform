@@ -1,6 +1,6 @@
 import { searchDdfListings, isDdfConfigured } from "./creaDdf";
 import { storage } from "./storage";
-import type { InsertDdfListingSnapshot, InsertCityYieldHistory } from "@shared/schema";
+import type { InsertDdfListingSnapshot, InsertCityYieldHistory, InsertAreaYieldHistory } from "@shared/schema";
 import { CMHC_PROVINCIAL_RENTS, CMHC_CITY_RENTS, type CmhcRentData as CmhcRentEntry } from "@shared/cmhcRents";
 
 const PROVINCE_TO_ABBREV: Record<string, string> = {
@@ -119,6 +119,43 @@ function median(values: number[]): number | null {
 function avg(values: number[]): number | null {
   if (values.length === 0) return null;
   return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+function normalizePostalArea(postalCode: string | null | undefined): string | null {
+  if (!postalCode) return null;
+  const normalized = postalCode.replace(/\s+/g, "").toUpperCase();
+  return normalized.length >= 3 ? normalized.slice(0, 3) : null;
+}
+
+function aggregateYieldMetrics(snapshots: InsertDdfListingSnapshot[]) {
+  const grossYields = snapshots.map(s => s.grossYield).filter((v): v is number => v != null && v > 0 && v < 20);
+  const netYields = snapshots.map(s => s.netYield).filter((v): v is number => v != null && v > -10 && v < 15);
+  const prices = snapshots.map(s => s.listPrice).filter((v): v is number => v != null && v > 0);
+  const rents = snapshots.map(s => s.estimatedMonthlyRent).filter((v): v is number => v != null && v > 0);
+  const doms = snapshots.map(s => s.daysOnMarket).filter((v): v is number => v != null);
+  const beds = snapshots.map(s => s.bedroomsTotal).filter((v): v is number => v != null);
+  const sqftPrices: number[] = [];
+
+  for (const s of snapshots) {
+    if (s.listPrice && s.livingArea && s.livingArea > 0) {
+      sqftPrices.push(s.listPrice / s.livingArea);
+    }
+  }
+
+  return {
+    listingCount: snapshots.length,
+    avgGrossYield: avg(grossYields) != null ? Math.round(avg(grossYields)! * 100) / 100 : null,
+    medianGrossYield: median(grossYields) != null ? Math.round(median(grossYields)! * 100) / 100 : null,
+    avgNetYield: avg(netYields) != null ? Math.round(avg(netYields)! * 100) / 100 : null,
+    avgListPrice: avg(prices) != null ? Math.round(avg(prices)!) : null,
+    medianListPrice: median(prices) != null ? Math.round(median(prices)!) : null,
+    avgRentPerUnit: avg(rents) != null ? Math.round(avg(rents)!) : null,
+    avgDaysOnMarket: avg(doms) != null ? Math.round(avg(doms)! * 10) / 10 : null,
+    avgPricePerSqft: avg(sqftPrices) != null ? Math.round(avg(sqftPrices)! * 100) / 100 : null,
+    inventoryCount: snapshots.length,
+    avgBedsPerListing: avg(beds) != null ? Math.round(avg(beds)! * 10) / 10 : null,
+    yieldTrend: null,
+  };
 }
 
 export async function crawlDdfForProvince(
@@ -304,36 +341,30 @@ export async function aggregateCityYield(
   const citySnapshots = snapshots.filter(
     s => s.city?.toLowerCase() === city.toLowerCase() && s.province === province
   );
-
-  const grossYields = citySnapshots.map(s => s.grossYield).filter((v): v is number => v != null && v > 0 && v < 20);
-  const netYields = citySnapshots.map(s => s.netYield).filter((v): v is number => v != null && v > -10 && v < 15);
-  const prices = citySnapshots.map(s => s.listPrice).filter((v): v is number => v != null && v > 0);
-  const rents = citySnapshots.map(s => s.estimatedMonthlyRent).filter((v): v is number => v != null && v > 0);
-  const doms = citySnapshots.map(s => s.daysOnMarket).filter((v): v is number => v != null);
-  const beds = citySnapshots.map(s => s.bedroomsTotal).filter((v): v is number => v != null);
-  const sqftPrices: number[] = [];
-  for (const s of citySnapshots) {
-    if (s.listPrice && s.livingArea && s.livingArea > 0) {
-      sqftPrices.push(s.listPrice / s.livingArea);
-    }
-  }
-
   return {
     city,
     province,
     month,
-    listingCount: citySnapshots.length,
-    avgGrossYield: avg(grossYields) != null ? Math.round(avg(grossYields)! * 100) / 100 : null,
-    medianGrossYield: median(grossYields) != null ? Math.round(median(grossYields)! * 100) / 100 : null,
-    avgNetYield: avg(netYields) != null ? Math.round(avg(netYields)! * 100) / 100 : null,
-    avgListPrice: avg(prices) != null ? Math.round(avg(prices)!) : null,
-    medianListPrice: median(prices) != null ? Math.round(median(prices)!) : null,
-    avgRentPerUnit: avg(rents) != null ? Math.round(avg(rents)!) : null,
-    avgDaysOnMarket: avg(doms) != null ? Math.round(avg(doms)! * 10) / 10 : null,
-    avgPricePerSqft: avg(sqftPrices) != null ? Math.round(avg(sqftPrices)! * 100) / 100 : null,
-    inventoryCount: citySnapshots.length,
-    avgBedsPerListing: avg(beds) != null ? Math.round(avg(beds)! * 10) / 10 : null,
-    yieldTrend: null,
+    ...aggregateYieldMetrics(citySnapshots),
+  };
+}
+
+export async function aggregateAreaYield(
+  areaType: "city" | "postal_fsa",
+  areaKey: string,
+  areaName: string,
+  province: string,
+  month: string,
+  snapshots: InsertDdfListingSnapshot[],
+): Promise<InsertAreaYieldHistory> {
+  return {
+    areaType,
+    areaKey,
+    areaName,
+    city: areaType === "city" ? areaName : null,
+    province,
+    month,
+    ...aggregateYieldMetrics(snapshots),
   };
 }
 
@@ -396,8 +427,34 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
             if (citySnapshots.length >= minListingsForYield) {
               const yieldData = await aggregateCityYield(cityName, shortProvince, month, citySnapshots);
               await storage.upsertCityYieldHistory(yieldData);
+              await storage.upsertAreaYieldHistory(
+                await aggregateAreaYield("city", cityName.toLowerCase(), cityName, shortProvince, month, citySnapshots)
+              );
               allCities.add(cityName);
             }
+          }
+
+          const postalAreas = new Map<string, InsertDdfListingSnapshot[]>();
+          for (const snapshot of snapshots) {
+            const postalArea = normalizePostalArea(snapshot.postalCode);
+            if (!postalArea) continue;
+            if (!postalAreas.has(postalArea)) postalAreas.set(postalArea, []);
+            postalAreas.get(postalArea)!.push(snapshot);
+          }
+
+          for (const [postalArea, postalSnapshots] of postalAreas.entries()) {
+            if (postalSnapshots.length < minListingsForYield) continue;
+            const sampleCity = postalSnapshots[0]?.city || postalArea;
+            await storage.upsertAreaYieldHistory(
+              await aggregateAreaYield(
+                "postal_fsa",
+                postalArea,
+                `${postalArea} · ${sampleCity}`,
+                shortProvince,
+                month,
+                postalSnapshots,
+              )
+            );
           }
           console.log(`[ddf-crawler] ${ddfProvince}: yield data for ${citiesInProvince.size} cities (${[...citiesInProvince.entries()].filter(([_, s]) => s.length >= minListingsForYield).length} with 5+ listings)`);
         } else {

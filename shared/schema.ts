@@ -2087,6 +2087,39 @@ export const insertCityYieldHistorySchema = createInsertSchema(cityYieldHistory)
 export type InsertCityYieldHistory = z.infer<typeof insertCityYieldHistorySchema>;
 export type CityYieldHistory = typeof cityYieldHistory.$inferSelect;
 
+export const areaYieldHistory = pgTable("area_yield_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  areaType: text("area_type").notNull(),
+  areaKey: text("area_key").notNull(),
+  areaName: text("area_name").notNull(),
+  city: text("city"),
+  province: text("province").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  listingCount: integer("listing_count").default(0).notNull(),
+  avgGrossYield: real("avg_gross_yield"),
+  medianGrossYield: real("median_gross_yield"),
+  avgNetYield: real("avg_net_yield"),
+  avgListPrice: real("avg_list_price"),
+  medianListPrice: real("median_list_price"),
+  avgRentPerUnit: real("avg_rent_per_unit"),
+  avgDaysOnMarket: real("avg_days_on_market"),
+  avgPricePerSqft: real("avg_price_per_sqft"),
+  inventoryCount: integer("inventory_count").default(0),
+  avgBedsPerListing: real("avg_beds_per_listing"),
+  yieldTrend: real("yield_trend"),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS area_yield_history_area_month_idx ON area_yield_history(area_type, area_key, province, month)`,
+  sql`CREATE INDEX IF NOT EXISTS area_yield_history_lookup_idx ON area_yield_history(area_type, province, month)`,
+]);
+
+export const insertAreaYieldHistorySchema = createInsertSchema(areaYieldHistory).omit({
+  id: true,
+  computedAt: true,
+});
+export type InsertAreaYieldHistory = z.infer<typeof insertAreaYieldHistorySchema>;
+export type AreaYieldHistory = typeof areaYieldHistory.$inferSelect;
+
 export const blogPosts = pgTable("blog_posts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),

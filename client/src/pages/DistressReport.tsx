@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
@@ -38,6 +38,19 @@ function getMonthLabel(month: string): string {
   return date.toLocaleDateString("en-CA", { month: "long", year: "numeric" });
 }
 
+function getDistressReportSlug(month: string): string {
+  const [year, monthNum] = month.split("-");
+  const monthName = new Date(parseInt(year), parseInt(monthNum) - 1, 1)
+    .toLocaleDateString("en-CA", { month: "long" })
+    .toLowerCase();
+  return `/insights/blog/canada-distress-deals-report-${monthName}-${year}`;
+}
+
+function getDelta(curr: number, prev: number): number | null {
+  if (!prev) return null;
+  return ((curr - prev) / prev) * 100;
+}
+
 interface Snapshot {
   id: number;
   month: string;
@@ -59,8 +72,34 @@ interface Snapshot {
   topCitiesJson: Array<{ name: string; count: number }> | null;
 }
 
+interface TrendPoint {
+  month: string;
+  label: string;
+  totalListings: number;
+  foreclosurePosCount: number;
+  motivatedCount: number;
+  vtbCount: number;
+  avgDistressScore: number | null;
+  avgListPrice: number | null;
+  medianListPrice: number | null;
+  highConfidenceCount: number;
+  mediumConfidenceCount: number;
+  lowConfidenceCount: number;
+  avgDaysOnMarket: number | null;
+}
+
+interface InventoryRow {
+  province: string | null;
+  city?: string | null;
+  totalListings: number;
+}
+
 export default function DistressReport() {
   const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [provinceChartMode, setProvinceChartMode] = useState<"total" | "percent">("total");
+  const [cityChartMode, setCityChartMode] = useState<"total" | "percent">("total");
+  const [trendProvince, setTrendProvince] = useState<string>("national");
+  const [trendCity, setTrendCity] = useState<string>("all");
 
   const { data: months = [], isLoading: monthsLoading } = useQuery<string[]>({
     queryKey: ["/api/distress-snapshots/months"],
@@ -79,14 +118,171 @@ export default function DistressReport() {
     enabled: !!activeMonth,
   });
 
+  const { data: allSnapshots = [] } = useQuery<Snapshot[]>({
+    queryKey: ["/api/distress-snapshots", "history"],
+    queryFn: async () => {
+      const res = await fetch("/api/distress-snapshots");
+      if (!res.ok) throw new Error("Failed to fetch historical snapshots");
+      return res.json();
+    },
+  });
+
+  const { data: provinceInventory = [] } = useQuery<InventoryRow[]>({
+    queryKey: ["/api/distress-inventory", activeMonth, "province"],
+    queryFn: async () => {
+      if (!activeMonth) return [];
+      const res = await fetch(`/api/distress-inventory?month=${activeMonth}&groupBy=province`);
+      if (!res.ok) throw new Error("Failed to fetch province inventory");
+      return res.json();
+    },
+    enabled: !!activeMonth,
+  });
+
+  const { data: cityInventory = [] } = useQuery<InventoryRow[]>({
+    queryKey: ["/api/distress-inventory", activeMonth, "city"],
+    queryFn: async () => {
+      if (!activeMonth) return [];
+      const res = await fetch(`/api/distress-inventory?month=${activeMonth}&groupBy=city`);
+      if (!res.ok) throw new Error("Failed to fetch city inventory");
+      return res.json();
+    },
+    enabled: !!activeMonth,
+  });
+
   const provinceSnapshots = snapshots.filter(s => !s.city);
   const citySnapshots = snapshots.filter(s => !!s.city);
+  const historicalProvinceSnapshots = allSnapshots.filter(s => !s.city);
+  const historicalCitySnapshots = allSnapshots.filter(s => !!s.city);
+
+  const buildTrendPoint = (month: string, rows: Snapshot[]): TrendPoint => {
+    const totalListings = rows.reduce((sum, row) => sum + row.totalListings, 0);
+    const weightedAverage = (pick: (row: Snapshot) => number | null | undefined, weightPick?: (row: Snapshot) => number) => {
+      const weightedRows = rows.filter((row) => pick(row) != null && (weightPick ? weightPick(row) > 0 : row.totalListings > 0));
+      if (!weightedRows.length) return null;
+      const totalWeight = weightedRows.reduce((sum, row) => sum + (weightPick ? weightPick(row) : row.totalListings), 0);
+      if (!totalWeight) return null;
+      return weightedRows.reduce((sum, row) => {
+        const weight = weightPick ? weightPick(row) : row.totalListings;
+        return sum + (pick(row) || 0) * weight;
+      }, 0) / totalWeight;
+    };
+
+    return {
+      month,
+      label: getMonthLabel(month),
+      totalListings,
+      foreclosurePosCount: rows.reduce((sum, row) => sum + row.foreclosurePosCount, 0),
+      motivatedCount: rows.reduce((sum, row) => sum + row.motivatedCount, 0),
+      vtbCount: rows.reduce((sum, row) => sum + row.vtbCount, 0),
+      avgDistressScore: weightedAverage((row) => row.avgDistressScore),
+      avgListPrice: weightedAverage((row) => row.avgListPrice),
+      medianListPrice: weightedAverage((row) => row.medianListPrice),
+      highConfidenceCount: rows.reduce((sum, row) => sum + row.highConfidenceCount, 0),
+      mediumConfidenceCount: rows.reduce((sum, row) => sum + row.mediumConfidenceCount, 0),
+      lowConfidenceCount: rows.reduce((sum, row) => sum + row.lowConfidenceCount, 0),
+      avgDaysOnMarket: weightedAverage((row) => row.avgDaysOnMarket),
+    };
+  };
+
+  const nationalHistory = useMemo(() => {
+    const rowsByMonth = historicalProvinceSnapshots.reduce<Record<string, Snapshot[]>>((acc, row) => {
+      if (!acc[row.month]) acc[row.month] = [];
+      acc[row.month].push(row);
+      return acc;
+    }, {});
+
+    return Object.entries(rowsByMonth)
+      .map(([month, rows]) => buildTrendPoint(month, rows))
+      .sort((a, b) => a.month.localeCompare(b.month));
+  }, [historicalProvinceSnapshots]);
+
+  const provinceHistory = useMemo(() => {
+    if (trendProvince === "national") return nationalHistory;
+    return historicalProvinceSnapshots
+      .filter((row) => row.province === trendProvince)
+      .map((row) => ({
+        month: row.month,
+        label: getMonthLabel(row.month),
+        totalListings: row.totalListings,
+        foreclosurePosCount: row.foreclosurePosCount,
+        motivatedCount: row.motivatedCount,
+        vtbCount: row.vtbCount,
+        avgDistressScore: row.avgDistressScore,
+        avgListPrice: row.avgListPrice,
+        medianListPrice: row.medianListPrice,
+        highConfidenceCount: row.highConfidenceCount,
+        mediumConfidenceCount: row.mediumConfidenceCount,
+        lowConfidenceCount: row.lowConfidenceCount,
+        avgDaysOnMarket: row.avgDaysOnMarket,
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+  }, [historicalProvinceSnapshots, nationalHistory, trendProvince]);
+
+  const cityOptions = useMemo(() => {
+    if (trendProvince === "national") return [];
+    return Array.from(new Set(
+      historicalCitySnapshots
+        .filter((row) => row.province === trendProvince && row.city)
+        .map((row) => row.city as string)
+    )).sort((a, b) => a.localeCompare(b));
+  }, [historicalCitySnapshots, trendProvince]);
+
+  useEffect(() => {
+    if (trendProvince === "national" || trendCity === "all" || cityOptions.includes(trendCity)) return;
+    setTrendCity("all");
+  }, [trendProvince, trendCity, cityOptions]);
+
+  const selectedTrendHistory = useMemo(() => {
+    if (trendProvince === "national") return nationalHistory;
+    if (trendCity !== "all") {
+      return historicalCitySnapshots
+        .filter((row) => row.province === trendProvince && row.city === trendCity)
+        .map((row) => ({
+          month: row.month,
+          label: getMonthLabel(row.month),
+          totalListings: row.totalListings,
+          foreclosurePosCount: row.foreclosurePosCount,
+          motivatedCount: row.motivatedCount,
+          vtbCount: row.vtbCount,
+          avgDistressScore: row.avgDistressScore,
+          avgListPrice: row.avgListPrice,
+          medianListPrice: row.medianListPrice,
+          highConfidenceCount: row.highConfidenceCount,
+          mediumConfidenceCount: row.mediumConfidenceCount,
+          lowConfidenceCount: row.lowConfidenceCount,
+          avgDaysOnMarket: row.avgDaysOnMarket,
+        }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+    }
+    return provinceHistory;
+  }, [historicalCitySnapshots, nationalHistory, provinceHistory, trendCity, trendProvince]);
+
+  const trendProvinceOptions = useMemo(() => {
+    const provinces = Array.from(new Set(historicalProvinceSnapshots.map((row) => row.province))).sort();
+    return provinces;
+  }, [historicalProvinceSnapshots]);
 
   const totalListings = provinceSnapshots.reduce((s, p) => s + p.totalListings, 0);
   const totalForeclosure = provinceSnapshots.reduce((s, p) => s + p.foreclosurePosCount, 0);
   const totalMotivated = provinceSnapshots.reduce((s, p) => s + p.motivatedCount, 0);
   const totalVtb = provinceSnapshots.reduce((s, p) => s + p.vtbCount, 0);
   const totalHigh = provinceSnapshots.reduce((s, p) => s + p.highConfidenceCount, 0);
+
+  const provinceInventoryMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of provinceInventory) {
+      if (row.province) map.set(row.province, row.totalListings);
+    }
+    return map;
+  }, [provinceInventory]);
+
+  const cityInventoryMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of cityInventory) {
+      if (row.province && row.city) map.set(`${row.province}::${row.city}`, row.totalListings);
+    }
+    return map;
+  }, [cityInventory]);
 
   const provinceChartData = provinceSnapshots
     .sort((a, b) => b.totalListings - a.totalListings)
@@ -97,6 +293,10 @@ export default function DistressReport() {
       motivated: p.motivatedCount,
       vtb: p.vtbCount,
       total: p.totalListings,
+      activeInventory: provinceInventoryMap.get(p.province) || 0,
+      distressRate: provinceInventoryMap.get(p.province)
+        ? Number(((p.totalListings / (provinceInventoryMap.get(p.province) || 1)) * 100).toFixed(2))
+        : 0,
     }));
 
   const categoryPieData = [
@@ -111,8 +311,44 @@ export default function DistressReport() {
     { name: "Low", value: provinceSnapshots.reduce((s, p) => s + p.lowConfidenceCount, 0), color: "#6b7280" },
   ].filter(d => d.value > 0);
 
-  const topProvince = provinceSnapshots.sort((a, b) => b.totalListings - a.totalListings)[0];
-  const topCities = topProvince?.topCitiesJson || [];
+  const topCitiesCanada = citySnapshots
+    .map((row) => {
+      const inventory = cityInventoryMap.get(`${row.province}::${row.city}`) || 0;
+      return {
+        province: row.province,
+        city: row.city || "Unknown",
+        distressListings: row.totalListings,
+        activeInventory: inventory,
+        distressRate: inventory ? Number(((row.totalListings / inventory) * 100).toFixed(2)) : 0,
+      };
+    })
+    .sort((a, b) => b.distressListings - a.distressListings)
+    .slice(0, 20);
+  const currentHistoryPoint = nationalHistory.find((point) => point.month === activeMonth);
+  const previousHistoryPoint = currentHistoryPoint
+    ? nationalHistory[nationalHistory.findIndex((point) => point.month === currentHistoryPoint.month) - 1]
+    : undefined;
+
+  const listingDelta = getDelta(currentHistoryPoint?.totalListings || 0, previousHistoryPoint?.totalListings || 0);
+  const foreclosureDelta = getDelta(currentHistoryPoint?.foreclosurePosCount || 0, previousHistoryPoint?.foreclosurePosCount || 0);
+  const motivatedDelta = getDelta(currentHistoryPoint?.motivatedCount || 0, previousHistoryPoint?.motivatedCount || 0);
+  const vtbDelta = getDelta(currentHistoryPoint?.vtbCount || 0, previousHistoryPoint?.vtbCount || 0);
+
+  const categoryTrendData = selectedTrendHistory.map((point) => ({
+    label: point.label,
+    totalListings: point.totalListings,
+    foreclosurePosCount: point.foreclosurePosCount,
+    motivatedCount: point.motivatedCount,
+    vtbCount: point.vtbCount,
+    highConfidenceShare: point.totalListings ? Number(((point.highConfidenceCount / point.totalListings) * 100).toFixed(1)) : 0,
+    avgDistressScore: point.avgDistressScore != null ? Number(point.avgDistressScore.toFixed(1)) : null,
+  }));
+
+  const activeTrendLabel = trendProvince === "national"
+    ? "Canada"
+    : trendCity !== "all"
+      ? `${trendCity}, ${PROVINCE_NAMES[trendProvince] || trendProvince}`
+      : PROVINCE_NAMES[trendProvince] || trendProvince;
 
   const isLoading = monthsLoading || snapshotsLoading;
   const hasData = provinceSnapshots.length > 0;
@@ -204,7 +440,15 @@ export default function DistressReport() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold" data-testid="stat-total">{fmt(totalListings)}</div>
-                  <p className="text-sm text-muted-foreground mt-1">Across {provinceSnapshots.length} provinces</p>
+                  <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                    Across {provinceSnapshots.length} provinces
+                    {listingDelta != null && (
+                      <span className={listingDelta >= 0 ? "text-red-500" : "text-green-600"}>
+                        {listingDelta >= 0 ? <TrendingUp className="inline-block h-3.5 w-3.5 mr-0.5" /> : <TrendingDown className="inline-block h-3.5 w-3.5 mr-0.5" />}
+                        {Math.abs(listingDelta).toFixed(1)}% m/m
+                      </span>
+                    )}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
@@ -213,7 +457,14 @@ export default function DistressReport() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-red-500" data-testid="stat-foreclosure">{fmt(totalForeclosure)}</div>
-                  <p className="text-sm text-muted-foreground mt-1">{totalListings ? (totalForeclosure / totalListings * 100).toFixed(1) : 0}% of total</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {totalListings ? (totalForeclosure / totalListings * 100).toFixed(1) : 0}% of total
+                    {foreclosureDelta != null && (
+                      <span className={`ml-2 ${foreclosureDelta >= 0 ? "text-red-500" : "text-green-600"}`}>
+                        {foreclosureDelta >= 0 ? "↑" : "↓"} {Math.abs(foreclosureDelta).toFixed(1)}%
+                      </span>
+                    )}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
@@ -222,7 +473,14 @@ export default function DistressReport() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-amber-500" data-testid="stat-motivated">{fmt(totalMotivated)}</div>
-                  <p className="text-sm text-muted-foreground mt-1">{totalListings ? (totalMotivated / totalListings * 100).toFixed(1) : 0}% of total</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {totalListings ? (totalMotivated / totalListings * 100).toFixed(1) : 0}% of total
+                    {motivatedDelta != null && (
+                      <span className={`ml-2 ${motivatedDelta >= 0 ? "text-red-500" : "text-green-600"}`}>
+                        {motivatedDelta >= 0 ? "↑" : "↓"} {Math.abs(motivatedDelta).toFixed(1)}%
+                      </span>
+                    )}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
@@ -231,15 +489,35 @@ export default function DistressReport() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-blue-500" data-testid="stat-vtb">{fmt(totalVtb)}</div>
-                  <p className="text-sm text-muted-foreground mt-1">{totalListings ? (totalVtb / totalListings * 100).toFixed(1) : 0}% of total</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {totalListings ? (totalVtb / totalListings * 100).toFixed(1) : 0}% of total
+                    {vtbDelta != null && (
+                      <span className={`ml-2 ${vtbDelta >= 0 ? "text-red-500" : "text-green-600"}`}>
+                        {vtbDelta >= 0 ? "↑" : "↓"} {Math.abs(vtbDelta).toFixed(1)}%
+                      </span>
+                    )}
+                  </p>
                 </CardContent>
               </Card>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 mb-8">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Distress Deals by Province</CardTitle>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-lg">Distress Deals by Province</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Toggle between total flagged listings and distress share of each province's active inventory.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant={provinceChartMode === "total" ? "default" : "outline"} onClick={() => setProvinceChartMode("total")}>
+                      Total
+                    </Button>
+                    <Button size="sm" variant={provinceChartMode === "percent" ? "default" : "outline"} onClick={() => setProvinceChartMode("percent")}>
+                      % of Total
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[350px]" data-testid="province-chart">
@@ -249,13 +527,27 @@ export default function DistressReport() {
                         <XAxis type="number" />
                         <YAxis type="category" dataKey="province" width={30} />
                         <Tooltip
-                          formatter={(value: number, name: string) => [fmt(value), name]}
+                          formatter={(value: number, name: string, item: any) => {
+                            if (provinceChartMode === "percent") {
+                              return [`${Number(value).toFixed(2)}%`, name];
+                            }
+                            if (name === "Distress share") {
+                              return [`${Number(item?.payload?.distressRate || 0).toFixed(2)}%`, name];
+                            }
+                            return [fmt(value), name];
+                          }}
                           labelFormatter={(label: string) => PROVINCE_NAMES[label] || label}
                         />
                         <Legend />
-                        <Bar dataKey="foreclosure" name="Foreclosure/POS" fill="#ef4444" stackId="a" />
-                        <Bar dataKey="motivated" name="Motivated" fill="#f59e0b" stackId="a" />
-                        <Bar dataKey="vtb" name="VTB" fill="#3b82f6" stackId="a" />
+                        {provinceChartMode === "total" ? (
+                          <>
+                            <Bar dataKey="foreclosure" name="Foreclosure/POS" fill="#ef4444" stackId="a" />
+                            <Bar dataKey="motivated" name="Motivated" fill="#f59e0b" stackId="a" />
+                            <Bar dataKey="vtb" name="VTB" fill="#3b82f6" stackId="a" />
+                          </>
+                        ) : (
+                          <Bar dataKey="distressRate" name="Distress share" fill="#ef4444" radius={[0, 4, 4, 0]} />
+                        )}
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -298,6 +590,167 @@ export default function DistressReport() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card className="mb-8">
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg">
+                    <MapPin className="inline-block w-5 h-5 mr-2" />
+                    Top Cities in Canada
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Ranked by total distress volume, with an option to switch to distress share of total city inventory.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant={cityChartMode === "total" ? "default" : "outline"} onClick={() => setCityChartMode("total")}>
+                    Total
+                  </Button>
+                  <Button size="sm" variant={cityChartMode === "percent" ? "default" : "outline"} onClick={() => setCityChartMode("percent")}>
+                    % of Total
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[380px]" data-testid="cities-chart">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topCitiesCanada.slice(0, 15)} margin={{ left: 20, right: 20, bottom: 80 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="city"
+                        angle={-45}
+                        textAnchor="end"
+                        interval={0}
+                        height={90}
+                      />
+                      <YAxis />
+                      <Tooltip
+                        formatter={(value: number, _name: string, item: any) => {
+                          if (cityChartMode === "percent") {
+                            return [`${Number(value).toFixed(2)}%`, "Distress share"];
+                          }
+                          return [
+                            fmt(value),
+                            `${item?.payload?.province ? `${item.payload.city}, ${item.payload.province}` : "Distress listings"}`,
+                          ];
+                        }}
+                        labelFormatter={(label: string, payload: any[]) => {
+                          const row = payload?.[0]?.payload;
+                          return row ? `${label}, ${row.province}` : label;
+                        }}
+                      />
+                      <Bar
+                        dataKey={cityChartMode === "total" ? "distressListings" : "distressRate"}
+                        name={cityChartMode === "total" ? "Distress Listings" : "Distress Share"}
+                        fill="#ef4444"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {selectedTrendHistory.length > 0 && (
+              <div className="grid gap-6 md:grid-cols-2 mb-8">
+                <Card>
+                  <CardHeader className="space-y-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <CardTitle className="text-lg">Historical Distress Trend</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Saved monthly distress trends for Canada, provinces, and captured cities.
+                        </p>
+                      </div>
+                      <Badge variant="secondary">{selectedTrendHistory.length} months tracked</Badge>
+                    </div>
+                    <div className="flex flex-col gap-3 md:flex-row">
+                      <Select value={trendProvince} onValueChange={setTrendProvince}>
+                        <SelectTrigger className="w-full md:w-[220px]" data-testid="trend-province-selector">
+                          <SelectValue placeholder="Scope" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="national">Canada</SelectItem>
+                          {trendProvinceOptions.map((province) => (
+                            <SelectItem key={province} value={province}>
+                              {PROVINCE_NAMES[province] || province}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {trendProvince !== "national" && cityOptions.length > 0 && (
+                        <Select value={trendCity} onValueChange={setTrendCity}>
+                          <SelectTrigger className="w-full md:w-[240px]" data-testid="trend-city-selector">
+                            <SelectValue placeholder="All cities in province" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Province total</SelectItem>
+                            {cityOptions.map((city) => (
+                              <SelectItem key={city} value={city}>{city}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-3">{activeTrendLabel}</p>
+                    <div className="h-[320px]" data-testid="history-total-chart">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={selectedTrendHistory} margin={{ left: 12, right: 12 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="label" minTickGap={24} />
+                          <YAxis />
+                          <Tooltip
+                            formatter={(value: number, name: string) => [fmt(value), name]}
+                            labelFormatter={(label: string) => label}
+                          />
+                          <Legend />
+                          <Line type="monotone" dataKey="totalListings" name="Total flagged" stroke="#111827" strokeWidth={2.5} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey="highConfidenceCount" name="High confidence" stroke="#ef4444" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="vtbCount" name="VTB" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Historical Signal Mix</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Category counts, average distress score, and high-confidence share over time.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[320px]" data-testid="history-signal-mix-chart">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={categoryTrendData} margin={{ left: 12, right: 12 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="label" minTickGap={24} />
+                          <YAxis yAxisId="left" />
+                          <YAxis yAxisId="right" orientation="right" />
+                          <Tooltip
+                            formatter={(value: number, name: string) => {
+                              if (name === "Avg distress score") return [Number(value).toFixed(1), name];
+                              if (name === "High-confidence share") return [`${Number(value).toFixed(1)}%`, name];
+                              return [fmt(value), name];
+                            }}
+                            labelFormatter={(label: string) => label}
+                          />
+                          <Legend />
+                          <Line yAxisId="left" type="monotone" dataKey="foreclosurePosCount" name="Foreclosure/POS" stroke="#ef4444" strokeWidth={2} dot={false} />
+                          <Line yAxisId="left" type="monotone" dataKey="motivatedCount" name="Motivated" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                          <Line yAxisId="left" type="monotone" dataKey="vtbCount" name="VTB" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                          <Line yAxisId="right" type="monotone" dataKey="avgDistressScore" name="Avg distress score" stroke="#111827" strokeWidth={2.5} dot={{ r: 2.5 }} />
+                          <Line yAxisId="right" type="monotone" dataKey="highConfidenceShare" name="High-confidence share" stroke="#22c55e" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <Card className="mb-8">
               <CardHeader>
@@ -343,30 +796,6 @@ export default function DistressReport() {
               </CardContent>
             </Card>
 
-            {topCities.length > 0 && topProvince && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    <MapPin className="inline-block w-5 h-5 mr-2" />
-                    Top Cities in {PROVINCE_NAMES[topProvince.province] || topProvince.province}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[350px]" data-testid="cities-chart">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={topCities.slice(0, 15)} margin={{ left: 20, right: 20, bottom: 60 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} height={80} />
-                        <YAxis />
-                        <Tooltip formatter={(value: number) => [fmt(value), "Listings"]} />
-                        <Bar dataKey="count" name="Distress Listings" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             <div className="grid gap-6 md:grid-cols-2 mb-8">
               <Card>
                 <CardHeader>
@@ -379,7 +808,7 @@ export default function DistressReport() {
                   <p className="text-muted-foreground mb-4">
                     Read the complete {getMonthLabel(activeMonth)} distress deals report with full analysis, methodology, and investment insights.
                   </p>
-                  <Link href={`/insights/blog/canada-distress-deals-report-${activeMonth.split("-")[1] === "01" ? "january" : activeMonth.split("-")[1] === "02" ? "february" : activeMonth.split("-")[1] === "03" ? "march" : activeMonth.split("-")[1] === "04" ? "april" : activeMonth.split("-")[1] === "05" ? "may" : activeMonth.split("-")[1] === "06" ? "june" : activeMonth.split("-")[1] === "07" ? "july" : activeMonth.split("-")[1] === "08" ? "august" : activeMonth.split("-")[1] === "09" ? "september" : activeMonth.split("-")[1] === "10" ? "october" : activeMonth.split("-")[1] === "11" ? "november" : "december"}-${activeMonth.split("-")[0]}`}>
+                  <Link href={getDistressReportSlug(activeMonth)}>
                     <Button variant="outline" data-testid="read-report-btn">
                       Read Full Report <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>

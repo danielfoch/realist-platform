@@ -42,6 +42,9 @@ import type { ListingAnalysisAggregate, UnderwritingNote, ListingComment } from 
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import "leaflet.markercluster";
 import { MapLayersPanel, DEFAULT_LAYERS, type MapLayer } from "@/components/MapLayersPanel";
 import { NeighbourhoodOverlay } from "@/components/NeighbourhoodOverlay";
 
@@ -419,6 +422,107 @@ function FlyToLocation({ lat, lng, zoom }: { lat: number; lng: number; zoom?: nu
   useEffect(() => {
     map.flyTo([lat, lng], zoom || map.getZoom(), { duration: 1.2 });
   }, [lat, lng, zoom, map]);
+  return null;
+}
+
+function createClusterIcon(avgCapRate: number, count: number): L.DivIcon {
+  const color = getCapRateMarkerColor(avgCapRate);
+  const size = count > 75 ? 56 : count > 24 ? 48 : 40;
+  const label = `${avgCapRate.toFixed(1)}%`;
+
+  return L.divIcon({
+    className: "yield-cluster-marker",
+    html: `<div style="
+      width:${size}px;
+      height:${size}px;
+      border-radius:50%;
+      background:${color};
+      border:3px solid rgba(255,255,255,0.95);
+      box-shadow:0 6px 18px rgba(15,23,42,0.24);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      color:white;
+      font-family:system-ui,-apple-system,sans-serif;
+      line-height:1.05;
+    ">
+      <span style="font-size:${count > 75 ? 13 : 12}px;font-weight:800;">${label}</span>
+      <span style="font-size:10px;font-weight:700;opacity:0.92;">${count}</span>
+    </div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function ClusteredListingsLayer({
+  listings,
+  selectedListingId,
+  onSelectListing,
+}: {
+  listings: ListingWithCapRate[];
+  selectedListingId?: string;
+  onSelectListing: (listing: ListingWithCapRate) => void;
+}) {
+  const map = useMap();
+  const clusterRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (clusterRef.current) {
+      map.removeLayer(clusterRef.current);
+    }
+
+    const cluster = (L as any).markerClusterGroup({
+      maxClusterRadius: 70,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      chunkedLoading: true,
+      disableClusteringAtZoom: 14,
+      iconCreateFunction: (clusterGroup: any) => {
+        const children = clusterGroup.getAllChildMarkers() as Array<L.Marker & { options: { capRate?: number } }>;
+        const capRates = children
+          .map((child) => child.options.capRate)
+          .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+        const avgCapRate = capRates.length
+          ? capRates.reduce((sum, value) => sum + value, 0) / capRates.length
+          : 0;
+        return createClusterIcon(avgCapRate, clusterGroup.getChildCount());
+      },
+    });
+
+    for (const listing of listings) {
+      if (!listing.map?.latitude || !listing.map?.longitude) continue;
+      const marker = L.marker(
+        [listing.map.latitude, listing.map.longitude],
+        {
+          icon: createCapRateIcon(listing.capRate, selectedListingId === listing.mlsNumber),
+          capRate: listing.capRate,
+        } as L.MarkerOptions & { capRate: number },
+      );
+
+      marker.bindPopup(`
+        <div style="min-width:200px">
+          <p style="margin:0;font-weight:700;font-size:14px">${formatPrice(listing.listPrice)}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:#4b5563">${formatShortAddress(listing.address)}, ${listing.address?.city || ""}</p>
+          <p style="margin:6px 0 0;font-size:12px;font-weight:700;color:${getCapRateMarkerColor(listing.capRate)}">${listing.capRate.toFixed(1)}% Yield</p>
+        </div>
+      `);
+      marker.on("click", () => onSelectListing(listing));
+      cluster.addLayer(marker);
+    }
+
+    map.addLayer(cluster);
+    clusterRef.current = cluster;
+
+    return () => {
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+      }
+      clusterRef.current = null;
+    };
+  }, [listings, map, onSelectListing, selectedListingId]);
+
   return null;
 }
 
@@ -2152,33 +2256,11 @@ export default function CapRates() {
                 </Marker>
               ))
             ) : (
-              mappableListings.map((listing) => (
-                <Marker
-                  key={listing.mlsNumber}
-                  position={[listing.map!.latitude, listing.map!.longitude]}
-                  icon={createCapRateIcon(
-                    listing.capRate,
-                    selectedListing?.mlsNumber === listing.mlsNumber
-                  )}
-                  eventHandlers={{
-                    click: () => handleSelectListing(listing),
-                  }}
-                >
-                  <Popup>
-                    <div className="min-w-[200px]">
-                      <p className="font-bold text-sm">{formatPrice(listing.listPrice)}</p>
-                      <p className="text-xs text-gray-600">{formatShortAddress(listing.address)}, {listing.address?.city}</p>
-                      <p className="text-xs font-semibold mt-1" style={{ color: getCapRateMarkerColor(listing.capRate) }}>
-                        {listing.capRate.toFixed(1)}% Yield
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {listing.details?.numBedrooms || "?"} bed / {listing.details?.numBathrooms || "?"} bath
-                        {listing.details?.sqft ? ` / ${listing.details.sqft} sqft` : ""}
-                      </p>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))
+              <ClusteredListingsLayer
+                listings={mappableListings}
+                selectedListingId={selectedListing?.mlsNumber}
+                onSelectListing={handleSelectListing}
+              />
             )}
             <NeighbourhoodOverlay layers={mapLayers} />
             <MapEventHandler onBoundsChange={handleBoundsChange} />

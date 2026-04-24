@@ -127,6 +127,9 @@ import {
   cityYieldHistory,
   type CityYieldHistory,
   type InsertCityYieldHistory,
+  areaYieldHistory,
+  type AreaYieldHistory,
+  type InsertAreaYieldHistory,
   blogPosts,
   type BlogPost,
   type InsertBlogPost,
@@ -416,6 +419,8 @@ export interface IStorage {
   getCityYieldHistory(city?: string, province?: string): Promise<CityYieldHistory[]>;
   getAllCityYieldHistoryMonths(): Promise<string[]>;
   getMultiCityYieldHistory(cities: { city: string; province: string }[]): Promise<CityYieldHistory[]>;
+  upsertAreaYieldHistory(data: InsertAreaYieldHistory): Promise<AreaYieldHistory>;
+  getAreaYieldHistory(areaType?: string, province?: string, areaKey?: string): Promise<AreaYieldHistory[]>;
 
   createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
   updateBlogPost(id: string, updates: Partial<InsertBlogPost>): Promise<BlogPost | undefined>;
@@ -1768,6 +1773,35 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(cityYieldHistory)
       .where(orCondition)
       .orderBy(asc(cityYieldHistory.month), asc(cityYieldHistory.city));
+  }
+
+  async upsertAreaYieldHistory(data: InsertAreaYieldHistory): Promise<AreaYieldHistory> {
+    const [existing] = await db.select().from(areaYieldHistory)
+      .where(and(
+        eq(areaYieldHistory.areaType, data.areaType),
+        eq(areaYieldHistory.areaKey, data.areaKey),
+        eq(areaYieldHistory.province, data.province),
+        eq(areaYieldHistory.month, data.month),
+      ));
+    if (existing) {
+      const [result] = await db.update(areaYieldHistory)
+        .set(data)
+        .where(eq(areaYieldHistory.id, existing.id))
+        .returning();
+      return result;
+    }
+    const [result] = await db.insert(areaYieldHistory).values(data).returning();
+    return result;
+  }
+
+  async getAreaYieldHistory(areaType?: string, province?: string, areaKey?: string): Promise<AreaYieldHistory[]> {
+    const conditions = [];
+    if (areaType) conditions.push(eq(areaYieldHistory.areaType, areaType));
+    if (province) conditions.push(eq(areaYieldHistory.province, province));
+    if (areaKey) conditions.push(eq(areaYieldHistory.areaKey, areaKey));
+    return db.select().from(areaYieldHistory)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(areaYieldHistory.month), asc(areaYieldHistory.areaName));
   }
 
   async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {

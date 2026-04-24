@@ -38,6 +38,7 @@ import {
   dataCache,
   distressSnapshots,
   cityYieldHistory,
+  ddfListingSnapshots,
   courseModules,
   courseLessons,
   courseEnrollments,
@@ -7982,6 +7983,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/yield-history/areas", async (req, res) => {
+    try {
+      const areaType = req.query.areaType as string | undefined;
+      const province = req.query.province as string | undefined;
+      const areaKey = req.query.areaKey as string | undefined;
+      const data = await storage.getAreaYieldHistory(areaType, province, areaKey);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching area yield history:", error);
+      res.status(500).json({ error: "Failed to fetch area yield history" });
+    }
+  });
+
   app.post("/api/ddf-crawl/trigger", isAdmin, async (_req, res) => {
     try {
       const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
@@ -8974,6 +8988,48 @@ export async function registerRoutes(
       res.json(rows.map(r => r.month));
     } catch (error: any) {
       res.status(500).json({ error: "Failed to fetch months" });
+    }
+  });
+
+  app.get("/api/distress-inventory", async (req, res) => {
+    try {
+      const month = req.query.month as string | undefined;
+      const groupBy = (req.query.groupBy as string | undefined) || "province";
+      const province = req.query.province as string | undefined;
+
+      const conditions = [];
+      if (month) conditions.push(eq(ddfListingSnapshots.snapshotMonth, month));
+      if (province) conditions.push(eq(ddfListingSnapshots.province, province));
+
+      if (groupBy === "city") {
+        const rows = await db
+          .select({
+            province: ddfListingSnapshots.province,
+            city: ddfListingSnapshots.city,
+            totalListings: sql<number>`count(*)::int`,
+          })
+          .from(ddfListingSnapshots)
+          .where(conditions.length ? and(...conditions) : undefined)
+          .groupBy(ddfListingSnapshots.province, ddfListingSnapshots.city)
+          .orderBy(desc(sql`count(*)::int`));
+        res.json(rows);
+        return;
+      }
+
+      const rows = await db
+        .select({
+          province: ddfListingSnapshots.province,
+          totalListings: sql<number>`count(*)::int`,
+        })
+        .from(ddfListingSnapshots)
+        .where(conditions.length ? and(...conditions) : undefined)
+        .groupBy(ddfListingSnapshots.province)
+        .orderBy(desc(sql`count(*)::int`));
+
+      res.json(rows);
+    } catch (error: any) {
+      console.error("[distress-inventory] Error:", error.message);
+      res.status(500).json({ error: "Failed to fetch distress inventory totals" });
     }
   });
 

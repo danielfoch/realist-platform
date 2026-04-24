@@ -202,7 +202,7 @@ export async function captureDistressSnapshots(month: string): Promise<{ provinc
       provincesProcessed++;
 
       const topCities = (provData.topCitiesJson as any[]) || [];
-      for (const tc of topCities.slice(0, 10)) {
+      for (const tc of topCities) {
         if (tc.count >= 3) {
           const cityData = computeSnapshotData(listings, prov.abbr, tc.name);
           cityData.month = month;
