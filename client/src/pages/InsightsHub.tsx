@@ -7,7 +7,7 @@ import { Link } from "wouter";
 import { track } from "@/lib/analytics";
 import {
   Radio, BookOpen, FileText, TrendingUp, AlertTriangle, LineChart,
-  Calculator, ArrowRight, BarChart3, ChevronRight, Building2,
+  Calculator, ArrowRight, BarChart3, ChevronRight, Building2, BriefcaseBusiness,
 } from "lucide-react";
 
 const insightItems = [
@@ -67,6 +67,14 @@ const insightItems = [
     badge: "March 2026",
     cta: "Read Report",
   },
+  {
+    href: "/insights/the-spread-that-ate-the-economy",
+    title: "The Spread That Ate the Economy",
+    description: "Interactive research on Canadian mortgage vs business credit spreads, yield compression, entrepreneurship, and productivity.",
+    icon: BriefcaseBusiness,
+    badge: "Research",
+    cta: "Open Report",
+  },
 ];
 
 // Contextual bridges: content-specific prompts that route into product
@@ -80,6 +88,11 @@ const contextBridges: Record<string, { text: string; cta: string; href: string }
     text: "Run inflation assumptions through a live deal",
     cta: "Analyze a Deal",
     href: "/tools/analyzer",
+  },
+  "The Spread That Ate the Economy": {
+    text: "See how yield compression shows up on the map",
+    cta: "Browse Yield Map",
+    href: "/tools/cap-rates",
   },
   "Distress Report": {
     text: "Search live distress opportunities in your market",
