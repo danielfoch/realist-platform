@@ -7566,14 +7566,33 @@ export async function registerRoutes(
         .innerJoin(users, eq(analyses.userId, users.id))
         .where(sql`${aggregateDateFilter} AND ${analyses.userId} IS NOT NULL AND ${leaderboardEligibleUserFilter}`);
 
+      const [diagnostics] = await db
+        .select({
+          eligibleUserCount: sql<number>`COUNT(DISTINCT ${analyses.userId})`,
+          newestEligibleAnalysisAt: sql<string>`MAX(${analyses.createdAt})`,
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${dateFilter} AND ${leaderboardEligibleUserFilter}`);
+
+      const totalDeals = Number(aggregates?.totalDeals || 0);
+      const eligibleUserCount = Number(diagnostics?.eligibleUserCount || 0);
+      const newestEligibleAnalysisAt = diagnostics?.newestEligibleAnalysisAt || null;
+      const suspiciousData = totalDeals < 10 || eligibleUserCount < 3;
+
       res.json({
         analysts: leaderboard,
         aggregates: {
-          totalDeals: Number(aggregates?.totalDeals || 0),
+          totalDeals,
           avgDscr: aggregates?.avgDscr != null ? Math.round(Number(aggregates.avgDscr) * 100) / 100 : null,
           avgCashOnCash: aggregates?.avgCashOnCash != null ? Math.round(Number(aggregates.avgCashOnCash) * 100) / 100 : null,
           avgCapRate: aggregates?.avgCapRate != null ? Math.round(Number(aggregates.avgCapRate) * 100) / 100 : null,
           avgOfferRatio: aggregates?.avgOfferRatio != null ? Math.round(Number(aggregates.avgOfferRatio) * 100) : null,
+        },
+        diagnostics: {
+          eligibleUserCount,
+          newestEligibleAnalysisAt,
+          suspiciousData,
         },
       });
     } catch (error) {

@@ -18,7 +18,7 @@ import {
   Calculator, X, Loader2, ArrowRight, Map, LayoutGrid,
   RefreshCw, ChevronDown, ChevronUp, List, Users, MessageSquare,
   Send, PenLine, Sparkles,
-  Star, Target,
+  Star, Target, AlertTriangle, Gavel, DollarSign,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -72,6 +72,7 @@ import {
   type MetricConfidence,
   type ConsensusLabel,
 } from "@shared/investmentMetrics";
+import { type DistressResult } from "@shared/distressScoring";
 
 interface RepliersListing {
   mlsNumber: string;
@@ -150,6 +151,37 @@ interface RentPulseData {
   medianRent: number;
   averageRent?: number;
   sampleSize: number;
+}
+
+interface DistressListing {
+  mlsNumber: string;
+  listPrice: number;
+  address: {
+    streetNumber?: string;
+    streetName?: string;
+    streetSuffix?: string;
+    unitNumber?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    neighborhood?: string;
+  };
+  map?: {
+    latitude: number;
+    longitude: number;
+  };
+  details?: {
+    numBedrooms?: number;
+    numBathrooms?: number;
+    sqft?: string;
+    propertyType?: string;
+    description?: string;
+  };
+  images?: string[];
+  daysOnMarket?: number;
+  listDate?: string;
+  distress: DistressResult;
+  rawRemarks: string;
 }
 
 interface MapBounds {
@@ -399,6 +431,7 @@ function createMetricMarkerIcon(input: {
   isSelected: boolean;
   aggregate?: ListingAnalysisAggregate | null;
   consensusLabel?: string | null;
+  isDistress?: boolean;
 }): L.DivIcon {
   const color = getMetricMarkerColor(input.metric, input.numericValue, input.consensusLabel);
   const size = input.isSelected ? 46 : 38;
@@ -426,6 +459,32 @@ function createMetricMarkerIcon(input: {
         border:2px solid white;
       ">${communityCount}</div>`
     : "";
+  const distressRing = input.isDistress
+    ? `<div style="
+        position:absolute;
+        inset:-4px;
+        border-radius:999px;
+        border:2px solid #dc2626;
+        box-shadow:0 0 0 1px rgba(255,255,255,0.95);
+      "></div>
+      <div style="
+        position:absolute;
+        left:-6px;
+        top:-6px;
+        min-width:18px;
+        height:18px;
+        padding:0 4px;
+        border-radius:999px;
+        background:#dc2626;
+        color:white;
+        font-size:10px;
+        font-weight:900;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        border:2px solid white;
+      ">D</div>`
+    : "";
 
   return L.divIcon({
     className: "cap-rate-marker",
@@ -449,8 +508,36 @@ function createMetricMarkerIcon(input: {
       font-family: system-ui, -apple-system, sans-serif;
       padding: 0 3px;
       text-align: center;
-    ">${input.label}</div>${badgeHtml}</div>`,
+    ">${input.label}</div>${badgeHtml}${distressRing}</div>`,
     iconSize: [size + 10, size + 10],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function createDistressMarkerIcon(score: number, isSelected: boolean): L.DivIcon {
+  const size = isSelected ? 44 : 38;
+  const border = isSelected ? "3px solid #2563eb" : "2px solid white";
+  const shadow = isSelected ? "0 0 0 2px #2563eb, 0 2px 10px rgba(0,0,0,0.35)" : "0 2px 8px rgba(0,0,0,0.3)";
+  const background = score >= 70 ? "#b91c1c" : score >= 40 ? "#ea580c" : "#d97706";
+  return L.divIcon({
+    className: "distress-map-marker",
+    html: `<div style="
+      width:${size}px;
+      height:${size}px;
+      border-radius:999px 999px 999px 8px;
+      background:${background};
+      border:${border};
+      box-shadow:${shadow};
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:white;
+      font-family:system-ui,-apple-system,sans-serif;
+      font-weight:900;
+      font-size:${isSelected ? 14 : 12}px;
+      transform:rotate(45deg);
+    "><span style="transform:rotate(-45deg)">D</span></div>`,
+    iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
 }
@@ -637,6 +724,7 @@ function ClusteredListingsLayer({
   metric,
   metricSource,
   myMetricsMap,
+  distressMap,
 }: {
   listings: ListingWithCapRate[];
   onSelectListing: (listing: ListingWithCapRate, source?: "map" | "list") => void;
@@ -644,6 +732,7 @@ function ClusteredListingsLayer({
   metric: InvestmentMetricKey;
   metricSource: InvestmentMetricSource;
   myMetricsMap: Record<string, any>;
+  distressMap: Record<string, DistressListing>;
 }) {
   const map = useMap();
   const clusterRef = useRef<any>(null);
@@ -704,6 +793,7 @@ function ClusteredListingsLayer({
             isSelected: false,
             aggregate,
             consensusLabel,
+            isDistress: Boolean(distressMap[listing.mlsNumber]),
           }),
           metricValue: metricValue ?? undefined,
           consensusLabel: consensusLabel ?? undefined,
@@ -722,7 +812,94 @@ function ClusteredListingsLayer({
       }
       clusterRef.current = null;
     };
-  }, [aggregatesMap, listings, map, metric, metricSource, myMetricsMap, onSelectListing]);
+  }, [aggregatesMap, distressMap, listings, map, metric, metricSource, myMetricsMap, onSelectListing]);
+
+  return null;
+}
+
+function DistressListingsLayer({
+  listings,
+  selectedMlsNumber,
+  onSelectListing,
+}: {
+  listings: DistressListing[];
+  selectedMlsNumber?: string | null;
+  onSelectListing: (listing: DistressListing) => void;
+}) {
+  const map = useMap();
+  const clusterRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (clusterRef.current) {
+      map.removeLayer(clusterRef.current);
+    }
+
+    const cluster = (L as any).markerClusterGroup({
+      maxClusterRadius: 65,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: false,
+      chunkedLoading: true,
+      disableClusteringAtZoom: 14,
+      iconCreateFunction: (clusterGroup: any) => {
+        const children = clusterGroup.getAllChildMarkers() as Array<L.Marker & { options: { distressScore?: number } }>;
+        const scores = children.map((child) => child.options.distressScore).filter((v): v is number => typeof v === "number");
+        const avgScore = scores.length ? scores.reduce((sum, value) => sum + value, 0) / scores.length : 0;
+        const background = avgScore >= 70 ? "#b91c1c" : avgScore >= 40 ? "#ea580c" : "#d97706";
+        const size = clusterGroup.getChildCount() > 24 ? 48 : 40;
+        return L.divIcon({
+          className: "distress-cluster-marker",
+          html: `<div style="
+            width:${size}px;
+            height:${size}px;
+            border-radius:999px;
+            background:${background};
+            border:3px solid rgba(255,255,255,0.95);
+            box-shadow:0 6px 18px rgba(15,23,42,0.24);
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            color:white;
+            font-family:system-ui,-apple-system,sans-serif;
+            line-height:1.05;
+          ">
+            <span style="font-size:11px;font-weight:900;">D</span>
+            <span style="font-size:10px;font-weight:700;opacity:0.92;">${clusterGroup.getChildCount()}</span>
+          </div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        });
+      },
+    });
+
+    cluster.on("clusterclick", (event: any) => {
+      event.layer.spiderfy();
+    });
+
+    for (const listing of listings) {
+      if (!listing.map?.latitude || !listing.map?.longitude) continue;
+      const marker = L.marker(
+        [listing.map.latitude, listing.map.longitude],
+        {
+          icon: createDistressMarkerIcon(listing.distress.distressScore, selectedMlsNumber === listing.mlsNumber),
+          distressScore: listing.distress.distressScore,
+        } as L.MarkerOptions & { distressScore?: number },
+      );
+      marker.on("click", () => onSelectListing(listing));
+      cluster.addLayer(marker);
+    }
+
+    map.addLayer(cluster);
+    clusterRef.current = cluster;
+
+    return () => {
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+      }
+      clusterRef.current = null;
+    };
+  }, [listings, map, onSelectListing, selectedMlsNumber]);
 
   return null;
 }
@@ -835,7 +1012,8 @@ export default function CapRates() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedListing, setSelectedListing] = useState<ListingWithCapRate | null>(null);
-  const [analyzerListing, setAnalyzerListing] = useState<ListingWithCapRate | null>(null);
+  const [selectedDistressListing, setSelectedDistressListing] = useState<DistressListing | null>(null);
+  const [analyzerSheetMeta, setAnalyzerSheetMeta] = useState<{ title: string; subtitle: string } | null>(null);
   const [analyzerSeedQuery, setAnalyzerSeedQuery] = useState("");
   const [dataSource, setDataSource] = useState<"crea_ddf" | "repliers" | null>(null);
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
@@ -856,6 +1034,8 @@ export default function CapRates() {
   const [showTopDealsOnly, setShowTopDealsOnly] = useState(false);
   const [selectedDealResult, setSelectedDealResult] = useState<FindDealsResult | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showDistressOverlay, setShowDistressOverlay] = useState(true);
+  const [showDistressOnly, setShowDistressOnly] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearchSignal[]>(() => getSavedSearchSignals().slice(0, 4));
   const [savedShortlist, setSavedShortlist] = useState<SavedListingSignal[]>(() => getSavedListingSignals().slice(0, 4));
   const [recentViewedListings, setRecentViewedListings] = useState<SavedListingSignal[]>(() => getRecentViewedListingSignals().slice(0, 4));
@@ -885,6 +1065,17 @@ export default function CapRates() {
 
   const { data: ddfStatus } = useQuery<{ configured: boolean; authenticated: boolean }>({
     queryKey: ["/api/ddf/status"],
+  });
+
+  const { data: distressData } = useQuery<{ listings: DistressListing[] }>({
+    queryKey: ["/api/distress-deals", "cap-rates-overlay"],
+    queryFn: async () => {
+      const res = await fetch("/api/distress-deals?minScore=20");
+      if (!res.ok) throw new Error("Failed to fetch distress listings");
+      return res.json();
+    },
+    enabled: showDistressOverlay || showDistressOnly,
+    staleTime: 15 * 60 * 1000,
   });
 
   const selectedMls = selectedListing?.mlsNumber;
@@ -1283,9 +1474,37 @@ export default function CapRates() {
     sortMetric,
   ]);
 
-  const mappableListings = useMemo(
-    () => listingsWithCapRates.filter((l) => l.map?.latitude && l.map?.longitude),
-    [listingsWithCapRates]
+  const distressMap = useMemo(() => {
+    const entries = (distressData?.listings || [])
+      .filter((listing) => Boolean(listing.mlsNumber))
+      .map((listing) => [listing.mlsNumber, listing] as const);
+    return Object.fromEntries(entries) as Record<string, DistressListing>;
+  }, [distressData]);
+
+  const distressListingsInView = useMemo(() => {
+    if (!mapBounds) return [];
+    return (distressData?.listings || []).filter((listing) => {
+      const lat = listing.map?.latitude;
+      const lng = listing.map?.longitude;
+      if (typeof lat !== "number" || typeof lng !== "number") return false;
+      return lat >= mapBounds.south && lat <= mapBounds.north && lng >= mapBounds.west && lng <= mapBounds.east;
+    });
+  }, [distressData, mapBounds]);
+
+  const distressOnlyListingsInView = useMemo(() => {
+    const normalMls = new Set(listingsWithCapRates.map((listing) => listing.mlsNumber));
+    return distressListingsInView.filter((listing) => !normalMls.has(listing.mlsNumber));
+  }, [distressListingsInView, listingsWithCapRates]);
+
+  const displayedListings = useMemo(() => {
+    if (!showDistressOnly) return listingsWithCapRates;
+    const distressMls = new Set(distressListingsInView.map((listing) => listing.mlsNumber));
+    return listingsWithCapRates.filter((listing) => distressMls.has(listing.mlsNumber));
+  }, [distressListingsInView, listingsWithCapRates, showDistressOnly]);
+
+  const displayedMappableListings = useMemo(
+    () => displayedListings.filter((l) => l.map?.latitude && l.map?.longitude),
+    [displayedListings]
   );
 
   const handleFindDeals = useCallback(async () => {
@@ -1453,6 +1672,8 @@ export default function CapRates() {
       Boolean(minAnalysisCount),
       consensusLabelFilter !== "any",
       includeUnavailableMetrics,
+      !showDistressOverlay,
+      showDistressOnly,
       sortMetric !== "gross_yield",
       sortDirection !== "desc",
       metricSource !== "realist_estimate",
@@ -1475,9 +1696,17 @@ export default function CapRates() {
     minUnits,
     maxPrice,
     propertyType,
+    showDistressOnly,
+    showDistressOverlay,
     sortDirection,
     sortMetric,
   ]);
+
+  useEffect(() => {
+    if (!showDistressOverlay) {
+      setSelectedDistressListing(null);
+    }
+  }, [showDistressOverlay]);
 
   const handleRefresh = () => {
     if (mapBounds) {
@@ -1512,7 +1741,27 @@ export default function CapRates() {
     const tax = listing.taxes?.annualAmount || (price ? price * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100 : 0);
     if (tax) params.set("propertyTax", String(Math.round(tax)));
     setAnalyzerSeedQuery(params.toString());
-    setAnalyzerListing(listing);
+    setAnalyzerSheetMeta({
+      title: "Analyze in Map Workspace",
+      subtitle: `${formatShortAddress(listing.address)}${listing.address?.city ? `, ${listing.address.city}` : ""}`,
+    });
+  };
+
+  const handleAnalyzeDistressListing = (listing: DistressListing) => {
+    const params = new URLSearchParams();
+    params.set("address", formatAddress(listing.address as RepliersListing["address"]));
+    if (listing.listPrice) params.set("price", String(listing.listPrice));
+    if (listing.details?.numBedrooms) params.set("beds", String(listing.details.numBedrooms));
+    if (listing.details?.numBathrooms) params.set("baths", String(listing.details.numBathrooms));
+    if (listing.details?.sqft) params.set("sqft", listing.details.sqft);
+    if (listing.mlsNumber) params.set("mls", listing.mlsNumber);
+    if (listing.address?.city) params.set("city", listing.address.city);
+    if (listing.address?.state) params.set("state", listing.address.state);
+    setAnalyzerSeedQuery(params.toString());
+    setAnalyzerSheetMeta({
+      title: "Analyze Distress Opportunity",
+      subtitle: `${formatShortAddress(listing.address as RepliersListing["address"])}${listing.address?.city ? `, ${listing.address.city}` : ""}`,
+    });
   };
 
   const handleSaveCurrentSearch = () => {
@@ -1595,6 +1844,7 @@ export default function CapRates() {
 
   const handleSelectListing = (listing: ListingWithCapRate, source: "map" | "list" = "list") => {
     setSelectedListing(listing);
+    setSelectedDistressListing(null);
     setDetailTab("overview");
     setUwUnitCount(String(listing.unitCount || 1));
     const perUnitRent = listing.unitCount > 1
@@ -1623,12 +1873,22 @@ export default function CapRates() {
     }
   };
 
+  const handleSelectDistressListing = (listing: DistressListing) => {
+    setSelectedListing(null);
+    setSelectedDistressListing(listing);
+    setDetailTab("overview");
+    if (listing.map?.latitude && listing.map?.longitude) {
+      setFlyTo({ lat: listing.map.latitude, lng: listing.map.longitude, zoom: 15 });
+    }
+  };
+
   const renderListingCard = (listing: ListingWithCapRate) => {
     const imgUrl = getImageUrl(listing.images);
     const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
     const isSelected = selectedListing?.mlsNumber === listing.mlsNumber;
     const aggregate = aggregatesMap[listing.mlsNumber];
     const myMetrics = myAnalysisMetricsMap[listing.mlsNumber];
+    const distressListing = distressMap[listing.mlsNumber];
     const primaryMetricValue = getListingMetricValue(listing, sortMetric, aggregate, metricSource, myMetrics);
     const primaryMetricLabel = metricLabel(sortMetric);
     const primaryMetricConfidence = getMetricPrimaryConfidence(listing, sortMetric);
@@ -1683,6 +1943,31 @@ export default function CapRates() {
             <p className="text-[11px] text-muted-foreground truncate mb-1" data-testid={`text-address-${listing.mlsNumber}`}>
               {formatShortAddress(listing.address)}, {listing.address?.city}
             </p>
+
+            {distressListing && (
+              <div className="mb-1 flex items-center gap-1.5">
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] gap-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                  data-testid={`badge-distress-${listing.mlsNumber}`}
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  Distress {distressListing.distress.distressScore}
+                </Badge>
+                {distressListing.distress.categoriesTriggered.foreclosure_pos && (
+                  <Badge variant="outline" className="text-[10px] gap-1">
+                    <Gavel className="h-3 w-3" />
+                    Power of Sale
+                  </Badge>
+                )}
+                {distressListing.distress.categoriesTriggered.vtb && (
+                  <Badge variant="outline" className="text-[10px] gap-1">
+                    <DollarSign className="h-3 w-3" />
+                    VTB
+                  </Badge>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
               {listing.unitCount > 1 && (
@@ -1791,6 +2076,63 @@ export default function CapRates() {
                 </Badge>
               )}
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDistressCard = (listing: DistressListing) => {
+    const imgUrl = getImageUrl(listing.images);
+    const isSelected = selectedDistressListing?.mlsNumber === listing.mlsNumber;
+    return (
+      <div
+        key={`distress-${listing.mlsNumber}`}
+        className={`rounded-lg border cursor-pointer transition-all ${
+          isSelected
+            ? "border-red-500 bg-red-500/5 ring-1 ring-red-500"
+            : "border-border hover:border-red-500/50 hover:shadow-sm"
+        }`}
+        onClick={() => handleSelectDistressListing(listing)}
+        data-testid={`card-distress-${listing.mlsNumber}`}
+      >
+        <div className="flex gap-3 p-2.5">
+          <div className="relative flex-shrink-0">
+            {imgUrl ? (
+              <img
+                src={imgUrl}
+                alt={formatShortAddress(listing.address as RepliersListing["address"])}
+                className="w-24 h-20 object-cover rounded-md"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="w-24 h-20 bg-muted rounded-md flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-muted-foreground" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-sm font-bold">{formatPrice(listing.listPrice)}</span>
+              <Badge className="text-[10px] bg-red-600 hover:bg-red-600">
+                D {listing.distress.distressScore}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+              {formatShortAddress(listing.address as RepliersListing["address"])}, {listing.address?.city}
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {listing.distress.categoriesTriggered.foreclosure_pos && <Badge variant="outline" className="text-[10px]">Power of Sale</Badge>}
+              {listing.distress.categoriesTriggered.vtb && <Badge variant="outline" className="text-[10px]">VTB</Badge>}
+              {listing.distress.categoriesTriggered.motivated && <Badge variant="outline" className="text-[10px]">Motivated</Badge>}
+              {listing.distress.categoriesTriggered.commercial && <Badge variant="outline" className="text-[10px]">Commercial</Badge>}
+            </div>
+            <p className="mt-1.5 line-clamp-2 text-[10px] text-muted-foreground">
+              {listing.rawRemarks || listing.details?.description || "Distress indicators detected in listing remarks."}
+            </p>
           </div>
         </div>
       </div>
@@ -2529,17 +2871,96 @@ export default function CapRates() {
     );
   };
 
+  const renderDistressDetailPanel = () => {
+    if (!selectedDistressListing) return null;
+    const imgUrl = getImageUrl(selectedDistressListing.images);
+    return (
+      <div data-testid="panel-distress-detail">
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <CardTitle className="text-xl">{formatPriceFull(selectedDistressListing.listPrice)}</CardTitle>
+                  <Badge className="bg-red-600 hover:bg-red-600">
+                    Distress {selectedDistressListing.distress.distressScore}
+                  </Badge>
+                </div>
+                <CardDescription className="text-xs">
+                  {formatAddress(selectedDistressListing.address as RepliersListing["address"])}
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSelectedDistressListing(null)}
+                data-testid="button-close-distress-detail"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {imgUrl ? (
+              <img
+                src={imgUrl}
+                alt={formatShortAddress(selectedDistressListing.address as RepliersListing["address"])}
+                className="h-48 w-full rounded-lg object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            ) : null}
+
+            <div className="flex flex-wrap gap-2">
+              {selectedDistressListing.distress.categoriesTriggered.foreclosure_pos && <Badge variant="outline">Power of Sale</Badge>}
+              {selectedDistressListing.distress.categoriesTriggered.vtb && <Badge variant="outline">VTB</Badge>}
+              {selectedDistressListing.distress.categoriesTriggered.motivated && <Badge variant="outline">Motivated seller</Badge>}
+              {selectedDistressListing.distress.categoriesTriggered.commercial && <Badge variant="outline">Commercial</Badge>}
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
+              <p className="font-medium mb-1">Why it is flagged</p>
+              <p className="text-muted-foreground">
+                Confidence: {selectedDistressListing.distress.confidence}. Matched terms: {selectedDistressListing.distress.matchedTerms.slice(0, 6).map((term) => term.term).join(", ") || "n/a"}.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
+              <p className="font-medium mb-1">Listing remarks</p>
+              <p className="text-muted-foreground whitespace-pre-wrap">
+                {selectedDistressListing.rawRemarks || selectedDistressListing.details?.description || "No remarks available."}
+              </p>
+            </div>
+
+            <Button className="w-full" onClick={() => handleAnalyzeDistressListing(selectedDistressListing)}>
+              <Calculator className="h-4 w-4 mr-2" />
+              Analyze this distress deal
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   const resultSummaryLabel = hasSearched
     ? totalCount > 0
-      ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()} properties`
+      ? `${displayedListings.length} of ${totalCount.toLocaleString()} properties`
       : "No properties found"
     : "Move the map or run a search to start";
+  const mobileResultSummaryLabel = totalCount > 0
+    ? `${displayedListings.length} of ${totalCount.toLocaleString()}`
+    : showDistressOverlay && distressOnlyListingsInView.length > 0
+      ? `${distressOnlyListingsInView.length} distress`
+      : "No properties";
 
   const sidebarContent = (
     <>
       {selectedListing ? (
         <div className="h-full overflow-y-auto overscroll-contain p-3">
           {renderDetailPanel()}
+        </div>
+      ) : selectedDistressListing ? (
+        <div className="h-full overflow-y-auto overscroll-contain p-3">
+          {renderDistressDetailPanel()}
         </div>
       ) : (
         <div className="h-full p-3">
@@ -2622,9 +3043,26 @@ export default function CapRates() {
                 </div>
               </div>
             ))
-          ) : listingsWithCapRates.length > 0 ? (
+          ) : displayedListings.length > 0 || (showDistressOverlay && distressOnlyListingsInView.length > 0) ? (
             <>
-              {listingsWithCapRates.map((listing) => renderListingCard(listing))}
+              {displayedListings.map((listing) => renderListingCard(listing))}
+
+              {showDistressOverlay && distressOnlyListingsInView.length > 0 && (
+                <Card className="border-red-500/20 bg-red-500/5">
+                  <CardContent className="p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700 dark:text-red-300">Distress matches</p>
+                        <p className="text-xs text-muted-foreground">Additional distressed opportunities in the current map view.</p>
+                      </div>
+                      <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                        {distressOnlyListingsInView.length}
+                      </Badge>
+                    </div>
+                    {distressOnlyListingsInView.slice(0, 12).map((listing) => renderDistressCard(listing))}
+                  </CardContent>
+                </Card>
+              )}
 
               {numPages > 1 && (
                 <div className="flex items-center justify-between pt-2 pb-1">
@@ -2975,6 +3413,32 @@ export default function CapRates() {
                 <p className="text-[10px] text-muted-foreground">Keep listings even when this metric is missing.</p>
               </div>
             </div>
+            <div className="flex min-w-[220px] items-center gap-2 rounded-md border border-red-200 bg-background px-3 py-2">
+              <Switch
+                checked={showDistressOverlay}
+                onCheckedChange={(checked) => {
+                  setShowDistressOverlay(checked);
+                  if (!checked) setShowDistressOnly(false);
+                }}
+              />
+              <div>
+                <p className="text-[11px] font-medium">Show distress overlay</p>
+                <p className="text-[10px] text-muted-foreground">Red D markers and badges on distressed listings.</p>
+              </div>
+            </div>
+            <div className="flex min-w-[220px] items-center gap-2 rounded-md border border-red-200 bg-background px-3 py-2">
+              <Switch
+                checked={showDistressOnly}
+                onCheckedChange={(checked) => {
+                  setShowDistressOnly(checked);
+                  if (checked) setShowDistressOverlay(true);
+                }}
+              />
+              <div>
+                <p className="text-[11px] font-medium">Only show distressed deals</p>
+                <p className="text-[10px] text-muted-foreground">Filter standard listings down to overlap with distress matches.</p>
+              </div>
+            </div>
             <Button
               size="sm"
               className="h-8"
@@ -3009,6 +3473,8 @@ export default function CapRates() {
                 setMinAnalysisCount("");
                 setConsensusLabelFilter("any");
                 setIncludeUnavailableMetrics(false);
+                setShowDistressOverlay(true);
+                setShowDistressOnly(false);
               }}
               disabled={activeFilterCount === 0}
               data-testid="button-reset-filters"
@@ -3069,12 +3535,20 @@ export default function CapRates() {
               ))
             ) : (
               <ClusteredListingsLayer
-                listings={mappableListings}
+                listings={displayedMappableListings}
                 onSelectListing={handleSelectListing}
                 aggregatesMap={aggregatesMap}
                 metric={sortMetric}
                 metricSource={metricSource}
                 myMetricsMap={myAnalysisMetricsMap}
+                distressMap={distressMap}
+              />
+            )}
+            {!findDealsActive && showDistressOverlay && distressOnlyListingsInView.length > 0 && (
+              <DistressListingsLayer
+                listings={distressOnlyListingsInView}
+                selectedMlsNumber={selectedDistressListing?.mlsNumber}
+                onSelectListing={handleSelectDistressListing}
               />
             )}
             <NeighbourhoodOverlay layers={mapLayers} />
@@ -3096,7 +3570,11 @@ export default function CapRates() {
               data-testid="button-toggle-mobile-list"
             >
               <List className="h-4 w-4 mr-1.5" />
-              {listingsWithCapRates.length > 0 ? `${listingsWithCapRates.length} listings` : "Listings"}
+              {displayedListings.length > 0
+                ? `${displayedListings.length} listings`
+                : showDistressOverlay && distressOnlyListingsInView.length > 0
+                  ? `${distressOnlyListingsInView.length} distress`
+                  : "Listings"}
               {showMobileList ? <ChevronDown className="h-3 w-3 ml-1" /> : <ChevronUp className="h-3 w-3 ml-1" />}
             </Button>
           </div>
@@ -3138,9 +3616,7 @@ export default function CapRates() {
             <div className="flex items-center justify-between px-4 py-2 border-b">
               <div className="flex items-center gap-1.5">
                 <p className="text-xs font-medium">
-                  {totalCount > 0
-                    ? `${listingsWithCapRates.length} of ${totalCount.toLocaleString()}`
-                    : "No properties"}
+                  {mobileResultSummaryLabel}
                 </p>
                 {dataSource && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0">
@@ -3163,15 +3639,13 @@ export default function CapRates() {
           </div>
         )}
       </div>
-      <Sheet open={Boolean(analyzerListing)} onOpenChange={(open) => !open && setAnalyzerListing(null)}>
+      <Sheet open={Boolean(analyzerSheetMeta)} onOpenChange={(open) => !open && setAnalyzerSheetMeta(null)}>
         <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0">
           <div className="border-b px-6 py-4">
             <SheetHeader className="pr-8">
-              <SheetTitle>Analyze in Map Workspace</SheetTitle>
+              <SheetTitle>{analyzerSheetMeta?.title || "Analyze in Map Workspace"}</SheetTitle>
               <SheetDescription>
-                {analyzerListing
-                  ? `${formatShortAddress(analyzerListing.address)}${analyzerListing.address?.city ? `, ${analyzerListing.address.city}` : ""}`
-                  : "Run full underwriting without leaving the map."}
+                {analyzerSheetMeta?.subtitle || "Run full underwriting without leaving the map."}
               </SheetDescription>
             </SheetHeader>
           </div>

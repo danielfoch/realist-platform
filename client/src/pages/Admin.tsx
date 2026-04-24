@@ -42,6 +42,26 @@ type AdminUser = {
   createdAt: Date | null;
 };
 
+type LeaderboardHealth = {
+  database?: { db_name?: string; schema_name?: string } | null;
+  summary?: {
+    users_count: number;
+    leads_count: number;
+    properties_count: number;
+    analyses_count: number;
+    leaderboard_eligible_count: number;
+    orphan_analyses_count: number;
+    oldest_analysis_at: string | null;
+    newest_analysis_at: string | null;
+  } | null;
+  topEligibleLeaderboardUsers?: Array<{
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    dealCount: number;
+  }>;
+};
+
 export default function Admin() {
   const { toast } = useToast();
   
@@ -86,6 +106,11 @@ export default function Admin() {
 
   const { data: guidesList, isLoading: guidesLoading, refetch: refetchGuides } = useQuery<Guide[]>({
     queryKey: ["/api/guides/admin/all"],
+    retry: false,
+  });
+
+  const { data: leaderboardHealth, isLoading: leaderboardHealthLoading, refetch: refetchLeaderboardHealth } = useQuery<LeaderboardHealth>({
+    queryKey: ["/api/admin/leaderboard-health"],
     retry: false,
   });
 
@@ -422,6 +447,7 @@ export default function Admin() {
                 refetchLeads();
                 refetchApplications();
                 refetchUsers();
+                refetchLeaderboardHealth();
               }}
               data-testid="button-refresh"
             >
@@ -503,6 +529,46 @@ export default function Admin() {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="border-amber-500/20" data-testid="card-leaderboard-health">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Leaderboard Health
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {leaderboardHealthLoading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : leaderboardHealth?.summary ? (
+                <div className="space-y-3 text-sm">
+                  <div className="flex flex-wrap gap-4 text-muted-foreground">
+                    <span>DB: <span className="font-mono text-foreground">{leaderboardHealth.database?.db_name || "unknown"}</span></span>
+                    <span>Analyses: <span className="font-mono text-foreground">{leaderboardHealth.summary.analyses_count}</span></span>
+                    <span>Eligible: <span className="font-mono text-foreground">{leaderboardHealth.summary.leaderboard_eligible_count}</span></span>
+                    <span>Orphans: <span className="font-mono text-foreground">{leaderboardHealth.summary.orphan_analyses_count}</span></span>
+                    <span>Newest: <span className="font-mono text-foreground">{leaderboardHealth.summary.newest_analysis_at ? format(new Date(leaderboardHealth.summary.newest_analysis_at), "MMM d, yyyy h:mm a") : "none"}</span></span>
+                  </div>
+                  {(leaderboardHealth.summary.analyses_count < 25 || leaderboardHealth.summary.leaderboard_eligible_count < 10) && (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-amber-700 dark:text-amber-400">
+                      Leaderboard dataset looks unusually small for this deployment. Verify the active `DATABASE_URL` before trusting rankings.
+                    </div>
+                  )}
+                  {!!leaderboardHealth.topEligibleLeaderboardUsers?.length && (
+                    <div className="text-muted-foreground">
+                      Top eligible users:
+                      {" "}
+                      {leaderboardHealth.topEligibleLeaderboardUsers
+                        .map((row) => `${row.firstName || ""} ${row.lastName || ""}`.trim() || row.email)
+                        .join(", ")}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">Leaderboard health unavailable.</p>
+              )}
+            </CardContent>
+          </Card>
 
           <Tabs defaultValue="applications" className="space-y-4">
             <TabsList>

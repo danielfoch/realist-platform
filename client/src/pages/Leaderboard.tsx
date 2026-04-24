@@ -35,6 +35,11 @@ interface Aggregates {
 interface LeaderboardResponse {
   analysts: LeaderboardEntry[];
   aggregates: Aggregates;
+  diagnostics?: {
+    eligibleUserCount: number;
+    newestEligibleAnalysisAt: string | null;
+    suspiciousData: boolean;
+  };
 }
 
 interface CityEntry {
@@ -562,6 +567,7 @@ export default function Leaderboard() {
   });
 
   const aggregates = leaderboardData?.aggregates;
+  const diagnostics = leaderboardData?.diagnostics;
   const analysts = leaderboardData?.analysts || [];
   const weeklyAnalysts = weeklyLeaderboard?.analysts || [];
 
@@ -590,6 +596,25 @@ export default function Leaderboard() {
             Every deal analyzed brings you closer to the top.
           </p>
         </div>
+
+        {diagnostics?.suspiciousData && (
+          <Card className="mb-6 border-amber-500/30 bg-amber-500/5" data-testid="leaderboard-data-warning">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <Shield className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                    Leaderboard data looks unusually small right now.
+                  </p>
+                  <p className="text-muted-foreground mt-1">
+                    Eligible analysts: {diagnostics.eligibleUserCount}. Latest eligible analysis: {diagnostics.newestEligibleAnalysisAt ? new Date(diagnostics.newestEligibleAnalysisAt).toLocaleString() : "none"}.
+                    This can indicate a stale or incorrect database connection.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <WeeklyStatsPanel stats={weeklyStats} isLoading={isLoadingWeeklyStats} />
 
