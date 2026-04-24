@@ -665,6 +665,82 @@ export async function registerRoutes(
     }
   });
 
+  // ── US Listings ingest endpoint ───────────────────────────────────────
+  // Auth: shared secret in `X-Ingest-Token` header (env: US_LISTINGS_INGEST_TOKEN)
+  // Body: { listings: InsertUsListing[] }  — batches of up to 1000
+  // Behavior: idempotent upsert keyed on (source, source_id)
+  const ingestBatchSchema = z.object({
+    listings: z.array(insertUsListingSchema).min(1).max(1000),
+  });
+
+  app.post("/api/ingest/us-listings", async (req, res) => {
+    try {
+      const expected = process.env.US_LISTINGS_INGEST_TOKEN;
+      if (!expected) {
+        return res.status(503).json({ error: "Ingest endpoint not configured (missing token)" });
+      }
+      const provided = req.header("x-ingest-token");
+      if (!provided || provided !== expected) {
+        return res.status(401).json({ error: "Invalid or missing ingest token" });
+      }
+
+      const parsed = ingestBatchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      }
+
+      const rows = parsed.data.listings;
+      const now = new Date();
+
+      const result = await db
+        .insert(usListings)
+        .values(rows.map((r) => ({ ...r, updatedAt: now })))
+        .onConflictDoUpdate({
+          target: [usListings.source, usListings.sourceId],
+          set: {
+            sourceUrl: sql`excluded.source_url`,
+            formattedAddress: sql`excluded.formatted_address`,
+            streetAddress: sql`excluded.street_address`,
+            city: sql`excluded.city`,
+            state: sql`excluded.state`,
+            postalCode: sql`excluded.postal_code`,
+            county: sql`excluded.county`,
+            lat: sql`excluded.lat`,
+            lng: sql`excluded.lng`,
+            propertyType: sql`excluded.property_type`,
+            beds: sql`excluded.beds`,
+            baths: sql`excluded.baths`,
+            sqft: sql`excluded.sqft`,
+            lotSqft: sql`excluded.lot_sqft`,
+            yearBuilt: sql`excluded.year_built`,
+            listPrice: sql`excluded.list_price`,
+            estRent: sql`excluded.est_rent`,
+            estTaxes: sql`excluded.est_taxes`,
+            estHoa: sql`excluded.est_hoa`,
+            daysOnMarket: sql`excluded.days_on_market`,
+            listDate: sql`excluded.list_date`,
+            status: sql`excluded.status`,
+            motivatedSellerSignals: sql`excluded.motivated_seller_signals`,
+            raw: sql`excluded.raw`,
+            scrapedAt: sql`excluded.scraped_at`,
+            delistedAt: sql`excluded.delisted_at`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        })
+        .returning({ id: usListings.id, source: usListings.source, sourceId: usListings.sourceId });
+
+      return res.status(200).json({
+        ok: true,
+        received: rows.length,
+        upserted: result.length,
+        serverTime: now.toISOString(),
+      });
+    } catch (err: any) {
+      console.error("[/api/ingest/us-listings] error:", err);
+      return res.status(500).json({ error: "Ingest failed", message: err?.message ?? String(err) });
+    }
+  });
+
   app.post("/api/leads", async (req, res) => {
     try {
       const validatedData = createLeadRequestSchema.parse(req.body);

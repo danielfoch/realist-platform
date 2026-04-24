@@ -2402,6 +2402,50 @@ export const insertAreaYieldHistorySchema = createInsertSchema(areaYieldHistory)
 export type InsertAreaYieldHistory = z.infer<typeof insertAreaYieldHistorySchema>;
 export type AreaYieldHistory = typeof areaYieldHistory.$inferSelect;
 
+export const propertyInvestmentMetrics = pgTable("property_investment_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: text("property_id").notNull(),
+  sourceListingId: text("source_listing_id"),
+  calculationVersion: text("calculation_version").notNull(),
+  grossYield: real("gross_yield"),
+  capRate: real("cap_rate"),
+  cashOnCashReturn: real("cash_on_cash_return"),
+  irr: real("irr"),
+  noi: real("noi"),
+  annualGrossRent: real("annual_gross_rent"),
+  annualOperatingExpenses: real("annual_operating_expenses"),
+  monthlyCashFlow: real("monthly_cash_flow"),
+  dscr: real("dscr"),
+  expenseRatio: real("expense_ratio"),
+  rentAssumptionSource: text("rent_assumption_source"),
+  expenseAssumptionSource: text("expense_assumption_source"),
+  financingAssumptionSource: text("financing_assumption_source"),
+  exitAssumptionSource: text("exit_assumption_source"),
+  assumptionsComplete: boolean("assumptions_complete").notNull().default(false),
+  capRateConfidence: text("cap_rate_confidence"),
+  irrConfidence: text("irr_confidence"),
+  calculationWarnings: jsonb("calculation_warnings"),
+  assumptionsJson: jsonb("assumptions_json"),
+  calculatedAt: timestamp("calculated_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS property_investment_metrics_property_idx ON property_investment_metrics(property_id)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_listing_idx ON property_investment_metrics(source_listing_id)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_gross_yield_idx ON property_investment_metrics(gross_yield)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_cap_rate_idx ON property_investment_metrics(cap_rate)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_cash_on_cash_idx ON property_investment_metrics(cash_on_cash_return)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_irr_idx ON property_investment_metrics(irr)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_monthly_cf_idx ON property_investment_metrics(monthly_cash_flow)`,
+]);
+
+export const insertPropertyInvestmentMetricsSchema = createInsertSchema(propertyInvestmentMetrics).omit({
+  id: true,
+  calculatedAt: true,
+  updatedAt: true,
+});
+export type InsertPropertyInvestmentMetrics = z.infer<typeof insertPropertyInvestmentMetricsSchema>;
+export type PropertyInvestmentMetrics = typeof propertyInvestmentMetrics.$inferSelect;
+
 export const blogPosts = pgTable("blog_posts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),

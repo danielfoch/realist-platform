@@ -231,6 +231,42 @@ async function ensureAppTables() {
         created_at timestamp NOT NULL DEFAULT now()
       )
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS property_investment_metrics (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        property_id text NOT NULL,
+        source_listing_id text,
+        calculation_version text NOT NULL,
+        gross_yield real,
+        cap_rate real,
+        cash_on_cash_return real,
+        irr real,
+        noi real,
+        annual_gross_rent real,
+        annual_operating_expenses real,
+        monthly_cash_flow real,
+        dscr real,
+        expense_ratio real,
+        rent_assumption_source text,
+        expense_assumption_source text,
+        financing_assumption_source text,
+        exit_assumption_source text,
+        assumptions_complete boolean NOT NULL DEFAULT false,
+        cap_rate_confidence text,
+        irr_confidence text,
+        calculation_warnings jsonb,
+        assumptions_json jsonb,
+        calculated_at timestamp NOT NULL DEFAULT now(),
+        updated_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS property_investment_metrics_property_idx ON property_investment_metrics(property_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_listing_idx ON property_investment_metrics(source_listing_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_gross_yield_idx ON property_investment_metrics(gross_yield)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_cap_rate_idx ON property_investment_metrics(cap_rate)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_cash_on_cash_idx ON property_investment_metrics(cash_on_cash_return)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_irr_idx ON property_investment_metrics(irr)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_monthly_cf_idx ON property_investment_metrics(monthly_cash_flow)`);
     await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS parent_comment_id varchar`);
     await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS referenced_analysis_id varchar`);
     await db.execute(sql`ALTER TABLE listing_comments ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'public'`);

@@ -54,6 +54,18 @@ import { CommunityMetricsSummary } from "@/components/CommunityMetricsSummary";
 import { CommunityAnalysisModal } from "@/components/CommunityAnalysisModal";
 import { ListingCommentsSection } from "@/components/ListingCommentsSection";
 import { ListingCommentCountBadge } from "@/components/ListingCommentCountBadge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  calculateInvestmentMetrics,
+  INVESTMENT_METRIC_FLAGS,
+  metricHigherIsBetter,
+  metricLabel,
+  type CalculatedInvestmentMetrics,
+  type InvestmentMetricKey,
+  type InvestmentMetricSource,
+  type MetricConfidence,
+  type ConsensusLabel,
+} from "@shared/investmentMetrics";
 
 interface RepliersListing {
   mlsNumber: string;
@@ -103,9 +115,21 @@ interface RepliersListing {
 }
 
 interface ListingWithCapRate extends RepliersListing {
+  grossYield: number | null;
   capRate: number;
+  cashOnCashReturn: number | null;
+  irr: number | null;
+  monthlyCashFlow: number | null;
+  dscr: number | null;
   estimatedMonthlyRent: number;
   annualNOI: number;
+  annualOperatingExpenses: number | null;
+  expenseRatio: number | null;
+  metricConfidence: MetricConfidence;
+  irrConfidence: MetricConfidence;
+  assumptionsComplete: boolean;
+  calculationWarnings: string[];
+  assumptionsUsed: CalculatedInvestmentMetrics["assumptionsUsed"];
   rentSource: "market" | "estimated" | "actual" | "cmhc_city" | "cmhc_province";
   totalActualRent?: number;
   numberOfUnitsTotal?: number;
@@ -212,6 +236,136 @@ function getCapRateMarkerColor(rate: number): string {
   return "#dc2626";
 }
 
+function getCashFlowMarkerColor(value: number): string {
+  if (value >= 500) return "#16a34a";
+  if (value >= 0) return "#059669";
+  if (value >= -250) return "#ca8a04";
+  return "#dc2626";
+}
+
+function getConsensusMarkerColor(value?: string | null): string {
+  if (value === "bullish") return "#16a34a";
+  if (value === "neutral") return "#ca8a04";
+  if (value === "bearish") return "#dc2626";
+  return "#4b5563";
+}
+
+function formatCompactCurrency(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "N/A";
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  return `${sign}${formatPrice(Math.abs(value))}/mo`;
+}
+
+function getMetricConfidenceTone(confidence: MetricConfidence | null | undefined): string {
+  if (confidence === "high") return "text-green-600";
+  if (confidence === "medium") return "text-amber-600";
+  return "text-muted-foreground";
+}
+
+function metricShortLabel(metric: InvestmentMetricKey): string {
+  switch (metric) {
+    case "gross_yield":
+      return "yield";
+    case "cap_rate":
+      return "cap";
+    case "cash_on_cash":
+      return "CoC";
+    case "irr":
+      return "IRR";
+    case "monthly_cash_flow":
+      return "CF";
+    case "community_consensus":
+      return "community";
+    default:
+      return "price";
+  }
+}
+
+function formatMetricValue(metric: InvestmentMetricKey, value: number | null | undefined, consensusLabel?: string | null, analysisCount?: number | null): string {
+  if (metric === "community_consensus") {
+    if (consensusLabel) return consensusLabel[0].toUpperCase() + consensusLabel.slice(1);
+    if (analysisCount && analysisCount > 0) return `${analysisCount} analyses`;
+    return "No data";
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) return "N/A";
+  if (metric === "price") return formatPrice(value);
+  if (metric === "monthly_cash_flow") return formatCompactCurrency(value);
+  return `${value.toFixed(1)}%`;
+}
+
+function getMetricMarkerColor(metric: InvestmentMetricKey, numericValue: number | null | undefined, consensusLabel?: string | null): string {
+  if (metric === "monthly_cash_flow") return getCashFlowMarkerColor(numericValue || 0);
+  if (metric === "community_consensus") return getConsensusMarkerColor(consensusLabel);
+  if (metric === "price") return "#2563eb";
+  return getCapRateMarkerColor(numericValue || 0);
+}
+
+function getAggregateMetricValue(aggregate: ListingAnalysisAggregate | null | undefined, metric: InvestmentMetricKey): number | null {
+  if (!aggregate) return null;
+  switch (metric) {
+    case "cap_rate":
+      return aggregate.medianCapRate ?? null;
+    case "cash_on_cash":
+      return aggregate.medianCashOnCash ?? null;
+    case "monthly_cash_flow":
+      return aggregate.medianMonthlyCashFlow ?? null;
+    default:
+      return null;
+  }
+}
+
+function getListingMetricValue(
+  listing: ListingWithCapRate,
+  metric: InvestmentMetricKey,
+  aggregate?: ListingAnalysisAggregate | null,
+  source: InvestmentMetricSource = "realist_estimate",
+  myMetrics?: Record<string, any> | null,
+): number | null {
+  if (source === "community_median") {
+    return getAggregateMetricValue(aggregate, metric);
+  }
+  if (source === "my_saved_analyses") {
+    switch (metric) {
+      case "cap_rate":
+        return typeof myMetrics?.medianCapRate === "number" ? myMetrics.medianCapRate : null;
+      case "cash_on_cash":
+        return typeof myMetrics?.medianCashOnCash === "number" ? myMetrics.medianCashOnCash : null;
+      case "monthly_cash_flow":
+        return typeof myMetrics?.medianMonthlyCashFlow === "number" ? myMetrics.medianMonthlyCashFlow : null;
+      case "irr":
+        return typeof myMetrics?.medianIrr === "number" ? myMetrics.medianIrr : null;
+      default:
+        return null;
+    }
+  }
+
+  switch (metric) {
+    case "price":
+      return typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+    case "gross_yield":
+      return listing.grossYield;
+    case "cap_rate":
+      return listing.capRate;
+    case "cash_on_cash":
+      return listing.cashOnCashReturn;
+    case "irr":
+      return listing.irr;
+    case "monthly_cash_flow":
+      return listing.monthlyCashFlow;
+    default:
+      return null;
+  }
+}
+
+function getMetricPrimaryConfidence(
+  listing: ListingWithCapRate,
+  metric: InvestmentMetricKey,
+): MetricConfidence | null {
+  if (metric === "irr") return listing.irrConfidence;
+  if (metric === "gross_yield" || metric === "cap_rate") return listing.metricConfidence;
+  return null;
+}
+
 function buildListingSignal(listing: RepliersListing & {
   capRate?: number;
   estimatedMonthlyRent?: number;
@@ -232,14 +386,21 @@ function buildListingSignal(listing: RepliersListing & {
   };
 }
 
-function createCapRateIcon(capRate: number, isSelected: boolean, aggregate?: ListingAnalysisAggregate | null): L.DivIcon {
-  const color = getCapRateMarkerColor(capRate);
-  const size = isSelected ? 44 : 36;
-  const fontSize = isSelected ? 13 : 11;
-  const border = isSelected ? "3px solid #2563eb" : "2px solid white";
-  const shadow = isSelected ? "0 0 0 2px #2563eb, 0 2px 8px rgba(0,0,0,0.3)" : "0 2px 6px rgba(0,0,0,0.3)";
-  const zIndex = isSelected ? 1000 : 1;
-  const communityCount = (aggregate?.publicAnalysisCount || 0) + (aggregate?.publicCommentCount || 0);
+function createMetricMarkerIcon(input: {
+  metric: InvestmentMetricKey;
+  numericValue: number | null;
+  label: string;
+  isSelected: boolean;
+  aggregate?: ListingAnalysisAggregate | null;
+  consensusLabel?: string | null;
+}): L.DivIcon {
+  const color = getMetricMarkerColor(input.metric, input.numericValue, input.consensusLabel);
+  const size = input.isSelected ? 46 : 38;
+  const fontSize = input.isSelected ? 12 : 10;
+  const border = input.isSelected ? "3px solid #2563eb" : "2px solid white";
+  const shadow = input.isSelected ? "0 0 0 2px #2563eb, 0 2px 8px rgba(0,0,0,0.3)" : "0 2px 6px rgba(0,0,0,0.3)";
+  const zIndex = input.isSelected ? 1000 : 1;
+  const communityCount = (input.aggregate?.publicAnalysisCount || 0) + (input.aggregate?.publicCommentCount || 0);
   const badgeHtml = communityCount > 0
     ? `<div style="
         position:absolute;
@@ -280,7 +441,9 @@ function createCapRateIcon(capRate: number, isSelected: boolean, aggregate?: Lis
       transition: transform 0.15s ease;
       line-height: 1;
       font-family: system-ui, -apple-system, sans-serif;
-    ">${capRate.toFixed(1)}%</div>${badgeHtml}</div>`,
+      padding: 0 3px;
+      text-align: center;
+    ">${input.label}</div>${badgeHtml}</div>`,
     iconSize: [size + 10, size + 10],
     iconAnchor: [size / 2, size / 2],
   });
@@ -385,26 +548,6 @@ function estimateMonthlyRent(
   return { rent: cmhc.rent, source: "estimated" };
 }
 
-function calculateCapRate(
-  price: number,
-  monthlyRent: number,
-  annualTax?: number
-): { capRate: number; annualNOI: number } {
-  if (price <= 0) return { capRate: 0, annualNOI: 0 };
-
-  const grossAnnualRent = monthlyRent * 12;
-  const effectiveRent = grossAnnualRent * (1 - EXPENSE_ASSUMPTIONS.vacancyPercent / 100);
-  const maintenance = grossAnnualRent * (EXPENSE_ASSUMPTIONS.maintenancePercent / 100);
-  const management = grossAnnualRent * (EXPENSE_ASSUMPTIONS.managementPercent / 100);
-  const insurance = EXPENSE_ASSUMPTIONS.insurancePerUnit * 12;
-  const propertyTax = annualTax || price * (EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100);
-
-  const annualNOI = effectiveRent - maintenance - management - insurance - propertyTax;
-  const capRate = (annualNOI / price) * 100;
-
-  return { capRate: Math.max(0, capRate), annualNOI };
-}
-
 function MapEventHandler({
   onBoundsChange,
 }: {
@@ -452,10 +595,9 @@ function FlyToLocation({ lat, lng, zoom }: { lat: number; lng: number; zoom?: nu
   return null;
 }
 
-function createClusterIcon(avgCapRate: number, count: number): L.DivIcon {
-  const color = getCapRateMarkerColor(avgCapRate);
+function createClusterIcon(label: string, count: number, metric: InvestmentMetricKey, numericValue: number | null, consensusLabel?: string | null): L.DivIcon {
+  const color = getMetricMarkerColor(metric, numericValue, consensusLabel);
   const size = count > 75 ? 56 : count > 24 ? 48 : 40;
-  const label = `${avgCapRate.toFixed(1)}%`;
 
   return L.divIcon({
     className: "yield-cluster-marker",
@@ -487,11 +629,17 @@ function ClusteredListingsLayer({
   selectedListingId,
   onSelectListing,
   aggregatesMap,
+  metric,
+  metricSource,
+  myMetricsMap,
 }: {
   listings: ListingWithCapRate[];
   selectedListingId?: string;
   onSelectListing: (listing: ListingWithCapRate) => void;
   aggregatesMap: Record<string, ListingAnalysisAggregate>;
+  metric: InvestmentMetricKey;
+  metricSource: InvestmentMetricSource;
+  myMetricsMap: Record<string, any>;
 }) {
   const map = useMap();
   const clusterRef = useRef<any>(null);
@@ -509,33 +657,56 @@ function ClusteredListingsLayer({
       chunkedLoading: true,
       disableClusteringAtZoom: 14,
       iconCreateFunction: (clusterGroup: any) => {
-        const children = clusterGroup.getAllChildMarkers() as Array<L.Marker & { options: { capRate?: number } }>;
-        const capRates = children
-          .map((child) => child.options.capRate)
+        const children = clusterGroup.getAllChildMarkers() as Array<L.Marker & { options: { metricValue?: number; consensusLabel?: string } }>;
+        const values = children
+          .map((child) => child.options.metricValue)
           .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-        const avgCapRate = capRates.length
-          ? capRates.reduce((sum, value) => sum + value, 0) / capRates.length
+        const avgValue = values.length
+          ? values.reduce((sum, value) => sum + value, 0) / values.length
           : 0;
-        return createClusterIcon(avgCapRate, clusterGroup.getChildCount());
+        const consensusCounts = children.reduce<Record<string, number>>((acc, child) => {
+          if (child.options.consensusLabel) acc[child.options.consensusLabel] = (acc[child.options.consensusLabel] || 0) + 1;
+          return acc;
+        }, {});
+        const dominantConsensus = Object.entries(consensusCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+        return createClusterIcon(
+          formatMetricValue(metric, values.length ? avgValue : null, dominantConsensus, clusterGroup.getChildCount()),
+          clusterGroup.getChildCount(),
+          metric,
+          values.length ? avgValue : null,
+          dominantConsensus,
+        );
       },
     });
 
     for (const listing of listings) {
       if (!listing.map?.latitude || !listing.map?.longitude) continue;
+      const aggregate = aggregatesMap[listing.mlsNumber];
+      const metricValue = getListingMetricValue(listing, metric, aggregate, metricSource, myMetricsMap[listing.mlsNumber]);
+      const consensusLabel = aggregate?.consensusLabel || null;
       const marker = L.marker(
         [listing.map.latitude, listing.map.longitude],
         {
-          icon: createCapRateIcon(listing.capRate, selectedListingId === listing.mlsNumber, aggregatesMap[listing.mlsNumber]),
-          capRate: listing.capRate,
-        } as L.MarkerOptions & { capRate: number },
+          icon: createMetricMarkerIcon({
+            metric,
+            numericValue: metricValue,
+            label: formatMetricValue(metric, metricValue, consensusLabel, aggregate?.publicAnalysisCount),
+            isSelected: selectedListingId === listing.mlsNumber,
+            aggregate,
+            consensusLabel,
+          }),
+          metricValue: metricValue ?? undefined,
+          consensusLabel: consensusLabel ?? undefined,
+        } as L.MarkerOptions & { metricValue?: number; consensusLabel?: string },
       );
-      const aggregate = aggregatesMap[listing.mlsNumber];
 
       marker.bindPopup(`
         <div style="min-width:200px">
           <p style="margin:0;font-weight:700;font-size:14px">${formatPrice(listing.listPrice)}</p>
           <p style="margin:4px 0 0;font-size:12px;color:#4b5563">${formatShortAddress(listing.address)}, ${listing.address?.city || ""}</p>
-          <p style="margin:6px 0 0;font-size:12px;font-weight:700;color:${getCapRateMarkerColor(listing.capRate)}">${listing.capRate.toFixed(1)}% Yield</p>
+          <p style="margin:6px 0 0;font-size:12px;font-weight:700;color:${getMetricMarkerColor(metric, metricValue, consensusLabel)}">${metricLabel(metric)}: ${formatMetricValue(metric, metricValue, consensusLabel, aggregate?.publicAnalysisCount)}</p>
+          ${listing.grossYield != null ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563">Gross yield: ${listing.grossYield.toFixed(1)}%</p>` : ""}
+          ${listing.capRate != null ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563">Cap rate: ${listing.capRate.toFixed(1)}%</p>` : ""}
           ${aggregate ? `<p style="margin:6px 0 0;font-size:12px;color:#111827">${aggregate.publicAnalysisCount || 0} analyses · ${aggregate.publicCommentCount || 0} comments</p>` : ""}
           ${aggregate?.medianMonthlyCashFlow != null ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563">Median CF: $${Math.round(aggregate.medianMonthlyCashFlow).toLocaleString()}/mo</p>` : ""}
           ${aggregate?.consensusLabel ? `<p style="margin:4px 0 0;font-size:12px;color:#4b5563;text-transform:capitalize">Consensus: ${aggregate.consensusLabel}</p>` : ""}
@@ -554,7 +725,7 @@ function ClusteredListingsLayer({
       }
       clusterRef.current = null;
     };
-  }, [aggregatesMap, listings, map, onSelectListing, selectedListingId]);
+  }, [aggregatesMap, listings, map, metric, metricSource, myMetricsMap, onSelectListing, selectedListingId]);
 
   return null;
 }
@@ -587,8 +758,20 @@ export default function CapRates() {
   const [minBeds, setMinBeds] = useState("any");
   const [minUnits, setMinUnits] = useState("any");
   const [propertyType, setPropertyType] = useState("all");
-  const [minCapRate, setMinCapRate] = useState("any");
-  const [sortBy, setSortBy] = useState<"capRate" | "priceAsc" | "priceDesc">("capRate");
+  const [sortMetric, setSortMetric] = useState<InvestmentMetricKey>("gross_yield");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [metricSource, setMetricSource] = useState<InvestmentMetricSource>("realist_estimate");
+  const [minGrossYield, setMinGrossYield] = useState("");
+  const [maxGrossYield, setMaxGrossYield] = useState("");
+  const [minCapRate, setMinCapRate] = useState("");
+  const [maxCapRate, setMaxCapRate] = useState("");
+  const [minIrr, setMinIrr] = useState("");
+  const [maxIrr, setMaxIrr] = useState("");
+  const [minCashOnCash, setMinCashOnCash] = useState("");
+  const [minMonthlyCashFlow, setMinMonthlyCashFlow] = useState("");
+  const [minAnalysisCount, setMinAnalysisCount] = useState("");
+  const [consensusLabelFilter, setConsensusLabelFilter] = useState<"any" | ConsensusLabel>("any");
+  const [includeUnavailableMetrics, setIncludeUnavailableMetrics] = useState(false);
   const [page, setPage] = useState(1);
   const [listings, setListings] = useState<RepliersListing[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -686,6 +869,18 @@ export default function CapRates() {
       return res.json();
     },
     enabled: !!selectedMls && isAuthenticated,
+  });
+
+  const { data: myAnalysisMetricsMap = {} } = useQuery<Record<string, any>>({
+    queryKey: ["/api/community/my-analysis-metrics", listings.map((listing) => listing.mlsNumber).join(","), isAuthenticated],
+    queryFn: async () => {
+      if (!isAuthenticated || listings.length === 0) return {};
+      const res = await apiRequest("POST", "/api/community/my-analysis-metrics", {
+        mlsNumbers: listings.map((listing) => listing.mlsNumber).filter(Boolean),
+      });
+      return res.json();
+    },
+    enabled: isAuthenticated && listings.length > 0,
   });
 
   const fetchAggregatesBatch = useCallback(async (mlsNumbers: string[]) => {
@@ -922,32 +1117,111 @@ export default function CapRates() {
           source = estimated.source;
         }
 
-        const { capRate, annualNOI } = calculateCapRate(
-          price,
-          rent,
-          listing.taxes?.annualAmount || undefined
-        );
+        const metrics = calculateInvestmentMetrics(price, {
+          monthlyRent: rent,
+          unitCount: units,
+          annualPropertyTax: listing.taxes?.annualAmount || null,
+          annualInsurance: EXPENSE_ASSUMPTIONS.insurancePerUnit * units,
+          vacancyPercent: EXPENSE_ASSUMPTIONS.vacancyPercent,
+          maintenancePercent: EXPENSE_ASSUMPTIONS.maintenancePercent,
+          managementPercent: EXPENSE_ASSUMPTIONS.managementPercent,
+          rentSource: source,
+          taxSource: listing.taxes?.annualAmount ? "listing" : "inferred",
+        });
         return {
           ...listing,
-          capRate,
+          grossYield: metrics.grossYield,
+          capRate: metrics.capRate || 0,
+          cashOnCashReturn: metrics.cashOnCashReturn,
+          irr: metrics.irr,
+          monthlyCashFlow: metrics.monthlyCashFlow,
+          dscr: metrics.dscr,
           estimatedMonthlyRent: rent,
-          annualNOI,
+          annualNOI: metrics.noi || 0,
+          annualOperatingExpenses: metrics.annualOperatingExpenses,
+          expenseRatio: metrics.expenseRatio,
+          metricConfidence: metrics.capRateConfidence,
+          irrConfidence: metrics.irrConfidence,
+          assumptionsComplete: metrics.assumptionsComplete,
+          calculationWarnings: metrics.calculationWarnings,
+          assumptionsUsed: metrics.assumptionsUsed,
           rentSource: source,
           unitCount: units,
         };
       })
       .filter((l) => {
-        if (minCapRate && minCapRate !== "any" && l.capRate < parseFloat(minCapRate)) return false;
+        const aggregate = aggregatesMap[l.mlsNumber];
+        const myMetrics = myAnalysisMetricsMap[l.mlsNumber];
+        const selectedMetricValue = getListingMetricValue(l, sortMetric, aggregate, metricSource, myMetrics);
+        if (!includeUnavailableMetrics && sortMetric !== "community_consensus" && selectedMetricValue == null) return false;
+        if (minGrossYield && (l.grossYield == null || l.grossYield < parseFloat(minGrossYield))) return false;
+        if (maxGrossYield && (l.grossYield == null || l.grossYield > parseFloat(maxGrossYield))) return false;
+        if (minCapRate) {
+          const value = getListingMetricValue(l, "cap_rate", aggregate, metricSource, myMetrics);
+          if (value == null || value < parseFloat(minCapRate)) return false;
+        }
+        if (maxCapRate) {
+          const value = getListingMetricValue(l, "cap_rate", aggregate, metricSource, myMetrics);
+          if (value == null || value > parseFloat(maxCapRate)) return false;
+        }
+        if (minIrr) {
+          const value = getListingMetricValue(l, "irr", aggregate, metricSource, myMetrics);
+          if (value == null || value < parseFloat(minIrr)) return false;
+        }
+        if (maxIrr) {
+          const value = getListingMetricValue(l, "irr", aggregate, metricSource, myMetrics);
+          if (value == null || value > parseFloat(maxIrr)) return false;
+        }
+        if (minCashOnCash) {
+          const value = getListingMetricValue(l, "cash_on_cash", aggregate, metricSource, myMetrics);
+          if (value == null || value < parseFloat(minCashOnCash)) return false;
+        }
+        if (minMonthlyCashFlow) {
+          const value = getListingMetricValue(l, "monthly_cash_flow", aggregate, metricSource, myMetrics);
+          if (value == null || value < parseFloat(minMonthlyCashFlow)) return false;
+        }
+        if (minAnalysisCount && (aggregate?.publicAnalysisCount || 0) < parseFloat(minAnalysisCount)) return false;
+        if (consensusLabelFilter !== "any" && aggregate?.consensusLabel !== consensusLabelFilter) return false;
         return true;
       })
       .sort((a, b) => {
-        if (sortBy === "capRate") return b.capRate - a.capRate;
-        const priceA = typeof a.listPrice === "string" ? parseFloat(a.listPrice) : a.listPrice;
-        const priceB = typeof b.listPrice === "string" ? parseFloat(b.listPrice) : b.listPrice;
-        if (sortBy === "priceAsc") return priceA - priceB;
-        return priceB - priceA;
+        const aggregateA = aggregatesMap[a.mlsNumber];
+        const aggregateB = aggregatesMap[b.mlsNumber];
+        const myMetricsA = myAnalysisMetricsMap[a.mlsNumber];
+        const myMetricsB = myAnalysisMetricsMap[b.mlsNumber];
+        if (sortMetric === "community_consensus") {
+          const rank = (label?: string | null) => label === "bullish" ? 3 : label === "neutral" ? 2 : label === "bearish" ? 1 : 0;
+          const comparison = rank(aggregateA?.consensusLabel) - rank(aggregateB?.consensusLabel);
+          return sortDirection === "asc" ? comparison : -comparison;
+        }
+        const valueA = getListingMetricValue(a, sortMetric, aggregateA, metricSource, myMetricsA);
+        const valueB = getListingMetricValue(b, sortMetric, aggregateB, metricSource, myMetricsB);
+        if (valueA == null && valueB == null) return 0;
+        if (valueA == null) return 1;
+        if (valueB == null) return -1;
+        const comparison = valueA - valueB;
+        return sortDirection === "asc" ? comparison : -comparison;
       });
-  }, [listings, rentData, minCapRate, sortBy]);
+  }, [
+    aggregatesMap,
+    consensusLabelFilter,
+    includeUnavailableMetrics,
+    listings,
+    maxCapRate,
+    maxGrossYield,
+    maxIrr,
+    metricSource,
+    minAnalysisCount,
+    minCapRate,
+    minCashOnCash,
+    minGrossYield,
+    minIrr,
+    minMonthlyCashFlow,
+    myAnalysisMetricsMap,
+    rentData,
+    sortDirection,
+    sortMetric,
+  ]);
 
   const mappableListings = useMemo(
     () => listingsWithCapRates.filter((l) => l.map?.latitude && l.map?.longitude),
@@ -1002,6 +1276,24 @@ export default function CapRates() {
     if (initialQueryHandledRef.current || !search) return;
     const params = new URLSearchParams(search);
     const q = params.get("q");
+    const initialSortMetric = params.get("sortMetric") as InvestmentMetricKey | null;
+    const initialSortDirection = params.get("sortDirection") as "asc" | "desc" | null;
+    const initialMetricSource = params.get("metricSource") as InvestmentMetricSource | null;
+    if (initialSortMetric) setSortMetric(initialSortMetric);
+    if (initialSortDirection === "asc" || initialSortDirection === "desc") setSortDirection(initialSortDirection);
+    if (initialMetricSource) setMetricSource(initialMetricSource);
+    if (params.get("minGrossYield")) setMinGrossYield(params.get("minGrossYield") || "");
+    if (params.get("maxGrossYield")) setMaxGrossYield(params.get("maxGrossYield") || "");
+    if (params.get("minCapRate")) setMinCapRate(params.get("minCapRate") || "");
+    if (params.get("maxCapRate")) setMaxCapRate(params.get("maxCapRate") || "");
+    if (params.get("minIRR")) setMinIrr(params.get("minIRR") || "");
+    if (params.get("maxIRR")) setMaxIrr(params.get("maxIRR") || "");
+    if (params.get("minCashOnCash")) setMinCashOnCash(params.get("minCashOnCash") || "");
+    if (params.get("minMonthlyCashFlow")) setMinMonthlyCashFlow(params.get("minMonthlyCashFlow") || "");
+    if (params.get("minAnalysisCount")) setMinAnalysisCount(params.get("minAnalysisCount") || "");
+    const consensus = params.get("consensusLabel");
+    if (consensus === "bullish" || consensus === "neutral" || consensus === "bearish") setConsensusLabelFilter(consensus);
+    setIncludeUnavailableMetrics(params.get("includeUnavailableMetrics") === "true");
     if (!q) {
       initialQueryHandledRef.current = true;
       return;
@@ -1023,6 +1315,42 @@ export default function CapRates() {
       setRecentViewedListings(getRecentViewedListingSignals().slice(0, 4));
     });
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (findDealsQuery.trim()) params.set("q", findDealsQuery.trim());
+    params.set("sortMetric", sortMetric);
+    params.set("sortDirection", sortDirection);
+    params.set("metricSource", metricSource);
+    if (minGrossYield) params.set("minGrossYield", minGrossYield);
+    if (maxGrossYield) params.set("maxGrossYield", maxGrossYield);
+    if (minCapRate) params.set("minCapRate", minCapRate);
+    if (maxCapRate) params.set("maxCapRate", maxCapRate);
+    if (minIrr) params.set("minIRR", minIrr);
+    if (maxIrr) params.set("maxIRR", maxIrr);
+    if (minCashOnCash) params.set("minCashOnCash", minCashOnCash);
+    if (minMonthlyCashFlow) params.set("minMonthlyCashFlow", minMonthlyCashFlow);
+    if (minAnalysisCount) params.set("minAnalysisCount", minAnalysisCount);
+    if (consensusLabelFilter !== "any") params.set("consensusLabel", consensusLabelFilter);
+    if (includeUnavailableMetrics) params.set("includeUnavailableMetrics", "true");
+    window.history.replaceState(null, "", `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`);
+  }, [
+    consensusLabelFilter,
+    findDealsQuery,
+    includeUnavailableMetrics,
+    maxCapRate,
+    maxGrossYield,
+    maxIrr,
+    metricSource,
+    minAnalysisCount,
+    minCapRate,
+    minCashOnCash,
+    minGrossYield,
+    minIrr,
+    minMonthlyCashFlow,
+    sortDirection,
+    sortMetric,
+  ]);
 
   const handleClearFindDeals = () => {
     setFindDealsActive(false);
@@ -1054,10 +1382,42 @@ export default function CapRates() {
       minBeds !== "any",
       minUnits !== "any",
       propertyType !== "all",
-      minCapRate !== "any",
-      sortBy !== "capRate",
+      Boolean(minGrossYield),
+      Boolean(maxGrossYield),
+      Boolean(minCapRate),
+      Boolean(maxCapRate),
+      Boolean(minIrr),
+      Boolean(maxIrr),
+      Boolean(minCashOnCash),
+      Boolean(minMonthlyCashFlow),
+      Boolean(minAnalysisCount),
+      consensusLabelFilter !== "any",
+      includeUnavailableMetrics,
+      sortMetric !== "gross_yield",
+      sortDirection !== "desc",
+      metricSource !== "realist_estimate",
     ].filter(Boolean).length;
-  }, [minPrice, maxPrice, minBeds, minUnits, propertyType, minCapRate, sortBy]);
+  }, [
+    consensusLabelFilter,
+    includeUnavailableMetrics,
+    maxCapRate,
+    maxGrossYield,
+    maxIrr,
+    metricSource,
+    minAnalysisCount,
+    minBeds,
+    minCapRate,
+    minCashOnCash,
+    minGrossYield,
+    minIrr,
+    minMonthlyCashFlow,
+    minPrice,
+    minUnits,
+    maxPrice,
+    propertyType,
+    sortDirection,
+    sortMetric,
+  ]);
 
   const handleRefresh = () => {
     if (mapBounds) {
@@ -1104,7 +1464,8 @@ export default function CapRates() {
         ? `Map search · ${normalizedQuery}`
         : [
             propertyType !== "all" ? propertyType : null,
-            minCapRate !== "any" ? `${minCapRate}%+ cap` : null,
+            minCapRate ? `${minCapRate}%+ cap` : null,
+            minGrossYield ? `${minGrossYield}%+ gross yield` : null,
             minPrice ? `from $${Number(minPrice).toLocaleString()}` : null,
             maxPrice ? `to $${Number(maxPrice).toLocaleString()}` : null,
           ].filter(Boolean).join(" · ") || "Saved map search",
@@ -1117,7 +1478,7 @@ export default function CapRates() {
           : undefined,
       propertyType: propertyType !== "all" ? propertyType : undefined,
       budgetMax: maxPrice ? Number(maxPrice) : undefined,
-      targetGrossYield: minCapRate !== "any" ? Number(minCapRate) : undefined,
+      targetGrossYield: minGrossYield ? Number(minGrossYield) : minCapRate ? Number(minCapRate) : undefined,
       financingIntent: true,
       renovationIntent: normalizedQuery.toLowerCase().includes("flip") || normalizedQuery.toLowerCase().includes("brrr"),
     };
@@ -1140,7 +1501,8 @@ export default function CapRates() {
         maxPrice: maxPrice || undefined,
         minBeds,
         minUnits,
-        sortBy,
+        sortMetric,
+        metricSource,
       },
     });
     toast({
@@ -1192,7 +1554,7 @@ export default function CapRates() {
       city: listing.address?.city || undefined,
       property_type: listing.details?.propertyType || listing.type || undefined,
       price: typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice,
-      gross_yield: listing.capRate,
+      gross_yield: listing.grossYield || undefined,
     });
     const ref = listingRefs.current[listing.mlsNumber];
     if (ref) {
