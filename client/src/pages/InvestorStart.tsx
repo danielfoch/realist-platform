@@ -64,9 +64,9 @@ export default function InvestorStart() {
                 Real estate intelligence that compounds.
               </h1>
               <p className="mt-5 text-lg md:text-xl text-muted-foreground max-w-2xl">
-                Paste a listing, search the market, or run the numbers on any property. Realist turns
-                deals into underwriting, market context, risk signals, and next steps — while learning
-                your underwriting from every search, save, and analysis.
+                Paste a listing, search the market, or run the numbers on any property. Realist returns
+                underwriting, market context, and risk signals — while learning your buy box from every
+                search and analysis.
               </p>
             </div>
 

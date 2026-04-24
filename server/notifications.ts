@@ -129,7 +129,6 @@ async function recipientAllows(userId: string, kind: "listing" | "community" | "
 function buildPayload(input: {
   recipient: { email: string; phone: string | null; firstName: string | null; lastName: string | null };
   eventType: NotificationKind;
-  eventId: string;
   reasonText: string;
   ctaUrl: string;
   ctaLabel: string;
@@ -283,11 +282,11 @@ export async function queueAnalysisNotification(params: {
   afterAggregate?: ListingAnalysisAggregate | null;
 }): Promise<void> {
   const watchers = await storage.getListingWatchersByListing(params.analysis.listingMlsNumber);
-  const listingRecipientIds = [...new Set(
+  const listingRecipientIds = Array.from(new Set(
     watchers
       .filter((watcher) => watcher.userId !== params.actorUserId && watcher.watchAnalysisUpdates)
       .map((watcher) => watcher.userId),
-  )];
+  ));
 
   const metrics = (params.analysis.calculatedMetrics || {}) as Record<string, unknown>;
   const recipients: Array<{
@@ -356,11 +355,11 @@ export async function queueAnalysisNotification(params: {
   if (!consensusReason || !params.afterAggregate) return;
 
   const consensusRecipients: typeof recipients = [];
-  for (const userId of [...new Set(
+  for (const userId of Array.from(new Set(
     watchers
       .filter((watcher) => watcher.userId !== params.actorUserId && watcher.watchConsensusUpdates)
       .map((watcher) => watcher.userId),
-  )]) {
+  ))) {
     if (!(await recipientAllows(userId, "community"))) continue;
     const recipient = await getRecipient(userId);
     if (!recipient?.email) continue;
@@ -412,11 +411,11 @@ export async function queueCommentNotification(params: {
   afterAggregate?: ListingAnalysisAggregate | null;
 }): Promise<void> {
   const watchers = await storage.getListingWatchersByListing(params.comment.listingMlsNumber);
-  const watcherIds = [...new Set(
+  const watcherIds = Array.from(new Set(
     watchers
       .filter((watcher) => watcher.userId !== params.actorUserId && watcher.watchCommentUpdates)
       .map((watcher) => watcher.userId),
-  )];
+  ));
 
   const recipients: Array<{
     userId: string;
@@ -501,11 +500,11 @@ export async function queueCommentNotification(params: {
   const consensusReason = buildConsensusReason(params.beforeAggregate, params.afterAggregate);
   if (!consensusReason || !params.afterAggregate) return;
   const consensusRecipients: typeof recipients = [];
-  for (const userId of [...new Set(
+  for (const userId of Array.from(new Set(
     watchers
       .filter((watcher) => watcher.userId !== params.actorUserId && watcher.watchConsensusUpdates)
       .map((watcher) => watcher.userId),
-  )]) {
+  ))) {
     if (!(await recipientAllows(userId, "community"))) continue;
     const recipient = await getRecipient(userId);
     if (!recipient?.email) continue;
