@@ -38,7 +38,7 @@ import {
 } from "@/lib/analytics";
 import { getCmhcRent } from "@shared/cmhcRents";
 import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
-import type { ListingAnalysisAggregate, UnderwritingNote, ListingComment } from "@shared/schema";
+import type { ListingAnalysisAggregate } from "@shared/schema";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -554,7 +554,7 @@ function ClusteredListingsLayer({
       }
       clusterRef.current = null;
     };
-  }, [listings, map, onSelectListing, selectedListingId]);
+  }, [aggregatesMap, listings, map, onSelectListing, selectedListingId]);
 
   return null;
 }
@@ -1324,6 +1324,19 @@ export default function CapRates() {
                 count={aggregatesMap[listing.mlsNumber]?.publicCommentCount}
                 hasRecent={Boolean(aggregatesMap[listing.mlsNumber]?.latestPublicCommentAt)}
               />
+              {(aggregatesMap[listing.mlsNumber]?.publicAnalysisCount || 0) > 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectListing(listing);
+                    setDetailTab("community");
+                  }}
+                >
+                  View community analyses
+                </Badge>
+              )}
               {aggregatesMap[listing.mlsNumber]?.latestPublicAnalysisAt && (
                 <Badge variant="outline" className="text-[10px]">
                   Last analyzed {new Date(aggregatesMap[listing.mlsNumber].latestPublicAnalysisAt as Date | string).toLocaleDateString()}
@@ -1449,10 +1462,10 @@ export default function CapRates() {
                   <Badge variant={getCapRateBadgeVariant(selectedListing.capRate)} data-testid="badge-detail-cap-rate">
                     {selectedListing.capRate.toFixed(1)}% yield
                   </Badge>
-                  {agg?.communityCapRate != null && (
+                  {agg?.medianCapRate != null && (
                     <Badge variant="secondary" className="text-[10px]" data-testid="badge-detail-community-cap">
                       <Users className="h-3 w-3 mr-0.5" />
-                      {agg.communityCapRate.toFixed(1)}%
+                      {agg.medianCapRate.toFixed(1)}%
                     </Badge>
                   )}
                 </div>
@@ -2392,6 +2405,7 @@ export default function CapRates() {
                 listings={mappableListings}
                 selectedListingId={selectedListing?.mlsNumber}
                 onSelectListing={handleSelectListing}
+                aggregatesMap={aggregatesMap}
               />
             )}
             <NeighbourhoodOverlay layers={mapLayers} />
@@ -2477,6 +2491,13 @@ export default function CapRates() {
           </div>
         )}
       </div>
+      <CommunityAnalysisModal
+        open={showCommunityModal}
+        onOpenChange={setShowCommunityModal}
+        analyses={publicAnalyses}
+        onDuplicate={(analysisId) => duplicateAnalysisMutation.mutate(analysisId)}
+        onFeedback={(analysisId, feedbackType) => analysisFeedbackMutation.mutate({ analysisId, feedbackType })}
+      />
     </div>
   );
 }
