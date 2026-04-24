@@ -45,6 +45,8 @@ import {
   courseLessons,
   courseEnrollments,
   courseProgress,
+  usListings,
+  insertUsListingSchema,
 } from "@shared/schema";
 import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
 import { z } from "zod";
