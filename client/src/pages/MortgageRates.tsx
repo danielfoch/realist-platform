@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Navigation } from "@/components/Navigation";
-import { TrendingDown, TrendingUp, Building2, Landmark, Shield, Clock, ArrowRight } from "lucide-react";
+import { TrendingDown, TrendingUp, Landmark, Shield, Clock, ArrowRight, ExternalLink } from "lucide-react";
 
 interface MortgageRate {
   id: string;
@@ -33,9 +33,19 @@ function formatDate(dateStr: string): string {
 function formatSourceLabel(rate: MortgageRate): string {
   if (rate.source === "wowa.ca") return "Source: wowa.ca";
   if (rate.source === "bankofcanada.ca") return "Source: Bank of Canada";
-  if (rate.source === "bank-posted") return "Source: major bank posted average";
   if (rate.source === "market-estimate") return "Source: fallback market estimate";
   return `Source: ${rate.source}`;
+}
+
+function getSourceUrl(rate: MortgageRate): string | null {
+  if (rate.source === "wowa.ca") return "https://wowa.ca/best-mortgage-rates";
+  if (rate.source === "bankofcanada.ca") {
+    if (rate.category === "policy") {
+      return "https://www.bankofcanada.ca/core-functions/monetary-policy/key-interest-rate/";
+    }
+    return "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/";
+  }
+  return null;
 }
 
 function termSortOrder(term: string): number {
@@ -47,8 +57,8 @@ function termSortOrder(term: string): number {
 }
 
 function RateCard({ rate, comparison }: { rate: MortgageRate; comparison?: MortgageRate }) {
-  const diff = comparison ? rate.rate - comparison.rate : 0;
   const savings = comparison ? comparison.rate - rate.rate : 0;
+  const sourceUrl = getSourceUrl(rate);
 
   return (
     <div
@@ -69,7 +79,19 @@ function RateCard({ rate, comparison }: { rate: MortgageRate; comparison?: Mortg
           )}
         </div>
         <p className="text-xs text-muted-foreground">{rate.provider}</p>
-        <p className="text-[11px] text-muted-foreground mt-1">{formatSourceLabel(rate)}</p>
+        {sourceUrl ? (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+          >
+            {formatSourceLabel(rate).replace("Source: ", "")}
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : (
+          <p className="text-[11px] text-muted-foreground mt-1">{formatSourceLabel(rate)}</p>
+        )}
       </div>
       <div className="text-right">
         <span className="text-2xl font-bold text-primary" data-testid="rate-value">
@@ -160,7 +182,6 @@ export default function MortgageRates() {
 
   const bestRates = rates?.filter(r => r.category === "best") || [];
   const postedRates = rates?.filter(r => r.category === "posted") || [];
-  const bigBankRates = rates?.filter(r => r.category === "big-bank") || [];
   const policyRates = rates?.filter(r => r.category === "policy") || [];
 
   const lastUpdated = rates?.length ? rates.reduce((latest, r) => {
@@ -171,7 +192,7 @@ export default function MortgageRates() {
   const bestFixed5 = bestRates.find(r => r.rateType === "fixed" && r.term === "5-year");
   const bestVariable5 = bestRates.find(r => r.rateType === "variable" && r.term === "5-year");
   const primeRate = postedRates.find(r => r.term === "prime");
-  const bankFixed5 = bigBankRates.find(r => r.rateType === "fixed" && r.term === "5-year");
+  const postedFixed5 = postedRates.find(r => r.rateType === "fixed" && r.term === "5-year");
 
   return (
     <div className="min-h-screen bg-background">
@@ -210,7 +231,15 @@ export default function MortgageRates() {
                     {bestFixed5 ? formatRate(bestFixed5.rate) : "—"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Insured</p>
-                  <p className="text-[11px] text-muted-foreground mt-1">wowa.ca</p>
+                  <a
+                    href="https://wowa.ca/best-mortgage-rates"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                  >
+                    wowa.ca
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </CardContent>
               </Card>
               <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20" data-testid="stat-best-variable">
@@ -220,7 +249,15 @@ export default function MortgageRates() {
                     {bestVariable5 ? formatRate(bestVariable5.rate) : "—"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Insured</p>
-                  <p className="text-[11px] text-muted-foreground mt-1">wowa.ca</p>
+                  <a
+                    href="https://wowa.ca/best-mortgage-rates"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                  >
+                    wowa.ca
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </CardContent>
               </Card>
               <Card className="border-0 shadow-md" data-testid="stat-prime">
@@ -229,16 +266,32 @@ export default function MortgageRates() {
                   <p className="text-3xl font-bold">
                     {primeRate ? formatRate(primeRate.rate) : "—"}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Bank of Canada</p>
+                  <a
+                    href="https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                  >
+                    Bank of Canada
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </CardContent>
               </Card>
               <Card className="border-0 shadow-md" data-testid="stat-posted">
                 <CardContent className="p-4 text-center">
-                  <p className="text-xs text-muted-foreground font-medium mb-1">Posted 5-Yr Fixed</p>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">BoC Posted 5-Yr Fixed</p>
                   <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                    {bankFixed5 ? formatRate(bankFixed5.rate) : "—"}
+                    {postedFixed5 ? formatRate(postedFixed5.rate) : "—"}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Major bank posted average</p>
+                  <a
+                    href="https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                  >
+                    Bank of Canada
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </CardContent>
               </Card>
             </div>
@@ -248,10 +301,9 @@ export default function MortgageRates() {
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         <Tabs defaultValue="best" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-md mx-auto">
+          <TabsList className="grid w-full grid-cols-2 max-w-sm mx-auto">
             <TabsTrigger value="best" data-testid="tab-best">Best Rates</TabsTrigger>
-            <TabsTrigger value="banks" data-testid="tab-banks">Big Banks</TabsTrigger>
-            <TabsTrigger value="policy" data-testid="tab-policy">Policy Rates</TabsTrigger>
+            <TabsTrigger value="policy" data-testid="tab-policy">Official Rates</TabsTrigger>
           </TabsList>
 
           <TabsContent value="best">
@@ -264,33 +316,8 @@ export default function MortgageRates() {
                   icon={TrendingDown}
                   rates={bestRates}
                   description="Weekly best-rate snapshot sourced from wowa.ca. Treat these as market-leading borrower rates, not guaranteed offers."
-                  postedRates={bigBankRates}
+                  postedRates={postedRates}
                 />
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="banks">
-            <div className="grid md:grid-cols-1 gap-6">
-              {isLoading ? (
-                <Skeleton className="h-64 rounded-xl" />
-              ) : (
-                <>
-                  <RateSection
-                    title="Big Bank Posted Rates"
-                    icon={Building2}
-                    rates={bigBankRates}
-                    description="Posted-rate benchmark for major banks. These are reference rates, not the same thing as negotiated borrower offers."
-                  />
-                  {postedRates.filter(r => r.term !== "prime").length > 0 && (
-                    <RateSection
-                      title="Bank of Canada Posted Rates"
-                      icon={Landmark}
-                      rates={postedRates.filter(r => r.term !== "prime")}
-                      description="Official posted mortgage context as published by the Bank of Canada."
-                    />
-                  )}
-                </>
               )}
             </div>
           </TabsContent>
@@ -304,6 +331,20 @@ export default function MortgageRates() {
                 </>
               ) : (
                 <>
+                  {postedRates.filter(r => r.term !== "prime").length > 0 && (
+                    <Card className="border-0 shadow-lg md:col-span-2">
+                      <CardHeader>
+                        <CardTitle>Bank of Canada Posted Mortgage Rates</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {postedRates.filter(r => r.term !== "prime").map((rate) => (
+                            <RateCard key={rate.id} rate={rate} />
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                   {primeRate && (
                     <Card className="border-0 shadow-lg">
                       <CardHeader>
