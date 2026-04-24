@@ -3,11 +3,13 @@ import { db } from "./db";
 import { storage } from "./storage";
 import {
   analyses,
+  ddfListingSnapshots,
   discoverySignals,
   listingAnalysisAggregates,
   listingWatchers,
   notificationQueue,
   type DiscoverySignal,
+  type DdfListingSnapshot,
   type ListingAnalysisAggregate,
   type ListingComment,
   type PropertyAnalysis,
@@ -118,6 +120,10 @@ function buildUsListingUrl(listing: Pick<UsListing, "sourceId" | "sourceUrl" | "
   return buildMarketSearchUrl(listing.city, listing.propertyType);
 }
 
+function buildCanadianListingUrl(listing: Pick<DdfListingSnapshot, "mlsNumber" | "listingKey" | "city" | "propertySubType" | "structureType">): string {
+  return buildAnalysisUrl(listing.mlsNumber || listing.listingKey);
+}
+
 function normalizeText(value: string | null | undefined): string {
   return (value || "").trim().toLowerCase();
 }
@@ -164,6 +170,19 @@ function matchesSavedSearch(signal: DiscoverySignal, listing: UsListing): boolea
   return true;
 }
 
+function matchesSavedSearchDdf(signal: DiscoverySignal, listing: DdfListingSnapshot): boolean {
+  const area = normalizeText(getSignalSearchArea(signal));
+  const propertyType = normalizeText(getSignalPropertyType(signal));
+  const budgetMax = getSignalBudgetMax(signal);
+  const listingArea = normalizeText([listing.city, listing.province, listing.mlsNumber].filter(Boolean).join(" "));
+  const listingType = normalizeText(listing.propertySubType || listing.structureType);
+
+  if (area && !listingArea.includes(area)) return false;
+  if (propertyType && !listingType.includes(propertyType) && !propertyType.includes(listingType)) return false;
+  if (budgetMax != null && listing.listPrice != null && listing.listPrice > budgetMax * 1.05) return false;
+  return true;
+}
+
 function buildPriceChangeReason(previous: UsListing, current: UsListing): string | null {
   if (previous.listPrice == null || current.listPrice == null || previous.listPrice === current.listPrice) return null;
   const delta = current.listPrice - previous.listPrice;
@@ -179,6 +198,23 @@ function buildPriceChangeReason(previous: UsListing, current: UsListing): string
 function buildStatusChangeReason(previous: UsListing, current: UsListing): string | null {
   if (!previous.status || !current.status || previous.status === current.status) return null;
   return `Status changed from ${previous.status} to ${current.status}.`;
+}
+
+function buildDdfPriceChangeReason(previous: DdfListingSnapshot, current: DdfListingSnapshot): string | null {
+  if (previous.listPrice == null || current.listPrice == null || previous.listPrice === current.listPrice) return null;
+  const delta = current.listPrice - previous.listPrice;
+  const absDelta = Math.abs(delta);
+  const percentDelta = previous.listPrice > 0 ? (absDelta / previous.listPrice) * 100 : 0;
+  if (absDelta < 5000 && percentDelta < 1.5) return null;
+  if (delta < 0) return `This listing dropped in price by ${formatCurrency(absDelta)}.`;
+  return `This listing increased in price by ${formatCurrency(absDelta)}.`;
+}
+
+function buildDdfStatusChangeReason(previous: DdfListingSnapshot, current: DdfListingSnapshot): string | null {
+  const before = safeString((previous.rawJson as Record<string, unknown> | undefined)?.StandardStatus);
+  const after = safeString((current.rawJson as Record<string, unknown> | undefined)?.StandardStatus);
+  if (!before || !after || before === after) return null;
+  return `Status changed from ${before} to ${after}.`;
 }
 
 function buildConsensusReason(before?: ListingAnalysisAggregate | null, after?: ListingAnalysisAggregate | null): string | null {
@@ -883,6 +919,223 @@ export async function queueUsListingChangeNotifications(changes: Array<{
       });
       queued += recipients.length;
     }
+  }
+
+  return queued;
+}
+
+export async function queueSavedSearchMatchNotificationsForDdf(listings: DdfListingSnapshot[]): Promise<number> {
+  if (!listings.length) return 0;
+
+  const savedSearchSignals = await db.select().from(discoverySignals)
+    .where(eq(discoverySignals.signalType, "saved_search"));
+
+  const groupedMatches = new Map<string, {
+    userId: string;
+    signal: DiscoverySignal;
+    matches: DdfListingSnapshot[];
+  }>();
+
+  for (const signal of savedSearchSignals) {
+    const matches = listings.filter((listing) => matchesSavedSearchDdf(signal, listing));
+    if (!matches.length) continue;
+    groupedMatches.set(`${signal.userId}:${signal.signalKey}`, {
+      userId: signal.userId,
+      signal,
+      matches,
+    });
+  }
+
+  let queued = 0;
+  for (const grouped of groupedMatches.values()) {
+    if (!(await recipientAllows(grouped.userId, "listing"))) continue;
+    const recipient = await getRecipient(grouped.userId);
+    if (!recipient?.email) continue;
+
+    const searchArea = getSignalSearchArea(grouped.signal) || grouped.matches[0]?.city || "your market";
+    const propertyType = getSignalPropertyType(grouped.signal) || grouped.matches[0]?.propertySubType || grouped.matches[0]?.structureType || "investment";
+    const payload = await buildSavedSearchMatchPayload({
+      email: recipient.email,
+      firstName: recipient.firstName || "there",
+      searchArea,
+      propertyType,
+      matchCount: grouped.matches.length,
+      ctaUrl: buildMarketSearchUrl(searchArea, propertyType),
+    });
+
+    await enqueueForRecipients({
+      eventType: "saved_search_match",
+      city: grouped.matches[0]?.city || null,
+      rawPayload: {
+        signalKey: grouped.signal.signalKey,
+        matches: grouped.matches.map((listing) => ({
+          listingKey: listing.listingKey,
+          mlsNumber: listing.mlsNumber,
+          city: listing.city,
+          propertyType: listing.propertySubType || listing.structureType,
+        })),
+      },
+      recipients: [{
+        userId: grouped.userId,
+        payload: {
+          ...payload,
+          ghlTags: Array.from(new Set([
+            ...payload.ghlTags,
+            ...(searchArea ? [`city-${searchArea.toLowerCase().replace(/\s+/g, "-")}`] : []),
+            ...(getSignalStrategy(grouped.signal) ? [`strategy-${getSignalStrategy(grouped.signal)!.toLowerCase().replace(/\s+/g, "_")}`] : []),
+          ])),
+        },
+        dedupeKey: `saved_search_match:${grouped.userId}:${grouped.signal.signalKey}:${grouped.matches.map((listing) => listing.listingKey).join(",")}`,
+      }],
+    });
+    queued++;
+  }
+
+  return queued;
+}
+
+export async function queueDdfListingChangeNotifications(changes: Array<{
+  previous: DdfListingSnapshot;
+  current: DdfListingSnapshot;
+}>): Promise<number> {
+  let queued = 0;
+
+  for (const change of changes) {
+    const listingMlsNumber = change.current.mlsNumber || change.current.listingKey;
+    const watchers = await storage.getListingWatchersByListing(listingMlsNumber);
+    const watcherIds = Array.from(new Set(
+      watchers
+        .filter((watcher) => watcher.userId && (watcher.watchPriceUpdates || watcher.watchStatusUpdates))
+        .map((watcher) => watcher.userId),
+    ));
+
+    const priceReason = buildDdfPriceChangeReason(change.previous, change.current);
+    const statusReason = buildDdfStatusChangeReason(change.previous, change.current);
+    const events: Array<{ eventType: "listing_price_changed" | "listing_status_changed"; reasonText: string }> = [];
+    if (priceReason) events.push({ eventType: "listing_price_changed", reasonText: priceReason });
+    if (statusReason) events.push({ eventType: "listing_status_changed", reasonText: statusReason });
+
+    for (const event of events) {
+      const recipients: Array<{
+        userId: string;
+        payload: Omit<GhlNotificationPayload, "sendEmail" | "eventId" | "eventTs">;
+        dedupeKey: string;
+      }> = [];
+
+      for (const userId of watcherIds) {
+        if (!(await recipientAllows(userId, "listing"))) continue;
+        const recipient = await getRecipient(userId);
+        if (!recipient?.email) continue;
+
+        recipients.push({
+          userId,
+          payload: buildPayload({
+            recipient,
+            eventType: event.eventType,
+            reasonText: event.reasonText,
+            ctaLabel: "See listing",
+            ctaUrl: buildCanadianListingUrl(change.current),
+            subjectLine: `Update on ${change.current.mlsNumber || change.current.listingKey}`,
+            previewText: "A listing you are watching just changed.",
+            listingMlsNumber,
+            listingAddress: change.current.mlsNumber || change.current.listingKey,
+            listingCity: change.current.city,
+            listingProvince: change.current.province,
+            listingPrice: change.current.listPrice,
+            propertyType: change.current.propertySubType || change.current.structureType,
+            ghlTags: ["realist-user", event.eventType],
+            leadScoreDelta: event.eventType === "listing_price_changed" ? 5 : 4,
+          }),
+          dedupeKey: `${event.eventType}:${userId}:${listingMlsNumber}:${event.eventType === "listing_price_changed" ? change.current.listPrice : safeString((change.current.rawJson as Record<string, unknown> | undefined)?.StandardStatus) || "status"}`,
+        });
+      }
+
+      if (!recipients.length) continue;
+
+      await enqueueForRecipients({
+        eventType: event.eventType,
+        listingMlsNumber,
+        city: change.current.city,
+        rawPayload: {
+          listingMlsNumber,
+          previousPrice: change.previous.listPrice,
+          currentPrice: change.current.listPrice,
+          previousStatus: safeString((change.previous.rawJson as Record<string, unknown> | undefined)?.StandardStatus),
+          currentStatus: safeString((change.current.rawJson as Record<string, unknown> | undefined)?.StandardStatus),
+        },
+        recipients,
+      });
+      queued += recipients.length;
+    }
+  }
+
+  return queued;
+}
+
+export async function queueDdfListingRemovedNotifications(listings: DdfListingSnapshot[]): Promise<number> {
+  let queued = 0;
+
+  for (const listing of listings) {
+    const listingMlsNumber = listing.mlsNumber || listing.listingKey;
+    const watchers = await storage.getListingWatchersByListing(listingMlsNumber);
+    const watcherIds = Array.from(new Set(
+      watchers
+        .filter((watcher) => watcher.userId && watcher.watchStatusUpdates)
+        .map((watcher) => watcher.userId),
+    ));
+
+    if (!watcherIds.length) continue;
+
+    const recipients: Array<{
+      userId: string;
+      payload: Omit<GhlNotificationPayload, "sendEmail" | "eventId" | "eventTs">;
+      dedupeKey: string;
+    }> = [];
+
+    for (const userId of watcherIds) {
+      if (!(await recipientAllows(userId, "listing"))) continue;
+      const recipient = await getRecipient(userId);
+      if (!recipient?.email) continue;
+
+      recipients.push({
+        userId,
+        payload: buildPayload({
+          recipient,
+          eventType: "listing_status_changed",
+          reasonText: "This listing no longer appears in the active CREA DDF feed and may be off market, sold, or otherwise inactive.",
+          ctaLabel: "Review listing",
+          ctaUrl: buildCanadianListingUrl(listing),
+          subjectLine: `Update on ${listing.mlsNumber || listing.listingKey}`,
+          previewText: "A listing you are watching may no longer be active.",
+          listingMlsNumber,
+          listingAddress: listing.mlsNumber || listing.listingKey,
+          listingCity: listing.city,
+          listingProvince: listing.province,
+          listingPrice: listing.listPrice,
+          propertyType: listing.propertySubType || listing.structureType,
+          ghlTags: ["realist-user", "listing_status_changed", "off-market"],
+          leadScoreDelta: 4,
+        }),
+        dedupeKey: `listing_status_changed:${userId}:${listingMlsNumber}:off-market:${listing.snapshotMonth}`,
+      });
+    }
+
+    if (!recipients.length) continue;
+
+    await enqueueForRecipients({
+      eventType: "listing_status_changed",
+      listingMlsNumber,
+      city: listing.city,
+      rawPayload: {
+        listingMlsNumber,
+        previousStatus: safeString((listing.rawJson as Record<string, unknown> | undefined)?.StandardStatus),
+        currentStatus: "off_market",
+        inferredFromMissingSnapshot: true,
+        snapshotMonth: listing.snapshotMonth,
+      },
+      recipients,
+    });
+    queued += recipients.length;
   }
 
   return queued;

@@ -2106,7 +2106,37 @@ export class DatabaseStorage implements IStorage {
     let inserted = 0;
     for (let i = 0; i < data.length; i += batchSize) {
       const batch = data.slice(i, i + batchSize);
-      await db.insert(ddfListingSnapshots).values(batch).onConflictDoNothing();
+      await db.insert(ddfListingSnapshots).values(batch).onConflictDoUpdate({
+        target: [ddfListingSnapshots.listingKey, ddfListingSnapshots.snapshotMonth],
+        set: {
+          mlsNumber: sql`excluded.mls_number`,
+          city: sql`excluded.city`,
+          province: sql`excluded.province`,
+          postalCode: sql`excluded.postal_code`,
+          listPrice: sql`excluded.list_price`,
+          bedroomsTotal: sql`excluded.bedrooms_total`,
+          bathroomsTotal: sql`excluded.bathrooms_total`,
+          numberOfUnits: sql`excluded.number_of_units`,
+          livingArea: sql`excluded.living_area`,
+          yearBuilt: sql`excluded.year_built`,
+          propertySubType: sql`excluded.property_sub_type`,
+          structureType: sql`excluded.structure_type`,
+          latitude: sql`excluded.latitude`,
+          longitude: sql`excluded.longitude`,
+          totalActualRent: sql`excluded.total_actual_rent`,
+          taxAnnualAmount: sql`excluded.tax_annual_amount`,
+          associationFee: sql`excluded.association_fee`,
+          estimatedMonthlyRent: sql`excluded.estimated_monthly_rent`,
+          grossYield: sql`excluded.gross_yield`,
+          estimatedExpenses: sql`excluded.estimated_expenses`,
+          estimatedNoi: sql`excluded.estimated_noi`,
+          netYield: sql`excluded.net_yield`,
+          daysOnMarket: sql`excluded.days_on_market`,
+          rentSource: sql`excluded.rent_source`,
+          rawJson: sql`excluded.raw_json`,
+          capturedAt: sql`excluded.captured_at`,
+        },
+      });
       inserted += batch.length;
     }
     return inserted;

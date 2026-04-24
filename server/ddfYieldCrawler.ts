@@ -1,7 +1,14 @@
 import { searchDdfListings, isDdfConfigured } from "./creaDdf";
 import { storage } from "./storage";
-import type { InsertDdfListingSnapshot, InsertCityYieldHistory, InsertAreaYieldHistory } from "@shared/schema";
+import { db } from "./db";
+import { ddfListingSnapshots, type InsertDdfListingSnapshot, type InsertCityYieldHistory, type InsertAreaYieldHistory } from "@shared/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { CMHC_PROVINCIAL_RENTS, CMHC_CITY_RENTS, type CmhcRentData as CmhcRentEntry } from "@shared/cmhcRents";
+import {
+  queueDdfListingChangeNotifications,
+  queueDdfListingRemovedNotifications,
+  queueSavedSearchMatchNotificationsForDdf,
+} from "./notifications";
 
 const PROVINCE_TO_ABBREV: Record<string, string> = {
   "Ontario": "ON",
@@ -401,9 +408,24 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
       const shortProvince = PROVINCE_TO_ABBREV[ddfProvince] || ddfProvince;
       try {
         console.log(`[ddf-crawler] === Crawling province: ${ddfProvince} ===`);
+        const provinceExistingSnapshots = await db.select().from(ddfListingSnapshots).where(and(
+          eq(ddfListingSnapshots.snapshotMonth, month),
+          eq(ddfListingSnapshots.province, shortProvince),
+        ));
         const snapshots = await crawlDdfForProvince(ddfProvince, month, cmhcRents);
 
         if (snapshots.length > 0) {
+          const listingKeys = Array.from(new Set(snapshots.map((snapshot) => snapshot.listingKey)));
+          const listingKeySet = new Set(listingKeys);
+          const existingSnapshots = listingKeys.length
+            ? await db.select().from(ddfListingSnapshots).where(and(
+              eq(ddfListingSnapshots.snapshotMonth, month),
+              inArray(ddfListingSnapshots.listingKey, listingKeys),
+            ))
+            : [];
+          const existingByKey = new Map(existingSnapshots.map((snapshot) => [snapshot.listingKey, snapshot]));
+          const newSnapshots = snapshots.filter((snapshot) => !existingByKey.has(snapshot.listingKey));
+
           const batchSize = 500;
           let inserted = 0;
           for (let i = 0; i < snapshots.length; i += batchSize) {
@@ -412,6 +434,34 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
           }
           totalListings += inserted;
           console.log(`[ddf-crawler] ${ddfProvince}: ${inserted} listings stored`);
+
+          const currentSnapshots = listingKeys.length
+            ? await db.select().from(ddfListingSnapshots).where(and(
+              eq(ddfListingSnapshots.snapshotMonth, month),
+              inArray(ddfListingSnapshots.listingKey, listingKeys),
+            ))
+            : [];
+          const changedSnapshots = currentSnapshots.flatMap((snapshot) => {
+            const previous = existingByKey.get(snapshot.listingKey);
+            if (!previous) return [];
+            const previousStatus = String((previous.rawJson as Record<string, unknown> | undefined)?.StandardStatus || "");
+            const currentStatus = String((snapshot.rawJson as Record<string, unknown> | undefined)?.StandardStatus || "");
+            if (previous.listPrice === snapshot.listPrice && previousStatus === currentStatus) return [];
+            return [{ previous, current: snapshot }];
+          });
+          const missingSnapshots = provinceExistingSnapshots.filter((snapshot) => !listingKeySet.has(snapshot.listingKey));
+
+          await Promise.all([
+            queueSavedSearchMatchNotificationsForDdf(newSnapshots).catch((error) => {
+              console.error(`[ddf-crawler] ${ddfProvince} saved-search notifications error:`, error);
+            }),
+            queueDdfListingChangeNotifications(changedSnapshots).catch((error) => {
+              console.error(`[ddf-crawler] ${ddfProvince} listing-change notifications error:`, error);
+            }),
+            queueDdfListingRemovedNotifications(missingSnapshots).catch((error) => {
+              console.error(`[ddf-crawler] ${ddfProvince} listing-removal notifications error:`, error);
+            }),
+          ]);
 
           const citiesInProvince = new Map<string, InsertDdfListingSnapshot[]>();
           for (const s of snapshots) {
