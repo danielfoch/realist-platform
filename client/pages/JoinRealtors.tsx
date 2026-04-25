@@ -12,6 +12,7 @@ interface FormData {
   dealTypes: string[];
   avgDealSize: string;
   referralFee: string;
+  customReferralFeePct: string;
   referralAgreement: boolean;
 }
 
@@ -64,6 +65,7 @@ export function JoinRealtorsPage() {
     dealTypes: [],
     avgDealSize: '',
     referralFee: '',
+    customReferralFeePct: '',
     referralAgreement: false,
   });
 
@@ -81,6 +83,35 @@ export function JoinRealtorsPage() {
       ? current.filter(v => v !== value)
       : [...current, value];
     updateField(field, updated);
+  };
+
+  const getCommittedReferralFee = () => {
+    if (formData.referralFee !== 'Custom') {
+      return formData.referralFee;
+    }
+
+    return formData.customReferralFeePct ? `${formData.customReferralFeePct}%` : '';
+  };
+
+  const getReferralRoutingTier = () => {
+    const fee = Number.parseFloat(getCommittedReferralFee().replace('%', ''));
+
+    if (Number.isNaN(fee)) {
+      return 'Select a referral fee to see how leads will be prioritized.';
+    }
+    if (fee >= 30) {
+      return 'Preferred routing tier: high-intent investor leads are prioritized to this commitment level.';
+    }
+    if (fee >= 25) {
+      return 'Standard routing tier: aligned with the normal Realist partner expectation.';
+    }
+
+    return 'Introductory routing tier: useful for niche markets, but may receive fewer priority matches.';
+  };
+
+  const isCustomReferralFeeValid = () => {
+    const fee = Number.parseFloat(formData.customReferralFeePct);
+    return !Number.isNaN(fee) && fee >= 10 && fee <= 50;
   };
 
   const validateStep = (stepNum: number): boolean => {
@@ -101,7 +132,7 @@ export function JoinRealtorsPage() {
       case 3:
         return !!formData.avgDealSize;
       case 4:
-        return !!formData.referralFee;
+        return !!formData.referralFee && (formData.referralFee !== 'Custom' || isCustomReferralFeeValid());
       case 5:
         return formData.referralAgreement;
       default:
@@ -110,8 +141,8 @@ export function JoinRealtorsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.referralFee) {
-      setError('Please select your referral fee');
+    if (!validateStep(4)) {
+      setError('Please select a referral fee between 10% and 50%');
       return;
     }
     if (!formData.referralAgreement) {
@@ -126,7 +157,10 @@ export function JoinRealtorsPage() {
       const response = await fetch('/api/realtors/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          referralFee: getCommittedReferralFee(),
+        }),
       });
 
       const data = await response.json();
@@ -309,7 +343,12 @@ export function JoinRealtorsPage() {
                 <label>Referral Fee Percentage *</label>
                 <select
                   value={formData.referralFee}
-                  onChange={e => updateField('referralFee', e.target.value)}
+                  onChange={e => {
+                    updateField('referralFee', e.target.value);
+                    if (e.target.value !== 'Custom') {
+                      updateField('customReferralFeePct', '');
+                    }
+                  }}
                 >
                   <option value="">Select your referral fee</option>
                   {REFERRAL_FEES.map(f => (
@@ -317,8 +356,27 @@ export function JoinRealtorsPage() {
                   ))}
                 </select>
               </div>
+              {formData.referralFee === 'Custom' && (
+                <div className="form-group">
+                  <label>Custom Referral Fee % *</label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="50"
+                    step="0.5"
+                    value={formData.customReferralFeePct}
+                    onChange={e => updateField('customReferralFeePct', e.target.value)}
+                    placeholder="27.5"
+                  />
+                  <p className="field-help">Enter a clear percentage from 10% to 50% so routing can stay structured.</p>
+                </div>
+              )}
+              <div className="routing-preview">
+                <strong>{getCommittedReferralFee() || 'No fee selected'}</strong>
+                <span>{getReferralRoutingTier()}</span>
+              </div>
               <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '1rem' }}>
-                Your fee is visible to matched investors when appropriate. You can update it anytime.
+                Your fee is stored as structured routing data and visible to matched investors when appropriate. You can update it anytime.
               </p>
             </div>
           )}
