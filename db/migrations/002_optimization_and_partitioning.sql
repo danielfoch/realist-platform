@@ -42,8 +42,8 @@ BEGIN
   FOREACH prov IN ARRAY ARRAY['AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT']
   LOOP
     EXECUTE format(
-      'CREATE TABLE IF NOT EXISTS listings_partitioned_%I PARTITION OF listings_partitioned FOR VALUES IN (%L);',
-      lower(prov),
+      'CREATE TABLE IF NOT EXISTS %I PARTITION OF listings_partitioned FOR VALUES IN (%L);',
+      'listings_partitioned_' || lower(prov),
       prov
     );
   END LOOP;
