@@ -15,6 +15,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { 
   calculateComplexityScore, 
@@ -120,7 +121,7 @@ export default function CoInvestingGroupNew() {
   }
 
   if (!isAuthenticated) {
-    setLocation("/login");
+    setLocation(authPath("/login"));
     return null;
   }
 

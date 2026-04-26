@@ -14,6 +14,7 @@ import { useRoute, useLocation } from "wouter";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 import { 
   MapPin, Users, DollarSign, Loader2, Send, 
   CheckCircle, XCircle, Clock, AlertTriangle 
@@ -479,7 +480,7 @@ export default function CoInvestingGroupDetail() {
                   <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                   <p className="font-medium mb-2">Sign in to Join</p>
                   <Button asChild>
-                    <a href="/login">Sign In</a>
+                    <a href={authPath("/login")}>Sign In</a>
                   </Button>
                 </CardContent>
               </Card>
