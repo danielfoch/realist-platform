@@ -75,6 +75,17 @@ const GOOGLE_AUTH_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
 
+function sanitizeAuthReturnUrl(raw: unknown, fallback = "/investor"): string {
+  if (typeof raw !== "string") return fallback;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.startsWith("//") || /^https?:\/\//i.test(trimmed)) return fallback;
+  return trimmed.startsWith("/") ? trimmed : fallback;
+}
+
+function verifyPhonePath(returnUrl: string): string {
+  return `/verify-phone?returnUrl=${encodeURIComponent(sanitizeAuthReturnUrl(returnUrl))}`;
+}
+
 async function backfillAnalysesForSession(userId: string, sessionId?: string | null) {
   if (!sessionId) return 0;
   const result = await db.execute(sql`
@@ -572,7 +583,7 @@ export function registerAuthRoutes(app: Express): void {
     req.session.googleAuthState = state;
     
     // Store return URL in session for redirect after OAuth
-    const returnUrl = req.query.returnUrl as string;
+    const returnUrl = sanitizeAuthReturnUrl(req.query.returnUrl);
     if (returnUrl) {
       req.session.googleAuthReturnUrl = returnUrl;
     }
@@ -649,7 +660,7 @@ export function registerAuthRoutes(app: Express): void {
       if (existingOAuthAccount) {
         req.session.userId = existingOAuthAccount.userId;
         
-        const returnUrl = req.session.googleAuthReturnUrl || "/investor";
+        const returnUrl = sanitizeAuthReturnUrl(req.session.googleAuthReturnUrl);
         delete req.session.googleAuthReturnUrl;
         
         const [user] = await db.select().from(users).where(eq(users.id, existingOAuthAccount.userId)).limit(1);
@@ -659,7 +670,7 @@ export function registerAuthRoutes(app: Express): void {
           );
         }
         if (user && !user.phoneVerified) {
-          res.redirect("/verify-phone");
+          res.redirect(verifyPhonePath(returnUrl));
           return;
         }
         
@@ -693,11 +704,11 @@ export function registerAuthRoutes(app: Express): void {
           console.error("[ghl-login] oauth link webhook error:", err.message)
         );
         
-        const returnUrl = req.session.googleAuthReturnUrl || "/investor";
+        const returnUrl = sanitizeAuthReturnUrl(req.session.googleAuthReturnUrl);
         delete req.session.googleAuthReturnUrl;
         
         if (!existingUser.phoneVerified) {
-          res.redirect("/verify-phone");
+          res.redirect(verifyPhonePath(returnUrl));
           return;
         }
         
@@ -731,7 +742,9 @@ export function registerAuthRoutes(app: Express): void {
         console.error("[ghl-login] new oauth user webhook error:", err.message)
       );
 
-      res.redirect("/verify-phone");
+      const returnUrl = sanitizeAuthReturnUrl(req.session.googleAuthReturnUrl, "/signup");
+      delete req.session.googleAuthReturnUrl;
+      res.redirect(verifyPhonePath(returnUrl));
     } catch (error) {
       console.error("Error in Google OAuth callback:", error);
       res.redirect("/login?error=auth_failed");

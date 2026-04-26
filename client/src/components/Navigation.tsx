@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { track } from "@/lib/analytics";
+import { authPath } from "@/lib/authReturn";
 import logoImage from "@assets/Untitled_design_(4)_1773356428184.png";
 
 interface NavItem {
@@ -232,7 +233,7 @@ export function Navigation() {
                     variant="ghost"
                     size="sm"
                     className="h-9"
-                    onClick={() => window.location.href = "/login"}
+                    onClick={() => window.location.href = authPath("/login")}
                     data-testid="button-sign-in"
                   >
                     <User className="mr-1.5 h-4 w-4" />
@@ -349,7 +350,7 @@ export function Navigation() {
                   <Button
                     variant="outline"
                     className="w-full h-9 text-sm"
-                    onClick={() => { window.location.href = "/login"; closeMobile(); }}
+                    onClick={() => { window.location.href = authPath("/login"); closeMobile(); }}
                     data-testid="button-mobile-sign-in"
                   >
                     <User className="mr-2 h-4 w-4" />

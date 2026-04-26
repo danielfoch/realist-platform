@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 import { PROVINCES } from "@/lib/provinces";
 import { 
   Shield, FileText, PenTool, Loader2, CheckCircle2, 
@@ -69,7 +70,7 @@ export function RepresentationGate({
         description: "Please sign in to access Co-Investing features.",
         variant: "destructive",
       });
-      setLocation("/login");
+      setLocation(authPath("/login"));
       return;
     }
 

@@ -18,7 +18,7 @@ import {
   Calculator, X, Loader2, ArrowRight, Map, LayoutGrid,
   RefreshCw, ChevronDown, ChevronUp, List, Users, MessageSquare,
   Send, PenLine, Sparkles,
-  Star, Target, AlertTriangle, Gavel, DollarSign,
+  Star, Target, AlertTriangle, Gavel, DollarSign, TrendingDown,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -184,6 +184,17 @@ interface DistressListing {
   listDate?: string;
   distress: DistressResult;
   rawRemarks: string;
+}
+
+const MAP_WORKSPACE_STATE_KEY = "realist_cap_rates_workspace_state";
+
+interface MapWorkspaceState {
+  selectedMls?: string;
+  analyzerOpen?: boolean;
+  analyzerSeedQuery?: string;
+  analyzerTitle?: string;
+  analyzerSubtitle?: string;
+  savedAt?: number;
 }
 
 interface MapBounds {
@@ -516,11 +527,20 @@ function createMetricMarkerIcon(input: {
   });
 }
 
-function createDistressMarkerIcon(score: number, isSelected: boolean): L.DivIcon {
+function getDistressSignalLabel(distress: DistressResult): string {
+  if (distress.categoriesTriggered.foreclosure_pos) return "POS";
+  if (distress.categoriesTriggered.vtb) return "VTB";
+  if (distress.categoriesTriggered.motivated) return "MOT";
+  return "DEAL";
+}
+
+function createDistressMarkerIcon(distress: DistressResult, isSelected: boolean): L.DivIcon {
   const size = isSelected ? 44 : 38;
   const border = isSelected ? "3px solid #2563eb" : "2px solid white";
   const shadow = isSelected ? "0 0 0 2px #2563eb, 0 2px 10px rgba(0,0,0,0.35)" : "0 2px 8px rgba(0,0,0,0.3)";
+  const score = distress.distressScore;
   const background = score >= 70 ? "#b91c1c" : score >= 40 ? "#ea580c" : "#d97706";
+  const label = getDistressSignalLabel(distress);
   return L.divIcon({
     className: "distress-map-marker",
     html: `<div style="
@@ -536,9 +556,9 @@ function createDistressMarkerIcon(score: number, isSelected: boolean): L.DivIcon
       color:white;
       font-family:system-ui,-apple-system,sans-serif;
       font-weight:900;
-      font-size:${isSelected ? 14 : 12}px;
+      font-size:${label.length > 3 ? 9 : isSelected ? 13 : 11}px;
       transform:rotate(45deg);
-    "><span style="transform:rotate(-45deg)">D</span></div>`,
+    "><span style="transform:rotate(-45deg)">${label}</span></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -884,7 +904,7 @@ function DistressListingsLayer({
       const marker = L.marker(
         [listing.map.latitude, listing.map.longitude],
         {
-          icon: createDistressMarkerIcon(listing.distress.distressScore, selectedMlsNumber === listing.mlsNumber),
+          icon: createDistressMarkerIcon(listing.distress, selectedMlsNumber === listing.mlsNumber),
           distressScore: listing.distress.distressScore,
         } as L.MarkerOptions & { distressScore?: number },
       );
@@ -1027,6 +1047,7 @@ export default function CapRates() {
   const listingRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const searchInProgress = useRef(false);
   const initialQueryHandledRef = useRef(false);
+  const workspaceRestoredRef = useRef(false);
 
   const [findDealsQuery, setFindDealsQuery] = useState("");
   const [findDealsResults, setFindDealsResults] = useState<FindDealsResult[]>([]);
@@ -1511,6 +1532,71 @@ export default function CapRates() {
     [displayedListings]
   );
 
+  const saveWorkspaceState = useCallback((state: MapWorkspaceState) => {
+    try {
+      const existing = JSON.parse(sessionStorage.getItem(MAP_WORKSPACE_STATE_KEY) || "{}") as MapWorkspaceState;
+      sessionStorage.setItem(
+        MAP_WORKSPACE_STATE_KEY,
+        JSON.stringify({ ...existing, ...state, savedAt: Date.now() }),
+      );
+    } catch {
+      // Ignore storage failures; URL state still preserves the critical workflow.
+    }
+  }, []);
+
+  const updateWorkspaceUrl = useCallback((state: { selectedMls?: string | null; analyzerOpen?: boolean | null }) => {
+    const params = new URLSearchParams(window.location.search);
+    if (state.selectedMls) params.set("selectedMls", state.selectedMls);
+    if (state.selectedMls === null) params.delete("selectedMls");
+    if (state.analyzerOpen) params.set("analyze", "1");
+    if (state.analyzerOpen === false) params.delete("analyze");
+    window.history.replaceState(null, "", `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`);
+  }, []);
+
+  useEffect(() => {
+    if (workspaceRestoredRef.current || listingsWithCapRates.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    let stored: MapWorkspaceState = {};
+    try {
+      stored = JSON.parse(sessionStorage.getItem(MAP_WORKSPACE_STATE_KEY) || "{}") as MapWorkspaceState;
+    } catch {
+      stored = {};
+    }
+    const selectedMls = params.get("selectedMls") || params.get("mls") || stored.selectedMls;
+    if (!selectedMls) return;
+    const listing = listingsWithCapRates.find((candidate) => candidate.mlsNumber === selectedMls);
+    if (!listing) return;
+
+    workspaceRestoredRef.current = true;
+    setSelectedListing(listing);
+    setSelectedDistressListing(null);
+    setDetailTab("overview");
+    setUwUnitCount(String(listing.unitCount || 1));
+    const perUnitRent = listing.unitCount > 1
+      ? Math.round(listing.estimatedMonthlyRent / listing.unitCount)
+      : Math.round(listing.estimatedMonthlyRent);
+    setUwRentPerUnit(String(perUnitRent));
+    if (listing.map?.latitude && listing.map?.longitude) {
+      setFlyTo({ lat: listing.map.latitude, lng: listing.map.longitude, zoom: 15 });
+    }
+
+    if (params.get("analyze") === "1" || stored.analyzerOpen) {
+      const seedQuery = stored.analyzerSeedQuery || buildAnalyzerSeed(listing);
+      setAnalyzerSeedQuery(seedQuery);
+      setAnalyzerSheetMeta({
+        title: stored.analyzerTitle || "Analyze in Map Workspace",
+        subtitle: stored.analyzerSubtitle || `${formatShortAddress(listing.address)}${listing.address?.city ? `, ${listing.address.city}` : ""}`,
+      });
+      saveWorkspaceState({
+        selectedMls: listing.mlsNumber,
+        analyzerOpen: true,
+        analyzerSeedQuery: seedQuery,
+        analyzerTitle: stored.analyzerTitle || "Analyze in Map Workspace",
+        analyzerSubtitle: stored.analyzerSubtitle || `${formatShortAddress(listing.address)}${listing.address?.city ? `, ${listing.address.city}` : ""}`,
+      });
+    }
+  }, [listingsWithCapRates, saveWorkspaceState]);
+
   const handleFindDeals = useCallback(async () => {
     if (!findDealsQuery.trim()) return;
     setFindDealsLoading(true);
@@ -1616,8 +1702,11 @@ export default function CapRates() {
     if (minAnalysisCount) params.set("minAnalysisCount", minAnalysisCount);
     if (consensusLabelFilter !== "any") params.set("consensusLabel", consensusLabelFilter);
     if (includeUnavailableMetrics) params.set("includeUnavailableMetrics", "true");
+    if (selectedListing?.mlsNumber) params.set("selectedMls", selectedListing.mlsNumber);
+    if (analyzerSheetMeta) params.set("analyze", "1");
     window.history.replaceState(null, "", `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`);
   }, [
+    analyzerSheetMeta,
     consensusLabelFilter,
     findDealsQuery,
     includeUnavailableMetrics,
@@ -1631,6 +1720,7 @@ export default function CapRates() {
     minGrossYield,
     minIrr,
     minMonthlyCashFlow,
+    selectedListing?.mlsNumber,
     sortDirection,
     sortMetric,
   ]);
@@ -1724,8 +1814,8 @@ export default function CapRates() {
     }
   };
 
-  const handleAnalyzeListing = (listing: ListingWithCapRate) => {
-    const addr = formatAddress(listing.address);
+  const buildAnalyzerSeed = (listing: ListingWithCapRate | DistressListing) => {
+    const addr = formatAddress(listing.address as RepliersListing["address"]);
     const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
     const params = new URLSearchParams();
     params.set("address", addr);
@@ -1733,39 +1823,68 @@ export default function CapRates() {
     if (listing.details?.numBedrooms) params.set("beds", String(listing.details.numBedrooms));
     if (listing.details?.numBathrooms) params.set("baths", String(listing.details.numBathrooms));
     if (listing.details?.sqft) params.set("sqft", listing.details.sqft);
-    if (listing.details?.yearBuilt) params.set("yearBuilt", listing.details.yearBuilt);
+    const yearBuilt = (listing.details as { yearBuilt?: string } | undefined)?.yearBuilt;
+    if (yearBuilt) params.set("yearBuilt", yearBuilt);
     if (listing.mlsNumber) params.set("mls", listing.mlsNumber);
     if (listing.address?.city) params.set("city", listing.address.city);
     if (listing.address?.state) params.set("state", listing.address.state);
-    if (listing.estimatedMonthlyRent) params.set("rent", String(listing.estimatedMonthlyRent));
+    if ("estimatedMonthlyRent" in listing && listing.estimatedMonthlyRent) params.set("rent", String(listing.estimatedMonthlyRent));
     params.set("vacancy", String(EXPENSE_ASSUMPTIONS.vacancyPercent));
     params.set("maintenance", String(EXPENSE_ASSUMPTIONS.maintenancePercent));
     params.set("management", String(EXPENSE_ASSUMPTIONS.managementPercent));
-    params.set("insurance", String(EXPENSE_ASSUMPTIONS.insurancePerUnit * Math.max(1, listing.unitCount || 1)));
-    const tax = listing.taxes?.annualAmount || (price ? price * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100 : 0);
+    params.set("insurance", String(EXPENSE_ASSUMPTIONS.insurancePerUnit * Math.max(1, "unitCount" in listing ? listing.unitCount || 1 : 1)));
+    const tax = "taxes" in listing && listing.taxes?.annualAmount
+      ? listing.taxes.annualAmount
+      : price
+        ? price * EXPENSE_ASSUMPTIONS.propertyTaxPercent / 100
+        : 0;
     if (tax) params.set("propertyTax", String(Math.round(tax)));
-    setAnalyzerSeedQuery(params.toString());
-    setAnalyzerSheetMeta({
+    return params.toString();
+  };
+
+  const handleAnalyzeListing = (listing: ListingWithCapRate) => {
+    const seedQuery = buildAnalyzerSeed(listing);
+    const meta = {
       title: "Analyze in Map Workspace",
       subtitle: `${formatShortAddress(listing.address)}${listing.address?.city ? `, ${listing.address.city}` : ""}`,
+    };
+    setSelectedListing(listing);
+    setSelectedDistressListing(null);
+    setAnalyzerSeedQuery(seedQuery);
+    setAnalyzerSheetMeta(meta);
+    saveWorkspaceState({
+      selectedMls: listing.mlsNumber,
+      analyzerOpen: true,
+      analyzerSeedQuery: seedQuery,
+      analyzerTitle: meta.title,
+      analyzerSubtitle: meta.subtitle,
     });
+    updateWorkspaceUrl({ selectedMls: listing.mlsNumber, analyzerOpen: true });
   };
 
   const handleAnalyzeDistressListing = (listing: DistressListing) => {
-    const params = new URLSearchParams();
-    params.set("address", formatAddress(listing.address as RepliersListing["address"]));
-    if (listing.listPrice) params.set("price", String(listing.listPrice));
-    if (listing.details?.numBedrooms) params.set("beds", String(listing.details.numBedrooms));
-    if (listing.details?.numBathrooms) params.set("baths", String(listing.details.numBathrooms));
-    if (listing.details?.sqft) params.set("sqft", listing.details.sqft);
-    if (listing.mlsNumber) params.set("mls", listing.mlsNumber);
-    if (listing.address?.city) params.set("city", listing.address.city);
-    if (listing.address?.state) params.set("state", listing.address.state);
-    setAnalyzerSeedQuery(params.toString());
-    setAnalyzerSheetMeta({
+    const seedQuery = buildAnalyzerSeed(listing);
+    const meta = {
       title: "Analyze Distress Opportunity",
       subtitle: `${formatShortAddress(listing.address as RepliersListing["address"])}${listing.address?.city ? `, ${listing.address.city}` : ""}`,
+    };
+    setAnalyzerSeedQuery(seedQuery);
+    setAnalyzerSheetMeta(meta);
+    saveWorkspaceState({
+      selectedMls: listing.mlsNumber,
+      analyzerOpen: true,
+      analyzerSeedQuery: seedQuery,
+      analyzerTitle: meta.title,
+      analyzerSubtitle: meta.subtitle,
     });
+    updateWorkspaceUrl({ selectedMls: listing.mlsNumber, analyzerOpen: true });
+  };
+
+  const handleAnalyzerSheetOpenChange = (open: boolean) => {
+    if (open) return;
+    setAnalyzerSheetMeta(null);
+    saveWorkspaceState({ analyzerOpen: false });
+    updateWorkspaceUrl({ analyzerOpen: false });
   };
 
   const handleSaveCurrentSearch = () => {
@@ -1858,6 +1977,8 @@ export default function CapRates() {
     if (source === "list" && listing.map?.latitude && listing.map?.longitude) {
       setFlyTo({ lat: listing.map.latitude, lng: listing.map.longitude });
     }
+    saveWorkspaceState({ selectedMls: listing.mlsNumber, analyzerOpen: Boolean(analyzerSheetMeta) });
+    updateWorkspaceUrl({ selectedMls: listing.mlsNumber });
     persistRecentViewedListingSignal(buildListingSignal(listing, "map_recent_view"));
     setRecentViewedListings(getRecentViewedListingSignals().slice(0, 4));
     if (isAuthenticated) {
@@ -3633,7 +3754,7 @@ export default function CapRates() {
           </div>
         )}
       </div>
-      <Sheet open={Boolean(analyzerSheetMeta)} onOpenChange={(open) => !open && setAnalyzerSheetMeta(null)}>
+      <Sheet open={Boolean(analyzerSheetMeta)} onOpenChange={handleAnalyzerSheetOpenChange}>
         <SheetContent side="right" className="flex h-screen h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-3xl">
           <div className="shrink-0 border-b px-6 py-4">
             <SheetHeader className="pr-8">

@@ -15,4 +15,20 @@ describe("distress scoring", () => {
     expect(isQualifiedDistressResult(scoreDistress("Motivated seller, bring an offer.", "BC"))).toBe(true);
     expect(isQualifiedDistressResult(scoreDistress("Vendor take back financing available.", "AB"))).toBe(true);
   });
+
+  it("does not qualify weak or ordinary listing language by itself", () => {
+    expect(isQualifiedDistressResult(scoreDistress("Estate sale in a beautiful family neighbourhood.", "ON"))).toBe(false);
+    expect(isQualifiedDistressResult(scoreDistress("Handyman special with TLC required.", "AB"))).toBe(false);
+    expect(isQualifiedDistressResult(scoreDistress("As-is property with office space and warehouse storage.", "BC"))).toBe(false);
+    expect(isQualifiedDistressResult(scoreDistress("Price reduced on this clean move-in-ready home.", "ON"))).toBe(false);
+  });
+
+  it("keeps weak condition terms when paired with hard distress signals", () => {
+    expect(isQualifiedDistressResult(scoreDistress("As is where is under power of sale.", "ON"))).toBe(true);
+    expect(isQualifiedDistressResult(scoreDistress("Handyman special. Motivated seller, quick close preferred.", "BC"))).toBe(true);
+  });
+
+  it("respects negated distress language", () => {
+    expect(isQualifiedDistressResult(scoreDistress("Not a power of sale. No VTB or seller financing.", "ON"))).toBe(false);
+  });
 });

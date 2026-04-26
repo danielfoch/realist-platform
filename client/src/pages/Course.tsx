@@ -14,6 +14,7 @@ import {
   BarChart3, MessageSquare, Rocket, Clock
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 
 interface Lesson {
   id: string;
@@ -97,7 +98,7 @@ function LoginPrompt() {
             Please log in to access your Multiplex Masterclass course content.
           </p>
           <Button
-            onClick={() => navigate("/login?returnUrl=/course")}
+            onClick={() => navigate(authPath("/login", "/course"))}
             className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3"
             data-testid="course-login-btn"
           >
@@ -238,7 +239,11 @@ export default function Course() {
 
   const selectLesson = (lesson: Lesson) => {
     setSelectedLessonId(lesson.id);
-    setExpandedModules(prev => new Set([...prev, lesson.moduleId]));
+    setExpandedModules(prev => {
+      const next = new Set(prev);
+      next.add(lesson.moduleId);
+      return next;
+    });
     setSidebarOpen(false);
   };
 

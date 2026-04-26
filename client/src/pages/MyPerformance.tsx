@@ -15,6 +15,7 @@ import {
   Minus, Award, Star, Calculator, ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { authPath } from "@/lib/authReturn";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
@@ -152,7 +153,7 @@ export default function MyPerformance() {
   useEffect(() => {
     if (!authLoading && !user) {
       const returnPath = `/my-performance${source ? `?source=${source}` : ""}`;
-      setLocation(`/login?returnUrl=${encodeURIComponent(returnPath)}`);
+      setLocation(authPath("/login", returnPath));
     }
   }, [user, authLoading, setLocation, source]);
 
@@ -230,7 +231,7 @@ export default function MyPerformance() {
                   : "We couldn't load your performance data. Please try again."}
               </p>
               {(error as any)?.message === "Not authenticated" ? (
-                <Button onClick={() => setLocation("/login?returnUrl=%2Fmy-performance")} data-testid="button-login-retry">
+                <Button onClick={() => setLocation(authPath("/login", "/my-performance"))} data-testid="button-login-retry">
                   Log In Again
                 </Button>
               ) : (

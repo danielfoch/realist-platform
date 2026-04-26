@@ -39,6 +39,8 @@ const NEGATION_PATTERNS = [
   "not foreclosure",
   "not a foreclosure",
   "no power of sale",
+  "no vtb or seller financing",
+  "no vtb or vendor financing",
   "no seller financing",
   "no vendor take back",
   "no vendor financing",
@@ -143,6 +145,20 @@ const PATTERN_COMBOS: Array<{
   { words: ["second mortgage", "vendor"], operator: "and", category: "vtb" },
 ];
 
+const HARD_MOTIVATED_TERMS = new Set([
+  "must sell",
+  "motivated seller",
+  "bring an offer",
+  "bring offers",
+  "any offer",
+  "all offers",
+  "quick close",
+  "quick closing",
+  "urgent sale",
+  "needs to sell",
+  "drastically reduced",
+]);
+
 const PROVINCIAL_BOOSTS: Record<string, Array<{ term: string; category: Category; bonus: number }>> = {
   ontario: [
     { term: "power of sale", category: "foreclosure_pos", bonus: 5 },
@@ -240,6 +256,11 @@ export function scoreDistress(
 
   for (const entry of TERMS) {
     if (seenTerms.has(entry.term)) continue;
+    let overlapsLongerSeenTerm = false;
+    seenTerms.forEach((seen) => {
+      if (seen.includes(entry.term)) overlapsLongerSeenTerm = true;
+    });
+    if (overlapsLongerSeenTerm) continue;
     if (negated.has(entry.term)) continue;
 
     const termNorm = normalizeText(entry.term);
@@ -330,13 +351,25 @@ export function scoreDistress(
   };
 }
 
-export function isQualifiedDistressResult(result: Pick<DistressResult, "distressScore" | "categoriesTriggered"> | null | undefined): boolean {
+export function isQualifiedDistressResult(
+  result: (Pick<DistressResult, "distressScore" | "categoriesTriggered"> & Partial<Pick<DistressResult, "matchedTerms" | "rawScore">>) | null | undefined
+): boolean {
   if (!result || result.distressScore <= 0) return false;
-  return Boolean(
-    result.categoriesTriggered.foreclosure_pos ||
-    result.categoriesTriggered.motivated ||
-    result.categoriesTriggered.vtb,
+  const matchedTerms = result.matchedTerms || [];
+  const hasStrongForeclosureOrVtb = matchedTerms.some(
+    (match) => (match.category === "foreclosure_pos" || match.category === "vtb") && match.weight === "strong",
   );
+  const hasHardMotivation = matchedTerms.some(
+    (match) => match.category === "motivated" && HARD_MOTIVATED_TERMS.has(match.term),
+  );
+  const motivatedScore = matchedTerms
+    .filter((match) => match.category === "motivated")
+    .reduce((sum, match) => sum + match.points, 0);
+  const hasStackedMotivation = motivatedScore >= STRONG_POINTS + MEDIUM_POINTS;
+  const hasForeclosureContext = matchedTerms.some((match) => match.category === "foreclosure_pos") &&
+    (hasHardMotivation || hasStrongForeclosureOrVtb || matchedTerms.some((match) => match.category === "vtb"));
+
+  return hasStrongForeclosureOrVtb || hasHardMotivation || hasStackedMotivation || hasForeclosureContext;
 }
 
 export function getProvincialNuance(province: string | null | undefined): string {

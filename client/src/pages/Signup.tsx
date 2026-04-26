@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 import { Building, TrendingUp, Users, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canadaProvinces } from "@/lib/provinces";
@@ -58,7 +59,7 @@ export default function Signup() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      setLocation("/login");
+      setLocation(authPath("/login"));
     }
   }, [authLoading, isAuthenticated, setLocation]);
 

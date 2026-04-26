@@ -26,6 +26,7 @@ import { DISTRESS_CATEGORIES, type DistressResult, type MatchedTerm, getProvinci
 import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
 import { Separator } from "@/components/ui/separator";
 import { MultiplexFeasibilityPanel } from "@/components/MultiplexFeasibilityPanel";
+import { authPath } from "@/lib/authReturn";
 
 const CANADA_CENTER: [number, number] = [51.0, -85.0];
 const DEFAULT_ZOOM = 5;
@@ -310,8 +311,10 @@ function ListingDetailModal({
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <DistressScoreBadge score={listing.distress.distressScore} confidence={listing.distress.confidence} />
-              <CategoryBadges categories={listing.distress.categoriesTriggered} />
+              <SignalBadges categories={listing.distress.categoriesTriggered} />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                {listing.distress.confidence} confidence
+              </span>
             </div>
             <div className="text-sm text-muted-foreground">
               {listing.details.numBedrooms && `${listing.details.numBedrooms} bed`}
@@ -431,7 +434,7 @@ function SignUpGateModal({ onClose, toolName, pendingMls }: { onClose: () => voi
   const returnUrl = pendingMls
     ? `/tools/distress-deals?listing=${encodeURIComponent(pendingMls)}`
     : "/tools/distress-deals";
-  const loginHref = `/login?returnUrl=${encodeURIComponent(returnUrl)}`;
+  const loginHref = authPath("/login", returnUrl);
 
   const handleAuthClick = () => {
     if (pendingMls) {
@@ -605,7 +608,7 @@ export default function DistressDeals() {
   }, [toast]);
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden" data-testid="distress-deals-page">
+    <div className="h-screen h-[100dvh] bg-background flex flex-col overflow-hidden" data-testid="distress-deals-page">
       <SEO
         title="Distress Deals Browser - Foreclosure, Power of Sale, VTB | Realist.ca"
         description="Find power-of-sale, court-ordered, bank-owned, motivated-seller, and seller-financing opportunities across Canada using MLS data."

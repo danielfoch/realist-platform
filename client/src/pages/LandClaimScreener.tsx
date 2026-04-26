@@ -19,6 +19,7 @@ import {
   Layers, Eye, EyeOff, X, Lock, Mail, User as UserIcon
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 
 const CANADA_CENTER: [number, number] = [56.1304, -106.3468];
 const DEFAULT_ZOOM = 4;
@@ -323,7 +324,7 @@ export default function LandClaimScreener() {
     };
   }, []);
 
-  const loginUrl = `/login?returnUrl=${encodeURIComponent("/tools/land-claim-screener")}`;
+  const loginUrl = authPath("/login", "/tools/land-claim-screener");
 
   const onEachFeature = useCallback((feature: any, layer: any) => {
     const p = feature.properties;
@@ -381,7 +382,7 @@ export default function LandClaimScreener() {
   }, [featuresGeoJSON, visibleLayers]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen h-[100dvh] bg-background flex flex-col overflow-hidden">
       <SEO
         title="Indigenous Land Claim & Treaty Area Screener"
         description="Screen Canadian properties for potential overlap with historic treaties, modern treaties, and Indigenous agreement areas. Informational screening tool powered by official federal open data."
@@ -390,8 +391,8 @@ export default function LandClaimScreener() {
       />
       <Navigation />
 
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)]">
-        <div className="flex-1 flex flex-col">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="min-h-0 flex-1 flex flex-col">
           <div className="bg-card border-b p-3 md:p-4 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex-1 min-w-[200px]">
@@ -464,7 +465,7 @@ export default function LandClaimScreener() {
             </div>
           </div>
 
-          <div className="flex-1 relative" data-testid="map-container">
+          <div className="min-h-0 flex-1 relative" data-testid="map-container">
             {featuresLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Skeleton className="w-full h-full" />
@@ -516,7 +517,7 @@ export default function LandClaimScreener() {
         </div>
 
         {(drawerOpen || showHistory) && (
-          <div className="w-full lg:w-[420px] border-l bg-card overflow-y-auto flex-shrink-0" data-testid="results-drawer">
+          <div className="max-h-[55dvh] w-full flex-shrink-0 overflow-y-auto border-l bg-card lg:max-h-none lg:w-[420px]" data-testid="results-drawer">
             <div className="p-4 border-b flex items-center justify-between">
               <h2 className="font-semibold text-lg" data-testid="text-drawer-title">
                 {showHistory ? "Search History" : "Screening Results"}
@@ -725,7 +726,7 @@ export default function LandClaimScreener() {
                         </pre>
                       </div>
                     ))}
-                    {layers && (
+                    {Array.isArray(layers) && (
                       <div>
                         <h4 className="font-semibold mb-1">Active Data Layers</h4>
                         <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">
@@ -756,7 +757,7 @@ export default function LandClaimScreener() {
       </div>
 
       {showSignUpGate && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowSignUpGate(false)}>
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowSignUpGate(false)}>
           <div
             className="bg-card rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
             onClick={(e) => e.stopPropagation()}
@@ -772,7 +773,7 @@ export default function LandClaimScreener() {
               </p>
               <div className="space-y-2 pt-2">
                 <Button asChild className="w-full gap-2" data-testid="button-gate-signup">
-                  <a href={`/login?returnUrl=${encodeURIComponent("/tools/land-claim-screener")}`}>
+                  <a href={loginUrl}>
                     <UserIcon className="h-4 w-4" />
                     Sign Up — It's Free
                   </a>
@@ -782,7 +783,7 @@ export default function LandClaimScreener() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Already have an account? <a href={`/login?returnUrl=${encodeURIComponent("/tools/land-claim-screener")}`} className="text-primary underline font-medium" data-testid="link-gate-login">Sign in</a>
+                Already have an account? <a href={loginUrl} className="text-primary underline font-medium" data-testid="link-gate-login">Sign in</a>
               </p>
             </div>
           </div>

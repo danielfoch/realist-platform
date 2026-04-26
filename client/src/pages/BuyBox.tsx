@@ -71,7 +71,7 @@ const SERVICES = [
 
 const TORONTO_CENTER: [number, number] = [43.6532, -79.3832];
 
-function DrawControl({ onCreated, onDeleted }: { onCreated: (e: any) => void; onDeleted: (e: any) => void }) {
+function DrawControl({ onCreated, onDeleted }: { onCreated: (e: any) => void; onDeleted: () => void }) {
   const map = useMap();
   const controlRef = useRef<any>(null);
   const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
@@ -352,7 +352,7 @@ export default function BuyBox() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="w-full h-[500px] rounded-lg border overflow-hidden" data-testid="map-container">
+                  <div className="w-full h-[62dvh] min-h-[360px] max-h-[620px] rounded-lg border overflow-hidden" data-testid="map-container">
                     <MapContainer
                       center={TORONTO_CENTER}
                       zoom={11}

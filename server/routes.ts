@@ -4416,6 +4416,7 @@ export async function registerRoutes(
   app.post("/api/ddf/listings", async (req: any, res) => {
     try {
       const { isDdfConfigured, searchDdfListings, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      const { isVacantLandLikeProperty } = await import("@shared/propertyEligibility");
 
       if (!isDdfConfigured()) {
         res.status(503).json({ error: "CREA DDF not configured", available: false });
@@ -4473,7 +4474,7 @@ export async function registerRoutes(
         .map(normalizeDdfToRepliersFormat)
         .filter((listing: any) => {
           const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
-          return Number.isFinite(price) && price > 1;
+          return Number.isFinite(price) && price > 1 && !isVacantLandLikeProperty(listing);
         });
 
       res.json({
@@ -4762,6 +4763,7 @@ export async function registerRoutes(
       }
 
       const { isDdfConfigured, searchDdfListings, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      const { isVacantLandLikeProperty } = await import("@shared/propertyEligibility");
       if (!isDdfConfigured()) {
         res.status(503).json({ error: "DDF not configured", available: false });
         return;
@@ -4799,7 +4801,7 @@ export async function registerRoutes(
         .map(normalizeDdfToRepliersFormat)
         .filter((listing: any) => {
           const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
-          return Number.isFinite(price) && price > 1;
+          return Number.isFinite(price) && price > 1 && !isVacantLandLikeProperty(listing);
         });
 
       const { getCmhcRent } = await import("../shared/cmhcRents");
@@ -4820,10 +4822,10 @@ export async function registerRoutes(
           } else {
             const city = listing.address?.city || "";
             const province = listing.address?.state || "";
-            const cmhc = getCmhcRent(city, String(beds));
-            if (cmhc) {
-              monthlyRent = cmhc * units;
-              rentSource = "cmhc";
+            const cmhc = getCmhcRent(Number(beds) || 2, city, province);
+            if (cmhc?.rent) {
+              monthlyRent = cmhc.rent * units;
+              rentSource = cmhc.source === "cmhc_city" || cmhc.source === "cmhc_province" ? "cmhc" : "estimated";
             } else {
               const baseFallback: Record<number, number> = { 0: 1200, 1: 1500, 2: 1800, 3: 2200, 4: 2600, 5: 3000 };
               monthlyRent = (baseFallback[beds] || 1800) * units;
