@@ -73,6 +73,7 @@ import {
   type ConsensusLabel,
 } from "@shared/investmentMetrics";
 import { type DistressResult } from "@shared/distressScoring";
+import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
 
 interface RepliersListing {
   mlsNumber: string;
@@ -1272,6 +1273,7 @@ export default function CapRates() {
           longitudeMax: bounds.east,
           excludeBusinessSales: true,
           excludeParking: true,
+          excludeVacantLand: true,
         };
 
         if (minPrice) ddfBody.minPrice = parseInt(minPrice);
@@ -1345,6 +1347,7 @@ export default function CapRates() {
   const listingsWithCapRates = useMemo((): ListingWithCapRate[] => {
     return listings
       .map((listing: any) => {
+        if (isVacantLandLikeProperty(listing)) return null;
         const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
         if (!(price > 1)) return null;
         const bedrooms = listing.details?.numBedrooms || 2;

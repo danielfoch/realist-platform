@@ -115,18 +115,18 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
     const latestReports = await storage.getBlogPosts({ status: "published", category: "market-analysis", limit: 4 });
     return renderShell(`
       <header style="margin-bottom:32px;">
-        <p style="display:inline-block;border:1px solid #d1d5db;border-radius:999px;padding:6px 10px;font-size:12px;margin-bottom:14px;">Canadian real estate intelligence platform</p>
-        <h1 style="font-size:clamp(2.5rem,5vw,4.5rem);line-height:1.05;margin:0 0 14px;">Source the deal. Underwrite it. Act with better housing data.</h1>
+        <p style="display:inline-block;border:1px solid #d1d5db;border-radius:999px;padding:6px 10px;font-size:12px;margin-bottom:14px;">AI-powered real estate investing</p>
+        <h1 style="font-size:clamp(2.5rem,5vw,4.5rem);line-height:1.05;margin:0 0 14px;">AI that learns how you analyze real estate.</h1>
         <p style="font-size:18px;line-height:1.7;max-width:760px;color:#4b5563;">
-          Realist combines investor tools, reports, and market pages into one crawlable intelligence layer for Canadian real estate. Search opportunities, analyze properties, and follow the policy and pricing signals that matter.
+          Analyze a deal or search the map. Every search, save, and underwriting teaches Realist your markets, strategy, and return targets so each recommendation gets sharper.
         </p>
       </header>
       <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:32px 0;">
         ${[
-          { title: "Reports", body: "Indexable market reports and housing intelligence pages.", href: "/reports" },
-          { title: "Markets", body: "City-level market pages built for future programmatic SEO.", href: "/markets" },
-          { title: "Strategies", body: "Investor strategy pages linked to markets and tools.", href: "/investing" },
-          { title: "Analyzer", body: "Property-level underwriting for Canadian investors.", href: "/tools/analyzer" },
+          { title: "Analyze a Deal", body: "Turn an address, listing, or MLS number into cash flow, yield, risk signals, and next steps.", href: "/tools/analyzer" },
+          { title: "Explore the Map", body: "Search listings through an investor lens with yield, market fit, price cut, and risk signals.", href: "/tools/cap-rates" },
+          { title: "Distress Deals", body: "Browse motivated seller, power of sale, foreclosure, and related opportunity signals.", href: "/tools/distress-deals" },
+          { title: "Market Intelligence", body: "Follow reports, markets, strategies, and housing data that shape investor decisions.", href: "/insights" },
         ].map((item) => `
           <article style="border:1px solid #e5e7eb;border-radius:16px;padding:18px;">
             <h2 style="font-size:20px;margin:0 0 10px;">${escapeHtml(item.title)}</h2>

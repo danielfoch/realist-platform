@@ -4433,6 +4433,7 @@ export async function registerRoutes(
         propertySubType,
         excludeBusinessSales,
         excludeParking,
+        excludeVacantLand,
         pageNum,
         resultsPerPage,
         latitudeMin,
@@ -4459,6 +4460,7 @@ export async function registerRoutes(
         propertySubType: sanitizedSubType || undefined,
         excludeBusinessSales: !!excludeBusinessSales,
         excludeParking: !!excludeParking,
+        excludeVacantLand: excludeVacantLand !== false,
         latitudeMin: latitudeMin ? Number(latitudeMin) : undefined,
         latitudeMax: latitudeMax ? Number(latitudeMax) : undefined,
         longitudeMin: longitudeMin ? Number(longitudeMin) : undefined,
@@ -4775,6 +4777,7 @@ export async function registerRoutes(
         skip: 0,
         excludeBusinessSales: true,
         excludeParking: true,
+        excludeVacantLand: true,
       };
 
       if (filters.city) searchParams.city = filters.city;

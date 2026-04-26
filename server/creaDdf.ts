@@ -1,3 +1,5 @@
+import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
+
 interface DdfTokenResponse {
   access_token: string;
   token_type: string;
@@ -137,6 +139,7 @@ export async function searchDdfListings(params: {
   propertySubType?: string;
   excludeBusinessSales?: boolean;
   excludeParking?: boolean;
+  excludeVacantLand?: boolean;
   latitudeMin?: number;
   latitudeMax?: number;
   longitudeMin?: number;
@@ -229,6 +232,9 @@ export async function searchDdfListings(params: {
       }
       return true;
     });
+  }
+  if (params.excludeVacantLand) {
+    listings = listings.filter((l) => !isVacantLandLikeProperty(l));
   }
 
   const rawCount = data["@odata.count"] || listings.length;

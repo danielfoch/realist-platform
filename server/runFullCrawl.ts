@@ -2,6 +2,7 @@ import { searchDdfListings } from "./creaDdf";
 import { storage } from "./storage";
 import { CMHC_CITY_RENTS, CMHC_PROVINCIAL_RENTS } from "../shared/cmhcRents";
 import type { InsertDdfListingSnapshot, InsertCityYieldHistory } from "@shared/schema";
+import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
 
 const PROVINCE_TO_ABBREV: Record<string, string> = {
   "Ontario": "ON", "British Columbia": "BC", "Quebec": "QC", "Alberta": "AB",
@@ -68,6 +69,7 @@ async function crawlProvince(province: string, month: string): Promise<number> {
         stateOrProvince: province,
         excludeBusinessSales: true,
         excludeParking: true,
+        excludeVacantLand: true,
         top: 100,
         skip: page * 100,
       });
@@ -80,6 +82,7 @@ async function crawlProvince(province: string, month: string): Promise<number> {
       const snapshots: InsertDdfListingSnapshot[] = [];
       for (const l of result.listings) {
         if (!l.ListPrice || l.ListPrice <= 0) continue;
+        if (isVacantLandLikeProperty(l)) continue;
         const city = l.City || "Unknown";
         const { rent, source } = estimateRent(l, city, province);
         const { grossYield, netYield, estimatedExpenses, estimatedNoi } = calcYield(

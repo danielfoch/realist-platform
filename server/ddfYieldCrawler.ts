@@ -9,6 +9,7 @@ import {
   queueDdfListingRemovedNotifications,
   queueSavedSearchMatchNotificationsForDdf,
 } from "./notifications";
+import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
 
 const PROVINCE_TO_ABBREV: Record<string, string> = {
   "Ontario": "ON",
@@ -135,22 +136,23 @@ function normalizePostalArea(postalCode: string | null | undefined): string | nu
 }
 
 function aggregateYieldMetrics(snapshots: InsertDdfListingSnapshot[]) {
-  const grossYields = snapshots.map(s => s.grossYield).filter((v): v is number => v != null && v > 0 && v < 20);
-  const netYields = snapshots.map(s => s.netYield).filter((v): v is number => v != null && v > -10 && v < 15);
-  const prices = snapshots.map(s => s.listPrice).filter((v): v is number => v != null && v > 0);
-  const rents = snapshots.map(s => s.estimatedMonthlyRent).filter((v): v is number => v != null && v > 0);
-  const doms = snapshots.map(s => s.daysOnMarket).filter((v): v is number => v != null);
-  const beds = snapshots.map(s => s.bedroomsTotal).filter((v): v is number => v != null);
+  const rentableSnapshots = snapshots.filter((s) => !isVacantLandLikeProperty(s));
+  const grossYields = rentableSnapshots.map(s => s.grossYield).filter((v): v is number => v != null && v > 0 && v < 20);
+  const netYields = rentableSnapshots.map(s => s.netYield).filter((v): v is number => v != null && v > -10 && v < 15);
+  const prices = rentableSnapshots.map(s => s.listPrice).filter((v): v is number => v != null && v > 0);
+  const rents = rentableSnapshots.map(s => s.estimatedMonthlyRent).filter((v): v is number => v != null && v > 0);
+  const doms = rentableSnapshots.map(s => s.daysOnMarket).filter((v): v is number => v != null);
+  const beds = rentableSnapshots.map(s => s.bedroomsTotal).filter((v): v is number => v != null);
   const sqftPrices: number[] = [];
 
-  for (const s of snapshots) {
+  for (const s of rentableSnapshots) {
     if (s.listPrice && s.livingArea && s.livingArea > 0) {
       sqftPrices.push(s.listPrice / s.livingArea);
     }
   }
 
   return {
-    listingCount: snapshots.length,
+    listingCount: rentableSnapshots.length,
     avgGrossYield: avg(grossYields) != null ? Math.round(avg(grossYields)! * 100) / 100 : null,
     medianGrossYield: median(grossYields) != null ? Math.round(median(grossYields)! * 100) / 100 : null,
     avgNetYield: avg(netYields) != null ? Math.round(avg(netYields)! * 100) / 100 : null,
@@ -159,7 +161,7 @@ function aggregateYieldMetrics(snapshots: InsertDdfListingSnapshot[]) {
     avgRentPerUnit: avg(rents) != null ? Math.round(avg(rents)!) : null,
     avgDaysOnMarket: avg(doms) != null ? Math.round(avg(doms)! * 10) / 10 : null,
     avgPricePerSqft: avg(sqftPrices) != null ? Math.round(avg(sqftPrices)! * 100) / 100 : null,
-    inventoryCount: snapshots.length,
+    inventoryCount: rentableSnapshots.length,
     avgBedsPerListing: avg(beds) != null ? Math.round(avg(beds)! * 10) / 10 : null,
     yieldTrend: null,
   };
@@ -180,6 +182,7 @@ export async function crawlDdfForProvince(
         stateOrProvince: ddfProvince,
         excludeBusinessSales: true,
         excludeParking: true,
+        excludeVacantLand: true,
         top: pageSize,
         skip: page * pageSize,
       });
@@ -189,6 +192,7 @@ export async function crawlDdfForProvince(
       for (const listing of result.listings) {
         const listPrice = listing.ListPrice;
         if (!listPrice || listPrice <= 0) continue;
+        if (isVacantLandLikeProperty(listing)) continue;
 
         const city = listing.City || "Unknown";
         const { rent, source } = estimateMonthlyRent(listing, cmhcRents, city, ddfProvince);
@@ -270,6 +274,7 @@ export async function crawlDdfForCity(
         stateOrProvince: province,
         excludeBusinessSales: true,
         excludeParking: true,
+        excludeVacantLand: true,
         top: pageSize,
         skip: page * pageSize,
       });
@@ -279,6 +284,7 @@ export async function crawlDdfForCity(
       for (const listing of result.listings) {
         const listPrice = listing.ListPrice;
         if (!listPrice || listPrice <= 0) continue;
+        if (isVacantLandLikeProperty(listing)) continue;
 
         const { rent, source } = estimateMonthlyRent(listing, cmhcRents, city, province);
         const { grossYield, netYield, estimatedExpenses, estimatedNoi } = calculateYield(
