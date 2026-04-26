@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Search, MapPin, AlertTriangle, Gavel, TrendingDown, DollarSign,
   Heart, ExternalLink, Filter, X, ChevronDown, ChevronUp, Info,
-  List, Map as MapIcon, Share2, Loader2, Building2, Home, Lock, UserIcon, Calculator
+  List, Map as MapIcon, Share2, Loader2, Home, Lock, UserIcon, Calculator
 } from "lucide-react";
 import { DISTRESS_CATEGORIES, type DistressResult, type MatchedTerm, getProvincialNuance } from "@shared/distressScoring";
 import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
@@ -35,7 +35,6 @@ const CATEGORY_ICONS: Record<string, any> = {
   foreclosure_pos: Gavel,
   motivated: TrendingDown,
   vtb: DollarSign,
-  commercial: Building2,
 };
 
 interface DistressListing {
@@ -66,47 +65,21 @@ interface DistressListing {
   rawRemarks: string;
 }
 
-const redIcon = new L.Icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const orangeIcon = new L.Icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const purpleIcon = new L.Icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const blueIcon = new L.Icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+function getPrimarySignal(listing: DistressListing): { label: string; color: string } {
+  if (listing.distress.categoriesTriggered.foreclosure_pos) return { label: "POS", color: "#dc2626" };
+  if (listing.distress.categoriesTriggered.vtb) return { label: "VTB", color: "#7c3aed" };
+  return { label: "MOT", color: "#d97706" };
+}
 
 function getListingIcon(listing: DistressListing) {
-  if (listing.distress.categoriesTriggered.foreclosure_pos) return redIcon;
-  if (listing.distress.categoriesTriggered.vtb) return purpleIcon;
-  if (listing.distress.categoriesTriggered.commercial) return blueIcon;
-  return orangeIcon;
+  const signal = getPrimarySignal(listing);
+  return L.divIcon({
+    html: `<div class="distress-signal-marker" style="--marker-color:${signal.color}">${signal.label}</div>`,
+    className: "distress-signal-marker-wrap",
+    iconSize: [44, 28],
+    iconAnchor: [22, 28],
+    popupAnchor: [0, -28],
+  });
 }
 
 function formatPrice(price: number): string {
@@ -183,6 +156,28 @@ function CategoryBadges({ categories }: { categories: DistressResult["categories
   );
 }
 
+function SignalBadges({ categories }: { categories: DistressResult["categoriesTriggered"] }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {categories.foreclosure_pos && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-red-300 text-red-700 dark:text-red-300">
+          POS/foreclosure
+        </Badge>
+      )}
+      {categories.vtb && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-purple-300 text-purple-700 dark:text-purple-300">
+          VTB
+        </Badge>
+      )}
+      {categories.motivated && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-700 dark:text-amber-300">
+          Motivated
+        </Badge>
+      )}
+    </div>
+  );
+}
+
 function MarkerClusterLayer({ listings, onListingClick }: { listings: DistressListing[]; onListingClick: (listing: DistressListing) => void }) {
   const map = useMap();
   const clusterRef = useRef<any>(null);
@@ -223,7 +218,7 @@ function MarkerClusterLayer({ listings, onListingClick }: { listings: DistressLi
         marker.bindPopup(
           `<div style="min-width:180px"><strong>${escHtml(formatPrice(listing.listPrice))}</strong><br/>` +
           `<span style="font-size:0.85em">${escHtml(formatAddress(listing.address))}</span><br/>` +
-          `<span style="font-size:0.8em;color:#666">Score: ${listing.distress.distressScore} (${escHtml(listing.distress.confidence)})</span></div>`
+          `<span style="font-size:0.8em;color:#666">${escHtml(getPrimarySignal(listing).label)} · ${escHtml(listing.distress.confidence)} confidence</span></div>`
         );
         marker.on("click", () => onListingClick(listing));
         return marker;
@@ -487,7 +482,6 @@ export default function DistressDeals() {
   const [toggleForeclosure, setToggleForeclosure] = useState(true);
   const [toggleMotivated, setToggleMotivated] = useState(true);
   const [toggleVtb, setToggleVtb] = useState(true);
-  const [toggleCommercial, setToggleCommercial] = useState(true);
   const [pendingListingMls, setPendingListingMls] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"split" | "list" | "map">(isMobile ? "list" : "split");
   const [filtersOpen, setFiltersOpen] = useState(!isMobile);
@@ -503,9 +497,8 @@ export default function DistressDeals() {
     if (toggleForeclosure) cats.push("foreclosure_pos");
     if (toggleMotivated) cats.push("motivated");
     if (toggleVtb) cats.push("vtb");
-    if (toggleCommercial) cats.push("commercial");
     return cats;
-  }, [toggleForeclosure, toggleMotivated, toggleVtb, toggleCommercial]);
+  }, [toggleForeclosure, toggleMotivated, toggleVtb]);
 
   const { data, isLoading, isFetching } = useQuery<{
     listings: DistressListing[];
@@ -531,7 +524,7 @@ export default function DistressDeals() {
 
   const categoryFiltered = useMemo(() => {
     if (categories.length === 0) return [];
-    if (categories.length >= 4) return allListings;
+    if (categories.length >= 3) return allListings;
     return allListings.filter(l =>
       categories.some(cat => l.distress?.categoriesTriggered?.[cat as keyof typeof l.distress.categoriesTriggered])
     );
@@ -614,9 +607,9 @@ export default function DistressDeals() {
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden" data-testid="distress-deals-page">
       <SEO
-        title="Distress Deals Browser - Foreclosure, Power of Sale, VTB, Commercial | Realist.ca"
-        description="Find power-of-sale, court-ordered, bank-owned, motivated sellers, seller-financing, and commercial/mixed-use investment opportunities across Canada using MLS data."
-        keywords="foreclosure canada, power of sale, court ordered sale, motivated seller, vtb, vendor take back, distressed property, bank owned, commercial real estate, mixed use"
+        title="Distress Deals Browser - Foreclosure, Power of Sale, VTB | Realist.ca"
+        description="Find power-of-sale, court-ordered, bank-owned, motivated-seller, and seller-financing opportunities across Canada using MLS data."
+        keywords="foreclosure canada, power of sale, court ordered sale, motivated seller, vtb, vendor take back, distressed property, bank owned"
         canonicalUrl="/tools/distress-deals"
       />
       <Navigation />
@@ -631,7 +624,7 @@ export default function DistressDeals() {
                   Distress Deals
                 </h1>
                 <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
-                  Foreclosure, Power of Sale, Motivated Sellers, VTB & Commercial opportunities
+                  Foreclosure, Power of Sale, motivated sellers, and VTB opportunities
                 </p>
               </div>
               <div className="flex items-center gap-1 md:gap-2">
@@ -687,14 +680,6 @@ export default function DistressDeals() {
                 <Label htmlFor="t-vtb" className="text-xs md:text-sm flex items-center gap-1 md:gap-1.5 cursor-pointer">
                   <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5 text-purple-500" />
                   VTB
-                </Label>
-              </div>
-              <div className="flex items-center gap-1.5 md:gap-2" data-testid="toggle-commercial">
-                <Switch checked={toggleCommercial} onCheckedChange={setToggleCommercial} id="t-commercial" />
-                <Label htmlFor="t-commercial" className="text-xs md:text-sm flex items-center gap-1 md:gap-1.5 cursor-pointer">
-                  <Building2 className="h-3 w-3 md:h-3.5 md:w-3.5 text-cyan-500" />
-                  <span className="hidden sm:inline">Commercial</span>
-                  <span className="sm:hidden">CRE</span>
                 </Label>
               </div>
             </div>
@@ -799,11 +784,10 @@ export default function DistressDeals() {
                                       {listing.address.city}, {listing.address.state}
                                     </div>
                                   </div>
-                                  <DistressScoreBadge score={listing.distress.distressScore} confidence={listing.distress.confidence} />
+                                  <SignalBadges categories={listing.distress.categoriesTriggered} />
                                 </div>
                                 <div className="flex items-center justify-between mt-1.5">
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <CategoryBadges categories={listing.distress.categoriesTriggered} />
                                     {["ON", "Ontario"].includes(listing.address.state) && (
                                       <Badge variant="outline" className="text-[9px] px-1.5 py-0">
                                         Multiplex Overlay
@@ -850,8 +834,7 @@ export default function DistressDeals() {
 
         <div className="border-t bg-muted/30 px-4 py-2 flex-shrink-0">
           <p className="text-[10px] text-muted-foreground text-center max-w-4xl mx-auto" data-testid="text-disclaimer">
-            This is not legal advice. "Power of Sale"/foreclosure processes vary by province. Listings are flagged based on MLS remarks and signals; verify details with professionals.
-            Distress Score is derived from listing remarks, provincial sale terminology, and available listing signals. It is not a guarantee of distressed status.
+            This is not legal advice. "Power of Sale"/foreclosure processes vary by province. Listings are flagged from MLS remarks for POS/foreclosure, motivated-seller, or VTB language; verify details with professionals.
           </p>
         </div>
       </div>

@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { authPath } from "@/lib/authReturn";
 import { apiRequest } from "@/lib/queryClient";
 import { Link, useLocation } from "wouter";
 import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink, Settings, GitCompare, MoreHorizontal, Search, Compass, Bookmark, ArrowRight, Clock3, Target } from "lucide-react";
@@ -256,7 +257,7 @@ export default function InvestorPortal() {
             <p className="text-muted-foreground mb-6">
               Please sign in to access your investor portal and manage your real estate portfolio.
             </p>
-            <Button onClick={() => window.location.href = "/login"} data-testid="button-sign-in">
+            <Button onClick={() => window.location.href = authPath("/login")} data-testid="button-sign-in">
               Sign In
             </Button>
           </div>

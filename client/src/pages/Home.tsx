@@ -819,7 +819,7 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
 
   if (embedded) {
     return (
-      <div className="overflow-x-hidden" data-testid="embedded-deal-analyzer">
+      <div className="min-h-full overflow-x-hidden pb-8" data-testid="embedded-deal-analyzer">
         <div className="flex justify-center mb-8">
           <CalculatorSelector
             selected={calculatorType}

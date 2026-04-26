@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone, ArrowRight, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl } from "@/lib/authReturn";
 
 const phoneSchema = z.object({
   phone: z.string().min(10, "Please enter a valid phone number"),
@@ -28,6 +29,8 @@ export default function VerifyPhone() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const returnUrl = getAuthReturnUrl("/investor");
+  rememberAuthReturnUrl(returnUrl);
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [submittedPhone, setSubmittedPhone] = useState("");
 
@@ -79,7 +82,8 @@ export default function VerifyPhone() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/phone/status"] });
       toast({ title: "Phone verified!", description: "Your phone number has been verified." });
-      setLocation("/investor");
+      clearAuthReturnUrl();
+      setLocation(returnUrl);
     },
     onError: (error: any) => {
       toast({
@@ -96,7 +100,8 @@ export default function VerifyPhone() {
       return response.json();
     },
     onSuccess: () => {
-      setLocation("/investor");
+      clearAuthReturnUrl();
+      setLocation(returnUrl);
     },
   });
 
@@ -114,10 +119,13 @@ export default function VerifyPhone() {
           <CardContent>
             <Button 
               className="w-full" 
-              onClick={() => setLocation("/investor")}
+              onClick={() => {
+                clearAuthReturnUrl();
+                setLocation(returnUrl);
+              }}
               data-testid="button-continue-verified"
             >
-              Continue to Dashboard
+              Continue
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardContent>

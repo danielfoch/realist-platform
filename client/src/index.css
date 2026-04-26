@@ -256,6 +256,41 @@
   font-family: inherit !important;
 }
 
+.distress-signal-marker-wrap {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.distress-signal-marker {
+  align-items: center;
+  background: var(--marker-color);
+  border: 2px solid #fff;
+  border-radius: 6px;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.35);
+  color: #fff;
+  display: flex;
+  font-size: 11px;
+  font-weight: 800;
+  height: 24px;
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: 1;
+  min-width: 38px;
+  padding: 0 6px;
+  position: relative;
+}
+
+.distress-signal-marker::after {
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--marker-color);
+  bottom: -7px;
+  content: "";
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+}
+
 [data-radix-popper-content-wrapper] {
   z-index: 9999 !important;
 }

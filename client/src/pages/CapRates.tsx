@@ -74,6 +74,7 @@ import {
 } from "@shared/investmentMetrics";
 import { type DistressResult } from "@shared/distressScoring";
 import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
+import { authPath } from "@/lib/authReturn";
 
 interface RepliersListing {
   mlsNumber: string;
@@ -1949,24 +1950,22 @@ export default function CapRates() {
 
             {distressListing && (
               <div className="mb-1 flex items-center gap-1.5">
-                <Badge
-                  variant="secondary"
-                  className="text-[10px] gap-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                  data-testid={`badge-distress-${listing.mlsNumber}`}
-                >
-                  <AlertTriangle className="h-3 w-3" />
-                  Distress {distressListing.distress.distressScore}
-                </Badge>
                 {distressListing.distress.categoriesTriggered.foreclosure_pos && (
-                  <Badge variant="outline" className="text-[10px] gap-1">
+                  <Badge variant="outline" className="text-[10px] gap-1" data-testid={`badge-distress-${listing.mlsNumber}`}>
                     <Gavel className="h-3 w-3" />
-                    Power of Sale
+                    POS/foreclosure
                   </Badge>
                 )}
                 {distressListing.distress.categoriesTriggered.vtb && (
                   <Badge variant="outline" className="text-[10px] gap-1">
                     <DollarSign className="h-3 w-3" />
                     VTB
+                  </Badge>
+                )}
+                {distressListing.distress.categoriesTriggered.motivated && (
+                  <Badge variant="outline" className="text-[10px] gap-1">
+                    <TrendingDown className="h-3 w-3" />
+                    Motivated
                   </Badge>
                 )}
               </div>
@@ -2120,18 +2119,14 @@ export default function CapRates() {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <span className="text-sm font-bold">{formatPrice(listing.listPrice)}</span>
-              <Badge className="text-[10px] bg-red-600 hover:bg-red-600">
-                D {listing.distress.distressScore}
-              </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground truncate mt-0.5">
               {formatShortAddress(listing.address as RepliersListing["address"])}, {listing.address?.city}
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1">
-              {listing.distress.categoriesTriggered.foreclosure_pos && <Badge variant="outline" className="text-[10px]">Power of Sale</Badge>}
+              {listing.distress.categoriesTriggered.foreclosure_pos && <Badge variant="outline" className="text-[10px]">POS/foreclosure</Badge>}
               {listing.distress.categoriesTriggered.vtb && <Badge variant="outline" className="text-[10px]">VTB</Badge>}
               {listing.distress.categoriesTriggered.motivated && <Badge variant="outline" className="text-[10px]">Motivated</Badge>}
-              {listing.distress.categoriesTriggered.commercial && <Badge variant="outline" className="text-[10px]">Commercial</Badge>}
             </div>
             <p className="mt-1.5 line-clamp-2 text-[10px] text-muted-foreground">
               {listing.rawRemarks || listing.details?.description || "Distress indicators detected in listing remarks."}
@@ -2737,7 +2732,7 @@ export default function CapRates() {
                   </Button>
                 ) : (
                   <div className="text-center text-xs text-muted-foreground p-3 border rounded-md">
-                    <a href="/login" className="text-primary underline" data-testid="link-login-underwrite">Sign in</a> to save your underwriting analysis
+                    <a href={authPath("/login")} className="text-primary underline" data-testid="link-login-underwrite">Sign in</a> to save your underwriting analysis
                   </div>
                 )}
               </TabsContent>
@@ -2885,9 +2880,6 @@ export default function CapRates() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <CardTitle className="text-xl">{formatPriceFull(selectedDistressListing.listPrice)}</CardTitle>
-                  <Badge className="bg-red-600 hover:bg-red-600">
-                    Distress {selectedDistressListing.distress.distressScore}
-                  </Badge>
                 </div>
                 <CardDescription className="text-xs">
                   {formatAddress(selectedDistressListing.address as RepliersListing["address"])}
@@ -2914,10 +2906,9 @@ export default function CapRates() {
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              {selectedDistressListing.distress.categoriesTriggered.foreclosure_pos && <Badge variant="outline">Power of Sale</Badge>}
+              {selectedDistressListing.distress.categoriesTriggered.foreclosure_pos && <Badge variant="outline">POS/foreclosure</Badge>}
               {selectedDistressListing.distress.categoriesTriggered.vtb && <Badge variant="outline">VTB</Badge>}
               {selectedDistressListing.distress.categoriesTriggered.motivated && <Badge variant="outline">Motivated seller</Badge>}
-              {selectedDistressListing.distress.categoriesTriggered.commercial && <Badge variant="outline">Commercial</Badge>}
             </div>
 
             <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
@@ -2958,11 +2949,11 @@ export default function CapRates() {
   const sidebarContent = (
     <>
       {selectedListing ? (
-        <div className="h-full overflow-y-auto overscroll-contain p-3">
+        <div className="h-full min-h-0 overflow-y-auto overscroll-contain p-3">
           {renderDetailPanel()}
         </div>
       ) : selectedDistressListing ? (
-        <div className="h-full overflow-y-auto overscroll-contain p-3">
+        <div className="h-full min-h-0 overflow-y-auto overscroll-contain p-3">
           {renderDistressDetailPanel()}
         </div>
       ) : (
@@ -3118,7 +3109,7 @@ export default function CapRates() {
   );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       <Navigation />
 
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-[1000] relative shrink-0">
@@ -3643,8 +3634,8 @@ export default function CapRates() {
         )}
       </div>
       <Sheet open={Boolean(analyzerSheetMeta)} onOpenChange={(open) => !open && setAnalyzerSheetMeta(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto p-0">
-          <div className="border-b px-6 py-4">
+        <SheetContent side="right" className="flex h-screen w-full flex-col overflow-hidden p-0 sm:max-w-3xl">
+          <div className="shrink-0 border-b px-6 py-4">
             <SheetHeader className="pr-8">
               <SheetTitle>{analyzerSheetMeta?.title || "Analyze in Map Workspace"}</SheetTitle>
               <SheetDescription>
@@ -3652,7 +3643,7 @@ export default function CapRates() {
               </SheetDescription>
             </SheetHeader>
           </div>
-          <div className="px-4 py-6 sm:px-6">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
             <Home embedded seedQuery={analyzerSeedQuery} />
           </div>
         </SheetContent>

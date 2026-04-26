@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { authPath, clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl } from "@/lib/authReturn";
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -30,9 +31,8 @@ export default function CreateAccount() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Get return URL from query params
-  const searchParams = new URLSearchParams(window.location.search);
-  const returnUrl = searchParams.get("returnUrl") || "/signup";
+  const returnUrl = getAuthReturnUrl("/signup");
+  rememberAuthReturnUrl(returnUrl);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -58,6 +58,7 @@ export default function CreateAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Account created!", description: "Welcome to Realist." });
+      clearAuthReturnUrl();
       setLocation(returnUrl);
     },
     onError: (error: any) => {
@@ -226,7 +227,7 @@ export default function CreateAccount() {
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/login">
+              <Link href={authPath("/login", returnUrl)}>
                 <span className="text-primary hover:underline cursor-pointer" data-testid="link-login">
                   Sign in
                 </span>

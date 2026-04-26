@@ -9528,20 +9528,6 @@ export async function registerRoutes(
       "vendor financing",
       "financement vendeur",
     ],
-    commercial: [
-      "commercial property",
-      "commercial building",
-      "retail space",
-      "office space",
-      "warehouse",
-      "mixed use",
-      "strip mall",
-      "storefront",
-      "triple net",
-      "zoned commercial",
-      "business for sale",
-      "investment property",
-    ],
   };
 
   // ─── Multiplex Masterclass Lead + Checkout ─────────────────────
@@ -9746,7 +9732,7 @@ export async function registerRoutes(
   let distressScanInProgress = false;
 
   async function runDistressScan(): Promise<{ listings: any[]; totalDdfScanned: number }> {
-    const { scoreDistress } = await import("@shared/distressScoring");
+    const { scoreDistress, isQualifiedDistressResult } = await import("@shared/distressScoring");
     const { searchDdfByRemarks, normalizeDdfToRepliersFormat } = await import("./creaDdf");
 
     const allCategoryKeys = Object.keys(SEARCH_TERMS_BY_CATEGORY);
@@ -9798,11 +9784,11 @@ export async function registerRoutes(
       const listingProvince = raw.StateOrProvince || "";
       const distress = scoreDistress(remarks, listingProvince);
       return { ...normalized, distress, rawRemarks: remarks };
-    });
+    }).filter((listing) => isQualifiedDistressResult(listing.distress));
 
     allScored.sort((a, b) => b.distress.distressScore - a.distress.distressScore);
 
-    const cacheKey = `distress-v5:all`;
+    const cacheKey = `distress-v6:qualified`;
     const cacheData = { listings: allScored, totalDdfScanned };
 
     await db.insert(dataCache).values({
@@ -9842,10 +9828,13 @@ export async function registerRoutes(
       const excludeKeywords = (req.query.excludeKeywords as string || "").split(",").filter(Boolean);
       const minScore = req.query.minScore ? Number(req.query.minScore) : 1;
 
-      const cacheKey = `distress-v5:all`;
+      const { isQualifiedDistressResult } = await import("@shared/distressScoring");
+      const cacheKey = `distress-v6:qualified`;
 
       function applyFilters(listings: any[]) {
-        let filtered = listings.filter((l: any) => (l.distress?.distressScore || 0) >= minScore);
+        let filtered = listings.filter((l: any) =>
+          (l.distress?.distressScore || 0) >= minScore && isQualifiedDistressResult(l.distress)
+        );
         if (categories.length > 0) {
           filtered = filtered.filter((l: any) =>
             categories.some((cat: string) => l.distress?.categoriesTriggered?.[cat])
@@ -9911,7 +9900,7 @@ export async function registerRoutes(
       console.log("[distress-prewarm] DDF not configured, skipping");
       return;
     }
-    const cacheKey = `distress-v5:all`;
+    const cacheKey = `distress-v6:qualified`;
     const [existing] = await db.select().from(dataCache)
       .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '12 hours'`));
     if (existing) {

@@ -3,7 +3,7 @@ import { distressSnapshots } from "@shared/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { storage } from "./storage";
 import { searchDdfByRemarks, normalizeDdfToRepliersFormat, isDdfConfigured } from "./creaDdf";
-import { scoreDistress } from "@shared/distressScoring";
+import { isQualifiedDistressResult, scoreDistress } from "@shared/distressScoring";
 
 const PROVINCE_NAMES: Record<string, string> = {
   ON: "Ontario", BC: "British Columbia", QC: "Quebec", AB: "Alberta",
@@ -122,7 +122,7 @@ async function scanProvinceDistress(provinceName: string): Promise<ScoredListing
     const remarks = raw.PublicRemarks || "";
     const distress = scoreDistress(remarks, provinceName);
     return { ...normalized, distress, rawRemarks: remarks } as ScoredListing;
-  }).filter(l => l.distress.distressScore >= 1);
+  }).filter(l => isQualifiedDistressResult(l.distress));
 }
 
 function computeSnapshotData(listings: ScoredListing[], province: string, city?: string) {

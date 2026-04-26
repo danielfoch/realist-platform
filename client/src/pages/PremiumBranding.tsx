@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { authPath } from "@/lib/authReturn";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Palette, Save, Loader2, Crown, ArrowLeft, Eye } from "lucide-react";
 
@@ -70,7 +71,7 @@ export default function PremiumBranding() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      setLocation("/login");
+      setLocation(authPath("/login"));
     }
   }, [authLoading, isAuthenticated, setLocation]);
 

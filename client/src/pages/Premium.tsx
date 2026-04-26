@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { authPath } from "@/lib/authReturn";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Crown, Check, CreditCard, PenTool, FileText, Shield,
@@ -285,7 +286,7 @@ export default function Premium() {
                 onClick={() => {
                   if (!isAuthenticated) {
                     toast({ title: "Sign in required", description: "Please sign in to subscribe.", variant: "destructive" });
-                    setLocation("/login");
+                    setLocation(authPath("/login"));
                     return;
                   }
                   checkoutMutation.mutate();
@@ -333,7 +334,7 @@ export default function Premium() {
                 onClick={() => {
                   if (!isAuthenticated) {
                     toast({ title: "Sign in required", description: "Please sign in to continue.", variant: "destructive" });
-                    setLocation("/login");
+                    setLocation(authPath("/login"));
                     return;
                   }
                   setShowBRA(true);

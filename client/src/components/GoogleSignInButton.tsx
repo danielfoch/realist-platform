@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { SiGoogle } from "react-icons/si";
+import { getAuthReturnUrl, rememberAuthReturnUrl } from "@/lib/authReturn";
 
 interface GoogleSignInButtonProps {
   variant?: "login" | "signup" | "continue";
@@ -13,12 +14,8 @@ export function GoogleSignInButton({
   disabled = false 
 }: GoogleSignInButtonProps) {
   const handleClick = () => {
-    // Pass current returnUrl to Google OAuth flow
-    const searchParams = new URLSearchParams(window.location.search);
-    const returnUrl = searchParams.get("returnUrl");
-    const googleUrl = returnUrl 
-      ? `/api/auth/google/start?returnUrl=${encodeURIComponent(returnUrl)}`
-      : "/api/auth/google/start";
+    const returnUrl = rememberAuthReturnUrl(getAuthReturnUrl());
+    const googleUrl = `/api/auth/google/start?returnUrl=${encodeURIComponent(returnUrl)}`;
     window.location.href = googleUrl;
   };
 

@@ -146,7 +146,7 @@ export async function searchDdfListings(params: {
   longitudeMax?: number;
   top?: number;
   skip?: number;
-}): Promise<{ listings: DdfListing[]; count: number; numPages: number; page: number }> {
+}): Promise<{ listings: DdfListing[]; count: number; numPages: number; page: number; rawPageSize: number }> {
   const token = await getDdfToken();
 
   const filters: string[] = [];
@@ -227,7 +227,7 @@ export async function searchDdfListings(params: {
   if (EXCLUDED_SUBTYPES.size > 0) {
     listings = listings.filter((l) => {
       const sub = (l.PropertySubType || "").toLowerCase();
-      for (const ex of EXCLUDED_SUBTYPES) {
+      for (const ex of Array.from(EXCLUDED_SUBTYPES)) {
         if (sub.includes(ex)) return false;
       }
       return true;
