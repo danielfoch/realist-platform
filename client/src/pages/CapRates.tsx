@@ -3109,7 +3109,7 @@ export default function CapRates() {
   );
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-screen h-[100dvh] bg-background flex flex-col overflow-hidden">
       <Navigation />
 
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-[1000] relative shrink-0">
@@ -3606,7 +3606,7 @@ export default function CapRates() {
         </div>
 
         {showMobileList && (
-          <div className="lg:hidden fixed inset-x-0 bottom-0 z-[1000] bg-background border-t rounded-t-2xl shadow-2xl max-h-[60vh] flex flex-col overflow-hidden">
+          <div className="lg:hidden fixed inset-x-0 bottom-0 z-[1000] bg-background border-t rounded-t-2xl shadow-2xl max-h-[60dvh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2 border-b">
               <div className="flex items-center gap-1.5">
                 <p className="text-xs font-medium">
@@ -3634,7 +3634,7 @@ export default function CapRates() {
         )}
       </div>
       <Sheet open={Boolean(analyzerSheetMeta)} onOpenChange={(open) => !open && setAnalyzerSheetMeta(null)}>
-        <SheetContent side="right" className="flex h-screen w-full flex-col overflow-hidden p-0 sm:max-w-3xl">
+        <SheetContent side="right" className="flex h-screen h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-3xl">
           <div className="shrink-0 border-b px-6 py-4">
             <SheetHeader className="pr-8">
               <SheetTitle>{analyzerSheetMeta?.title || "Analyze in Map Workspace"}</SheetTitle>

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 import { Badge } from "@/components/ui/badge";
 import { PenTool, FileText, MapPin, Calendar, Shield, AlertTriangle, Loader2, Check } from "lucide-react";
 import { format, addDays } from "date-fns";
@@ -91,7 +92,7 @@ export default function BuyBoxAgreement() {
         description: "Please sign in to submit your BuyBox mandate.",
         variant: "destructive",
       });
-      setLocation("/login");
+      setLocation(authPath("/login"));
     }
   }, [authLoading, isAuthenticated, setLocation, toast]);
 

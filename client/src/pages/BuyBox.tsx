@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { authPath } from "@/lib/authReturn";
 import { MapPin, Trash2, ArrowRight, ArrowLeft, Home, DollarSign, Calendar, FileText, AlertCircle, Mail, Phone, Voicemail, ShoppingCart, Check } from "lucide-react";
 import { buyBoxBuildingTypes, buyBoxOccupancyTypes, type BuyBoxMandateFormData } from "@shared/schema";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
@@ -220,7 +221,7 @@ export default function BuyBox() {
         description: "Please sign in to submit your BuyBox mandate.",
         variant: "destructive",
       });
-      setLocation("/login");
+      setLocation(authPath("/login"));
       return;
     }
     sessionStorage.setItem("buybox_polygon", JSON.stringify(polygonGeoJson));

@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient as qc } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 import {
   MapPin, Users, Handshake, PenTool, CheckCircle, Clock,
   ArrowRight, Building, Send, Eye, Loader2, FileText
@@ -96,7 +97,7 @@ export default function RealtorNetwork() {
             <p className="text-muted-foreground mb-6">
               Please sign in to access the Realtor Partner Network and start receiving investor leads.
             </p>
-            <Button onClick={() => window.location.href = "/login"} data-testid="button-sign-in">
+            <Button onClick={() => window.location.href = authPath("/login")} data-testid="button-sign-in">
               Sign In
             </Button>
           </div>

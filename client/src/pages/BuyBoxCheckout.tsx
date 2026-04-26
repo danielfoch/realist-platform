@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 import { ShoppingCart, MapPin, Mail, Phone, Voicemail, ArrowLeft, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
 const SERVICE_META: Record<string, { title: string; icon: any; provider: string }> = {
@@ -103,7 +104,7 @@ export default function BuyBoxCheckout() {
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-amber-500" />
           <h2 className="text-2xl font-bold mb-2">Sign In Required</h2>
           <p className="text-muted-foreground mb-6">Please sign in to complete your BuyBox order.</p>
-          <Button onClick={() => setLocation("/login")} data-testid="button-login">Sign In</Button>
+          <Button onClick={() => setLocation(authPath("/login"))} data-testid="button-login">Sign In</Button>
         </main>
       </div>
     );

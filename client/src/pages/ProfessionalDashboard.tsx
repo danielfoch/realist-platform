@@ -29,6 +29,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { authPath } from "@/lib/authReturn";
 
 interface Subscription {
   id: string;
@@ -202,7 +203,7 @@ export default function ProfessionalDashboard() {
             <CardDescription>Sign in to access your professional tools</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
-            <Button onClick={() => setLocation('/login')} data-testid="button-login">
+            <Button onClick={() => setLocation(authPath("/login"))} data-testid="button-login">
               Sign In
             </Button>
           </CardContent>

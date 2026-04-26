@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
+import { authPath } from "@/lib/authReturn";
 import { User, Briefcase, Users, CheckCircle, Clock, Phone, Mail, MapPin, Building } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
@@ -114,7 +115,7 @@ export default function PartnerPortal() {
             <p className="text-muted-foreground mb-6">
               Please sign in to access your industry partner portal and manage leads.
             </p>
-            <Button onClick={() => window.location.href = "/login"} data-testid="button-sign-in">
+            <Button onClick={() => window.location.href = authPath("/login")} data-testid="button-sign-in">
               Sign In
             </Button>
           </div>
