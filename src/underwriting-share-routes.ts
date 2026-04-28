@@ -55,6 +55,39 @@ function isQualifiedShareAction(action: string): action is QualifiedShareAction 
   return Object.prototype.hasOwnProperty.call(ACTION_POLICIES, action);
 }
 
+function hasObjectKeys(value: unknown) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0);
+}
+
+function hasNonEmptyString(value: unknown, minLength = 1) {
+  return typeof value === 'string' && value.trim().length >= minLength;
+}
+
+export function hasMeaningfulChallengePayload(action: QualifiedShareAction, metadata: unknown) {
+  if (action === 'unique_open' || action === 'signup') {
+    return true;
+  }
+
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return false;
+  }
+
+  const payload = metadata as Record<string, unknown>;
+  const challengedFields = payload.challengedFields;
+  const challengedFieldCount = Array.isArray(challengedFields)
+    ? challengedFields.filter((field) => hasNonEmptyString(field)).length
+    : 0;
+
+  return (
+    challengedFieldCount > 0
+    || hasObjectKeys(payload.assumptions)
+    || hasObjectKeys(payload.inputs)
+    || hasObjectKeys(payload.metrics)
+    || hasNonEmptyString(payload.comment, 10)
+    || hasNonEmptyString(payload.notes, 10)
+  );
+}
+
 async function countDailyShareActions(database: DatabaseAdapter, shareId: number, action: QualifiedShareAction) {
   const result = await database.query(
     `SELECT COUNT(*)::int AS count
@@ -235,6 +268,13 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
       const { action, recipient, metadata } = req.body || {};
       if (!isQualifiedShareAction(action) || action === 'unique_open') {
         res.status(400).json({ error: 'A qualified action is required: challenge, fork, signup, saved_version' });
+        return;
+      }
+
+      if (!hasMeaningfulChallengePayload(action, metadata)) {
+        res.status(400).json({
+          error: 'Challenge/fork actions need changed assumptions, challenged fields, metrics, inputs, notes, or a comment before credits can qualify',
+        });
         return;
       }
 

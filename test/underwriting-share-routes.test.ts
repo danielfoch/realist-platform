@@ -1,4 +1,8 @@
-import { getActionPolicy, recordQualifiedShareAction } from '../src/underwriting-share-routes';
+import {
+  getActionPolicy,
+  hasMeaningfulChallengePayload,
+  recordQualifiedShareAction,
+} from '../src/underwriting-share-routes';
 
 function createShareDb(options: { existing?: any; shareCount?: number; recipientCount?: number } = {}) {
   const calls: Array<{ text: string; params?: readonly unknown[] }> = [];
@@ -30,6 +34,14 @@ function createShareDb(options: { existing?: any; shareCount?: number; recipient
 }
 
 describe('viral underwriting share qualification', () => {
+  it('requires a meaningful challenge payload before share actions can qualify', () => {
+    expect(hasMeaningfulChallengePayload('challenge', {})).toBe(false);
+    expect(hasMeaningfulChallengePayload('fork', { comment: 'too short' })).toBe(false);
+    expect(hasMeaningfulChallengePayload('challenge', { challengedFields: ['rent', 'vacancy'] })).toBe(true);
+    expect(hasMeaningfulChallengePayload('saved_version', { inputs: { rent: 3200 } })).toBe(true);
+    expect(hasMeaningfulChallengePayload('signup', undefined)).toBe(true);
+  });
+
   it('awards Google Sheets export credits for a qualified challenge', async () => {
     const db = createShareDb();
 
