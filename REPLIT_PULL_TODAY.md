@@ -5,7 +5,7 @@
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-04-28-qualified-challenge-gates`
-- Commit: `9315921`
+- Commit: `a8a45f7` (implementation commit; this pull brief may have a later docs-only commit if amended)
 
 ## 3. What changed
 - Tightened the viral underwriting loop so `challenge`, `fork`, and `saved_version` actions only proceed when the recipient submits a meaningful underwriting change or critique.
