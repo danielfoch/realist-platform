@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, uniqueIndex, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, uniqueIndex, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -2315,6 +2315,136 @@ export const listingAnalysisAggregates = pgTable("listing_analysis_aggregates", 
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const propertySaleEstimates = pgTable("property_sale_estimates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key").notNull(),
+  mlsNumber: text("mls_number"),
+  boardListingId: text("board_listing_id"),
+  board: text("board"),
+  sourceBoard: text("source_board"),
+  province: text("province"),
+  estimatePriceCents: bigint("estimate_price_cents", { mode: "number" }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("CAD").notNull(),
+  estimateContext: jsonb("estimate_context"),
+  status: text("status").default("active").notNull(),
+  lockedAt: timestamp("locked_at"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userListingUnique: uniqueIndex("property_sale_estimates_user_listing_idx").on(table.userId, table.listingKey),
+}));
+
+export const propertySaleEstimateRevisions = pgTable("property_sale_estimate_revisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  estimateId: varchar("estimate_id").references(() => propertySaleEstimates.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingKey: text("listing_key").notNull(),
+  previousEstimatePriceCents: bigint("previous_estimate_price_cents", { mode: "number" }),
+  estimatePriceCents: bigint("estimate_price_cents", { mode: "number" }).notNull(),
+  revisionReason: text("revision_reason").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const listingSaleResolutions = pgTable("listing_sale_resolutions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key").notNull().unique(),
+  mlsNumber: text("mls_number"),
+  boardListingId: text("board_listing_id"),
+  board: text("board"),
+  province: text("province"),
+  ddfLastSeenAt: timestamp("ddf_last_seen_at"),
+  ddfAbsentSince: timestamp("ddf_absent_since"),
+  absenceDetectionCount: integer("absence_detection_count").default(0).notNull(),
+  absenceReason: text("absence_reason").default("still_active").notNull(),
+  resolutionStatus: text("resolution_status").default("not_started").notNull(),
+  actualSalePriceCents: bigint("actual_sale_price_cents", { mode: "number" }),
+  soldDate: timestamp("sold_date"),
+  sourceType: text("source_type").default("unavailable").notNull(),
+  sourceName: text("source_name"),
+  sourceUrl: text("source_url"),
+  sourceConfidence: numeric("source_confidence", { precision: 5, scale: 4 }),
+  lookupAttemptCount: integer("lookup_attempt_count").default(0).notNull(),
+  lastLookupAttemptAt: timestamp("last_lookup_attempt_at"),
+  nextLookupAttemptAt: timestamp("next_lookup_attempt_at"),
+  errorMessage: text("error_message"),
+  excludeFromMetrics: boolean("exclude_from_metrics").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const userSaleEstimatorMetrics = pgTable("user_sale_estimator_metrics", {
+  userId: varchar("user_id").primaryKey().references(() => users.id),
+  eligibleEstimateCount: integer("eligible_estimate_count").default(0).notNull(),
+  resolvedEstimateCount: integer("resolved_estimate_count").default(0).notNull(),
+  unavailableEstimateCount: integer("unavailable_estimate_count").default(0).notNull(),
+  medianAbsolutePercentageError: real("median_absolute_percentage_error"),
+  meanAbsolutePercentageError: real("mean_absolute_percentage_error"),
+  trimmedMeanAbsolutePercentageError: real("trimmed_mean_absolute_percentage_error"),
+  rootMeanSquaredErrorCents: bigint("root_mean_squared_error_cents", { mode: "number" }),
+  biasPercentage: real("bias_percentage"),
+  reliabilityMultiplier: real("reliability_multiplier").default(0).notNull(),
+  oracleScore: real("oracle_score").default(0).notNull(),
+  lastRecalculatedAt: timestamp("last_recalculated_at").defaultNow().notNull(),
+});
+
+export const userActivityEvents = pgTable("user_activity_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id"),
+  eventName: text("event_name").notNull(),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key"),
+  analysisId: varchar("analysis_id"),
+  eventTimestamp: timestamp("event_timestamp").defaultNow().notNull(),
+  sourcePage: text("source_page"),
+  component: text("component"),
+  metadata: jsonb("metadata"),
+  hashedIp: text("hashed_ip"),
+  userAgentHash: text("user_agent_hash"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userInferenceProfiles = pgTable("user_inference_profiles", {
+  userId: varchar("user_id").primaryKey().references(() => users.id),
+  preferredMarkets: jsonb("preferred_markets"),
+  preferredPropertyTypes: jsonb("preferred_property_types"),
+  medianTimeOnListingCard: real("median_time_on_listing_card"),
+  estimateSubmissionRate: real("estimate_submission_rate"),
+  estimatorAccuracyFeatures: jsonb("estimator_accuracy_features"),
+  underwritingAssumptionPatterns: jsonb("underwriting_assumption_patterns"),
+  analysisQualityFeatures: jsonb("analysis_quality_features"),
+  antiSpamFeatures: jsonb("anti_spam_features"),
+  lastFeatureBuildAt: timestamp("last_feature_build_at"),
+});
+
+export const analysisQualityScores = pgTable("analysis_quality_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  propertyAnalysisId: varchar("property_analysis_id").references(() => propertyAnalyses.id),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key"),
+  qualityScore: real("quality_score").notNull(),
+  confidenceScore: real("confidence_score").notNull(),
+  plausibilityScore: real("plausibility_score").notNull(),
+  interactionDepthScore: real("interaction_depth_score").notNull(),
+  dataCompletenessScore: real("data_completeness_score").notNull(),
+  uniquenessScore: real("uniqueness_score").notNull(),
+  dealViabilityScore: real("deal_viability_score").notNull(),
+  spamRiskScore: real("spam_risk_score").notNull(),
+  leaderboardEligible: boolean("leaderboard_eligible").default(false).notNull(),
+  exclusionReason: text("exclusion_reason"),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, (table) => ({
+  analysisUnique: uniqueIndex("analysis_quality_scores_analysis_idx").on(table.analysisId),
+  propertyAnalysisUnique: uniqueIndex("analysis_quality_scores_property_analysis_idx").on(table.propertyAnalysisId),
+}));
+
 export const underwritingNotesRelations = relations(underwritingNotes, ({ one }) => ({
   user: one(users, { fields: [underwritingNotes.userId], references: [users.id] }),
 }));
@@ -2418,6 +2548,33 @@ export const insertListingAnalysisAggregateSchema = createInsertSchema(listingAn
   updatedAt: true,
 });
 
+export const insertPropertySaleEstimateSchema = createInsertSchema(propertySaleEstimates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPropertySaleEstimateRevisionSchema = createInsertSchema(propertySaleEstimateRevisions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertListingSaleResolutionSchema = createInsertSchema(listingSaleResolutions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserActivityEventSchema = createInsertSchema(userActivityEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnalysisQualityScoreSchema = createInsertSchema(analysisQualityScores).omit({
+  id: true,
+  computedAt: true,
+});
+
 export type InsertUnderwritingNote = z.infer<typeof insertUnderwritingNoteSchema>;
 export type UnderwritingNote = typeof underwritingNotes.$inferSelect;
 
@@ -2459,6 +2616,15 @@ export type ContributionEvent = typeof contributionEvents.$inferSelect;
 
 export type InsertListingAnalysisAggregate = z.infer<typeof insertListingAnalysisAggregateSchema>;
 export type ListingAnalysisAggregate = typeof listingAnalysisAggregates.$inferSelect;
+
+export type InsertPropertySaleEstimate = z.infer<typeof insertPropertySaleEstimateSchema>;
+export type PropertySaleEstimate = typeof propertySaleEstimates.$inferSelect;
+export type PropertySaleEstimateRevision = typeof propertySaleEstimateRevisions.$inferSelect;
+export type ListingSaleResolution = typeof listingSaleResolutions.$inferSelect;
+export type UserSaleEstimatorMetrics = typeof userSaleEstimatorMetrics.$inferSelect;
+export type UserActivityEvent = typeof userActivityEvents.$inferSelect;
+export type UserInferenceProfile = typeof userInferenceProfiles.$inferSelect;
+export type AnalysisQualityScore = typeof analysisQualityScores.$inferSelect;
 
 export const marketSnapshots = pgTable("market_snapshots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

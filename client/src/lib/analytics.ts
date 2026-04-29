@@ -24,11 +24,17 @@ export type RealistEvent =
   | { event: "search_submitted"; query: string; geography?: string; asset_type?: string; budget_max?: number; strategy?: string; property_type?: string; target_gross_yield?: number; source?: string }
   | { event: "nl_query_submitted"; query: string; matched_intent?: string }
   | { event: "listing_viewed"; listing_id: string; city?: string; property_type?: string; price?: number; gross_yield?: number }
+  | { event: "listing_card_opened"; listing_id: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "underwriting_opened"; listing_id?: string; source?: string }
+  | { event: "underwriting_inputs_changed"; listing_id?: string; fields?: string[] }
+  | { event: "underwriting_exported_or_saved"; listing_id?: string; analysis_id?: string }
+  | { event: "leaderboard_viewed"; period?: string }
   | { event: "geography_selected"; city: string; province?: string; source?: string }
   | { event: "asset_type_selected"; type: string; source?: string }
 
   // Deal Analyzer
   | { event: "analyzer_started"; address?: string; strategy?: string; geography?: string; budget_max?: number; property_type?: string; source?: string }
+  | { event: "analysis_started"; listing_id?: string; source?: string }
   | { event: "analyzer_completed"; strategy: string; price?: number; city?: string; province?: string; property_type?: string; gross_yield?: number; cash_on_cash?: number; irr?: number; cap_rate?: number }
   | { event: "analyzer_shared"; share_token: string }
   | { event: "analyzer_exported"; format: "pdf" | "sheets" }

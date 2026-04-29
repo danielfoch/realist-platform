@@ -62,6 +62,20 @@ type LeaderboardHealth = {
   }>;
 };
 
+type SaleResolution = {
+  id: string;
+  listingKey: string;
+  mlsNumber: string | null;
+  province: string | null;
+  ddfAbsentSince: string | null;
+  absenceReason: string;
+  resolutionStatus: string;
+  actualSalePriceCents: number | null;
+  lookupAttemptCount: number;
+  sourceName: string | null;
+  updatedAt: string;
+};
+
 export default function Admin() {
   const { toast } = useToast();
   
@@ -114,6 +128,11 @@ export default function Admin() {
     retry: false,
   });
 
+  const { data: saleResolutions, isLoading: saleResolutionsLoading, refetch: refetchSaleResolutions } = useQuery<SaleResolution[]>({
+    queryKey: ["/api/admin/sale-resolutions/unresolved"],
+    retry: false,
+  });
+
   const [blogDialogOpen, setBlogDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [blogForm, setBlogForm] = useState({
@@ -146,6 +165,33 @@ export default function Admin() {
     metaTitle: "",
     metaDescription: "",
     sortOrder: "0",
+  });
+
+  const [manualResolution, setManualResolution] = useState({
+    listingKey: "",
+    actualSalePrice: "",
+    soldDate: "",
+    sourceName: "Manual admin",
+    sourceConfidence: "0.9",
+  });
+
+  const manualResolveMutation = useMutation({
+    mutationFn: async () => {
+      const price = Number(manualResolution.actualSalePrice.replace(/[^0-9.]/g, ""));
+      return apiRequest("POST", "/api/admin/sale-resolutions/manual", {
+        listingKey: manualResolution.listingKey,
+        actualSalePriceCents: price > 0 ? Math.round(price * 100) : null,
+        unavailable: !(price > 0),
+        soldDate: manualResolution.soldDate || null,
+        sourceName: manualResolution.sourceName,
+        sourceConfidence: manualResolution.sourceConfidence ? Number(manualResolution.sourceConfidence) : null,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Sale resolution saved" });
+      refetchSaleResolutions();
+      setManualResolution({ listingKey: "", actualSalePrice: "", soldDate: "", sourceName: "Manual admin", sourceConfidence: "0.9" });
+    },
   });
 
   const resetBlogForm = () => {
@@ -587,7 +633,67 @@ export default function Admin() {
               </TabsTrigger>
               <TabsTrigger value="blog" data-testid="tab-blog">Blog</TabsTrigger>
               <TabsTrigger value="guides" data-testid="tab-guides">Guides</TabsTrigger>
+              <TabsTrigger value="sale-oracle" data-testid="tab-sale-oracle">Sale Oracle</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="sale-oracle">
+              <Card data-testid="card-sale-oracle-admin">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="h-5 w-5" />
+                    Sale Price Resolution
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid md:grid-cols-5 gap-3">
+                    <div className="md:col-span-2">
+                      <Label htmlFor="manual-listing-key">Listing key / MLS</Label>
+                      <Input id="manual-listing-key" value={manualResolution.listingKey} onChange={(e) => setManualResolution((prev) => ({ ...prev, listingKey: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label htmlFor="manual-sale-price">Sold price</Label>
+                      <Input id="manual-sale-price" value={manualResolution.actualSalePrice} onChange={(e) => setManualResolution((prev) => ({ ...prev, actualSalePrice: e.target.value }))} placeholder="blank = unavailable" />
+                    </div>
+                    <div>
+                      <Label htmlFor="manual-sold-date">Sold date</Label>
+                      <Input id="manual-sold-date" type="date" value={manualResolution.soldDate} onChange={(e) => setManualResolution((prev) => ({ ...prev, soldDate: e.target.value }))} />
+                    </div>
+                    <div className="flex items-end">
+                      <Button disabled={!manualResolution.listingKey || manualResolveMutation.isPending} onClick={() => manualResolveMutation.mutate()}>
+                        Save resolution
+                      </Button>
+                    </div>
+                  </div>
+
+                  {saleResolutionsLoading ? (
+                    <Skeleton className="h-32 w-full" />
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Listing</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Absent since</TableHead>
+                          <TableHead>Attempts</TableHead>
+                          <TableHead>Source</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(saleResolutions || []).map((row) => (
+                          <TableRow key={row.id}>
+                            <TableCell className="font-mono text-xs">{row.mlsNumber || row.listingKey}</TableCell>
+                            <TableCell><Badge variant="outline">{row.resolutionStatus}</Badge></TableCell>
+                            <TableCell>{row.ddfAbsentSince ? format(new Date(row.ddfAbsentSince), "MMM d, yyyy") : "-"}</TableCell>
+                            <TableCell>{row.lookupAttemptCount}</TableCell>
+                            <TableCell>{row.sourceName || "-"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             <TabsContent value="applications">
               <Card data-testid="card-applications-table">

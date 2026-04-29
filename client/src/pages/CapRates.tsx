@@ -1004,6 +1004,125 @@ function MapQuickCardOverlay({
   );
 }
 
+function SalePriceEstimatePrompt({
+  listing,
+  isAuthenticated,
+}: {
+  listing: ListingWithCapRate;
+  isAuthenticated: boolean;
+}) {
+  const { toast } = useToast();
+  const listingKey = listing.mlsNumber;
+  const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+  const [estimate, setEstimate] = useState("");
+  const [confirmedOutOfRange, setConfirmedOutOfRange] = useState(false);
+
+  const estimateQuery = useQuery<{
+    estimate: { estimatePriceCents: number; status: string; lockedAt?: string | null } | null;
+    resolution: { ddfAbsentSince?: string | null; resolutionStatus?: string | null } | null;
+  }>({
+    queryKey: ["/api/sale-estimates", listingKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/sale-estimates/${encodeURIComponent(listingKey)}`, { credentials: "include" });
+      if (res.status === 401) return { estimate: null, resolution: null };
+      if (!res.ok) throw new Error("Failed to fetch prediction");
+      return res.json();
+    },
+    enabled: Boolean(listingKey) && isAuthenticated,
+    staleTime: 30_000,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const numeric = Number(estimate.replace(/[^0-9.]/g, ""));
+      const estimatePriceCents = Math.round(numeric * 100);
+      const res = await apiRequest("POST", "/api/sale-estimates", {
+        listingKey,
+        mlsNumber: listing.mlsNumber,
+        province: listing.address?.state,
+        estimatePriceCents,
+        listPriceCents: Number.isFinite(price) ? Math.round(price * 100) : null,
+        confirmedOutOfRange,
+        estimateContext: {
+          listPrice: price,
+          propertyType: listing.details?.propertyType || listing.type || null,
+          city: listing.address?.city || null,
+          province: listing.address?.state || null,
+          bedrooms: listing.details?.numBedrooms || null,
+          bathrooms: listing.details?.numBathrooms || null,
+          capturedAt: new Date().toISOString(),
+        },
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setEstimate("");
+      setConfirmedOutOfRange(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/sale-estimates", listingKey] });
+      toast({ title: "Prediction saved" });
+    },
+    onError: (err: any) => {
+      const message = err.message || "Failed to save prediction";
+      if (message.includes("409") && message.includes("far from list price")) {
+        setConfirmedOutOfRange(true);
+        toast({ title: "Confirm unusual prediction", description: "Submit again to confirm this estimate is far from list price." });
+        return;
+      }
+      toast({ title: "Prediction not saved", description: message, variant: "destructive" });
+    },
+  });
+
+  const existing = estimateQuery.data?.estimate;
+  const resolution = estimateQuery.data?.resolution;
+  const locked = Boolean(existing?.lockedAt || existing?.status === "locked" || existing?.status === "resolved" || resolution?.ddfAbsentSince || resolution?.resolutionStatus === "resolved" || resolution?.resolutionStatus === "pending");
+  const formatCents = (cents: number) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(cents / 100);
+
+  if (!listingKey) return null;
+  if (!isAuthenticated) {
+    return (
+      <div className="mt-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2 text-[10px]" onClick={(e) => e.stopPropagation()}>
+        <p className="font-medium">What do you think this property will sell for?</p>
+        <a href={authPath("/login")} className="text-primary underline">Sign in to submit a prediction</a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded-md border border-border/60 bg-muted/20 px-2 py-2" onClick={(e) => e.stopPropagation()} data-testid={`sale-estimate-prompt-${listingKey}`}>
+      <p className="text-[10px] font-medium">What do you think this property will sell for?</p>
+      {existing ? (
+        <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
+          <span>Your prediction: <strong>{formatCents(existing.estimatePriceCents)}</strong></span>
+          {locked && <Badge variant="outline" className="text-[9px]">Locked</Badge>}
+        </div>
+      ) : (
+        <p className="mt-0.5 text-[9px] text-muted-foreground">Your prediction is locked when the listing is sold or leaves the active feed.</p>
+      )}
+      {!locked && (
+        <div className="mt-2 flex gap-1.5">
+          <Input
+            value={estimate}
+            onChange={(event) => setEstimate(event.target.value)}
+            placeholder={existing ? "Update $" : "$"}
+            inputMode="decimal"
+            className="h-8 text-xs"
+            data-testid={`input-sale-estimate-${listingKey}`}
+          />
+          <Button
+            size="sm"
+            className="h-8 shrink-0 px-2 text-[10px]"
+            disabled={saveMutation.isPending || !estimate.trim()}
+            onClick={() => saveMutation.mutate()}
+            data-testid={`button-submit-sale-estimate-${listingKey}`}
+          >
+            Submit prediction
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CapRates() {
   const search = useSearch();
   const { user, isAuthenticated } = useAuth();
@@ -1860,6 +1979,8 @@ export default function CapRates() {
       analyzerSubtitle: meta.subtitle,
     });
     updateWorkspaceUrl({ selectedMls: listing.mlsNumber, analyzerOpen: true });
+    track({ event: "underwriting_opened", listing_id: listing.mlsNumber, source: "map_workspace" });
+    track({ event: "analysis_started", listing_id: listing.mlsNumber, source: "map_workspace" });
   };
 
   const handleAnalyzeDistressListing = (listing: DistressListing) => {
@@ -1984,6 +2105,14 @@ export default function CapRates() {
     if (isAuthenticated) {
       void syncDiscoverySignalsWithAccount();
     }
+    track({
+      event: "listing_card_opened",
+      listing_id: listing.mlsNumber,
+      city: listing.address?.city || undefined,
+      property_type: listing.details?.propertyType || listing.type || undefined,
+      price: typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice,
+      source,
+    });
     track({
       event: "listing_viewed",
       listing_id: listing.mlsNumber,
@@ -2141,6 +2270,8 @@ export default function CapRates() {
               <span>Rent: {formatPrice(listing.estimatedMonthlyRent)}/mo{listing.unitCount > 1 ? ` (${listing.unitCount}×${formatPrice(Math.round(listing.estimatedMonthlyRent / listing.unitCount))})` : ""}</span>
               <span>CF: {formatCompactCurrency(listing.monthlyCashFlow)}</span>
             </div>
+
+            <SalePriceEstimatePrompt listing={listing} isAuthenticated={isAuthenticated} />
 
             <div className="flex items-center justify-between mt-1">
               {(() => {

@@ -10,6 +10,7 @@ import {
   queueSavedSearchMatchNotificationsForDdf,
 } from "./notifications";
 import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
+import { lookupSoldPriceForListing, markListingsAbsent, markListingsSeenFromActiveFeed } from "./salePriceOracle";
 
 const PROVINCE_TO_ABBREV: Record<string, string> = {
   "Ontario": "ON",
@@ -456,6 +457,26 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
             return [{ previous, current: snapshot }];
           });
           const missingSnapshots = provinceExistingSnapshots.filter((snapshot) => !listingKeySet.has(snapshot.listingKey));
+
+          await markListingsSeenFromActiveFeed(currentSnapshots.map((snapshot) => ({
+            listingKey: snapshot.listingKey,
+            mlsNumber: snapshot.mlsNumber,
+            board: String((snapshot.rawJson as Record<string, unknown> | undefined)?.ListOfficeBoard || ""),
+            province: snapshot.province,
+          })));
+
+          const absenceResult = await markListingsAbsent(
+            null,
+            missingSnapshots.map((snapshot) => snapshot.listingKey),
+            "missing_from_feed",
+          );
+          if (absenceResult.lockedEstimateCount > 0) {
+            await Promise.allSettled(
+              missingSnapshots
+                .slice(0, Math.min(missingSnapshots.length, 25))
+                .map((snapshot) => lookupSoldPriceForListing(null, snapshot.listingKey)),
+            );
+          }
 
           await Promise.all([
             queueSavedSearchMatchNotificationsForDdf(newSnapshots).catch((error) => {

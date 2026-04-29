@@ -9,8 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEO } from "@/components/SEO";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { track } from "@/lib/analytics";
 
 interface LeaderboardEntry {
   rank: number;
@@ -19,9 +20,16 @@ interface LeaderboardEntry {
   profileImageUrl: string | null;
   role?: string;
   dealCount: number;
+  weightedDealCount?: number;
+  avgAnalysisConfidenceScore?: number | null;
+  eligibleAnalysisCount?: number;
   avgDscr: number | null;
   avgCashOnCash: number | null;
   avgCapRate: number | null;
+  oracleScore?: number | null;
+  oracleEligibleCount?: number;
+  oracleMedianError?: number | null;
+  oracleRankStatus?: "ranked" | "provisional";
 }
 
 interface Aggregates {
@@ -29,6 +37,7 @@ interface Aggregates {
   avgDscr: number | null;
   avgCashOnCash: number | null;
   avgCapRate: number | null;
+  avgAnalysisConfidenceScore?: number | null;
   avgOfferRatio: number | null;
 }
 
@@ -254,12 +263,29 @@ function AnalystRow({ entry }: { entry: LeaderboardEntry }) {
           {entry.avgCashOnCash != null && (
             <span className="text-xs text-muted-foreground">CoC {formatPercent(entry.avgCashOnCash)}</span>
           )}
+          {entry.avgAnalysisConfidenceScore != null && (
+            <span className="text-xs text-muted-foreground">Confidence {(entry.avgAnalysisConfidenceScore * 100).toFixed(0)}%</span>
+          )}
+          {entry.oracleScore != null && (
+            <span className="text-xs text-muted-foreground">
+              Oracle {entry.oracleScore.toFixed(1)}
+              {entry.oracleRankStatus === "provisional" ? " · Provisional" : ""}
+            </span>
+          )}
+          {entry.oracleMedianError != null && (
+            <span className="text-xs text-muted-foreground">Median error {(entry.oracleMedianError * 100).toFixed(1)}%</span>
+          )}
         </div>
       </div>
 
-      <Badge variant="secondary" data-testid={`badge-deal-count-${entry.rank}`}>
-        {entry.dealCount} {entry.dealCount === 1 ? "deal" : "deals"}
-      </Badge>
+      <div className="flex flex-col items-end gap-1">
+        <Badge variant="secondary" data-testid={`badge-deal-count-${entry.rank}`}>
+          {(entry.weightedDealCount ?? entry.dealCount).toLocaleString()} weighted
+        </Badge>
+        <span className="text-[10px] text-muted-foreground">
+          {entry.eligibleAnalysisCount ?? entry.dealCount}/{entry.dealCount} eligible
+        </span>
+      </div>
     </div>
   );
 }
@@ -536,6 +562,10 @@ export default function Leaderboard() {
   const [period, setPeriod] = useState<string>("all-time");
   const [cityFilter, setCityFilter] = useState<string>("");
 
+  useEffect(() => {
+    track({ event: "leaderboard_viewed", period });
+  }, [period]);
+
   const cityParam = cityFilter ? `&city=${encodeURIComponent(cityFilter)}` : "";
   const { data: leaderboardData, isLoading: isLoadingLeaderboard } = useQuery<LeaderboardResponse>({
     queryKey: [`/api/leaderboard?period=${period}${cityParam}`],
@@ -627,11 +657,12 @@ export default function Leaderboard() {
                 ))}
               </div>
             ) : aggregates && aggregates.totalDeals > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="section-aggregates">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3" data-testid="section-aggregates">
                 <StatCard label="Total Deals" value={String(aggregates.totalDeals)} icon={BarChart3} />
                 <StatCard label="Avg DSCR" value={formatDscr(aggregates.avgDscr)} icon={Activity} />
                 <StatCard label="Avg Cash-on-Cash" value={formatPercent(aggregates.avgCashOnCash)} icon={DollarSign} />
                 <StatCard label="Avg Yield" value={formatPercent(aggregates.avgCapRate)} icon={Target} />
+                <StatCard label="Avg Confidence" value={aggregates.avgAnalysisConfidenceScore != null ? `${(aggregates.avgAnalysisConfidenceScore * 100).toFixed(0)}%` : "N/A"} icon={Shield} />
               </div>
             ) : null}
 

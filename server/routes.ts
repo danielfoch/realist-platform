@@ -41,6 +41,10 @@ import {
   distressSnapshots,
   cityYieldHistory,
   ddfListingSnapshots,
+  propertySaleEstimates,
+  listingSaleResolutions,
+  userSaleEstimatorMetrics,
+  analysisQualityScores,
   courseModules,
   courseLessons,
   courseEnrollments,
@@ -72,6 +76,17 @@ import {
   sendWelcomeAccountEmail,
 } from "./resend";
 import { authStorage } from "./replit_integrations/auth/storage";
+import { logUserActivity } from "./userActivity";
+import {
+  getCurrentSaleEstimate,
+  lookupSoldPriceForListing,
+  manuallyResolveSoldPrice,
+  markListingsAbsent,
+  markListingsSeenFromActiveFeed,
+  recalculateEstimatorMetrics,
+  upsertSaleEstimate,
+} from "./salePriceOracle";
+import { computeAnalysisQualityScore } from "@shared/analysisQuality";
 import {
   buildAnalysisCompletedPayload,
   buildSavedSearchMatchPayload,
@@ -651,9 +666,153 @@ export async function registerRoutes(
         server_ts: new Date().toISOString(),
       }));
 
+      await logUserActivity(req, {
+        userId,
+        sessionId: session_id || req.sessionID || null,
+        eventName: event,
+        listingId: properties.listing_id || properties.listingId || null,
+        listingKey: properties.listing_key || properties.listingId || properties.listing_id || null,
+        analysisId: properties.analysis_id || properties.analysisId || null,
+        sourcePage: page || null,
+        component: properties.component || null,
+        metadata: properties,
+      });
+
       res.json({ ok: true });
     } catch {
       res.status(500).json({ ok: false });
+    }
+  });
+
+  const saleEstimateRequestSchema = z.object({
+    listingKey: z.string().min(1),
+    listingId: z.string().optional().nullable(),
+    mlsNumber: z.string().optional().nullable(),
+    boardListingId: z.string().optional().nullable(),
+    board: z.string().optional().nullable(),
+    sourceBoard: z.string().optional().nullable(),
+    province: z.string().optional().nullable(),
+    estimatePriceCents: z.number().int().positive(),
+    listPriceCents: z.number().int().positive().optional().nullable(),
+    currency: z.string().length(3).default("CAD"),
+    estimateContext: z.record(z.any()).optional().nullable(),
+    confirmedOutOfRange: z.boolean().optional(),
+  });
+
+  app.get("/api/sale-estimates/:listingKey", isAuthenticated, async (req: any, res) => {
+    try {
+      const listingKey = decodeURIComponent(req.params.listingKey);
+      await logUserActivity(req, {
+        userId: req.session.userId,
+        sessionId: req.sessionID,
+        eventName: "estimate_prompt_viewed",
+        listingKey,
+        component: "sale_price_prompt",
+      });
+      res.json(await getCurrentSaleEstimate(req.session.userId, listingKey));
+    } catch (error) {
+      console.error("Error fetching sale estimate:", error);
+      res.status(500).json({ error: "Failed to fetch sale estimate" });
+    }
+  });
+
+  app.post("/api/sale-estimates", isAuthenticated, async (req: any, res) => {
+    try {
+      const parsed = saleEstimateRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid sale estimate", details: parsed.error.issues });
+      const result = await upsertSaleEstimate(req, { ...parsed.data, userId: req.session.userId });
+      if (!result.ok) return res.status(result.status).json({ error: result.error, requiresConfirmation: result.requiresConfirmation || false });
+      res.json(result.estimate);
+    } catch (error) {
+      console.error("Error saving sale estimate:", error);
+      res.status(500).json({ error: "Failed to save sale estimate" });
+    }
+  });
+
+  app.get("/api/sale-estimates/:listingKey/aggregate", async (req: any, res) => {
+    try {
+      const listingKey = decodeURIComponent(req.params.listingKey);
+      const userId = req.session?.userId || null;
+      const [mine] = userId
+        ? await db.select().from(propertySaleEstimates).where(and(eq(propertySaleEstimates.userId, userId), eq(propertySaleEstimates.listingKey, listingKey))).limit(1)
+        : [];
+      const [resolution] = await db.select().from(listingSaleResolutions).where(eq(listingSaleResolutions.listingKey, listingKey)).limit(1);
+      if (!mine && resolution?.resolutionStatus !== "resolved") {
+        return res.json({ visible: false, estimateCount: null, medianEstimatePriceCents: null });
+      }
+      const [aggregate] = await db.select({
+        estimateCount: sql<number>`COUNT(*)::int`,
+        medianEstimatePriceCents: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${propertySaleEstimates.estimatePriceCents})::bigint`,
+      }).from(propertySaleEstimates).where(eq(propertySaleEstimates.listingKey, listingKey));
+      res.json({ visible: true, ...aggregate });
+    } catch (error) {
+      console.error("Error fetching sale estimate aggregate:", error);
+      res.status(500).json({ error: "Failed to fetch aggregate estimates" });
+    }
+  });
+
+  app.post("/api/admin/sale-resolutions/manual", isAdmin, async (req: any, res) => {
+    try {
+      const parsed = z.object({
+        listingKey: z.string().min(1),
+        actualSalePriceCents: z.number().int().positive().nullable().optional(),
+        soldDate: z.string().optional().nullable(),
+        sourceName: z.string().min(1),
+        sourceConfidence: z.number().min(0).max(1).optional().nullable(),
+        unavailable: z.boolean().optional(),
+      }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid manual resolution", details: parsed.error.issues });
+      await manuallyResolveSoldPrice(req, {
+        ...parsed.data,
+        actualSalePriceCents: parsed.data.actualSalePriceCents || null,
+        soldDate: parsed.data.soldDate ? new Date(parsed.data.soldDate) : null,
+      });
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error manually resolving sale price:", error);
+      res.status(500).json({ error: "Failed to resolve sale price" });
+    }
+  });
+
+  app.get("/api/admin/sale-resolutions/unresolved", isAdmin, async (_req, res) => {
+    try {
+      const rows = await db.select().from(listingSaleResolutions)
+        .where(sql`${listingSaleResolutions.resolutionStatus} IN ('pending', 'not_started', 'error', 'unavailable')`)
+        .orderBy(sql`${listingSaleResolutions.updatedAt} DESC`)
+        .limit(100);
+      res.json(rows);
+    } catch (error) {
+      console.error("Error fetching unresolved sale resolutions:", error);
+      res.status(500).json({ error: "Failed to fetch unresolved sale resolutions" });
+    }
+  });
+
+  app.post("/api/admin/sale-resolutions/recalculate/:userId", isAdmin, async (req, res) => {
+    try {
+      res.json(await recalculateEstimatorMetrics(req.params.userId));
+    } catch (error) {
+      console.error("Error recalculating estimator metrics:", error);
+      res.status(500).json({ error: "Failed to recalculate estimator metrics" });
+    }
+  });
+
+  app.post("/api/admin/ddf/mark-absent", isAdmin, async (req, res) => {
+    try {
+      const parsed = z.object({ listingKeys: z.array(z.string().min(1)).min(1), reason: z.string().optional() }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid listing keys", details: parsed.error.issues });
+      res.json(await markListingsAbsent(req, parsed.data.listingKeys, parsed.data.reason || "missing_from_feed", { force: true }));
+    } catch (error) {
+      console.error("Error marking listings absent:", error);
+      res.status(500).json({ error: "Failed to mark listings absent" });
+    }
+  });
+
+  app.post("/api/admin/sale-resolutions/lookup/:listingKey", isAdmin, async (req, res) => {
+    try {
+      res.json(await lookupSoldPriceForListing(req, decodeURIComponent(req.params.listingKey)));
+    } catch (error) {
+      console.error("Error looking up sold price:", error);
+      res.status(500).json({ error: "Failed to lookup sold price" });
     }
   });
 
@@ -2137,6 +2296,46 @@ export async function registerRoutes(
         if ((backfilled.rowCount ?? 0) > 0) {
           console.log(`[analysis-save] Backfilled ${backfilled.rowCount} anonymous analyses for session ${sessionId} → user ${userId}`);
         }
+      }
+
+      if (userId && resultsJson) {
+        const quality = computeAnalysisQualityScore({
+          timeSpentSeconds: Number(inputsJson.timeSpentSeconds || inputsJson.timeOnAnalysisSeconds || 0),
+          meaningfulInputChanges: Number(inputsJson.meaningfulInputChanges || inputsJson.inputChangeCount || 0),
+          openedComparableSections: Number(inputsJson.openedComparableSections || 0),
+          savedNotes: Boolean(inputsJson.notes || inputsJson.userNotes),
+          exportedOrSaved: true,
+          hasFinancingAssumptions: inputsJson.downPaymentPercent != null || inputsJson.interestRate != null,
+          hasRentAssumptions: inputsJson.monthlyRent != null || inputsJson.rentPerUnit != null,
+          hasExpenseAssumptions: inputsJson.operatingExpenses != null || inputsJson.propertyTax != null,
+          hasRenovationOrCapexAssumptions: inputsJson.renovationBudget != null || inputsJson.capexReservePercent != null,
+          comparableReferenceCount: Array.isArray(inputsJson.comparables) ? inputsJson.comparables.length : 0,
+          metrics: resultsJson,
+        });
+        await db.insert(analysisQualityScores).values({
+          analysisId: analysis.id,
+          userId,
+          listingKey: inputsJson.mlsNumber || inputsJson.listingMlsNumber || null,
+          qualityScore: quality.qualityScore,
+          confidenceScore: quality.confidenceScore,
+          plausibilityScore: quality.plausibilityScore,
+          interactionDepthScore: quality.interactionDepthScore,
+          dataCompletenessScore: quality.dataCompletenessScore,
+          uniquenessScore: quality.uniquenessScore,
+          dealViabilityScore: quality.dealViabilityScore,
+          spamRiskScore: quality.spamRiskScore,
+          leaderboardEligible: quality.leaderboardEligible,
+          exclusionReason: quality.exclusionReason,
+        }).onConflictDoNothing();
+        await logUserActivity(req, {
+          userId,
+          sessionId: sessionId || req.sessionID,
+          eventName: "analysis_completed",
+          analysisId: analysis.id,
+          listingKey: inputsJson.mlsNumber || inputsJson.listingMlsNumber || null,
+          component: "deal_analyzer",
+          metadata: { confidenceScore: quality.confidenceScore, leaderboardEligible: quality.leaderboardEligible },
+        });
       }
 
       res.json({ id: analysis.id });
@@ -4476,6 +4675,15 @@ export async function registerRoutes(
           const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
           return Number.isFinite(price) && price > 1 && !isVacantLandLikeProperty(listing);
         });
+
+      await markListingsSeenFromActiveFeed(normalizedListings
+        .filter((listing: any) => listing.mlsNumber)
+        .map((listing: any) => ({
+          listingKey: listing.mlsNumber,
+          mlsNumber: listing.mlsNumber,
+          board: listing.board || listing.office?.board || null,
+          province: listing.address?.state || null,
+        })));
 
       res.json({
         listings: normalizedListings,
@@ -7531,15 +7739,32 @@ export async function registerRoutes(
           profileImageUrl: users.profileImageUrl,
           role: users.role,
           dealCount: count(analyses.id),
+          weightedDealCount: sql<number>`COALESCE(SUM(CASE WHEN ${analysisQualityScores.leaderboardEligible} IS FALSE THEN 0 ELSE COALESCE(${analysisQualityScores.confidenceScore}, 0.65) END), 0)`,
+          avgAnalysisConfidenceScore: sql<number>`AVG(COALESCE(${analysisQualityScores.confidenceScore}, 0.65))`,
+          eligibleAnalysisCount: sql<number>`COUNT(CASE WHEN ${analysisQualityScores.leaderboardEligible} IS DISTINCT FROM FALSE THEN 1 END)`,
           avgDscr: safeAvg('dscr', 0, 20),
           avgCashOnCash: safeAvg('cashOnCash', -100, 200),
           avgCapRate: safeAvg('capRate', -20, 100),
+          oracleScore: userSaleEstimatorMetrics.oracleScore,
+          oracleEligibleCount: userSaleEstimatorMetrics.eligibleEstimateCount,
+          oracleMedianError: userSaleEstimatorMetrics.medianAbsolutePercentageError,
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
+        .leftJoin(analysisQualityScores, eq(analysisQualityScores.analysisId, analyses.id))
+        .leftJoin(userSaleEstimatorMetrics, eq(userSaleEstimatorMetrics.userId, users.id))
         .where(sql`${dateFilter} AND ${leaderboardEligibleUserFilter}`)
-        .groupBy(analyses.userId, users.firstName, users.lastName, users.profileImageUrl, users.role)
-        .orderBy(desc(count(analyses.id)))
+        .groupBy(
+          analyses.userId,
+          users.firstName,
+          users.lastName,
+          users.profileImageUrl,
+          users.role,
+          userSaleEstimatorMetrics.oracleScore,
+          userSaleEstimatorMetrics.eligibleEstimateCount,
+          userSaleEstimatorMetrics.medianAbsolutePercentageError,
+        )
+        .orderBy(desc(sql`COALESCE(SUM(CASE WHEN ${analysisQualityScores.leaderboardEligible} IS FALSE THEN 0 ELSE COALESCE(${analysisQualityScores.confidenceScore}, 0.65) END), 0)`))
         .limit(Math.min(Number(req.query.limit) || 25, 50));
 
       const leaderboard = analystResults.map((row, index) => ({
@@ -7549,9 +7774,16 @@ export async function registerRoutes(
         profileImageUrl: row.profileImageUrl,
         role: row.role || "investor",
         dealCount: Number(row.dealCount),
+        weightedDealCount: Math.round(Number(row.weightedDealCount || 0) * 10) / 10,
+        avgAnalysisConfidenceScore: row.avgAnalysisConfidenceScore != null ? Math.round(Number(row.avgAnalysisConfidenceScore) * 100) / 100 : null,
+        eligibleAnalysisCount: Number(row.eligibleAnalysisCount || 0),
         avgDscr: row.avgDscr != null ? Math.round(Number(row.avgDscr) * 100) / 100 : null,
         avgCashOnCash: row.avgCashOnCash != null ? Math.round(Number(row.avgCashOnCash) * 100) / 100 : null,
         avgCapRate: row.avgCapRate != null ? Math.round(Number(row.avgCapRate) * 100) / 100 : null,
+        oracleScore: row.oracleScore != null ? Math.round(Number(row.oracleScore) * 10) / 10 : null,
+        oracleEligibleCount: Number(row.oracleEligibleCount || 0),
+        oracleMedianError: row.oracleMedianError != null ? Number(row.oracleMedianError) : null,
+        oracleRankStatus: Number(row.oracleEligibleCount || 0) >= 5 ? "ranked" : "provisional",
       }));
 
       const [aggregates] = await db
@@ -7560,6 +7792,7 @@ export async function registerRoutes(
           avgDscr: safeAvg('dscr', 0, 20),
           avgCashOnCash: safeAvg('cashOnCash', -100, 200),
           avgCapRate: safeAvg('capRate', -20, 100),
+          avgAnalysisConfidenceScore: sql<number>`AVG(COALESCE(${analysisQualityScores.confidenceScore}, 0.65))`,
           avgOfferRatio: sql<number>`AVG(
             CASE WHEN (${analyses.inputsJson}->>'purchasePrice') ~ '^[0-9]+(\\.[0-9]+)?$'
                   AND (${analyses.inputsJson}->>'listingPrice') ~ '^[0-9]+(\\.[0-9]+)?$'
@@ -7571,6 +7804,7 @@ export async function registerRoutes(
         })
         .from(analyses)
         .innerJoin(users, eq(analyses.userId, users.id))
+        .leftJoin(analysisQualityScores, eq(analysisQualityScores.analysisId, analyses.id))
         .where(sql`${aggregateDateFilter} AND ${analyses.userId} IS NOT NULL AND ${leaderboardEligibleUserFilter}`);
 
       const [diagnostics] = await db
@@ -7594,6 +7828,7 @@ export async function registerRoutes(
           avgDscr: aggregates?.avgDscr != null ? Math.round(Number(aggregates.avgDscr) * 100) / 100 : null,
           avgCashOnCash: aggregates?.avgCashOnCash != null ? Math.round(Number(aggregates.avgCashOnCash) * 100) / 100 : null,
           avgCapRate: aggregates?.avgCapRate != null ? Math.round(Number(aggregates.avgCapRate) * 100) / 100 : null,
+          avgAnalysisConfidenceScore: aggregates?.avgAnalysisConfidenceScore != null ? Math.round(Number(aggregates.avgAnalysisConfidenceScore) * 100) / 100 : null,
           avgOfferRatio: aggregates?.avgOfferRatio != null ? Math.round(Number(aggregates.avgOfferRatio) * 100) : null,
         },
         diagnostics: {
@@ -8835,6 +9070,35 @@ export async function registerRoutes(
           medianDscr: getAnalysisMetricNumber(data.calculatedMetrics, ["dscr"]),
         }),
       });
+
+      const quality = computeAnalysisQualityScore({
+        timeSpentSeconds: Number((data.sourceContext as any)?.timeSpentSeconds || (data.sourceContext as any)?.timeOnAnalysisSeconds || 0),
+        meaningfulInputChanges: Number((data.sourceContext as any)?.meaningfulInputChanges || buildAssumptionChanges(data.aiAssumptions as Record<string, any> | undefined, (data.finalAssumptions || data.assumptions) as Record<string, any>).length),
+        openedComparableSections: Number((data.sourceContext as any)?.openedComparableSections || 0),
+        savedNotes: Boolean(data.userNotes || data.userAnalysisText),
+        exportedOrSaved: true,
+        hasFinancingAssumptions: Boolean((data.assumptions as any)?.downPaymentPercent || (data.assumptions as any)?.interestRate),
+        hasRentAssumptions: Boolean((data.assumptions as any)?.monthlyRent || (data.assumptions as any)?.rentPerUnit),
+        hasExpenseAssumptions: Boolean((data.assumptions as any)?.expenseRatio || (data.assumptions as any)?.propertyTax),
+        hasRenovationOrCapexAssumptions: Boolean((data.assumptions as any)?.renovationBudget || (data.assumptions as any)?.capexReservePercent),
+        comparableReferenceCount: Array.isArray((data.sourceContext as any)?.comparables) ? (data.sourceContext as any).comparables.length : 0,
+        metrics: data.calculatedMetrics,
+      });
+      await db.insert(analysisQualityScores).values({
+        propertyAnalysisId: analysis.id,
+        userId,
+        listingKey: analysis.listingMlsNumber,
+        qualityScore: quality.qualityScore,
+        confidenceScore: quality.confidenceScore,
+        plausibilityScore: quality.plausibilityScore,
+        interactionDepthScore: quality.interactionDepthScore,
+        dataCompletenessScore: quality.dataCompletenessScore,
+        uniquenessScore: quality.uniquenessScore,
+        dealViabilityScore: quality.dealViabilityScore,
+        spamRiskScore: quality.spamRiskScore,
+        leaderboardEligible: quality.leaderboardEligible,
+        exclusionReason: quality.exclusionReason,
+      }).onConflictDoNothing();
 
       const assumptionChanges = buildAssumptionChanges(data.aiAssumptions as Record<string, any> | undefined, (data.finalAssumptions || data.assumptions) as Record<string, any>);
       if (assumptionChanges.length) {
