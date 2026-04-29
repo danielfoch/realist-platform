@@ -23,6 +23,14 @@ const ACTION_POLICIES: Record<QualifiedShareAction, QualifiedActionPolicy> = {
   saved_version: { creditAmount: 4, dailyShareCap: 8, dailyRecipientCap: 2 },
 };
 
+const QUALIFIED_ACTIONS: QualifiedShareAction[] = [
+  'unique_open',
+  'challenge',
+  'fork',
+  'signup',
+  'saved_version',
+];
+
 function randomToken() {
   return crypto.randomBytes(18).toString('base64url');
 }
@@ -49,6 +57,12 @@ export function getRecipientHash(req: Request, explicitRecipient?: string) {
 
 export function getActionPolicy(action: QualifiedShareAction) {
   return ACTION_POLICIES[action];
+}
+
+export function getRewardPolicySnapshot() {
+  return Object.fromEntries(
+    QUALIFIED_ACTIONS.map((action) => [action, ACTION_POLICIES[action]]),
+  ) as Record<QualifiedShareAction, QualifiedActionPolicy>;
 }
 
 function isQualifiedShareAction(action: string): action is QualifiedShareAction {
@@ -180,6 +194,85 @@ export async function recordQualifiedShareAction(database: DatabaseAdapter, inpu
   return { status, qualified, creditAmount, actionId };
 }
 
+export async function getShareActionSummary(database: DatabaseAdapter, shareId: number, recentLimit = 10) {
+  const summaryResult = await database.query(
+    `SELECT action,
+            COUNT(*)::int AS total_count,
+            COUNT(*) FILTER (WHERE qualified = true)::int AS qualified_count,
+            COUNT(*) FILTER (WHERE qualified = false)::int AS capped_count,
+            COALESCE(SUM(credit_amount), 0)::int AS credit_awarded,
+            MAX(created_at) AS last_action_at
+     FROM underwriting_share_actions
+     WHERE share_id = $1
+     GROUP BY action`,
+    [shareId],
+  );
+
+  const byAction = Object.fromEntries(
+    QUALIFIED_ACTIONS.map((action) => [
+      action,
+      {
+        totalCount: 0,
+        qualifiedCount: 0,
+        cappedCount: 0,
+        creditAwarded: 0,
+        lastActionAt: null as string | null,
+      },
+    ]),
+  ) as Record<QualifiedShareAction, {
+    totalCount: number;
+    qualifiedCount: number;
+    cappedCount: number;
+    creditAwarded: number;
+    lastActionAt: string | null;
+  }>;
+
+  for (const row of summaryResult.rows) {
+    if (!isQualifiedShareAction(row.action)) {
+      continue;
+    }
+
+    byAction[row.action] = {
+      totalCount: Number(row.total_count || 0),
+      qualifiedCount: Number(row.qualified_count || 0),
+      cappedCount: Number(row.capped_count || 0),
+      creditAwarded: Number(row.credit_awarded || 0),
+      lastActionAt: row.last_action_at || null,
+    };
+  }
+
+  const recentResult = await database.query(
+    `SELECT id, action, qualified, credit_type, credit_amount, metadata, created_at
+     FROM underwriting_share_actions
+     WHERE share_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [shareId, recentLimit],
+  );
+
+  return {
+    byAction,
+    totals: Object.values(byAction).reduce(
+      (totals, actionSummary) => ({
+        totalCount: totals.totalCount + actionSummary.totalCount,
+        qualifiedCount: totals.qualifiedCount + actionSummary.qualifiedCount,
+        cappedCount: totals.cappedCount + actionSummary.cappedCount,
+        creditAwarded: totals.creditAwarded + actionSummary.creditAwarded,
+      }),
+      { totalCount: 0, qualifiedCount: 0, cappedCount: 0, creditAwarded: 0 },
+    ),
+    recentActions: recentResult.rows.map((row) => ({
+      id: row.id,
+      action: row.action,
+      qualified: Boolean(row.qualified),
+      creditType: row.credit_type,
+      creditAmount: Number(row.credit_amount || 0),
+      metadata: row.metadata || {},
+      createdAt: row.created_at,
+    })),
+  };
+}
+
 export function createUnderwritingShareRouter(database: DatabaseAdapter = defaultDb): Router {
   const router = Router();
 
@@ -211,6 +304,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         token: created.rows[0].token,
         shareUrl: `/underwriting/${created.rows[0].token}`,
         cta: 'Challenge my underwriting.',
+        rewardPolicy: getRewardPolicySnapshot(),
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -349,7 +443,16 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         return;
       }
 
-      res.json(result.rows[0]);
+      const share = result.rows[0];
+      const actionSummary = await getShareActionSummary(database, share.id);
+
+      res.json({
+        ...share,
+        cta: 'Challenge my underwriting.',
+        shareUrl: `/underwriting/${share.token}`,
+        rewardPolicy: getRewardPolicySnapshot(),
+        actionSummary,
+      });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
