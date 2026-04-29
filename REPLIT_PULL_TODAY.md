@@ -1,26 +1,35 @@
-# Realist.ca Replit Pull Brief — Qualified Challenge Gates
+# Realist.ca Replit Pull Brief — Share Status Dashboard
 
 ## 1. Date
-- Tuesday, April 28, 2026
+- Wednesday, April 29, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-04-28-qualified-challenge-gates`
-- Commit: `a8a45f7` (implementation commit; this pull brief may have a later docs-only commit if amended)
+- Branch: `realist-nightly/2026-04-29-share-status-dashboard`
+- Implementation commit: `4c6b130` (`feat: add underwriting share status summary`)
+- This pull brief may be in a later docs-only commit on the same branch.
 
 ## 3. What changed
-- Tightened the viral underwriting loop so `challenge`, `fork`, and `saved_version` actions only proceed when the recipient submits a meaningful underwriting change or critique.
-- Empty/low-effort qualified-action posts now return `400` before any credit-awarding logic runs.
-- Kept `signup` eligible without challenge metadata, and kept `unique_open` internal to the share-view route.
-- Added focused tests for meaningful payload qualification.
+- Added a richer owner/status payload for viral underwriting shares so Dan can see whether “Challenge my underwriting.” is producing qualified actions, capped actions, and Google Sheets export credits.
+- `POST /api/analyses/:id/share` now returns the active `rewardPolicy` alongside the share URL/CTA.
+- `GET /api/underwriting-shares/:token/status` now returns:
+  - `shareUrl` and CTA copy: “Challenge my underwriting.”
+  - `rewardPolicy` for all qualified action types.
+  - `actionSummary.byAction` with totals, qualified counts, capped counts, credit totals, and last action timestamps.
+  - `actionSummary.totals` across all actions.
+  - `actionSummary.recentActions` without exposing recipient hashes.
+- Added tests covering the summary helper, no recipient-hash leak, and reward policy snapshot.
+- Updated ByteRover project context for the viral sharing system.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
 - `test/underwriting-share-routes.test.ts`
+- `.brv/context-tree/**` project knowledge updates
 - `REPLIT_PULL_TODAY.md`
 
 ## 5. Migration steps
 - No new migration for today’s patch.
-- This branch builds on the viral underwriting share schema from `db/migrations/013_viral_underwriting_shares.sql`; if Replit has not applied it yet, run:
+- This still depends on the existing viral underwriting tables from `db/migrations/013_viral_underwriting_shares.sql`.
+- If Replit has not applied that migration yet, run:
 ```bash
 npm run migrate
 ```
@@ -31,13 +40,16 @@ psql "$DATABASE_URL" -f db/migrations/013_viral_underwriting_shares.sql
 
 ## 6. Env vars needed
 - No new environment variables.
-- Existing app/database env vars still apply, especially `DATABASE_URL` for migrations and runtime.
+- Existing app/database env vars still apply, especially `DATABASE_URL` for migrations/runtime.
 
 ## 7. Replit commands to run
 ```bash
+git status --short
+# Stop if Replit has local edits.
+
 git fetch origin
-git checkout realist-nightly/2026-04-28-qualified-challenge-gates
-git pull origin realist-nightly/2026-04-28-qualified-challenge-gates
+git checkout realist-nightly/2026-04-29-share-status-dashboard
+git pull origin realist-nightly/2026-04-29-share-status-dashboard
 npm install
 npm run migrate
 npx jest test/underwriting-share-routes.test.ts --runInBand
@@ -45,20 +57,19 @@ npm run type-check
 npm run build
 ```
 
-If Replit has local edits, stop and inspect first:
+## 8. Test/build result
+Passed locally on Clyde’s Mac mini:
 ```bash
-git status --short
+npx jest test/underwriting-share-routes.test.ts --runInBand
+npm run type-check
+npm run build
 ```
 
-## 8. Test/build result
-- Passed locally: `npx jest test/underwriting-share-routes.test.ts --runInBand`
-- Passed locally: `npm run type-check`
-- Passed locally: `npm run build`
-
 ## 9. Risks/blockers
-- Branch is based on yesterday’s viral underwriting share loop branch, not `main`, because `main` does not yet contain the share-loop API/migration.
-- Frontend/client callers must send at least one meaningful metadata field for `challenge`, `fork`, or `saved_version`: `challengedFields`, `assumptions`, `inputs`, `metrics`, `notes`, or `comment`.
 - No deploy was performed.
+- Branch builds on the existing viral underwriting share-loop branch lineage, not a fresh `main`, because the share-loop migration/API are not on `main` yet.
+- The owner status endpoint now includes recent action metadata. It intentionally omits recipient hashes, but callers should still avoid putting sensitive PII into action metadata.
+- GitHub push still needs verification after the docs commit; if auth is unavailable, pull from the local branch or push manually.
 
 ## 10. What Dan should pull into Replit at 10am
-Pull `realist-nightly/2026-04-28-qualified-challenge-gates` if you want the viral underwriting share loop plus a safer credit gate: recipients can still “Challenge my underwriting,” but empty button clicks no longer qualify for Google Sheets export credits.
+Pull `realist-nightly/2026-04-29-share-status-dashboard` if you want a practical dashboard/API layer for the viral underwriting loop: it shows which shared analyses are earning qualified Google Sheets export credits, which actions are capped, and whether recipients are actually challenging/forking/saving versions after clicking “Challenge my underwriting.”
