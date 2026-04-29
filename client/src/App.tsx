@@ -65,6 +65,7 @@ import NewConstructionCanadaReport from "@/pages/NewConstructionCanadaReport";
 import GtaPreconPricingReport from "@/pages/GtaPreconPricingReport";
 import CpiInflationReport from "@/pages/CpiInflationReport";
 import CreditSpreadEconomyReport from "@/pages/CreditSpreadEconomyReport";
+import SpringEconomicUpdate2026Report from "@/pages/SpringEconomicUpdate2026Report";
 import SeoProjectDetail from "@/pages/SeoProjectDetail";
 import {
   TorontoHousingMarketPage,
@@ -136,6 +137,7 @@ function Router() {
       <Route path="/insights/gta-precon-pricing" component={GtaPreconPricingReport} />
       <Route path="/insights/cpi-march-2026" component={CpiInflationReport} />
       <Route path="/insights/the-spread-that-ate-the-economy" component={CreditSpreadEconomyReport} />
+      <Route path="/insights/spring-economic-update-2026" component={SpringEconomicUpdate2026Report} />
       {/* SEO landing pages — programmatic + query-driven */}
       <Route path="/canada-housing-market" component={CanadaHousingMarketPage} />
       <Route path="/toronto-housing-market" component={TorontoHousingMarketPage} />

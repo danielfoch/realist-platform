@@ -8,6 +8,7 @@ import { track } from "@/lib/analytics";
 import {
   Radio, BookOpen, FileText, TrendingUp, AlertTriangle, LineChart,
   Calculator, ArrowRight, BarChart3, ChevronRight, Building2, BriefcaseBusiness,
+  Landmark,
 } from "lucide-react";
 
 const insightSections = [
@@ -52,6 +53,14 @@ const insightSections = [
         icon: BriefcaseBusiness,
         badge: "Research",
         cta: "Open Report",
+      },
+      {
+        href: "/insights/spring-economic-update-2026",
+        title: "Spring Economic Update 2026",
+        description: "What Ottawa's Spring 2026 fiscal update says about housing prices, rents, supply, inflation, and rates — and what to change in your underwriting.",
+        icon: Landmark,
+        badge: "Spring 2026",
+        cta: "Read Report",
       },
       {
         href: "/reports/cmhc-land-use-regulations-housing-canada-2026",
