@@ -739,6 +739,19 @@ function createClusterIcon(label: string, count: number, metric: InvestmentMetri
   });
 }
 
+function zoomToClusterBounds(map: L.Map, clusterLayer: any, maxZoom: number) {
+  const bounds = clusterLayer.getBounds?.();
+  if (bounds?.isValid?.()) {
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom });
+    return;
+  }
+
+  const latLng = clusterLayer.getLatLng?.();
+  if (latLng) {
+    map.setView(latLng, Math.min(map.getZoom() + 2, maxZoom));
+  }
+}
+
 function ClusteredListingsLayer({
   listings,
   onSelectListing,
@@ -766,13 +779,12 @@ function ClusteredListingsLayer({
 
     const cluster = (L as any).markerClusterGroup({
       maxClusterRadius: 70,
-      spiderfyOnMaxZoom: true,
+      spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: false,
       chunkedLoading: true,
       disableClusteringAtZoom: 14,
       animate: false,
-      spiderfyDistanceMultiplier: 1.15,
       iconCreateFunction: (clusterGroup: any) => {
         const children = clusterGroup.getAllChildMarkers() as Array<L.Marker & { options: { metricValue?: number; consensusLabel?: string } }>;
         const values = children
@@ -797,7 +809,7 @@ function ClusteredListingsLayer({
     });
 
     cluster.on("clusterclick", (event: any) => {
-      event.layer.spiderfy();
+      zoomToClusterBounds(map, event.layer, 14);
     });
 
     for (const listing of listings) {
@@ -858,7 +870,7 @@ function DistressListingsLayer({
 
     const cluster = (L as any).markerClusterGroup({
       maxClusterRadius: 65,
-      spiderfyOnMaxZoom: true,
+      spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: false,
       chunkedLoading: true,
@@ -896,7 +908,7 @@ function DistressListingsLayer({
     });
 
     cluster.on("clusterclick", (event: any) => {
-      event.layer.spiderfy();
+      zoomToClusterBounds(map, event.layer, 14);
     });
 
     for (const listing of listings) {
@@ -1119,6 +1131,46 @@ function SalePriceEstimatePrompt({
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+function ListingSentimentControls({ listing }: { listing: ListingWithCapRate }) {
+  const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+  const sendSentiment = (sentiment: "bullish" | "neutral" | "bearish" | "pass" | "watch" | "would_offer", sentimentScore: number) => {
+    track({
+      event: "listing_sentiment_selected",
+      listing_id: listing.mlsNumber,
+      sentiment,
+      sentimentScore,
+      city: listing.address?.city,
+      province: listing.address?.state,
+      property_type: listing.details?.propertyType || listing.type,
+      price: Number.isFinite(price) ? price : undefined,
+      source: "listing_card",
+    });
+  };
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1" onClick={(event) => event.stopPropagation()} data-testid={`listing-sentiment-${listing.mlsNumber}`}>
+      {[
+        ["Bullish", "bullish", 0.8],
+        ["Watch", "watch", 0.4],
+        ["Pass", "pass", -0.8],
+        ["Offer", "would_offer", 1],
+      ].map(([label, sentiment, score]) => (
+        <Button
+          key={String(sentiment)}
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-6 px-2 text-[10px]"
+          onClick={() => sendSentiment(sentiment as "bullish" | "neutral" | "bearish" | "pass" | "watch" | "would_offer", Number(score))}
+          data-testid={`button-sentiment-${listing.mlsNumber}-${sentiment}`}
+        >
+          {label}
+        </Button>
+      ))}
     </div>
   );
 }
@@ -2272,6 +2324,7 @@ export default function CapRates() {
             </div>
 
             <SalePriceEstimatePrompt listing={listing} isAuthenticated={isAuthenticated} />
+            <ListingSentimentControls listing={listing} />
 
             <div className="flex items-center justify-between mt-1">
               {(() => {

@@ -190,7 +190,7 @@ function MarkerClusterLayer({ listings, onListingClick }: { listings: DistressLi
 
     const cluster = (L as any).markerClusterGroup({
       maxClusterRadius: 50,
-      spiderfyOnMaxZoom: true,
+      spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
       chunkedLoading: true,

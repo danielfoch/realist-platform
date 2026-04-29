@@ -44,6 +44,7 @@ import TrueCost from "@/pages/TrueCost";
 import RentVsBuy from "@/pages/RentVsBuy";
 import WillItPlex from "@/pages/WillItPlex";
 import Leaderboard from "@/pages/Leaderboard";
+import FullLeaderboard from "@/pages/FullLeaderboard";
 import Premium from "@/pages/Premium";
 import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
@@ -127,6 +128,7 @@ function Router() {
       <Route path="/course" component={Course} />
       <Route path="/insights/distress-report" component={DistressReport} />
       <Route path="/community/leaderboard" component={Leaderboard} />
+      <Route path="/community/leaderboard/full" component={FullLeaderboard} />
       <Route path="/my-performance" component={MyPerformance} />
       <Route path="/insights/market-report" component={MarketReport} />
       <Route path="/insights/mortgage-rates" component={MortgageRates} />

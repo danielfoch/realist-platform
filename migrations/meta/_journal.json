@@ -15,6 +15,13 @@
       "when": 1777420800000,
       "tag": "0001_sale_price_oracle",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777424400000,
+      "tag": "0002_leaderboard_market_intelligence",
+      "breakpoints": true
     }
   ]
 }

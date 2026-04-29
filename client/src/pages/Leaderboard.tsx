@@ -2,6 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Medal, Award, TrendingUp, BarChart3, MapPin, DollarSign, Activity, Target, Users, Star, Flame, Crown, Calendar, Search, Zap, Shield, ChevronUp, ChevronDown, Minus, ArrowUpRight, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { track } from "@/lib/analytics";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
 interface LeaderboardEntry {
   rank: number;
@@ -112,6 +114,25 @@ interface UserStats {
   topCityDeals: number;
   firstAnalysis: string | null;
   lastAnalysis: string | null;
+}
+
+interface LeaderboardChartEntry {
+  month: string;
+  userId: string;
+  name: string;
+  rank: number;
+  rankChange: number | null;
+  score: number;
+  monthlyDealsAnalyzed: number;
+  eligibleAnalysesCount: number;
+  averageConfidenceScore: number | null;
+  marketOracleScore: number | null;
+}
+
+interface LeaderboardChartsResponse {
+  hasEnoughHistory: boolean;
+  months: string[];
+  entries: LeaderboardChartEntry[];
 }
 
 function getInitials(name: string): string {
@@ -558,6 +579,87 @@ function UserProfilePanel({ stats, isLoading }: { stats?: UserStats; isLoading: 
   );
 }
 
+function LeaderboardTrendCharts({ data }: { data?: LeaderboardChartsResponse }) {
+  if (!data?.hasEnoughHistory) {
+    return (
+      <Card data-testid="leaderboard-chart-empty">
+        <CardContent className="py-10 text-center">
+          <BarChart3 className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+          <p className="text-sm font-medium">Ranking history starts after two finalized months.</p>
+          <p className="text-xs text-muted-foreground mt-1">Monthly snapshots are frozen, so future scoring changes will not rewrite prior periods.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const topUsers = Array.from(new Set(data.entries.filter((entry) => entry.rank <= 10).map((entry) => entry.name))).slice(0, 10);
+  const rankData = data.months.map((month) => {
+    const row: Record<string, string | number | null> = { month };
+    for (const user of topUsers) {
+      const entry = data.entries.find((item) => item.month === month && item.name === user);
+      row[user] = entry?.rank ?? null;
+    }
+    return row;
+  });
+  const dealsData = data.months.map((month) => {
+    const row: Record<string, string | number | null> = { month };
+    for (const user of topUsers.slice(0, 5)) {
+      const entry = data.entries.find((item) => item.month === month && item.name === user);
+      row[user] = entry?.monthlyDealsAnalyzed ?? null;
+    }
+    return row;
+  });
+
+  const colors = ["#16a34a", "#2563eb", "#f97316", "#9333ea", "#dc2626", "#0891b2", "#ca8a04", "#4f46e5", "#db2777", "#475569"];
+
+  return (
+    <div className="grid lg:grid-cols-2 gap-6" data-testid="leaderboard-trend-charts">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Rank Movement</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={rankData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis reversed allowDecimals={false} domain={[1, "dataMax"]} />
+                <Tooltip />
+                <Legend />
+                {topUsers.map((user, index) => (
+                  <Line key={user} dataKey={user} stroke={colors[index % colors.length]} connectNulls strokeWidth={2} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Monthly Deals Analyzed</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={dealsData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                {topUsers.slice(0, 5).map((user, index) => (
+                  <Line key={user} dataKey={user} stroke={colors[index % colors.length]} connectNulls strokeWidth={2} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function Leaderboard() {
   const [period, setPeriod] = useState<string>("all-time");
   const [cityFilter, setCityFilter] = useState<string>("");
@@ -594,6 +696,10 @@ export default function Leaderboard() {
 
   const { data: monthlyContributions, isLoading: isLoadingMonthlyContrib } = useQuery<ContributionEntry[]>({
     queryKey: ["/api/leaderboard/contributions?period=monthly"],
+  });
+
+  const { data: leaderboardCharts } = useQuery<LeaderboardChartsResponse>({
+    queryKey: ["/api/leaderboard/charts"],
   });
 
   const aggregates = leaderboardData?.aggregates;
@@ -711,7 +817,7 @@ export default function Leaderboard() {
                         <Crown className="h-5 w-5 text-yellow-500" />
                         <div>
                           <CardTitle className="text-base">
-                            {period === "weekly" ? "This Week" : period === "monthly" ? "This Month" : "All-Time Leaders"}
+                            {period === "weekly" ? "This Week" : period === "monthly" ? "This Month" : "Top 10"}
                           </CardTitle>
                           <CardDescription className="text-xs">
                             {cityFilter ? `Filtered to ${cityFilter}` : "Top deal analysts"}
@@ -771,6 +877,16 @@ export default function Leaderboard() {
                     </CardContent>
                   </Card>
                 </div>
+
+                <div className="flex justify-center">
+                  <Link href="/community/leaderboard/full">
+                    <Button variant="outline" data-testid="button-view-full-leaderboard">
+                      View full leaderboard
+                    </Button>
+                  </Link>
+                </div>
+
+                <LeaderboardTrendCharts data={leaderboardCharts} />
 
                 <Card>
                   <CardHeader>

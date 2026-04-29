@@ -44,6 +44,13 @@ import {
   propertySaleEstimates,
   listingSaleResolutions,
   userSaleEstimatorMetrics,
+  leaderboardPeriods,
+  leaderboardSnapshots,
+  leaderboardSnapshotEntries,
+  userDealActivityRollups,
+  marketSentimentRollups,
+  marketReportMetrics,
+  analysisUnderwritingComparisons,
   analysisQualityScores,
   courseModules,
   courseLessons,
@@ -88,6 +95,16 @@ import {
   upsertSaleEstimate,
 } from "./salePriceOracle";
 import { computeAnalysisQualityScore } from "@shared/analysisQuality";
+import {
+  buildMarketReportMetrics,
+  buildMarketSentimentRollups,
+  buildUserDealActivityRollups,
+  finalizeLeaderboardSnapshot,
+  getLeaderboardHistory,
+  getLiveLeaderboardEntries,
+  rebuildMarketIntelligence,
+  recordUnderwritingComparison,
+} from "./marketIntelligence";
 import {
   buildAnalysisCompletedPayload,
   buildSavedSearchMatchPayload,
@@ -833,6 +850,104 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error rebuilding user inference profile:", error);
       res.status(500).json({ error: "Failed to rebuild user inference profile" });
+    }
+  });
+
+  app.post("/api/admin/leaderboard/rebuild-rollups", isAdmin, async (req, res) => {
+    try {
+      const periodType = (req.body?.periodType || "monthly") as "daily" | "weekly" | "monthly" | "all_time";
+      res.json(await buildUserDealActivityRollups(periodType));
+    } catch (error) {
+      console.error("Error rebuilding leaderboard rollups:", error);
+      res.status(500).json({ error: "Failed to rebuild leaderboard rollups" });
+    }
+  });
+
+  app.post("/api/admin/leaderboard/finalize-month", isAdmin, async (req, res) => {
+    try {
+      const anchor = req.body?.anchor ? new Date(req.body.anchor) : undefined;
+      res.json(await finalizeLeaderboardSnapshot({ periodType: "monthly", anchor, force: Boolean(req.body?.force) }));
+    } catch (error) {
+      console.error("Error finalizing leaderboard snapshot:", error);
+      res.status(500).json({ error: "Failed to finalize leaderboard snapshot" });
+    }
+  });
+
+  app.get("/api/admin/leaderboard/snapshots", isAdmin, async (_req, res) => {
+    try {
+      const rows = await db.select({
+        periodId: leaderboardPeriods.id,
+        periodType: leaderboardPeriods.periodType,
+        periodStartDate: leaderboardPeriods.periodStartDate,
+        periodEndDate: leaderboardPeriods.periodEndDate,
+        status: leaderboardPeriods.status,
+        finalizedAt: leaderboardPeriods.finalizedAt,
+        snapshotId: leaderboardSnapshots.id,
+        category: leaderboardSnapshots.category,
+        generatedAt: leaderboardSnapshots.generatedAt,
+        entryCount: sql<number>`COUNT(${leaderboardSnapshotEntries.id})::int`,
+      })
+        .from(leaderboardPeriods)
+        .leftJoin(leaderboardSnapshots, eq(leaderboardSnapshots.leaderboardPeriodId, leaderboardPeriods.id))
+        .leftJoin(leaderboardSnapshotEntries, eq(leaderboardSnapshotEntries.leaderboardSnapshotId, leaderboardSnapshots.id))
+        .groupBy(
+          leaderboardPeriods.id,
+          leaderboardPeriods.periodType,
+          leaderboardPeriods.periodStartDate,
+          leaderboardPeriods.periodEndDate,
+          leaderboardPeriods.status,
+          leaderboardPeriods.finalizedAt,
+          leaderboardSnapshots.id,
+          leaderboardSnapshots.category,
+          leaderboardSnapshots.generatedAt,
+        )
+        .orderBy(desc(leaderboardPeriods.periodStartDate));
+      res.json(rows);
+    } catch (error) {
+      console.error("Error fetching leaderboard snapshots:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard snapshots" });
+    }
+  });
+
+  app.post("/api/admin/market-intelligence/rebuild", isAdmin, async (req, res) => {
+    try {
+      const anchor = req.body?.anchor ? new Date(req.body.anchor) : new Date();
+      res.json(await rebuildMarketIntelligence(anchor));
+    } catch (error) {
+      console.error("Error rebuilding market intelligence:", error);
+      res.status(500).json({ error: "Failed to rebuild market intelligence" });
+    }
+  });
+
+  app.post("/api/admin/market-report/recalculate-metrics", isAdmin, async (req, res) => {
+    try {
+      const anchor = req.body?.anchor ? new Date(req.body.anchor) : new Date();
+      await buildMarketSentimentRollups("monthly", anchor);
+      res.json(await buildMarketReportMetrics(anchor));
+    } catch (error) {
+      console.error("Error recalculating market report metrics:", error);
+      res.status(500).json({ error: "Failed to recalculate market report metrics" });
+    }
+  });
+
+  app.get("/api/admin/market-intelligence/health", isAdmin, async (_req, res) => {
+    try {
+      const [counts] = (await db.execute(sql`
+        SELECT
+          (SELECT COUNT(*)::int FROM user_deal_activity_rollups) AS deal_rollups,
+          (SELECT COUNT(*)::int FROM market_sentiment_events) AS sentiment_events,
+          (SELECT COUNT(*)::int FROM market_sentiment_rollups) AS sentiment_rollups,
+          (SELECT COUNT(*)::int FROM market_report_metrics) AS market_report_metrics,
+          (SELECT COUNT(*)::int FROM analysis_underwriting_comparisons) AS comparisons
+      `)).rows as any[];
+      const highRawLowEligible = await db.select().from(userDealActivityRollups)
+        .where(sql`${userDealActivityRollups.totalDealsAnalyzed} >= 10 AND ${userDealActivityRollups.eligibleDealsAnalyzed} < (${userDealActivityRollups.totalDealsAnalyzed} / 2)`)
+        .orderBy(desc(userDealActivityRollups.totalDealsAnalyzed))
+        .limit(25);
+      res.json({ counts, highRawLowEligible });
+    } catch (error) {
+      console.error("Error fetching market intelligence health:", error);
+      res.status(500).json({ error: "Failed to fetch market intelligence health" });
     }
   });
 
@@ -2347,6 +2462,17 @@ export async function registerRoutes(
           leaderboardEligible: quality.leaderboardEligible,
           exclusionReason: quality.exclusionReason,
         }).onConflictDoNothing();
+        await recordUnderwritingComparison({
+          analysisId: analysis.id,
+          userId,
+          listingKey: inputsJson.mlsNumber || inputsJson.listingMlsNumber || null,
+          province,
+          city,
+          propertyType: inputsJson.propertyType || null,
+          strategyType,
+          userMetrics: resultsJson as Record<string, unknown>,
+          assumptions: inputsJson as Record<string, unknown>,
+        });
         await logUserActivity(req, {
           userId,
           sessionId: sessionId || req.sessionID,
@@ -2355,6 +2481,15 @@ export async function registerRoutes(
           listingKey: inputsJson.mlsNumber || inputsJson.listingMlsNumber || null,
           component: "deal_analyzer",
           metadata: { confidenceScore: quality.confidenceScore, leaderboardEligible: quality.leaderboardEligible },
+        });
+        await logUserActivity(req, {
+          userId,
+          sessionId: sessionId || req.sessionID,
+          eventName: "underwriting_completed",
+          analysisId: analysis.id,
+          listingKey: inputsJson.mlsNumber || inputsJson.listingMlsNumber || null,
+          component: "deal_analyzer",
+          metadata: { confidenceScore: quality.confidenceScore, city, province, strategyType },
         });
       }
 
@@ -7722,6 +7857,10 @@ export async function registerRoutes(
     try {
       const period = req.query.period as string;
       const cityFilter = req.query.city as string | undefined;
+      const provinceFilter = req.query.province as string | undefined;
+      const strategyFilter = req.query.strategy as string | undefined;
+      const category = req.query.category as string | undefined;
+      const limit = Math.min(Number(req.query.limit) || 10, 50);
       let dateFilter = sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`;
       let aggregateDateFilter = sql`${analyses.resultsJson} IS NOT NULL`;
 
@@ -7747,64 +7886,30 @@ export async function registerRoutes(
         dateFilter = sql`${dateFilter} AND LOWER(${analyses.city}) = LOWER(${cityFilter})`;
         aggregateDateFilter = sql`${aggregateDateFilter} AND LOWER(${analyses.city}) = LOWER(${cityFilter})`;
       }
+      if (provinceFilter) {
+        dateFilter = sql`${dateFilter} AND LOWER(${analyses.province}) = LOWER(${provinceFilter})`;
+        aggregateDateFilter = sql`${aggregateDateFilter} AND LOWER(${analyses.province}) = LOWER(${provinceFilter})`;
+      }
+      if (strategyFilter) {
+        dateFilter = sql`${dateFilter} AND LOWER(${analyses.strategyType}) = LOWER(${strategyFilter})`;
+        aggregateDateFilter = sql`${aggregateDateFilter} AND LOWER(${analyses.strategyType}) = LOWER(${strategyFilter})`;
+      }
 
       const safeAvg = (field: string, lo: number, hi: number) =>
         sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
 
-      const analystResults = await db
-        .select({
-          userId: analyses.userId,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          profileImageUrl: users.profileImageUrl,
-          role: users.role,
-          dealCount: count(analyses.id),
-          weightedDealCount: sql<number>`COALESCE(SUM(CASE WHEN ${analysisQualityScores.leaderboardEligible} IS FALSE THEN 0 ELSE COALESCE(${analysisQualityScores.confidenceScore}, 0.65) END), 0)`,
-          avgAnalysisConfidenceScore: sql<number>`AVG(COALESCE(${analysisQualityScores.confidenceScore}, 0.65))`,
-          eligibleAnalysisCount: sql<number>`COUNT(CASE WHEN ${analysisQualityScores.leaderboardEligible} IS DISTINCT FROM FALSE THEN 1 END)`,
-          avgDscr: safeAvg('dscr', 0, 20),
-          avgCashOnCash: safeAvg('cashOnCash', -100, 200),
-          avgCapRate: safeAvg('capRate', -20, 100),
-          oracleScore: userSaleEstimatorMetrics.oracleScore,
-          oracleEligibleCount: userSaleEstimatorMetrics.eligibleEstimateCount,
-          oracleMedianError: userSaleEstimatorMetrics.medianAbsolutePercentageError,
-        })
-        .from(analyses)
-        .innerJoin(users, eq(analyses.userId, users.id))
-        .leftJoin(analysisQualityScores, eq(analysisQualityScores.analysisId, analyses.id))
-        .leftJoin(userSaleEstimatorMetrics, eq(userSaleEstimatorMetrics.userId, users.id))
-        .where(sql`${dateFilter} AND ${leaderboardEligibleUserFilter}`)
-        .groupBy(
-          analyses.userId,
-          users.firstName,
-          users.lastName,
-          users.profileImageUrl,
-          users.role,
-          userSaleEstimatorMetrics.oracleScore,
-          userSaleEstimatorMetrics.eligibleEstimateCount,
-          userSaleEstimatorMetrics.medianAbsolutePercentageError,
-        )
-        .orderBy(desc(sql`COALESCE(SUM(CASE WHEN ${analysisQualityScores.leaderboardEligible} IS FALSE THEN 0 ELSE COALESCE(${analysisQualityScores.confidenceScore}, 0.65) END), 0)`))
-        .limit(Math.min(Number(req.query.limit) || 25, 50));
-
-      const leaderboard = analystResults.map((row, index) => ({
-        rank: index + 1,
-        userId: row.userId,
-        name: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
-        profileImageUrl: row.profileImageUrl,
-        role: row.role || "investor",
-        dealCount: Number(row.dealCount),
-        weightedDealCount: Math.round(Number(row.weightedDealCount || 0) * 10) / 10,
-        avgAnalysisConfidenceScore: row.avgAnalysisConfidenceScore != null ? Math.round(Number(row.avgAnalysisConfidenceScore) * 100) / 100 : null,
-        eligibleAnalysisCount: Number(row.eligibleAnalysisCount || 0),
-        avgDscr: row.avgDscr != null ? Math.round(Number(row.avgDscr) * 100) / 100 : null,
-        avgCashOnCash: row.avgCashOnCash != null ? Math.round(Number(row.avgCashOnCash) * 100) / 100 : null,
-        avgCapRate: row.avgCapRate != null ? Math.round(Number(row.avgCapRate) * 100) / 100 : null,
-        oracleScore: row.oracleScore != null ? Math.round(Number(row.oracleScore) * 10) / 10 : null,
-        oracleEligibleCount: Number(row.oracleEligibleCount || 0),
-        oracleMedianError: row.oracleMedianError != null ? Number(row.oracleMedianError) : null,
-        oracleRankStatus: Number(row.oracleEligibleCount || 0) >= 5 ? "ranked" : "provisional",
-      }));
+      const live = await getLiveLeaderboardEntries({
+        period,
+        city: cityFilter,
+        province: provinceFilter,
+        strategy: strategyFilter,
+        category,
+        limit,
+        offset: 0,
+        sort: String(req.query.sort || "score"),
+        direction: req.query.direction === "asc" ? "asc" : "desc",
+      });
+      const leaderboard = live.rows;
 
       const [aggregates] = await db
         .select({
@@ -7856,10 +7961,79 @@ export async function registerRoutes(
           newestEligibleAnalysisAt,
           suspiciousData,
         },
+        totalCount: live.totalCount,
       });
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
       res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/leaderboard/full", async (req, res) => {
+    try {
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const pageSize = Math.min(Math.max(Number(req.query.pageSize) || 25, 10), 100);
+      const result = await getLiveLeaderboardEntries({
+        period: String(req.query.period || "all-time"),
+        city: req.query.city as string | undefined,
+        province: req.query.province as string | undefined,
+        strategy: req.query.strategy as string | undefined,
+        category: req.query.category as string | undefined,
+        sort: String(req.query.sort || "score"),
+        direction: req.query.direction === "asc" ? "asc" : "desc",
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+      });
+      res.json({
+        entries: result.rows,
+        page,
+        pageSize,
+        totalCount: result.totalCount,
+        totalPages: Math.ceil(result.totalCount / pageSize),
+      });
+    } catch (error) {
+      console.error("Error fetching full leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch full leaderboard" });
+    }
+  });
+
+  app.get("/api/leaderboard/history", async (_req, res) => {
+    try {
+      const rows = await getLeaderboardHistory();
+      res.json({ rows });
+    } catch (error) {
+      console.error("Error fetching leaderboard history:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard history" });
+    }
+  });
+
+  app.get("/api/leaderboard/charts", async (_req, res) => {
+    try {
+      const rows = await getLeaderboardHistory() as any[];
+      const months = Array.from(new Set(rows.map((row) => new Date(row.period_start_date).toISOString().slice(0, 7))));
+      const hasEnoughHistory = months.length >= 2;
+      res.json({
+        hasEnoughHistory,
+        months,
+        entries: rows.map((row) => ({
+          month: new Date(row.period_start_date).toISOString().slice(0, 7),
+          userId: row.user_id,
+          name: row.name,
+          rank: Number(row.rank),
+          previousRank: row.previous_rank == null ? null : Number(row.previous_rank),
+          rankChange: row.rank_change == null ? null : Number(row.rank_change),
+          score: Number(row.score || 0),
+          weightedScore: Number(row.weighted_score || 0),
+          totalDealsAnalyzed: Number(row.total_deals_analyzed || 0),
+          monthlyDealsAnalyzed: Number(row.monthly_deals_analyzed || 0),
+          eligibleAnalysesCount: Number(row.eligible_analyses_count || 0),
+          averageConfidenceScore: row.average_confidence_score == null ? null : Number(row.average_confidence_score),
+          marketOracleScore: row.market_oracle_score == null ? null : Number(row.market_oracle_score),
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching leaderboard charts:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard charts" });
     }
   });
 
@@ -8570,6 +8744,40 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/market-report/metrics", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const rows = await db.select().from(marketReportMetrics)
+        .where(sql`
+          (${city || null}::text IS NULL OR LOWER(${marketReportMetrics.city}) = LOWER(${city || null}))
+          AND (${province || null}::text IS NULL OR LOWER(${marketReportMetrics.province}) = LOWER(${province || null}))
+        `)
+        .orderBy(sql`${marketReportMetrics.periodStartDate} ASC, ${marketReportMetrics.metricSource} ASC`);
+      res.json({ metrics: rows });
+    } catch (error) {
+      console.error("Error fetching market report metrics:", error);
+      res.status(500).json({ error: "Failed to fetch market report metrics" });
+    }
+  });
+
+  app.get("/api/market-sentiment/rollups", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const rows = await db.select().from(marketSentimentRollups)
+        .where(sql`
+          (${city || null}::text IS NULL OR LOWER(${marketSentimentRollups.city}) = LOWER(${city || null}))
+          AND (${province || null}::text IS NULL OR LOWER(${marketSentimentRollups.province}) = LOWER(${province || null}))
+        `)
+        .orderBy(sql`${marketSentimentRollups.periodStartDate} ASC`);
+      res.json({ rollups: rows });
+    } catch (error) {
+      console.error("Error fetching market sentiment rollups:", error);
+      res.status(500).json({ error: "Failed to fetch market sentiment rollups" });
+    }
+  });
+
   app.get("/api/market-report/history", async (req, res) => {
     try {
       const city = req.query.city as string | undefined;
@@ -8779,7 +8987,14 @@ export async function registerRoutes(
       if (!months.includes(currentMonth)) {
         console.log("[market-report] Monthly cron: computing snapshot for", currentMonth);
         await computeMonthlySnapshot(currentMonth);
+        await rebuildMarketIntelligence(now);
         console.log("[market-report] Monthly cron: snapshot complete for", currentMonth);
+      }
+
+      if (now.getDate() === 1 && now.getHours() >= 2) {
+        await finalizeLeaderboardSnapshot({ periodType: "monthly" }).catch((error) => {
+          console.error("[leaderboard] Monthly finalize failed:", error);
+        });
       }
 
       const yieldMonths = await storage.getAllCityYieldHistoryMonths();
@@ -9119,6 +9334,17 @@ export async function registerRoutes(
         leaderboardEligible: quality.leaderboardEligible,
         exclusionReason: quality.exclusionReason,
       }).onConflictDoNothing();
+      await recordUnderwritingComparison({
+        propertyAnalysisId: analysis.id,
+        userId,
+        listingKey: analysis.listingMlsNumber,
+        province: analysis.province,
+        city: analysis.city,
+        propertyType: analysis.propertyType,
+        strategyType: (analysis.assumptions as any)?.strategyType || null,
+        userMetrics: analysis.calculatedMetrics as Record<string, unknown>,
+        assumptions: (analysis.finalAssumptions || analysis.assumptions) as Record<string, unknown>,
+      });
 
       const assumptionChanges = buildAssumptionChanges(data.aiAssumptions as Record<string, any> | undefined, (data.finalAssumptions || data.assumptions) as Record<string, any>);
       if (assumptionChanges.length) {

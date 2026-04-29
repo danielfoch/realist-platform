@@ -52,6 +52,34 @@ interface CityYieldHistory {
   computedAt: string;
 }
 
+interface MarketReportMetric {
+  id: string;
+  periodStartDate: string;
+  province: string | null;
+  city: string | null;
+  propertyType: string | null;
+  strategyType: string | null;
+  metricSource: "ddf_auto_underwriting" | "user_underwriting" | "combined_comparison";
+  listingCount: number;
+  analysisCount: number;
+  eligibleAnalysisCount: number;
+  uniqueUserCount: number | null;
+  averageYield: number | null;
+  medianYield: number | null;
+  averageCapRate: number | null;
+  medianCapRate: number | null;
+  averageCashOnCashReturn: number | null;
+  averageDscr: number | null;
+  averageMonthlyCashflowCents: number | null;
+  averageSentimentScore: number | null;
+  bullishShare: number | null;
+  bearishShare: number | null;
+  watchlistRate: number | null;
+  offerCandidateRate: number | null;
+  sampleSize: number;
+  provisional: boolean;
+}
+
 const PROVINCE_NAMES: Record<string, string> = {
   ON: "Ontario",
   BC: "British Columbia",
@@ -131,7 +159,7 @@ function generateCommentary(snapshots: MarketSnapshot[], month: string, yieldDat
     }
   }
 
-  const provinces = [...new Set(withData.map(s => s.province))];
+  const provinces = Array.from(new Set(withData.map(s => s.province)));
   const provinceAvgs = provinces.map(p => {
     const cities = withData.filter(s => s.province === p);
     const avgRent = cities.reduce((sum, c) => sum + (c.cmhcTwoBed || 0), 0) / cities.length;
@@ -196,6 +224,10 @@ export default function MarketReport() {
     queryKey: ["/api/yield-history"],
   });
 
+  const { data: marketMetricsData } = useQuery<{ metrics: MarketReportMetric[] }>({
+    queryKey: ["/api/market-report/metrics"],
+  });
+
   const { data: compareData } = useQuery<CityYieldHistory[]>({
     queryKey: ["/api/yield-history/compare", compareCities],
     enabled: compareCities.length > 0,
@@ -222,7 +254,7 @@ export default function MarketReport() {
 
   const provinces = useMemo(() => {
     if (!latestData?.snapshots) return [];
-    return [...new Set(latestData.snapshots.map(s => s.province))].sort();
+    return Array.from(new Set(latestData.snapshots.map(s => s.province))).sort();
   }, [latestData]);
 
   const rentChartData = useMemo(() => {
@@ -269,7 +301,7 @@ export default function MarketReport() {
 
   const compareChartData = useMemo(() => {
     if (!compareData || compareData.length === 0) return [];
-    const months = [...new Set(compareData.map(d => d.month))].sort();
+    const months = Array.from(new Set(compareData.map(d => d.month))).sort();
     return months.map(month => {
       const point: any = { month: formatMonth(month) };
       compareCities.forEach(({ city }) => {
@@ -290,6 +322,41 @@ export default function MarketReport() {
       "Avg Price (k)": s.avgPurchasePrice ? Math.round(s.avgPurchasePrice / 1000) : null,
     }));
   }, [historyData]);
+
+  const intelligenceTrendData = useMemo(() => {
+    const metrics = marketMetricsData?.metrics || [];
+    const byMonth = new Map<string, Record<string, number | string | null>>();
+    for (const metric of metrics) {
+      const month = new Date(metric.periodStartDate).toISOString().slice(0, 7);
+      const row = byMonth.get(month) || { month };
+      if (metric.metricSource === "ddf_auto_underwriting") {
+        row["DDF Auto Yield"] = metric.medianYield ?? metric.averageYield;
+        row["DDF Auto Cap Rate"] = metric.medianCapRate ?? metric.averageCapRate;
+      }
+      if (metric.metricSource === "user_underwriting") {
+        row["User Yield"] = metric.medianYield ?? metric.averageYield;
+        row["User Cap Rate"] = metric.medianCapRate ?? metric.averageCapRate;
+        row["Cash Flow"] = metric.averageMonthlyCashflowCents != null ? metric.averageMonthlyCashflowCents / 100 : null;
+        row["Sentiment"] = metric.averageSentimentScore;
+      }
+      byMonth.set(month, row);
+    }
+    return Array.from(byMonth.values()).sort((a, b) => String(a.month).localeCompare(String(b.month)));
+  }, [marketMetricsData]);
+
+  const topInterestMarkets = useMemo(() => {
+    return (marketMetricsData?.metrics || [])
+      .filter((metric) => metric.metricSource === "user_underwriting")
+      .sort((a, b) => (b.analysisCount || 0) - (a.analysisCount || 0))
+      .slice(0, 10);
+  }, [marketMetricsData]);
+
+  const topAutoYieldMarkets = useMemo(() => {
+    return (marketMetricsData?.metrics || [])
+      .filter((metric) => metric.metricSource === "ddf_auto_underwriting" && metric.medianYield != null)
+      .sort((a, b) => (b.medianYield || 0) - (a.medianYield || 0))
+      .slice(0, 10);
+  }, [marketMetricsData]);
 
   const commentary = useMemo(() => {
     if (!latestData?.snapshots || !latestData.reportMonth) return [];
@@ -572,6 +639,7 @@ export default function MarketReport() {
               <TabsList data-testid="tabs-report-section">
                 <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
                 <TabsTrigger value="yields" data-testid="tab-yields">DDF Yields</TabsTrigger>
+                <TabsTrigger value="intelligence" data-testid="tab-intelligence">User vs Auto</TabsTrigger>
                 <TabsTrigger value="compare" data-testid="tab-compare">Compare Cities</TabsTrigger>
               </TabsList>
 
@@ -746,6 +814,123 @@ export default function MarketReport() {
                         Yield data from the CREA DDF is calculated monthly across all tracked cities.
                         Once the first crawl completes, you'll see gross and net yields, pricing data,
                         and market depth metrics for each city.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="intelligence" className="space-y-8 mt-6">
+                {intelligenceTrendData.length > 0 ? (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5" />
+                          DDF Auto Underwriting vs User Underwriting
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-[380px]" data-testid="chart-user-vs-auto-yield">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={intelligenceTrendData}>
+                              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                              <XAxis dataKey="month" />
+                              <YAxis tickFormatter={(v) => `${v}%`} />
+                              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                              <Legend />
+                              <Line type="monotone" dataKey="DDF Auto Yield" stroke="hsl(200, 80%, 45%)" strokeWidth={2} connectNulls />
+                              <Line type="monotone" dataKey="User Yield" stroke="hsl(142, 70%, 40%)" strokeWidth={2} connectNulls />
+                              <Line type="monotone" dataKey="DDF Auto Cap Rate" stroke="hsl(280, 65%, 55%)" strokeWidth={2} connectNulls />
+                              <Line type="monotone" dataKey="User Cap Rate" stroke="hsl(30, 90%, 50%)" strokeWidth={2} connectNulls />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="grid lg:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Top Markets by User Interest</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            {topInterestMarkets.map((metric) => (
+                              <div key={metric.id} className="flex items-center justify-between rounded-md border border-border/60 p-3">
+                                <div>
+                                  <p className="font-medium">{metric.city || "Unknown"}, {metric.province || "-"}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {metric.analysisCount} analyses · {metric.eligibleAnalysisCount} eligible
+                                    {metric.provisional ? " · provisional" : ""}
+                                  </p>
+                                </div>
+                                <div className="text-right text-sm font-mono">
+                                  <p>{formatPercent(metric.medianYield ?? metric.averageYield)}</p>
+                                  <p className="text-xs text-muted-foreground">median yield</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Top Markets by DDF Auto Yield</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            {topAutoYieldMarkets.map((metric) => (
+                              <div key={metric.id} className="flex items-center justify-between rounded-md border border-border/60 p-3">
+                                <div>
+                                  <p className="font-medium">{metric.city || "Unknown"}, {metric.province || "-"}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {metric.listingCount} DDF listings
+                                    {metric.provisional ? " · provisional" : ""}
+                                  </p>
+                                </div>
+                                <div className="text-right text-sm font-mono">
+                                  <p>{formatPercent(metric.medianYield ?? metric.averageYield)}</p>
+                                  <p className="text-xs text-muted-foreground">median auto yield</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Sentiment and Cash Flow Trend</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-[320px]" data-testid="chart-sentiment-cashflow">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={intelligenceTrendData}>
+                              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                              <XAxis dataKey="month" />
+                              <YAxis yAxisId="left" />
+                              <YAxis yAxisId="right" orientation="right" domain={[-1, 1]} />
+                              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                              <Legend />
+                              <Line yAxisId="left" type="monotone" dataKey="Cash Flow" stroke="hsl(142, 70%, 40%)" strokeWidth={2} connectNulls />
+                              <Line yAxisId="right" type="monotone" dataKey="Sentiment" stroke="hsl(350, 70%, 55%)" strokeWidth={2} connectNulls />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Market intelligence metrics pending</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto">
+                        DDF auto-underwriting and user-underwriting metrics are stored separately.
+                        Run the market intelligence rebuild after applying migrations to populate this section.
                       </p>
                     </CardContent>
                   </Card>

@@ -25,10 +25,44 @@ export type RealistEvent =
   | { event: "nl_query_submitted"; query: string; matched_intent?: string }
   | { event: "listing_viewed"; listing_id: string; city?: string; property_type?: string; price?: number; gross_yield?: number }
   | { event: "listing_card_opened"; listing_id: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "listing_card_reopened"; listing_id: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "listing_watchlisted"; listing_id?: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "listing_unwatchlisted"; listing_id?: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "listing_shared"; listing_id?: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "listing_hidden"; listing_id?: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "listing_dismissed"; listing_id?: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "listing_compared"; listing_id?: string; compared_listing_id?: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "listing_saved"; listing_id?: string; city?: string; property_type?: string; price?: number; source?: string }
+  | { event: "listing_notes_added"; listing_id?: string; city?: string; property_type?: string; source?: string }
+  | { event: "listing_sentiment_selected"; listing_id?: string; sentiment: "bullish" | "neutral" | "bearish" | "pass" | "watch" | "would_offer" | "would_not_offer"; sentimentScore?: number; city?: string; province?: string; property_type?: string; price?: number; source?: string }
+  | { event: "sale_estimate_submitted"; listing_id?: string; estimated_sale_to_list_ratio?: number; user_estimate_vs_auto_model_delta?: number; user_estimate_confidence?: number }
+  | { event: "sale_estimate_updated"; listing_id?: string; estimated_sale_to_list_ratio?: number; user_estimate_vs_auto_model_delta?: number; user_estimate_confidence?: number }
   | { event: "underwriting_opened"; listing_id?: string; source?: string }
+  | { event: "underwriting_started"; listing_id?: string; source?: string }
+  | { event: "underwriting_completed"; listing_id?: string; analysis_id?: string; source?: string; confidenceScore?: number }
   | { event: "underwriting_inputs_changed"; listing_id?: string; fields?: string[] }
+  | { event: "rent_assumption_changed"; listing_id?: string; from?: number; to?: number }
+  | { event: "expense_assumption_changed"; listing_id?: string; field?: string; from?: number; to?: number }
+  | { event: "financing_assumption_changed"; listing_id?: string; field?: string; from?: number; to?: number }
+  | { event: "renovation_assumption_changed"; listing_id?: string; field?: string; from?: number; to?: number }
+  | { event: "exit_price_assumption_changed"; listing_id?: string; from?: number; to?: number }
+  | { event: "strategy_selected"; listing_id?: string; strategy_type?: string }
+  | { event: "deal_marked_good"; listing_id?: string; sentimentScore?: number }
+  | { event: "deal_marked_bad"; listing_id?: string; sentimentScore?: number }
+  | { event: "deal_marked_watchlist"; listing_id?: string; sentimentScore?: number }
+  | { event: "deal_marked_offer_candidate"; listing_id?: string; sentimentScore?: number }
+  | { event: "deal_saved"; listing_id?: string; analysis_id?: string }
+  | { event: "deal_exported"; listing_id?: string; analysis_id?: string }
+  | { event: "deal_shared"; listing_id?: string; analysis_id?: string }
   | { event: "underwriting_exported_or_saved"; listing_id?: string; analysis_id?: string }
   | { event: "leaderboard_viewed"; period?: string }
+  | { event: "market_filter_used"; region?: string; city?: string; province?: string }
+  | { event: "region_filter_used"; region?: string; province?: string }
+  | { event: "property_type_filter_used"; property_type?: string }
+  | { event: "price_band_filter_used"; price_band?: string; min?: number; max?: number }
+  | { event: "yield_filter_used"; min?: number; max?: number }
+  | { event: "cap_rate_filter_used"; min?: number; max?: number }
+  | { event: "cashflow_filter_used"; min?: number; max?: number }
   | { event: "geography_selected"; city: string; province?: string; source?: string }
   | { event: "asset_type_selected"; type: string; source?: string }
 

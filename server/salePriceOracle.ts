@@ -72,6 +72,13 @@ export async function upsertSaleEstimate(req: Request, input: {
   }
 
   if (existing) {
+    const estimateMetadata = {
+      estimatePriceCents: input.estimatePriceCents,
+      estimated_sale_to_list_ratio: input.listPriceCents ? input.estimatePriceCents / input.listPriceCents : null,
+      city: input.estimateContext?.city,
+      province: input.province || input.estimateContext?.province,
+      propertyType: input.estimateContext?.propertyType,
+    };
     const [updated] = await db.update(propertySaleEstimates)
       .set({
         estimatePriceCents: input.estimatePriceCents,
@@ -96,7 +103,7 @@ export async function upsertSaleEstimate(req: Request, input: {
       eventName: "sale_estimate_updated",
       listingKey: input.listingKey,
       component: "sale_price_prompt",
-      metadata: { estimatePriceCents: input.estimatePriceCents },
+      metadata: estimateMetadata,
     });
     return { ok: true as const, estimate: updated };
   }
@@ -131,7 +138,13 @@ export async function upsertSaleEstimate(req: Request, input: {
     eventName: "sale_estimate_submitted",
     listingKey: input.listingKey,
     component: "sale_price_prompt",
-    metadata: { estimatePriceCents: input.estimatePriceCents },
+    metadata: {
+      estimatePriceCents: input.estimatePriceCents,
+      estimated_sale_to_list_ratio: input.listPriceCents ? input.estimatePriceCents / input.listPriceCents : null,
+      city: input.estimateContext?.city,
+      province: input.province || input.estimateContext?.province,
+      propertyType: input.estimateContext?.propertyType,
+    },
   });
   return { ok: true as const, estimate: created };
 }

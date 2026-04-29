@@ -2445,6 +2445,232 @@ export const analysisQualityScores = pgTable("analysis_quality_scores", {
   propertyAnalysisUnique: uniqueIndex("analysis_quality_scores_property_analysis_idx").on(table.propertyAnalysisId),
 }));
 
+export const leaderboardPeriods = pgTable("leaderboard_periods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  periodType: text("period_type").notNull(),
+  periodStartDate: timestamp("period_start_date").notNull(),
+  periodEndDate: timestamp("period_end_date").notNull(),
+  status: text("status").default("open").notNull(),
+  finalizedAt: timestamp("finalized_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  periodUnique: uniqueIndex("leaderboard_periods_type_start_idx").on(table.periodType, table.periodStartDate),
+}));
+
+export const leaderboardSnapshots = pgTable("leaderboard_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leaderboardPeriodId: varchar("leaderboard_period_id").references(() => leaderboardPeriods.id).notNull(),
+  category: text("category").default("overall").notNull(),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  snapshotVersion: text("snapshot_version").default("leaderboard-v1").notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => ({
+  snapshotUnique: uniqueIndex("leaderboard_snapshots_period_category_idx").on(table.leaderboardPeriodId, table.category, table.snapshotVersion),
+}));
+
+export const leaderboardSnapshotEntries = pgTable("leaderboard_snapshot_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leaderboardSnapshotId: varchar("leaderboard_snapshot_id").references(() => leaderboardSnapshots.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  rank: integer("rank").notNull(),
+  previousRank: integer("previous_rank"),
+  rankChange: integer("rank_change"),
+  score: real("score").notNull(),
+  weightedScore: real("weighted_score").notNull(),
+  totalDealsAnalyzed: integer("total_deals_analyzed").default(0).notNull(),
+  monthlyDealsAnalyzed: integer("monthly_deals_analyzed").default(0).notNull(),
+  eligibleAnalysesCount: integer("eligible_analyses_count").default(0).notNull(),
+  excludedAnalysesCount: integer("excluded_analyses_count").default(0).notNull(),
+  averageConfidenceScore: real("average_confidence_score"),
+  marketOracleScore: real("market_oracle_score"),
+  salePredictionMedianError: real("sale_prediction_median_error"),
+  eligibleSalePredictionsCount: integer("eligible_sale_predictions_count").default(0).notNull(),
+  autoUnderwrittenAvgYield: real("auto_underwritten_avg_yield"),
+  userUnderwrittenAvgYield: real("user_underwritten_avg_yield"),
+  userVsAutoYieldDelta: real("user_vs_auto_yield_delta"),
+  kpis: jsonb("kpis"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  snapshotUserUnique: uniqueIndex("leaderboard_snapshot_entries_snapshot_user_idx").on(table.leaderboardSnapshotId, table.userId),
+}));
+
+export const userDealActivityRollups = pgTable("user_deal_activity_rollups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  periodType: text("period_type").notNull(),
+  periodStartDate: timestamp("period_start_date").notNull(),
+  periodEndDate: timestamp("period_end_date").notNull(),
+  totalDealsAnalyzed: integer("total_deals_analyzed").default(0).notNull(),
+  eligibleDealsAnalyzed: integer("eligible_deals_analyzed").default(0).notNull(),
+  excludedOrLowConfidenceDeals: integer("excluded_or_low_confidence_deals").default(0).notNull(),
+  uniqueListingsAnalyzed: integer("unique_listings_analyzed").default(0).notNull(),
+  uniqueMarketsAnalyzed: integer("unique_markets_analyzed").default(0).notNull(),
+  averageAnalysisConfidenceScore: real("average_analysis_confidence_score"),
+  medianTimePerAnalysisSeconds: real("median_time_per_analysis_seconds"),
+  totalListingCardsOpened: integer("total_listing_cards_opened").default(0).notNull(),
+  totalUnderwritingSessions: integer("total_underwriting_sessions").default(0).notNull(),
+  totalSavedOrExportedAnalyses: integer("total_saved_or_exported_analyses").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  rollupUnique: uniqueIndex("user_deal_activity_rollups_user_period_idx").on(table.userId, table.periodType, table.periodStartDate),
+}));
+
+export const marketSentimentEvents = pgTable("market_sentiment_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id"),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key"),
+  analysisId: varchar("analysis_id"),
+  eventName: text("event_name").notNull(),
+  eventTimestamp: timestamp("event_timestamp").defaultNow().notNull(),
+  province: text("province"),
+  city: text("city"),
+  neighborhood: text("neighborhood"),
+  propertyType: text("property_type"),
+  priceBand: text("price_band"),
+  strategyType: text("strategy_type"),
+  source: text("source").notNull(),
+  sentimentScore: real("sentiment_score"),
+  confidenceScore: real("confidence_score"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const marketSentimentRollups = pgTable("market_sentiment_rollups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  periodType: text("period_type").notNull(),
+  periodStartDate: timestamp("period_start_date").notNull(),
+  periodEndDate: timestamp("period_end_date").notNull(),
+  province: text("province"),
+  city: text("city"),
+  neighborhood: text("neighborhood"),
+  propertyType: text("property_type"),
+  strategyType: text("strategy_type"),
+  totalListingViews: integer("total_listing_views").default(0).notNull(),
+  uniqueUsers: integer("unique_users").default(0).notNull(),
+  totalUnderwrites: integer("total_underwrites").default(0).notNull(),
+  eligibleUnderwrites: integer("eligible_underwrites").default(0).notNull(),
+  watchlistCount: integer("watchlist_count").default(0).notNull(),
+  bullishCount: integer("bullish_count").default(0).notNull(),
+  bearishCount: integer("bearish_count").default(0).notNull(),
+  passCount: integer("pass_count").default(0).notNull(),
+  offerCandidateCount: integer("offer_candidate_count").default(0).notNull(),
+  averageSentimentScore: real("average_sentiment_score"),
+  medianUserEstimatedSaleToListRatio: real("median_user_estimated_sale_to_list_ratio"),
+  averageUserEstimatedSaleToListRatio: real("average_user_estimated_sale_to_list_ratio"),
+  medianUserVsListDelta: real("median_user_vs_list_delta"),
+  medianUserVsAutoModelDelta: real("median_user_vs_auto_model_delta"),
+  averageAnalysisConfidenceScore: real("average_analysis_confidence_score"),
+  sampleSize: integer("sample_size").default(0).notNull(),
+  provisional: boolean("provisional").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  sentimentRollupUnique: uniqueIndex("market_sentiment_rollups_period_market_idx").on(
+    table.periodType,
+    table.periodStartDate,
+    table.province,
+    table.city,
+    table.neighborhood,
+    table.propertyType,
+    table.strategyType,
+  ),
+}));
+
+export const marketReportMetrics = pgTable("market_report_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  periodType: text("period_type").default("monthly").notNull(),
+  periodStartDate: timestamp("period_start_date").notNull(),
+  periodEndDate: timestamp("period_end_date").notNull(),
+  province: text("province"),
+  city: text("city"),
+  neighborhood: text("neighborhood"),
+  propertyType: text("property_type"),
+  strategyType: text("strategy_type"),
+  metricSource: text("metric_source").notNull(),
+  listingCount: integer("listing_count").default(0).notNull(),
+  analysisCount: integer("analysis_count").default(0).notNull(),
+  eligibleAnalysisCount: integer("eligible_analysis_count").default(0).notNull(),
+  uniqueUserCount: integer("unique_user_count"),
+  averageYield: real("average_yield"),
+  medianYield: real("median_yield"),
+  averageCapRate: real("average_cap_rate"),
+  medianCapRate: real("median_cap_rate"),
+  averageCashOnCashReturn: real("average_cash_on_cash_return"),
+  medianCashOnCashReturn: real("median_cash_on_cash_return"),
+  averageDscr: real("average_dscr"),
+  medianDscr: real("median_dscr"),
+  averageMonthlyCashflowCents: bigint("average_monthly_cashflow_cents", { mode: "number" }),
+  medianMonthlyCashflowCents: bigint("median_monthly_cashflow_cents", { mode: "number" }),
+  averagePriceCents: bigint("average_price_cents", { mode: "number" }),
+  medianPriceCents: bigint("median_price_cents", { mode: "number" }),
+  averageRentCents: bigint("average_rent_cents", { mode: "number" }),
+  medianRentCents: bigint("median_rent_cents", { mode: "number" }),
+  averageRentToPriceRatio: real("average_rent_to_price_ratio"),
+  medianRentToPriceRatio: real("median_rent_to_price_ratio"),
+  averageSentimentScore: real("average_sentiment_score"),
+  bullishShare: real("bullish_share"),
+  bearishShare: real("bearish_share"),
+  watchlistRate: real("watchlist_rate"),
+  offerCandidateRate: real("offer_candidate_rate"),
+  averageSalePredictionToListRatio: real("average_sale_prediction_to_list_ratio"),
+  sampleSize: integer("sample_size").default(0).notNull(),
+  provisional: boolean("provisional").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  marketReportMetricUnique: uniqueIndex("market_report_metrics_period_market_source_idx").on(
+    table.periodStartDate,
+    table.province,
+    table.city,
+    table.neighborhood,
+    table.propertyType,
+    table.strategyType,
+    table.metricSource,
+  ),
+}));
+
+export const analysisUnderwritingComparisons = pgTable("analysis_underwriting_comparisons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  propertyAnalysisId: varchar("property_analysis_id").references(() => propertyAnalyses.id),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingKey: text("listing_key"),
+  province: text("province"),
+  city: text("city"),
+  propertyType: text("property_type"),
+  strategyType: text("strategy_type"),
+  autoYield: real("auto_yield"),
+  userYield: real("user_yield"),
+  yieldDelta: real("yield_delta"),
+  autoCapRate: real("auto_cap_rate"),
+  userCapRate: real("user_cap_rate"),
+  capRateDelta: real("cap_rate_delta"),
+  autoCashflowCents: bigint("auto_cashflow_cents", { mode: "number" }),
+  userCashflowCents: bigint("user_cashflow_cents", { mode: "number" }),
+  cashflowDeltaCents: bigint("cashflow_delta_cents", { mode: "number" }),
+  autoRentAssumptionCents: bigint("auto_rent_assumption_cents", { mode: "number" }),
+  userRentAssumptionCents: bigint("user_rent_assumption_cents", { mode: "number" }),
+  rentDeltaCents: bigint("rent_delta_cents", { mode: "number" }),
+  autoExpenseAssumption: jsonb("auto_expense_assumption"),
+  userExpenseAssumption: jsonb("user_expense_assumption"),
+  expenseDelta: jsonb("expense_delta"),
+  autoFinancingAssumption: jsonb("auto_financing_assumption"),
+  userFinancingAssumption: jsonb("user_financing_assumption"),
+  financingDelta: jsonb("financing_delta"),
+  userChangedMajorAssumptions: boolean("user_changed_major_assumptions").default(false).notNull(),
+  userMoreBullishThanAuto: boolean("user_more_bullish_than_auto").default(false).notNull(),
+  userMoreBearishThanAuto: boolean("user_more_bearish_than_auto").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  analysisComparisonUnique: uniqueIndex("analysis_underwriting_comparisons_analysis_idx").on(table.analysisId),
+  propertyAnalysisComparisonUnique: uniqueIndex("analysis_underwriting_comparisons_property_analysis_idx").on(table.propertyAnalysisId),
+}));
+
 export const underwritingNotesRelations = relations(underwritingNotes, ({ one }) => ({
   user: one(users, { fields: [underwritingNotes.userId], references: [users.id] }),
 }));
@@ -2575,6 +2801,51 @@ export const insertAnalysisQualityScoreSchema = createInsertSchema(analysisQuali
   computedAt: true,
 });
 
+export const insertLeaderboardPeriodSchema = createInsertSchema(leaderboardPeriods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeaderboardSnapshotSchema = createInsertSchema(leaderboardSnapshots).omit({
+  id: true,
+  generatedAt: true,
+});
+
+export const insertLeaderboardSnapshotEntrySchema = createInsertSchema(leaderboardSnapshotEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserDealActivityRollupSchema = createInsertSchema(userDealActivityRollups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMarketSentimentEventSchema = createInsertSchema(marketSentimentEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMarketSentimentRollupSchema = createInsertSchema(marketSentimentRollups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMarketReportMetricSchema = createInsertSchema(marketReportMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAnalysisUnderwritingComparisonSchema = createInsertSchema(analysisUnderwritingComparisons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUnderwritingNote = z.infer<typeof insertUnderwritingNoteSchema>;
 export type UnderwritingNote = typeof underwritingNotes.$inferSelect;
 
@@ -2625,6 +2896,14 @@ export type UserSaleEstimatorMetrics = typeof userSaleEstimatorMetrics.$inferSel
 export type UserActivityEvent = typeof userActivityEvents.$inferSelect;
 export type UserInferenceProfile = typeof userInferenceProfiles.$inferSelect;
 export type AnalysisQualityScore = typeof analysisQualityScores.$inferSelect;
+export type LeaderboardPeriod = typeof leaderboardPeriods.$inferSelect;
+export type LeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
+export type LeaderboardSnapshotEntry = typeof leaderboardSnapshotEntries.$inferSelect;
+export type UserDealActivityRollup = typeof userDealActivityRollups.$inferSelect;
+export type MarketSentimentEvent = typeof marketSentimentEvents.$inferSelect;
+export type MarketSentimentRollup = typeof marketSentimentRollups.$inferSelect;
+export type MarketReportMetric = typeof marketReportMetrics.$inferSelect;
+export type AnalysisUnderwritingComparison = typeof analysisUnderwritingComparisons.$inferSelect;
 
 export const marketSnapshots = pgTable("market_snapshots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
