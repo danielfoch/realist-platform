@@ -69,7 +69,7 @@ npm run build
 - No deploy was performed.
 - Branch builds on the existing viral underwriting share-loop branch lineage, not a fresh `main`, because the share-loop migration/API are not on `main` yet.
 - The owner status endpoint now includes recent action metadata. It intentionally omits recipient hashes, but callers should still avoid putting sensitive PII into action metadata.
-- GitHub push still needs verification after the docs commit; if auth is unavailable, pull from the local branch or push manually.
+- Branch was pushed to GitHub successfully: `origin/realist-nightly/2026-04-29-share-status-dashboard`.
 
 ## 10. What Dan should pull into Replit at 10am
 Pull `realist-nightly/2026-04-29-share-status-dashboard` if you want a practical dashboard/API layer for the viral underwriting loop: it shows which shared analyses are earning qualified Google Sheets export credits, which actions are capped, and whether recipients are actually challenging/forking/saving versions after clicking “Challenge my underwriting.”
