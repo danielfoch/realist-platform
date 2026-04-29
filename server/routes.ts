@@ -76,13 +76,14 @@ import {
   sendWelcomeAccountEmail,
 } from "./resend";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { logUserActivity } from "./userActivity";
+import { logUserActivity, rebuildUserInferenceProfile } from "./userActivity";
 import {
   getCurrentSaleEstimate,
   lookupSoldPriceForListing,
   manuallyResolveSoldPrice,
   markListingsAbsent,
   markListingsSeenFromActiveFeed,
+  processDueSalePriceLookups,
   recalculateEstimatorMetrics,
   upsertSaleEstimate,
 } from "./salePriceOracle";
@@ -650,7 +651,7 @@ export async function registerRoutes(
       if (!event || typeof event !== "string" || event.length > 100) {
         return res.status(400).json({ ok: false });
       }
-      const userId = (req as any).user?.id || null;
+      const userId = (req as any).session?.userId || (req as any).user?.id || null;
       const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
 
       // Log structured event for future pipeline ingestion
@@ -813,6 +814,25 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error looking up sold price:", error);
       res.status(500).json({ error: "Failed to lookup sold price" });
+    }
+  });
+
+  app.post("/api/admin/sale-resolutions/process-due", isAdmin, async (req, res) => {
+    try {
+      res.json(await processDueSalePriceLookups(req, Math.min(Number(req.query.limit) || 50, 100)));
+    } catch (error) {
+      console.error("Error processing due sale price lookups:", error);
+      res.status(500).json({ error: "Failed to process due lookups" });
+    }
+  });
+
+  app.post("/api/admin/user-inference/rebuild/:userId", isAdmin, async (req, res) => {
+    try {
+      await rebuildUserInferenceProfile(req.params.userId);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error rebuilding user inference profile:", error);
+      res.status(500).json({ error: "Failed to rebuild user inference profile" });
     }
   });
 

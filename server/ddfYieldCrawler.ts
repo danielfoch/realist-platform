@@ -237,6 +237,8 @@ export async function crawlDdfForProvince(
           rawJson: {
             publicRemarks: listing.PublicRemarks?.substring(0, 500),
             streetAddress: listing.UnparsedAddress,
+            standardStatus: listing.StandardStatus || listing.MlsStatus || null,
+            listOfficeBoard: listing.ListOfficeBoard || listing.OriginatingSystemName || null,
             photosCount: listing.PhotosCount,
             modificationTimestamp: listing.ModificationTimestamp,
           },
@@ -328,6 +330,8 @@ export async function crawlDdfForCity(
           rawJson: {
             publicRemarks: listing.PublicRemarks?.substring(0, 500),
             streetAddress: listing.UnparsedAddress,
+            standardStatus: listing.StandardStatus || listing.MlsStatus || null,
+            listOfficeBoard: listing.ListOfficeBoard || listing.OriginatingSystemName || null,
             photosCount: listing.PhotosCount,
             modificationTimestamp: listing.ModificationTimestamp,
           },
@@ -431,7 +435,7 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
             ))
             : [];
           const existingByKey = new Map(existingSnapshots.map((snapshot) => [snapshot.listingKey, snapshot]));
-          const newSnapshots = snapshots.filter((snapshot) => !existingByKey.has(snapshot.listingKey));
+          const newSnapshotKeys = new Set(snapshots.filter((snapshot) => !existingByKey.has(snapshot.listingKey)).map((snapshot) => snapshot.listingKey));
 
           const batchSize = 500;
           let inserted = 0;
@@ -448,20 +452,25 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
               inArray(ddfListingSnapshots.listingKey, listingKeys),
             ))
             : [];
+          const newSnapshots = currentSnapshots.filter((snapshot) => newSnapshotKeys.has(snapshot.listingKey));
           const changedSnapshots = currentSnapshots.flatMap((snapshot) => {
             const previous = existingByKey.get(snapshot.listingKey);
             if (!previous) return [];
-            const previousStatus = String((previous.rawJson as Record<string, unknown> | undefined)?.StandardStatus || "");
-            const currentStatus = String((snapshot.rawJson as Record<string, unknown> | undefined)?.StandardStatus || "");
+            const previousStatus = String((previous.rawJson as Record<string, unknown> | undefined)?.standardStatus || "");
+            const currentStatus = String((snapshot.rawJson as Record<string, unknown> | undefined)?.standardStatus || "");
             if (previous.listPrice === snapshot.listPrice && previousStatus === currentStatus) return [];
             return [{ previous, current: snapshot }];
           });
           const missingSnapshots = provinceExistingSnapshots.filter((snapshot) => !listingKeySet.has(snapshot.listingKey));
+          const soldLikeSnapshots = currentSnapshots.filter((snapshot) => {
+            const status = String((snapshot.rawJson as Record<string, unknown> | undefined)?.standardStatus || "").toLowerCase();
+            return status.includes("sold") || status.includes("closed");
+          });
 
           await markListingsSeenFromActiveFeed(currentSnapshots.map((snapshot) => ({
             listingKey: snapshot.listingKey,
             mlsNumber: snapshot.mlsNumber,
-            board: String((snapshot.rawJson as Record<string, unknown> | undefined)?.ListOfficeBoard || ""),
+            board: String((snapshot.rawJson as Record<string, unknown> | undefined)?.listOfficeBoard || ""),
             province: snapshot.province,
           })));
 
@@ -470,6 +479,14 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
             missingSnapshots.map((snapshot) => snapshot.listingKey),
             "missing_from_feed",
           );
+          if (soldLikeSnapshots.length > 0) {
+            await markListingsAbsent(
+              null,
+              soldLikeSnapshots.map((snapshot) => snapshot.listingKey),
+              "sold_status",
+              { force: true },
+            );
+          }
           if (absenceResult.lockedEstimateCount > 0) {
             await Promise.allSettled(
               missingSnapshots

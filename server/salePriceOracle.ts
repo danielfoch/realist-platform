@@ -18,6 +18,14 @@ import type { Request } from "express";
 
 export const SALE_PRICE_RETRY_DAYS = [0, 3, 7, 14, 30];
 
+function nextLookupAttemptDate(attemptCount: number, status: string): Date | null {
+  if (status === "resolved" || status === "not_allowed") return null;
+  const maxAttempts = Number(process.env.SALE_PRICE_LOOKUP_MAX_ATTEMPTS || 5);
+  if (attemptCount >= maxAttempts) return null;
+  const retryDays = SALE_PRICE_RETRY_DAYS[Math.min(attemptCount, SALE_PRICE_RETRY_DAYS.length - 1)] ?? 30;
+  return new Date(Date.now() + retryDays * 24 * 60 * 60 * 1000);
+}
+
 export async function getCurrentSaleEstimate(userId: string, listingKey: string) {
   const [estimate] = await db.select().from(propertySaleEstimates).where(and(
     eq(propertySaleEstimates.userId, userId),
@@ -235,14 +243,16 @@ export async function lookupSoldPriceForListing(req: Request | null, listingKey:
   const [resolution] = await db.select().from(listingSaleResolutions).where(eq(listingSaleResolutions.listingKey, listingKey)).limit(1);
   if (!resolution) return null;
   if (process.env.ENABLE_SOLD_PRICE_RESOLUTION !== "true") {
+    const attemptCount = (resolution.lookupAttemptCount || 0) + 1;
     await db.update(listingSaleResolutions).set({
       resolutionStatus: "unavailable",
       actualSalePriceCents: null,
       sourceType: "unavailable",
       sourceName: "Resolution disabled",
       excludeFromMetrics: true,
-      lookupAttemptCount: sql`${listingSaleResolutions.lookupAttemptCount} + 1`,
+      lookupAttemptCount: attemptCount,
       lastLookupAttemptAt: new Date(),
+      nextLookupAttemptAt: nextLookupAttemptDate(attemptCount, "unavailable"),
       updatedAt: new Date(),
     }).where(eq(listingSaleResolutions.id, resolution.id));
     await logUserActivity(req, { eventName: "sold_price_unavailable", listingKey, component: "sale_price_resolver", metadata: { reason: "disabled" } });
@@ -259,6 +269,7 @@ export async function lookupSoldPriceForListing(req: Request | null, listingKey:
   for (const provider of getSalePriceProviders()) {
     if (!provider.isEnabled() || !provider.supports(listing)) continue;
     const result = await provider.lookupSoldPrice(listing);
+    const attemptCount = (resolution.lookupAttemptCount || 0) + 1;
     const excludeFromMetrics = shouldExcludeResolutionFromMetrics({
       resolutionStatus: result.status,
       actualSalePriceCents: result.actualSalePriceCents || null,
@@ -273,8 +284,9 @@ export async function lookupSoldPriceForListing(req: Request | null, listingKey:
       sourceConfidence: result.confidence != null ? String(result.confidence) : null,
       excludeFromMetrics,
       errorMessage: result.errorMessage || null,
-      lookupAttemptCount: sql`${listingSaleResolutions.lookupAttemptCount} + 1`,
+      lookupAttemptCount: attemptCount,
       lastLookupAttemptAt: new Date(),
+      nextLookupAttemptAt: nextLookupAttemptDate(attemptCount, result.status),
       updatedAt: new Date(),
     }).where(eq(listingSaleResolutions.id, resolution.id));
     await logUserActivity(req, {
@@ -298,11 +310,14 @@ export async function manuallyResolveSoldPrice(req: Request, input: {
   unavailable?: boolean;
 }) {
   const status = input.unavailable ? "unavailable" : "resolved";
-  const actual = status === "resolved" ? input.actualSalePriceCents : null;
-  const excludeFromMetrics = shouldExcludeResolutionFromMetrics({ resolutionStatus: status, actualSalePriceCents: actual });
+  const actual = status === "resolved" && input.actualSalePriceCents && input.actualSalePriceCents > 0
+    ? input.actualSalePriceCents
+    : null;
+  const finalStatus = actual ? "resolved" : "unavailable";
+  const excludeFromMetrics = shouldExcludeResolutionFromMetrics({ resolutionStatus: finalStatus, actualSalePriceCents: actual });
   await db.insert(listingSaleResolutions).values({
     listingKey: input.listingKey,
-    resolutionStatus: status,
+    resolutionStatus: finalStatus,
     actualSalePriceCents: actual,
     soldDate: input.soldDate || null,
     sourceType: "manual_admin",
@@ -312,7 +327,7 @@ export async function manuallyResolveSoldPrice(req: Request, input: {
   }).onConflictDoUpdate({
     target: listingSaleResolutions.listingKey,
     set: {
-      resolutionStatus: status,
+      resolutionStatus: finalStatus,
       actualSalePriceCents: actual,
       soldDate: input.soldDate || null,
       sourceType: "manual_admin",
@@ -323,15 +338,27 @@ export async function manuallyResolveSoldPrice(req: Request, input: {
     },
   });
   await db.update(propertySaleEstimates)
-    .set({ status: status === "resolved" ? "resolved" : "excluded", resolvedAt: new Date(), lockedAt: sql`COALESCE(${propertySaleEstimates.lockedAt}, now())`, updatedAt: new Date() })
+    .set({ status: finalStatus === "resolved" ? "resolved" : "excluded", resolvedAt: new Date(), lockedAt: sql`COALESCE(${propertySaleEstimates.lockedAt}, now())`, updatedAt: new Date() })
     .where(eq(propertySaleEstimates.listingKey, input.listingKey));
   await logUserActivity(req, {
-    eventName: status === "resolved" ? "sold_price_resolved" : "sold_price_unavailable",
+    eventName: finalStatus === "resolved" ? "sold_price_resolved" : "sold_price_unavailable",
     listingKey: input.listingKey,
     component: "admin_manual_resolver",
     metadata: { sourceName: input.sourceName },
   });
-  if (status === "resolved") await recalculateEstimatorMetricsForListing(input.listingKey);
+  if (finalStatus === "resolved") await recalculateEstimatorMetricsForListing(input.listingKey);
+}
+
+export async function processDueSalePriceLookups(req: Request | null = null, limit = 50) {
+  const rows = await db.select()
+    .from(listingSaleResolutions)
+    .where(sql`${listingSaleResolutions.nextLookupAttemptAt} IS NOT NULL AND ${listingSaleResolutions.nextLookupAttemptAt} <= now()`)
+    .limit(limit);
+  const results = [];
+  for (const row of rows) {
+    results.push(await lookupSoldPriceForListing(req, row.listingKey));
+  }
+  return { attempted: results.length, results };
 }
 
 export async function recalculateEstimatorMetrics(userId: string) {
