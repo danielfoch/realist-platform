@@ -9,7 +9,7 @@ import {
   Menu, X, User, LogOut, Briefcase, Building, ChevronDown,
   Calculator, MapPin, Users, Handshake, Calendar, Radio,
   BookOpen, FileText, TrendingUp, BarChart3, Shield, Gavel,
-  Map, DollarSign, LineChart, AlertTriangle, Layers, Building2,
+  Map, DollarSign, AlertTriangle, Layers, Building2,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -61,7 +61,6 @@ const navCategories: NavCategory[] = [
     items: [
       { href: "/insights/market-report", label: "Market Report", description: "Monthly yield and rent trends by city", icon: <BarChart3 className="h-4 w-4" /> },
       { href: "/insights/mortgage-rates", label: "Mortgage Rates", description: "Best current rates across Canada", icon: <TrendingUp className="h-4 w-4" /> },
-      { href: "/insights/cpi-march-2026", label: "CPI Report", description: "March 2026 — investor interpretation", icon: <LineChart className="h-4 w-4" /> },
       { href: "/insights/distress-report", label: "Distress Report", description: "Monthly foreclosure and POS snapshot", icon: <AlertTriangle className="h-4 w-4" /> },
       { href: "/insights/podcast", label: "Podcast", description: "Real estate investor conversations", icon: <Radio className="h-4 w-4" /> },
       { href: "/insights/blog", label: "Blog & Research", description: "Market analysis and strategy", icon: <BookOpen className="h-4 w-4" /> },

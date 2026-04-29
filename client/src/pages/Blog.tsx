@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
@@ -7,9 +6,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, Calendar, Clock, User } from "lucide-react";
+import { ExternalLink, Calendar, Clock, FileText, TrendingUp, Landmark, Building2 } from "lucide-react";
 import { format } from "date-fns";
-import type { BlogPost } from "@shared/schema";
 
 interface SubstackPost {
   title: string;
@@ -50,39 +48,52 @@ function estimateReadTime(content: string): number {
   return Math.ceil(words / wordsPerMinute);
 }
 
-const categories = [
-  { value: "all", label: "All" },
-  { value: "market-analysis", label: "Market Analysis" },
-  { value: "strategy", label: "Strategy" },
-  { value: "deal-breakdown", label: "Deal Breakdown" },
-  { value: "news", label: "News" },
+interface DeepResearchReport {
+  href: string;
+  title: string;
+  description: string;
+  badge: string;
+  icon: React.ReactNode;
+  iconBg: string;
+}
+
+const deepResearchReports: DeepResearchReport[] = [
+  {
+    href: "/insights/spring-economic-update-2026",
+    title: "Spring Economic Update 2026",
+    description:
+      "What Ottawa's spring fiscal update says about Canadian real estate — housing affordability, starts, inflation, rates, and the deficit through an investor lens.",
+    badge: "Apr 2026",
+    icon: <Landmark className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />,
+    iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
+  },
+  {
+    href: "/insights/the-spread-that-ate-the-economy",
+    title: "The Spread That Ate the Economy",
+    description:
+      "How widening credit spreads are quietly reshaping Canadian real estate cap rates, mortgage pricing, and deal viability.",
+    badge: "Research",
+    icon: <TrendingUp className="h-5 w-5 text-rose-600 dark:text-rose-400" />,
+    iconBg: "bg-rose-100 dark:bg-rose-900/30",
+  },
+  {
+    href: "/reports/cmhc-land-use-regulations-housing-canada-2026",
+    title: "CMHC Land Use Regulations & Housing Canada 2026",
+    description:
+      "Deep dive into how municipal land-use rules constrain Canadian housing supply — and what investors need to know.",
+    badge: "Research",
+    icon: <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
+    iconBg: "bg-blue-100 dark:bg-blue-900/30",
+  },
 ];
 
 export default function Blog() {
-  const [selectedCategory, setSelectedCategory] = useState("all");
-
-  const { data: dbPosts, isLoading: dbLoading } = useQuery<BlogPost[]>({
-    queryKey: ["/api/blog/posts/db"],
-    staleTime: 1000 * 60 * 5,
-  });
-
   const { data: rssData, isLoading: rssLoading } = useQuery<RSSFeedResponse>({
     queryKey: ["/api/blog/posts"],
     staleTime: 1000 * 60 * 30,
   });
 
-  const filteredPosts = (dbPosts || []).filter(
-    (p) => selectedCategory === "all" || p.category === selectedCategory
-  );
-
   const substackPosts = rssData?.items || [];
-
-  const categoryLabels: Record<string, string> = {
-    "market-analysis": "Market Analysis",
-    "strategy": "Strategy",
-    "deal-breakdown": "Deal Breakdown",
-    "news": "News",
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,133 +108,63 @@ export default function Blog() {
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4" data-testid="text-blog-title">
-            Blog
+            Blog & Research
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto" data-testid="text-blog-subtitle">
-            Insights on Canadian real estate investing, market analysis, and wealth-building strategies from The Canadian Real Estate Investor Podcast.
+            Substack posts from The Canadian Real Estate Investor team, plus original deep research reports from Realist.ca.
           </p>
         </div>
 
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-2" data-testid="text-substack-label">
-            From Our Substack
-          </h2>
-          <h3 className="text-xl font-semibold mb-6 text-muted-foreground" data-testid="text-realist-blog-heading">
-            Monthly Real Estate Market Reports
-          </h3>
-
-          <div className="flex items-center flex-wrap gap-2 mb-8" data-testid="container-category-filters">
-            {categories.map((cat) => (
-              <Button
-                key={cat.value}
-                variant={selectedCategory === cat.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(cat.value)}
-                data-testid={`button-filter-${cat.value}`}
-              >
-                {cat.label}
+        <section className="mb-16" data-testid="section-deep-research">
+          <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
+            <h2 className="text-2xl font-bold" data-testid="text-deep-research-heading">
+              Realist Deep Research Reports
+            </h2>
+            <Link href="/insights/market-report">
+              <Button variant="outline" size="sm" data-testid="button-view-monthly-archive">
+                <FileText className="mr-2 h-4 w-4" />
+                Monthly Market Report Archive
               </Button>
-            ))}
+            </Link>
           </div>
-
-          {dbLoading && (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <Card key={i}>
-                  <Skeleton className="h-48 w-full" />
-                  <CardHeader>
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-1/2 mt-2" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {deepResearchReports.map((report) => (
+              <Link
+                key={report.href}
+                href={report.href}
+                className="block group"
+                data-testid={`link-research-report-${report.href.split("/").pop()}`}
+              >
+                <Card className="h-full hover-elevate transition-all duration-200">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${report.iconBg}`}>
+                        {report.icon}
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {report.badge}
+                      </Badge>
+                    </div>
+                    <h3
+                      className="font-semibold text-lg leading-tight group-hover:text-primary transition-colors"
+                      data-testid={`text-research-title-${report.href.split("/").pop()}`}
+                    >
+                      {report.title}
+                    </h3>
                   </CardHeader>
                   <CardContent>
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3 mt-2" />
+                    <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
+                      {report.description}
+                    </p>
+                    <span className="text-sm text-primary font-medium">Read report →</span>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
-
-          {!dbLoading && filteredPosts.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground" data-testid="text-no-db-posts">
-                No articles found{selectedCategory !== "all" ? " in this category" : ""}. Check back soon!
-              </p>
-            </div>
-          )}
-
-          {!dbLoading && filteredPosts.length > 0 && (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredPosts.map((post) => (
-                <Link
-                  key={post.slug}
-                  href={post.category === "market-analysis" ? `/reports/${post.slug}` : `/insights/blog/${post.slug}`}
-                  className="block group"
-                  data-testid={`link-db-post-${post.slug}`}
-                >
-                  <Card className="h-full hover-elevate transition-all duration-200">
-                    {post.coverImage && (
-                      <div className="aspect-video overflow-hidden">
-                        <img
-                          src={post.coverImage}
-                          alt={post.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          data-testid={`img-db-post-${post.slug}`}
-                        />
-                      </div>
-                    )}
-                    {!post.coverImage && (
-                      <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                        <span className="text-4xl font-bold text-primary/30">R</span>
-                      </div>
-                    )}
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center flex-wrap gap-2 mb-2">
-                        <Badge variant="secondary" className="text-xs" data-testid={`badge-category-${post.slug}`}>
-                          {categoryLabels[post.category] || post.category}
-                        </Badge>
-                      </div>
-                      <h3
-                        className="font-semibold text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors"
-                        data-testid={`text-db-post-title-${post.slug}`}
-                      >
-                        {post.title}
-                      </h3>
-                      <div className="flex items-center flex-wrap gap-3 text-sm text-muted-foreground mt-2">
-                        <span className="flex items-center gap-1">
-                          <User className="h-3.5 w-3.5" />
-                          {post.authorName}
-                        </span>
-                        {post.publishedAt && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {format(new Date(post.publishedAt), "MMM d, yyyy")}
-                          </span>
-                        )}
-                        {post.readTimeMinutes && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            {post.readTimeMinutes} min
-                          </span>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p
-                        className="text-sm text-muted-foreground line-clamp-3"
-                        data-testid={`text-db-post-excerpt-${post.slug}`}
-                      >
-                        {post.excerpt}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
+              </Link>
+            ))}
+          </div>
         </section>
 
-        <section>
+        <section data-testid="section-substack">
           <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
             <h2 className="text-2xl font-bold" data-testid="text-substack-heading">
               Latest Substack Posts

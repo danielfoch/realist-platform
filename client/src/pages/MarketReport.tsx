@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
-import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Minus, X, Plus, Layers, FileText } from "lucide-react";
+import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Minus, X, Plus, Layers, FileText, Percent } from "lucide-react";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
 import { apiRequest } from "@/lib/queryClient";
@@ -360,6 +360,98 @@ export default function MarketReport() {
               : "Loading..."}
             {" "}— Yields, rents, and investment metrics across {nationalAvgs?.totalCities || 30} Canadian markets
           </p>
+        </div>
+
+        <div className="mb-12" data-testid="section-macro-reports">
+          <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
+          <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link href="/insights/cpi-march-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-cpi">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                      <Percent className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Mar 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">CPI Report — March 2026</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Statistics Canada's latest inflation release with provincial breakdown and investor interpretation.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/insights/building-permits">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-building-permits">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                      <Building2 className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Feb 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Building Permits</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Total permits fell 8.4% to $12.1B. Non-residential down 24%, residential up 1.7%.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/insights/gta-precon-pricing">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-precon-pricing">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                      <BarChart3 className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Apr 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">GTA Pre-Construction Pricing Movement</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Floorplan-level cuts vs raises across 1,000+ active GTA pre-con units. Builder pricing power, rebate benchmark, resale implications.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/insights/new-construction-canada">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-new-construction">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                      <Building2 className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Live CREA DDF</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Canada New Construction Market</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Live snapshot of active new construction listings across Canada. Pricing, regions, property types, pre-con signals.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/insights/productivity-gap">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-productivity-gap">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                      <BarChart3 className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Dec 2024</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Canada-US Productivity Gap</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Top 10% of earners account for 75% of the GDP gap. Implications for RE investors.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
         </div>
 
         {loadingLatest ? (
@@ -843,80 +935,6 @@ export default function MarketReport() {
               </p>
             </div>
 
-            <div className="mt-16 border-t pt-12" data-testid="section-macro-reports">
-              <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
-              <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Link href="/insights/building-permits">
-                  <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-building-permits">
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                          <Building2 className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <Badge variant="outline" className="text-[10px]">Feb 2026</Badge>
-                      </div>
-                      <h3 className="font-bold text-sm mb-1">Building Permits</h3>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Total permits fell 8.4% to $12.1B. Non-residential down 24%, residential up 1.7%.
-                      </p>
-                      <span className="text-xs text-primary font-medium">View Report →</span>
-                    </CardContent>
-                  </Card>
-                </Link>
-                <Link href="/insights/gta-precon-pricing">
-                  <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-precon-pricing">
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                          <BarChart3 className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
-                        </div>
-                        <Badge variant="outline" className="text-[10px]">Apr 2026</Badge>
-                      </div>
-                      <h3 className="font-bold text-sm mb-1">GTA Pre-Construction Pricing Movement</h3>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Floorplan-level cuts vs raises across 1,000+ active GTA pre-con units. Builder pricing power, rebate benchmark, resale implications.
-                      </p>
-                      <span className="text-xs text-primary font-medium">View Report →</span>
-                    </CardContent>
-                  </Card>
-                </Link>
-                <Link href="/insights/new-construction-canada">
-                  <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-new-construction">
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                          <Building2 className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <Badge variant="outline" className="text-[10px]">Live CREA DDF</Badge>
-                      </div>
-                      <h3 className="font-bold text-sm mb-1">Canada New Construction Market</h3>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Live snapshot of active new construction listings across Canada. Pricing, regions, property types, pre-con signals.
-                      </p>
-                      <span className="text-xs text-primary font-medium">View Report →</span>
-                    </CardContent>
-                  </Card>
-                </Link>
-                <Link href="/insights/productivity-gap">
-                  <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-productivity-gap">
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                          <BarChart3 className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
-                        </div>
-                        <Badge variant="outline" className="text-[10px]">Dec 2024</Badge>
-                      </div>
-                      <h3 className="font-bold text-sm mb-1">Canada-US Productivity Gap</h3>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Top 10% of earners account for 75% of the GDP gap. Implications for RE investors.
-                      </p>
-                      <span className="text-xs text-primary font-medium">View Report →</span>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </div>
-            </div>
           </>
         )}
       </div>
