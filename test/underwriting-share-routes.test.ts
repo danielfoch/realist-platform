@@ -1,4 +1,5 @@
 import {
+  createUnderwritingShare,
   getActionPolicy,
   getRewardPolicySnapshot,
   getShareActionSummary,
@@ -160,5 +161,33 @@ describe('viral underwriting share qualification', () => {
   it('exposes the current Google Sheets export reward policy snapshot', () => {
     expect(getRewardPolicySnapshot().fork).toEqual(getActionPolicy('fork'));
     expect(getRewardPolicySnapshot().challenge.creditAmount).toBe(2);
+  });
+
+  it('creates lineage-aware onward shares for challenged versions', async () => {
+    const query = jest.fn(async () => ({
+      rows: [{ id: 55, token: 'next-share-token', share_depth: 2 }],
+    }));
+
+    const share = await createUnderwritingShare({ query }, {
+      analysisId: 123,
+      inviterUserId: 77,
+      source: 'challenger_fork',
+      parentShareId: 44,
+      parentShareActionId: 99,
+      parentShareDepth: 1,
+    });
+
+    expect(share).toMatchObject({
+      id: 55,
+      token: 'next-share-token',
+      shareDepth: 2,
+      shareUrl: '/underwriting/next-share-token',
+      cta: 'Challenge my underwriting.',
+    });
+    expect(share.rewardPolicy.saved_version.creditAmount).toBe(4);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('parent_share_id, parent_share_action_id, share_depth'),
+      [123, 77, expect.any(String), 'challenger_fork', 44, 99, 2],
+    );
   });
 });

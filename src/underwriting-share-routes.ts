@@ -35,6 +35,39 @@ function randomToken() {
   return crypto.randomBytes(18).toString('base64url');
 }
 
+export async function createUnderwritingShare(database: DatabaseAdapter, input: {
+  analysisId: number | string;
+  inviterUserId: number | null;
+  source?: string;
+  parentShareId?: number | null;
+  parentShareActionId?: number | null;
+  parentShareDepth?: number | null;
+}) {
+  const token = randomToken();
+  const source = hasNonEmptyString(input.source) ? input.source.trim().slice(0, 64) : 'analysis';
+  const parentShareId = input.parentShareId || null;
+  const parentShareActionId = input.parentShareActionId || null;
+  const shareDepth = parentShareId ? Number(input.parentShareDepth || 0) + 1 : 0;
+
+  const created = await database.query(
+    `INSERT INTO underwriting_shares (
+       analysis_id, inviter_user_id, token, status, source, parent_share_id, parent_share_action_id, share_depth
+     ) VALUES ($1, $2, $3, 'active', $4, $5, $6, $7)
+     RETURNING id, token, share_depth`,
+    [input.analysisId, input.inviterUserId, token, source, parentShareId, parentShareActionId, shareDepth],
+  );
+
+  const row = created.rows[0];
+  return {
+    id: row.id,
+    token: row.token,
+    shareDepth: Number(row.share_depth || shareDepth),
+    shareUrl: `/underwriting/${row.token}`,
+    cta: 'Challenge my underwriting.',
+    rewardPolicy: getRewardPolicySnapshot(),
+  };
+}
+
 function sha256(value: string) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
@@ -290,21 +323,20 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         return;
       }
 
-      const token = randomToken();
-      const created = await database.query(
-        `INSERT INTO underwriting_shares (analysis_id, inviter_user_id, token, status, source)
-         VALUES ($1, $2, $3, 'active', $4)
-         RETURNING id, token`,
-        [id, userId, token, req.body?.source || 'analysis'],
-      );
+      const created = await createUnderwritingShare(database, {
+        analysisId: id,
+        inviterUserId: userId,
+        source: req.body?.source || 'analysis',
+      });
 
       res.json({
         success: true,
-        shareId: created.rows[0].id,
-        token: created.rows[0].token,
-        shareUrl: `/underwriting/${created.rows[0].token}`,
-        cta: 'Challenge my underwriting.',
-        rewardPolicy: getRewardPolicySnapshot(),
+        shareId: created.id,
+        token: created.token,
+        shareUrl: created.shareUrl,
+        cta: created.cta,
+        shareDepth: created.shareDepth,
+        rewardPolicy: created.rewardPolicy,
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -373,7 +405,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
       }
 
       const shareResult = await database.query(
-        `SELECT id, inviter_user_id, analysis_id, status FROM underwriting_shares WHERE token = $1`,
+        `SELECT id, inviter_user_id, analysis_id, status, share_depth FROM underwriting_shares WHERE token = $1`,
         [req.params.token],
       );
       const share = shareResult.rows[0];
@@ -382,8 +414,18 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         return;
       }
 
+      const recorded = await recordQualifiedShareAction(database, {
+        shareId: share.id,
+        inviterUserId: share.inviter_user_id,
+        action,
+        recipientHash: getRecipientHash(req, recipient),
+        metadata: { ...(metadata || {}), userId: req.userId || null },
+      });
+
       let savedAnalysisId: number | null = null;
-      if ((action === 'fork' || action === 'saved_version') && req.userId) {
+      let onwardShare: Awaited<ReturnType<typeof createUnderwritingShare>> | null = null;
+
+      if (recorded.status === 'qualified' && (action === 'fork' || action === 'saved_version') && req.userId) {
         const source = await database.query(`SELECT * FROM deal_analyses WHERE id = $1`, [share.analysis_id]);
         const sourceAnalysis = source.rows[0];
         if (sourceAnalysis) {
@@ -412,18 +454,30 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
             ],
           );
           savedAnalysisId = saved.rows[0]?.id || null;
+
+          if (savedAnalysisId) {
+            onwardShare = await createUnderwritingShare(database, {
+              analysisId: savedAnalysisId,
+              inviterUserId: req.userId,
+              source: `challenger_${action}`,
+              parentShareId: share.id,
+              parentShareActionId: recorded.actionId || null,
+              parentShareDepth: Number(share.share_depth || 0),
+            });
+
+            if (recorded.actionId) {
+              await database.query(
+                `UPDATE underwriting_share_actions
+                 SET metadata = metadata || $2::jsonb
+                 WHERE id = $1`,
+                [recorded.actionId, { savedAnalysisId, onwardShareId: onwardShare.id, onwardShareToken: onwardShare.token }],
+              );
+            }
+          }
         }
       }
 
-      const recorded = await recordQualifiedShareAction(database, {
-        shareId: share.id,
-        inviterUserId: share.inviter_user_id,
-        action,
-        recipientHash: getRecipientHash(req, recipient),
-        metadata: { ...(metadata || {}), userId: req.userId || null, savedAnalysisId },
-      });
-
-      res.json({ success: true, ...recorded, savedAnalysisId });
+      res.json({ success: true, ...recorded, savedAnalysisId, onwardShare });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
@@ -432,7 +486,8 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
   router.get('/underwriting-shares/:token/status', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const result = await database.query(
-        `SELECT id, token, status, qualified_action_count, credit_awarded, last_qualified_action_at
+        `SELECT id, token, status, qualified_action_count, credit_awarded, last_qualified_action_at,
+                parent_share_id, parent_share_action_id, share_depth
          FROM underwriting_shares
          WHERE token = $1 AND inviter_user_id = $2`,
         [req.params.token, req.userId],
