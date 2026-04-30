@@ -6730,6 +6730,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/insights/precon-vs-resale-1990s", (req, res) => {
+    res.set("Cache-Control", "private, no-store");
     const expected = process.env.PRECON_REPORT_TOKEN;
     if (!expected) {
       return res.status(503).json({ error: "Report not configured" });
@@ -6740,7 +6741,6 @@ export async function registerRoutes(
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
       return res.status(401).json({ error: "Invalid or missing access token" });
     }
-    res.set("Cache-Control", "private, no-store");
     import("./preconResale1990sReport").then(({ getPreconResale1990sReport }) => {
       res.json(getPreconResale1990sReport());
     }).catch((error) => {

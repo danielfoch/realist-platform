@@ -60,6 +60,7 @@ Preferred communication style: Simple, everyday language.
 - **Distress Deals Browser**: Search tool for power-of-sale, motivated seller, and VTB listings using DDF OData queries, distress scoring, and server-side caching.
 - **Monthly Distress Report**: Auto-generated report on distress listings trends.
 - **Daily City Investment Reports**: Regularly published reports for major Canadian cities.
+- **Private Client Reports (Unique-Link Gating)**: Single-token gated research reports for private client distribution. The first such report is the GTA Pre-Construction vs Resale Condo Pricing 1985-2000 reconstruction at `/insights/precon-vs-resale-1990s` (gated by `PRECON_REPORT_TOKEN` env secret using `crypto.timingSafeEqual` + `Cache-Control: private, no-store`; private-notice fallback when no/invalid key; `noIndex` SEO).
 - **Multiplex Investor Fit Assessment**: 6-step quiz funnel calculating investor fit score and routing to appropriate resources, integrating with GHL CRM and Google Sheets.
 - **Multiplex Masterclass Sales Page**: Hidden sales page with lead capture and Stripe checkout for a one-time payment.
 - **In-App LMS (Multiplex Masterclass Course)**: Gated course viewer with 8 modules, 47+ lessons, video player, lesson completion tracking, and community link.
