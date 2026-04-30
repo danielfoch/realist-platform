@@ -6729,6 +6729,26 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/insights/precon-vs-resale-1990s", (req, res) => {
+    const expected = process.env.PRECON_REPORT_TOKEN;
+    if (!expected) {
+      return res.status(503).json({ error: "Report not configured" });
+    }
+    const provided = (req.query.key ?? "").toString();
+    const a = Buffer.from(provided);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return res.status(401).json({ error: "Invalid or missing access token" });
+    }
+    res.set("Cache-Control", "private, no-store");
+    import("./preconResale1990sReport").then(({ getPreconResale1990sReport }) => {
+      res.json(getPreconResale1990sReport());
+    }).catch((error) => {
+      console.error("Precon 1990s report error:", error);
+      res.status(500).json({ error: "Failed to load report" });
+    });
+  });
+
   app.get("/api/insights/cpi-march-2026", async (req, res) => {
     try {
       const { getCpiReport } = await import("./cpiReport");

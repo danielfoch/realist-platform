@@ -3,6 +3,7 @@ export type InvestmentMetricKey =
   | "gross_yield"
   | "cap_rate"
   | "cash_on_cash"
+  | "dscr"
   | "irr"
   | "monthly_cash_flow"
   | "community_consensus";
@@ -114,6 +115,8 @@ export function metricLabel(metric: InvestmentMetricKey): string {
       return "Estimated cap rate";
     case "cash_on_cash":
       return "Estimated cash-on-cash";
+    case "dscr":
+      return "Estimated DSCR";
     case "irr":
       return "Estimated IRR";
     case "monthly_cash_flow":

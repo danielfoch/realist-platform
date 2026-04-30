@@ -8,6 +8,7 @@ interface SEOProps {
   ogImage?: string;
   ogType?: string;
   structuredData?: object;
+  noIndex?: boolean;
 }
 
 const BASE_URL = "https://realist.ca";
@@ -21,6 +22,7 @@ export function SEO({
   ogImage = DEFAULT_IMAGE,
   ogType = "website",
   structuredData,
+  noIndex = false,
 }: SEOProps) {
   const fullTitle = title.includes("Realist.ca") ? title : `${title} | Realist.ca`;
   const fullCanonical = canonicalUrl ? `${BASE_URL}${canonicalUrl}` : undefined;
@@ -31,6 +33,7 @@ export function SEO({
       <meta name="description" content={description} />
       {keywords && <meta name="keywords" content={keywords} />}
       {fullCanonical && <link rel="canonical" href={fullCanonical} />}
+      {noIndex && <meta name="robots" content="noindex, nofollow" />}
       
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />

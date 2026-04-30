@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
-import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Minus, X, Plus, Layers, FileText, Percent } from "lucide-react";
+import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Minus, X, Plus, Layers, FileText, Percent, Lock } from "lucide-react";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
 import { apiRequest } from "@/lib/queryClient";
@@ -532,6 +532,23 @@ export default function MarketReport() {
                     Top 10% of earners account for 75% of the GDP gap. Implications for RE investors.
                   </p>
                   <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/insights/precon-vs-resale-1990s">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-dashed" data-testid="card-macro-precon-resale-1990s">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <Lock className="h-4.5 w-4.5 text-slate-600 dark:text-slate-300" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Private</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Pre-Con vs Resale: 1990s Correction</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Reconstructed 1985-2000 GTA condo PSF — pre-con vs resale, premium spread, and what it suggests for today. Private client report; access by share link.
+                  </p>
+                  <span className="text-xs text-primary font-medium">Open Report →</span>
                 </CardContent>
               </Card>
             </Link>

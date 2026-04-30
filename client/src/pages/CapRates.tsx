@@ -294,6 +294,13 @@ function getCashFlowMarkerColor(value: number): string {
   return "#dc2626";
 }
 
+function getDscrMarkerColor(value: number): string {
+  if (value >= 1.35) return "#16a34a";
+  if (value >= 1.2) return "#059669";
+  if (value >= 1) return "#ca8a04";
+  return "#dc2626";
+}
+
 function getConsensusMarkerColor(value?: string | null): string {
   if (value === "bullish") return "#16a34a";
   if (value === "neutral") return "#ca8a04";
@@ -321,6 +328,8 @@ function metricShortLabel(metric: InvestmentMetricKey): string {
       return "cap";
     case "cash_on_cash":
       return "CoC";
+    case "dscr":
+      return "DSCR";
     case "irr":
       return "IRR";
     case "monthly_cash_flow":
@@ -341,14 +350,22 @@ function formatMetricValue(metric: InvestmentMetricKey, value: number | null | u
   if (typeof value !== "number" || !Number.isFinite(value)) return "N/A";
   if (metric === "price") return formatPrice(value);
   if (metric === "monthly_cash_flow") return formatCompactCurrency(value);
+  if (metric === "dscr") return value.toFixed(2);
   return `${value.toFixed(1)}%`;
 }
 
 function getMetricMarkerColor(metric: InvestmentMetricKey, numericValue: number | null | undefined, consensusLabel?: string | null): string {
   if (metric === "monthly_cash_flow") return getCashFlowMarkerColor(numericValue || 0);
+  if (metric === "dscr") return getDscrMarkerColor(numericValue || 0);
   if (metric === "community_consensus") return getConsensusMarkerColor(consensusLabel);
   if (metric === "price") return "#2563eb";
   return getCapRateMarkerColor(numericValue || 0);
+}
+
+function clusterMetricSummaryLabel(metric: InvestmentMetricKey, count: number): string {
+  if (metric === "community_consensus") return `community · ${count}`;
+  if (metric === "price") return `avg · ${count}`;
+  return `${metricShortLabel(metric)} avg · ${count}`;
 }
 
 function getAggregateMetricValue(aggregate: ListingAnalysisAggregate | null | undefined, metric: InvestmentMetricKey): number | null {
@@ -358,6 +375,8 @@ function getAggregateMetricValue(aggregate: ListingAnalysisAggregate | null | un
       return aggregate.medianCapRate ?? null;
     case "cash_on_cash":
       return aggregate.medianCashOnCash ?? null;
+    case "dscr":
+      return typeof (aggregate as any).medianDscr === "number" ? (aggregate as any).medianDscr : null;
     case "monthly_cash_flow":
       return aggregate.medianMonthlyCashFlow ?? null;
     default:
@@ -381,6 +400,8 @@ function getListingMetricValue(
         return typeof myMetrics?.medianCapRate === "number" ? myMetrics.medianCapRate : null;
       case "cash_on_cash":
         return typeof myMetrics?.medianCashOnCash === "number" ? myMetrics.medianCashOnCash : null;
+      case "dscr":
+        return typeof myMetrics?.medianDscr === "number" ? myMetrics.medianDscr : null;
       case "monthly_cash_flow":
         return typeof myMetrics?.medianMonthlyCashFlow === "number" ? myMetrics.medianMonthlyCashFlow : null;
       case "irr":
@@ -399,6 +420,8 @@ function getListingMetricValue(
       return listing.capRate;
     case "cash_on_cash":
       return listing.cashOnCashReturn;
+    case "dscr":
+      return listing.dscr;
     case "irr":
       return listing.irr;
     case "monthly_cash_flow":
@@ -712,14 +735,16 @@ function FlyToLocation({ lat, lng, zoom }: { lat: number; lng: number; zoom?: nu
 
 function createClusterIcon(label: string, count: number, metric: InvestmentMetricKey, numericValue: number | null, consensusLabel?: string | null): L.DivIcon {
   const color = getMetricMarkerColor(metric, numericValue, consensusLabel);
-  const size = count > 75 ? 56 : count > 24 ? 48 : 40;
+  const width = count > 75 ? 78 : count > 24 ? 72 : 66;
+  const height = count > 75 ? 52 : count > 24 ? 48 : 44;
+  const metaLabel = clusterMetricSummaryLabel(metric, count);
 
   return L.divIcon({
     className: "yield-cluster-marker",
     html: `<div style="
-      width:${size}px;
-      height:${size}px;
-      border-radius:50%;
+      width:${width}px;
+      height:${height}px;
+      border-radius:999px;
       background:${color};
       border:3px solid rgba(255,255,255,0.95);
       box-shadow:0 6px 18px rgba(15,23,42,0.24);
@@ -732,10 +757,10 @@ function createClusterIcon(label: string, count: number, metric: InvestmentMetri
       line-height:1.05;
     ">
       <span style="font-size:${count > 75 ? 13 : 12}px;font-weight:800;">${label}</span>
-      <span style="font-size:10px;font-weight:700;opacity:0.92;">${count}</span>
+      <span style="font-size:${count > 75 ? 9 : 8}px;font-weight:800;opacity:0.95;white-space:nowrap;">${metaLabel}</span>
     </div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height / 2],
   });
 }
 
@@ -1184,7 +1209,7 @@ export default function CapRates() {
   const [minBeds, setMinBeds] = useState("any");
   const [minUnits, setMinUnits] = useState("any");
   const [propertyType, setPropertyType] = useState("all");
-  const [sortMetric, setSortMetric] = useState<InvestmentMetricKey>("gross_yield");
+  const [sortMetric, setSortMetric] = useState<InvestmentMetricKey>("cap_rate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [metricSource, setMetricSource] = useState<InvestmentMetricSource>("realist_estimate");
   const [minGrossYield, setMinGrossYield] = useState("");
@@ -3538,7 +3563,7 @@ export default function CapRates() {
           {showAdvancedFilters && (
           <div className="flex flex-wrap gap-2 items-end rounded-xl border border-border/60 bg-muted/20 p-3">
             <div className="min-w-[180px]">
-              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Search by</Label>
+              <Label className="text-[10px] text-muted-foreground mb-0.5 block">Map metric / sort</Label>
               <Select value={sortMetric} onValueChange={(v) => setSortMetric(v as InvestmentMetricKey)}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
@@ -3548,6 +3573,7 @@ export default function CapRates() {
                   <SelectItem value="gross_yield">Gross yield</SelectItem>
                   {INVESTMENT_METRIC_FLAGS.ENABLE_CAP_RATE_SEARCH && <SelectItem value="cap_rate">Cap rate</SelectItem>}
                   <SelectItem value="cash_on_cash">Cash-on-cash</SelectItem>
+                  <SelectItem value="dscr">DSCR</SelectItem>
                   {INVESTMENT_METRIC_FLAGS.ENABLE_IRR_SEARCH && <SelectItem value="irr">IRR</SelectItem>}
                   <SelectItem value="monthly_cash_flow">Monthly cash flow</SelectItem>
                   <SelectItem value="community_consensus">Community consensus</SelectItem>
@@ -3787,6 +3813,33 @@ export default function CapRates() {
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
         <div className="relative flex-1 min-h-0" data-testid="map-container">
+          {!findDealsActive && (
+            <div className="absolute right-3 top-3 z-[1000] flex max-w-[calc(100%-1.5rem)] flex-col gap-1 rounded-md border border-border/70 bg-background/95 p-2 shadow-sm backdrop-blur">
+              <div className="flex items-center gap-2">
+                <Label className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-normal text-muted-foreground">
+                  Map metric
+                </Label>
+                <Select value={sortMetric} onValueChange={(v) => setSortMetric(v as InvestmentMetricKey)}>
+                  <SelectTrigger className="h-8 w-[150px] text-xs" data-testid="select-map-metric">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gross_yield">Gross yield</SelectItem>
+                    {INVESTMENT_METRIC_FLAGS.ENABLE_CAP_RATE_SEARCH && <SelectItem value="cap_rate">Cap rate</SelectItem>}
+                    <SelectItem value="cash_on_cash">Cash-on-cash</SelectItem>
+                    <SelectItem value="dscr">DSCR</SelectItem>
+                    {INVESTMENT_METRIC_FLAGS.ENABLE_IRR_SEARCH && <SelectItem value="irr">IRR</SelectItem>}
+                    <SelectItem value="monthly_cash_flow">Monthly cash flow</SelectItem>
+                    <SelectItem value="price">Price</SelectItem>
+                    <SelectItem value="community_consensus">Community</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="max-w-[240px] text-[10px] leading-snug text-muted-foreground">
+                Markers show {metricShortLabel(sortMetric)}. Clusters show {sortMetric === "community_consensus" ? "consensus + listing count" : "average + listing count"}.
+              </p>
+            </div>
+          )}
           <MapContainer
             center={TORONTO_CENTER}
             zoom={DEFAULT_ZOOM}
