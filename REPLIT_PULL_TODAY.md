@@ -6,7 +6,7 @@
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-04-30-onward-share-loop`
 - Implementation commit: `e365700` (`feat: add underwriting onward share loop`)
-- Pull brief commit: `8c491c0` (`docs: update Replit pull brief`)
+- Note: later docs-only commits on this branch update this pull brief.
 
 ## 3. What changed
 - Added share lineage so challenged/forked underwriting versions can be traced back to the original share.
