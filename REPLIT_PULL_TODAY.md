@@ -5,7 +5,7 @@
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-04-30-onward-share-loop`
-- Commit: `03afe9f`
+- Commit: `e365700`
 
 ## 3. What changed
 - Added share lineage so challenged/forked underwriting versions can be traced back to the original share.
