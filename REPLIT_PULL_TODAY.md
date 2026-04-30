@@ -5,7 +5,8 @@
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-04-30-onward-share-loop`
-- Commit: `e365700`
+- Implementation commit: `e365700` (`feat: add underwriting onward share loop`)
+- Pull brief commit: `8c491c0` (`docs: update Replit pull brief`)
 
 ## 3. What changed
 - Added share lineage so challenged/forked underwriting versions can be traced back to the original share.
@@ -63,7 +64,7 @@ npm run build
 - Branch builds on the existing viral underwriting share-loop branch lineage, not a fresh `main`, because the share-loop migration/API are not on `main` yet.
 - Replit must apply migration `014_underwriting_share_lineage.sql` before the updated share creation endpoints run, because `underwriting_shares` now stores `parent_share_id`, `parent_share_action_id`, and `share_depth`.
 - Automatic onward shares are created only for authenticated recipients who perform a qualified `fork` or `saved_version`; anonymous challenges still record qualified actions but do not produce a saved analysis or onward share.
-- Branch push status: local branch/commit prepared; push only if GitHub auth is configured and safe.
+- Branch was pushed to GitHub successfully: `origin/realist-nightly/2026-04-30-onward-share-loop`.
 
 ## 10. What Dan should pull into Replit at 10am
 Pull `realist-nightly/2026-04-30-onward-share-loop` to make the viral underwriting loop more complete: when someone challenges and saves/forks a deal, Realist now creates their own shareable version with “Challenge my underwriting.” so the loop can continue from recipient to recipient while keeping credits tied to qualified actions only.
