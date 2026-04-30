@@ -1,68 +1,73 @@
 ---
-children_hash: 21b20895b68f51d869b31228282d980cad1386092b9df38d0e8cc3b16c24de25
-compression_ratio: 0.7200328407224958
+children_hash: 09c81df806faccd32f70ec0fd35de614b2014f7187222c94eb587fff535b0da2
+compression_ratio: 0.7215295095594347
 condensation_order: 3
 covers: [frontend/_index.md, growth/_index.md]
-covers_token_total: 1218
+covers_token_total: 1203
 summary_level: d3
-token_count: 877
+token_count: 868
 type: summary
 ---
-# Realist Platform — Structural Summary (d3)
+# Realist Platform — Knowledge Structure (d3)
 
 ## Frontend Domain
-
-**Scope**: React components, pages, form implementations, CSS/design systems, UI state management. Excludes backend routes and database schemas.
+Covers React UI architecture, design systems, and user flows. Backend routes and schemas excluded.
 
 ### Design System (`design_system`)
-- **Theme**: Dark mode with glassmorphism (`backdrop-filter: blur(10px)`), gradient background `#1a1a2e` → `#16213e`
-- **Accent**: Indigo/purple gradient `#6366f1` → `#8b5cf6`; status colors green (`#10b981`) and red (`#ef4444`)
-- **Components**: `.step-indicator` (horizontal progress), `.checkbox-grid` (auto-fill `minmax(150px, 1fr)`), `.agreement-box`, `.routing-preview`, `.form-actions`
-- **Responsive**: Breakpoint at `640px`; mobile hides step titles, single-column layout, stacked buttons
-- **Source**: `client/pages/JoinForm.css`
+- **Visual Theme**: Dark mode glassmorphism (`backdrop-filter: blur(10px)`) on gradient `#1a1a2e` → `#16213e`
+- **Accent Palette**: Indigo/purple (`#6366f1` → `#8b5cf6`), success green, error red
+- **Component Patterns**: `.step-indicator` (horizontal progress), `.checkbox-grid` (auto-fill `minmax(150px, 1fr)`), `.agreement-box`, `.routing-preview`, `.form-actions`
+- **Responsive**: Breakpoint at `640px`; mobile collapses step titles, single-column layout, stacked buttons
+- **Source**: `client/pages/JoinForm.css` — shared across all form components
 
 ### Realtor Join Flow (`realtor_join_flow`)
-- **Component**: `client/pages/JoinRealtors.tsx` | **API**: `POST /api/realtors/join`
-- **5-Step Wizard**: Contact Info → Business Info (brokerage, markets, assets, deals) → Preferences (avgDealSize) → Referral Fee → Agreement
-- **Referral Fee Tiers**: Preferred (≥30%), Standard (≥25%), Introductory (<25%); standard options 20–40%, custom range 10–50% (0.5% increments)
+- **Component**: `client/pages/JoinRealtors.tsx` → `POST /api/realtors/join`
+- **5-Step Wizard**: Contact Info → Business Info (brokerage, markets, assets, deals) → Preferences (avg deal size) → Referral Fee → Agreement (required)
+- **Referral Fee Structure**: Standard tiers (20%, 25%, 30%, 35%, 40%); custom range 10%–50% (0.5% increments)
+- **Routing Tiers**: Preferred (≥30%), Standard (≥25%), Introductory (<25%)
 - **Key Functions**: `getCommittedReferralFee()`, `getReferralRoutingTier()`
 - **Data Scope**: 15 Canadian cities, 9 asset types, 7 deal strategies
 
-### Relationships
-Design system styles shared across join flows; realtor join flow submits to backend which routes leads by referral tier.
-
 ---
 
-## Growth Domain — Viral Sharing
+## Growth Domain — Viral Underwriting Share Loop
+Users share deal analyses and earn `google_sheets_export` credits when recipients perform qualified actions. Credits awarded only for meaningful engagement.
 
-**Scope**: Deal analysis distribution with credit-reward loop tied to qualified recipient actions.
+### API Surface (`src/underwriting-share-routes.ts`, `src/analysis-routes.ts`)
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /analyses/:id/share` | Create share token (optional auth) |
+| `GET /underwriting-shares/:token` | Read share, records `unique_open` |
+| `POST /underwriting-shares/:token/actions` | Record qualified action |
+| `GET /underwriting-shares/:token/status` | Owner dashboard (auth required) |
 
-### System Architecture
-- **Implementation**: `src/underwriting-share-routes.ts`, `src/analysis-routes.ts`, `db/schema.ts`, migration `013_viral_underwriting_shares.sql`
-- **Database**: `underwriting_shares`, `underwriting_share_actions`, `premium_credit_ledger` (credits typed `google_sheets_export`)
-- **API Chain**: `POST /analyses/:id/share` → `GET /underwriting-shares/:token` → `POST /underwriting-shares/:token/actions` → `GET /underwriting-shares/:token/status`
-- **Auth**: `authenticateOptional` (creation/actions), `authenticateToken` (status, inviter-only)
-- **Token Format**: `crypto.randomBytes(18).toString('base64url')`
+### Database Schema (`db/migrations/013_*`, `014_*`)
+- `underwriting_shares` — Lineage via `parent_share_id`, `parent_share_action_id`, `share_depth`
+- `underwriting_share_actions` — Dedup/cap on `share_id` + `recipient_hash` + `action` triplet
+- `premium_credit_ledger` — Credit awards (type: `google_sheets_export`)
+- `deal_analyses` — Cloned on fork/saved_version actions
 
-### Qualified Action Policies
-| Action | Credits | Share Cap | Recipient Cap | Payload |
-|---|---|---|---|---|
-| `unique_open` | 1 | 5 | 1 | None |
-| `signup` | 5 | 5 | 1 | None |
-| `challenge` | 2 | 8 | 2 | Meaningful |
-| `fork` | 3 | 8 | 2 | Meaningful |
-| `saved_version` | 4 | 8 | 2 | Meaningful |
+### Credit Policy (`qualified_action_gate`)
+| Action | Credits | Share Cap | Recipient Cap |
+|--------|---------|-----------|---------------|
+| `unique_open` | 1 | 5 | 1 |
+| `challenge` | 2 | 8 | 2 |
+| `fork` | 3 | 8 | 2 |
+| `signup` | 5 | 5 | 1 |
+| `saved_version` | 4 | 8 | 2 |
 
-**Meaningful payload**: Requires `challengedFields` (non-empty), `assumptions`/`inputs`/`metrics` (non-empty objects), or `comment`/`notes` (≥10 chars).
+**Meaningful payload required**: non-empty `challengedFields`, `assumptions`/`inputs`/`metrics`, or ≥10 char `comment`/`notes`.
 
-### Safeguards & Mechanics
-- **Duplicate prevention**: Triplet key `(share_id + recipient_hash + action)` returns original credit without re-awarding
-- **Cap enforcement**: Overflow actions recorded as `capped` with `credit_amount = 0`
-- **Recipient ID**: `sha256(IP:UA)` or explicit identifier
-- **Fork/Save**: Authenticated users clone `deal_analyses` rows with optional overrides; `savedAnalysisId` tracked
-- **Privacy**: `recentActions` excludes `recipientHash`
+### Safeguards (`underwriting_share_system`)
+- Duplicate triplets return original credit, no new award
+- Both share AND recipient caps must pass; overflow recorded as `capped` with `credit_amount = 0`
+- Recipient ID: `SHA256(IP:user-agent)` or explicit hash
+- Token: `crypto.randomBytes(18).toString("base64url")`
 
-### Drill-Down References
-- **qualified_action_gate** — `hasMeaningfulChallengePayload()` validation layer
-- **underwriting_share_system** — Complete system documentation: API routes, schema, credit logic
-- **viral_underwriting_share_loop** — High-level flow: analyze → share → challenge/fork → save → share onward
+### Viral Lineage (`underwriting_share_lineage`)
+Authenticated `fork`/`saved_version` triggers loop continuation:
+1. Clone `deal_analyses` with optional overrides
+2. Create onward share with `share_depth = parentDepth + 1`
+3. Update action metadata with `savedAnalysisId`/`onwardShareToken`
+4. CTA: "Challenge my underwriting"
+5. Capped/duplicate actions do NOT propagate

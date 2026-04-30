@@ -3,7 +3,7 @@
     {
       "order": 3,
       "path": "_index.md",
-      "tokens": 877,
+      "tokens": 868,
       "type": "summary"
     },
     {
@@ -15,8 +15,14 @@
     {
       "order": 2,
       "path": "growth/_index.md",
-      "tokens": 546,
+      "tokens": 531,
       "type": "summary"
+    },
+    {
+      "importance": 60,
+      "path": "growth/viral_sharing/underwriting_share_lineage.md",
+      "tokens": 849,
+      "type": "context"
     },
     {
       "importance": 55,
@@ -65,21 +71,15 @@
       "path": "growth/viral_sharing/qualified_action_gate/context.md",
       "tokens": 110,
       "type": "context"
-    },
-    {
-      "importance": 50,
-      "path": "growth/viral_sharing/qualified_action_gate/qualified_action_gate.md",
-      "tokens": 784,
-      "type": "context"
     }
   ],
-  "generated_at": "2026-04-29T05:07:40.301Z",
+  "generated_at": "2026-04-30T05:07:06.204Z",
   "lane_tokens": {
-    "contexts": 3529,
+    "contexts": 3594,
     "stubs": 0,
-    "summaries": 1957
+    "summaries": 1933
   },
-  "source_fingerprint": "20df5f4effe5e4996c9d27424393b89c84bf34f46639f796c3db4166b972c154",
-  "total_tokens": 5486,
+  "source_fingerprint": "75de344a3f6d9cb70bec6f7383fd882a474c5aa9ad5f5dc17a8bb5b1fd973f52",
+  "total_tokens": 5527,
   "version": 1
 }
