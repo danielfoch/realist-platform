@@ -467,10 +467,28 @@ async function ensureAppTables() {
   app.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") return next();
 
-    const host = String(req.headers["x-forwarded-host"] || req.headers.host || "");
-    const protocol = String(req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0];
     const originalUrl = req.originalUrl || "/";
     const [rawPath, rawQuery = ""] = originalUrl.split("?");
+
+    // Bypass for Vite dev-server internal paths in development. Vite serves
+    // source modules at their on-disk path (e.g. /src/App.tsx) and any
+    // case-folding redirect would point at a lowercase file that does not
+    // exist on case-sensitive filesystems, breaking the dev preview entirely.
+    if (process.env.NODE_ENV !== "production") {
+      if (
+        rawPath.startsWith("/src/") ||
+        rawPath.startsWith("/@") ||
+        rawPath.startsWith("/node_modules/") ||
+        rawPath.startsWith("/__replco/") ||
+        rawPath.startsWith("/attached_assets/") ||
+        rawPath === "/__open-in-editor"
+      ) {
+        return next();
+      }
+    }
+
+    const host = String(req.headers["x-forwarded-host"] || req.headers.host || "");
+    const protocol = String(req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0];
     const normalizedPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, "").toLowerCase() : rawPath;
     const params = new URLSearchParams(rawQuery);
     let strippedParams = false;
