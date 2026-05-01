@@ -3,6 +3,7 @@ import {
   getActionPolicy,
   getRewardPolicySnapshot,
   getShareActionSummary,
+  getShareGrowthNudge,
   hasMeaningfulChallengePayload,
   recordQualifiedShareAction,
 } from '../src/underwriting-share-routes';
@@ -100,10 +101,20 @@ describe('viral underwriting share qualification', () => {
         return {
           rows: [
             {
+              action: 'unique_open',
+              total_count: '5',
+              qualified_count: '5',
+              capped_count: '0',
+              daily_qualified_count: '3',
+              credit_awarded: '5',
+              last_action_at: '2026-04-29T04:50:00.000Z',
+            },
+            {
               action: 'challenge',
               total_count: '3',
               qualified_count: '2',
               capped_count: '1',
+              daily_qualified_count: '2',
               credit_awarded: '4',
               last_action_at: '2026-04-29T05:00:00.000Z',
             },
@@ -112,11 +123,16 @@ describe('viral underwriting share qualification', () => {
               total_count: '1',
               qualified_count: '1',
               capped_count: '0',
+              daily_qualified_count: '1',
               credit_awarded: '4',
               last_action_at: '2026-04-29T05:05:00.000Z',
             },
           ],
         };
+      }
+
+      if (text.includes('COUNT(DISTINCT recipient_hash)')) {
+        return { rows: [{ unique_recipient_count: '6', qualified_recipient_count: '5' }] };
       }
 
       if (text.includes('ORDER BY created_at DESC')) {
@@ -145,17 +161,54 @@ describe('viral underwriting share qualification', () => {
       qualifiedCount: 2,
       cappedCount: 1,
       creditAwarded: 4,
+      dailyQualifiedCount: 2,
+      dailyRemainingShareCap: getActionPolicy('challenge').dailyShareCap - 2,
       lastActionAt: '2026-04-29T05:00:00.000Z',
     });
-    expect(summary.byAction.unique_open.qualifiedCount).toBe(0);
+    expect(summary.byAction.unique_open.dailyRemainingShareCap).toBe(2);
     expect(summary.totals).toEqual({
-      totalCount: 4,
-      qualifiedCount: 3,
+      totalCount: 9,
+      qualifiedCount: 8,
       cappedCount: 1,
-      creditAwarded: 8,
+      creditAwarded: 13,
     });
+    expect(summary.uniqueRecipientCount).toBe(6);
+    expect(summary.qualifiedRecipientCount).toBe(5);
+    expect(summary.conversionRates).toEqual({
+      openToChallenge: 0.4,
+      challengeToForkOrSavedVersion: 0.5,
+      forkOrSavedVersionToSignup: 0,
+    });
+    expect(summary.growthNudge.stage).toBe('convert_versions_to_accounts');
     expect(summary.recentActions[0]).not.toHaveProperty('recipientHash');
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT recipient_hash)'), [7]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2'), [7, 5]);
+  });
+
+  it('returns stage-specific growth nudges for the underwriting loop', () => {
+    const emptySummary = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: 0,
+          cappedCount: 0,
+          creditAwarded: 0,
+          dailyQualifiedCount: 0,
+          dailyRemainingShareCap: 5,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getShareGrowthNudge>[0];
+
+    expect(getShareGrowthNudge(emptySummary).stage).toBe('get_first_qualified_open');
+
+    const challengedSummary = {
+      ...emptySummary,
+      unique_open: { ...emptySummary.unique_open, qualifiedCount: 4 },
+      challenge: { ...emptySummary.challenge, qualifiedCount: 2 },
+    };
+    expect(getShareGrowthNudge(challengedSummary).stage).toBe('convert_challenges_to_versions');
   });
 
   it('exposes the current Google Sheets export reward policy snapshot', () => {

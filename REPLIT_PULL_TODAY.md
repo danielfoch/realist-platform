@@ -1,70 +1,66 @@
-# Realist.ca Replit Pull Brief — Onward Share Loop
+# REPLIT PULL TODAY — 2026-05-01
 
 ## 1. Date
-- Thursday, April 30, 2026
+Friday, May 1, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-04-30-onward-share-loop`
-- Implementation commit: `e365700` (`feat: add underwriting onward share loop`)
-- Note: later docs-only commits on this branch update this pull brief.
+Branch: `realist-nightly/2026-05-01-share-status-dashboard`
+
+Commit SHA: `ae62ac243de843b10cbcc8567405e87148122761`
 
 ## 3. What changed
-- Added share lineage so challenged/forked underwriting versions can be traced back to the original share.
-- Added automatic onward-share creation when an authenticated recipient completes a qualified `fork` or `saved_version` action.
-- The action response can now include `onwardShare` with the same CTA: “Challenge my underwriting.” This lets a recipient immediately share their challenged version onward.
-- Kept the reward model qualified-action-only: no credits are awarded for raw share clicks alone, and onward shares are only created after the fork/save action qualifies.
-- Avoided duplicate/capped abuse creating extra saved analyses or onward shares by moving the save/fork clone after qualification succeeds.
+- Improved the viral underwriting owner status payload so Dan/Replit can show a more useful sharing dashboard.
+- Added per-action daily qualified counts and remaining daily share-cap counts, reinforcing that credits are capped and only awarded for qualified actions.
+- Added unique recipient and qualified recipient counts without exposing recipient hashes.
+- Added conversion-rate metrics for the loop:
+  - qualified open → challenge
+  - challenge → fork/saved version
+  - fork/saved version → signup
+- Added a `growthNudge` object with stage-specific copy using the standing CTA: “Challenge my underwriting.”
+- Added tests covering the richer summary, privacy behavior, conversion rates, daily caps, and growth-nudge stages.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
 - `test/underwriting-share-routes.test.ts`
-- `db/migrations/014_underwriting_share_lineage.sql`
 - `REPLIT_PULL_TODAY.md`
 
 ## 5. Migration steps
-- New migration required:
-```bash
-npm run migrate
-```
-- If the migration runner does not pick up numbered SQL files, apply directly:
-```bash
-psql "$DATABASE_URL" -f db/migrations/014_underwriting_share_lineage.sql
-```
-- This still depends on the existing viral underwriting tables from `db/migrations/013_viral_underwriting_shares.sql`.
+No database migration required. This reuses the existing `underwriting_share_actions.recipient_hash`, `qualified`, `credit_amount`, and `created_at` fields.
 
 ## 6. Env vars needed
-- No new environment variables.
-- Existing app/database env vars still apply, especially `DATABASE_URL` for migrations/runtime.
+No new environment variables.
 
 ## 7. Replit commands to run
 ```bash
-git status --short
-# Stop if Replit has local edits.
-
 git fetch origin
-git checkout realist-nightly/2026-04-30-onward-share-loop
-git pull origin realist-nightly/2026-04-30-onward-share-loop
+git checkout realist-nightly/2026-05-01-share-status-dashboard
 npm install
-npm run migrate
-npx jest test/underwriting-share-routes.test.ts --runInBand
-npm run type-check
 npm run build
+npx jest test/underwriting-share-routes.test.ts --runInBand
+```
+
+If merging into the active Replit branch instead:
+```bash
+git fetch origin
+git merge realist-nightly/2026-05-01-share-status-dashboard
+npm run build
+npx jest test/underwriting-share-routes.test.ts --runInBand
 ```
 
 ## 8. Test/build result
-Passed locally on Clyde’s Mac mini:
+Passed locally:
 ```bash
-npx jest test/underwriting-share-routes.test.ts --runInBand
 npm run type-check
+npx jest test/underwriting-share-routes.test.ts --runInBand
 npm run build
 ```
 
 ## 9. Risks/blockers
 - No deploy was performed.
-- Branch builds on the existing viral underwriting share-loop branch lineage, not a fresh `main`, because the share-loop migration/API are not on `main` yet.
-- Replit must apply migration `014_underwriting_share_lineage.sql` before the updated share creation endpoints run, because `underwriting_shares` now stores `parent_share_id`, `parent_share_action_id`, and `share_depth`.
-- Automatic onward shares are created only for authenticated recipients who perform a qualified `fork` or `saved_version`; anonymous challenges still record qualified actions but do not produce a saved analysis or onward share.
-- Branch was pushed to GitHub successfully: `origin/realist-nightly/2026-04-30-onward-share-loop`.
+- No outbound emails/messages were sent.
+- No paid API calls were made.
+- This changes the JSON shape returned by `GET /api/underwriting-shares/:token/status` by adding fields, but does not remove existing fields.
+- Push status: pending GitHub auth check after this local commit.
 
 ## 10. What Dan should pull into Replit at 10am
-Pull `realist-nightly/2026-04-30-onward-share-loop` to make the viral underwriting loop more complete: when someone challenges and saves/forks a deal, Realist now creates their own shareable version with “Challenge my underwriting.” so the loop can continue from recipient to recipient while keeping credits tied to qualified actions only.
+Pull the `realist-nightly/2026-05-01-share-status-dashboard` branch if you want the underwriting share status endpoint to power a better owner dashboard: daily cap visibility, privacy-safe recipient counts, viral-loop conversion rates, and suggested “Challenge my underwriting” follow-up copy for the next sharing step.

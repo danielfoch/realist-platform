@@ -227,12 +227,73 @@ export async function recordQualifiedShareAction(database: DatabaseAdapter, inpu
   return { status, qualified, creditAmount, actionId };
 }
 
+type ShareActionSummary = Record<QualifiedShareAction, {
+  totalCount: number;
+  qualifiedCount: number;
+  cappedCount: number;
+  creditAwarded: number;
+  dailyQualifiedCount: number;
+  dailyRemainingShareCap: number;
+  lastActionAt: string | null;
+}>;
+
+function getConversionRate(numerator: number, denominator: number) {
+  return denominator > 0 ? Number((numerator / denominator).toFixed(4)) : 0;
+}
+
+export function getShareGrowthNudge(byAction: ShareActionSummary) {
+  const opens = byAction.unique_open.qualifiedCount;
+  const challenges = byAction.challenge.qualifiedCount;
+  const forks = byAction.fork.qualifiedCount;
+  const savedVersions = byAction.saved_version.qualifiedCount;
+  const signups = byAction.signup.qualifiedCount;
+
+  if (opens === 0) {
+    return {
+      stage: 'get_first_qualified_open',
+      headline: 'Share the underwriting link with one specific investor or realtor.',
+      suggestedCopy: 'Challenge my underwriting — tell me which assumption you disagree with.',
+    };
+  }
+
+  if (challenges === 0) {
+    return {
+      stage: 'convert_opens_to_challenges',
+      headline: 'Qualified opens are landing. Ask recipients to challenge one assumption.',
+      suggestedCopy: 'Challenge my underwriting — rent, vacancy, expenses, or exit cap: what would you change?',
+    };
+  }
+
+  if (forks + savedVersions === 0) {
+    return {
+      stage: 'convert_challenges_to_versions',
+      headline: 'Challenges are coming in. Push recipients to fork or save their version next.',
+      suggestedCopy: 'Challenge my underwriting and save your version — I want to compare your assumptions side by side.',
+    };
+  }
+
+  if (signups === 0) {
+    return {
+      stage: 'convert_versions_to_accounts',
+      headline: 'Version activity is working. Invite challengers to create an account so the loop can continue.',
+      suggestedCopy: 'Challenge my underwriting, save your version, and share it onward for Google Sheets export credits.',
+    };
+  }
+
+  return {
+    stage: 'amplify_working_loop',
+    headline: 'The underwriting loop is working. Re-share the strongest challenged version.',
+    suggestedCopy: 'Challenge my underwriting — this version already has investor feedback. What did we miss?',
+  };
+}
+
 export async function getShareActionSummary(database: DatabaseAdapter, shareId: number, recentLimit = 10) {
   const summaryResult = await database.query(
     `SELECT action,
             COUNT(*)::int AS total_count,
             COUNT(*) FILTER (WHERE qualified = true)::int AS qualified_count,
             COUNT(*) FILTER (WHERE qualified = false)::int AS capped_count,
+            COUNT(*) FILTER (WHERE qualified = true AND created_at >= CURRENT_DATE)::int AS daily_qualified_count,
             COALESCE(SUM(credit_amount), 0)::int AS credit_awarded,
             MAX(created_at) AS last_action_at
      FROM underwriting_share_actions
@@ -249,30 +310,37 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
         qualifiedCount: 0,
         cappedCount: 0,
         creditAwarded: 0,
+        dailyQualifiedCount: 0,
+        dailyRemainingShareCap: ACTION_POLICIES[action].dailyShareCap,
         lastActionAt: null as string | null,
       },
     ]),
-  ) as Record<QualifiedShareAction, {
-    totalCount: number;
-    qualifiedCount: number;
-    cappedCount: number;
-    creditAwarded: number;
-    lastActionAt: string | null;
-  }>;
+  ) as ShareActionSummary;
 
   for (const row of summaryResult.rows) {
     if (!isQualifiedShareAction(row.action)) {
       continue;
     }
 
+    const dailyQualifiedCount = Number(row.daily_qualified_count || 0);
     byAction[row.action] = {
       totalCount: Number(row.total_count || 0),
       qualifiedCount: Number(row.qualified_count || 0),
       cappedCount: Number(row.capped_count || 0),
       creditAwarded: Number(row.credit_awarded || 0),
+      dailyQualifiedCount,
+      dailyRemainingShareCap: Math.max(ACTION_POLICIES[row.action].dailyShareCap - dailyQualifiedCount, 0),
       lastActionAt: row.last_action_at || null,
     };
   }
+
+  const recipientResult = await database.query(
+    `SELECT COUNT(DISTINCT recipient_hash)::int AS unique_recipient_count,
+            COUNT(DISTINCT recipient_hash) FILTER (WHERE qualified = true)::int AS qualified_recipient_count
+     FROM underwriting_share_actions
+     WHERE share_id = $1`,
+    [shareId],
+  );
 
   const recentResult = await database.query(
     `SELECT id, action, qualified, credit_type, credit_amount, metadata, created_at
@@ -283,17 +351,36 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     [shareId, recentLimit],
   );
 
+  const totals = Object.values(byAction).reduce(
+    (runningTotals, actionSummary) => ({
+      totalCount: runningTotals.totalCount + actionSummary.totalCount,
+      qualifiedCount: runningTotals.qualifiedCount + actionSummary.qualifiedCount,
+      cappedCount: runningTotals.cappedCount + actionSummary.cappedCount,
+      creditAwarded: runningTotals.creditAwarded + actionSummary.creditAwarded,
+    }),
+    { totalCount: 0, qualifiedCount: 0, cappedCount: 0, creditAwarded: 0 },
+  );
+
+  const uniqueRecipientCount = Number(recipientResult.rows[0]?.unique_recipient_count || 0);
+  const qualifiedRecipientCount = Number(recipientResult.rows[0]?.qualified_recipient_count || 0);
+
   return {
     byAction,
-    totals: Object.values(byAction).reduce(
-      (totals, actionSummary) => ({
-        totalCount: totals.totalCount + actionSummary.totalCount,
-        qualifiedCount: totals.qualifiedCount + actionSummary.qualifiedCount,
-        cappedCount: totals.cappedCount + actionSummary.cappedCount,
-        creditAwarded: totals.creditAwarded + actionSummary.creditAwarded,
-      }),
-      { totalCount: 0, qualifiedCount: 0, cappedCount: 0, creditAwarded: 0 },
-    ),
+    totals,
+    uniqueRecipientCount,
+    qualifiedRecipientCount,
+    conversionRates: {
+      openToChallenge: getConversionRate(byAction.challenge.qualifiedCount, byAction.unique_open.qualifiedCount),
+      challengeToForkOrSavedVersion: getConversionRate(
+        byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount,
+        byAction.challenge.qualifiedCount,
+      ),
+      forkOrSavedVersionToSignup: getConversionRate(
+        byAction.signup.qualifiedCount,
+        byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount,
+      ),
+    },
+    growthNudge: getShareGrowthNudge(byAction),
     recentActions: recentResult.rows.map((row) => ({
       id: row.id,
       action: row.action,
