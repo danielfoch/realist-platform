@@ -17,7 +17,7 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, { index: false }));
 
   const indexPath = path.resolve(distPath, "index.html");
   const rawHtml = fs.readFileSync(indexPath, "utf-8");

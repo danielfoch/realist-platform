@@ -286,8 +286,14 @@ export default function InvestorStart() {
               </div>
               <span>Realist.ca</span>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+              <a href="/markets" className="hover:text-foreground transition-colors">Markets</a>
+              <a href="/reports" className="hover:text-foreground transition-colors">Reports</a>
+              <a href="/investing" className="hover:text-foreground transition-colors">Investing</a>
               <a href="/about" className="hover:text-foreground transition-colors">About</a>
+              <a href="/about/contact" className="hover:text-foreground transition-colors">Contact</a>
+              <a href="/insights/podcast" className="hover:text-foreground transition-colors">Podcast</a>
+              <a href="https://thecanadianrealestateinvestor.substack.com/feed" className="hover:text-foreground transition-colors">RSS</a>
               <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
               <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
             </div>

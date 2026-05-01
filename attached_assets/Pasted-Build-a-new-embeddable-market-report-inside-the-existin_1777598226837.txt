@@ -1,0 +1,281 @@
+Build a new embeddable market report inside the existing “Market Reports” section of this app.
+
+Report title:
+“Bank of Canada April 2026 Report: Inflation Risk Is Back, But Housing Remains Weak”
+
+Source PDF:
+https://www.bankofcanada.ca/wp-content/uploads/2026/04/mpr-2026-04-29.pdf
+
+Goal:
+Create a polished, mobile-responsive, embeddable market report page for Canadian real estate users, especially buyers, sellers, investors, mortgage renewers, and Realtors. The report should explain the key macro factors from the Bank of Canada’s April 2026 Monetary Policy Report and translate them into practical housing-market implications.
+
+Add this report as:
+1. A new report card in the Market Reports section.
+2. A dedicated report detail page.
+3. An embeddable version that can be displayed in an iframe or embedded card layout.
+
+Suggested route:
+`/market-reports/bank-of-canada-april-2026`
+
+Also create an embed-friendly route if the app supports it:
+`/embed/market-reports/bank-of-canada-april-2026`
+
+Report metadata:
+- Date: April 29, 2026
+- Source: Bank of Canada
+- Category: Monetary Policy / Housing / Canadian Economy
+- Tags: Bank of Canada, Inflation, Interest Rates, Housing Market, Mortgages, GDP, Oil Prices, Tariffs, CUSMA, Canada Real Estate
+- Reading time: 7–10 minutes
+- Summary headline: “Canada’s economy is soft, housing is subdued, but higher oil prices have brought inflation risk back into focus.”
+
+Design requirements:
+Use a clean premium real-estate intelligence style. The report should feel like a professional market briefing, not a blog post. Use cards, callout boxes, charts, section dividers, and a sticky summary if possible. Make it mobile-friendly and embeddable.
+
+Primary report structure:
+
+1. Hero Section
+Create a hero header with:
+- Title: “Bank of Canada April 2026 Report: Inflation Risk Is Back, But Housing Remains Weak”
+- Subtitle: “What the latest Monetary Policy Report means for Canadian real estate, mortgage rates, buyers, sellers, investors, and renewals.”
+- Source line: “Source: Bank of Canada Monetary Policy Report, April 2026”
+- CTA button: “View Full PDF”
+- Secondary CTA: “Share Report” or “Copy Embed Link”
+
+Include a short executive summary:
+“The Bank of Canada’s April 2026 report shows a Canadian economy growing slowly, a housing market still under pressure, and renewed inflation risk caused by higher oil prices from the war in the Middle East. The result is a complicated rate environment: economic weakness supports future easing, but sticky inflation could limit how quickly rates fall.”
+
+2. Key Takeaways Section
+Create four summary cards:
+
+Card 1 — Inflation Risk Is Back
+- CPI inflation rose to 2.4% in March 2026.
+- Bank of Canada expects inflation to peak around 3% in April.
+- Base case: inflation returns to 2% in early 2027 if oil prices decline.
+
+Card 2 — Growth Is Modest
+- Canadian GDP growth forecast:
+  - 2026: 1.2%
+  - 2027: 1.6%
+  - 2028: 1.7%
+- Growth is supported by consumption and government spending.
+- Exports and business investment remain weak because of US tariffs and trade uncertainty.
+
+Card 3 — Housing Remains Subdued
+- Residential investment is expected to stay subdued.
+- Housing demand is limited by affordability challenges, slower population growth, and weak investor interest.
+- Small-condo inventory overhang in some major centres is expected to restrain new construction.
+
+Card 4 — Rate-Cut Story Is Complicated
+- Weak economy supports lower-rate expectations.
+- Higher oil-driven inflation risk makes the Bank of Canada more cautious.
+- If oil remains high, inflation could stay near 3% for more than a year in the Bank’s illustrative scenario.
+
+3. Main Narrative Section
+Write the body as a market report with these sections:
+
+Section A — “The Big Picture”
+Explain:
+- Before the war in the Middle East, Canada’s economy was broadly evolving as expected.
+- Oil prices then surged.
+- Gasoline prices pushed CPI inflation higher.
+- The Bank’s outlook depends heavily on oil prices falling from roughly US$90 per barrel in Q2 2026 to US$75 by mid-2027.
+- If oil does not fall, inflation could remain more persistent.
+
+Section B — “Economic Growth: Slow, But Not Collapsing”
+Include:
+- GDP growth of 1.2% in 2026, 1.6% in 2027, and 1.7% in 2028.
+- GDP growth is expected to gradually absorb excess supply.
+- Output gap estimate: -1.5% to -0.5% in Q1 2026.
+- Labour market indicators suggest slack.
+- Unemployment has been around 6.5% to 7% over the past 12 months.
+- Wage growth is generally between 3% and 3.5%.
+
+Section C — “Inflation: Why the Bank Is Cautious”
+Include:
+- CPI inflation slowed to 1.8% in February, rose to 2.4% in March, and is expected to reach about 3% in April.
+- Core inflation measures were near 2%: CPI-trim 2.2%, CPI-median 2.3%.
+- Gasoline, transportation costs, food costs, fertilizer, shipping disruptions, and fuel surcharges are risks.
+- Businesses’ short-term inflation expectations increased after the war began, while longer-term expectations remain anchored.
+
+Section D — “Oil Prices: The Main Shock”
+Include:
+- Brent oil prices were trading around US$100 per barrel.
+- Bank base-case assumption: Brent falls from US$90 in Q2 2026 to US$75 by mid-2027.
+- Higher oil prices help Canada as a net energy exporter but hurt households through gasoline, food, and transportation costs.
+- The benefit to Canada is muted compared with past oil booms because energy-sector investment is less responsive and more profits may flow to dividends.
+
+Section E — “Interest Rates and Mortgages”
+Include:
+- Explain the tension:
+  - Weak growth and housing softness point toward easier rates.
+  - Higher inflation risk points toward caution.
+- Do not predict a guaranteed rate cut.
+- Explain that if inflation broadens beyond gasoline and food, the Bank may need to keep monetary policy tighter for longer.
+- Include the Bank’s illustrative scenario: if oil prices stay around US$100 per barrel, inflation peaks around 3.1% in Q1 2027 and stays close to 3% for more than a year, requiring tighter monetary policy and consecutive policy-rate increases.
+
+Section F — “Housing Market Implications”
+Create subsections:
+
+For Buyers:
+- Do not rely only on future rate cuts.
+- Stress-test affordability using current payments.
+- Watch inflation and bond yields, not just Bank of Canada announcements.
+
+For Sellers:
+- Pricing discipline matters.
+- Weak affordability means overpriced listings may sit.
+- Rate relief may not arrive quickly enough to rescue poor pricing.
+
+For Investors:
+- Weak investor interest and condo inventory overhang are major warnings.
+- The investment case must work on cash flow, financing costs, and holding power.
+- Do not assume population growth will absorb all supply.
+
+For Mortgage Renewers:
+- Rate timing is the risk.
+- Inflation cooling would help, but persistent oil prices could keep rates higher for longer.
+- Renewal strategy should consider both fixed-rate certainty and variable-rate risk.
+
+For Realtors:
+- Explain the market as a tension between weak demand and inflation risk.
+- Clients need to understand that housing softness does not automatically mean fast rate cuts.
+
+Section G — “Trade, Tariffs, and CUSMA Risk”
+Include:
+- US tariffs and CUSMA uncertainty are weighing on exports, investment, and hiring.
+- Average US tariff rate on Canadian goods in the outlook: 5.1%.
+- Canadian tariff rate on US goods: 1.5%.
+- The Bank says CUSMA outcomes are a major downside risk to growth and inflation.
+- Trade restrictions could weaken business confidence, hiring, household spending, and housing demand.
+
+Section H — “Bottom Line”
+Use this final summary:
+“The April 2026 Bank of Canada report does not point to a simple boom or crash narrative. It points to a market stuck between weak demand and renewed inflation risk. For Canadian real estate, that means affordability remains stretched, housing activity remains subdued, and rate relief may depend on whether oil prices and inflation pressures actually cool.”
+
+4. Charts and Visuals From the Report
+Include charts from the PDF. Use the official Bank of Canada PDF as the source and clearly attribute each visual. If direct chart extraction is difficult, use PDF page screenshots or recreate simplified chart cards using the numeric values in the report. Do not invent data.
+
+Required chart/visual sections:
+
+Chart 1 — GDP Growth and Inventory Drawdown
+Source: Chart 1, page 5 of the PDF.
+Purpose: Show the sharp inventory drawdown that lowered GDP in Q4 2025 and the estimated rebound in Q1 2026.
+
+Chart 3 — Labour Market Slack
+Source: Chart 3, page 7.
+Purpose: Show that labour market indicators point to some slack.
+
+Chart 5 — CPI Inflation Near 2%, Then Rising
+Source: Chart 5, page 9.
+Purpose: Show CPI inflation close to 2% for over a year before gasoline pushed inflation higher.
+
+Chart 8 — Business Inflation Expectations
+Source: Chart 8, page 13.
+Purpose: Show short-term business inflation expectations rising because of the war in the Middle East.
+
+Chart 9 — Oil Prices Have Surged
+Source: Chart 9, page 14.
+Purpose: Show Brent, WTI, and Western Canadian Select oil-price assumptions.
+
+Chart 14 — US Tariffs
+Source: Chart 14, page 20.
+Purpose: Show that US tariffs decreased from their 2025 peak but remain a major risk.
+
+Chart 15 — GDP Growth Projection
+Source: Chart 15, page 24.
+Purpose: Show GDP growth projected to outpace potential output growth and gradually absorb excess supply.
+
+Chart 17 — Consumption Growth
+Source: Chart 17, page 27.
+Purpose: Show consumption growth averaging just above 1% over the projection horizon.
+
+Chart 19 — CPI Inflation Contributions
+Source: Chart 19, page 29.
+Purpose: Show CPI inflation peaking in Q2 2026 and beginning to decline.
+
+Chart 20 — Oil Cost Pressures Into 2027
+Source: Chart 20, page 30.
+Purpose: Show that oil prices create upward cost pressures into 2027.
+
+Chart 25 — Higher-Oil Scenario
+Source: Chart 25, page 47.
+Purpose: Show inflation remaining close to 3% for more than a year in the persistently high oil-price scenario.
+
+Chart 26 — Trade Restrictions by Sector
+Source: Chart 26, page 48.
+Purpose: Show that steel exports have declined more than other tariff-affected sectors.
+
+5. Create Data Highlight Cards
+Add a row or grid of data cards with these exact values:
+
+- CPI inflation, March 2026: 2.4%
+- Expected CPI peak, April 2026: about 3%
+- Base-case inflation target return: early 2027
+- GDP growth forecast, 2026: 1.2%
+- GDP growth forecast, 2027: 1.6%
+- GDP growth forecast, 2028: 1.7%
+- Unemployment range over prior 12 months: about 6.5% to 7%
+- Output gap, Q1 2026: -1.5% to -0.5%
+- Brent oil assumption: US$90 in Q2 2026, falling to US$75 by mid-2027
+- Persistent oil scenario: US$100 per barrel
+- Persistent oil scenario inflation peak: 3.1% in Q1 2027
+- Canadian nominal neutral rate range: 2.25% to 3.25%
+- US tariff rate on Canada in April outlook: 5.1%
+- Canadian tariff rate on US goods: 1.5%
+
+6. Real Estate Interpretation Module
+Create a specific “What This Means for Real Estate” module with five tabs or cards:
+- Buyers
+- Sellers
+- Investors
+- Mortgage Renewers
+- Realtors
+
+Each card should include 3–5 concise practical implications.
+
+7. Embed Requirements
+The report should be usable as an embedded report in the Market Reports section.
+
+If the app already has embed components, follow the existing pattern.
+
+If not, create:
+- A compact embeddable version with:
+  - Hero summary
+  - Key takeaways
+  - 3–5 chart cards
+  - Link to full report
+- A full report page version with all sections.
+- An embed code snippet users can copy, such as:
+  `<iframe src="[APP_URL]/embed/market-reports/bank-of-canada-april-2026" width="100%" height="900" style="border:0;border-radius:16px;" loading="lazy"></iframe>`
+
+Do not hardcode `[APP_URL]`; use the app’s environment/base URL pattern if available.
+
+8. UX / UI Requirements
+- Responsive on desktop, tablet, and mobile.
+- Use readable typography.
+- Use clean cards with soft borders and strong hierarchy.
+- Use sticky or top summary navigation if possible.
+- Add chart captions and source labels.
+- Include alt text for all chart images.
+- Add “Source: Bank of Canada Monetary Policy Report, April 2026” under every chart or at the bottom of each chart card.
+- Add a disclaimer: “This report is for informational purposes only and is not financial, legal, or mortgage advice.”
+
+9. Technical Requirements
+- First inspect the existing codebase and identify the current Market Reports section, routing structure, components, and styling system.
+- Reuse existing components where possible.
+- Do not break existing routes.
+- Keep naming consistent with the app.
+- Add the new report to any report index, config file, CMS seed, or data array currently powering Market Reports.
+- If charts are image-based, store them in the appropriate public assets folder and reference them cleanly.
+- If charts are recreated, use responsive chart components and clearly label that they are simplified recreations based on the Bank of Canada report.
+- Make sure the PDF source link opens in a new tab.
+- Run the app/build/tests if available and fix any errors.
+
+10. Tone
+The writing should be clear, direct, and useful for Canadian real estate clients. Avoid academic language. Translate macroeconomic language into practical housing-market meaning.
+
+Preferred tone:
+Professional, concise, data-driven, and real-estate focused.
+
+Core message:
+“Canada’s economy is soft, housing is still weak, but inflation risk is back. That makes the interest-rate outlook more complicated for buyers, sellers, investors, and mortgage renewers.”

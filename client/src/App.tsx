@@ -58,6 +58,7 @@ import DistressReport from "@/pages/DistressReport";
 import MultiplexFit from "@/pages/MultiplexFit";
 import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
 import MultiplexFeasibilityPage from "@/pages/MultiplexFeasibilityPage";
+import OntarioHstRebateCalculator from "@/pages/OntarioHstRebateCalculator";
 import Course from "@/pages/Course";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
 import BuildingPermitsReport from "@/pages/BuildingPermitsReport";
@@ -68,6 +69,7 @@ import CpiInflationReport from "@/pages/CpiInflationReport";
 import CreditSpreadEconomyReport from "@/pages/CreditSpreadEconomyReport";
 import SpringEconomicUpdate2026Report from "@/pages/SpringEconomicUpdate2026Report";
 import PreconResale1990sReport from "@/pages/PreconResale1990sReport";
+import BankOfCanadaApril2026Report, { BankOfCanadaApril2026ReportEmbed } from "@/pages/BankOfCanadaApril2026Report";
 import SeoProjectDetail from "@/pages/SeoProjectDetail";
 import {
   TorontoHousingMarketPage,
@@ -121,6 +123,7 @@ function Router() {
       <Route path="/tools/cap-rates" component={CapRates} />
       <Route path="/tools/will-it-plex" component={WillItPlex} />
       <Route path="/tools/fixed-vs-variable" component={FixedVsVariable} />
+      <Route path="/tools/hst-rebate" component={OntarioHstRebateCalculator} />
       <Route path="/tools/land-claim-screener" component={LandClaimScreener} />
       <Route path="/tools/distress-deals" component={DistressDeals} />
       <Route path="/tools/multiplex-feasibility" component={MultiplexFeasibilityPage} />
@@ -142,6 +145,8 @@ function Router() {
       <Route path="/insights/the-spread-that-ate-the-economy" component={CreditSpreadEconomyReport} />
       <Route path="/insights/spring-economic-update-2026" component={SpringEconomicUpdate2026Report} />
       <Route path="/insights/precon-vs-resale-1990s" component={PreconResale1990sReport} />
+      <Route path="/insights/bank-of-canada-april-2026">{() => <BankOfCanadaApril2026Report />}</Route>
+      <Route path="/embed/insights/bank-of-canada-april-2026" component={BankOfCanadaApril2026ReportEmbed} />
       {/* SEO landing pages — programmatic + query-driven */}
       <Route path="/canada-housing-market" component={CanadaHousingMarketPage} />
       <Route path="/toronto-housing-market" component={TorontoHousingMarketPage} />

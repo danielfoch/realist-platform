@@ -1,6 +1,9 @@
 import { storage } from "./storage";
 import { getProgrammaticMarket, getProgrammaticStrategy } from "@shared/programmaticSeo";
 
+const BASE_URL = "https://realist.ca";
+const RSS_FEED_URL = "https://thecanadianrealestateinvestor.substack.com/feed";
+
 export interface PageMeta {
   title: string;
   description: string;
@@ -12,8 +15,8 @@ export interface PageMeta {
 }
 
 const DEFAULT: PageMeta = {
-  title: "Realist.ca - Canadian Real Estate Deal Analyzer | Toronto Real Estate Investing",
-  description: "Canada's #1 real estate deal analyzer. Analyze properties in Toronto, Vancouver, Calgary & across Canada. Calculate cap rates, IRR, cash-on-cash returns. Home of the Canadian Real Estate Investor Podcast with Daniel Foch.",
+  title: "Realist | Canadian Real Estate Deal Finder",
+  description: "Use Realist to find, analyze, and compare Canadian real estate deals with AI-powered underwriting, market reports, and investor tools.",
 };
 
 const STATIC_META: Record<string, PageMeta> = {
@@ -76,8 +79,8 @@ const STATIC_META: Record<string, PageMeta> = {
     description: "Live tracker of distressed Canadian listings: power of sale, foreclosure, court order sale, motivated sellers. Updated daily.",
   },
   "/tools/hst-rebate": {
-    title: "Ontario HST Rebate Calculator (New Construction & Investment)",
-    description: "Calculate your Ontario new home HST rebate — owner-occupied or rental (NRRP). Free, instant, no signup.",
+    title: "Ontario New Home HST Rebate Calculator | Realist",
+    description: "Estimate Ontario new home HST rebate savings under the proposed 2026 relief policy and register for final-rule updates.",
   },
   "/tools/hst-calculator": {
     title: "Canadian HST Calculator for Real Estate - Realist.ca",
@@ -138,6 +141,16 @@ const STATIC_META: Record<string, PageMeta> = {
     description: "Floorplan-level analysis of 768 active GTA pre-construction units across 83 projects. Cuts outnumber raises 2.9 to 1. Implications for the resale market.",
     ogType: "article",
   },
+  "/insights/cpi-march-2026": {
+    title: "CREA MLS Home Price Index March 2026 Canada | Realist",
+    description: "Read Realist's CREA MLS Home Price Index March 2026 Canada analysis with prices, inflation context, and investor takeaways.",
+    ogType: "article",
+  },
+  "/insights/spring-economic-update-2026": {
+    title: "CREA Sales-to-New-Listings Ratio March 2026 | Realist",
+    description: "Track Canada's CREA sales-to-new-listings ratio March 2026 with market balance, price pressure, and deal signals from Realist.",
+    ogType: "article",
+  },
   "/insights/the-spread-that-ate-the-economy": {
     title: "The Spread That Ate the Economy - Credit, Housing, and Capital Allocation | Realist.ca",
     description: "An interactive Realist research report on how Canada’s residential credit system, lower investor yield requirements, and business-credit frictions may have redirected capital toward housing and away from entrepreneurship.",
@@ -172,16 +185,16 @@ const STATIC_META: Record<string, PageMeta> = {
     description: "Original Canadian real estate analysis from the Realist.ca team and the Canadian Real Estate Investor Podcast.",
   },
   "/reports": {
-    title: "Canadian Real Estate Reports - Realist.ca",
-    description: "Crawlable index of Realist market reports, data-driven housing insights, and investor research.",
+    title: "Canadian Real Estate Reports | Realist",
+    description: "Browse Realist's Canadian real estate reports for housing data, market analysis, and investor research. Read the latest insights.",
   },
   "/markets": {
-    title: "Canadian Real Estate Markets - Realist.ca",
+    title: "Canadian Real Estate Markets | Realist",
     description: "Programmatic market pages for major Canadian cities, connected to reports, strategies, and underwriting workflows.",
   },
   "/investing": {
-    title: "Canadian Real Estate Investing Strategies - Realist.ca",
-    description: "Strategy pages for multiplex, BRRR, buy-and-hold, and distress investing on Realist.ca.",
+    title: "AI Real Estate Deal Finder | Realist",
+    description: "Use Realist as an AI real estate deal finder for Canadian markets, strategies, and underwriting workflows. Start with investor guides.",
   },
   "/insights/guides": {
     title: "Canadian Real Estate Guides - Realist.ca",
@@ -218,7 +231,7 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
       const post = await storage.getBlogPostBySlug(blogMatch[1]);
       if (post) {
         return {
-          title: post.metaTitle || `${post.title} | Realist.ca`,
+          title: post.metaTitle || `${post.title} | Realist`,
           description: post.metaDescription || post.excerpt,
           ogImage: post.coverImage || undefined,
           ogType: "article",
@@ -244,20 +257,47 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
     try {
       const post = await storage.getBlogPostBySlug(reportMatch[1]);
       if (post) {
+        const canonicalPath = `/reports/${post.slug}`;
         return {
-          title: post.metaTitle || `${post.title} | Realist.ca`,
+          title: post.metaTitle || `${post.title} | Realist`,
           description: post.metaDescription || post.excerpt,
           ogImage: post.coverImage || undefined,
           ogType: "article",
-          canonicalPath: `/reports/${post.slug}`,
+          canonicalPath,
           structuredData: [
+            {
+              "@context": "https://schema.org",
+              "@type": "Report",
+              "@id": `${BASE_URL}${canonicalPath}#report`,
+              headline: post.title,
+              description: post.metaDescription || post.excerpt,
+              url: `${BASE_URL}${canonicalPath}`,
+              image: post.coverImage ? (post.coverImage.startsWith("http") ? post.coverImage : `${BASE_URL}${post.coverImage}`) : `${BASE_URL}/og-image.png`,
+              datePublished: post.publishedAt ? post.publishedAt.toISOString() : undefined,
+              dateModified: post.updatedAt ? post.updatedAt.toISOString() : undefined,
+              author: {
+                "@type": "Organization",
+                name: post.authorName || "Realist Research",
+              },
+              publisher: { "@id": `${BASE_URL}/#organization` },
+              mainEntityOfPage: `${BASE_URL}${canonicalPath}`,
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "Dataset",
+              "@id": `${BASE_URL}${canonicalPath}#dataset`,
+              name: `${post.title} dataset references`,
+              description: `Data sources and market observations used in ${post.title}.`,
+              creator: { "@id": `${BASE_URL}/#organization` },
+              license: `${BASE_URL}/terms`,
+            },
             {
               "@context": "https://schema.org",
               "@type": "BreadcrumbList",
               itemListElement: [
-                { "@type": "ListItem", position: 1, name: "Home", item: "https://realist.ca/" },
-                { "@type": "ListItem", position: 2, name: "Reports", item: "https://realist.ca/reports" },
-                { "@type": "ListItem", position: 3, name: post.title, item: `https://realist.ca/reports/${post.slug}` },
+                { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+                { "@type": "ListItem", position: 2, name: "Reports", item: `${BASE_URL}/reports` },
+                { "@type": "ListItem", position: 3, name: post.title, item: `${BASE_URL}${canonicalPath}` },
               ],
             },
           ],
@@ -317,7 +357,7 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
     const market = getProgrammaticMarket(marketMatch[1]);
     if (market) {
       return {
-        title: `${market.title} | Realist.ca`,
+        title: `${market.title} | Realist`,
         description: market.description,
         ogType: "article",
         canonicalPath: `/markets/${market.slug}`,
@@ -339,7 +379,7 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
     const strategy = getProgrammaticStrategy(strategyMatch[1]);
     if (strategy) {
       return {
-        title: `${strategy.title} | Realist.ca`,
+        title: `${strategy.title} | Realist`,
         description: strategy.description,
         ogType: "article",
         canonicalPath: `/investing/${strategy.slug}`,
@@ -382,13 +422,12 @@ function normalizeCanonical(url: string): string {
 }
 
 export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw: string, origin: string): string {
-  const canonicalUrl = normalizeCanonical(meta.canonicalPath ? `${origin}${meta.canonicalPath}` : canonicalUrlRaw);
-  const fullTitle = meta.title.includes("Realist") ? meta.title : `${meta.title} | Realist.ca`;
-  const desc = escapeHtml(meta.description);
+  const canonicalUrl = normalizeCanonical(meta.canonicalPath ? `${BASE_URL}${meta.canonicalPath}` : canonicalUrlRaw.replace(/^https?:\/\/(?:www\.)?[^/]+/i, BASE_URL));
+  const fullTitle = meta.title.includes("Realist") ? meta.title.replace(/\s\|\sRealist\.ca$/, " | Realist") : `${meta.title} | Realist`;
   const titleEsc = escapeHtml(fullTitle);
   const ogImage = meta.ogImage
-    ? (meta.ogImage.startsWith("http") ? meta.ogImage : `${origin}${meta.ogImage.startsWith("/") ? "" : "/"}${meta.ogImage}`)
-    : `${origin}/og-image.png`;
+    ? (meta.ogImage.startsWith("http") ? meta.ogImage : `${BASE_URL}${meta.ogImage.startsWith("/") ? "" : "/"}${meta.ogImage}`)
+    : `${BASE_URL}/og-image.png`;
   const ogType = meta.ogType || "website";
 
   let out = html;
@@ -414,6 +453,10 @@ export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw
   replaceMeta("name", "description", meta.description);
   if (meta.keywords) replaceMeta("name", "keywords", meta.keywords);
   replaceLink("canonical", canonicalUrl);
+  const rssTag = `<link rel="alternate" type="application/rss+xml" title="Realist Blog RSS" href="${RSS_FEED_URL}" />`;
+  if (!/<link\s+rel=["']alternate["'][^>]*application\/rss\+xml/i.test(out)) {
+    out = out.replace("</head>", `    ${rssTag}\n  </head>`);
+  }
 
   replaceMeta("property", "og:title", fullTitle);
   replaceMeta("property", "og:description", meta.description);
@@ -430,23 +473,26 @@ export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw
     {
       "@context": "https://schema.org",
       "@type": "Organization",
+      "@id": `${BASE_URL}/#organization`,
       name: "Realist.ca",
-      url: origin,
-      logo: `${origin}/favicon.png`,
+      url: BASE_URL,
+      logo: `${BASE_URL}/logo.png`,
       sameAs: [
         "https://www.youtube.com/@CanadianRealEstateInvestor",
         "https://twitter.com/RealistCA",
         "https://www.instagram.com/realist.ca/",
+        "https://thecanadianrealestateinvestor.substack.com/",
       ],
     },
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
+      "@id": `${BASE_URL}/#website`,
       name: "Realist.ca",
-      url: origin,
+      url: BASE_URL,
       potentialAction: {
         "@type": "SearchAction",
-        target: `${origin}/search?q={search_term_string}`,
+        target: `${BASE_URL}/reports?search={search_term_string}`,
         "query-input": "required name=search_term_string",
       },
     },

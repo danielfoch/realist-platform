@@ -40,6 +40,13 @@ const tools = [
     icon: DollarSign,
   },
   {
+    href: "/tools/hst-rebate",
+    title: "Ontario HST Rebate",
+    description: "Estimate buyer savings from the proposed Ontario new home HST relief policy and register for final-rule updates.",
+    icon: DollarSign,
+    badge: "New",
+  },
+  {
     href: "/tools/rent-vs-buy",
     title: "Rent vs Buy",
     description: "Compare the true financial impact of renting versus buying over time. Factor in appreciation, opportunity cost, maintenance, and more.",

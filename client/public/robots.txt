@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 
 # Block admin pages
+Disallow: /api/
 Disallow: /admin
 
 # Sitemap location

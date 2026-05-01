@@ -464,6 +464,38 @@ async function ensureAppTables() {
     next();
   });
 
+  app.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+
+    const host = String(req.headers["x-forwarded-host"] || req.headers.host || "");
+    const protocol = String(req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0];
+    const originalUrl = req.originalUrl || "/";
+    const [rawPath, rawQuery = ""] = originalUrl.split("?");
+    const normalizedPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, "").toLowerCase() : rawPath;
+    const params = new URLSearchParams(rawQuery);
+    let strippedParams = false;
+    for (const key of Array.from(params.keys())) {
+      const lower = key.toLowerCase();
+      if (lower.startsWith("utm_") || ["ref", "fbclid", "gclid", "msclkid"].includes(lower)) {
+        params.delete(key);
+        strippedParams = true;
+      }
+    }
+
+    const canonicalHost = host.replace(/^www\./i, "");
+    const needsRedirect =
+      host !== canonicalHost ||
+      rawPath !== normalizedPath ||
+      strippedParams ||
+      (protocol === "http" && canonicalHost.endsWith("realist.ca"));
+
+    if (!needsRedirect) return next();
+
+    const query = params.toString();
+    const target = `https://${canonicalHost || "realist.ca"}${normalizedPath}${query ? `?${query}` : ""}`;
+    res.redirect(301, target);
+  });
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
