@@ -1,58 +1,55 @@
 ---
-children_hash: d40cf109aded1d007115ea86b573b745a12e09d187073a473be29e31c42442c1
-compression_ratio: 0.228874337386966
+children_hash: 225c22d4159a4820a263c4c1e12f10bada085f19915e5ed920391046d2864939
+compression_ratio: 0.19119804400977994
 condensation_order: 1
-covers: [context.md, qualified_action_gate/_index.md, underwriting_share_lineage.md, underwriting_share_system.md, viral_underwriting_share_loop.md]
-covers_token_total: 3207
+covers: [context.md, qualified_action_gate/_index.md, share_status_dashboard.md, underwriting_share_lineage.md, underwriting_share_system.md, viral_underwriting_share_loop.md]
+covers_token_total: 4090
 summary_level: d1
-token_count: 734
+token_count: 782
 type: summary
 ---
-# Viral Underwriting Share Loop — Structural Summary
+# Viral Underwriting Share System — Structural Summary
 
 ## Overview
-Viral growth mechanism where users share deal analyses and earn `google_sheets_export` credits when recipients take qualified actions. Credits awarded only for meaningful engagement, never raw clicks.
+Viral growth mechanism where users share deal analyses and earn Google Sheets export credits when recipients perform qualified actions. Implemented across `src/underwriting-share-routes.ts`, `src/analysis-routes.ts`, and `db/migrations/013-014`.
 
 ## Architecture
-**Routes** (`src/underwriting-share-routes.ts`, `src/analysis-routes.ts`):
-- `POST /analyses/:id/share` — Create share token (optional auth)
-- `GET /underwriting-shares/:token` — Read share, records `unique_open`
-- `POST /underwriting-shares/:token/actions` — Record qualified action (optional auth)
-- `GET /underwriting-shares/:token/status` — Owner dashboard (required auth)
-
-**Database** (`db/migrations/013_viral_underwriting_shares.sql`, `db/migrations/014_underwriting_share_lineage.sql`):
-- `underwriting_shares` — Share records with lineage tracking (`parent_share_id`, `parent_share_action_id`, `share_depth`)
-- `underwriting_share_actions` — Action tracking with dedup/cap logic
-- `premium_credit_ledger` — Credit awards (type: `google_sheets_export`)
-- `deal_analyses` — Cloned on fork/saved_version actions
+- **4 API Routes:** `POST /analyses/:id/share` (create), `GET /underwriting-shares/:token` (read + auto-record unique_open), `POST /underwriting-shares/:token/actions` (record action), `GET /underwriting-shares/:token/status` (owner dashboard)
+- **3 Database Tables:** `underwriting_shares`, `underwriting_share_actions`, `premium_credit_ledger`
+- **Auth:** `authenticateOptional` for creation/actions; `authenticateToken` for status; no auth for token resolution
 
 ## Qualified Action Policies
-| Action | Credits | Share Cap | Recipient Cap | Payload Required |
+| Action | Credits | Share Cap/Day | Recipient Cap/Day | Payload Required |
 |---|---|---|---|---|
-| `unique_open` | 1 | 5 | 1 | None |
-| `challenge` | 2 | 8 | 2 | Meaningful payload |
-| `fork` | 3 | 8 | 2 | Meaningful payload |
-| `signup` | 5 | 5 | 1 | None |
-| `saved_version` | 4 | 8 | 2 | Meaningful payload |
+| `unique_open` | 1 | 5 | 1 | No |
+| `challenge` | 2 | 8 | 2 | Yes |
+| `fork` | 3 | 8 | 2 | Yes |
+| `signup` | 5 | 5 | 1 | No |
+| `saved_version` | 4 | 8 | 2 | Yes |
 
-**Meaningful payload** (`hasMeaningfulChallengePayload`): Requires at least one of `challengedFields` (non-empty array), `assumptions`/`inputs`/`metrics` (non-empty objects), or `comment`/`notes` (≥10 chars).
+**Meaningful payload** (for challenge/fork/saved_version): at least one of `challengedFields[]` (non-empty), `assumptions{}`/`inputs{}`/`metrics{}` (non-empty objects), or `comment`/`notes` (≥10 chars).
 
-## Validation & Safeguards
-- **Duplicate prevention**: `share_id` + `recipient_hash` + `action` triplet returns original credit, no new award
-- **Cap enforcement**: Both daily share cap AND daily recipient cap must pass; overflow actions recorded as `capped` with `credit_amount = 0`
-- **Recipient identification**: `SHA256(IP:user-agent)` or explicit recipient hash
-- **Token generation**: `crypto.randomBytes(18).toString("base64url")`
-- **Privacy**: `recentActions` intentionally excludes `recipientHash`
+## Core Mechanics
+- **Token generation:** `crypto.randomBytes(18).toString('base64url')`
+- **Recipient identification:** `SHA-256(IP:user-agent)` or explicit recipient hash
+- **Duplicate prevention:** Same `share_id + recipient_hash + action` returns original credit, no new award
+- **Cap overflow:** Actions recorded as `capped` with `credit_amount = 0`, no ledger insert
+- **Fork/Save behavior:** Authenticated users generate new `deal_analyses` record with optional metric/assumption overrides
 
 ## Share Lineage (Migration 014)
-Authenticated `fork`/`saved_version` actions trigger viral loop continuation:
-1. Clone `deal_analyses` record with optional overrides
-2. Create onward share with `parent_share_id`, `parent_share_action_id`, `share_depth = parentDepth + 1`
-3. Update action metadata with `savedAnalysisId`/`onwardShareId`/`onwardShareToken`
-4. CTA: "Challenge my underwriting"
-5. Duplicate/capped actions do NOT clone or create onward shares
+- Adds `parent_share_id`, `parent_share_action_id`, `share_depth` to `underwriting_shares`
+- `shareDepth = parentShareId ? parentShareDepth + 1 : 0` tracks viral loop depth
+- Qualified fork/saved_version actions clone analysis and create onward share with CTA "Challenge my underwriting"
+- Duplicate/capped actions do not clone or create onward shares
 
-## Key Relationships
-- Parent topic: `growth/viral_sharing`
-- Related: `qualified_action_gate` (validation layer), `underwriting_share_system` (core logic), `underwriting_share_lineage` (depth tracking)
-- Dependencies: `deal_analyses` table, `authenticateOptional`/`authenticateToken` middleware, `premium_credit_ledger`
+## Share Status Dashboard
+- `getShareActionSummary()` aggregates per-action `dailyQualifiedCount`, `dailyRemainingShareCap`, `uniqueRecipientCount`, `qualifiedRecipientCount`, `conversionRates`
+- `getShareGrowthNudge()` returns 5 stage-specific copy variations: `get_first_qualified_open` → `convert_opens_to_challenges` → `convert_challenges_to_versions` → `convert_versions_to_accounts` → `amplify_working_loop`
+- Conversion funnel tracks: `openToChallenge`, `challengeToForkOrSavedVersion`, `forkOrSavedVersionToSignup`
+- `recentActions` intentionally excludes `recipientHash` for privacy
+
+## Related Entries
+- `qualified_action_gate` — Validation layer and payload enforcement details
+- `underwriting_share_system` — Full route/schema documentation and fact registry
+- `underwriting_share_lineage` — Migration 014 depth tracking and onward share creation
+- `share_status_dashboard` — Metrics aggregation, conversion rates, and growth nudge logic
