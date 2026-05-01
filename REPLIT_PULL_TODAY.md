@@ -6,7 +6,8 @@ Friday, May 1, 2026
 ## 2. Branch and commit SHA
 Branch: `realist-nightly/2026-05-01-share-status-dashboard`
 
-Commit SHA: `974cae125488499a38d1c69f8d7e27f10eff390f`
+Feature commit SHA: `974cae125488499a38d1c69f8d7e27f10eff390f`
+Pull-brief commit SHA: `f6a3c1d75ea783e6ec8c3855484cfb941a4b3f96`
 
 ## 3. What changed
 - Improved the viral underwriting owner status payload so Dan/Replit can show a more useful sharing dashboard.
@@ -60,7 +61,7 @@ npm run build
 - No outbound emails/messages were sent.
 - No paid API calls were made.
 - This changes the JSON shape returned by `GET /api/underwriting-shares/:token/status` by adding fields, but does not remove existing fields.
-- Push status: pending GitHub auth check.
+- Push status: branch pushed to `origin/realist-nightly/2026-05-01-share-status-dashboard`.
 
 ## 10. What Dan should pull into Replit at 10am
 Pull the `realist-nightly/2026-05-01-share-status-dashboard` branch if you want the underwriting share status endpoint to power a better owner dashboard: daily cap visibility, privacy-safe recipient counts, viral-loop conversion rates, and suggested “Challenge my underwriting” follow-up copy for the next sharing step.
