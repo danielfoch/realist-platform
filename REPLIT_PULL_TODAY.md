@@ -7,7 +7,7 @@ Friday, May 1, 2026
 Branch: `realist-nightly/2026-05-01-share-status-dashboard`
 
 Feature commit SHA: `974cae125488499a38d1c69f8d7e27f10eff390f`
-Pull-brief commit SHA: `f6a3c1d75ea783e6ec8c3855484cfb941a4b3f96`
+Latest pushed branch head before this pull-brief update: `ad0972f2855b73d492f7368bd38b90cd982617a9`
 
 ## 3. What changed
 - Improved the viral underwriting owner status payload so Dan/Replit can show a more useful sharing dashboard.
@@ -24,6 +24,11 @@ Pull-brief commit SHA: `f6a3c1d75ea783e6ec8c3855484cfb941a4b3f96`
 - `src/underwriting-share-routes.ts`
 - `test/underwriting-share-routes.test.ts`
 - `REPLIT_PULL_TODAY.md`
+- `.brv/context-tree/growth/viral_sharing/share_status_dashboard.md`
+- `.brv/context-tree/_index.md`
+- `.brv/context-tree/_manifest.json`
+- `.brv/context-tree/growth/_index.md`
+- `.brv/context-tree/growth/viral_sharing/_index.md`
 
 ## 5. Migration steps
 No database migration required. This reuses the existing `underwriting_share_actions.recipient_hash`, `qualified`, `credit_amount`, and `created_at` fields.
@@ -62,6 +67,7 @@ npm run build
 - No paid API calls were made.
 - This changes the JSON shape returned by `GET /api/underwriting-shares/:token/status` by adding fields, but does not remove existing fields.
 - Push status: branch pushed to `origin/realist-nightly/2026-05-01-share-status-dashboard`.
+- ByteRover context was curated; the CLI printed a Node 25 FileHandle cleanup warning after writing context, but exited successfully and the context files were committed.
 
 ## 10. What Dan should pull into Replit at 10am
 Pull the `realist-nightly/2026-05-01-share-status-dashboard` branch if you want the underwriting share status endpoint to power a better owner dashboard: daily cap visibility, privacy-safe recipient counts, viral-loop conversion rates, and suggested “Challenge my underwriting” follow-up copy for the next sharing step.
