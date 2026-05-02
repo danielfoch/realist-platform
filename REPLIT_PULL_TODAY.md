@@ -1,37 +1,35 @@
-# REPLIT PULL TODAY — 2026-05-01
+# REPLIT PULL TODAY — 2026-05-02
 
 ## 1. Date
-Friday, May 1, 2026
+Saturday, May 2, 2026
 
 ## 2. Branch and commit SHA
-Branch: `realist-nightly/2026-05-01-share-status-dashboard`
+Branch: `realist-nightly/2026-05-02-share-recipient-invites`
 
-Feature commit SHA: `974cae125488499a38d1c69f8d7e27f10eff390f`
-Latest pushed branch head before this pull-brief update: `ad0972f2855b73d492f7368bd38b90cd982617a9`
+Commit SHA: `8646e4c962fa8d205a8b7919e8d9cc19ff024846`
 
 ## 3. What changed
-- Improved the viral underwriting owner status payload so Dan/Replit can show a more useful sharing dashboard.
-- Added per-action daily qualified counts and remaining daily share-cap counts, reinforcing that credits are capped and only awarded for qualified actions.
-- Added unique recipient and qualified recipient counts without exposing recipient hashes.
-- Added conversion-rate metrics for the loop:
-  - qualified open → challenge
-  - challenge → fork/saved version
-  - fork/saved version → signup
-- Added a `growthNudge` object with stage-specific copy using the standing CTA: “Challenge my underwriting.”
-- Added tests covering the richer summary, privacy behavior, conversion rates, daily caps, and growth-nudge stages.
+- Added recipient-specific underwriting share links for the viral loop.
+- New owner-only endpoint can generate tracked `/underwriting/:token?recipient=...` links using the CTA: “Challenge my underwriting.”
+- Link creation does **not** award credits. Credits still require qualified actions: unique open, challenge, fork, signup, or saved version.
+- Added a privacy-safe `underwriting_share_recipients` table that stores opaque recipient hashes and optional label hashes, not raw names/emails.
+- Share opens from recipient links update `last_opened_at`, and status summaries now include invited/unopened recipient counts.
+- Added tests for recipient link creation and for status summary invite counts.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
 - `test/underwriting-share-routes.test.ts`
+- `db/migrations/015_underwriting_share_recipient_invites.sql`
 - `REPLIT_PULL_TODAY.md`
-- `.brv/context-tree/growth/viral_sharing/share_status_dashboard.md`
-- `.brv/context-tree/_index.md`
-- `.brv/context-tree/_manifest.json`
-- `.brv/context-tree/growth/_index.md`
-- `.brv/context-tree/growth/viral_sharing/_index.md`
 
 ## 5. Migration steps
-No database migration required. This reuses the existing `underwriting_share_actions.recipient_hash`, `qualified`, `credit_amount`, and `created_at` fields.
+Run the new migration before using recipient tracked links:
+
+```bash
+npm run migrate
+```
+
+This creates `underwriting_share_recipients` with indexes for per-share recipient tracking.
 
 ## 6. Env vars needed
 No new environment variables.
@@ -39,25 +37,29 @@ No new environment variables.
 ## 7. Replit commands to run
 ```bash
 git fetch origin
-git checkout realist-nightly/2026-05-01-share-status-dashboard
+git checkout realist-nightly/2026-05-02-share-recipient-invites
 npm install
+npm run migrate
 npm run build
 npx jest test/underwriting-share-routes.test.ts --runInBand
 ```
 
 If merging into the active Replit branch instead:
+
 ```bash
 git fetch origin
-git merge realist-nightly/2026-05-01-share-status-dashboard
+git merge realist-nightly/2026-05-02-share-recipient-invites
+npm run migrate
 npm run build
 npx jest test/underwriting-share-routes.test.ts --runInBand
 ```
 
 ## 8. Test/build result
 Passed locally:
+
 ```bash
+npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 npm run type-check
-npx jest test/underwriting-share-routes.test.ts --runInBand
 npm run build
 ```
 
@@ -65,9 +67,9 @@ npm run build
 - No deploy was performed.
 - No outbound emails/messages were sent.
 - No paid API calls were made.
-- This changes the JSON shape returned by `GET /api/underwriting-shares/:token/status` by adding fields, but does not remove existing fields.
-- Push status: branch pushed to `origin/realist-nightly/2026-05-01-share-status-dashboard`.
-- ByteRover context was curated; the CLI printed a Node 25 FileHandle cleanup warning after writing context, but exited successfully and the context files were committed.
+- Requires running migration `015_underwriting_share_recipient_invites.sql` before the enhanced status endpoint can read invite counts.
+- The new endpoint returns opaque recipient keys once; the UI should copy/store/display generated links immediately if needed.
+- Push status: branch pushed to `origin/realist-nightly/2026-05-02-share-recipient-invites`.
 
-## 10. What Dan should pull into Replit at 10am
-Pull the `realist-nightly/2026-05-01-share-status-dashboard` branch if you want the underwriting share status endpoint to power a better owner dashboard: daily cap visibility, privacy-safe recipient counts, viral-loop conversion rates, and suggested “Challenge my underwriting” follow-up copy for the next sharing step.
+## 10. Plain-English “what Dan should pull into Replit at 10am”
+Pull `realist-nightly/2026-05-02-share-recipient-invites` to make “Challenge my underwriting” links trackable per recipient without rewarding empty sharing. Replit can generate recipient-specific share URLs, see how many invited recipients have not opened yet, and still only award Google Sheets export credits after qualified opens/challenges/forks/signups/saved versions within caps.

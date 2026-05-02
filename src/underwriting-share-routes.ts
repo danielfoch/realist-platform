@@ -35,6 +35,10 @@ function randomToken() {
   return crypto.randomBytes(18).toString('base64url');
 }
 
+function randomRecipientKey() {
+  return crypto.randomBytes(12).toString('base64url');
+}
+
 export async function createUnderwritingShare(database: DatabaseAdapter, input: {
   analysisId: number | string;
   inviterUserId: number | null;
@@ -86,6 +90,56 @@ export function getRecipientHash(req: Request, explicitRecipient?: string) {
     : `${getClientIp(req)}:${req.headers['user-agent'] || 'unknown'}`;
 
   return sha256(visitor);
+}
+
+export function getExplicitRecipientHash(recipientKey: string) {
+  return sha256(recipientKey.trim().toLowerCase());
+}
+
+function getRecipientLabelHash(label: unknown) {
+  return hasNonEmptyString(label) ? sha256(String(label).trim().toLowerCase()) : null;
+}
+
+export async function createUnderwritingShareRecipientLinks(database: DatabaseAdapter, input: {
+  shareId: number;
+  token: string;
+  createdByUserId: number;
+  recipients: Array<string | { label?: string; source?: string }>;
+  source?: string;
+}) {
+  const recipientInputs = input.recipients.slice(0, 25);
+  const links = [];
+
+  for (const recipientInput of recipientInputs) {
+    const label = typeof recipientInput === 'string' ? recipientInput : recipientInput.label;
+    const source = typeof recipientInput === 'object' && recipientInput.source
+      ? recipientInput.source
+      : input.source || 'manual';
+    const recipientKey = randomRecipientKey();
+    const recipientHash = getExplicitRecipientHash(recipientKey);
+    const labelHash = getRecipientLabelHash(label);
+
+    const result = await database.query(
+      `INSERT INTO underwriting_share_recipients (
+         share_id, recipient_hash, recipient_label_hash, source, created_by_user_id
+       ) VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (share_id, recipient_hash) DO NOTHING
+       RETURNING id, created_at`,
+      [input.shareId, recipientHash, labelHash, String(source).slice(0, 64), input.createdByUserId],
+    );
+
+    links.push({
+      id: result.rows[0]?.id || null,
+      recipientKey,
+      recipientHash,
+      shareUrl: `/underwriting/${input.token}?recipient=${recipientKey}`,
+      cta: 'Challenge my underwriting.',
+      createdAt: result.rows[0]?.created_at || null,
+      qualifiedActionsRequired: ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'] as QualifiedShareAction[],
+    });
+  }
+
+  return links;
 }
 
 export function getActionPolicy(action: QualifiedShareAction) {
@@ -351,6 +405,14 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     [shareId, recentLimit],
   );
 
+  const inviteResult = await database.query(
+    `SELECT COUNT(*)::int AS invited_recipient_count,
+            COUNT(*) FILTER (WHERE last_opened_at IS NULL)::int AS unopened_recipient_count
+     FROM underwriting_share_recipients
+     WHERE share_id = $1`,
+    [shareId],
+  );
+
   const totals = Object.values(byAction).reduce(
     (runningTotals, actionSummary) => ({
       totalCount: runningTotals.totalCount + actionSummary.totalCount,
@@ -363,12 +425,16 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
 
   const uniqueRecipientCount = Number(recipientResult.rows[0]?.unique_recipient_count || 0);
   const qualifiedRecipientCount = Number(recipientResult.rows[0]?.qualified_recipient_count || 0);
+  const invitedRecipientCount = Number(inviteResult.rows[0]?.invited_recipient_count || 0);
+  const unopenedRecipientCount = Number(inviteResult.rows[0]?.unopened_recipient_count || 0);
 
   return {
     byAction,
     totals,
     uniqueRecipientCount,
     qualifiedRecipientCount,
+    invitedRecipientCount,
+    unopenedRecipientCount,
     conversionRates: {
       openToChallenge: getConversionRate(byAction.challenge.qualifiedCount, byAction.unique_open.qualifiedCount),
       challengeToForkOrSavedVersion: getConversionRate(
@@ -456,6 +522,15 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         metadata: { referrer: req.headers.referer || null },
       });
 
+      if (typeof req.query.recipient === 'string' && req.query.recipient.trim()) {
+        await database.query(
+          `UPDATE underwriting_share_recipients
+           SET last_opened_at = NOW()
+           WHERE share_id = $1 AND recipient_hash = $2`,
+          [row.id, recipientHash],
+        );
+      }
+
       res.json({
         token: row.token,
         cta: 'Challenge my underwriting.',
@@ -470,6 +545,44 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
           notes: row.notes,
         },
         visitorQualification: open,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/underwriting-shares/:token/recipients', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const recipients = Array.isArray(req.body?.recipients) ? req.body.recipients : [];
+      if (recipients.length === 0 || recipients.length > 25) {
+        res.status(400).json({ error: 'Provide 1-25 recipient labels or objects to generate tracked share links' });
+        return;
+      }
+
+      const shareResult = await database.query(
+        `SELECT id, token, status FROM underwriting_shares WHERE token = $1 AND inviter_user_id = $2`,
+        [req.params.token, req.userId],
+      );
+      const share = shareResult.rows[0];
+      if (!share || share.status !== 'active') {
+        res.status(404).json({ error: 'Share not found' });
+        return;
+      }
+
+      const links = await createUnderwritingShareRecipientLinks(database, {
+        shareId: share.id,
+        token: share.token,
+        createdByUserId: req.userId!,
+        recipients,
+        source: req.body?.source || 'manual',
+      });
+
+      res.json({
+        success: true,
+        cta: 'Challenge my underwriting.',
+        links,
+        rewardPolicy: getRewardPolicySnapshot(),
+        creditGuardrail: 'Creating recipient links never awards credits. Credits require qualified opens, challenges, forks, signups, or saved versions within caps.',
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

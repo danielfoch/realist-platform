@@ -1,6 +1,8 @@
 import {
+  createUnderwritingShareRecipientLinks,
   createUnderwritingShare,
   getActionPolicy,
+  getExplicitRecipientHash,
   getRewardPolicySnapshot,
   getShareActionSummary,
   getShareGrowthNudge,
@@ -151,6 +153,10 @@ describe('viral underwriting share qualification', () => {
         };
       }
 
+      if (text.includes('FROM underwriting_share_recipients')) {
+        return { rows: [{ invited_recipient_count: '3', unopened_recipient_count: '2' }] };
+      }
+
       return { rows: [] };
     });
 
@@ -174,6 +180,8 @@ describe('viral underwriting share qualification', () => {
     });
     expect(summary.uniqueRecipientCount).toBe(6);
     expect(summary.qualifiedRecipientCount).toBe(5);
+    expect(summary.invitedRecipientCount).toBe(3);
+    expect(summary.unopenedRecipientCount).toBe(2);
     expect(summary.conversionRates).toEqual({
       openToChallenge: 0.4,
       challengeToForkOrSavedVersion: 0.5,
@@ -183,6 +191,34 @@ describe('viral underwriting share qualification', () => {
     expect(summary.recentActions[0]).not.toHaveProperty('recipientHash');
     expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT recipient_hash)'), [7]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2'), [7, 5]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('FROM underwriting_share_recipients'), [7]);
+  });
+
+  it('creates recipient-specific share links without awarding credits', async () => {
+    const query = jest.fn(async (text: string, params?: readonly unknown[]) => {
+      expect(text).not.toContain('premium_credit_ledger');
+      return { rows: [{ id: 201, created_at: '2026-05-02T05:10:00.000Z' }] };
+    });
+
+    const links = await createUnderwritingShareRecipientLinks({ query }, {
+      shareId: 7,
+      token: 'share-token',
+      createdByUserId: 42,
+      recipients: ['Investor A'],
+    });
+
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({
+      id: 201,
+      shareUrl: expect.stringContaining('/underwriting/share-token?recipient='),
+      cta: 'Challenge my underwriting.',
+      qualifiedActionsRequired: ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'],
+    });
+    expect(links[0].recipientHash).toBe(getExplicitRecipientHash(links[0].recipientKey));
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO underwriting_share_recipients'),
+      [7, links[0].recipientHash, expect.any(String), 'manual', 42],
+    );
   });
 
   it('returns stage-specific growth nudges for the underwriting loop', () => {
