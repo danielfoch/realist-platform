@@ -67,7 +67,7 @@ Targeted Jest result: 10 tests passed in `test/underwriting-share-routes.test.ts
 - No database schema changes in this patch.
 - `conversionInsights.healthScore` is a lightweight product heuristic, not a financial metric; UI should present it as funnel guidance.
 - ByteRover curation was attempted, but the `brv curate` process was killed before completion. Code and tests are committed; durable context can be retried later with the command documented in `.learnings/ERRORS.md`.
-- Push status: pending at handoff unless `git push -u origin realist-nightly/2026-05-03-share-conversion-insights` succeeds after the docs commit.
+- Push status: branch pushed to `origin/realist-nightly/2026-05-03-share-conversion-insights`.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
 Pull `realist-nightly/2026-05-03-share-conversion-insights` to make the “Challenge my underwriting” share dashboard tell users what to do next. Instead of only showing counts, Replit can now say whether the deal needs more qualified opens, more challenges, saved/forked versions, signups, or onward sharing — while keeping the rule that premium Google Sheets export credits are never granted for raw share clicks alone.
