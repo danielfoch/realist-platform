@@ -341,6 +341,70 @@ export function getShareGrowthNudge(byAction: ShareActionSummary) {
   };
 }
 
+export function getShareConversionInsights(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const { byAction, invitedRecipientCount, unopenedRecipientCount } = input;
+  const opens = byAction.unique_open.qualifiedCount;
+  const challenges = byAction.challenge.qualifiedCount;
+  const forkOrSavedVersions = byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount;
+  const signups = byAction.signup.qualifiedCount;
+  const openedInvites = Math.max(invitedRecipientCount - unopenedRecipientCount, 0);
+  const unopenedInviteRate = getConversionRate(unopenedRecipientCount, invitedRecipientCount);
+  const openToChallenge = getConversionRate(challenges, opens);
+  const challengeToVersion = getConversionRate(forkOrSavedVersions, challenges);
+  const versionToSignup = getConversionRate(signups, forkOrSavedVersions);
+
+  let bottleneck: 'recipient_distribution' | 'open_to_challenge' | 'challenge_to_version' | 'version_to_signup' | 'amplify_loop';
+  let nextQualifiedAction: QualifiedShareAction;
+  let ownerAction: string;
+
+  if (opens === 0 || (invitedRecipientCount > 0 && openedInvites === 0)) {
+    bottleneck = 'recipient_distribution';
+    nextQualifiedAction = 'unique_open';
+    ownerAction = 'Send recipient-specific links to a short list and ask each person for one underwriting disagreement.';
+  } else if (openToChallenge < 0.35) {
+    bottleneck = 'open_to_challenge';
+    nextQualifiedAction = 'challenge';
+    ownerAction = 'Follow up with opened recipients using the “Challenge my underwriting” CTA and name 2-3 assumptions they can dispute.';
+  } else if (challengeToVersion < 0.5) {
+    bottleneck = 'challenge_to_version';
+    nextQualifiedAction = 'saved_version';
+    ownerAction = 'Ask challengers to save or fork their changed assumptions so both versions can be compared.';
+  } else if (versionToSignup < 0.4) {
+    bottleneck = 'version_to_signup';
+    nextQualifiedAction = 'signup';
+    ownerAction = 'Prompt version creators to create an account so they can keep the version and share it onward.';
+  } else {
+    bottleneck = 'amplify_loop';
+    nextQualifiedAction = 'fork';
+    ownerAction = 'Re-share the strongest challenged version to a new qualified recipient segment.';
+  }
+
+  const remainingCreditsToday = Object.values(byAction).reduce(
+    (remaining, actionSummary) => remaining + actionSummary.dailyRemainingShareCap,
+    0,
+  );
+
+  return {
+    bottleneck,
+    nextQualifiedAction,
+    ownerAction,
+    healthScore: Math.min(100, Math.round(
+      (Math.min(opens, 5) * 8)
+      + (Math.min(challenges, 4) * 10)
+      + (Math.min(forkOrSavedVersions, 3) * 12)
+      + (Math.min(signups, 2) * 12),
+    )),
+    openedInvites,
+    unopenedInviteRate,
+    remainingCreditsToday,
+    creditGuardrail: 'Credits are only awarded for qualified opens, challenges, forks, signups, and saved versions within anti-abuse caps — never raw share clicks alone.',
+  };
+}
+
 export async function getShareActionSummary(database: DatabaseAdapter, shareId: number, recentLimit = 10) {
   const summaryResult = await database.query(
     `SELECT action,
@@ -447,6 +511,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
       ),
     },
     growthNudge: getShareGrowthNudge(byAction),
+    conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     recentActions: recentResult.rows.map((row) => ({
       id: row.id,
       action: row.action,

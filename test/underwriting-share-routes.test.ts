@@ -5,6 +5,7 @@ import {
   getExplicitRecipientHash,
   getRewardPolicySnapshot,
   getShareActionSummary,
+  getShareConversionInsights,
   getShareGrowthNudge,
   hasMeaningfulChallengePayload,
   recordQualifiedShareAction,
@@ -188,6 +189,14 @@ describe('viral underwriting share qualification', () => {
       forkOrSavedVersionToSignup: 0,
     });
     expect(summary.growthNudge.stage).toBe('convert_versions_to_accounts');
+    expect(summary.conversionInsights).toMatchObject({
+      bottleneck: 'version_to_signup',
+      nextQualifiedAction: 'signup',
+      openedInvites: 1,
+      unopenedInviteRate: 0.6667,
+      creditGuardrail: expect.stringContaining('never raw share clicks alone'),
+    });
+    expect(summary.conversionInsights.remainingCreditsToday).toBeGreaterThan(0);
     expect(summary.recentActions[0]).not.toHaveProperty('recipientHash');
     expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT recipient_hash)'), [7]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2'), [7, 5]);
@@ -245,6 +254,47 @@ describe('viral underwriting share qualification', () => {
       challenge: { ...emptySummary.challenge, qualifiedCount: 2 },
     };
     expect(getShareGrowthNudge(challengedSummary).stage).toBe('convert_challenges_to_versions');
+  });
+
+  it('identifies the next qualified action bottleneck without rewarding raw clicks', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: 0,
+          cappedCount: 0,
+          creditAwarded: 0,
+          dailyQualifiedCount: 0,
+          dailyRemainingShareCap: 5,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getShareConversionInsights>[0]['byAction'];
+
+    const unopened = getShareConversionInsights({
+      byAction,
+      invitedRecipientCount: 4,
+      unopenedRecipientCount: 4,
+    });
+    expect(unopened).toMatchObject({
+      bottleneck: 'recipient_distribution',
+      nextQualifiedAction: 'unique_open',
+      healthScore: 0,
+    });
+
+    const challengedNoVersion = getShareConversionInsights({
+      byAction: {
+        ...byAction,
+        unique_open: { ...byAction.unique_open, qualifiedCount: 5 },
+        challenge: { ...byAction.challenge, qualifiedCount: 3 },
+      },
+      invitedRecipientCount: 5,
+      unopenedRecipientCount: 1,
+    });
+    expect(challengedNoVersion.bottleneck).toBe('challenge_to_version');
+    expect(challengedNoVersion.nextQualifiedAction).toBe('saved_version');
+    expect(challengedNoVersion.creditGuardrail).toContain('never raw share clicks alone');
   });
 
   it('exposes the current Google Sheets export reward policy snapshot', () => {
