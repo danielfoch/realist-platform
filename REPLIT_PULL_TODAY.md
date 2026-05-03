@@ -8,6 +8,8 @@ Branch: `realist-nightly/2026-05-03-share-conversion-insights`
 
 Primary code commit SHA: `e4d0507d9f266f11bad4d0b8c9f04bd015d25ad0`
 
+Handoff docs commit SHA before the final push-status note: `40e1e1a2805464a981a2cf9cfe0fa6b27506e3be`
+
 ## 3. What changed
 - Added conversion insights to the viral underwriting share status payload.
 - Status summaries now identify the current funnel bottleneck: recipient distribution, open-to-challenge, challenge-to-version, version-to-signup, or amplify loop.
