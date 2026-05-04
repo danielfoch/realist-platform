@@ -487,7 +487,10 @@ async function ensureAppTables() {
 
     const host = String(req.headers["x-forwarded-host"] || req.headers.host || "");
     const protocol = String(req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0];
-    const normalizedPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, "").toLowerCase() : rawPath;
+    // Preserve path casing. Vite/Express static assets contain case-sensitive
+    // hashes, and lowercasing any path can permanently poison browser caches
+    // with 301s to non-existent JS/CSS filenames.
+    const normalizedPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
     const params = new URLSearchParams(rawQuery);
     let strippedParams = false;
     for (const key of Array.from(params.keys())) {
