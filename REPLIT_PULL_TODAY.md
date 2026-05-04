@@ -1,21 +1,19 @@
-# REPLIT PULL TODAY — 2026-05-03
+# REPLIT PULL TODAY — 2026-05-04
 
 ## 1. Date
-Sunday, May 3, 2026
+Monday, May 4, 2026
 
 ## 2. Branch and commit SHA
-Branch: `realist-nightly/2026-05-03-share-conversion-insights`
+Branch: `realist-nightly/2026-05-04-referral-reward-brief`
 
-Primary code commit SHA: `e4d0507d9f266f11bad4d0b8c9f04bd015d25ad0`
-
-Handoff docs commit SHA before the final push-status note: `40e1e1a2805464a981a2cf9cfe0fa6b27506e3be`
+Commit SHA: `01064dac6c2265fa65458e6663783531cbe95150`
 
 ## 3. What changed
-- Added conversion insights to the viral underwriting share status payload.
-- Status summaries now identify the current funnel bottleneck: recipient distribution, open-to-challenge, challenge-to-version, version-to-signup, or amplify loop.
-- Added `nextQualifiedAction`, `ownerAction`, `healthScore`, opened invite counts, unopened invite rate, and remaining daily credit capacity.
-- Preserved the key anti-abuse guardrail in API output: credits are awarded only for qualified opens, challenges, forks, signups, and saved versions within caps — never raw share clicks alone.
-- Added tests for the conversion insight helper and for the enhanced status summary response.
+- Added a qualified-only reward brief to viral underwriting share status.
+- The status payload now includes `rewardBrief` with earned Google Sheets export credits, remaining daily qualified-action capacity, qualified actions already achieved, and the best next reward action.
+- Added owner-facing CTA copy using “Challenge my underwriting.” to nudge recipients toward challenges, forks, saved versions, signups, and onward sharing.
+- Kept anti-abuse explicit in the API response: raw share clicks never earn credits; credits require qualified actions within caps.
+- Added tests covering the reward brief helper and status summary output.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
@@ -25,7 +23,7 @@ Handoff docs commit SHA before the final push-status note: `40e1e1a2805464a981a2
 ## 5. Migration steps
 No new migration required.
 
-This builds on the existing viral underwriting tables and the `015_underwriting_share_recipient_invites.sql` migration from the previous branch. If Replit has not run that yet, run:
+This uses the existing viral underwriting tables from migrations `013`, `014`, and `015`. If Replit has not applied those yet, run:
 
 ```bash
 npm run migrate
@@ -37,7 +35,7 @@ No new environment variables.
 ## 7. Replit commands to run
 ```bash
 git fetch origin
-git checkout realist-nightly/2026-05-03-share-conversion-insights
+git checkout realist-nightly/2026-05-04-referral-reward-brief
 npm install
 npm run type-check
 npx jest test/underwriting-share-routes.test.ts --runInBand
@@ -47,7 +45,7 @@ If merging into the active Replit branch instead:
 
 ```bash
 git fetch origin
-git merge realist-nightly/2026-05-03-share-conversion-insights
+git merge realist-nightly/2026-05-04-referral-reward-brief
 npm run type-check
 npx jest test/underwriting-share-routes.test.ts --runInBand
 ```
@@ -56,20 +54,21 @@ npx jest test/underwriting-share-routes.test.ts --runInBand
 Passed locally:
 
 ```bash
-npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
+npm test -- underwriting-share-routes.test.ts --runInBand
 npm run type-check
 ```
 
-Targeted Jest result: 10 tests passed in `test/underwriting-share-routes.test.ts`.
+Targeted Jest result: 11 tests passed in `test/underwriting-share-routes.test.ts`.
+TypeScript result: `tsc --noEmit` passed.
 
 ## 9. Risks/blockers
 - No deploy was performed.
 - No outbound emails/messages were sent.
 - No paid API calls were made.
 - No database schema changes in this patch.
-- `conversionInsights.healthScore` is a lightweight product heuristic, not a financial metric; UI should present it as funnel guidance.
-- ByteRover curation was attempted, but the `brv curate` process was killed before completion. Code and tests are committed; durable context can be retried later with the command documented in `.learnings/ERRORS.md`.
-- Push status: branch pushed to `origin/realist-nightly/2026-05-03-share-conversion-insights`.
+- This only adds API/status payload fields; Replit UI still needs to surface `actionSummary.rewardBrief` to users.
+- ByteRover curation was attempted after implementation, but the `brv curate` process was killed before completion; retry later if durable context is needed.
+- Existing uncommitted ByteRover/context files and local notes were left untouched and excluded from this code commit.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull `realist-nightly/2026-05-03-share-conversion-insights` to make the “Challenge my underwriting” share dashboard tell users what to do next. Instead of only showing counts, Replit can now say whether the deal needs more qualified opens, more challenges, saved/forked versions, signups, or onward sharing — while keeping the rule that premium Google Sheets export credits are never granted for raw share clicks alone.
+Pull `realist-nightly/2026-05-04-referral-reward-brief` so the “Challenge my underwriting” share dashboard can show users exactly what qualified reward progress they have: credits earned, credits still available today, which actions already qualified, and the best next action to ask recipients for — without ever rewarding raw clicks alone.

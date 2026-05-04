@@ -341,6 +341,36 @@ export function getShareGrowthNudge(byAction: ShareActionSummary) {
   };
 }
 
+export function getQualifiedShareRewardBrief(byAction: ShareActionSummary) {
+  const earnedCredits = Object.values(byAction).reduce(
+    (total, actionSummary) => total + actionSummary.creditAwarded,
+    0,
+  );
+  const remainingCreditsToday = Object.values(byAction).reduce(
+    (total, actionSummary) => total + actionSummary.dailyRemainingShareCap,
+    0,
+  );
+  const qualifiedActions = QUALIFIED_ACTIONS.filter((action) => byAction[action].qualifiedCount > 0);
+  const bestNextReward = QUALIFIED_ACTIONS
+    .filter((action) => byAction[action].dailyRemainingShareCap > 0)
+    .sort((left, right) => ACTION_POLICIES[right].creditAmount - ACTION_POLICIES[left].creditAmount)[0] || null;
+
+  return {
+    headline: 'Earn Google Sheets export credits when recipients take qualified underwriting actions.',
+    cta: 'Challenge my underwriting.',
+    earnedCredits,
+    remainingCreditsToday,
+    qualifiedActions,
+    bestNextReward: bestNextReward ? {
+      action: bestNextReward,
+      creditAmount: ACTION_POLICIES[bestNextReward].creditAmount,
+      remainingToday: byAction[bestNextReward].dailyRemainingShareCap,
+    } : null,
+    sharePrompt: 'Challenge my underwriting — fork the assumptions you disagree with, save your version, and share it onward.',
+    antiAbuseGuardrail: 'Credits are never granted for raw clicks alone. Rewards require unique opens, challenges, forks, signups, or saved versions within daily caps.',
+  };
+}
+
 export function getShareConversionInsights(input: {
   byAction: ShareActionSummary;
   invitedRecipientCount: number;
@@ -512,6 +542,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     },
     growthNudge: getShareGrowthNudge(byAction),
     conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    rewardBrief: getQualifiedShareRewardBrief(byAction),
     recentActions: recentResult.rows.map((row) => ({
       id: row.id,
       action: row.action,

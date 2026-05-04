@@ -7,6 +7,7 @@ import {
   getShareActionSummary,
   getShareConversionInsights,
   getShareGrowthNudge,
+  getQualifiedShareRewardBrief,
   hasMeaningfulChallengePayload,
   recordQualifiedShareAction,
 } from '../src/underwriting-share-routes';
@@ -197,6 +198,13 @@ describe('viral underwriting share qualification', () => {
       creditGuardrail: expect.stringContaining('never raw share clicks alone'),
     });
     expect(summary.conversionInsights.remainingCreditsToday).toBeGreaterThan(0);
+    expect(summary.rewardBrief).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      earnedCredits: 13,
+      qualifiedActions: ['unique_open', 'challenge', 'saved_version'],
+      antiAbuseGuardrail: expect.stringContaining('never granted for raw clicks alone'),
+    });
+    expect(summary.rewardBrief.bestNextReward).toMatchObject({ action: 'signup', creditAmount: 5 });
     expect(summary.recentActions[0]).not.toHaveProperty('recipientHash');
     expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT recipient_hash)'), [7]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2'), [7, 5]);
@@ -295,6 +303,35 @@ describe('viral underwriting share qualification', () => {
     expect(challengedNoVersion.bottleneck).toBe('challenge_to_version');
     expect(challengedNoVersion.nextQualifiedAction).toBe('saved_version');
     expect(challengedNoVersion.creditGuardrail).toContain('never raw share clicks alone');
+  });
+
+  it('builds a qualified-only reward brief for share status CTAs', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: action === 'challenge' ? 2 : 0,
+          cappedCount: 0,
+          creditAwarded: action === 'challenge' ? 4 : 0,
+          dailyQualifiedCount: action === 'challenge' ? 2 : 0,
+          dailyRemainingShareCap: action === 'signup' ? 0 : 3,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getQualifiedShareRewardBrief>[0];
+
+    const brief = getQualifiedShareRewardBrief(byAction);
+
+    expect(brief).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      earnedCredits: 4,
+      remainingCreditsToday: 12,
+      qualifiedActions: ['challenge'],
+      sharePrompt: expect.stringContaining('fork the assumptions'),
+      antiAbuseGuardrail: expect.stringContaining('raw clicks'),
+    });
+    expect(brief.bestNextReward).toEqual({ action: 'saved_version', creditAmount: 4, remainingToday: 3 });
   });
 
   it('exposes the current Google Sheets export reward policy snapshot', () => {
