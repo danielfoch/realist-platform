@@ -73,9 +73,8 @@ export async function getLiveLeaderboardEntries(input: {
 
   const rows = await db.execute(sql`
     WITH scoped_analyses AS (
-      SELECT a.*, q.confidence_score, q.leaderboard_eligible, q.exclusion_reason
+      SELECT a.*
       FROM analyses a
-      LEFT JOIN analysis_quality_scores q ON q.analysis_id = a.id
       JOIN users u ON u.id = a.user_id
       WHERE a.user_id IS NOT NULL
         AND a.results_json IS NOT NULL
@@ -95,10 +94,10 @@ export async function getLiveLeaderboardEntries(input: {
       SELECT
         s.user_id,
         COUNT(*)::int AS monthly_deals_analyzed,
-        COUNT(*) FILTER (WHERE COALESCE(s.leaderboard_eligible, true) IS NOT FALSE AND COALESCE(s.confidence_score, 0.65) >= 0.65)::int AS eligible_analyses_count,
-        COUNT(*) FILTER (WHERE COALESCE(s.leaderboard_eligible, true) IS FALSE OR COALESCE(s.confidence_score, 0.65) < 0.65)::int AS excluded_analyses_count,
-        AVG(COALESCE(s.confidence_score, 0.65)) AS average_confidence_score,
-        SUM(CASE WHEN COALESCE(s.leaderboard_eligible, true) IS FALSE THEN 0 ELSE COALESCE(s.confidence_score, 0.65) END) AS weighted_score,
+        COUNT(*)::int AS eligible_analyses_count,
+        0::int AS excluded_analyses_count,
+        0.65::real AS average_confidence_score,
+        COUNT(*)::real AS weighted_score,
         AVG(CASE WHEN (s.results_json->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (s.results_json->>'capRate')::numeric ELSE NULL END) AS user_underwritten_avg_yield
       FROM scoped_analyses s
       GROUP BY s.user_id
@@ -124,9 +123,9 @@ export async function getLiveLeaderboardEntries(input: {
         c.average_confidence_score,
         COALESCE(c.weighted_score, 0)::real AS weighted_score,
         COALESCE(c.weighted_score, 0)::real AS score,
-        m.oracle_score AS market_oracle_score,
-        m.median_absolute_percentage_error AS sale_prediction_median_error,
-        COALESCE(m.eligible_estimate_count, 0)::int AS eligible_sale_predictions_count,
+        NULL::real AS market_oracle_score,
+        NULL::real AS sale_prediction_median_error,
+        0::int AS eligible_sale_predictions_count,
         ay.auto_underwritten_avg_yield,
         c.user_underwritten_avg_yield,
         (c.user_underwritten_avg_yield - ay.auto_underwritten_avg_yield) AS user_vs_auto_yield_delta,
@@ -135,7 +134,6 @@ export async function getLiveLeaderboardEntries(input: {
       FROM current_rollup c
       JOIN users u ON u.id = c.user_id
       LEFT JOIN all_time_counts a ON a.user_id = c.user_id
-      LEFT JOIN user_sale_estimator_metrics m ON m.user_id = c.user_id
       LEFT JOIN user_markets um ON um.user_id = c.user_id
       LEFT JOIN auto_yields ay ON ay.province = um.province AND LOWER(ay.city) = LOWER(um.city)
     )
