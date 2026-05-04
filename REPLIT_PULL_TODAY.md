@@ -6,7 +6,9 @@ Monday, May 4, 2026
 ## 2. Branch and commit SHA
 Branch: `realist-nightly/2026-05-04-referral-reward-brief`
 
-Commit SHA: `01064dac6c2265fa65458e6663783531cbe95150`
+Code commit SHA: `a70749369d2be89a5775df7954d5199ef57071a3`
+
+Note: this pull brief may be followed by a docs-only commit if the branch is pushed; use `git log -1 --oneline` for the latest branch tip.
 
 ## 3. What changed
 - Added a qualified-only reward brief to viral underwriting share status.
