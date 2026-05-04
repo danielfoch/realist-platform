@@ -84,6 +84,7 @@ import {
 } from "./resend";
 import { authStorage } from "./replit_integrations/auth/storage";
 import { logUserActivity, rebuildUserInferenceProfile } from "./userActivity";
+import { trackRealistEvent } from "./realistEvents";
 import {
   getCurrentSaleEstimate,
   lookupSoldPriceForListing,
@@ -647,6 +648,283 @@ export async function registerRoutes(
     } catch {
       res.status(500).json({ ok: false });
     }
+  });
+
+  const actorFromBody = (body: any, fallbackRole = "investor") => ({
+    id: body.userId || undefined,
+    name: body.name || body.userName || undefined,
+    email: body.email || undefined,
+    role: body.userRole || body.role || fallbackRole,
+  });
+
+  const listingFromBody = (body: any) => ({
+    id: body.listingId || body.dealId || undefined,
+    address: body.address || body.listingAddress || undefined,
+    city: body.city || body.market || undefined,
+    province: body.province || undefined,
+    price: body.price ? Number(body.price) : undefined,
+    url: body.url || undefined,
+  });
+
+  const investorConsultSchema = z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    phone: z.string().optional().default(""),
+    market: z.string().min(2),
+    experienceLevel: z.string().min(1),
+    budget: z.string().min(1),
+    goal: z.string().min(1),
+    message: z.string().optional().default(""),
+  });
+
+  app.post("/api/engagement/consult-request", async (req, res) => {
+    try {
+      const parsed = investorConsultSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid consult request", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "user.requested_consult",
+        actor: { name: data.name, email: data.email, role: "investor" },
+        recipient: { name: data.name, email: data.email, phone: data.phone || undefined },
+        email: {
+          templateKey: "investor_consult_request",
+          subject: `Investor consult request: ${data.market}`,
+          to: data.email,
+          replyTo: data.email,
+          tags: ["consult", "investor", "high-intent"],
+        },
+        metadata: data,
+        target: { type: "user" },
+        trainingRelevance: { canTrainModel: true, category: "user_engagement", confidence: 0.7 },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] consult request failed:", error);
+      res.status(500).json({ error: "Failed to submit consult request" });
+    }
+  });
+
+  const waitlistSchema = z.object({
+    email: z.string().email(),
+    investorType: z.string().min(1),
+    targetMarket: z.string().optional().default(""),
+  });
+
+  app.post("/api/engagement/waitlist", async (req, res) => {
+    try {
+      const parsed = waitlistSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid waitlist signup", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "user.joined_waitlist",
+        actor: { email: data.email, role: "investor" },
+        recipient: { email: data.email },
+        email: {
+          templateKey: "investor_waitlist_signup",
+          to: data.email,
+          tags: ["waitlist", "newsletter", data.investorType],
+        },
+        metadata: data,
+        target: { type: "user" },
+        trainingRelevance: { canTrainModel: true, category: "user_engagement", confidence: 0.6 },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] waitlist failed:", error);
+      res.status(500).json({ error: "Failed to join waitlist" });
+    }
+  });
+
+  const dealNoteSchema = z.object({
+    listingId: z.string().min(1),
+    userName: z.string().optional().default("Anonymous investor"),
+    userRole: z.enum(["investor", "realtor", "contractor", "property_manager", "lender", "appraiser", "inspector", "lawyer", "insurance_broker", "admin"]).default("investor"),
+    visibility: z.enum(["private", "public", "professional", "admin", "team"]).default("public"),
+    noteType: z.enum(["general", "price_feedback", "rent_feedback", "repair_estimate", "arv_feedback", "risk_flag", "offer_strategy", "financing_note", "inspection_note", "comparable_note"]),
+    comment: z.string().min(5),
+    suggestedValue: z.coerce.number().optional(),
+    originalValue: z.coerce.number().optional(),
+    confidence: z.coerce.number().min(0).max(1).optional(),
+    physicallyInspected: z.boolean().optional().default(false),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    price: z.coerce.number().optional(),
+  });
+
+  app.post("/api/engagement/deal-notes", async (req, res) => {
+    try {
+      const parsed = dealNoteSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid deal note", details: parsed.error.issues });
+      const data = parsed.data;
+      const eventType = data.noteType === "risk_flag" ? "deal.risk_flagged" : data.noteType === "general" ? "deal.note_created" : "deal.feedback_submitted";
+      const result = await trackRealistEvent({
+        eventType,
+        actor: actorFromBody(data),
+        listing: listingFromBody(data),
+        email: {
+          templateKey: eventType === "deal.risk_flagged" ? "deal_risk_flagged" : "deal_note_created",
+          tags: ["deal", "notes", data.noteType, data.visibility],
+        },
+        metadata: data,
+        target: { type: "listing", id: data.listingId },
+        trainingRelevance: {
+          canTrainModel: data.visibility !== "private",
+          category: data.noteType === "rent_feedback" ? "rent_estimation" : data.noteType === "repair_estimate" ? "repair_estimation" : data.noteType === "risk_flag" ? "risk_detection" : "underwriting",
+          confidence: data.confidence,
+        },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] deal note failed:", error);
+      res.status(500).json({ error: "Failed to submit deal note" });
+    }
+  });
+
+  const savedDealEventSchema = z.object({
+    listingId: z.string().min(1),
+    address: z.string().min(1),
+    city: z.string().min(1),
+    price: z.coerce.number().optional(),
+    stage: z.string().default("watching"),
+    interestLevel: z.string().default("medium"),
+    privateNote: z.string().optional().default(""),
+    targetOfferPrice: z.coerce.number().optional(),
+    estimatedRent: z.coerce.number().optional(),
+    estimatedRepairBudget: z.coerce.number().optional(),
+    nextAction: z.string().optional().default(""),
+    confidenceScore: z.coerce.number().optional(),
+    riskScore: z.coerce.number().optional(),
+  });
+
+  app.post("/api/engagement/saved-deal", async (req, res) => {
+    try {
+      const parsed = savedDealEventSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid saved deal", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "deal.saved",
+        actor: actorFromBody(req.body),
+        listing: listingFromBody(data),
+        deal: {
+          id: data.listingId,
+          stage: data.stage,
+          targetOfferPrice: data.targetOfferPrice,
+        },
+        email: { templateKey: "deal_saved", tags: ["deal", "saved", data.stage] },
+        metadata: data,
+        target: { type: "deal", id: data.listingId },
+        trainingRelevance: { canTrainModel: true, category: "user_engagement", confidence: data.confidenceScore },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] saved deal failed:", error);
+      res.status(500).json({ error: "Failed to save deal event" });
+    }
+  });
+
+  const professionalRequestSchema = z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    phone: z.string().optional().default(""),
+    listingId: z.string().optional().default("sample-duplex-001"),
+    dealId: z.string().optional(),
+    address: z.string().optional().default(""),
+    professionalType: z.enum(["contractor", "realtor", "property_manager", "lender", "inspector", "insurance_broker", "lawyer"]),
+    market: z.string().min(2),
+    requestedService: z.string().min(2),
+    timeline: z.string().optional().default(""),
+    message: z.string().optional().default(""),
+  });
+
+  app.post("/api/engagement/professional-request", async (req, res) => {
+    try {
+      const parsed = professionalRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid professional request", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "deal.quote_requested",
+        actor: { name: data.name, email: data.email, role: "investor" },
+        recipient: { name: data.name, email: data.email, phone: data.phone || undefined },
+        listing: listingFromBody(data),
+        professionalRequest: {
+          role: data.professionalType,
+          market: data.market,
+          requestedService: data.requestedService,
+          message: data.message,
+        },
+        email: {
+          templateKey: "professional_quote_requested",
+          subject: `${data.professionalType} request in ${data.market}`,
+          to: data.email,
+          replyTo: data.email,
+          tags: ["professional-request", data.professionalType, data.market],
+        },
+        metadata: data,
+        target: { type: "professional", id: data.professionalType },
+        trainingRelevance: { canTrainModel: true, category: "professional_matching", confidence: 0.75 },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] professional request failed:", error);
+      res.status(500).json({ error: "Failed to submit professional request" });
+    }
+  });
+
+  const challengeSchema = z.object({
+    listingId: z.string().min(1),
+    offerPrice: z.coerce.number(),
+    estimatedRent: z.coerce.number(),
+    repairBudget: z.coerce.number(),
+    riskFlags: z.array(z.string()).default([]),
+    userRole: z.string().default("investor"),
+    confidence: z.coerce.number().min(0).max(1).optional(),
+  });
+
+  app.post("/api/engagement/deal-challenge", async (req, res) => {
+    try {
+      const parsed = challengeSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid challenge submission", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "challenge.submitted",
+        actor: actorFromBody(data),
+        listing: listingFromBody(data),
+        deal: {
+          id: data.listingId,
+          targetOfferPrice: data.offerPrice,
+        },
+        email: { templateKey: "deal_challenge_submitted", tags: ["challenge", "underwriting"] },
+        metadata: data,
+        target: { type: "tool", id: "deal-challenge" },
+        trainingRelevance: { canTrainModel: true, category: "underwriting", confidence: data.confidence },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] deal challenge failed:", error);
+      res.status(500).json({ error: "Failed to submit challenge" });
+    }
+  });
+
+  app.post("/api/dev/test-crm-webhook", async (_req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const result = await trackRealistEvent({
+      eventType: "admin.webhook_failed",
+      actor: { role: "admin", name: "Realist dev test" },
+      email: { templateKey: "crm_webhook_test", tags: ["dev", "crm-test"] },
+      metadata: {
+        purpose: "Safe CRM webhook adapter test",
+        enabled: process.env.CRM_WEBHOOK_ENABLED === "true",
+        hasUrl: Boolean(process.env.CRM_WEBHOOK_URL),
+        hasSecret: Boolean(process.env.CRM_WEBHOOK_SECRET),
+      },
+      target: { type: "tool", id: "crm-webhook-test" },
+      trainingRelevance: { canTrainModel: false },
+    });
+
+    res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
   });
 
   app.post("/api/hst-info-session/register", async (req, res) => {
