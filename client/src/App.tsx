@@ -48,6 +48,7 @@ import FullLeaderboard from "@/pages/FullLeaderboard";
 import Premium from "@/pages/Premium";
 import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
+import ListingIntelligence from "@/pages/ListingIntelligence";
 import RealtorNetwork from "@/pages/RealtorNetwork";
 import MarketReport from "@/pages/MarketReport";
 import MortgageRates from "@/pages/MortgageRates";
@@ -121,6 +122,8 @@ function Router() {
       <Route path="/tools/true-cost" component={TrueCost} />
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
       <Route path="/tools/cap-rates" component={CapRates} />
+      <Route path="/listing-intelligence" component={ListingIntelligence} />
+      <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
       <Route path="/tools/will-it-plex" component={WillItPlex} />
       <Route path="/tools/fixed-vs-variable" component={FixedVsVariable} />
       <Route path="/tools/hst-rebate" component={OntarioHstRebateCalculator} />
