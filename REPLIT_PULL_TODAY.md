@@ -71,6 +71,7 @@ TypeScript result: `tsc --noEmit` passed.
 - This only adds API/status payload fields; Replit UI still needs to surface `actionSummary.rewardBrief` to users.
 - ByteRover curation was attempted after implementation, but the `brv curate` process was killed before completion; retry later if durable context is needed.
 - Existing uncommitted ByteRover/context files and local notes were left untouched and excluded from this code commit.
+- Push status: branch pushed to `origin/realist-nightly/2026-05-04-referral-reward-brief`.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
 Pull `realist-nightly/2026-05-04-referral-reward-brief` so the “Challenge my underwriting” share dashboard can show users exactly what qualified reward progress they have: credits earned, credits still available today, which actions already qualified, and the best next action to ask recipients for — without ever rewarding raw clicks alone.
