@@ -756,7 +756,8 @@ export async function registerRoutes(
       const parsed = dealNoteSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid deal note", details: parsed.error.issues });
       const data = parsed.data;
-      const eventType = data.noteType === "risk_flag" ? "deal.risk_flagged" : data.noteType === "general" ? "deal.note_created" : "deal.feedback_submitted";
+      const eventType: "deal.risk_flagged" | "deal.note_created" | "deal.feedback_submitted" =
+        data.noteType === "risk_flag" ? "deal.risk_flagged" : data.noteType === "general" ? "deal.note_created" : "deal.feedback_submitted";
       const result = await trackRealistEvent({
         eventType,
         actor: actorFromBody(data),
@@ -875,7 +876,10 @@ export async function registerRoutes(
     offerPrice: z.coerce.number(),
     estimatedRent: z.coerce.number(),
     repairBudget: z.coerce.number(),
-    riskFlags: z.array(z.string()).default([]),
+    riskFlags: z.preprocess(
+      (value) => typeof value === "string" ? value.split(",").map((item) => item.trim()).filter(Boolean) : value,
+      z.array(z.string()).default([]),
+    ),
     userRole: z.string().default("investor"),
     confidence: z.coerce.number().min(0).max(1).optional(),
   });

@@ -98,6 +98,7 @@ import StrategiesHub from "@/pages/StrategiesHub";
 import ProgrammaticStrategyPage from "@/pages/ProgrammaticStrategyPage";
 import NetworkHub from "@/pages/NetworkHub";
 import ContactPage from "@/pages/ContactPage";
+import InvestorOperatingSystem from "@/pages/InvestorOperatingSystem";
 
 function Router() {
   return (
@@ -124,6 +125,11 @@ function Router() {
       <Route path="/tools/cap-rates" component={CapRates} />
       <Route path="/listing-intelligence" component={ListingIntelligence} />
       <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
+      <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
+      <Route path="/deals" component={InvestorOperatingSystem} />
+      <Route path="/watchlist" component={InvestorOperatingSystem} />
+      <Route path="/deal-challenge" component={InvestorOperatingSystem} />
+      <Route path="/professionals" component={InvestorOperatingSystem} />
       <Route path="/tools/will-it-plex" component={WillItPlex} />
       <Route path="/tools/fixed-vs-variable" component={FixedVsVariable} />
       <Route path="/tools/hst-rebate" component={OntarioHstRebateCalculator} />

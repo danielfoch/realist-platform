@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2, Scale, ArrowLeftRight, Shield, Gavel } from "lucide-react";
+import { Calculator, MapPin, Handshake, TrendingUp, Home, FileSpreadsheet, DollarSign, Building2, Scale, ArrowLeftRight, Shield, Gavel, BriefcaseBusiness } from "lucide-react";
 
 const tools = [
   {
@@ -11,6 +11,14 @@ const tools = [
     title: "Deal Analyzer",
     description: "Analyze any real estate deal with institutional-grade financial calculations. Get yields, IRR, cash-on-cash returns, and multi-year projections.",
     icon: Calculator,
+    primary: true,
+  },
+  {
+    href: "/tools/investor-os",
+    title: "Investor OS",
+    description: "Save deals, add structured deal notes, compare opportunities, request professional feedback, compete on contribution leaderboards, and create AI-ready deal intelligence.",
+    icon: BriefcaseBusiness,
+    badge: "New",
     primary: true,
   },
   {
