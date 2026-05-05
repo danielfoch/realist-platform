@@ -1,7 +1,7 @@
 # Realist.ca - Real Estate Deal Analyzer
 
 ## Overview
-Realist.ca is a production-grade web application for real estate investors, providing institutional-grade financial analysis tools for Canadian and US markets. Its core purpose is to facilitate deal underwriting, compare investment strategies (Buy & Hold, BRRR, Flip, Airbnb, Multiplex), and generate investor-ready analysis sheets. The platform features a map-first homepage, a comprehensive deal analyzer with MLS# import, community-driven underwriting via Cap Rates Explorer, and an admin dashboard for lead management. The project aims to be the leading tool for sophisticated real estate investment analysis, offering multi-year projections, cap rate calculations, and IRR analysis.
+Realist.ca is a production-grade web application (with a Capacitor-based iOS/Android shell in `mobile/`) for real estate investors, providing institutional-grade financial analysis tools for Canadian and US markets. Its core purpose is to facilitate deal underwriting, compare investment strategies (Buy & Hold, BRRR, Flip, Airbnb, Multiplex), and generate investor-ready analysis sheets. The platform features a map-first homepage, a comprehensive deal analyzer with MLS# import, community-driven underwriting via Cap Rates Explorer, and an admin dashboard for lead management. The project aims to be the leading tool for sophisticated real estate investment analysis, offering multi-year projections, cap rate calculations, and IRR analysis.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
