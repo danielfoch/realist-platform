@@ -3,6 +3,7 @@ import {
   createUnderwritingShare,
   getActionPolicy,
   getExplicitRecipientHash,
+  getRecipientInviteFunnel,
   getRewardPolicySnapshot,
   getShareActionSummary,
   getShareConversionInsights,
@@ -155,6 +156,22 @@ describe('viral underwriting share qualification', () => {
         };
       }
 
+      if (text.includes('LEFT JOIN underwriting_share_actions')) {
+        return {
+          rows: [
+            {
+              source: 'manual',
+              invited_count: '3',
+              opened_count: '1',
+              challenged_count: '1',
+              versioned_count: '1',
+              signup_count: '0',
+              credit_awarded: '7',
+            },
+          ],
+        };
+      }
+
       if (text.includes('FROM underwriting_share_recipients')) {
         return { rows: [{ invited_recipient_count: '3', unopened_recipient_count: '2' }] };
       }
@@ -184,6 +201,21 @@ describe('viral underwriting share qualification', () => {
     expect(summary.qualifiedRecipientCount).toBe(5);
     expect(summary.invitedRecipientCount).toBe(3);
     expect(summary.unopenedRecipientCount).toBe(2);
+    expect(summary.inviteFunnel).toEqual([
+      {
+        source: 'manual',
+        invitedCount: 3,
+        openedCount: 1,
+        challengedCount: 1,
+        versionedCount: 1,
+        signupCount: 0,
+        creditAwarded: 7,
+        openRate: 0.3333,
+        challengeRate: 1,
+        versionRate: 1,
+        signupRate: 0,
+      },
+    ]);
     expect(summary.conversionRates).toEqual({
       openToChallenge: 0.4,
       challengeToForkOrSavedVersion: 0.5,
@@ -209,6 +241,43 @@ describe('viral underwriting share qualification', () => {
     expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT recipient_hash)'), [7]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2'), [7, 5]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('FROM underwriting_share_recipients'), [7]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN underwriting_share_actions'), [7]);
+  });
+
+  it('segments recipient-specific invite performance without exposing visitor identity', async () => {
+    const query = jest.fn(async () => ({
+      rows: [
+        {
+          source: 'agent_dm',
+          invited_count: '5',
+          opened_count: '4',
+          challenged_count: '2',
+          versioned_count: '1',
+          signup_count: '1',
+          credit_awarded: '16',
+        },
+      ],
+    }));
+
+    const funnel = await getRecipientInviteFunnel({ query }, 7);
+
+    expect(funnel).toEqual([
+      {
+        source: 'agent_dm',
+        invitedCount: 5,
+        openedCount: 4,
+        challengedCount: 2,
+        versionedCount: 1,
+        signupCount: 1,
+        creditAwarded: 16,
+        openRate: 0.8,
+        challengeRate: 0.5,
+        versionRate: 0.5,
+        signupRate: 1,
+      },
+    ]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT r.id)'), [7]);
+    expect(query).toHaveBeenCalledWith(expect.not.stringContaining('recipient_hash AS'), expect.anything());
   });
 
   it('creates recipient-specific share links without awarding credits', async () => {

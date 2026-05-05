@@ -291,6 +291,20 @@ type ShareActionSummary = Record<QualifiedShareAction, {
   lastActionAt: string | null;
 }>;
 
+type RecipientInviteFunnelSegment = {
+  source: string;
+  invitedCount: number;
+  openedCount: number;
+  challengedCount: number;
+  versionedCount: number;
+  signupCount: number;
+  creditAwarded: number;
+  openRate: number;
+  challengeRate: number;
+  versionRate: number;
+  signupRate: number;
+};
+
 function getConversionRate(numerator: number, denominator: number) {
   return denominator > 0 ? Number((numerator / denominator).toFixed(4)) : 0;
 }
@@ -435,6 +449,47 @@ export function getShareConversionInsights(input: {
   };
 }
 
+export async function getRecipientInviteFunnel(database: DatabaseAdapter, shareId: number): Promise<RecipientInviteFunnelSegment[]> {
+  const result = await database.query(
+    `SELECT r.source,
+            COUNT(DISTINCT r.id)::int AS invited_count,
+            COUNT(DISTINCT r.id) FILTER (WHERE r.last_opened_at IS NOT NULL)::int AS opened_count,
+            COUNT(DISTINCT r.recipient_hash) FILTER (WHERE a.action = 'challenge' AND a.qualified = true)::int AS challenged_count,
+            COUNT(DISTINCT r.recipient_hash) FILTER (WHERE a.action IN ('fork', 'saved_version') AND a.qualified = true)::int AS versioned_count,
+            COUNT(DISTINCT r.recipient_hash) FILTER (WHERE a.action = 'signup' AND a.qualified = true)::int AS signup_count,
+            COALESCE(SUM(a.credit_amount) FILTER (WHERE a.qualified = true), 0)::int AS credit_awarded
+     FROM underwriting_share_recipients r
+     LEFT JOIN underwriting_share_actions a
+       ON a.share_id = r.share_id AND a.recipient_hash = r.recipient_hash
+     WHERE r.share_id = $1
+     GROUP BY r.source
+     ORDER BY invited_count DESC, r.source ASC`,
+    [shareId],
+  );
+
+  return result.rows.map((row) => {
+    const invitedCount = Number(row.invited_count || 0);
+    const openedCount = Number(row.opened_count || 0);
+    const challengedCount = Number(row.challenged_count || 0);
+    const versionedCount = Number(row.versioned_count || 0);
+    const signupCount = Number(row.signup_count || 0);
+
+    return {
+      source: row.source || 'manual',
+      invitedCount,
+      openedCount,
+      challengedCount,
+      versionedCount,
+      signupCount,
+      creditAwarded: Number(row.credit_awarded || 0),
+      openRate: getConversionRate(openedCount, invitedCount),
+      challengeRate: getConversionRate(challengedCount, openedCount),
+      versionRate: getConversionRate(versionedCount, challengedCount),
+      signupRate: getConversionRate(signupCount, versionedCount),
+    };
+  });
+}
+
 export async function getShareActionSummary(database: DatabaseAdapter, shareId: number, recentLimit = 10) {
   const summaryResult = await database.query(
     `SELECT action,
@@ -507,6 +562,8 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     [shareId],
   );
 
+  const inviteFunnel = await getRecipientInviteFunnel(database, shareId);
+
   const totals = Object.values(byAction).reduce(
     (runningTotals, actionSummary) => ({
       totalCount: runningTotals.totalCount + actionSummary.totalCount,
@@ -529,6 +586,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     qualifiedRecipientCount,
     invitedRecipientCount,
     unopenedRecipientCount,
+    inviteFunnel,
     conversionRates: {
       openToChallenge: getConversionRate(byAction.challenge.qualifiedCount, byAction.unique_open.qualifiedCount),
       challengeToForkOrSavedVersion: getConversionRate(
