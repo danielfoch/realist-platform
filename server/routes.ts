@@ -9,6 +9,7 @@ import {
   insertPropertySchema, 
   insertAnalysisSchema, 
   insertSavedDealSchema,
+  insertInspectionRequestSchema,
   insertInvestorProfileSchema,
   insertInvestorKycSchema,
   insertPortfolioPropertySchema,
@@ -52,6 +53,7 @@ import {
   marketReportMetrics,
   analysisUnderwritingComparisons,
   analysisQualityScores,
+  inspectionRequests,
   courseModules,
   courseLessons,
   courseEnrollments,
@@ -612,7 +614,8 @@ export async function registerRoutes(
   // Schema for future migration: see /docs/PLATFORM_AI_STRATEGY.md
   app.post("/api/events/track", async (req, res) => {
     try {
-      const { event, ts, session_id, page, referrer, ...properties } = req.body;
+      const { event: rawEvent, event_type, ts, session_id, page, referrer, ...properties } = req.body;
+      const event = rawEvent || event_type;
       if (!event || typeof event !== "string" || event.length > 100) {
         return res.status(400).json({ ok: false });
       }
@@ -622,7 +625,12 @@ export async function registerRoutes(
       // Log structured event for future pipeline ingestion
       console.log(JSON.stringify({
         type: "realist_event",
+        event_id: properties.event_id || null,
         event,
+        event_type: event,
+        occurred_at: properties.occurred_at || new Date(Number(ts || Date.now())).toISOString(),
+        platform: properties.platform || "web",
+        idempotency_key: properties.idempotency_key || null,
         session_id,
         user_id: userId,
         page,
@@ -3376,6 +3384,52 @@ export async function registerRoutes(
         res.status(400).json({ success: false, error: "Validation error", details: error.errors });
       } else {
         res.status(500).json({ success: false, error: "Failed to save deal" });
+      }
+    }
+  });
+
+  app.post("/api/inspection-requests", async (req, res) => {
+    try {
+      const validatedData = insertInspectionRequestSchema.parse(req.body);
+      const userId = req.session.userId as string | undefined;
+      const [inspectionRequest] = await db.insert(inspectionRequests).values({
+        ...validatedData,
+        userId: userId || null,
+        sessionId: validatedData.sessionId || req.sessionID || null,
+        amountCents: validatedData.amountCents || 50000,
+        currency: (validatedData.currency || "cad").toLowerCase(),
+        metadata: {
+          ...(validatedData.metadata as Record<string, unknown> | null || {}),
+          fulfillment: "manual_assignment_placeholder",
+          checkout: "TODO: create Stripe checkout/payment-intent before dispatch",
+          accountBackedState: "Authenticated requests are tied to users.id; anonymous requests keep session_id until signup.",
+        },
+      }).returning();
+
+      await logUserActivity(req, {
+        userId: userId || null,
+        sessionId: validatedData.sessionId || req.sessionID || null,
+        eventName: "inspection.requested",
+        listingId: validatedData.listingId || null,
+        listingKey: validatedData.listingId || validatedData.propertyAddress,
+        sourcePage: req.headers.referer || null,
+        component: "inspection_request_placeholder",
+        metadata: {
+          city: validatedData.city,
+          province: validatedData.province,
+          inspectionType: validatedData.inspectionType,
+          amountCents: validatedData.amountCents || 50000,
+          status: inspectionRequest.status,
+        },
+      });
+
+      res.json({ success: true, data: inspectionRequest });
+    } catch (error) {
+      console.error("Error creating inspection request:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ success: false, error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ success: false, error: "Failed to create inspection request" });
       }
     }
   });

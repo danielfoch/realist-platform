@@ -106,11 +106,11 @@ function Router() {
       {/* Main entry - simplified investor homepage */}
       <Route path="/" component={InvestorStart} />
       <Route path="/discover" component={MapHomepage} />
-      <Route path="/deal-analyzer" component={Home} />
+      <Route path="/deal-analyzer">{() => <Home />}</Route>
       
       {/* New Tools routes */}
       <Route path="/tools" component={ToolsHub} />
-      <Route path="/tools/analyzer" component={Home} />
+      <Route path="/tools/analyzer">{() => <Home />}</Route>
       <Route path="/tools/buybox" component={BuyBox} />
       <Route path="/tools/buybox/agreement" component={BuyBoxAgreement} />
       <Route path="/tools/buybox/checkout" component={BuyBoxCheckout} />

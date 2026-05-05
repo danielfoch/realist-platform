@@ -56,6 +56,18 @@ export type RealistEvent =
   | { event: "deal_shared"; listing_id?: string; analysis_id?: string }
   | { event: "underwriting_exported_or_saved"; listing_id?: string; analysis_id?: string }
   | { event: "leaderboard_viewed"; period?: string }
+  | { event: "homepage.market_hovered"; market: string; province?: string; cap_rate?: number; investor_score?: number }
+  | { event: "homepage.cta_clicked"; cta: string; location: string; destination?: string }
+  | { event: "calculator.started"; address?: string; strategy?: string; geography?: string; source?: string }
+  | { event: "calculator.completed"; strategy: string; city?: string; province?: string; cap_rate?: number; cash_on_cash?: number; monthly_cash_flow?: number }
+  | { event: "analysis.assumptions_saved"; source_listing_id?: string; city?: string; strategy?: string }
+  | { event: "analysis.assumptions_applied_to_listing"; source_listing_id?: string; target_listing_id?: string; city?: string; strategy?: string }
+  | { event: "saved_search.created"; filters: Record<string, unknown>; geography?: string }
+  | { event: "saved_deal.created"; listing_id?: string; analysis_id?: string; city?: string; strategy?: string }
+  | { event: "inspection.checkout_started"; listing_id?: string; city?: string; inspection_type?: string; amount_cents?: number }
+  | { event: "inspection.requested"; listing_id?: string; city?: string; inspection_type?: string; amount_cents?: number }
+  | { event: "financing.intent"; context?: string; city?: string; strategy?: string }
+  | { event: "help.requested"; context?: string; city?: string; strategy?: string }
   | { event: "market_filter_used"; region?: string; city?: string; province?: string }
   | { event: "region_filter_used"; region?: string; province?: string }
   | { event: "property_type_filter_used"; property_type?: string }
@@ -334,6 +346,7 @@ export function track(payload: RealistEvent): void {
   try {
     const body = {
       ...payload,
+      event_type: payload.event,
       ts: Date.now(),
       session_id: getSessionId(),
       page: window.location.pathname,
@@ -346,6 +359,27 @@ export function track(payload: RealistEvent): void {
       credentials: "include",
       keepalive: true,
     }).catch(() => {});
+  } catch {}
+}
+
+export function trackRealistEvent(
+  eventType: RealistEvent["event"],
+  payload: Record<string, unknown> = {},
+  options?: { idempotencyKey?: string },
+): void {
+  try {
+    const eventId = typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `evt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    track({
+      ...(payload as Record<string, unknown>),
+      event: eventType,
+      event_id: eventId,
+      event_type: eventType,
+      occurred_at: new Date().toISOString(),
+      platform: "web",
+      idempotency_key: options?.idempotencyKey,
+    } as RealistEvent);
   } catch {}
 }
 

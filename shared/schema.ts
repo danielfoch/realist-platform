@@ -124,6 +124,36 @@ export const savedDeals = pgTable("saved_deals", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const inspectionRequests = pgTable("inspection_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id"),
+  propertyAddress: text("property_address").notNull(),
+  city: text("city"),
+  province: text("province"),
+  listingId: text("listing_id"),
+  inspectionType: text("inspection_type").default("standard_home_inspection").notNull(),
+  preferredTimes: text("preferred_times"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  notes: text("notes"),
+  amountCents: integer("amount_cents").default(50000).notNull(),
+  currency: varchar("currency", { length: 3 }).default("cad").notNull(),
+  status: text("status").default("requested").notNull(),
+  checkoutStatus: text("checkout_status").default("not_started").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const inspectionRequestsRelations = relations(inspectionRequests, ({ one }) => ({
+  user: one(users, {
+    fields: [inspectionRequests.userId],
+    references: [users.id],
+  }),
+}));
+
 export const discoverySignals = pgTable(
   "discovery_signals",
   {
@@ -443,6 +473,15 @@ export const insertSavedDealSchema = createInsertSchema(savedDeals).omit({
   createdAt: true,
 });
 
+export const insertInspectionRequestSchema = createInsertSchema(inspectionRequests).omit({
+  id: true,
+  userId: true,
+  status: true,
+  checkoutStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertDiscoverySignalSchema = createInsertSchema(discoverySignals).omit({
   id: true,
   createdAt: true,
@@ -508,6 +547,8 @@ export type DataCache = typeof dataCache.$inferSelect;
 
 export type InsertSavedDeal = z.infer<typeof insertSavedDealSchema>;
 export type SavedDeal = typeof savedDeals.$inferSelect;
+export type InsertInspectionRequest = z.infer<typeof insertInspectionRequestSchema>;
+export type InspectionRequest = typeof inspectionRequests.$inferSelect;
 
 export type InsertDiscoverySignal = z.infer<typeof insertDiscoverySignalSchema>;
 export type DiscoverySignal = typeof discoverySignals.$inferSelect;

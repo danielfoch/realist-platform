@@ -21,6 +21,7 @@ import { MLISelectCalculator } from "@/components/MLISelectCalculator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -37,12 +38,14 @@ import {
   persistSavedSearchSignal,
   syncDiscoverySignalsWithAccount,
   track,
+  trackRealistEvent,
   type SavedListingSignal,
   type SavedSearchSignal,
 } from "@/lib/analytics";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
-import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight, Sparkles, MapPinned, Target } from "lucide-react";
+import { detectPossiblePlex } from "@shared/plexDetection";
+import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight, Sparkles, MapPinned, Target, Wand2, ClipboardCheck } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
 
 function getSessionId(): string {
@@ -80,7 +83,69 @@ const defaultInputs: BuyHoldInputs = {
   cmhcMliPoints: 0,
 };
 
-export default function Home({ embedded, seedQuery }: { embedded?: boolean; seedQuery?: string }) {
+type SimilarDeal = {
+  id: string;
+  label: string;
+  address: string;
+  city: string;
+  province: string;
+  propertyType: string;
+  estimatedUnitCount: number;
+  purchasePrice: number;
+  monthlyRent: number;
+  investorScore: number;
+  risk: string;
+};
+
+function buildSimilarDeals(input: {
+  city: string;
+  province: string;
+  propertyType: string;
+  inputs: BuyHoldInputs;
+  strategy: string;
+}): SimilarDeal[] {
+  const city = input.city || "Hamilton";
+  const province = input.province || "ON";
+  const propertyType = input.propertyType || (input.strategy === "multiplex" ? "possible duplex" : "rental house");
+  const price = input.inputs.purchasePrice || defaultInputs.purchasePrice;
+  const rent = input.inputs.monthlyRent || defaultInputs.monthlyRent;
+  return [
+    {
+      id: "mock-similar-1",
+      label: `${city} ${propertyType}`,
+      address: `Similar ${propertyType} candidate`,
+      city,
+      province,
+      propertyType,
+      estimatedUnitCount: propertyType.toLowerCase().includes("plex") || propertyType.toLowerCase().includes("duplex") ? 2 : 1,
+      purchasePrice: Math.round(price * 0.96),
+      monthlyRent: Math.round(rent * 0.98),
+      investorScore: 82,
+      risk: "Medium",
+    },
+    {
+      id: "mock-similar-2",
+      label: `${city} value-add rental`,
+      address: "Nearby value-add listing candidate",
+      city,
+      province,
+      propertyType,
+      estimatedUnitCount: propertyType.toLowerCase().includes("triplex") ? 3 : 2,
+      purchasePrice: Math.round(price * 1.04),
+      monthlyRent: Math.round(rent * 1.08),
+      investorScore: 76,
+      risk: "Review assumptions",
+    },
+  ];
+}
+
+type HomeProps = {
+  embedded?: boolean;
+  seedQuery?: string;
+  [key: string]: unknown;
+};
+
+export default function Home({ embedded, seedQuery }: HomeProps = {}) {
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
   const searchString = useSearch();
@@ -118,6 +183,13 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
   const [propertyType, setPropertyType] = useState("");
   const [recentSavedSearches, setRecentSavedSearches] = useState<SavedSearchSignal[]>(() => getSavedSearchSignals().slice(0, 3));
   const [recentSavedListings, setRecentSavedListings] = useState<SavedListingSignal[]>(() => getSavedListingSignals().slice(0, 3));
+  const [inspectionDialogOpen, setInspectionDialogOpen] = useState(false);
+  const [inspectionType, setInspectionType] = useState("investor_rental_inspection");
+  const [inspectionPreferredTimes, setInspectionPreferredTimes] = useState("");
+  const [inspectionNotes, setInspectionNotes] = useState("");
+  const [inspectionContactName, setInspectionContactName] = useState("");
+  const [inspectionContactEmail, setInspectionContactEmail] = useState(user?.email || "");
+  const [inspectionContactPhone, setInspectionContactPhone] = useState(user?.phone || "");
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -262,6 +334,13 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
   const stressTestResults = useMemo(() => {
     return calculateStressTest(inputs);
   }, [inputs]);
+
+  const similarDeals = useMemo(() => buildSimilarDeals({ city, province: region, propertyType, inputs, strategy }), [city, region, propertyType, inputs, strategy]);
+  const plexDetection = useMemo(() => detectPossiblePlex({
+    propertyType,
+    kitchenCount: strategy === "multiplex" ? 2 : undefined,
+    description: [address, propertyType, nlPrompt, strategy].filter(Boolean).join(" "),
+  }), [address, propertyType, nlPrompt, strategy]);
 
   const [listingPrice, setListingPrice] = useState<number | null>(null);
   const lastTrackedRef = useRef<string>("");
@@ -493,6 +572,49 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
     window.location.href = `/tools/cap-rates${prompt ? `?q=${encodeURIComponent(prompt)}` : ""}`;
   };
 
+  const handleApplyAssumptionsToDeal = (deal: SimilarDeal) => {
+    const clonedInputs: BuyHoldInputs = {
+      ...inputs,
+      purchasePrice: deal.purchasePrice,
+      monthlyRent: deal.monthlyRent,
+    };
+    setInputs(clonedInputs);
+    setAddress(deal.address);
+    setCity(deal.city);
+    setRegion(deal.province);
+    setPropertyType(deal.propertyType);
+    setMlsNumber(deal.id);
+    setShowResults(false);
+    trackRealistEvent("analysis.assumptions_applied_to_listing", {
+      source_listing_id: mlsNumber || propertyLabel,
+      target_listing_id: deal.id,
+      city: deal.city,
+      strategy,
+      cloned_assumptions: {
+        purchasePrice: deal.purchasePrice,
+        monthlyRent: deal.monthlyRent,
+        vacancyPercent: inputs.vacancyPercent,
+        interestRate: inputs.interestRate,
+        downPaymentPercent: inputs.downPaymentPercent,
+      },
+    });
+    toast({
+      title: "Assumptions applied",
+      description: "Source assumptions were cloned into the similar deal. Review the changed price and rent before running analysis.",
+    });
+    setTimeout(() => analyzerRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  };
+
+  const handleOpenInspectionRequest = () => {
+    trackRealistEvent("inspection.checkout_started", {
+      listing_id: mlsNumber || propertyLabel,
+      city: city || undefined,
+      inspection_type: inspectionType,
+      amount_cents: 50000,
+    });
+    setInspectionDialogOpen(true);
+  };
+
   const handleSaveSearch = () => {
     const savedSearch: SavedSearchSignal = {
       id: crypto.randomUUID(),
@@ -530,6 +652,16 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
         renovationIntent: savedSearch.renovationIntent,
       },
     });
+    trackRealistEvent("saved_search.created", {
+      geography: savedSearch.geography,
+      filters: {
+        query: savedSearch.query,
+        strategy: savedSearch.strategy,
+        budgetMax: savedSearch.budgetMax,
+        propertyType: savedSearch.propertyType,
+        targetGrossYield: savedSearch.targetGrossYield,
+      },
+    }, { idempotencyKey: `realist:saved_search.created:${savedSearch.id}` });
 
     captureInvestorPreference({
       strategy: strategy as "buy_hold" | "brrr" | "multiplex" | "flip" | "airbnb",
@@ -565,6 +697,12 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
       geography: [city, region].filter(Boolean).join(", ") || undefined,
       budget_max: inputs.purchasePrice || undefined,
       property_type: propertyType || undefined,
+      source: nlPrompt ? entrySource : (isStandaloneTool ? "standalone_tool" : "homepage_embed"),
+    });
+    trackRealistEvent("calculator.started", {
+      address: [address, city, region].filter(Boolean).join(", ") || undefined,
+      strategy,
+      geography: [city, region].filter(Boolean).join(", ") || undefined,
       source: nlPrompt ? entrySource : (isStandaloneTool ? "standalone_tool" : "homepage_embed"),
     });
 
@@ -609,6 +747,14 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
         })(),
       ]);
     } finally {
+      trackRealistEvent("calculator.completed", {
+        strategy,
+        city: city || undefined,
+        province: region || undefined,
+        cap_rate: results.capRate,
+        cash_on_cash: results.cashOnCash,
+        monthly_cash_flow: results.monthlyCashFlow,
+      });
       setIsCalculating(false);
     }
   };
@@ -666,6 +812,16 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
         property_type: propertyType || undefined,
         source: "account_saved_deal",
       });
+      trackRealistEvent("saved_deal.created", {
+        listing_id: mlsNumber || [address, city, region].filter(Boolean).join(", ") || dealName,
+        city: city || undefined,
+        strategy,
+      });
+      trackRealistEvent("analysis.assumptions_saved", {
+        source_listing_id: mlsNumber || propertyLabel,
+        city: city || undefined,
+        strategy,
+      });
       toast({
         title: "Deal Saved!",
         description: shareWithCommunity && mlsNumber
@@ -677,6 +833,53 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
       toast({
         title: "Error",
         description: "Failed to save deal. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const inspectionRequestMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/inspection-requests", {
+        propertyAddress: [address, city, region].filter(Boolean).join(", ") || propertyLabel,
+        city: city || undefined,
+        province: region || undefined,
+        listingId: mlsNumber || undefined,
+        inspectionType,
+        preferredTimes: inspectionPreferredTimes || undefined,
+        contactName: inspectionContactName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || undefined,
+        contactEmail: inspectionContactEmail || user?.email || undefined,
+        contactPhone: inspectionContactPhone || user?.phone || undefined,
+        notes: inspectionNotes || undefined,
+        amountCents: 50000,
+        currency: "cad",
+        sessionId: getSessionId(),
+        metadata: {
+          source: "deal_analyzer_results",
+          checkoutPlaceholder: true,
+          defaultProduct: "inspection_500_cad",
+          calculatorInputs: inputs,
+          calculatorResults: results,
+        },
+      });
+    },
+    onSuccess: () => {
+      trackRealistEvent("inspection.requested", {
+        listing_id: mlsNumber || propertyLabel,
+        city: city || undefined,
+        inspection_type: inspectionType,
+        amount_cents: 50000,
+      });
+      setInspectionDialogOpen(false);
+      toast({
+        title: "Inspection request captured",
+        description: "This is a manual fulfillment placeholder. Checkout and inspector dispatch are not automated yet.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Inspection request failed",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -711,6 +914,16 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
         strategy,
         property_type: propertyType || undefined,
         source: "local_draft",
+      });
+      trackRealistEvent("saved_deal.created", {
+        listing_id: mlsNumber || propertyLabel,
+        city: city || undefined,
+        strategy,
+      });
+      trackRealistEvent("analysis.assumptions_saved", {
+        source_listing_id: mlsNumber || propertyLabel,
+        city: city || undefined,
+        strategy,
       });
       captureInvestorPreference({
         strategy: strategy as "buy_hold" | "brrr" | "multiplex" | "flip" | "airbnb",
@@ -1292,6 +1505,10 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
                         <ArrowRight className="h-4 w-4" />
                         Analyze another property
                       </Button>
+                      <Button variant="outline" className="gap-2" onClick={handleOpenInspectionRequest} data-testid="button-next-book-inspection">
+                        <ClipboardCheck className="h-4 w-4" />
+                        Book inspection
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -1316,6 +1533,75 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
                   irr={results.irr}
                   monthlyCashFlow={results.monthlyCashFlow}
                 />
+              )}
+
+              {!isCalculating && (
+                <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                  <Card className="border-primary/20" data-testid="card-assumption-flywheel">
+                    <CardHeader>
+                      <div className="flex items-center gap-2">
+                        <Wand2 className="h-5 w-5 text-primary" />
+                        <CardTitle>Apply these assumptions to similar deals</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Preserve this scenario's vacancy, financing, and expense assumptions, then clone them into another estimated candidate for faster screening.
+                      </p>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {similarDeals.map((deal) => (
+                          <div key={deal.id} className="rounded-lg border border-border/70 p-4 bg-background">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-medium">{deal.label}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {formatCurrency(deal.purchasePrice)} · est. rent {formatCurrency(deal.monthlyRent)} · score {deal.investorScore}
+                                </p>
+                              </div>
+                              <Badge variant="secondary">{deal.risk}</Badge>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-4 w-full gap-2"
+                              onClick={() => handleApplyAssumptionsToDeal(deal)}
+                              data-testid={`button-apply-assumptions-${deal.id}`}
+                            >
+                              <Wand2 className="h-4 w-4" />
+                              Apply assumptions
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        TODO: replace mock similar candidates with account-backed calculator scenarios and live listings matched by market, price band, property type, unit count, rent profile, and investor score.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-amber-500/25" data-testid="card-plex-detection">
+                    <CardHeader>
+                      <CardTitle>Possible plex signal</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {plexDetection.estimated_unit_count ? (
+                          <Badge variant="secondary">Possible {plexDetection.estimated_unit_count}-unit setup</Badge>
+                        ) : (
+                          <Badge variant="outline">No strong plex signal</Badge>
+                        )}
+                        <Badge variant="outline">{plexDetection.plex_confidence_score}/100 confidence</Badge>
+                        {plexDetection.needs_manual_review && <Badge variant="outline">Manual review</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {plexDetection.plex_detection_reason}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Unit count and legal status are estimated from available fields and text. Verify legal status before underwriting or waiving conditions.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
               {!isCalculating && (
@@ -1474,6 +1760,71 @@ export default function Home({ embedded, seedQuery }: { embedded?: boolean; seed
         isSubmitting={leadMutation.isPending}
         defaultValues={getSavedLeadInfo() || undefined}
       />
+
+      <Dialog open={inspectionDialogOpen} onOpenChange={setInspectionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Book inspection placeholder</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
+              <p className="font-medium">{propertyLabel}</p>
+              <p className="text-muted-foreground">Default inspection product: {formatCurrency(500)} CAD. Checkout and inspector dispatch are manual TODOs in this slice.</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Inspection type</label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={inspectionType}
+                onChange={(event) => setInspectionType(event.target.value)}
+                data-testid="select-inspection-type"
+              >
+                <option value="standard_home_inspection">Standard home inspection</option>
+                <option value="investor_rental_inspection">Investor/rental inspection</option>
+                <option value="plex_multi_unit_inspection">Plex/multi-unit inspection</option>
+                <option value="pre_offer_walkthrough">Pre-offer walkthrough</option>
+              </select>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Contact name</label>
+                <Input value={inspectionContactName} onChange={(e) => setInspectionContactName(e.target.value)} placeholder="Name" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Contact email</label>
+                <Input value={inspectionContactEmail} onChange={(e) => setInspectionContactEmail(e.target.value)} placeholder="Email" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Contact phone</label>
+              <Input value={inspectionContactPhone} onChange={(e) => setInspectionContactPhone(e.target.value)} placeholder="Phone" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Preferred dates/times</label>
+              <Input value={inspectionPreferredTimes} onChange={(e) => setInspectionPreferredTimes(e.target.value)} placeholder="Example: Tuesday afternoon or Friday morning" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Access notes</label>
+              <Textarea value={inspectionNotes} onChange={(e) => setInspectionNotes(e.target.value)} placeholder="Listing agent, lockbox, access constraints, known concerns" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Contractor and certified inspector account onboarding remains a schema/UI TODO. For now, requests are captured for manual operations review.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInspectionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => inspectionRequestMutation.mutate()}
+              disabled={inspectionRequestMutation.isPending}
+              data-testid="button-submit-inspection-request"
+            >
+              {inspectionRequestMutation.isPending ? "Submitting..." : "Request inspection"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent>
