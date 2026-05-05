@@ -70,7 +70,8 @@ npm run type-check
 
 ## 9. Risks/blockers
 - Not deployed.
-- Branch has a local implementation commit. It was not pushed during this run.
+- Branch was pushed to GitHub: `origin/realist-nightly/2026-05-05-share-recipient-dashboard`.
+- PR URL: https://github.com/danielfoch/realist-platform/pull/new/realist-nightly/2026-05-05-share-recipient-dashboard
 - The funnel is API/status-payload work only; no frontend dashboard UI was added yet.
 - Existing uncommitted `.brv/` knowledge-base files and unrelated untracked local files were left out of the implementation commit to avoid mixing product code with workspace memory artifacts.
 
