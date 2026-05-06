@@ -108,13 +108,23 @@ export default function InvestorStart() {
             aria-hidden="true"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,hsl(var(--primary)/0.12),transparent_28%),radial-gradient(circle_at_82%_18%,hsl(var(--accent)/0.10),transparent_24%)]" />
+            {/* Street-map style background: small block grid + bigger arterial grid + a couple of diagonal "highways". */}
             <div
               className="absolute inset-0"
               style={{
-                backgroundImage:
-                  "linear-gradient(29deg, transparent 0 44%, hsl(var(--border)) 44.3% 45%, transparent 45.3% 100%), linear-gradient(151deg, transparent 0 47%, hsl(var(--border)) 47.3% 48%, transparent 48.3% 100%), linear-gradient(92deg, transparent 0 49%, hsl(var(--border)) 49.3% 50%, transparent 50.3% 100%)",
-                backgroundSize: "220px 150px, 260px 170px, 300px 190px",
-                backgroundPosition: "12px 18px, 88px 44px, -30px 20px",
+                backgroundImage: [
+                  // small residential blocks
+                  "linear-gradient(0deg,  transparent 0 calc(100% - 1px), hsl(var(--border)/0.55) calc(100% - 1px) 100%)",
+                  "linear-gradient(90deg, transparent 0 calc(100% - 1px), hsl(var(--border)/0.55) calc(100% - 1px) 100%)",
+                  // arterial roads (thicker, wider spacing)
+                  "linear-gradient(0deg,  transparent 0 calc(100% - 2px), hsl(var(--border)) calc(100% - 2px) 100%)",
+                  "linear-gradient(90deg, transparent 0 calc(100% - 2px), hsl(var(--border)) calc(100% - 2px) 100%)",
+                  // two diagonal "highways"
+                  "linear-gradient(28deg, transparent 0 49.5%, hsl(var(--primary)/0.35) 49.5% 50.5%, transparent 50.5% 100%)",
+                  "linear-gradient(118deg, transparent 0 49.5%, hsl(var(--primary)/0.25) 49.5% 50.5%, transparent 50.5% 100%)",
+                ].join(", "),
+                backgroundSize: "44px 44px, 44px 44px, 220px 220px, 220px 220px, 100% 100%, 100% 100%",
+                backgroundPosition: "0 0, 0 0, 0 0, 0 0, 0 0, 0 0",
               }}
             />
             <div className="absolute left-[62%] top-[16%] h-28 w-40 rounded-full border border-primary/30" />
@@ -202,7 +212,7 @@ export default function InvestorStart() {
                 {[
                   { label: "Save assumptions", icon: Save },
                   { label: "Apply to similar deals", icon: Radar },
-                  { label: "Request inspection or financing help", icon: Target },
+                  { label: "Send an inspector", icon: Target },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
