@@ -6,7 +6,7 @@ Wednesday, May 6, 2026
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-06-underwriting-challenge-page`
 - Implementation commit: `f585694ecfbc7ff705772a421a83ba4cc40897f7`
-- Pull-brief docs commit: this file is committed after the implementation commit on the same branch.
+- Pull-brief docs commit: `ab40b7e` (this branch also includes the implementation commit above).
 
 ## 3. What changed
 Added the missing frontend surface for the viral underwriting loop.
@@ -95,6 +95,8 @@ The new `AnalysisHistory.tsx` unused-type error that appeared during the full bu
 
 ## 9. Risks/blockers
 - Not deployed.
+- Branch pushed to GitHub: `origin/realist-nightly/2026-05-06-underwriting-challenge-page`.
+- PR URL: https://github.com/danielfoch/realist-platform/pull/new/realist-nightly/2026-05-06-underwriting-challenge-page
 - No outbound emails/messages were sent.
 - No paid APIs were called.
 - Full `npm --prefix frontend run build` is currently blocked by pre-existing unrelated TypeScript issues outside this patch:
