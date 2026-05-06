@@ -59,6 +59,29 @@ export default function AccountApiKeys() {
     toast({ title: "Copied to clipboard" });
   };
 
+  function PromptBlock({ text, label, testId }: { text: string; label?: string; testId: string }) {
+    return (
+      <div>
+        {label && <p className="text-sm font-medium mb-2">{label}</p>}
+        <div className="relative bg-muted rounded-md">
+          <pre className="p-4 pr-14 overflow-x-auto text-xs whitespace-pre-wrap" data-testid={`code-${testId}`}>
+            {text}
+          </pre>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="absolute top-2 right-2"
+            onClick={() => copyToClipboard(text)}
+            data-testid={`button-copy-${testId}`}
+          >
+            <Copy className="w-4 h-4 mr-1" /> Copy
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const activeKeys = (data?.keys || []).filter((k) => !k.revokedAt);
   const revokedKeys = (data?.keys || []).filter((k) => k.revokedAt);
 
@@ -75,25 +98,69 @@ export default function AccountApiKeys() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Terminal className="w-5 h-5" /> How to use</CardTitle>
-          <CardDescription>Add this snippet to your Claude Desktop config (<code>~/Library/Application Support/Claude/claude_desktop_config.json</code> on macOS):</CardDescription>
+          <CardTitle className="flex items-center gap-2"><Terminal className="w-5 h-5" /> Connect Claude or Codex in 30 seconds</CardTitle>
+          <CardDescription>
+            Mint a key below, then copy one of the prompts and paste it into Claude or Codex CLI. The agent will handle the install for you.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <pre className="bg-muted p-4 rounded-md overflow-x-auto text-xs" data-testid="code-claude-config">
-{`{
+        <CardContent className="space-y-5">
+          <PromptBlock
+            label="Codex CLI — paste this prompt"
+            testId="prompt-codex"
+            text={`Install the Realist MCP plugin so I can underwrite Canadian real estate deals from this terminal.
+
+1. Run: codex mcp add realist -- npx -y @realist/mcp
+2. Run: codex mcp env set realist REALIST_API_KEY <PASTE_YOUR_KEY_HERE>
+3. Verify with: codex mcp call realist realist_whoami
+
+Once it's working, list the 8 tools the realist server exposes and tell me how to underwrite an MLS listing.`}
+          />
+
+          <PromptBlock
+            label="Claude Code / Cursor — paste this prompt"
+            testId="prompt-claude-code"
+            text={`Add the Realist MCP server to my agent so I can underwrite Canadian real estate deals.
+
+1. Install globally: npm install -g @realist/mcp
+2. Add this MCP server entry to my agent config:
+
+{
   "mcpServers": {
     "realist": {
       "command": "npx",
       "args": ["-y", "@realist/mcp"],
-      "env": { "REALIST_API_KEY": "realist_live_..." }
+      "env": { "REALIST_API_KEY": "<PASTE_YOUR_KEY_HERE>" }
+    }
+  }
+}
+
+3. Restart the agent, call the realist_underwrite_listing tool with MLS X12345678, and summarise the cap rate, monthly cash flow, and DSCR.`}
+          />
+
+          <div>
+            <p className="text-sm font-medium mb-2">Claude Desktop — manual config (one-time)</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              Open <code className="text-xs">~/Library/Application Support/Claude/claude_desktop_config.json</code> on macOS
+              (or <code className="text-xs">%APPDATA%\Claude\claude_desktop_config.json</code> on Windows), paste this, then restart Claude Desktop.
+            </p>
+            <PromptBlock
+              testId="prompt-claude-desktop"
+              text={`{
+  "mcpServers": {
+    "realist": {
+      "command": "npx",
+      "args": ["-y", "@realist/mcp"],
+      "env": { "REALIST_API_KEY": "<PASTE_YOUR_KEY_HERE>" }
     }
   }
 }`}
-          </pre>
-          <p className="text-sm text-muted-foreground mt-3">
-            Then restart Claude Desktop. You'll be able to ask things like
-            <em> "Underwrite MLS X12345678 as a buy-and-hold"</em> or
-            <em> "Find me 4-plex deals in Hamilton under $900k"</em>.
+            />
+          </div>
+
+          <p className="text-sm text-muted-foreground">
+            Once connected you can ask: <em>"Underwrite MLS X12345678 as a buy-and-hold"</em>,
+            {" "}<em>"Find 4-plex deals in Hamilton under $900k"</em>, or
+            {" "}<em>"Submit my last analysis to the Realist community feed."</em>
           </p>
         </CardContent>
       </Card>
