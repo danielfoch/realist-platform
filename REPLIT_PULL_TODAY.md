@@ -1,79 +1,110 @@
 # REPLIT_PULL_TODAY — Realist.ca Nightly GitHub Builder
 
 ## 1. Date
-Tuesday, May 5, 2026
+Wednesday, May 6, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-05-share-recipient-dashboard`
-- Implementation commit: `340add070c97951e69ab9679743b55590042e2ea`
+- Branch: `realist-nightly/2026-05-06-underwriting-challenge-page`
+- Implementation commit: `f585694ecfbc7ff705772a421a83ba4cc40897f7`
+- Pull-brief docs commit: this file is committed after the implementation commit on the same branch.
 
 ## 3. What changed
-Added a recipient invite funnel to the viral underwriting share status payload.
+Added the missing frontend surface for the viral underwriting loop.
 
-Owners can now see, by recipient-link source, how invite batches are moving through the qualified growth loop:
+Investors can now create a share link directly from Analysis History using the CTA **“Challenge my underwriting.”** The link opens a new recipient-facing page at `/underwriting/:token` where the recipient can:
 
-`invited -> opened -> challenged -> forked/saved version -> signup`
+1. Review the shared deal underwriting and assumptions.
+2. Pick assumptions they disagree with, such as rent, vacancy, expenses, financing, cap rate, or exit value.
+3. Submit a challenge, save a version, or fork assumptions.
+4. See whether the action qualified for Google Sheets export credits.
+5. Receive an onward share link when a signed-in challenger saves/forks a version and the backend creates the next share in the loop.
 
-The funnel reports counts, conversion rates, and Google Sheets export credits earned from qualified actions only. It does not expose recipient hashes or raw visitor identity.
+This connects the existing backend share/credit system to a real product flow:
 
-This supports the current priority loop:
+`Analyze deal -> Share underwriting -> Recipient challenges/forks assumptions -> Account/save version -> Share onward`
 
-Analyze deal -> Share underwriting -> Recipient challenges/forks assumptions -> Account/save version -> Share onward
-
-Primary CTA remains: **“Challenge my underwriting.”**
+Credits remain server-controlled and qualified-only. The UI explicitly states that credits are not granted for raw share clicks.
 
 ## 4. Files changed
-- `src/underwriting-share-routes.ts`
-  - Added `getRecipientInviteFunnel(...)`.
-  - Added `inviteFunnel` to `getShareActionSummary(...)` / share status response.
-  - Funnel aggregates by `underwriting_share_recipients.source`.
-  - Funnel only counts qualified actions and preserves anti-abuse/privacy boundaries.
-- `test/underwriting-share-routes.test.ts`
-  - Added coverage for invite-funnel aggregation.
-  - Extended share-status summary test to verify the new `inviteFunnel` payload.
-  - Verified recipient identity is not exposed.
+- `frontend/src/App.tsx`
+  - Registers the new `/underwriting/:token` route.
+- `frontend/src/pages/AnalysisHistory.tsx`
+  - Adds a **Challenge my underwriting** action on each saved analysis.
+  - Calls `POST /api/analyses/:id/share` with source `analysis_history`.
+  - Copies the generated share URL to the clipboard and shows a success banner.
+- `frontend/src/pages/AnalysisHistory.css`
+  - Adds share success banner styling and disabled share-button state.
+- `frontend/src/pages/UnderwritingSharePage.tsx`
+  - New recipient-facing underwriting share page.
+  - Loads `GET /api/underwriting-shares/:token` and preserves optional tracked recipient query param.
+  - Posts `challenge`, `saved_version`, or `fork` actions to `POST /api/underwriting-shares/:token/actions` with meaningful challenge metadata.
+  - Displays qualified credit result and onward share link when returned.
+- `frontend/src/pages/UnderwritingSharePage.css`
+  - Styles the recipient challenge page, metrics/assumption cards, guardrail copy, challenge form, and result state.
 
 ## 5. Migration steps
-None. This uses existing tables from prior migrations:
-- `underwriting_share_recipients`
+None for this patch.
+
+It uses the existing viral underwriting share tables and API routes from prior migration work:
+- `underwriting_shares`
 - `underwriting_share_actions`
+- `underwriting_share_recipients`
+- `premium_credit_ledger`
 
 ## 6. Env vars needed
-None.
+None new.
 
 ## 7. Replit commands to run
 ```bash
 git fetch origin
-git checkout realist-nightly/2026-05-05-share-recipient-dashboard
+git checkout realist-nightly/2026-05-06-underwriting-challenge-page
 npm install
-npm run type-check
+npm --prefix frontend install
 npm test -- underwriting-share-routes.test.ts --runInBand
+npm --prefix frontend run build
 ```
 
-If Dan wants the full gate in Replit:
+If Dan wants only the smallest frontend confidence check while existing frontend build debt is still present:
 
 ```bash
-npm run check
+cd frontend
+npx tsc --jsx react-jsx --moduleResolution bundler --module ESNext --target ES2020 --lib ES2020,DOM,DOM.Iterable --strict --noEmit --skipLibCheck --baseUrl . src/pages/UnderwritingSharePage.tsx src/pages/AnalysisHistory.tsx
 ```
 
 ## 8. Test/build result
-Passed locally on Clyde’s Mac mini:
+Passed locally:
 
 ```bash
 npm test -- underwriting-share-routes.test.ts --runInBand
 # PASS test/underwriting-share-routes.test.ts
 # 12 tests passed
 
-npm run type-check
-# tsc --noEmit passed
+cd frontend
+npx tsc --jsx react-jsx --moduleResolution bundler --module ESNext --target ES2020 --lib ES2020,DOM,DOM.Iterable --strict --noEmit --skipLibCheck --baseUrl . src/pages/UnderwritingSharePage.tsx src/pages/AnalysisHistory.tsx
+# passed with no output
 ```
+
+Known pre-existing blocker for the full frontend build:
+
+```bash
+npm --prefix frontend run build
+# fails before/alongside this patch on existing unrelated TS errors in CreaStatsPage.tsx, HomePage.tsx, SavedListingsPage.tsx, and SixixplexReportPage.tsx
+```
+
+The new `AnalysisHistory.tsx` unused-type error that appeared during the full build was fixed in this patch before commit.
 
 ## 9. Risks/blockers
 - Not deployed.
-- Branch was pushed to GitHub: `origin/realist-nightly/2026-05-05-share-recipient-dashboard`.
-- PR URL: https://github.com/danielfoch/realist-platform/pull/new/realist-nightly/2026-05-05-share-recipient-dashboard
-- The funnel is API/status-payload work only; no frontend dashboard UI was added yet.
-- Existing uncommitted `.brv/` knowledge-base files and unrelated untracked local files were left out of the implementation commit to avoid mixing product code with workspace memory artifacts.
+- No outbound emails/messages were sent.
+- No paid APIs were called.
+- Full `npm --prefix frontend run build` is currently blocked by pre-existing unrelated TypeScript issues outside this patch:
+  - `src/pages/CreaStatsPage.tsx`
+  - `src/pages/HomePage.tsx`
+  - `src/pages/SavedListingsPage.tsx`
+  - `src/pages/SixixplexReportPage.tsx`
+- The share button uses `navigator.clipboard`; if clipboard permissions are blocked in a browser, the generated URL is still shown in the success banner for manual copy.
+- Backend auth determines whether `fork` / `saved_version` creates an onward share. Anonymous recipients can submit a challenge, but need an authenticated user context to save/fork into their own analysis history.
+- Existing local `.brv/`, `.learnings/`, and `BUILD_NOTES.md` workspace artifacts were left uncommitted to avoid mixing knowledge-base artifacts with product code.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull the `realist-nightly/2026-05-05-share-recipient-dashboard` branch for a backend improvement to the viral underwriting loop: share owners can now see which recipient-specific share sources are actually producing qualified opens, challenges, saved/forked versions, signups, and Google Sheets export credits — without rewarding raw clicks or exposing recipient identity.
+Pull `realist-nightly/2026-05-06-underwriting-challenge-page` to turn the existing viral underwriting backend into a visible user loop: from Analysis History, click **Challenge my underwriting** to copy a share link; recipients can open the underwriting, challenge assumptions, save/fork a version, and continue the share loop — with Google Sheets export credits still awarded only for qualified anti-abuse-tracked actions, never raw clicks.
