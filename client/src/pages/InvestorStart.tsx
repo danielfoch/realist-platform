@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { getSavedListingSignals, getSavedSearchSignals, syncDiscoverySignalsWithAccount, track, trackRealistEvent } from "@/lib/analytics";
 import { ArrowRight, BarChart3, Brain, Compass, Map, Radar, Save, Target, Trophy } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { CANADA_SVG_PATH, CANADA_VIEWBOX } from "@/lib/canadaSilhouette";
 
 function formatCurrency(value?: number) {
   if (!value) return null;
@@ -104,42 +105,27 @@ export default function InvestorStart() {
           onPointerMove={handleHeroPointerMove}
         >
           <div
-            className="pointer-events-none absolute inset-0 opacity-[0.32]"
+            className="pointer-events-none absolute inset-0"
             aria-hidden="true"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,hsl(var(--primary)/0.12),transparent_28%),radial-gradient(circle_at_82%_18%,hsl(var(--accent)/0.10),transparent_24%)]" />
-            {/* Street-map style background: small block grid + bigger arterial grid + a couple of diagonal "highways". */}
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: [
-                  // small residential blocks
-                  "linear-gradient(0deg,  transparent 0 calc(100% - 1px), hsl(var(--border)/0.55) calc(100% - 1px) 100%)",
-                  "linear-gradient(90deg, transparent 0 calc(100% - 1px), hsl(var(--border)/0.55) calc(100% - 1px) 100%)",
-                  // arterial roads (thicker, wider spacing)
-                  "linear-gradient(0deg,  transparent 0 calc(100% - 2px), hsl(var(--border)) calc(100% - 2px) 100%)",
-                  "linear-gradient(90deg, transparent 0 calc(100% - 2px), hsl(var(--border)) calc(100% - 2px) 100%)",
-                  // two diagonal "highways"
-                  "linear-gradient(28deg, transparent 0 49.5%, hsl(var(--primary)/0.35) 49.5% 50.5%, transparent 50.5% 100%)",
-                  "linear-gradient(118deg, transparent 0 49.5%, hsl(var(--primary)/0.25) 49.5% 50.5%, transparent 50.5% 100%)",
-                ].join(", "),
-                backgroundSize: "44px 44px, 44px 44px, 220px 220px, 220px 220px, 100% 100%, 100% 100%",
-                backgroundPosition: "0 0, 0 0, 0 0, 0 0, 0 0, 0 0",
-              }}
-            />
-            <div className="absolute left-[62%] top-[16%] h-28 w-40 rounded-full border border-primary/30" />
-            <div className="absolute left-[72%] top-[39%] h-20 w-32 rounded-full border border-primary/20" />
-            <div className="absolute left-[48%] top-[58%] h-24 w-36 rounded-full border border-primary/20" />
-            {[
-              { left: "64%", top: "22%", label: "Hamilton" },
-              { left: "78%", top: "42%", label: "Oshawa" },
-              { left: "52%", top: "64%", label: "Kitchener" },
-            ].map((pin) => (
-              <div key={pin.label} className="absolute text-[11px] font-medium text-muted-foreground" style={{ left: pin.left, top: pin.top }}>
-                <span className="mr-1 inline-block h-2 w-2 rounded-full bg-primary/70" />
-                {pin.label}
-              </div>
-            ))}
+            {/* Soft brand glows */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,hsl(var(--primary)/0.10),transparent_32%),radial-gradient(circle_at_82%_22%,hsl(var(--accent)/0.08),transparent_28%)]" />
+
+            {/* Faded Canada silhouette — projected from world-atlas countries-50m */}
+            <svg
+              viewBox={CANADA_VIEWBOX}
+              preserveAspectRatio="xMidYMid slice"
+              className="absolute inset-0 h-full w-full opacity-[0.20]"
+            >
+              <path
+                d={CANADA_SVG_PATH}
+                fill="hsl(var(--primary) / 0.55)"
+                stroke="hsl(var(--primary) / 0.45)"
+                strokeWidth="0.5"
+                strokeLinejoin="round"
+                fillRule="evenodd"
+              />
+            </svg>
           </div>
 
           <div className="pointer-events-none absolute inset-0" aria-hidden="true">
