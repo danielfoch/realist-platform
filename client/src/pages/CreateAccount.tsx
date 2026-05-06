@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Loader2, Mail, Lock, User, ArrowRight, ClipboardCheck, Wrench } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { authPath, clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl } from "@/lib/authReturn";
@@ -19,9 +19,16 @@ const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
+  role: z.enum(["investor", "partner"]),
+  professionalType: z.enum(["contractor", "inspector"]).optional(),
+  certificationNumber: z.string().optional(),
+  serviceArea: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+}).refine((data) => data.role !== "partner" || !!data.professionalType, {
+  message: "Choose contractor or inspector",
+  path: ["professionalType"],
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -42,6 +49,10 @@ export default function CreateAccount() {
       email: "",
       password: "",
       confirmPassword: "",
+      role: "investor",
+      professionalType: undefined,
+      certificationNumber: "",
+      serviceArea: "",
     },
   });
 
@@ -52,6 +63,10 @@ export default function CreateAccount() {
         lastName: data.lastName,
         email: data.email,
         password: data.password,
+        role: data.role,
+        professionalType: data.role === "partner" ? data.professionalType : undefined,
+        certificationNumber: data.role === "partner" ? data.certificationNumber : undefined,
+        serviceArea: data.role === "partner" ? data.serviceArea : undefined,
       });
       return response.json();
     },
@@ -122,6 +137,85 @@ export default function CreateAccount() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Account type</FormLabel>
+                    <FormControl>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => field.onChange("investor")}
+                          className={`rounded-md border p-3 text-left text-sm ${field.value === "investor" ? "border-primary bg-primary/5" : "border-border"}`}
+                          data-testid="button-signup-role-investor"
+                        >
+                          <User className="mb-2 h-4 w-4" />
+                          Investor
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            field.onChange("partner");
+                            form.setValue("professionalType", "inspector");
+                          }}
+                          className={`rounded-md border p-3 text-left text-sm ${field.value === "partner" && form.watch("professionalType") === "inspector" ? "border-primary bg-primary/5" : "border-border"}`}
+                          data-testid="button-signup-role-inspector"
+                        >
+                          <ClipboardCheck className="mb-2 h-4 w-4" />
+                          Inspector
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            field.onChange("partner");
+                            form.setValue("professionalType", "contractor");
+                          }}
+                          className={`rounded-md border p-3 text-left text-sm ${field.value === "partner" && form.watch("professionalType") === "contractor" ? "border-primary bg-primary/5" : "border-border"}`}
+                          data-testid="button-signup-role-contractor"
+                        >
+                          <Wrench className="mb-2 h-4 w-4" />
+                          Contractor
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {form.watch("role") === "partner" && (
+                <div className="grid grid-cols-2 gap-4 rounded-md border bg-muted/30 p-3">
+                  <FormField
+                    control={form.control}
+                    name="certificationNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Certification / license</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Optional" data-testid="input-signup-certification" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="serviceArea"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Service area</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Toronto, Hamilton..." data-testid="input-signup-service-area" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
 
               <FormField
                 control={form.control}

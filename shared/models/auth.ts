@@ -75,6 +75,10 @@ export const signupSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  role: z.enum(["investor", "partner"]).optional().default("investor"),
+  professionalType: z.enum(["contractor", "inspector"]).optional(),
+  certificationNumber: z.string().max(120).optional(),
+  serviceArea: z.string().max(160).optional(),
 });
 
 export const loginSchema = z.object({

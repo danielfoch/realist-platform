@@ -193,7 +193,21 @@ export function registerAuthRoutes(app: Express): void {
         passwordHash,
         firstName: data.firstName,
         lastName: data.lastName,
+        role: data.role,
       }).returning();
+
+      if (data.role === "partner" && data.professionalType) {
+        await storage.upsertProfessionalSubscription({
+          userId: newUser.id,
+          tier: "free",
+          monthlyPullLimit: 5,
+          pullsUsedThisMonth: 0,
+          professionalType: data.professionalType,
+          certificationNumber: data.certificationNumber || null,
+          serviceArea: data.serviceArea || null,
+          onboardingStatus: data.certificationNumber ? "pending_verification" : "started",
+        }).catch((err) => console.error("[signup] professional onboarding error:", err));
+      }
       
       // Set session
       req.session.userId = newUser.id;

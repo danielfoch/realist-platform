@@ -75,6 +75,7 @@ import {
 import { type DistressResult } from "@shared/distressScoring";
 import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
 import { authPath } from "@/lib/authReturn";
+import { detectPossiblePlex } from "@shared/plexDetection";
 
 interface RepliersListing {
   mlsNumber: string;
@@ -142,6 +143,9 @@ interface ListingWithCapRate extends RepliersListing {
   rentSource: "market" | "estimated" | "actual" | "cmhc_city" | "cmhc_province";
   totalActualRent?: number;
   numberOfUnitsTotal?: number;
+  kitchenCount?: number;
+  plexConfidenceScore?: number;
+  plexDetectionReason?: string;
   unitCount: number;
   dataSource?: "crea_ddf" | "repliers";
 }
@@ -1569,7 +1573,15 @@ export default function CapRates() {
         const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
         if (!(price > 1)) return null;
         const bedrooms = listing.details?.numBedrooms || 2;
-        const units = listing.numberOfUnitsTotal || 1;
+        const plexSignal = detectPossiblePlex({
+          propertyType: listing.details?.propertyType || listing.type || listing.class,
+          tags: [listing.details?.style, listing.details?.basement1],
+          unitCount: listing.numberOfUnitsTotal,
+          kitchenCount: listing.details?.numKitchens || listing.kitchenCount || listing.numKitchens,
+          description: listing.details?.description,
+          remarks: [listing.details?.extras, listing.remarks, listing.publicRemarks].filter(Boolean).join(" "),
+        });
+        const units = listing.numberOfUnitsTotal || plexSignal.estimated_unit_count || 1;
 
         let rent: number;
         let source: "market" | "estimated" | "actual" | "cmhc_city" | "cmhc_province";
@@ -1617,6 +1629,9 @@ export default function CapRates() {
           calculationWarnings: metrics.calculationWarnings,
           assumptionsUsed: metrics.assumptionsUsed,
           rentSource: source,
+          kitchenCount: plexSignal.kitchen_count || undefined,
+          plexConfidenceScore: plexSignal.plex_confidence_score,
+          plexDetectionReason: plexSignal.plex_detection_reason,
           unitCount: units,
         };
       })
@@ -2305,6 +2320,11 @@ export default function CapRates() {
                   {listing.unitCount}u
                 </span>
               )}
+              {listing.kitchenCount && listing.kitchenCount > 1 && (
+                <span className="flex items-center gap-0.5 font-medium text-amber-600">
+                  {listing.kitchenCount} kitchens
+                </span>
+              )}
               {listing.details?.numBedrooms != null && (
                 <span className="flex items-center gap-0.5">
                   <BedDouble className="h-3 w-3" />
@@ -2679,7 +2699,17 @@ export default function CapRates() {
                   {selectedListing.details?.yearBuilt && (
                     <Badge variant="outline" className="text-xs">Built {selectedListing.details.yearBuilt}</Badge>
                   )}
+                  {selectedListing.kitchenCount && selectedListing.kitchenCount > 1 && (
+                    <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-700">
+                      {selectedListing.kitchenCount} kitchens detected
+                    </Badge>
+                  )}
                 </div>
+                {selectedListing.plexConfidenceScore && selectedListing.plexConfidenceScore >= 30 && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
+                    {selectedListing.plexDetectionReason}
+                  </div>
+                )}
 
                 <Button
                   className="w-full"

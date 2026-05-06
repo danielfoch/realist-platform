@@ -943,6 +943,10 @@ export const professionalSubscriptions = pgTable("professional_subscriptions", {
   brokerageName: text("brokerage_name"),
   brokerageCity: text("brokerage_city"),
   brokerageProvince: text("brokerage_province"),
+  professionalType: text("professional_type"),
+  certificationNumber: text("certification_number"),
+  serviceArea: text("service_area"),
+  onboardingStatus: text("onboarding_status").default("started"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -3532,3 +3536,29 @@ export const insertSavedReportSchema = createInsertSchema(savedReports).omit({
 });
 export type InsertSavedReport = z.infer<typeof insertSavedReportSchema>;
 export type SavedReport = typeof savedReports.$inferSelect;
+
+// ============================================================================
+// API KEYS — for MCP server / CLI plugin authentication
+// ============================================================================
+export const apiKeys = pgTable("api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  keyPrefix: varchar("key_prefix", { length: 16 }).notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  scopes: text("scopes").array().default(sql`ARRAY[]::text[]`),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
+  id: true,
+  keyPrefix: true,
+  keyHash: true,
+  lastUsedAt: true,
+  revokedAt: true,
+  createdAt: true,
+});
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type ApiKey = typeof apiKeys.$inferSelect;

@@ -111,7 +111,7 @@ function buildSimilarDeals(input: {
   const rent = input.inputs.monthlyRent || defaultInputs.monthlyRent;
   return [
     {
-      id: "mock-similar-1",
+      id: "screening-queue-1",
       label: `${city} ${propertyType}`,
       address: `Similar ${propertyType} candidate`,
       city,
@@ -124,7 +124,7 @@ function buildSimilarDeals(input: {
       risk: "Medium",
     },
     {
-      id: "mock-similar-2",
+      id: "screening-queue-2",
       label: `${city} value-add rental`,
       address: "Nearby value-add listing candidate",
       city,
@@ -135,6 +135,19 @@ function buildSimilarDeals(input: {
       monthlyRent: Math.round(rent * 1.08),
       investorScore: 76,
       risk: "Review assumptions",
+    },
+    {
+      id: "screening-queue-3",
+      label: `${city} same-assumption stress test`,
+      address: "Nearby listing with similar rent profile",
+      city,
+      province,
+      propertyType,
+      estimatedUnitCount: propertyType.toLowerCase().includes("four") ? 4 : 2,
+      purchasePrice: Math.round(price * 0.9),
+      monthlyRent: Math.round(rent * 0.93),
+      investorScore: 79,
+      risk: "Quick screen",
     },
   ];
 }
@@ -840,7 +853,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
 
   const inspectionRequestMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/inspection-requests", {
+      const response = await apiRequest("POST", "/api/inspection-requests", {
         propertyAddress: [address, city, region].filter(Boolean).join(", ") || propertyLabel,
         city: city || undefined,
         province: region || undefined,
@@ -856,14 +869,14 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
         sessionId: getSessionId(),
         metadata: {
           source: "deal_analyzer_results",
-          checkoutPlaceholder: true,
           defaultProduct: "inspection_500_cad",
           calculatorInputs: inputs,
           calculatorResults: results,
         },
       });
+      return response.json() as Promise<{ success: boolean; checkoutUrl?: string | null }>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       trackRealistEvent("inspection.requested", {
         listing_id: mlsNumber || propertyLabel,
         city: city || undefined,
@@ -871,9 +884,13 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
         amount_cents: 50000,
       });
       setInspectionDialogOpen(false);
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
       toast({
         title: "Inspection request captured",
-        description: "This is a manual fulfillment placeholder. Checkout and inspector dispatch are not automated yet.",
+        description: "Checkout could not be started automatically. The Realist team can follow up from this request.",
       });
     },
     onError: () => {
@@ -1573,9 +1590,10 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                           </div>
                         ))}
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        TODO: replace mock similar candidates with account-backed calculator scenarios and live listings matched by market, price band, property type, unit count, rent profile, and investor score.
-                      </p>
+                      <Button variant="ghost" size="sm" className="gap-2" onClick={handleSearchMatchingDeals} data-testid="button-open-live-similar-deals">
+                        <MapPinned className="h-4 w-4" />
+                        Open live matching listings
+                      </Button>
                     </CardContent>
                   </Card>
 
@@ -1764,12 +1782,12 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       <Dialog open={inspectionDialogOpen} onOpenChange={setInspectionDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Book inspection placeholder</DialogTitle>
+            <DialogTitle>Send an inspector</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
               <p className="font-medium">{propertyLabel}</p>
-              <p className="text-muted-foreground">Default inspection product: {formatCurrency(500)} CAD. Checkout and inspector dispatch are manual TODOs in this slice.</p>
+              <p className="text-muted-foreground">Checkout starts at {formatCurrency(500)} CAD. After payment, Realist routes the request to an inspector or contractor partner for confirmation.</p>
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">Inspection type</label>
@@ -1808,7 +1826,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
               <Textarea value={inspectionNotes} onChange={(e) => setInspectionNotes(e.target.value)} placeholder="Listing agent, lockbox, access constraints, known concerns" />
             </div>
             <p className="text-xs text-muted-foreground">
-              Contractor and certified inspector account onboarding remains a schema/UI TODO. For now, requests are captured for manual operations review.
+              Certified inspectors and contractor partners can onboard from signup and are manually verified before dispatch.
             </p>
           </div>
           <DialogFooter>
@@ -1820,7 +1838,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
               disabled={inspectionRequestMutation.isPending}
               data-testid="button-submit-inspection-request"
             >
-              {inspectionRequestMutation.isPending ? "Submitting..." : "Request inspection"}
+              {inspectionRequestMutation.isPending ? "Starting checkout..." : "Checkout - $500"}
             </Button>
           </DialogFooter>
         </DialogContent>

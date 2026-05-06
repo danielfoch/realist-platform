@@ -19,6 +19,9 @@ interface BrokerageInfo {
   brokerageName: string;
   brokerageCity: string;
   brokerageProvince: string;
+  professionalType: "realtor" | "mortgage_broker" | "contractor" | "inspector" | "property_manager";
+  certificationNumber: string;
+  serviceArea: string;
 }
 
 export default function Signup() {
@@ -32,6 +35,9 @@ export default function Signup() {
     brokerageName: "",
     brokerageCity: "",
     brokerageProvince: "",
+    professionalType: "realtor",
+    certificationNumber: "",
+    serviceArea: "",
   });
 
   const createProfileMutation = useMutation({
@@ -115,7 +121,7 @@ export default function Signup() {
 
             <div className="text-center mb-8">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2" data-testid="text-brokerage-title">
-                Tell us about your brokerage
+                Tell us about your professional profile
               </h1>
               <p className="text-muted-foreground">
                 This will appear on your analysis reports and expert profile
@@ -124,6 +130,25 @@ export default function Signup() {
 
             <Card>
               <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="professionalType">Professional type</Label>
+                  <Select
+                    value={brokerageInfo.professionalType}
+                    onValueChange={(value) => setBrokerageInfo({ ...brokerageInfo, professionalType: value as BrokerageInfo["professionalType"] })}
+                  >
+                    <SelectTrigger id="professionalType" data-testid="select-professional-type">
+                      <SelectValue placeholder="Select professional type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="realtor">Realtor</SelectItem>
+                      <SelectItem value="mortgage_broker">Mortgage broker</SelectItem>
+                      <SelectItem value="contractor">Contractor</SelectItem>
+                      <SelectItem value="inspector">Certified inspector</SelectItem>
+                      <SelectItem value="property_manager">Property manager</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="brokerageName">Brokerage Name *</Label>
                   <Input
@@ -134,6 +159,31 @@ export default function Signup() {
                     data-testid="input-brokerage-name"
                   />
                 </div>
+
+                {(brokerageInfo.professionalType === "inspector" || brokerageInfo.professionalType === "contractor") && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="certificationNumber">Certification / license</Label>
+                      <Input
+                        id="certificationNumber"
+                        placeholder="Optional, used for verification"
+                        value={brokerageInfo.certificationNumber}
+                        onChange={(e) => setBrokerageInfo({ ...brokerageInfo, certificationNumber: e.target.value })}
+                        data-testid="input-certification-number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="serviceArea">Service area</Label>
+                      <Input
+                        id="serviceArea"
+                        placeholder="Toronto, Hamilton..."
+                        value={brokerageInfo.serviceArea}
+                        onChange={(e) => setBrokerageInfo({ ...brokerageInfo, serviceArea: e.target.value })}
+                        data-testid="input-service-area"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="brokerageCity">City</Label>
@@ -268,7 +318,7 @@ export default function Signup() {
                   </div>
                   <div className="flex-1">
                     <CardTitle className="text-xl">Real Estate Professional</CardTitle>
-                    <CardDescription>Realtor, mortgage broker, or industry partner</CardDescription>
+                    <CardDescription>Realtor, broker, contractor, inspector, or industry partner</CardDescription>
                   </div>
                   {selectedRole === "professional" && (
                     <CheckCircle2 className="w-6 h-6 text-primary" />
@@ -292,6 +342,10 @@ export default function Signup() {
                   <li className="flex items-start gap-2">
                     <Building className="w-4 h-4 mt-0.5 text-primary" />
                     <span>Host local investor meetups</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Building className="w-4 h-4 mt-0.5 text-primary" />
+                    <span>Onboard for inspection and contractor dispatch requests</span>
                   </li>
                 </ul>
 

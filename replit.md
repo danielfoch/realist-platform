@@ -1,7 +1,7 @@
 # Realist.ca - Real Estate Deal Analyzer
 
 ## Overview
-Realist.ca is a production-grade web application (with a Capacitor-based iOS/Android shell in `mobile/`) for real estate investors, providing institutional-grade financial analysis tools for Canadian and US markets. Its core purpose is to facilitate deal underwriting, compare investment strategies (Buy & Hold, BRRR, Flip, Airbnb, Multiplex), and generate investor-ready analysis sheets. The platform features a map-first homepage, a comprehensive deal analyzer with MLS# import, community-driven underwriting via Cap Rates Explorer, and an admin dashboard for lead management. The project aims to be the leading tool for sophisticated real estate investment analysis, offering multi-year projections, cap rate calculations, and IRR analysis.
+Realist.ca is a production-grade web application (with a Capacitor-based iOS/Android shell in `mobile/` and a Model Context Protocol server / CLI plugin in `mcp-realist/` for Claude Desktop, Codex CLI, Cursor, and other AI agents) for real estate investors, providing institutional-grade financial analysis tools for Canadian and US markets. Its core purpose is to facilitate deal underwriting, compare investment strategies (Buy & Hold, BRRR, Flip, Airbnb, Multiplex), and generate investor-ready analysis sheets. The platform features a map-first homepage, a comprehensive deal analyzer with MLS# import, community-driven underwriting via Cap Rates Explorer, and an admin dashboard for lead management. The project aims to be the leading tool for sophisticated real estate investment analysis, offering multi-year projections, cap rate calculations, and IRR analysis.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -71,6 +71,7 @@ Preferred communication style: Simple, everyday language.
 - **Gamification System**: User stats, badges (Analyst to Legend), rank change notifications, and leaderboards.
 - **My Performance Dashboard**: Personalized dashboard comparing user KPIs against platform averages, displaying rankings, badge progress, and trend data.
 - **Find Deals (Cap Rates Explorer)**: Natural language search for deals on the Yield Map, parsing queries into DDF filters, computing deal scores, and displaying ranked results with AI explanations.
+- **AI Agent API & MCP Plugin (`mcp-realist/`)**: Bearer-token-authenticated `/api/agent/*` endpoints (in `server/agentApi.ts`) backing an npm-publishable Model Context Protocol server (`@realist/mcp`) and CLI (`realist`). Eight tools: underwrite by MLS#, underwrite custom address, natural-language deal search, list/get saved analyses, submit to community feed, market report, mortgage rates. API keys minted at `/account/api-keys` (page `client/src/pages/AccountApiKeys.tsx`), stored as SHA-256 hashes in the `api_keys` table, returned plaintext only at creation. Works with Claude Desktop, Codex CLI, Cursor, and any MCP-compatible agent.
 
 ## External Dependencies
 

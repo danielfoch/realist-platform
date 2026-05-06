@@ -604,6 +604,10 @@ export async function registerRoutes(
   setupAuth(app);
   registerAuthRoutes(app);
 
+  const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
+  registerApiKeyManagementRoutes(app);
+  registerAgentRoutes(app);
+
   // ─── Event Tracking ───────────────────────────────────────────────────────
   // Lightweight behavioral event capture for AI training data pipeline.
   // Every event here is a future labeled data point:
@@ -3398,13 +3402,52 @@ export async function registerRoutes(
         sessionId: validatedData.sessionId || req.sessionID || null,
         amountCents: validatedData.amountCents || 50000,
         currency: (validatedData.currency || "cad").toLowerCase(),
+        checkoutStatus: "pending",
         metadata: {
           ...(validatedData.metadata as Record<string, unknown> | null || {}),
-          fulfillment: "manual_assignment_placeholder",
-          checkout: "TODO: create Stripe checkout/payment-intent before dispatch",
+          fulfillment: "paid_checkout_then_manual_assignment",
           accountBackedState: "Authenticated requests are tied to users.id; anonymous requests keep session_id until signup.",
         },
       }).returning();
+
+      let checkoutUrl: string | null = null;
+      try {
+        const { getUncachableStripeClient } = await import("./stripeClient");
+        const stripe = await getUncachableStripeClient();
+        const checkoutInspectionType = validatedData.inspectionType || "standard_home_inspection";
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : process.env.REPLIT_DOMAINS
+            ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+            : "https://realist.ca";
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          customer_email: validatedData.contactEmail || undefined,
+          line_items: [{
+            price_data: {
+              currency: (validatedData.currency || "cad").toLowerCase(),
+              product_data: {
+                name: "Realist home inspection dispatch",
+                description: `${checkoutInspectionType.replace(/_/g, " ")} for ${validatedData.propertyAddress}`,
+              },
+              unit_amount: validatedData.amountCents || 50000,
+            },
+            quantity: 1,
+          }],
+          mode: "payment",
+          success_url: `${baseUrl}/tools/analyzer?inspection=success&requestId=${inspectionRequest.id}`,
+          cancel_url: `${baseUrl}/tools/analyzer?inspection=cancelled&requestId=${inspectionRequest.id}`,
+          metadata: {
+            product: "home_inspection_dispatch",
+            inspectionRequestId: inspectionRequest.id,
+            userId: userId || "",
+            listingId: validatedData.listingId || "",
+          },
+        });
+        checkoutUrl = session.url;
+      } catch (checkoutError) {
+        console.error("Error creating inspection checkout:", checkoutError);
+      }
 
       await logUserActivity(req, {
         userId: userId || null,
@@ -3423,7 +3466,7 @@ export async function registerRoutes(
         },
       });
 
-      res.json({ success: true, data: inspectionRequest });
+      res.json({ success: true, data: inspectionRequest, checkoutUrl });
     } catch (error) {
       console.error("Error creating inspection request:", error);
       if (error instanceof z.ZodError) {
@@ -4774,7 +4817,7 @@ export async function registerRoutes(
   app.post("/api/subscription/create", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const { brokerageName, brokerageCity, brokerageProvince } = req.body;
+      const { brokerageName, brokerageCity, brokerageProvince, professionalType, certificationNumber, serviceArea } = req.body;
       
       const subscription = await storage.upsertProfessionalSubscription({
         userId,
@@ -4784,6 +4827,12 @@ export async function registerRoutes(
         brokerageName: brokerageName || null,
         brokerageCity: brokerageCity || null,
         brokerageProvince: brokerageProvince || null,
+        professionalType: professionalType || null,
+        certificationNumber: certificationNumber || null,
+        serviceArea: serviceArea || null,
+        onboardingStatus: professionalType === "inspector" || professionalType === "contractor"
+          ? "pending_verification"
+          : "started",
       });
       
       res.json(subscription);
