@@ -83,8 +83,10 @@ export async function getLiveLeaderboardEntries(input: {
         AND (${input.province || null}::text IS NULL OR LOWER(a.province) = LOWER(${input.province || null}))
         AND (${input.strategy || null}::text IS NULL OR LOWER(a.strategy_type) = LOWER(${input.strategy || null}))
         AND LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.com'
-        AND LOWER(COALESCE(u.first_name, '')) <> 'test'
-        AND LOWER(COALESCE(u.last_name, '')) <> 'user'
+        AND NOT (
+          LOWER(COALESCE(u.first_name, '')) = 'test'
+          AND LOWER(COALESCE(u.last_name, '')) = 'user'
+        )
     ), all_time_counts AS (
       SELECT user_id, COUNT(*)::int AS total_deals_analyzed
       FROM analyses

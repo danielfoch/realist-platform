@@ -49,10 +49,14 @@ type LeaderboardHealth = {
     leads_count: number;
     properties_count: number;
     analyses_count: number;
+    analyses_with_results_count?: number;
+    linked_analyses_with_results_count?: number;
     leaderboard_eligible_count: number;
+    excluded_test_analyses_count?: number;
     orphan_analyses_count: number;
     oldest_analysis_at: string | null;
     newest_analysis_at: string | null;
+    newest_leaderboard_eligible_analysis_at?: string | null;
   } | null;
   topEligibleLeaderboardUsers?: Array<{
     email: string;
@@ -591,13 +595,17 @@ export default function Admin() {
                   <div className="flex flex-wrap gap-4 text-muted-foreground">
                     <span>DB: <span className="font-mono text-foreground">{leaderboardHealth.database?.db_name || "unknown"}</span></span>
                     <span>Analyses: <span className="font-mono text-foreground">{leaderboardHealth.summary.analyses_count}</span></span>
-                    <span>Eligible: <span className="font-mono text-foreground">{leaderboardHealth.summary.leaderboard_eligible_count}</span></span>
+                    <span>With results: <span className="font-mono text-foreground">{leaderboardHealth.summary.analyses_with_results_count ?? leaderboardHealth.summary.leaderboard_eligible_count}</span></span>
+                    <span>Linked: <span className="font-mono text-foreground">{leaderboardHealth.summary.linked_analyses_with_results_count ?? leaderboardHealth.summary.leaderboard_eligible_count}</span></span>
+                    <span>Leaderboard: <span className="font-mono text-foreground">{leaderboardHealth.summary.leaderboard_eligible_count}</span></span>
+                    <span>Excluded tests: <span className="font-mono text-foreground">{leaderboardHealth.summary.excluded_test_analyses_count ?? 0}</span></span>
                     <span>Orphans: <span className="font-mono text-foreground">{leaderboardHealth.summary.orphan_analyses_count}</span></span>
                     <span>Newest: <span className="font-mono text-foreground">{leaderboardHealth.summary.newest_analysis_at ? format(new Date(leaderboardHealth.summary.newest_analysis_at), "MMM d, yyyy h:mm a") : "none"}</span></span>
+                    <span>Newest leaderboard: <span className="font-mono text-foreground">{leaderboardHealth.summary.newest_leaderboard_eligible_analysis_at ? format(new Date(leaderboardHealth.summary.newest_leaderboard_eligible_analysis_at), "MMM d, yyyy h:mm a") : "none"}</span></span>
                   </div>
                   {(leaderboardHealth.summary.analyses_count < 25 || leaderboardHealth.summary.leaderboard_eligible_count < 10) && (
                     <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-amber-700 dark:text-amber-400">
-                      Leaderboard dataset looks unusually small for this deployment. Verify the active `DATABASE_URL` before trusting rankings.
+                      This deployment is connected to a small analysis dataset. Check the active database secret if production should contain more rows.
                     </div>
                   )}
                   {!!leaderboardHealth.topEligibleLeaderboardUsers?.length && (

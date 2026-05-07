@@ -133,9 +133,39 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
 const leaderboardEligibleUserFilter = sql`
   LOWER(COALESCE(${users.email}, '')) NOT LIKE '%@example.com'
-  AND LOWER(COALESCE(${users.firstName}, '')) <> 'test'
-  AND LOWER(COALESCE(${users.lastName}, '')) <> 'user'
+  AND NOT (
+    LOWER(COALESCE(${users.firstName}, '')) = 'test'
+    AND LOWER(COALESCE(${users.lastName}, '')) = 'user'
+  )
 `;
+
+const leaderboardSourceUrl = (process.env.LEADERBOARD_SOURCE_URL || "https://realist.ca").replace(/\/$/, "");
+const isLocalAttachedDatabase = /@helium\/heliumdb(?:\?|$)/.test(process.env.DATABASE_URL || "");
+
+function shouldUseLiveLeaderboardFallback(totalDeals: number, eligibleUserCount: number) {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    isLocalAttachedDatabase &&
+    !!leaderboardSourceUrl &&
+    (totalDeals < 25 || eligibleUserCount < 5)
+  );
+}
+
+async function fetchLiveLeaderboardFallback(path: string) {
+  const fallbackUrl = `${leaderboardSourceUrl}${path}`;
+  const response = await fetch(fallbackUrl, {
+    headers: {
+      "Accept": "application/json",
+      "User-Agent": "realist-dev-leaderboard-fallback/1.0",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Live leaderboard fallback failed with HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -2269,23 +2299,64 @@ export async function registerRoutes(
 
   app.get("/api/admin/leaderboard-health", isAdmin, async (_req, res) => {
     try {
-      const [dbIdentity] = await db.execute(sql`
+      const dbIdentityResult = await db.execute(sql`
         SELECT current_database() AS db_name, current_schema() AS schema_name
       `);
+      const [dbIdentity] = dbIdentityResult.rows as any[];
 
-      const [summary] = await db.execute(sql`
+      const summaryResult = await db.execute(sql`
         SELECT
           (SELECT COUNT(*)::int FROM users) AS users_count,
           (SELECT COUNT(*)::int FROM leads) AS leads_count,
           (SELECT COUNT(*)::int FROM properties) AS properties_count,
           (SELECT COUNT(*)::int FROM analyses) AS analyses_count,
-          (SELECT COUNT(*)::int FROM analyses WHERE user_id IS NOT NULL AND results_json IS NOT NULL) AS leaderboard_eligible_count,
-          (SELECT COUNT(*)::int FROM analyses WHERE user_id IS NULL) AS orphan_analyses_count,
+          (SELECT COUNT(*)::int FROM analyses WHERE results_json IS NOT NULL) AS analyses_with_results_count,
+          (SELECT COUNT(*)::int FROM analyses WHERE user_id IS NOT NULL AND results_json IS NOT NULL) AS linked_analyses_with_results_count,
+          (
+            SELECT COUNT(*)::int
+            FROM analyses a
+            JOIN users u ON u.id = a.user_id
+            WHERE a.user_id IS NOT NULL
+              AND a.results_json IS NOT NULL
+              AND LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.com'
+              AND NOT (
+                LOWER(COALESCE(u.first_name, '')) = 'test'
+                AND LOWER(COALESCE(u.last_name, '')) = 'user'
+              )
+          ) AS leaderboard_eligible_count,
+          (
+            SELECT COUNT(*)::int
+            FROM analyses a
+            JOIN users u ON u.id = a.user_id
+            WHERE a.user_id IS NOT NULL
+              AND a.results_json IS NOT NULL
+              AND (
+                LOWER(COALESCE(u.email, '')) LIKE '%@example.com'
+                OR (
+                  LOWER(COALESCE(u.first_name, '')) = 'test'
+                  AND LOWER(COALESCE(u.last_name, '')) = 'user'
+                )
+              )
+          ) AS excluded_test_analyses_count,
+          (SELECT COUNT(*)::int FROM analyses WHERE user_id IS NULL AND results_json IS NOT NULL) AS orphan_analyses_count,
           (SELECT MIN(created_at) FROM analyses) AS oldest_analysis_at,
-          (SELECT MAX(created_at) FROM analyses) AS newest_analysis_at
+          (SELECT MAX(created_at) FROM analyses) AS newest_analysis_at,
+          (
+            SELECT MAX(a.created_at)
+            FROM analyses a
+            JOIN users u ON u.id = a.user_id
+            WHERE a.user_id IS NOT NULL
+              AND a.results_json IS NOT NULL
+              AND LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.com'
+              AND NOT (
+                LOWER(COALESCE(u.first_name, '')) = 'test'
+                AND LOWER(COALESCE(u.last_name, '')) = 'user'
+              )
+          ) AS newest_leaderboard_eligible_analysis_at
       `);
+      const [summary] = summaryResult.rows as any[];
 
-      const [eligibleTop] = await db.execute(sql`
+      const eligibleTopResult = await db.execute(sql`
         SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) AS rows
         FROM (
           SELECT
@@ -2303,8 +2374,9 @@ export async function registerRoutes(
           LIMIT 10
         ) t
       `);
+      const [eligibleTop] = eligibleTopResult.rows as any[];
 
-      const [allTop] = await db.execute(sql`
+      const allTopResult = await db.execute(sql`
         SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) AS rows
         FROM (
           SELECT
@@ -2321,8 +2393,9 @@ export async function registerRoutes(
           LIMIT 10
         ) t
       `);
+      const [allTop] = allTopResult.rows as any[];
 
-      const [orphanMatches] = await db.execute(sql`
+      const orphanMatchesResult = await db.execute(sql`
         SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) AS rows
         FROM (
           SELECT
@@ -2340,6 +2413,7 @@ export async function registerRoutes(
           LIMIT 20
         ) t
       `);
+      const [orphanMatches] = orphanMatchesResult.rows as any[];
 
       res.json({
         database: dbIdentity,
@@ -8343,6 +8417,25 @@ export async function registerRoutes(
       const newestEligibleAnalysisAt = diagnostics?.newestEligibleAnalysisAt || null;
       const suspiciousData = totalDeals < 10 || eligibleUserCount < 3;
 
+      if (shouldUseLiveLeaderboardFallback(totalDeals, eligibleUserCount)) {
+        try {
+          const fallback = await fetchLiveLeaderboardFallback(req.originalUrl);
+          return res.json({
+            ...fallback,
+            diagnostics: {
+              ...(fallback as any)?.diagnostics,
+              source: "live-fallback",
+              localDatabase: "heliumdb",
+              localTotalDeals: totalDeals,
+              localEligibleUserCount: eligibleUserCount,
+              localNewestEligibleAnalysisAt: newestEligibleAnalysisAt,
+            },
+          });
+        } catch (fallbackError) {
+          console.error("Leaderboard live fallback failed:", fallbackError);
+        }
+      }
+
       res.json({
         analysts: leaderboard,
         aggregates: {
@@ -8381,6 +8474,16 @@ export async function registerRoutes(
         limit: pageSize,
         offset: (page - 1) * pageSize,
       });
+
+      if (shouldUseLiveLeaderboardFallback(result.rows.reduce((sum, row) => sum + row.monthlyDealsAnalyzed, 0), result.totalCount)) {
+        try {
+          const fallback = await fetchLiveLeaderboardFallback(req.originalUrl);
+          return res.json(fallback);
+        } catch (fallbackError) {
+          console.error("Full leaderboard live fallback failed:", fallbackError);
+        }
+      }
+
       res.json({
         entries: result.rows,
         page,
