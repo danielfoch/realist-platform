@@ -5,7 +5,8 @@
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-07-recipient-key-guardrail`
-- Commit SHA: `68de3dd4929fdcc8b3447890e7c8b78f5eddc31b`
+- Implementation commit SHA: `6adc5831cf62b27e60cc8c5fcdcc5f6f9ca6185f`
+- Note: this pull brief may be committed as a follow-up docs commit, so use `git log --oneline -2` after pulling to see both the implementation and handoff commits.
 
 ## 3. What changed
 Added an anti-abuse guardrail to the viral underwriting share loop: explicit `recipient` keys are now trusted only if they were actually issued for that share in `underwriting_share_recipients`.
