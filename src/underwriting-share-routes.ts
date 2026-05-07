@@ -96,6 +96,45 @@ export function getExplicitRecipientHash(recipientKey: string) {
   return sha256(recipientKey.trim().toLowerCase());
 }
 
+export async function resolveShareRecipientHash(database: DatabaseAdapter, input: {
+  shareId: number;
+  req: Request;
+  explicitRecipient?: unknown;
+}) {
+  const visitorFingerprintHash = getRecipientHash(input.req);
+
+  if (!hasNonEmptyString(input.explicitRecipient)) {
+    return {
+      recipientHash: visitorFingerprintHash,
+      trackingSource: 'visitor_fingerprint' as const,
+      explicitRecipientAccepted: false,
+    };
+  }
+
+  const explicitRecipientHash = getExplicitRecipientHash(String(input.explicitRecipient));
+  const recipient = await database.query(
+    `SELECT id
+     FROM underwriting_share_recipients
+     WHERE share_id = $1 AND recipient_hash = $2
+     LIMIT 1`,
+    [input.shareId, explicitRecipientHash],
+  );
+
+  if (recipient.rows[0]) {
+    return {
+      recipientHash: explicitRecipientHash,
+      trackingSource: 'recipient_link' as const,
+      explicitRecipientAccepted: true,
+    };
+  }
+
+  return {
+    recipientHash: visitorFingerprintHash,
+    trackingSource: 'visitor_fingerprint' as const,
+    explicitRecipientAccepted: false,
+  };
+}
+
 function getRecipientLabelHash(label: unknown) {
   return hasNonEmptyString(label) ? sha256(String(label).trim().toLowerCase()) : null;
 }
@@ -667,21 +706,29 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         return;
       }
 
-      const recipientHash = getRecipientHash(req, req.query.recipient as string | undefined);
+      const recipientTracking = await resolveShareRecipientHash(database, {
+        shareId: row.id,
+        req,
+        explicitRecipient: req.query.recipient,
+      });
       const open = await recordQualifiedShareAction(database, {
         shareId: row.id,
         inviterUserId: row.inviter_user_id,
         action: 'unique_open',
-        recipientHash,
-        metadata: { referrer: req.headers.referer || null },
+        recipientHash: recipientTracking.recipientHash,
+        metadata: {
+          referrer: req.headers.referer || null,
+          trackingSource: recipientTracking.trackingSource,
+          explicitRecipientAccepted: recipientTracking.explicitRecipientAccepted,
+        },
       });
 
-      if (typeof req.query.recipient === 'string' && req.query.recipient.trim()) {
+      if (recipientTracking.explicitRecipientAccepted) {
         await database.query(
           `UPDATE underwriting_share_recipients
            SET last_opened_at = NOW()
            WHERE share_id = $1 AND recipient_hash = $2`,
-          [row.id, recipientHash],
+          [row.id, recipientTracking.recipientHash],
         );
       }
 
@@ -768,12 +815,22 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         return;
       }
 
+      const recipientTracking = await resolveShareRecipientHash(database, {
+        shareId: share.id,
+        req,
+        explicitRecipient: recipient,
+      });
       const recorded = await recordQualifiedShareAction(database, {
         shareId: share.id,
         inviterUserId: share.inviter_user_id,
         action,
-        recipientHash: getRecipientHash(req, recipient),
-        metadata: { ...(metadata || {}), userId: req.userId || null },
+        recipientHash: recipientTracking.recipientHash,
+        metadata: {
+          ...(metadata || {}),
+          userId: req.userId || null,
+          trackingSource: recipientTracking.trackingSource,
+          explicitRecipientAccepted: recipientTracking.explicitRecipientAccepted,
+        },
       });
 
       let savedAnalysisId: number | null = null;

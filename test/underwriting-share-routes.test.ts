@@ -11,6 +11,7 @@ import {
   getQualifiedShareRewardBrief,
   hasMeaningfulChallengePayload,
   recordQualifiedShareAction,
+  resolveShareRecipientHash,
 } from '../src/underwriting-share-routes';
 
 function createShareDb(options: { existing?: any; shareCount?: number; recipientCount?: number } = {}) {
@@ -278,6 +279,45 @@ describe('viral underwriting share qualification', () => {
     ]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT r.id)'), [7]);
     expect(query).toHaveBeenCalledWith(expect.not.stringContaining('recipient_hash AS'), expect.anything());
+  });
+
+  it('accepts only issued recipient keys for explicit recipient tracking', async () => {
+    const recipientKey = 'issued-recipient-key';
+    const recipientHash = getExplicitRecipientHash(recipientKey);
+    const query = jest.fn(async (_text: string, params?: readonly unknown[]) => ({
+      rows: params?.[1] === recipientHash ? [{ id: 301 }] : [],
+    }));
+    const req = {
+      ip: '203.0.113.10',
+      headers: { 'user-agent': 'jest-recipient-browser' },
+      socket: {},
+    } as any;
+
+    const accepted = await resolveShareRecipientHash({ query }, {
+      shareId: 7,
+      req,
+      explicitRecipient: recipientKey,
+    });
+    const rejected = await resolveShareRecipientHash({ query }, {
+      shareId: 7,
+      req,
+      explicitRecipient: 'forged-recipient-key',
+    });
+
+    expect(accepted).toEqual({
+      recipientHash,
+      trackingSource: 'recipient_link',
+      explicitRecipientAccepted: true,
+    });
+    expect(rejected).toEqual({
+      recipientHash: expect.not.stringMatching(recipientHash),
+      trackingSource: 'visitor_fingerprint',
+      explicitRecipientAccepted: false,
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM underwriting_share_recipients'),
+      [7, recipientHash],
+    );
   });
 
   it('creates recipient-specific share links without awarding credits', async () => {
