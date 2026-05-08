@@ -8537,7 +8537,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/weekly-stats", async (_req, res) => {
+  app.get("/api/weekly-stats", async (req, res) => {
     try {
       const now = new Date();
       const dayOfWeek = now.getDay();
@@ -8648,6 +8648,22 @@ export async function registerRoutes(
 
       const totalDeals = Number(stats?.totalDeals || 0);
       const bestCity = cityResult.length > 0 ? cityResult[0].city : (ddfStats.hotCity || null);
+
+      if (shouldUseLiveLeaderboardFallback(totalDeals, 0)) {
+        try {
+          const fallback = await fetchLiveLeaderboardFallback(req.originalUrl);
+          return res.json({
+            ...fallback,
+            diagnostics: {
+              source: "live-fallback",
+              localDatabase: "heliumdb",
+              localTotalDeals: totalDeals,
+            },
+          });
+        } catch (fallbackError) {
+          console.error("Weekly stats live fallback failed:", fallbackError);
+        }
+      }
 
       res.json({
         totalDeals,
