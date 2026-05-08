@@ -71,6 +71,7 @@ import CreditSpreadEconomyReport from "@/pages/CreditSpreadEconomyReport";
 import SpringEconomicUpdate2026Report from "@/pages/SpringEconomicUpdate2026Report";
 import PreconResale1990sReport from "@/pages/PreconResale1990sReport";
 import BankOfCanadaApril2026Report, { BankOfCanadaApril2026ReportEmbed } from "@/pages/BankOfCanadaApril2026Report";
+import LabourForceSurveyApril2026Report from "@/pages/LabourForceSurveyApril2026Report";
 import SeoProjectDetail from "@/pages/SeoProjectDetail";
 import {
   TorontoHousingMarketPage,
@@ -158,6 +159,7 @@ function Router() {
       <Route path="/insights/precon-vs-resale-1990s" component={PreconResale1990sReport} />
       <Route path="/insights/bank-of-canada-april-2026">{() => <BankOfCanadaApril2026Report />}</Route>
       <Route path="/embed/insights/bank-of-canada-april-2026" component={BankOfCanadaApril2026ReportEmbed} />
+      <Route path="/insights/statcan-labour-force-survey-april-2026" component={LabourForceSurveyApril2026Report} />
       {/* SEO landing pages — programmatic + query-driven */}
       <Route path="/canada-housing-market" component={CanadaHousingMarketPage} />
       <Route path="/toronto-housing-market" component={TorontoHousingMarketPage} />
