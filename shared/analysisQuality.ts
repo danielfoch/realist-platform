@@ -71,12 +71,12 @@ export function computeAnalysisQualityScore(input: AnalysisQualityInput): Analys
 
   let plausibilityScore = 1;
   const impossibleFlags: string[] = [];
-  if (capRate != null && (capRate < -20 || capRate > 40)) impossibleFlags.push("implausible_cap_rate");
-  if (cashOnCash != null && (cashOnCash < -100 || cashOnCash > 100)) impossibleFlags.push("implausible_cash_on_cash");
-  if (irr != null && (irr < -100 || irr > 100)) impossibleFlags.push("implausible_irr");
-  if (dscr != null && (dscr < 0 || dscr > 6)) impossibleFlags.push("implausible_dscr");
-  if (rentToPrice != null && (rentToPrice <= 0 || rentToPrice > 0.08)) impossibleFlags.push("implausible_rent_to_price");
-  plausibilityScore = clamp01(plausibilityScore - impossibleFlags.length * 0.35);
+  if (capRate != null && (capRate < -10 || capRate > 25)) impossibleFlags.push("implausible_cap_rate");
+  if (cashOnCash != null && (cashOnCash < -50 || cashOnCash > 60)) impossibleFlags.push("implausible_cash_on_cash");
+  if (irr != null && (irr < -50 || irr > 75)) impossibleFlags.push("implausible_irr");
+  if (dscr != null && (dscr < 0 || dscr > 4)) impossibleFlags.push("implausible_dscr");
+  if (rentToPrice != null && (rentToPrice <= 0 || rentToPrice > 0.05)) impossibleFlags.push("implausible_rent_to_price");
+  plausibilityScore = clamp01(plausibilityScore - impossibleFlags.length * 0.5);
 
   let dealViabilityScore = 0.5;
   if (dscr != null) dealViabilityScore += dscr >= 1.2 ? 0.2 : dscr < 0.8 ? -0.2 : 0;
@@ -105,8 +105,9 @@ export function computeAnalysisQualityScore(input: AnalysisQualityInput): Analys
   const confidenceScore = clamp01(weighted - Math.max(0, spamRiskScore - 0.5) * 0.35);
 
   let exclusionReason: string | null = null;
-  if (spamRiskScore >= 0.75) exclusionReason = "high_spam_risk";
-  else if (plausibilityScore < 0.4) exclusionReason = impossibleFlags[0] || "low_plausibility";
+  if (impossibleFlags.length > 0) exclusionReason = impossibleFlags[0];
+  else if (spamRiskScore >= 0.75) exclusionReason = "high_spam_risk";
+  else if (plausibilityScore < 0.4) exclusionReason = "low_plausibility";
   else if (confidenceScore < 0.65) exclusionReason = "low_confidence";
 
   return {

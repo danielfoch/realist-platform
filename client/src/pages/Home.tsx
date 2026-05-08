@@ -8,6 +8,7 @@ import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
 import { CalculatorSelector, type CalculatorType } from "@/components/CalculatorSelector";
 import { DealInputs } from "@/components/DealInputs";
+import { LeaderboardEligibilityNotice } from "@/components/LeaderboardEligibilityNotice";
 import { MetricCards } from "@/components/MetricCards";
 import { AnalysisCharts } from "@/components/AnalysisCharts";
 import { ResultsSummary } from "@/components/ResultsSummary";
@@ -1083,6 +1084,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                 selectedStrategy={strategy}
                 onStrategyChange={setStrategy}
               />
+              <LeaderboardEligibilityNotice variant="compact" />
               <DealInputs
                 inputs={inputs}
                 onChange={setInputs}
@@ -1271,6 +1273,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                   </CardContent>
                 </Card>
 
+                <LeaderboardEligibilityNotice variant="compact" />
                 <DealInputs
                   inputs={inputs}
                   onChange={setInputs}

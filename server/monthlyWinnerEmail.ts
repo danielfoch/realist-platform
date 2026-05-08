@@ -62,6 +62,23 @@ export async function getLastMonthWinners(limit = WINNER_COUNT): Promise<WinnerR
         LOWER(COALESCE(${users.firstName}, '')) = 'test'
         AND LOWER(COALESCE(${users.lastName}, '')) = 'user'
       )
+      AND NOT EXISTS (
+        SELECT 1 FROM analysis_quality_scores aqs
+        WHERE aqs.analysis_id = ${analyses.id}
+          AND (aqs.leaderboard_eligible = false OR aqs.confidence_score < 0.65)
+      )
+      AND (
+        NOT ((${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$')
+        OR ((${analyses.resultsJson}->>'capRate')::numeric BETWEEN -10 AND 25)
+      )
+      AND (
+        NOT ((${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$')
+        OR ((${analyses.resultsJson}->>'cashOnCash')::numeric BETWEEN -50 AND 60)
+      )
+      AND (
+        NOT ((${analyses.resultsJson}->>'dscr') ~ '^-?[0-9]+(\\.[0-9]+)?$')
+        OR ((${analyses.resultsJson}->>'dscr')::numeric BETWEEN 0 AND 4)
+      )
     `)
     .groupBy(analyses.userId, users.email, users.firstName, users.lastName)
     .orderBy(desc(count(analyses.id)))

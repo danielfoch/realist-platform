@@ -1,4 +1,5 @@
 import { Navigation } from "@/components/Navigation";
+import { LeaderboardEligibilityNotice } from "@/components/LeaderboardEligibilityNotice";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -735,6 +736,8 @@ export default function Leaderboard() {
 
         {/* Diagnostics intentionally not rendered on the public leaderboard. */}
         {/* Admins still see the dataset-size warning on /admin via the same API payload. */}
+
+        <LeaderboardEligibilityNotice className="mb-6" />
 
         <WeeklyStatsPanel stats={weeklyStats} isLoading={isLoadingWeeklyStats} />
 

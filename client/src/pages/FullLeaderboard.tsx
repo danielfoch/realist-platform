@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ArrowUpDown, Shield, Trophy } from "lucide-react";
+import { LeaderboardEligibilityNotice } from "@/components/LeaderboardEligibilityNotice";
 
 interface FullLeaderboardEntry {
   rank: number;
@@ -106,6 +107,8 @@ export default function FullLeaderboard() {
             Click-through analyses are downweighted
           </Badge>
         </div>
+
+        <LeaderboardEligibilityNotice className="mb-6" />
 
         <Card className="mb-6">
           <CardContent className="p-4 grid gap-3 md:grid-cols-5">

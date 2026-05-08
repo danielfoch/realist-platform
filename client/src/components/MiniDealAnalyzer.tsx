@@ -8,6 +8,7 @@ import {
   AreaChart, Area, Line, Legend
 } from "recharts";
 import { TrendingUp, DollarSign, Percent, BarChart3 } from "lucide-react";
+import { LeaderboardEligibilityNotice } from "@/components/LeaderboardEligibilityNotice";
 
 interface MiniDealAnalyzerProps {
   price: number;
@@ -164,6 +165,8 @@ export function MiniDealAnalyzer({ price, monthlyRent, annualPropertyTax, unitCo
           </Badge>
         )}
       </div>
+
+      <LeaderboardEligibilityNotice variant="compact" />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full h-7 p-0.5 bg-muted/50">

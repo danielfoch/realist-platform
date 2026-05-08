@@ -1169,6 +1169,70 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/quality/recompute", isAdmin, async (req, res) => {
+    try {
+      const limit = Math.max(1, Math.min(50000, Number(req.body?.limit) || 5000));
+      const onlyMissing = Boolean(req.body?.onlyMissing);
+      const rows = await db.execute(sql`
+        SELECT a.id, a.user_id, a.results_json, a.inputs_json
+        FROM analyses a
+        ${onlyMissing ? sql`LEFT JOIN analysis_quality_scores q ON q.analysis_id = a.id WHERE q.analysis_id IS NULL AND a.user_id IS NOT NULL AND a.results_json IS NOT NULL` : sql`WHERE a.user_id IS NOT NULL AND a.results_json IS NOT NULL`}
+        ORDER BY a.created_at DESC
+        LIMIT ${limit}
+      `);
+      let processed = 0;
+      let nowIneligible = 0;
+      for (const row of rows.rows as any[]) {
+        const inputsJson = row.inputs_json || {};
+        const resultsJson = row.results_json || {};
+        const quality = computeAnalysisQualityScore({
+          timeSpentSeconds: Number(inputsJson.timeSpentSeconds || inputsJson.timeOnAnalysisSeconds || 0),
+          meaningfulInputChanges: Number(inputsJson.meaningfulInputChanges || inputsJson.inputChangeCount || 0),
+          openedComparableSections: Number(inputsJson.openedComparableSections || 0),
+          savedNotes: Boolean(inputsJson.notes || inputsJson.userNotes),
+          exportedOrSaved: true,
+          hasFinancingAssumptions: inputsJson.downPaymentPercent != null || inputsJson.interestRate != null,
+          hasRentAssumptions: inputsJson.monthlyRent != null || inputsJson.rentPerUnit != null,
+          hasExpenseAssumptions: inputsJson.operatingExpenses != null || inputsJson.propertyTax != null,
+          hasRenovationOrCapexAssumptions: inputsJson.renovationBudget != null || inputsJson.capexReservePercent != null,
+          comparableReferenceCount: Array.isArray(inputsJson.comparables) ? inputsJson.comparables.length : 0,
+          metrics: resultsJson,
+        });
+        if (!quality.leaderboardEligible) nowIneligible++;
+        await db.execute(sql`
+          INSERT INTO analysis_quality_scores
+            (analysis_id, user_id, listing_key, quality_score, confidence_score,
+             plausibility_score, interaction_depth_score, data_completeness_score,
+             uniqueness_score, deal_viability_score, spam_risk_score,
+             leaderboard_eligible, exclusion_reason)
+          VALUES
+            (${row.id}, ${row.user_id}, ${inputsJson.mlsNumber || inputsJson.listingMlsNumber || null},
+             ${quality.qualityScore}, ${quality.confidenceScore},
+             ${quality.plausibilityScore}, ${quality.interactionDepthScore},
+             ${quality.dataCompletenessScore}, ${quality.uniquenessScore},
+             ${quality.dealViabilityScore}, ${quality.spamRiskScore},
+             ${quality.leaderboardEligible}, ${quality.exclusionReason})
+          ON CONFLICT (analysis_id) DO UPDATE SET
+            quality_score = EXCLUDED.quality_score,
+            confidence_score = EXCLUDED.confidence_score,
+            plausibility_score = EXCLUDED.plausibility_score,
+            interaction_depth_score = EXCLUDED.interaction_depth_score,
+            data_completeness_score = EXCLUDED.data_completeness_score,
+            uniqueness_score = EXCLUDED.uniqueness_score,
+            deal_viability_score = EXCLUDED.deal_viability_score,
+            spam_risk_score = EXCLUDED.spam_risk_score,
+            leaderboard_eligible = EXCLUDED.leaderboard_eligible,
+            exclusion_reason = EXCLUDED.exclusion_reason
+        `);
+        processed++;
+      }
+      res.json({ processed, nowIneligible, scanned: (rows.rows as any[]).length });
+    } catch (err: any) {
+      console.error("[quality-recompute] failed:", err);
+      res.status(500).json({ error: err?.message || "Failed to recompute quality scores" });
+    }
+  });
+
   app.post("/api/admin/leaderboard/rebuild-rollups", isAdmin, async (req, res) => {
     try {
       const periodType = (req.body?.periodType || "monthly") as "daily" | "weekly" | "monthly" | "all_time";

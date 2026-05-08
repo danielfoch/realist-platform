@@ -73,9 +73,34 @@ export async function getLiveLeaderboardEntries(input: {
 
   const rows = await db.execute(sql`
     WITH scoped_analyses AS (
-      SELECT a.*
+      SELECT
+        a.id,
+        a.user_id,
+        a.city,
+        a.province,
+        a.created_at,
+        a.results_json,
+        CASE
+          WHEN (a.results_json->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+            THEN (a.results_json->>'capRate')::numeric
+          ELSE NULL
+        END AS cap_rate_num,
+        CASE
+          WHEN (a.results_json->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+            THEN (a.results_json->>'cashOnCash')::numeric
+          ELSE NULL
+        END AS coc_num,
+        CASE
+          WHEN (a.results_json->>'dscr') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+            THEN (a.results_json->>'dscr')::numeric
+          ELSE NULL
+        END AS dscr_num,
+        COALESCE(q.leaderboard_eligible, true) AS quality_eligible,
+        COALESCE(q.confidence_score, 0.65) AS quality_confidence,
+        q.exclusion_reason AS quality_reason
       FROM analyses a
       JOIN users u ON u.id = a.user_id
+      LEFT JOIN analysis_quality_scores q ON q.analysis_id = a.id
       WHERE a.user_id IS NOT NULL
         AND a.results_json IS NOT NULL
         AND (${period} = 'all_time' OR (a.created_at >= ${start} AND a.created_at < ${end}))
@@ -87,22 +112,74 @@ export async function getLiveLeaderboardEntries(input: {
           LOWER(COALESCE(u.first_name, '')) = 'test'
           AND LOWER(COALESCE(u.last_name, '')) = 'user'
         )
+    ), period_stats AS (
+      SELECT
+        AVG(cap_rate_num) AS cap_rate_mean,
+        STDDEV_SAMP(cap_rate_num) AS cap_rate_std
+      FROM scoped_analyses
+      WHERE cap_rate_num IS NOT NULL
+        AND cap_rate_num BETWEEN -10 AND 25
+    ), classified_analyses AS (
+      SELECT
+        s.*,
+        ps.cap_rate_mean,
+        ps.cap_rate_std,
+        (
+          (s.cap_rate_num IS NULL OR s.cap_rate_num BETWEEN -10 AND 25)
+          AND (s.coc_num IS NULL OR s.coc_num BETWEEN -50 AND 60)
+          AND (s.dscr_num IS NULL OR s.dscr_num BETWEEN 0 AND 4)
+        ) AS hard_bounds_ok,
+        CASE
+          WHEN s.cap_rate_num IS NULL THEN true
+          WHEN ps.cap_rate_std IS NULL OR ps.cap_rate_std = 0 THEN true
+          WHEN ABS(s.cap_rate_num - ps.cap_rate_mean) <= 3 * ps.cap_rate_std THEN true
+          ELSE false
+        END AS within_z_score
+      FROM scoped_analyses s
+      CROSS JOIN period_stats ps
+    ), eligible_analyses AS (
+      SELECT
+        c.*,
+        (
+          c.quality_eligible IS NOT FALSE
+          AND c.quality_confidence >= 0.65
+          AND c.hard_bounds_ok
+          AND c.within_z_score
+        ) AS is_eligible
+      FROM classified_analyses c
     ), all_time_counts AS (
-      SELECT user_id, COUNT(*)::int AS total_deals_analyzed
-      FROM analyses
-      WHERE user_id IS NOT NULL AND results_json IS NOT NULL
-      GROUP BY user_id
+      SELECT a.user_id, COUNT(*)::int AS total_deals_analyzed
+      FROM analyses a
+      LEFT JOIN analysis_quality_scores q ON q.analysis_id = a.id
+      WHERE a.user_id IS NOT NULL
+        AND a.results_json IS NOT NULL
+        AND COALESCE(q.leaderboard_eligible, true) IS NOT FALSE
+        AND COALESCE(q.confidence_score, 0.65) >= 0.65
+        AND (
+          NOT ((a.results_json->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$')
+          OR ((a.results_json->>'capRate')::numeric BETWEEN -10 AND 25)
+        )
+        AND (
+          NOT ((a.results_json->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$')
+          OR ((a.results_json->>'cashOnCash')::numeric BETWEEN -50 AND 60)
+        )
+        AND (
+          NOT ((a.results_json->>'dscr') ~ '^-?[0-9]+(\\.[0-9]+)?$')
+          OR ((a.results_json->>'dscr')::numeric BETWEEN 0 AND 4)
+        )
+      GROUP BY a.user_id
     ), current_rollup AS (
       SELECT
-        s.user_id,
+        e.user_id,
         COUNT(*)::int AS monthly_deals_analyzed,
-        COUNT(*)::int AS eligible_analyses_count,
-        0::int AS excluded_analyses_count,
-        0.65::real AS average_confidence_score,
-        COUNT(*)::real AS weighted_score,
-        AVG(CASE WHEN (s.results_json->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (s.results_json->>'capRate')::numeric ELSE NULL END) AS user_underwritten_avg_yield
-      FROM scoped_analyses s
-      GROUP BY s.user_id
+        COUNT(*) FILTER (WHERE e.is_eligible)::int AS eligible_analyses_count,
+        COUNT(*) FILTER (WHERE NOT e.is_eligible)::int AS excluded_analyses_count,
+        AVG(e.quality_confidence) FILTER (WHERE e.is_eligible)::real AS average_confidence_score,
+        SUM(CASE WHEN e.is_eligible THEN e.quality_confidence ELSE 0 END)::real AS weighted_score,
+        AVG(e.cap_rate_num) FILTER (WHERE e.is_eligible) AS user_underwritten_avg_yield
+      FROM eligible_analyses e
+      GROUP BY e.user_id
+      HAVING COUNT(*) FILTER (WHERE e.is_eligible) > 0
     ), auto_yields AS (
       SELECT province, city, AVG(avg_gross_yield) AS auto_underwritten_avg_yield
       FROM city_yield_history

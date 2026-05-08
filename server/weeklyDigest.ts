@@ -62,6 +62,27 @@ interface AllTimeStats {
   totalUsers: number;
 }
 
+const ELIGIBLE_ANALYSIS_PREDICATE_SQL = sql`
+  ${analyses.resultsJson} IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM analysis_quality_scores aqs
+    WHERE aqs.analysis_id = ${analyses.id}
+      AND (aqs.leaderboard_eligible = false OR aqs.confidence_score < 0.65)
+  )
+  AND (
+    NOT ((${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$')
+    OR ((${analyses.resultsJson}->>'capRate')::numeric BETWEEN -10 AND 25)
+  )
+  AND (
+    NOT ((${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$')
+    OR ((${analyses.resultsJson}->>'cashOnCash')::numeric BETWEEN -50 AND 60)
+  )
+  AND (
+    NOT ((${analyses.resultsJson}->>'dscr') ~ '^-?[0-9]+(\\.[0-9]+)?$')
+    OR ((${analyses.resultsJson}->>'dscr')::numeric BETWEEN 0 AND 4)
+  )
+`;
+
 async function getPlatformWeeklyStats(): Promise<WeeklyStats> {
   const { weekStart, weekEnd } = getLastWeekBounds();
 
@@ -73,7 +94,7 @@ async function getPlatformWeeklyStats(): Promise<WeeklyStats> {
       avgDscr: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'dscr') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'dscr')::numeric ELSE NULL END)`,
     })
     .from(analyses)
-    .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd}`);
+    .where(sql`${ELIGIBLE_ANALYSIS_PREDICATE_SQL} AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd}`);
 
   const cityResult = await db
     .select({
@@ -81,7 +102,7 @@ async function getPlatformWeeklyStats(): Promise<WeeklyStats> {
       dealCount: count(analyses.id),
     })
     .from(analyses)
-    .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd} AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
+    .where(sql`${ELIGIBLE_ANALYSIS_PREDICATE_SQL} AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd} AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
     .groupBy(analyses.city)
     .orderBy(desc(count(analyses.id)))
     .limit(1);
@@ -130,7 +151,7 @@ async function getUserWeeklyStats(userId: string): Promise<UserWeeklyStats> {
       userAvgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
     })
     .from(analyses)
-    .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd}`);
+    .where(sql`${analyses.userId} = ${userId} AND ${ELIGIBLE_ANALYSIS_PREDICATE_SQL} AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd}`);
 
   const rankings = await db
     .select({
@@ -138,7 +159,7 @@ async function getUserWeeklyStats(userId: string): Promise<UserWeeklyStats> {
       dealCount: count(analyses.id),
     })
     .from(analyses)
-    .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd}`)
+    .where(sql`${analyses.userId} IS NOT NULL AND ${ELIGIBLE_ANALYSIS_PREDICATE_SQL} AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd}`)
     .groupBy(analyses.userId)
     .orderBy(desc(count(analyses.id)));
 
@@ -164,7 +185,7 @@ async function getWeeklyTopAnalysts(limit = 5): Promise<WeeklyLeaderboardEntry[]
     })
     .from(analyses)
     .leftJoin(users, sql`${users.id} = ${analyses.userId}`)
-    .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd}`)
+    .where(sql`${analyses.userId} IS NOT NULL AND ${ELIGIBLE_ANALYSIS_PREDICATE_SQL} AND ${analyses.createdAt} >= ${weekStart} AND ${analyses.createdAt} < ${weekEnd}`)
     .groupBy(analyses.userId, users.firstName, users.lastName)
     .orderBy(desc(count(analyses.id)))
     .limit(limit);
