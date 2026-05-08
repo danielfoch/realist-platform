@@ -1179,6 +1179,29 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/monthly-winner-email/preview", isAdmin, async (req, res) => {
+    try {
+      const { getLastMonthWinners } = await import("./monthlyWinnerEmail");
+      const limit = Math.max(1, Math.min(10, Number(req.query.limit) || 3));
+      const winners = await getLastMonthWinners(limit);
+      res.json({ winners });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to load winners" });
+    }
+  });
+
+  app.post("/api/admin/monthly-winner-email/run", isAdmin, async (req, res) => {
+    try {
+      const { sendMonthlyWinnerEmails } = await import("./monthlyWinnerEmail");
+      const dryRun = req.body?.dryRun !== false;
+      const limit = req.body?.limit ? Math.max(1, Math.min(10, Number(req.body.limit))) : undefined;
+      const result = await sendMonthlyWinnerEmails({ dryRun, limit });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to run monthly winner email" });
+    }
+  });
+
   app.post("/api/admin/leaderboard/finalize-month", isAdmin, async (req, res) => {
     try {
       const anchor = req.body?.anchor ? new Date(req.body.anchor) : undefined;

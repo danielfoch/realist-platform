@@ -590,6 +590,9 @@ async function ensureAppTables() {
       import("./weeklyDigest").then(({ scheduleWeeklyDigest }) => {
         scheduleWeeklyDigest();
       }).catch((err) => log(`Weekly digest schedule error: ${err.message}`, "digest"));
+      import("./monthlyWinnerEmail").then(({ scheduleMonthlyWinnerEmail }) => {
+        scheduleMonthlyWinnerEmail();
+      }).catch((err) => log(`Monthly winner email schedule error: ${err.message}`, "monthly-winner"));
       const drainNotifications = async () => {
         try {
           const result = await processPendingGhlNotifications();
