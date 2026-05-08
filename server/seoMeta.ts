@@ -132,6 +132,11 @@ const STATIC_META: Record<string, PageMeta> = {
     title: "Canada-US Productivity Gap & Real Estate Implications - Realist.ca",
     description: "Why Canada's productivity gap with the US matters for housing, investment, and long-run real estate returns.",
   },
+  "/insights/labour-mortgage-stress-april-2026": {
+    title: "Canada Labour Market and Mortgage Arrears Watch - April 2026 | Realist.ca",
+    description: "StatCan labour and payroll data compared with CBA mortgage arrears context: unemployment as a leading indicator for Canadian mortgage delinquencies.",
+    ogType: "article",
+  },
   "/insights/new-construction-canada": {
     title: "Canada New Construction Market Report - Live CREA DDF Data",
     description: "Live national snapshot of active new construction listings across Canada. Pricing by province and city, property types, pre-construction signals.",

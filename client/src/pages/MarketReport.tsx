@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
-import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Minus, X, Plus, Layers, FileText, Percent, Lock, Landmark, Users } from "lucide-react";
+import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Minus, X, Plus, Layers, FileText, Percent, Lock, Landmark, Users, AlertTriangle } from "lucide-react";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
 import { apiRequest } from "@/lib/queryClient";
@@ -433,6 +433,23 @@ export default function MarketReport() {
           <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
           <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link href="/insights/labour-mortgage-stress-april-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-labour-mortgage-stress">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                      <AlertTriangle className="h-4.5 w-4.5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">May 8, 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Labour + Mortgage Arrears Watch</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Compares StatCan's April jobs report with February payroll and vacancy data, then links unemployment to mortgage arrears risk using CBA context.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/insights/statcan-labour-force-survey-april-2026">
               <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-lfs-april-2026">
                 <CardContent className="p-5">
