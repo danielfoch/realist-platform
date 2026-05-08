@@ -191,6 +191,33 @@ export function getRewardPolicySnapshot() {
   ) as Record<QualifiedShareAction, QualifiedActionPolicy>;
 }
 
+export function getPublicShareRewardLadder() {
+  const labels: Record<QualifiedShareAction, string> = {
+    unique_open: 'Unique open',
+    challenge: 'Meaningful challenge',
+    fork: 'Forked assumptions',
+    signup: 'New account signup',
+    saved_version: 'Saved version',
+  };
+  const qualifiesWhen: Record<QualifiedShareAction, string> = {
+    unique_open: 'A unique tracked recipient opens the share link.',
+    challenge: 'The recipient challenges at least one field or leaves a substantive note.',
+    fork: 'An authenticated recipient forks the deal assumptions into their own version.',
+    signup: 'A recipient creates an account from the underwriting flow.',
+    saved_version: 'An authenticated recipient saves a changed version of the underwriting.',
+  };
+
+  return QUALIFIED_ACTIONS.map((action) => ({
+    action,
+    label: labels[action],
+    creditType: 'google_sheets_export',
+    creditAmount: ACTION_POLICIES[action].creditAmount,
+    dailyShareCap: ACTION_POLICIES[action].dailyShareCap,
+    dailyRecipientCap: ACTION_POLICIES[action].dailyRecipientCap,
+    qualifiesWhen: qualifiesWhen[action],
+  }));
+}
+
 function isQualifiedShareAction(action: string): action is QualifiedShareAction {
   return Object.prototype.hasOwnProperty.call(ACTION_POLICIES, action);
 }
@@ -735,6 +762,13 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
       res.json({
         token: row.token,
         cta: 'Challenge my underwriting.',
+        rewardPolicy: getRewardPolicySnapshot(),
+        rewardLadder: getPublicShareRewardLadder(),
+        creditGuardrail: 'Credits only unlock for qualified unique opens, challenges, forks, signups, or saved versions within daily caps — never raw share clicks alone.',
+        recipientTracking: {
+          source: recipientTracking.trackingSource,
+          explicitRecipientAccepted: recipientTracking.explicitRecipientAccepted,
+        },
         analysis: {
           id: row.analysis_id,
           propertyAddress: row.property_address,

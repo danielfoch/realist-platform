@@ -18,6 +18,20 @@ type SharedAnalysis = {
 type ShareResponse = {
   token: string;
   cta: string;
+  creditGuardrail?: string;
+  rewardLadder?: Array<{
+    action: string;
+    label: string;
+    creditType: string;
+    creditAmount: number;
+    dailyShareCap: number;
+    dailyRecipientCap: number;
+    qualifiesWhen: string;
+  }>;
+  recipientTracking?: {
+    source: string;
+    explicitRecipientAccepted: boolean;
+  };
   analysis: SharedAnalysis;
   visitorQualification?: {
     status: string;
@@ -180,9 +194,33 @@ export function UnderwritingSharePage() {
             Review the assumptions below, challenge what looks wrong, and save or fork your version to keep the loop going.
           </p>
           <div className="share-guardrail">
-            Google Sheets export credits only unlock for qualified opens, challenges, forks, signups, or saved versions — never raw share clicks alone.
+            {share.creditGuardrail || 'Google Sheets export credits only unlock for qualified opens, challenges, forks, signups, or saved versions — never raw share clicks alone.'}
           </div>
         </section>
+
+        {share.rewardLadder && share.rewardLadder.length > 0 && (
+          <section className="reward-ladder-card">
+            <div>
+              <p className="eyebrow">Qualified reward ladder</p>
+              <h2>Credits unlock when recipients do real work</h2>
+              <p className="muted">
+                The opener is tracked as {share.recipientTracking?.source === 'recipient_link' ? 'a verified recipient link' : 'a unique visitor fingerprint'}.
+                Raw page views do not earn credits by themselves.
+              </p>
+            </div>
+            <div className="reward-ladder-grid">
+              {share.rewardLadder.map((reward) => (
+                <div className="reward-step" key={reward.action}>
+                  <div>
+                    <strong>{reward.label}</strong>
+                    <span>{reward.qualifiesWhen}</span>
+                  </div>
+                  <b>{reward.creditAmount} sheet credit{reward.creditAmount === 1 ? '' : 's'}</b>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="deal-panel">
           <div>

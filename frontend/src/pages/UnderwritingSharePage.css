@@ -17,6 +17,7 @@
 .deal-panel,
 .metric-card,
 .challenge-card,
+.reward-ladder-card,
 .result-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(15, 17, 23, 0.76);
@@ -31,6 +32,7 @@
 .share-hero h1,
 .deal-panel h2,
 .challenge-card h2,
+.reward-ladder-card h2,
 .metric-card h3,
 .result-card h3 {
   margin: 0;
@@ -103,8 +105,50 @@
 
 .metric-card,
 .challenge-card,
+.reward-ladder-card,
 .result-card {
   padding: 1.25rem;
+}
+
+.reward-ladder-card {
+  display: grid;
+  grid-template-columns: minmax(0, 0.62fr) minmax(340px, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.reward-ladder-grid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.reward-step {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.reward-step strong,
+.reward-step span {
+  display: block;
+}
+
+.reward-step span {
+  margin-top: 0.25rem;
+  color: #94a3b8;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.reward-step b {
+  flex: 0 0 auto;
+  color: #a7f3d0;
+  font-size: 0.85rem;
+  text-align: right;
 }
 
 .metric-card h3 {
@@ -257,6 +301,7 @@
 
 @media (max-width: 800px) {
   .share-grid,
+  .reward-ladder-card,
   .challenge-card {
     grid-template-columns: 1fr;
   }

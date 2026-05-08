@@ -3,6 +3,7 @@ import {
   createUnderwritingShare,
   getActionPolicy,
   getExplicitRecipientHash,
+  getPublicShareRewardLadder,
   getRecipientInviteFunnel,
   getRewardPolicySnapshot,
   getShareActionSummary,
@@ -446,6 +447,21 @@ describe('viral underwriting share qualification', () => {
   it('exposes the current Google Sheets export reward policy snapshot', () => {
     expect(getRewardPolicySnapshot().fork).toEqual(getActionPolicy('fork'));
     expect(getRewardPolicySnapshot().challenge.creditAmount).toBe(2);
+  });
+
+  it('builds a public reward ladder that explains qualified actions without rewarding raw clicks', () => {
+    const ladder = getPublicShareRewardLadder();
+
+    expect(ladder).toHaveLength(5);
+    expect(ladder.map((step) => step.action)).toEqual(['unique_open', 'challenge', 'fork', 'signup', 'saved_version']);
+    expect(ladder.find((step) => step.action === 'challenge')).toMatchObject({
+      label: 'Meaningful challenge',
+      creditType: 'google_sheets_export',
+      creditAmount: 2,
+      dailyShareCap: getActionPolicy('challenge').dailyShareCap,
+      qualifiesWhen: expect.stringContaining('substantive note'),
+    });
+    expect(ladder.map((step) => step.qualifiesWhen).join(' ')).not.toContain('raw click');
   });
 
   it('creates lineage-aware onward shares for challenged versions', async () => {
