@@ -218,6 +218,119 @@ export function getPublicShareRewardLadder() {
   }));
 }
 
+export type ChallengePrompt = {
+  field: string;
+  label: string;
+  currentValue: unknown;
+  challengeQuestion: string;
+  payloadHint: string;
+};
+
+const CHALLENGE_PROMPT_DEFINITIONS: Array<{
+  field: string;
+  label: string;
+  aliases: string[];
+  challengeQuestion: string;
+  payloadHint: string;
+}> = [
+  {
+    field: 'monthlyRent',
+    label: 'Market rent',
+    aliases: ['monthlyRent', 'estimatedMonthlyRent', 'estimated_monthly_rent', 'rent', 'monthly_rent'],
+    challengeQuestion: 'Is the rent too optimistic or too conservative for this unit and neighbourhood?',
+    payloadHint: 'Send metadata.challengedFields=["monthlyRent"] with metadata.inputs.monthlyRent set to your rent assumption.',
+  },
+  {
+    field: 'vacancyRate',
+    label: 'Vacancy rate',
+    aliases: ['vacancyRate', 'vacancy_rate', 'vacancy'],
+    challengeQuestion: 'Would you underwrite more vacancy or downtime before the next tenant?',
+    payloadHint: 'Send metadata.challengedFields=["vacancyRate"] with metadata.inputs.vacancyRate set to your vacancy assumption.',
+  },
+  {
+    field: 'operatingExpenses',
+    label: 'Operating expenses',
+    aliases: ['operatingExpenses', 'operating_expenses', 'expenses', 'monthlyExpenses', 'monthly_expenses'],
+    challengeQuestion: 'Which expense line is missing or understated?',
+    payloadHint: 'Send metadata.challengedFields=["operatingExpenses"] with metadata.inputs or metadata.metrics containing the changed expense assumption.',
+  },
+  {
+    field: 'capRate',
+    label: 'Cap rate',
+    aliases: ['capRate', 'cap_rate', 'estimatedCapRate', 'estimated_cap_rate'],
+    challengeQuestion: 'What cap rate would you use if rates, repairs, or resale risk move against the deal?',
+    payloadHint: 'Send metadata.challengedFields=["capRate"] with metadata.metrics.capRate set to your challenged cap rate.',
+  },
+  {
+    field: 'cashFlow',
+    label: 'Monthly cash flow',
+    aliases: ['cashFlow', 'cash_flow', 'monthlyCashFlow', 'monthly_cash_flow'],
+    challengeQuestion: 'Does this cash-flow estimate survive a real mortgage quote and conservative expenses?',
+    payloadHint: 'Send metadata.challengedFields=["cashFlow"] with metadata.metrics.cashFlow set to your challenged cash flow.',
+  },
+];
+
+function getValueByAliases(sources: Array<Record<string, unknown> | null | undefined>, aliases: string[]) {
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') {
+      continue;
+    }
+
+    for (const alias of aliases) {
+      const value = source[alias];
+      if (value !== undefined && value !== null && value !== '') {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function getChallengePromptPack(analysis: {
+  propertyAddress?: unknown;
+  metrics?: Record<string, unknown> | null;
+  inputs?: Record<string, unknown> | null;
+  verdictCheck?: unknown;
+}) {
+  const sources = [analysis.inputs, analysis.metrics];
+  const prompts = CHALLENGE_PROMPT_DEFINITIONS
+    .map((definition) => ({
+      field: definition.field,
+      label: definition.label,
+      currentValue: getValueByAliases(sources, definition.aliases),
+      challengeQuestion: definition.challengeQuestion,
+      payloadHint: definition.payloadHint,
+    }))
+    .filter((prompt) => prompt.currentValue !== null) as ChallengePrompt[];
+
+  const fallbackPrompts: ChallengePrompt[] = prompts.length > 0 ? [] : [
+    {
+      field: 'notes',
+      label: 'Overall underwriting note',
+      currentValue: analysis.verdictCheck || 'No verdict saved',
+      challengeQuestion: 'What single assumption would most change your verdict on this deal?',
+      payloadHint: 'Send metadata.challengedFields=["notes"] with metadata.comment or metadata.notes explaining the challenged assumption.',
+    },
+  ];
+
+  return {
+    headline: 'Challenge one assumption, then save or fork your version.',
+    cta: 'Challenge my underwriting.',
+    sharePrompt: 'Challenge my underwriting — rent, vacancy, expenses, exit cap, or cash flow: what would you change?',
+    qualifiedActionReminder: 'Credits require a qualified challenge, fork, signup, or saved version; raw share clicks do not earn credits.',
+    requiredActionEndpoint: 'POST /api/underwriting-shares/:token/actions',
+    requiredPayload: {
+      action: 'challenge',
+      metadata: {
+        challengedFields: ['monthlyRent'],
+        comment: 'Explain which assumption you disagree with and why.',
+      },
+    },
+    prompts: prompts.length > 0 ? prompts : fallbackPrompts,
+  };
+}
+
 function isQualifiedShareAction(action: string): action is QualifiedShareAction {
   return Object.prototype.hasOwnProperty.call(ACTION_POLICIES, action);
 }
@@ -779,6 +892,12 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
           verdictCheck: row.verdict_check,
           notes: row.notes,
         },
+        challengePromptPack: getChallengePromptPack({
+          propertyAddress: row.property_address,
+          metrics: row.metrics || {},
+          inputs: row.inputs || {},
+          verdictCheck: row.verdict_check,
+        }),
         visitorQualification: open,
       });
     } catch (err) {

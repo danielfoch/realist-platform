@@ -2,6 +2,7 @@ import {
   createUnderwritingShareRecipientLinks,
   createUnderwritingShare,
   getActionPolicy,
+  getChallengePromptPack,
   getExplicitRecipientHash,
   getPublicShareRewardLadder,
   getRecipientInviteFunnel,
@@ -45,6 +46,51 @@ function createShareDb(options: { existing?: any; shareCount?: number; recipient
 }
 
 describe('viral underwriting share qualification', () => {
+  it('builds recipient-facing challenge prompts from saved underwriting assumptions', () => {
+    const promptPack = getChallengePromptPack({
+      inputs: { monthlyRent: 3200, vacancyRate: 0.04 },
+      metrics: { capRate: 4.7, cashFlow: -125 },
+      verdictCheck: 'tight but possible',
+    });
+
+    expect(promptPack).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      requiredActionEndpoint: 'POST /api/underwriting-shares/:token/actions',
+      qualifiedActionReminder: expect.stringContaining('raw share clicks do not earn credits'),
+      requiredPayload: {
+        action: 'challenge',
+        metadata: {
+          challengedFields: ['monthlyRent'],
+          comment: expect.any(String),
+        },
+      },
+    });
+    expect(promptPack.prompts.map((prompt) => prompt.field)).toEqual([
+      'monthlyRent',
+      'vacancyRate',
+      'capRate',
+      'cashFlow',
+    ]);
+    expect(promptPack.prompts[0]).toMatchObject({
+      label: 'Market rent',
+      currentValue: 3200,
+      challengeQuestion: expect.stringContaining('rent'),
+      payloadHint: expect.stringContaining('metadata.challengedFields'),
+    });
+  });
+
+  it('falls back to a note challenge when assumptions are unavailable', () => {
+    const promptPack = getChallengePromptPack({ verdictCheck: 'needs review' });
+
+    expect(promptPack.prompts).toEqual([
+      expect.objectContaining({
+        field: 'notes',
+        currentValue: 'needs review',
+        challengeQuestion: expect.stringContaining('single assumption'),
+      }),
+    ]);
+  });
+
   it('requires a meaningful challenge payload before share actions can qualify', () => {
     expect(hasMeaningfulChallengePayload('challenge', {})).toBe(false);
     expect(hasMeaningfulChallengePayload('fork', { comment: 'too short' })).toBe(false);
