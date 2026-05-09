@@ -96,7 +96,7 @@ export async function getLiveLeaderboardEntries(input: {
           ELSE NULL
         END AS dscr_num,
         COALESCE(q.leaderboard_eligible, true) AS quality_eligible,
-        COALESCE(q.confidence_score, 0.65) AS quality_confidence,
+        COALESCE(q.confidence_score::numeric, 0.65) AS quality_confidence,
         q.exclusion_reason AS quality_reason
       FROM analyses a
       JOIN users u ON u.id = a.user_id
@@ -154,7 +154,7 @@ export async function getLiveLeaderboardEntries(input: {
       WHERE a.user_id IS NOT NULL
         AND a.results_json IS NOT NULL
         AND COALESCE(q.leaderboard_eligible, true) IS NOT FALSE
-        AND COALESCE(q.confidence_score, 0.65) >= 0.65
+        AND COALESCE(q.confidence_score::numeric, 0.65) >= 0.65
         AND (
           NOT ((a.results_json->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$')
           OR ((a.results_json->>'capRate')::numeric BETWEEN -10 AND 25)
@@ -266,11 +266,11 @@ export async function buildUserDealActivityRollups(periodType: "daily" | "weekly
       ${start},
       ${end},
       COUNT(DISTINCT a.id)::int,
-      COUNT(DISTINCT a.id) FILTER (WHERE COALESCE(q.leaderboard_eligible, true) IS NOT FALSE AND COALESCE(q.confidence_score, 0.65) >= 0.65)::int,
-      COUNT(DISTINCT a.id) FILTER (WHERE COALESCE(q.leaderboard_eligible, true) IS FALSE OR COALESCE(q.confidence_score, 0.65) < 0.65)::int,
+      COUNT(DISTINCT a.id) FILTER (WHERE COALESCE(q.leaderboard_eligible, true) IS NOT FALSE AND COALESCE(q.confidence_score::numeric, 0.65) >= 0.65)::int,
+      COUNT(DISTINCT a.id) FILTER (WHERE COALESCE(q.leaderboard_eligible, true) IS FALSE OR COALESCE(q.confidence_score::numeric, 0.65) < 0.65)::int,
       COUNT(DISTINCT COALESCE(a.inputs_json->>'mlsNumber', a.inputs_json->>'listingMlsNumber', a.address, a.id))::int,
       COUNT(DISTINCT COALESCE(a.city, '') || ':' || COALESCE(a.province, ''))::int,
-      AVG(COALESCE(q.confidence_score, 0.65)),
+      AVG(COALESCE(q.confidence_score::numeric, 0.65)),
       percentile_cont(0.5) WITHIN GROUP (ORDER BY NULLIF(a.inputs_json->>'timeSpentSeconds', '')::numeric),
       COALESCE(ev.listing_cards_opened, 0),
       COALESCE(ev.underwriting_sessions, 0),
@@ -407,7 +407,7 @@ export async function buildMarketSentimentRollups(periodType: "daily" | "weekly"
       COUNT(*) FILTER (WHERE event_name IN ('listing_card_opened', 'listing_card_reopened', 'listing_viewed'))::int,
       COUNT(DISTINCT user_id)::int,
       COUNT(*) FILTER (WHERE event_name IN ('underwriting_started', 'underwriting_completed', 'analysis_completed'))::int,
-      COUNT(*) FILTER (WHERE event_name IN ('underwriting_completed', 'analysis_completed') AND COALESCE(confidence_score, 0) >= 0.65)::int,
+      COUNT(*) FILTER (WHERE event_name IN ('underwriting_completed', 'analysis_completed') AND COALESCE(confidence_score::numeric, 0) >= 0.65)::int,
       COUNT(*) FILTER (WHERE event_name IN ('listing_watchlisted', 'deal_marked_watchlist', 'listing_saved'))::int,
       COUNT(*) FILTER (WHERE sentiment_score > 0.25)::int,
       COUNT(*) FILTER (WHERE sentiment_score < -0.25)::int,
@@ -499,7 +499,7 @@ export async function buildMarketReportMetrics(anchor = new Date()) {
     )
     SELECT 'monthly', ${start}, ${end}, a.province, a.city, a.property_type, a.strategy_type, 'user_underwriting',
       COUNT(*)::int,
-      COUNT(*) FILTER (WHERE COALESCE(q.leaderboard_eligible, true) IS NOT FALSE AND COALESCE(q.confidence_score, 0.65) >= 0.65)::int,
+      COUNT(*) FILTER (WHERE COALESCE(q.leaderboard_eligible, true) IS NOT FALSE AND COALESCE(q.confidence_score::numeric, 0.65) >= 0.65)::int,
       COUNT(DISTINCT a.user_id)::int,
       AVG(NULLIF(a.calculated_metrics->>'capRate', '')::numeric),
       percentile_cont(0.5) WITHIN GROUP (ORDER BY NULLIF(a.calculated_metrics->>'capRate', '')::numeric),

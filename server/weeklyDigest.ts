@@ -67,7 +67,7 @@ const ELIGIBLE_ANALYSIS_PREDICATE_SQL = sql`
   AND NOT EXISTS (
     SELECT 1 FROM analysis_quality_scores aqs
     WHERE aqs.analysis_id = ${analyses.id}
-      AND (aqs.leaderboard_eligible = false OR aqs.confidence_score < 0.65)
+      AND (aqs.leaderboard_eligible = false OR aqs.confidence_score::numeric < 0.65)
   )
   AND (
     NOT ((${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$')

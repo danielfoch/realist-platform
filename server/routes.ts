@@ -8475,7 +8475,7 @@ export async function registerRoutes(
           avgDscr: safeAvg('dscr', 0, 20),
           avgCashOnCash: safeAvg('cashOnCash', -100, 200),
           avgCapRate: safeAvg('capRate', -20, 100),
-          avgAnalysisConfidenceScore: sql<number>`AVG(COALESCE(${analysisQualityScores.confidenceScore}, 0.65))`,
+          avgAnalysisConfidenceScore: sql<number>`AVG(COALESCE(${analysisQualityScores.confidenceScore}::numeric, 0.65))`,
           avgOfferRatio: sql<number>`AVG(
             CASE WHEN (${analyses.inputsJson}->>'purchasePrice') ~ '^[0-9]+(\\.[0-9]+)?$'
                   AND (${analyses.inputsJson}->>'listingPrice') ~ '^[0-9]+(\\.[0-9]+)?$'
