@@ -1,26 +1,26 @@
 # REPLIT_PULL_TODAY — Realist.ca Nightly GitHub Builder
 
 ## 1. Date
-Saturday, May 9, 2026 (America/Toronto)
+Sunday, May 10, 2026 (America/Toronto)
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-09-challenge-prompt-pack`
-- Implementation commit: `650808b6aff7ef911cc14146d96d6dbb7bd2a30e`
+- Branch: `realist-nightly/2026-05-10-share-conversion-dashboard`
+- Implementation commit: `3e83f3dcb5734b931ffa952634d4cec8151bc4bf`
 
 ## 3. What changed
-Added a recipient-facing challenge prompt pack to the viral underwriting share API.
+Rendered the new viral underwriting challenge prompt pack on the public shared-underwriting page.
 
 Key behavior:
-- Public share API now returns `challengePromptPack` alongside the deal analysis.
-- Prompt pack turns saved assumptions into concrete challenge targets: market rent, vacancy, operating expenses, cap rate, and monthly cash flow.
-- Each prompt includes the current value, a plain-English challenge question, and a payload hint for submitting a qualified challenge.
-- If an analysis has no recognizable metrics/inputs, the API falls back to a general underwriting-note challenge.
-- Copy keeps the required CTA: “Challenge my underwriting.”
-- Guardrail stays explicit: credits require qualified challenge/fork/signup/saved-version behavior; raw share clicks do not earn credits.
+- Shared underwriting pages now consume `challengePromptPack` from the API instead of showing only generic challenge chips.
+- Recipients see clickable prompt cards for the actual saved assumptions, including current value and a plain-English challenge question.
+- The required CTA/copy stays centered: “Challenge my underwriting.”
+- The page still falls back to the older generic challenge fields when an older API response or sparse deal has no prompt pack.
+- Submitted qualified actions now include the prompt-pack headline in metadata, helping later analytics understand which challenge experience drove the action.
+- Reward and anti-abuse messaging remains visible: Google Sheets export credits require qualified opens/challenges/forks/signups/saved versions, never raw clicks alone.
 
 ## 4. Files changed
-- `src/underwriting-share-routes.ts`
-- `test/underwriting-share-routes.test.ts`
+- `frontend/src/pages/UnderwritingSharePage.tsx`
+- `frontend/src/pages/UnderwritingSharePage.css`
 - `REPLIT_PULL_TODAY.md`
 
 ## 5. Migration steps
@@ -36,6 +36,7 @@ From repo root:
 npm install
 npm run type-check
 npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
+cd frontend && npm run build
 ```
 
 ## 8. Test/build result
@@ -46,13 +47,23 @@ npm run type-check
 npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 ```
 
-Result: TypeScript check passed; targeted underwriting share test suite passed, 16/16 tests.
+Result: backend TypeScript check passed; targeted underwriting share test suite passed, 16/16 tests.
+
+Attempted but currently blocked by pre-existing frontend TypeScript issues outside this patch:
+
+```bash
+cd frontend && npm run build
+```
+
+Observed failures are in `src/pages/CreaStatsPage.tsx`, `src/pages/HomePage.tsx`, `src/pages/SavedListingsPage.tsx`, and `src/pages/SixixplexReportPage.tsx` (unused React/imports, Recharts formatter typing, iterator `.map`, `homepage_cta_click` event-name typing, unused `storedToken`). `UnderwritingSharePage.tsx` was not listed in the build errors.
+
+Also attempted targeted ESLint on the changed page, but the frontend ESLint config points parserOptions.project at the repo-root `tsconfig.json`, which does not include frontend files.
 
 ## 9. Risks/blockers
 - No migration or env-var risk.
-- Public API response adds `challengePromptPack`; it does not remove or rename existing fields.
-- Prompt aliases cover the current known metric/input names, but the frontend may still choose which prompts to render first.
+- This assumes the API response from the previous challenge-prompt-pack work is available; if not, the page safely falls back to generic fields.
+- Frontend full build is still blocked by unrelated existing TypeScript errors. Next exact command after fixing those files: `cd frontend && npm run build`.
 - Existing uncommitted `.brv/`, `.learnings/`, and `BUILD_NOTES.md` workspace files were present before this run; I did not include them in the implementation commit.
 
 ## 10. Plain-English what Dan should pull into Replit at 10am
-Pull `realist-nightly/2026-05-09-challenge-prompt-pack` to make shared underwriting links more actionable. Recipients will no longer just see a deal; the API now hands the frontend ready-made prompts that ask them to challenge rent, vacancy, expenses, cap rate, or cash flow and submit a qualified “Challenge my underwriting” response that can lead to forks, saved versions, and Google Sheets export credits.
+Pull `realist-nightly/2026-05-10-share-conversion-dashboard` to make shared underwriting links feel like an actual viral challenge flow. Recipients will see specific prompt cards like “Market rent” or “Vacancy rate,” the current assumption, and a question that nudges them to challenge/fork/save a better version — keeping the loop moving toward qualified actions and Google Sheets export credits without paying for raw clicks.
