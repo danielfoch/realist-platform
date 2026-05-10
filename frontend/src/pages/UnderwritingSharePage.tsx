@@ -15,10 +15,27 @@ type SharedAnalysis = {
   notes?: string | null;
 };
 
+type ChallengePrompt = {
+  field: string;
+  label: string;
+  currentValue: unknown;
+  challengeQuestion: string;
+  payloadHint: string;
+};
+
+type ChallengePromptPack = {
+  headline: string;
+  cta: string;
+  sharePrompt: string;
+  qualifiedActionReminder: string;
+  prompts: ChallengePrompt[];
+};
+
 type ShareResponse = {
   token: string;
   cta: string;
   creditGuardrail?: string;
+  challengePromptPack?: ChallengePromptPack;
   rewardLadder?: Array<{
     action: string;
     label: string;
@@ -52,7 +69,7 @@ type ActionResponse = {
   } | null;
 };
 
-const CHALLENGE_FIELDS = [
+const FALLBACK_CHALLENGE_FIELDS = [
   'rent',
   'vacancy',
   'expenses',
@@ -94,7 +111,7 @@ export function UnderwritingSharePage() {
   const [share, setShare] = useState<ShareResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedFields, setSelectedFields] = useState<string[]>(['rent']);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [comment, setComment] = useState('');
   const [action, setAction] = useState<ShareAction>('challenge');
   const [submitting, setSubmitting] = useState(false);
@@ -123,6 +140,17 @@ export function UnderwritingSharePage() {
 
   const metrics = useMemo(() => getEntries(share?.analysis.metrics), [share]);
   const inputs = useMemo(() => getEntries(share?.analysis.inputs), [share]);
+  const challengePrompts = useMemo(() => share?.challengePromptPack?.prompts || [], [share]);
+  const challengeFields = useMemo(
+    () => (challengePrompts.length > 0 ? challengePrompts.map((prompt) => prompt.field) : (share ? FALLBACK_CHALLENGE_FIELDS : [])),
+    [challengePrompts, share],
+  );
+
+  useEffect(() => {
+    if (challengeFields.length > 0 && selectedFields.length === 0) {
+      setSelectedFields([challengeFields[0]]);
+    }
+  }, [challengeFields, selectedFields.length]);
 
   const toggleField = (field: string) => {
     setSelectedFields((current) => (
@@ -153,6 +181,7 @@ export function UnderwritingSharePage() {
             challengedFields: selectedFields,
             comment: comment.trim(),
             notes: action === 'challenge' ? undefined : comment.trim(),
+            promptPackHeadline: share?.challengePromptPack?.headline,
           },
         }),
       });
@@ -257,22 +286,47 @@ export function UnderwritingSharePage() {
         <section className="challenge-card">
           <div>
             <p className="eyebrow">Qualified action</p>
-            <h2>Challenge the assumptions</h2>
-            <p className="muted">A meaningful challenge can earn the sharer credits and gives you a version you can build on.</p>
+            <h2>{share.challengePromptPack?.headline || 'Challenge the assumptions'}</h2>
+            <p className="muted">{share.challengePromptPack?.qualifiedActionReminder || 'A meaningful challenge can earn the sharer credits and gives you a version you can build on.'}</p>
+            {share.challengePromptPack?.sharePrompt && (
+              <div className="share-prompt-box">“{share.challengePromptPack.sharePrompt}”</div>
+            )}
           </div>
 
           <form onSubmit={submitChallenge}>
+            {challengePrompts.length > 0 && (
+              <div className="prompt-card-list" aria-label="Suggested underwriting challenges">
+                {challengePrompts.map((prompt) => (
+                  <button
+                    type="button"
+                    key={prompt.field}
+                    className={selectedFields.includes(prompt.field) ? 'prompt-card selected' : 'prompt-card'}
+                    onClick={() => toggleField(prompt.field)}
+                  >
+                    <span>
+                      <strong>{prompt.label}</strong>
+                      <small>Current: {formatValue(prompt.currentValue)}</small>
+                    </span>
+                    <em>{prompt.challengeQuestion}</em>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="field-chip-list" aria-label="Assumptions to challenge">
-              {CHALLENGE_FIELDS.map((field) => (
-                <button
-                  type="button"
-                  key={field}
-                  className={selectedFields.includes(field) ? 'field-chip selected' : 'field-chip'}
-                  onClick={() => toggleField(field)}
-                >
-                  {formatLabel(field)}
-                </button>
-              ))}
+              {challengeFields.map((field) => {
+                const prompt = challengePrompts.find((item) => item.field === field);
+                return (
+                  <button
+                    type="button"
+                    key={field}
+                    className={selectedFields.includes(field) ? 'field-chip selected' : 'field-chip'}
+                    onClick={() => toggleField(field)}
+                  >
+                    {prompt?.label || formatLabel(field)}
+                  </button>
+                );
+              })}
             </div>
 
             <label className="form-label" htmlFor="challenge-comment">What would you change?</label>
@@ -280,7 +334,7 @@ export function UnderwritingSharePage() {
               id="challenge-comment"
               value={comment}
               onChange={(event) => setComment(event.target.value)}
-              placeholder="Example: I think the rent is aggressive by $250/month and vacancy should be 4%, not 2%."
+              placeholder={share.challengePromptPack?.sharePrompt || 'Example: I think the rent is aggressive by $250/month and vacancy should be 4%, not 2%.'}
             />
 
             <div className="action-choice" role="radiogroup" aria-label="Challenge action type">
