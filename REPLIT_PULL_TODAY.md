@@ -1,26 +1,27 @@
 # REPLIT_PULL_TODAY — Realist.ca Nightly GitHub Builder
 
 ## 1. Date
-Sunday, May 10, 2026 (America/Toronto)
+Monday, May 11, 2026 (America/Toronto)
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-10-share-conversion-dashboard`
-- Implementation commit: `3e83f3dcb5734b931ffa952634d4cec8151bc4bf`
+- Branch: `realist-nightly/2026-05-11-qualified-share-assist`
+- Implementation commit: `39156a32ebbd0fe6f1c4411bc8a842ee7d9815c7`
+- Pull-brief commit: this file is committed after the implementation commit on the same branch.
 
 ## 3. What changed
-Rendered the new viral underwriting challenge prompt pack on the public shared-underwriting page.
+Added a qualified-share assist playbook to the viral underwriting share status payload.
 
 Key behavior:
-- Shared underwriting pages now consume `challengePromptPack` from the API instead of showing only generic challenge chips.
-- Recipients see clickable prompt cards for the actual saved assumptions, including current value and a plain-English challenge question.
-- The required CTA/copy stays centered: “Challenge my underwriting.”
-- The page still falls back to the older generic challenge fields when an older API response or sparse deal has no prompt pack.
-- Submitted qualified actions now include the prompt-pack headline in metadata, helping later analytics understand which challenge experience drove the action.
-- Reward and anti-abuse messaging remains visible: Google Sheets export credits require qualified opens/challenges/forks/signups/saved versions, never raw clicks alone.
+- `getShareActionSummary(...)` now includes `qualifiedShareAssist` alongside the existing growth nudge, conversion insights, reward brief, invite funnel, and recent actions.
+- The assist object converts live share metrics into a concrete next step: which qualified action is bottlenecked, who to target next, what “Challenge my underwriting” message to use, and what follow-up trigger matters.
+- The copy keeps the core CTA: “Challenge my underwriting.”
+- Reward framing remains tied to Google Sheets export credits and the next qualified action, not raw share clicks.
+- Anti-abuse guidance is embedded in the status response: use recipient-specific links, never award for raw clicks/link creation, require meaningful changed assumptions for challenge/fork credits, and respect daily share/recipient caps.
+- Added tests covering the new assist payload and verifying it appears in share summaries without exposing recipient identity.
 
 ## 4. Files changed
-- `frontend/src/pages/UnderwritingSharePage.tsx`
-- `frontend/src/pages/UnderwritingSharePage.css`
+- `src/underwriting-share-routes.ts`
+- `test/underwriting-share-routes.test.ts`
 - `REPLIT_PULL_TODAY.md`
 
 ## 5. Migration steps
@@ -36,7 +37,12 @@ From repo root:
 npm install
 npm run type-check
 npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
-cd frontend && npm run build
+```
+
+Optional broader gate if time permits:
+
+```bash
+npm test
 ```
 
 ## 8. Test/build result
@@ -47,23 +53,13 @@ npm run type-check
 npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 ```
 
-Result: backend TypeScript check passed; targeted underwriting share test suite passed, 16/16 tests.
-
-Attempted but currently blocked by pre-existing frontend TypeScript issues outside this patch:
-
-```bash
-cd frontend && npm run build
-```
-
-Observed failures are in `src/pages/CreaStatsPage.tsx`, `src/pages/HomePage.tsx`, `src/pages/SavedListingsPage.tsx`, and `src/pages/SixixplexReportPage.tsx` (unused React/imports, Recharts formatter typing, iterator `.map`, `homepage_cta_click` event-name typing, unused `storedToken`). `UnderwritingSharePage.tsx` was not listed in the build errors.
-
-Also attempted targeted ESLint on the changed page, but the frontend ESLint config points parserOptions.project at the repo-root `tsconfig.json`, which does not include frontend files.
+Result: backend TypeScript check passed; targeted underwriting share test suite passed, 17/17 tests.
 
 ## 9. Risks/blockers
 - No migration or env-var risk.
-- This assumes the API response from the previous challenge-prompt-pack work is available; if not, the page safely falls back to generic fields.
-- Frontend full build is still blocked by unrelated existing TypeScript errors. Next exact command after fixing those files: `cd frontend && npm run build`.
-- Existing uncommitted `.brv/`, `.learnings/`, and `BUILD_NOTES.md` workspace files were present before this run; I did not include them in the implementation commit.
+- This is backend/API shaping only; a frontend owner still needs to render `actionSummary.qualifiedShareAssist` in the share dashboard/status UI.
+- The assist payload depends on existing `underwriting_share_actions` and `underwriting_share_recipients` data quality.
+- Existing dirty workspace files from before this run were stashed as `pre-2026-05-11-nightly-context-dirty` before creating this branch; they were not included in this patch.
 
 ## 10. Plain-English what Dan should pull into Replit at 10am
-Pull `realist-nightly/2026-05-10-share-conversion-dashboard` to make shared underwriting links feel like an actual viral challenge flow. Recipients will see specific prompt cards like “Market rent” or “Vacancy rate,” the current assumption, and a question that nudges them to challenge/fork/save a better version — keeping the loop moving toward qualified actions and Google Sheets export credits without paying for raw clicks.
+Pull `realist-nightly/2026-05-11-qualified-share-assist` to make each underwriting share tell the owner what to do next: who to send it to, whether opens/challenges/saved versions/signups are the current bottleneck, and what “Challenge my underwriting” copy to use. It keeps premium-credit rewards focused on qualified actions and reinforces the anti-abuse rules so raw clicks never earn Google Sheets export credits.
