@@ -5,6 +5,7 @@ import {
   getChallengePromptPack,
   getExplicitRecipientHash,
   getPublicShareRewardLadder,
+  getQualifiedShareAssist,
   getRecipientInviteFunnel,
   getRewardPolicySnapshot,
   getShareActionSummary,
@@ -278,6 +279,15 @@ describe('viral underwriting share qualification', () => {
       creditGuardrail: expect.stringContaining('never raw share clicks alone'),
     });
     expect(summary.conversionInsights.remainingCreditsToday).toBeGreaterThan(0);
+    expect(summary.qualifiedShareAssist).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      stage: 'version_to_signup',
+      nextQualifiedAction: 'signup',
+      suggestedMessage: expect.stringContaining('Challenge my underwriting'),
+      followUpTrigger: '2 recipient-specific invites have not opened yet.',
+      earnedCredits: 13,
+    });
+    expect(summary.qualifiedShareAssist.antiAbuseChecklist.join(' ')).toContain('raw clicks');
     expect(summary.rewardBrief).toMatchObject({
       cta: 'Challenge my underwriting.',
       earnedCredits: 13,
@@ -459,6 +469,59 @@ describe('viral underwriting share qualification', () => {
     expect(challengedNoVersion.bottleneck).toBe('challenge_to_version');
     expect(challengedNoVersion.nextQualifiedAction).toBe('saved_version');
     expect(challengedNoVersion.creditGuardrail).toContain('never raw share clicks alone');
+  });
+
+  it('builds a qualified share assist playbook with recipient targeting and anti-abuse guardrails', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: 0,
+          cappedCount: 0,
+          creditAwarded: 0,
+          dailyQualifiedCount: 0,
+          dailyRemainingShareCap: action === 'challenge' ? 6 : 5,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getQualifiedShareAssist>[0]['byAction'];
+
+    const unopenedAssist = getQualifiedShareAssist({
+      byAction,
+      invitedRecipientCount: 3,
+      unopenedRecipientCount: 3,
+    });
+
+    expect(unopenedAssist).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      stage: 'recipient_distribution',
+      nextQualifiedAction: 'unique_open',
+      dailyRemainingForNextAction: 5,
+      followUpTrigger: '3 recipient-specific invites have not opened yet.',
+    });
+    expect(unopenedAssist.suggestedRecipients).toEqual([
+      'One investor who knows the neighbourhood rents',
+      'One realtor who has sold a comparable property nearby',
+      'One lender or mortgage broker who can sanity-check financing assumptions',
+    ]);
+    expect(unopenedAssist.rewardAngle).toContain('Google Sheets export credit');
+    expect(unopenedAssist.antiAbuseChecklist.join(' ')).toContain('Do not award credits for raw clicks');
+
+    const challengeAssist = getQualifiedShareAssist({
+      byAction: {
+        ...byAction,
+        unique_open: { ...byAction.unique_open, qualifiedCount: 4 },
+      },
+      invitedRecipientCount: 4,
+      unopenedRecipientCount: 0,
+    });
+    expect(challengeAssist).toMatchObject({
+      stage: 'open_to_challenge',
+      nextQualifiedAction: 'challenge',
+      suggestedMessage: expect.stringContaining('rent, vacancy, expenses, exit cap'),
+      dailyRemainingForNextAction: 6,
+    });
   });
 
   it('builds a qualified-only reward brief for share status CTAs', () => {

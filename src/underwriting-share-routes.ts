@@ -628,6 +628,61 @@ export function getShareConversionInsights(input: {
   };
 }
 
+export function getQualifiedShareAssist(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const insights = getShareConversionInsights(input);
+  const rewardBrief = getQualifiedShareRewardBrief(input.byAction);
+  const unopenedInvites = Math.max(input.unopenedRecipientCount, 0);
+  const remainingQualifiedSlots = input.byAction[insights.nextQualifiedAction].dailyRemainingShareCap;
+  const bestNextCredit = ACTION_POLICIES[insights.nextQualifiedAction].creditAmount;
+
+  const requestByAction: Record<QualifiedShareAction, string> = {
+    unique_open: 'Open the link and challenge one assumption you think is too optimistic.',
+    challenge: 'Challenge one assumption — rent, vacancy, expenses, exit cap, or monthly cash flow.',
+    fork: 'Fork the assumptions you disagree with so we can compare versions side by side.',
+    signup: 'Create an account from your challenged version so you can save it and share it onward.',
+    saved_version: 'Save your changed version so the original and challenged underwriting can be compared.',
+  };
+
+  const suggestedRecipients = insights.bottleneck === 'recipient_distribution'
+    ? [
+        'One investor who knows the neighbourhood rents',
+        'One realtor who has sold a comparable property nearby',
+        'One lender or mortgage broker who can sanity-check financing assumptions',
+      ]
+    : [
+        'Recipients who already opened but have not challenged the deal',
+        'Recipients who challenged but have not saved or forked a version',
+        'The strongest challenger who can share their saved version onward',
+      ];
+
+  return {
+    cta: 'Challenge my underwriting.',
+    stage: insights.bottleneck,
+    nextQualifiedAction: insights.nextQualifiedAction,
+    ownerAction: insights.ownerAction,
+    suggestedRecipients,
+    suggestedMessage: `Challenge my underwriting — ${requestByAction[insights.nextQualifiedAction]}`,
+    rewardAngle: remainingQualifiedSlots > 0
+      ? `This can earn ${bestNextCredit} Google Sheets export credit${bestNextCredit === 1 ? '' : 's'} per qualified ${insights.nextQualifiedAction.replace('_', ' ')} today.`
+      : `Today's qualified ${insights.nextQualifiedAction.replace('_', ' ')} credit cap is already reached; keep collecting feedback without awarding more credits.`,
+    followUpTrigger: unopenedInvites > 0
+      ? `${unopenedInvites} recipient-specific invite${unopenedInvites === 1 ? '' : 's'} have not opened yet.`
+      : 'No unopened recipient-specific invites are waiting; focus on the next qualified action.',
+    dailyRemainingForNextAction: remainingQualifiedSlots,
+    earnedCredits: rewardBrief.earnedCredits,
+    antiAbuseChecklist: [
+      'Use recipient-specific links when possible so opens are tied to issued recipient keys.',
+      'Do not award credits for raw clicks or link creation alone.',
+      'Require changed assumptions, challenged fields, notes, or saved versions before challenge/fork credits qualify.',
+      'Respect daily share and recipient caps before adding Google Sheets export credits.',
+    ],
+  };
+}
+
 export async function getRecipientInviteFunnel(database: DatabaseAdapter, shareId: number): Promise<RecipientInviteFunnelSegment[]> {
   const result = await database.query(
     `SELECT r.source,
@@ -779,6 +834,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     },
     growthNudge: getShareGrowthNudge(byAction),
     conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    qualifiedShareAssist: getQualifiedShareAssist({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     rewardBrief: getQualifiedShareRewardBrief(byAction),
     recentActions: recentResult.rows.map((row) => ({
       id: row.id,
