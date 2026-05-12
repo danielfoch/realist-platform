@@ -5,7 +5,8 @@ Tuesday, May 12, 2026 (America/Toronto)
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-12-share-recipient-coaching`
-- Commit: `TBD after local commit`
+- Implementation commit: `160b41d775b2eb098fc35a67829a423c9fdef091`
+- Pull-brief commit: this file is committed after the implementation commit on the same branch.
 
 ## 3. What changed
 Added recipient-side challenge coaching to the public underwriting share payload so a share recipient sees how to take a qualified action instead of just clicking the link.
