@@ -331,6 +331,48 @@ export function getChallengePromptPack(analysis: {
   };
 }
 
+
+export function getRecipientChallengeCoach(analysis: {
+  propertyAddress?: unknown;
+  metrics?: Record<string, unknown> | null;
+  inputs?: Record<string, unknown> | null;
+  verdictCheck?: unknown;
+}) {
+  const promptPack = getChallengePromptPack(analysis);
+  const firstPrompt = promptPack.prompts[0];
+  const challengedField = firstPrompt?.field || 'notes';
+
+  return {
+    headline: 'Your challenge must change or question an assumption to qualify.',
+    cta: 'Challenge my underwriting.',
+    primaryPrompt: firstPrompt || null,
+    steps: [
+      'Pick one assumption you disagree with.',
+      'Send the challenged field plus a note, changed input, or changed metric.',
+      'Save or fork your version if you want the owner to compare both versions side by side.',
+    ],
+    qualifiedActions: ['challenge', 'fork', 'saved_version', 'signup'] as Exclude<QualifiedShareAction, 'unique_open'>[],
+    exampleChallengePayload: {
+      action: 'challenge',
+      metadata: {
+        challengedFields: [challengedField],
+        comment: firstPrompt
+          ? `I would change ${firstPrompt.label} because local comps or financing assumptions look different.`
+          : 'I would change this underwriting assumption based on local comps or financing risk.',
+      },
+    },
+    exampleSavedVersionPayload: {
+      action: 'saved_version',
+      metadata: {
+        challengedFields: [challengedField],
+        inputs: challengedField === 'notes' ? {} : { [challengedField]: 'your changed assumption' },
+        notes: 'Saved after challenging the original underwriting assumptions.',
+      },
+    },
+    creditDisclaimer: 'Opening a raw share link alone is not enough for premium credits; credits require qualified recipient actions within anti-abuse caps.',
+  };
+}
+
 function isQualifiedShareAction(action: string): action is QualifiedShareAction {
   return Object.prototype.hasOwnProperty.call(ACTION_POLICIES, action);
 }
@@ -949,6 +991,12 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
           notes: row.notes,
         },
         challengePromptPack: getChallengePromptPack({
+          propertyAddress: row.property_address,
+          metrics: row.metrics || {},
+          inputs: row.inputs || {},
+          verdictCheck: row.verdict_check,
+        }),
+        recipientChallengeCoach: getRecipientChallengeCoach({
           propertyAddress: row.property_address,
           metrics: row.metrics || {},
           inputs: row.inputs || {},

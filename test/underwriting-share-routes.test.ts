@@ -6,6 +6,7 @@ import {
   getExplicitRecipientHash,
   getPublicShareRewardLadder,
   getQualifiedShareAssist,
+  getRecipientChallengeCoach,
   getRecipientInviteFunnel,
   getRewardPolicySnapshot,
   getShareActionSummary,
@@ -90,6 +91,37 @@ describe('viral underwriting share qualification', () => {
         challengeQuestion: expect.stringContaining('single assumption'),
       }),
     ]);
+  });
+
+  it('coaches recipients toward qualified challenges instead of raw clicks', () => {
+    const coach = getRecipientChallengeCoach({
+      inputs: { monthlyRent: 3100 },
+      metrics: { cashFlow: -75 },
+      verdictCheck: 'close call',
+    });
+
+    expect(coach).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      headline: expect.stringContaining('must change or question an assumption'),
+      primaryPrompt: expect.objectContaining({ field: 'monthlyRent' }),
+      exampleChallengePayload: {
+        action: 'challenge',
+        metadata: {
+          challengedFields: ['monthlyRent'],
+          comment: expect.stringContaining('Market rent'),
+        },
+      },
+      exampleSavedVersionPayload: {
+        action: 'saved_version',
+        metadata: {
+          challengedFields: ['monthlyRent'],
+          inputs: { monthlyRent: 'your changed assumption' },
+          notes: expect.stringContaining('Saved after challenging'),
+        },
+      },
+      creditDisclaimer: expect.stringContaining('raw share link alone is not enough'),
+    });
+    expect(coach.qualifiedActions).toEqual(['challenge', 'fork', 'saved_version', 'signup']);
   });
 
   it('requires a meaningful challenge payload before share actions can qualify', () => {

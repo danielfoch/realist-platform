@@ -1,23 +1,22 @@
 # REPLIT_PULL_TODAY — Realist.ca Nightly GitHub Builder
 
 ## 1. Date
-Monday, May 11, 2026 (America/Toronto)
+Tuesday, May 12, 2026 (America/Toronto)
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-11-qualified-share-assist`
-- Implementation commit: `39156a32ebbd0fe6f1c4411bc8a842ee7d9815c7`
-- Pull-brief commit: this file is committed after the implementation commit on the same branch.
+- Branch: `realist-nightly/2026-05-12-share-recipient-coaching`
+- Commit: `TBD after local commit`
 
 ## 3. What changed
-Added a qualified-share assist playbook to the viral underwriting share status payload.
+Added recipient-side challenge coaching to the public underwriting share payload so a share recipient sees how to take a qualified action instead of just clicking the link.
 
 Key behavior:
-- `getShareActionSummary(...)` now includes `qualifiedShareAssist` alongside the existing growth nudge, conversion insights, reward brief, invite funnel, and recent actions.
-- The assist object converts live share metrics into a concrete next step: which qualified action is bottlenecked, who to target next, what “Challenge my underwriting” message to use, and what follow-up trigger matters.
-- The copy keeps the core CTA: “Challenge my underwriting.”
-- Reward framing remains tied to Google Sheets export credits and the next qualified action, not raw share clicks.
-- Anti-abuse guidance is embedded in the status response: use recipient-specific links, never award for raw clicks/link creation, require meaningful changed assumptions for challenge/fork credits, and respect daily share/recipient caps.
-- Added tests covering the new assist payload and verifying it appears in share summaries without exposing recipient identity.
+- New `getRecipientChallengeCoach(...)` helper turns saved underwriting assumptions into recipient instructions.
+- Public `GET /api/underwriting-shares/:token` now returns `recipientChallengeCoach` alongside the existing challenge prompt pack, reward ladder, recipient tracking, and visitor qualification result.
+- The coach keeps the CTA: “Challenge my underwriting.”
+- It gives a primary assumption prompt, a 3-step recipient workflow, and example `challenge` / `saved_version` action payloads.
+- It explicitly says raw share opens alone do not unlock premium credits; credits require qualified recipient actions within anti-abuse caps.
+- Added test coverage for the coach payload and its qualified-action/anti-raw-click guardrails.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
@@ -53,13 +52,13 @@ npm run type-check
 npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 ```
 
-Result: backend TypeScript check passed; targeted underwriting share test suite passed, 17/17 tests.
+Result: backend TypeScript check passed; targeted underwriting share test suite passed, 18/18 tests.
 
 ## 9. Risks/blockers
 - No migration or env-var risk.
-- This is backend/API shaping only; a frontend owner still needs to render `actionSummary.qualifiedShareAssist` in the share dashboard/status UI.
-- The assist payload depends on existing `underwriting_share_actions` and `underwriting_share_recipients` data quality.
-- Existing dirty workspace files from before this run were stashed as `pre-2026-05-11-nightly-context-dirty` before creating this branch; they were not included in this patch.
+- This is backend/API shaping only; frontend/Replit should render `recipientChallengeCoach` on the public underwriting share page to make the loop visible to recipients.
+- The coach uses the first available prompt from saved inputs/metrics; frontend may want to let the recipient choose among all prompts from `challengePromptPack.prompts`.
+- Existing ByteRover context-tree files were dirty before this run and remain uncommitted; they are not part of the product patch.
 
 ## 10. Plain-English what Dan should pull into Replit at 10am
-Pull `realist-nightly/2026-05-11-qualified-share-assist` to make each underwriting share tell the owner what to do next: who to send it to, whether opens/challenges/saved versions/signups are the current bottleneck, and what “Challenge my underwriting” copy to use. It keeps premium-credit rewards focused on qualified actions and reinforces the anti-abuse rules so raw clicks never earn Google Sheets export credits.
+Pull `realist-nightly/2026-05-12-share-recipient-coaching` so recipients of an underwriting share are coached to do the thing that actually grows the loop: challenge one assumption, save/fork a changed version, and share onward. The API now gives Replit ready-to-render recipient copy and example payloads while keeping premium credits tied to qualified actions — not raw clicks.
