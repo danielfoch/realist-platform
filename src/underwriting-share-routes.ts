@@ -670,6 +670,81 @@ export function getShareConversionInsights(input: {
   };
 }
 
+export function getShareConversionCards(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const { byAction, invitedRecipientCount, unopenedRecipientCount } = input;
+  const openedInvites = Math.max(invitedRecipientCount - unopenedRecipientCount, 0);
+  const forkOrSavedVersions = byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount;
+  const cardDefinitions: Array<{
+    key: string;
+    title: string;
+    qualifiedAction: QualifiedShareAction;
+    currentCount: number;
+    targetCount: number;
+    helper: string;
+    qualifiedRequirement: string;
+  }> = [
+    {
+      key: 'recipient_open',
+      title: 'Get a tracked recipient to open',
+      qualifiedAction: 'unique_open',
+      currentCount: byAction.unique_open.qualifiedCount,
+      targetCount: Math.max(1, Math.min(invitedRecipientCount || 1, 5)),
+      helper: unopenedRecipientCount > 0
+        ? `${unopenedRecipientCount} recipient-specific invite${unopenedRecipientCount === 1 ? '' : 's'} still need a first open.`
+        : 'Send a recipient-specific link before asking for the challenge.',
+      qualifiedRequirement: 'A unique tracked recipient opens an issued share link within daily caps.',
+    },
+    {
+      key: 'assumption_challenge',
+      title: 'Turn opens into assumption challenges',
+      qualifiedAction: 'challenge',
+      currentCount: byAction.challenge.qualifiedCount,
+      targetCount: Math.max(1, Math.ceil(Math.max(byAction.unique_open.qualifiedCount, openedInvites) * 0.35)),
+      helper: 'Ask them to name the rent, vacancy, expense, cap-rate, or cash-flow assumption they disagree with.',
+      qualifiedRequirement: 'A challenge must include a challenged field, changed input/metric, or a substantive note.',
+    },
+    {
+      key: 'saved_version',
+      title: 'Get a forked or saved version',
+      qualifiedAction: 'saved_version',
+      currentCount: forkOrSavedVersions,
+      targetCount: Math.max(1, Math.ceil(byAction.challenge.qualifiedCount * 0.5)),
+      helper: 'Push challengers to save the changed assumptions so both versions can be compared.',
+      qualifiedRequirement: 'Forks and saved versions require meaningful changed assumptions before credits qualify.',
+    },
+    {
+      key: 'account_loop',
+      title: 'Convert version creators into account holders',
+      qualifiedAction: 'signup',
+      currentCount: byAction.signup.qualifiedCount,
+      targetCount: Math.max(1, Math.ceil(forkOrSavedVersions * 0.4)),
+      helper: 'Prompt version creators to create an account so they can keep and share their version onward.',
+      qualifiedRequirement: 'Signup credits require a recipient account action tied to the underwriting flow.',
+    },
+  ];
+
+  return cardDefinitions.map((card) => {
+    const actionSummary = byAction[card.qualifiedAction];
+    const completed = card.currentCount >= card.targetCount && card.targetCount > 0;
+    const capped = actionSummary.dailyRemainingShareCap <= 0;
+
+    return {
+      ...card,
+      cta: 'Challenge my underwriting.',
+      status: completed ? 'completed' : capped ? 'capped' : 'active',
+      progressRate: getConversionRate(card.currentCount, card.targetCount),
+      creditType: 'google_sheets_export',
+      creditReward: ACTION_POLICIES[card.qualifiedAction].creditAmount,
+      dailyRemainingForAction: actionSummary.dailyRemainingShareCap,
+      guardrail: 'No credits for raw share clicks or link creation alone; only qualified tracked actions within caps count.',
+    };
+  });
+}
+
 export function getQualifiedShareAssist(input: {
   byAction: ShareActionSummary;
   invitedRecipientCount: number;
@@ -877,6 +952,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     growthNudge: getShareGrowthNudge(byAction),
     conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     qualifiedShareAssist: getQualifiedShareAssist({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    conversionCards: getShareConversionCards({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     rewardBrief: getQualifiedShareRewardBrief(byAction),
     recentActions: recentResult.rows.map((row) => ({
       id: row.id,

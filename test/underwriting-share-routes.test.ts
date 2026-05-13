@@ -10,6 +10,7 @@ import {
   getRecipientInviteFunnel,
   getRewardPolicySnapshot,
   getShareActionSummary,
+  getShareConversionCards,
   getShareConversionInsights,
   getShareGrowthNudge,
   getQualifiedShareRewardBrief,
@@ -501,6 +502,51 @@ describe('viral underwriting share qualification', () => {
     expect(challengedNoVersion.bottleneck).toBe('challenge_to_version');
     expect(challengedNoVersion.nextQualifiedAction).toBe('saved_version');
     expect(challengedNoVersion.creditGuardrail).toContain('never raw share clicks alone');
+  });
+
+  it('builds conversion cards that show the next qualified share action without rewarding raw clicks', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: action === 'unique_open' ? 4 : action === 'challenge' ? 1 : 0,
+          cappedCount: 0,
+          creditAwarded: 0,
+          dailyQualifiedCount: 0,
+          dailyRemainingShareCap: action === 'saved_version' ? 0 : 5,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getShareConversionCards>[0]['byAction'];
+
+    const cards = getShareConversionCards({
+      byAction,
+      invitedRecipientCount: 5,
+      unopenedRecipientCount: 1,
+    });
+
+    expect(cards.map((card) => card.key)).toEqual([
+      'recipient_open',
+      'assumption_challenge',
+      'saved_version',
+      'account_loop',
+    ]);
+    expect(cards[1]).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      qualifiedAction: 'challenge',
+      status: 'active',
+      progressRate: 0.5,
+      creditType: 'google_sheets_export',
+      creditReward: getActionPolicy('challenge').creditAmount,
+      guardrail: expect.stringContaining('No credits for raw share clicks'),
+    });
+    expect(cards[2]).toMatchObject({
+      qualifiedAction: 'saved_version',
+      status: 'capped',
+      dailyRemainingForAction: 0,
+      qualifiedRequirement: expect.stringContaining('changed assumptions'),
+    });
   });
 
   it('builds a qualified share assist playbook with recipient targeting and anti-abuse guardrails', () => {
