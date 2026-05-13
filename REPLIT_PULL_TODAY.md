@@ -5,7 +5,7 @@
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-13-share-conversion-cards`
-- Commit SHA: `8d272822c369a0cede5b0e8244eb3b88a7679c9e`
+- Implementation commit SHA: `48b58f57b74f8b5a8419bcc5552ed59160533b3d`
 
 ## 3. What changed
 - Added share-status conversion cards for the viral underwriting loop so the app can show exactly where a shared deal is stuck: tracked recipient open, assumption challenge, saved/forked version, or account loop.
