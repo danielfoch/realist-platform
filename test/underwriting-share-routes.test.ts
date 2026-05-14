@@ -151,6 +151,65 @@ describe('viral underwriting share qualification', () => {
     );
   });
 
+  it('tracks generic opens but does not award credits for raw share clicks', async () => {
+    const db = createShareDb();
+
+    const result = await recordQualifiedShareAction(db, {
+      shareId: 7,
+      inviterUserId: 42,
+      action: 'unique_open',
+      recipientHash: 'd'.repeat(64),
+      metadata: {
+        trackingSource: 'visitor_fingerprint',
+        explicitRecipientAccepted: false,
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: 'unqualified',
+      qualified: false,
+      creditAmount: 0,
+      creditQualificationReason: 'unique_open_credit_requires_issued_recipient_link',
+    });
+    expect(db.calls.some((call) => call.text.includes('INSERT INTO premium_credit_ledger'))).toBe(false);
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO underwriting_share_actions'),
+      [
+        7,
+        'unique_open',
+        'd'.repeat(64),
+        false,
+        0,
+        expect.objectContaining({
+          trackingSource: 'visitor_fingerprint',
+          creditQualificationReason: 'unique_open_credit_requires_issued_recipient_link',
+        }),
+      ],
+    );
+  });
+
+  it('awards unique-open credits only for issued recipient links', async () => {
+    const db = createShareDb();
+
+    const result = await recordQualifiedShareAction(db, {
+      shareId: 7,
+      inviterUserId: 42,
+      action: 'unique_open',
+      recipientHash: 'e'.repeat(64),
+      metadata: {
+        trackingSource: 'recipient_link',
+        explicitRecipientAccepted: true,
+      },
+    });
+
+    expect(result.status).toBe('qualified');
+    expect(result.creditAmount).toBe(getActionPolicy('unique_open').creditAmount);
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO premium_credit_ledger'),
+      [42, 7, 100, getActionPolicy('unique_open').creditAmount, 'Qualified underwriting share action: unique_open'],
+    );
+  });
+
   it('does not grant duplicate credits for the same recipient/action/share', async () => {
     const db = createShareDb({ existing: { id: 1, qualified: true, credit_amount: 2 } });
 

@@ -200,7 +200,7 @@ export function getPublicShareRewardLadder() {
     saved_version: 'Saved version',
   };
   const qualifiesWhen: Record<QualifiedShareAction, string> = {
-    unique_open: 'A unique tracked recipient opens the share link.',
+    unique_open: 'A unique tracked recipient opens an issued recipient-specific share link; generic raw opens are tracked but do not earn credits.',
     challenge: 'The recipient challenges at least one field or leaves a substantive note.',
     fork: 'An authenticated recipient forks the deal assumptions into their own version.',
     signup: 'A recipient creates an account from the underwriting flow.',
@@ -444,6 +444,29 @@ async function findExistingAction(database: DatabaseAdapter, shareId: number, re
   return result.rows[0] || null;
 }
 
+function canAwardCreditForAction(input: {
+  action: QualifiedShareAction;
+  metadata?: Record<string, unknown>;
+}) {
+  if (input.action !== 'unique_open') {
+    return true;
+  }
+
+  return input.metadata?.trackingSource === 'recipient_link'
+    && input.metadata?.explicitRecipientAccepted === true;
+}
+
+function getUnqualifiedCreditReason(input: {
+  action: QualifiedShareAction;
+  metadata?: Record<string, unknown>;
+}) {
+  if (input.action === 'unique_open' && !canAwardCreditForAction(input)) {
+    return 'unique_open_credit_requires_issued_recipient_link';
+  }
+
+  return null;
+}
+
 export async function recordQualifiedShareAction(database: DatabaseAdapter, input: {
   shareId: number;
   inviterUserId: number | null;
@@ -461,21 +484,29 @@ export async function recordQualifiedShareAction(database: DatabaseAdapter, inpu
   }
 
   const policy = ACTION_POLICIES[input.action];
-  const [shareActionCount, recipientActionCount] = await Promise.all([
-    countDailyShareActions(database, input.shareId, input.action),
-    countDailyRecipientActions(database, input.recipientHash, input.action),
-  ]);
+  const creditEligible = canAwardCreditForAction(input);
+  const [shareActionCount, recipientActionCount] = creditEligible
+    ? await Promise.all([
+        countDailyShareActions(database, input.shareId, input.action),
+        countDailyRecipientActions(database, input.recipientHash, input.action),
+      ])
+    : [0, 0];
 
-  const qualified = shareActionCount < policy.dailyShareCap && recipientActionCount < policy.dailyRecipientCap;
+  const withinCaps = shareActionCount < policy.dailyShareCap && recipientActionCount < policy.dailyRecipientCap;
+  const qualified = creditEligible && withinCaps;
   const creditAmount = qualified ? policy.creditAmount : 0;
-  const status = qualified ? 'qualified' : 'capped';
+  const status = qualified ? 'qualified' : creditEligible ? 'capped' : 'unqualified';
+  const creditQualificationReason = getUnqualifiedCreditReason(input);
+  const metadata = creditQualificationReason
+    ? { ...(input.metadata || {}), creditQualificationReason }
+    : input.metadata || {};
 
   const result = await database.query(
     `INSERT INTO underwriting_share_actions (
        share_id, action, recipient_hash, qualified, credit_type, credit_amount, metadata
      ) VALUES ($1, $2, $3, $4, 'google_sheets_export', $5, $6)
      RETURNING id`,
-    [input.shareId, input.action, input.recipientHash, qualified, creditAmount, input.metadata || {}],
+    [input.shareId, input.action, input.recipientHash, qualified, creditAmount, metadata],
   );
 
   const actionId = result.rows[0]?.id;
@@ -499,7 +530,7 @@ export async function recordQualifiedShareAction(database: DatabaseAdapter, inpu
     [input.shareId, qualified ? 1 : 0, creditAmount],
   );
 
-  return { status, qualified, creditAmount, actionId };
+  return { status, qualified, creditAmount, actionId, creditQualificationReason };
 }
 
 type ShareActionSummary = Record<QualifiedShareAction, {
@@ -602,7 +633,7 @@ export function getQualifiedShareRewardBrief(byAction: ShareActionSummary) {
       remainingToday: byAction[bestNextReward].dailyRemainingShareCap,
     } : null,
     sharePrompt: 'Challenge my underwriting — fork the assumptions you disagree with, save your version, and share it onward.',
-    antiAbuseGuardrail: 'Credits are never granted for raw clicks alone. Rewards require unique opens, challenges, forks, signups, or saved versions within daily caps.',
+    antiAbuseGuardrail: 'Credits are never granted for raw clicks alone. Unique-open credits require issued recipient links; other rewards require challenges, forks, signups, or saved versions within daily caps.',
   };
 }
 
@@ -666,7 +697,7 @@ export function getShareConversionInsights(input: {
     openedInvites,
     unopenedInviteRate,
     remainingCreditsToday,
-    creditGuardrail: 'Credits are only awarded for qualified opens, challenges, forks, signups, and saved versions within anti-abuse caps — never raw share clicks alone.',
+    creditGuardrail: 'Credits are only awarded for issued-recipient opens, challenges, forks, signups, and saved versions within anti-abuse caps — never raw share clicks alone.',
   };
 }
 
@@ -792,7 +823,7 @@ export function getQualifiedShareAssist(input: {
     dailyRemainingForNextAction: remainingQualifiedSlots,
     earnedCredits: rewardBrief.earnedCredits,
     antiAbuseChecklist: [
-      'Use recipient-specific links when possible so opens are tied to issued recipient keys.',
+      'Use recipient-specific links because unique-open credits require issued recipient keys.',
       'Do not award credits for raw clicks or link creation alone.',
       'Require changed assumptions, challenged fields, notes, or saved versions before challenge/fork credits qualify.',
       'Respect daily share and recipient caps before adding Google Sheets export credits.',
