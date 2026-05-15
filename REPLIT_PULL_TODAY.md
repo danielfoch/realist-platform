@@ -1,19 +1,23 @@
 # REPLIT PULL TODAY
 
 ## 1. Date
-Thursday, May 14, 2026
+Friday, May 15, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-14-qualified-share-rewards`
-- Commit SHA: `d1ff3a5e89173ebbb0ba18cf179b553a8a922bec` (code change commit; documentation commit follows it on this branch)
-- Code commit: `d1ff3a5e89173ebbb0ba18cf179b553a8a922bec`
+- Branch: `realist-nightly/2026-05-15-share-reward-eligibility`
+- Commit SHA: `5a935b98d8e3ce9835077edcf4baca2f59ff440a` (code change commit; documentation commit follows it on this branch)
+- Code commit: `5a935b98d8e3ce9835077edcf4baca2f59ff440a`
 
 ## 3. What changed
-Tightened the viral underwriting reward loop so generic share opens are still tracked, but **do not award Google Sheets export credits**.
+Added a reward eligibility summary to the viral underwriting share status payload so the client can show exactly which actions can earn Google Sheets export credits today, why an action is blocked, and what each action requires.
 
-Unique-open credits now require an issued recipient-specific link (`trackingSource: recipient_link` and `explicitRecipientAccepted: true`). This keeps the “Challenge my underwriting.” loop intact while making the anti-abuse rule explicit: raw link clicks alone are not rewardable.
+This strengthens the “Analyze deal → Share underwriting → Recipient challenges/forks assumptions → Account/save version → Share onward” loop by making the qualified-action rules product-visible:
 
-Also updated the public reward ladder, reward brief, conversion insights, and share-assist copy so Replit/client surfaces explain that unique-open credits require recipient-specific links.
+- CTA stays: “Challenge my underwriting.”
+- Google Sheets export credits are shown per action.
+- Unique-open credits explicitly require issued recipient-specific links.
+- Raw/generic opens are described as analytics only, not credit-eligible.
+- Daily share caps, daily recipient caps, blocked reasons, and requirements are exposed for challenge/fork/signup/saved-version actions.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
@@ -23,7 +27,7 @@ Also updated the public reward ladder, reward brief, conversion insights, and sh
 ## 5. Migration steps
 No database migration required.
 
-Existing generic `unique_open` rows remain in history. New generic opens will be inserted as `qualified = false`, `credit_amount = 0`, with metadata reason `unique_open_credit_requires_issued_recipient_link`.
+This is API/status-shape only. It adds `actionSummary.rewardEligibility` to `GET /api/underwriting-shares/:token/status` responses.
 
 ## 6. Env vars needed
 No new environment variables.
@@ -47,7 +51,7 @@ Passed locally:
 ```bash
 npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 # PASS test/underwriting-share-routes.test.ts
-# 21 tests passed
+# 22 tests passed
 
 npm run type-check
 # tsc --noEmit passed
@@ -55,9 +59,10 @@ npm run type-check
 
 ## 9. Risks/blockers
 - No deploy was run.
-- Branch has unrelated pre-existing `.brv/context-tree` working-tree changes that were **not committed** by this nightly patch.
-- Behaviour change: generic share opens no longer earn the 1-credit unique-open reward. This is intentional to enforce “no credits for raw share clicks alone.” Challenges, forks, signups, and saved versions can still qualify from visitor-fingerprint tracking when they include the required meaningful action payload.
-- If the product wants anonymous/generic unique opens to earn credits later, add a stronger non-recipient proof signal first (for example verified email, logged-in account, or invite acceptance), not raw GET traffic.
+- No outbound messages/emails were sent.
+- No paid APIs were called.
+- Pre-existing unrelated `.brv/context-tree` working-tree changes from the prior branch were preserved in a local stash named `pre-2026-05-15-nightly-preserve-brv-context` before this branch was created.
+- Client code must opt into rendering the new `rewardEligibility` object; existing response fields remain unchanged.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull the branch that makes underwriting share rewards safer: raw link opens are tracked for funnel analytics, but only recipient-specific opens can earn Google Sheets export credits. This protects the viral “Challenge my underwriting.” loop from cheap click abuse while preserving rewards for real challenges, forks, saved versions, signups, and issued-recipient opens.
+Pull the branch that makes the underwriting-share reward rules visible in the status API. Dan/Replit can now show users which “Challenge my underwriting” actions can still earn Google Sheets export credits today, what each action requires, and why raw clicks or capped actions will not pay credits.
