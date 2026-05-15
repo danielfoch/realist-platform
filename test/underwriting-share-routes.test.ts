@@ -14,6 +14,7 @@ import {
   getShareConversionInsights,
   getShareGrowthNudge,
   getQualifiedShareRewardBrief,
+  getShareRewardEligibilitySummary,
   hasMeaningfulChallengePayload,
   recordQualifiedShareAction,
   resolveShareRecipientHash,
@@ -386,6 +387,21 @@ describe('viral underwriting share qualification', () => {
       qualifiedActions: ['unique_open', 'challenge', 'saved_version'],
       antiAbuseGuardrail: expect.stringContaining('never granted for raw clicks alone'),
     });
+    expect(summary.rewardEligibility).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      rawClickPolicy: expect.stringContaining('unqualified for credits'),
+      recipientLinkCoverage: {
+        invitedRecipientCount: 3,
+        unopenedRecipientCount: 2,
+        needsRecipientLinksForOpenCredits: false,
+      },
+    });
+    expect(summary.rewardEligibility.actionEligibility.unique_open).toMatchObject({
+      canEarnToday: true,
+      dailyRemainingForShare: 2,
+      blockedReason: null,
+    });
+    expect(summary.rewardEligibility.actionEligibility.challenge.requirements.join(' ')).toContain('10+ character note');
     expect(summary.rewardBrief.bestNextReward).toMatchObject({ action: 'signup', creditAmount: 5 });
     expect(summary.recentActions[0]).not.toHaveProperty('recipientHash');
     expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT recipient_hash)'), [7]);
@@ -659,6 +675,54 @@ describe('viral underwriting share qualification', () => {
       suggestedMessage: expect.stringContaining('rent, vacancy, expenses, exit cap'),
       dailyRemainingForNextAction: 6,
     });
+  });
+
+  it('builds reward eligibility guardrails for each qualified share action', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: 0,
+          cappedCount: 0,
+          creditAwarded: 0,
+          dailyQualifiedCount: 0,
+          dailyRemainingShareCap: action === 'saved_version' ? 0 : 3,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getShareRewardEligibilitySummary>[0]['byAction'];
+
+    const noLinks = getShareRewardEligibilitySummary({
+      byAction,
+      invitedRecipientCount: 0,
+      unopenedRecipientCount: 0,
+    });
+
+    expect(noLinks).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      rawClickPolicy: expect.stringContaining('Generic opens/raw clicks'),
+      recipientLinkCoverage: {
+        invitedRecipientCount: 0,
+        unopenedRecipientCount: 0,
+        needsRecipientLinksForOpenCredits: true,
+      },
+    });
+    expect(noLinks.actionEligibility.unique_open).toMatchObject({
+      canEarnToday: false,
+      blockedReason: 'issued_recipient_link_required_for_unique_open_credit',
+      creditType: 'google_sheets_export',
+    });
+    expect(noLinks.actionEligibility.saved_version).toMatchObject({
+      canEarnToday: false,
+      blockedReason: 'daily_share_cap_reached',
+    });
+    expect(noLinks.actionEligibility.challenge).toMatchObject({
+      canEarnToday: true,
+      blockedReason: null,
+      dailyRecipientCap: getActionPolicy('challenge').dailyRecipientCap,
+    });
+    expect(noLinks.actionEligibility.challenge.guardrail).toContain('raw share clicks');
   });
 
   it('builds a qualified-only reward brief for share status CTAs', () => {
