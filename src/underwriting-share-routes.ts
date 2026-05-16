@@ -912,6 +912,69 @@ export function getQualifiedShareAssist(input: {
   };
 }
 
+export function getQualifiedRecipientInvitePlan(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const remainingOpenCredits = input.byAction.unique_open.dailyRemainingShareCap;
+  const unopenedInvites = Math.max(input.unopenedRecipientCount, 0);
+  const needsMoreRecipientLinks = input.invitedRecipientCount === 0 || (unopenedInvites === 0 && remainingOpenCredits > 0);
+  const recommendedNewLinks = needsMoreRecipientLinks
+    ? Math.min(Math.max(remainingOpenCredits, 1), 5)
+    : 0;
+  const openedWithoutChallenge = Math.max(
+    input.byAction.unique_open.qualifiedCount - input.byAction.challenge.qualifiedCount,
+    0,
+  );
+  const challengedWithoutVersion = Math.max(
+    input.byAction.challenge.qualifiedCount - input.byAction.fork.qualifiedCount - input.byAction.saved_version.qualifiedCount,
+    0,
+  );
+
+  const recipientPersonas = [
+    {
+      persona: 'neighbourhood rent skeptic',
+      why: 'They can challenge whether the rent assumption survives current local comps.',
+      requestedChallenge: 'Tell me the rent you would actually underwrite and why.',
+    },
+    {
+      persona: 'active listing or buyer agent',
+      why: 'They can dispute days-on-market, resale risk, concessions, and achievable exit cap.',
+      requestedChallenge: 'Which resale or exit assumption would you haircut first?',
+    },
+    {
+      persona: 'lender or mortgage broker',
+      why: 'They can sanity-check financing, DSCR, rate, amortization, and cash-flow assumptions.',
+      requestedChallenge: 'What financing term would break this underwriting?',
+    },
+    {
+      persona: 'operator or property manager',
+      why: 'They can identify vacancy, repair, utility, maintenance, or turnover misses.',
+      requestedChallenge: 'Which operating expense or vacancy assumption is too light?',
+    },
+  ];
+
+  return {
+    cta: 'Challenge my underwriting.',
+    recommendedNewRecipientLinks: recommendedNewLinks,
+    remainingUniqueOpenCreditsToday: remainingOpenCredits,
+    openedWithoutChallenge,
+    challengedWithoutVersion,
+    recipientPersonas,
+    inviteCopy: 'Challenge my underwriting — pick one assumption you disagree with, change it, and save or fork your version.',
+    followUpCopy: openedWithoutChallenge > 0
+      ? 'You opened this underwriting — can you challenge one rent, vacancy, expense, financing, or exit assumption?'
+      : 'Challenge my underwriting and save your version so we can compare assumptions side by side.',
+    qualificationRule: 'Use issued recipient-specific links; credits require unique opens, challenges, forks, signups, or saved versions within daily caps. Raw share clicks and link creation do not earn credits.',
+    nextOwnerStep: needsMoreRecipientLinks
+      ? `Create ${recommendedNewLinks} recipient-specific link${recommendedNewLinks === 1 ? '' : 's'} before asking for more opens.`
+      : unopenedInvites > 0
+        ? `Wait for or follow up with ${unopenedInvites} unopened recipient-specific invite${unopenedInvites === 1 ? '' : 's'}; do not create duplicate links for the same person.`
+        : 'Push opened recipients toward a qualified challenge, saved version, or fork before sharing wider.',
+  };
+}
+
 export async function getRecipientInviteFunnel(database: DatabaseAdapter, shareId: number): Promise<RecipientInviteFunnelSegment[]> {
   const result = await database.query(
     `SELECT r.source,
@@ -1064,6 +1127,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     growthNudge: getShareGrowthNudge(byAction),
     conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     qualifiedShareAssist: getQualifiedShareAssist({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    qualifiedRecipientInvitePlan: getQualifiedRecipientInvitePlan({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     rewardEligibility: getShareRewardEligibilitySummary({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     conversionCards: getShareConversionCards({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     rewardBrief: getQualifiedShareRewardBrief(byAction),

@@ -6,6 +6,7 @@ import {
   getExplicitRecipientHash,
   getPublicShareRewardLadder,
   getQualifiedShareAssist,
+  getQualifiedRecipientInvitePlan,
   getRecipientChallengeCoach,
   getRecipientInviteFunnel,
   getRewardPolicySnapshot,
@@ -674,6 +675,57 @@ describe('viral underwriting share qualification', () => {
       nextQualifiedAction: 'challenge',
       suggestedMessage: expect.stringContaining('rent, vacancy, expenses, exit cap'),
       dailyRemainingForNextAction: 6,
+    });
+  });
+
+  it('plans recipient-specific invite batches without rewarding raw share clicks', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: action === 'unique_open' ? 4 : action === 'challenge' ? 1 : 0,
+          cappedCount: 0,
+          creditAwarded: action === 'unique_open' ? 4 : action === 'challenge' ? 2 : 0,
+          dailyQualifiedCount: action === 'unique_open' ? 2 : 0,
+          dailyRemainingShareCap: action === 'unique_open' ? 3 : 5,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getQualifiedRecipientInvitePlan>[0]['byAction'];
+
+    const plan = getQualifiedRecipientInvitePlan({
+      byAction,
+      invitedRecipientCount: 0,
+      unopenedRecipientCount: 0,
+    });
+
+    expect(plan).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      recommendedNewRecipientLinks: 3,
+      remainingUniqueOpenCreditsToday: 3,
+      openedWithoutChallenge: 3,
+      challengedWithoutVersion: 1,
+      inviteCopy: expect.stringContaining('save or fork your version'),
+      followUpCopy: expect.stringContaining('challenge one rent'),
+      qualificationRule: expect.stringContaining('Raw share clicks and link creation do not earn credits'),
+      nextOwnerStep: 'Create 3 recipient-specific links before asking for more opens.',
+    });
+    expect(plan.recipientPersonas.map((recipient) => recipient.persona)).toEqual([
+      'neighbourhood rent skeptic',
+      'active listing or buyer agent',
+      'lender or mortgage broker',
+      'operator or property manager',
+    ]);
+
+    const waitingPlan = getQualifiedRecipientInvitePlan({
+      byAction,
+      invitedRecipientCount: 4,
+      unopenedRecipientCount: 2,
+    });
+    expect(waitingPlan).toMatchObject({
+      recommendedNewRecipientLinks: 0,
+      nextOwnerStep: 'Wait for or follow up with 2 unopened recipient-specific invites; do not create duplicate links for the same person.',
     });
   });
 
