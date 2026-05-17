@@ -6,6 +6,7 @@ import {
   getExplicitRecipientHash,
   getPublicShareRewardLadder,
   getQualifiedShareAssist,
+  getQualifiedShareDigest,
   getQualifiedRecipientInvitePlan,
   getRecipientChallengeCoach,
   getRecipientInviteFunnel,
@@ -404,6 +405,14 @@ describe('viral underwriting share qualification', () => {
     });
     expect(summary.rewardEligibility.actionEligibility.challenge.requirements.join(' ')).toContain('10+ character note');
     expect(summary.rewardBrief.bestNextReward).toMatchObject({ action: 'signup', creditAmount: 5 });
+    expect(summary.qualifiedShareDigest).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      nextQualifiedAction: 'signup',
+      earnedGoogleSheetsExportCredits: 13,
+      remainingGoogleSheetsExportCreditsToday: expect.any(Number),
+      suggestedCopy: expect.stringContaining('Challenge my underwriting'),
+    });
+    expect(summary.qualifiedShareDigest.antiAbuse.join(' ')).toContain('raw share clicks');
     expect(summary.recentActions[0]).not.toHaveProperty('recipientHash');
     expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT recipient_hash)'), [7]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2'), [7, 5]);
@@ -727,6 +736,43 @@ describe('viral underwriting share qualification', () => {
       recommendedNewRecipientLinks: 0,
       nextOwnerStep: 'Wait for or follow up with 2 unopened recipient-specific invites; do not create duplicate links for the same person.',
     });
+  });
+
+  it('builds an owner digest around the next qualified action instead of vanity clicks', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: action === 'unique_open' ? 5 : action === 'challenge' ? 1 : 0,
+          cappedCount: 0,
+          creditAwarded: action === 'unique_open' ? 5 : action === 'challenge' ? 2 : 0,
+          dailyQualifiedCount: action === 'unique_open' ? 5 : action === 'challenge' ? 1 : 0,
+          dailyRemainingShareCap: action === 'unique_open' ? 0 : 4,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getQualifiedShareDigest>[0]['byAction'];
+
+    const digest = getQualifiedShareDigest({
+      byAction,
+      invitedRecipientCount: 6,
+      unopenedRecipientCount: 1,
+    });
+
+    expect(digest).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      headline: 'Next best qualified action: challenge.',
+      nextQualifiedAction: 'challenge',
+      suggestedCopy: expect.stringContaining('rent, vacancy, expenses'),
+      recommendedNewRecipientLinks: 0,
+      openedWithoutChallenge: 4,
+      challengedWithoutVersion: 1,
+      earnedGoogleSheetsExportCredits: 7,
+    });
+    expect(digest.blockers.join(' ')).toContain('issued recipient link');
+    expect(digest.blockers.join(' ')).toContain('qualified openers');
+    expect(digest.antiAbuse.join(' ')).toContain('Never grant credits for raw share clicks');
   });
 
   it('builds reward eligibility guardrails for each qualified share action', () => {

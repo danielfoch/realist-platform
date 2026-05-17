@@ -975,6 +975,71 @@ export function getQualifiedRecipientInvitePlan(input: {
   };
 }
 
+export function getQualifiedShareDigest(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const insights = getShareConversionInsights(input);
+  const rewardBrief = getQualifiedShareRewardBrief(input.byAction);
+  const invitePlan = getQualifiedRecipientInvitePlan(input);
+  const openedWithoutChallenge = Math.max(
+    input.byAction.unique_open.qualifiedCount - input.byAction.challenge.qualifiedCount,
+    0,
+  );
+  const challengedWithoutVersion = Math.max(
+    input.byAction.challenge.qualifiedCount - input.byAction.fork.qualifiedCount - input.byAction.saved_version.qualifiedCount,
+    0,
+  );
+
+  const ownerCopyByAction: Record<QualifiedShareAction, string> = {
+    unique_open: 'Challenge my underwriting — open this tracked link and tell me which assumption you would change first.',
+    challenge: 'Challenge my underwriting — rent, vacancy, expenses, exit cap, or cash flow: what would you change?',
+    fork: 'Challenge my underwriting — fork the assumptions you disagree with so we can compare versions side by side.',
+    signup: 'Challenge my underwriting — save your version in an account so you can share it onward.',
+    saved_version: 'Challenge my underwriting — save your changed version so we can compare assumptions side by side.',
+  };
+
+  const blockers: string[] = [];
+  if (input.invitedRecipientCount === 0) {
+    blockers.push('No issued recipient-specific links exist, so unique-open credits cannot qualify yet.');
+  }
+  if (input.unopenedRecipientCount > 0) {
+    blockers.push(`${input.unopenedRecipientCount} issued recipient link${input.unopenedRecipientCount === 1 ? '' : 's'} still need a first open.`);
+  }
+  if (openedWithoutChallenge > 0) {
+    blockers.push(`${openedWithoutChallenge} qualified opener${openedWithoutChallenge === 1 ? '' : 's'} still need to challenge an assumption.`);
+  }
+  if (challengedWithoutVersion > 0) {
+    blockers.push(`${challengedWithoutVersion} challenge${challengedWithoutVersion === 1 ? '' : 's'} still need a saved or forked version.`);
+  }
+  if (input.byAction[insights.nextQualifiedAction].dailyRemainingShareCap <= 0) {
+    blockers.push(`Today's ${insights.nextQualifiedAction.replace('_', ' ')} credit cap is reached for this share.`);
+  }
+
+  return {
+    cta: 'Challenge my underwriting.',
+    headline: insights.bottleneck === 'amplify_loop'
+      ? 'The viral underwriting loop is working — amplify the strongest challenged version.'
+      : `Next best qualified action: ${insights.nextQualifiedAction.replace('_', ' ')}.`,
+    nextQualifiedAction: insights.nextQualifiedAction,
+    ownerAction: insights.ownerAction,
+    suggestedCopy: ownerCopyByAction[insights.nextQualifiedAction],
+    recommendedNewRecipientLinks: invitePlan.recommendedNewRecipientLinks,
+    openedWithoutChallenge,
+    challengedWithoutVersion,
+    earnedGoogleSheetsExportCredits: rewardBrief.earnedCredits,
+    remainingGoogleSheetsExportCreditsToday: rewardBrief.remainingCreditsToday,
+    blockers,
+    antiAbuse: [
+      'Never grant credits for raw share clicks, generic opens, or link creation alone.',
+      'Use issued recipient-specific links for unique-open credit qualification.',
+      'Require changed assumptions, challenged fields, notes, forks, signups, or saved versions before awarding premium credits.',
+      'Apply duplicate checks plus daily share and recipient caps before ledger entries.',
+    ],
+  };
+}
+
 export async function getRecipientInviteFunnel(database: DatabaseAdapter, shareId: number): Promise<RecipientInviteFunnelSegment[]> {
   const result = await database.query(
     `SELECT r.source,
@@ -1131,6 +1196,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     rewardEligibility: getShareRewardEligibilitySummary({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     conversionCards: getShareConversionCards({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     rewardBrief: getQualifiedShareRewardBrief(byAction),
+    qualifiedShareDigest: getQualifiedShareDigest({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     recentActions: recentResult.rows.map((row) => ({
       id: row.id,
       action: row.action,
