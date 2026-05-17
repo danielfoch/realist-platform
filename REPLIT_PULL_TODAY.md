@@ -1,27 +1,28 @@
 # REPLIT PULL TODAY
 
 ## 1. Date
-Saturday, May 16, 2026
+Sunday, May 17, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-16-challenge-invite-summary`
-- Commit SHA: `65f4caa30d3c78eab1c615ad3ce6d824051d088a` (code commit before this documentation update; final branch tip may include this file)
-- Code commit: `65f4caa30d3c78eab1c615ad3ce6d824051d088a`
+- Branch: `realist-nightly/2026-05-17-qualified-share-digest`
+- Code commit SHA: `7a16318418a2a6f72bb2f07772dcff2cf3efc384`
+- Handoff file is committed after the code commit, so final branch tip may be newer.
 
 ## 3. What changed
-Added a qualified recipient invite plan to underwriting share status summaries.
+Added a qualified-share owner digest to the viral underwriting share status flow.
 
-This gives the product/API a next-step plan for the viral underwriting loop:
+The new `qualifiedShareDigest` object turns share analytics into one plain next step for the deal owner:
 
-- Keep the CTA: “Challenge my underwriting.”
-- Recommend how many new recipient-specific links to create when unique-open credit slots are available.
-- Identify opened recipients who have not challenged yet.
-- Identify challenged recipients who have not saved/forked a version yet.
-- Suggest high-value recipient personas: neighbourhood rent skeptic, active agent, lender/broker, and operator/property manager.
-- Provide invite and follow-up copy that asks for a changed assumption, saved version, or fork.
-- Re-state the anti-abuse rule: raw clicks and link creation do not earn credits; only qualified tracked actions within daily caps do.
+- Keeps the CTA: “Challenge my underwriting.”
+- Names the next qualified action to pursue: unique open, challenge, saved version, signup, or fork.
+- Provides owner-facing suggested copy for that next action.
+- Shows how many opened recipients still need to challenge an assumption.
+- Shows how many challenges still need a saved/forked version.
+- Shows earned and remaining Google Sheets export credits for the share.
+- Surfaces blockers like unopened recipient-specific links or reached daily caps.
+- Repeats anti-abuse rules: no credits for raw share clicks, generic opens, or link creation alone.
 
-The new `qualifiedRecipientInvitePlan` object is included in `getShareActionSummary(...)`, which feeds the authenticated share status endpoint.
+This gives Replit/client code a compact panel candidate for “what should I do next to make this underwriting share grow?” without rewarding vanity clicks.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
@@ -31,7 +32,7 @@ The new `qualifiedRecipientInvitePlan` object is included in `getShareActionSumm
 ## 5. Migration steps
 No database migration required.
 
-This is API/status-shape only. It adds `actionSummary.qualifiedRecipientInvitePlan` to `GET /api/underwriting-shares/:token/status` responses.
+This is API/status-shape only. It adds `actionSummary.qualifiedShareDigest` to `GET /api/underwriting-shares/:token/status` responses via `getShareActionSummary(...)`.
 
 ## 6. Env vars needed
 No new environment variables.
@@ -40,12 +41,12 @@ No new environment variables.
 ```bash
 npm install
 npm run type-check
-npm run build
-npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
+npm test -- underwriting-share-routes.test.ts
 ```
 
 Optional fuller gate if Replit has enough time/resources:
 ```bash
+npm run build
 npm test
 ```
 
@@ -53,25 +54,22 @@ npm test
 Passed locally:
 
 ```bash
-npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
+npm test -- underwriting-share-routes.test.ts
 # PASS test/underwriting-share-routes.test.ts
-# 23 tests passed
+# 24 tests passed
 
 npm run type-check
 # tsc --noEmit passed
-
-npm run build
-# tsc passed
 ```
 
-Lint was also attempted and is blocked by pre-existing unrelated unused-variable errors in files not changed by this patch, for example `src/analysis-routes.ts`, `src/api-routes.ts`, `src/auth-routes.ts`, `src/flywheel-routes.ts`, `src/investor-lead-routes.ts`, and others. The new patch itself type-checks and targeted tests pass.
+No deploy was run.
 
 ## 9. Risks/blockers
 - No deploy was run.
 - No outbound messages/emails were sent.
 - No paid APIs were called.
-- `npm run lint` is currently blocked by existing repo-wide unused-variable errors unrelated to this change.
-- Client code must opt into rendering the new `qualifiedRecipientInvitePlan`; existing response fields remain unchanged.
+- Client code must opt into rendering the new `qualifiedShareDigest`; existing response fields remain unchanged.
+- The digest is computed from existing share summary counts, so it does not change credit-award behavior or database writes.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull this branch to give the underwriting-share status API a concrete invite plan: who to send recipient-specific “Challenge my underwriting” links to next, how many links to create, what follow-up to send after opens, and how to keep Google Sheets export credits tied only to qualified actions instead of raw clicks.
+Pull this branch to add a simple owner-facing digest to underwriting share status: it tells the user the next qualified action to drive (“Challenge my underwriting”), what copy to use, who is stuck in the loop, how many Google Sheets export credits were earned/remain, and why raw clicks still do not count.
