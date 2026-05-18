@@ -1,28 +1,22 @@
 # REPLIT PULL TODAY
 
 ## 1. Date
-Sunday, May 17, 2026
+Monday, May 18, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-17-qualified-share-digest`
-- Code commit SHA: `7a16318418a2a6f72bb2f07772dcff2cf3efc384`
-- Handoff file is committed after the code commit, so final branch tip may be newer.
+- Branch: `realist-nightly/2026-05-18-qualified-share-credits`
+- Commit SHA: `23381ffce49856b349d44b2c7207296c51637642`
 
 ## 3. What changed
-Added a qualified-share owner digest to the viral underwriting share status flow.
+Added an anti-abuse guardrail to the viral underwriting credit path: an inviter/owner cannot earn Google Sheets export credits by recording their own qualified underwriting action.
 
-The new `qualifiedShareDigest` object turns share analytics into one plain next step for the deal owner:
+This tightens the loop around the intended qualified sharing behavior:
 
-- Keeps the CTA: “Challenge my underwriting.”
-- Names the next qualified action to pursue: unique open, challenge, saved version, signup, or fork.
-- Provides owner-facing suggested copy for that next action.
-- Shows how many opened recipients still need to challenge an assumption.
-- Shows how many challenges still need a saved/forked version.
-- Shows earned and remaining Google Sheets export credits for the share.
-- Surfaces blockers like unopened recipient-specific links or reached daily caps.
-- Repeats anti-abuse rules: no credits for raw share clicks, generic opens, or link creation alone.
-
-This gives Replit/client code a compact panel candidate for “what should I do next to make this underwriting share grow?” without rewarding vanity clicks.
+- Recipients can still qualify owners for credits through accepted actions: issued-recipient unique open, challenge, fork, signup, or saved version.
+- Raw/generic clicks still earn 0 credits.
+- Duplicate recipient/action/share records still earn 0 additional credits.
+- Daily share and recipient caps still apply.
+- New self-action attempts are tracked as unqualified with `creditQualificationReason: "inviter_self_action_not_credit_eligible"`.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
@@ -32,7 +26,7 @@ This gives Replit/client code a compact panel candidate for “what should I do 
 ## 5. Migration steps
 No database migration required.
 
-This is API/status-shape only. It adds `actionSummary.qualifiedShareDigest` to `GET /api/underwriting-shares/:token/status` responses via `getShareActionSummary(...)`.
+This is application logic only. It adds an optional `actorUserId` to `recordQualifiedShareAction(...)` and passes the authenticated user from `POST /api/underwriting-shares/:token/actions`.
 
 ## 6. Env vars needed
 No new environment variables.
@@ -41,25 +35,28 @@ No new environment variables.
 ```bash
 npm install
 npm run type-check
-npm test -- underwriting-share-routes.test.ts
+npm test
 ```
 
-Optional fuller gate if Replit has enough time/resources:
+Optional if Dan wants the production build artifact refreshed in Replit:
 ```bash
 npm run build
-npm test
 ```
 
 ## 8. Test/build result
 Passed locally:
 
 ```bash
-npm test -- underwriting-share-routes.test.ts
+npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 # PASS test/underwriting-share-routes.test.ts
-# 24 tests passed
+# 25 tests passed
 
 npm run type-check
 # tsc --noEmit passed
+
+npm test
+# PASS 4 test suites
+# 32 tests passed
 ```
 
 No deploy was run.
@@ -68,8 +65,8 @@ No deploy was run.
 - No deploy was run.
 - No outbound messages/emails were sent.
 - No paid APIs were called.
-- Client code must opt into rendering the new `qualifiedShareDigest`; existing response fields remain unchanged.
-- The digest is computed from existing share summary counts, so it does not change credit-award behavior or database writes.
+- The self-action guardrail only applies when the actor is authenticated on the action endpoint. Anonymous opens remain governed by existing issued-recipient-link, duplicate, and cap rules.
+- Existing qualified recipient behavior should be unchanged; the new test covers owner self-action suppression.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull this branch to add a simple owner-facing digest to underwriting share status: it tells the user the next qualified action to drive (“Challenge my underwriting”), what copy to use, who is stuck in the loop, how many Google Sheets export credits were earned/remain, and why raw clicks still do not count.
+Pull this branch to prevent users from farming premium Google Sheets export credits by challenging/forking their own shared underwriting. Real recipients still drive the viral loop with “Challenge my underwriting,” but owner self-actions are now recorded as unqualified instead of rewarded.

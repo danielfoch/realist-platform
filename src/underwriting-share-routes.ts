@@ -444,10 +444,23 @@ async function findExistingAction(database: DatabaseAdapter, shareId: number, re
   return result.rows[0] || null;
 }
 
+function isSelfQualifiedAction(input: {
+  inviterUserId: number | null;
+  actorUserId?: number | null;
+}) {
+  return Boolean(input.inviterUserId && input.actorUserId && input.inviterUserId === input.actorUserId);
+}
+
 function canAwardCreditForAction(input: {
   action: QualifiedShareAction;
+  inviterUserId: number | null;
+  actorUserId?: number | null;
   metadata?: Record<string, unknown>;
 }) {
+  if (isSelfQualifiedAction(input)) {
+    return false;
+  }
+
   if (input.action !== 'unique_open') {
     return true;
   }
@@ -458,8 +471,14 @@ function canAwardCreditForAction(input: {
 
 function getUnqualifiedCreditReason(input: {
   action: QualifiedShareAction;
+  inviterUserId: number | null;
+  actorUserId?: number | null;
   metadata?: Record<string, unknown>;
 }) {
+  if (isSelfQualifiedAction(input)) {
+    return 'inviter_self_action_not_credit_eligible';
+  }
+
   if (input.action === 'unique_open' && !canAwardCreditForAction(input)) {
     return 'unique_open_credit_requires_issued_recipient_link';
   }
@@ -470,6 +489,7 @@ function getUnqualifiedCreditReason(input: {
 export async function recordQualifiedShareAction(database: DatabaseAdapter, input: {
   shareId: number;
   inviterUserId: number | null;
+  actorUserId?: number | null;
   action: QualifiedShareAction;
   recipientHash: string;
   metadata?: Record<string, unknown>;
@@ -1399,6 +1419,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
       const recorded = await recordQualifiedShareAction(database, {
         shareId: share.id,
         inviterUserId: share.inviter_user_id,
+        actorUserId: req.userId || null,
         action,
         recipientHash: recipientTracking.recipientHash,
         metadata: {

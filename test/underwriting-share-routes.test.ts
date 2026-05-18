@@ -191,6 +191,44 @@ describe('viral underwriting share qualification', () => {
     );
   });
 
+  it('does not award premium credits when the inviter records their own qualified action', async () => {
+    const db = createShareDb();
+
+    const result = await recordQualifiedShareAction(db, {
+      shareId: 7,
+      inviterUserId: 42,
+      actorUserId: 42,
+      action: 'challenge',
+      recipientHash: 'f'.repeat(64),
+      metadata: {
+        challengedFields: ['monthlyRent'],
+        comment: 'Owner testing their own share should not earn credits.',
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: 'unqualified',
+      qualified: false,
+      creditAmount: 0,
+      creditQualificationReason: 'inviter_self_action_not_credit_eligible',
+    });
+    expect(db.calls.some((call) => call.text.includes('INSERT INTO premium_credit_ledger'))).toBe(false);
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO underwriting_share_actions'),
+      [
+        7,
+        'challenge',
+        'f'.repeat(64),
+        false,
+        0,
+        expect.objectContaining({
+          challengedFields: ['monthlyRent'],
+          creditQualificationReason: 'inviter_self_action_not_credit_eligible',
+        }),
+      ],
+    );
+  });
+
   it('awards unique-open credits only for issued recipient links', async () => {
     const db = createShareDb();
 
