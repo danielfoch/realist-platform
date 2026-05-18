@@ -5,7 +5,8 @@ Monday, May 18, 2026
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-18-qualified-share-credits`
-- Commit SHA: `23381ffce49856b349d44b2c7207296c51637642`
+- Code commit SHA: `27c206063c7c1d1cf8a51148b2a8fb46b2210034`
+- Handoff file is committed after the code commit, so final branch tip may be newer.
 
 ## 3. What changed
 Added an anti-abuse guardrail to the viral underwriting credit path: an inviter/owner cannot earn Google Sheets export credits by recording their own qualified underwriting action.
