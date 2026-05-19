@@ -1,23 +1,25 @@
 # REPLIT PULL TODAY
 
 ## 1. Date
-Monday, May 18, 2026
+Tuesday, May 19, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-18-qualified-share-credits`
-- Code commit SHA: `27c206063c7c1d1cf8a51148b2a8fb46b2210034`
+- Branch: `realist-nightly/2026-05-19-qualified-share-dashboard`
+- Code commit SHA: `d110d3b0aa8831f3ab785ae652b84140d4a97235`
 - Handoff file is committed after the code commit, so final branch tip may be newer.
 
 ## 3. What changed
-Added an anti-abuse guardrail to the viral underwriting credit path: an inviter/owner cannot earn Google Sheets export credits by recording their own qualified underwriting action.
+Added recipient follow-up guidance to the viral underwriting share status payload.
 
-This tightens the loop around the intended qualified sharing behavior:
+Owners can now see, per issued recipient-specific link, the next qualified action to ask for:
 
-- Recipients can still qualify owners for credits through accepted actions: issued-recipient unique open, challenge, fork, signup, or saved version.
-- Raw/generic clicks still earn 0 credits.
-- Duplicate recipient/action/share records still earn 0 additional credits.
-- Daily share and recipient caps still apply.
-- New self-action attempts are tracked as unqualified with `creditQualificationReason: "inviter_self_action_not_credit_eligible"`.
+- unopened recipient link → ask for a tracked open and first challenge
+- opened but not challenged → ask them to challenge one assumption
+- challenged but no saved/forked version → ask them to save or fork changed assumptions
+- versioned but no signup → ask them to create an account and continue the loop
+- complete loop → share the strongest saved version onward
+
+The follow-up payload keeps the core anti-abuse rule explicit: no credits for raw clicks, duplicate actions, or link creation alone. It also avoids exposing recipient hashes.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
@@ -27,7 +29,7 @@ This tightens the loop around the intended qualified sharing behavior:
 ## 5. Migration steps
 No database migration required.
 
-This is application logic only. It adds an optional `actorUserId` to `recordQualifiedShareAction(...)` and passes the authenticated user from `POST /api/underwriting-shares/:token/actions`.
+This uses the existing `underwriting_share_recipients` and `underwriting_share_actions` tables added by prior viral underwriting migrations.
 
 ## 6. Env vars needed
 No new environment variables.
@@ -36,12 +38,13 @@ No new environment variables.
 ```bash
 npm install
 npm run type-check
-npm test
+npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
+npm run build
 ```
 
-Optional if Dan wants the production build artifact refreshed in Replit:
+Optional broader verification:
 ```bash
-npm run build
+npm test
 ```
 
 ## 8. Test/build result
@@ -50,14 +53,13 @@ Passed locally:
 ```bash
 npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 # PASS test/underwriting-share-routes.test.ts
-# 25 tests passed
+# 26 tests passed
 
 npm run type-check
 # tsc --noEmit passed
 
-npm test
-# PASS 4 test suites
-# 32 tests passed
+npm run build
+# tsc passed
 ```
 
 No deploy was run.
@@ -66,8 +68,8 @@ No deploy was run.
 - No deploy was run.
 - No outbound messages/emails were sent.
 - No paid APIs were called.
-- The self-action guardrail only applies when the actor is authenticated on the action endpoint. Anonymous opens remain governed by existing issued-recipient-link, duplicate, and cap rules.
-- Existing qualified recipient behavior should be unchanged; the new test covers owner self-action suppression.
+- The new follow-up list is returned from share status, so very large shares could add one extra grouped query. It is capped to 25 follow-ups by default.
+- The follow-up records include recipient link IDs and status only; no recipient hashes or raw labels are returned.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull this branch to prevent users from farming premium Google Sheets export credits by challenging/forking their own shared underwriting. Real recipients still drive the viral loop with “Challenge my underwriting,” but owner self-actions are now recorded as unqualified instead of rewarded.
+Pull this branch to make the “Challenge my underwriting” loop easier to operate. The owner status view can now tell Dan exactly which recipient-specific links need the next qualified action, without rewarding vanity clicks or exposing visitor identity. This helps move recipients from open → challenge → saved/forked version → account/share onward, while keeping Google Sheets export credits tied only to qualified actions.
