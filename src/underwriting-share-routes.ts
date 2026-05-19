@@ -577,6 +577,18 @@ type RecipientInviteFunnelSegment = {
   signupRate: number;
 };
 
+type RecipientInviteFollowUp = {
+  recipientLinkId: number;
+  source: string;
+  status: 'unopened' | 'opened' | 'challenged' | 'versioned' | 'account_loop_complete';
+  nextQualifiedAction: QualifiedShareAction;
+  suggestedCopy: string;
+  creditAwarded: number;
+  createdAt: string | null;
+  lastOpenedAt: string | null;
+  guardrail: string;
+};
+
 function getConversionRate(numerator: number, denominator: number) {
   return denominator > 0 ? Number((numerator / denominator).toFixed(4)) : 0;
 }
@@ -1101,6 +1113,80 @@ export async function getRecipientInviteFunnel(database: DatabaseAdapter, shareI
   });
 }
 
+export async function getRecipientInviteFollowUps(
+  database: DatabaseAdapter,
+  shareId: number,
+  limit = 25,
+): Promise<RecipientInviteFollowUp[]> {
+  const result = await database.query(
+    `SELECT r.id,
+            r.source,
+            r.created_at,
+            r.last_opened_at,
+            COALESCE(BOOL_OR(a.action = 'challenge' AND a.qualified = true), false) AS has_challenge,
+            COALESCE(BOOL_OR(a.action IN ('fork', 'saved_version') AND a.qualified = true), false) AS has_version,
+            COALESCE(BOOL_OR(a.action = 'signup' AND a.qualified = true), false) AS has_signup,
+            COALESCE(SUM(a.credit_amount) FILTER (WHERE a.qualified = true), 0)::int AS credit_awarded
+     FROM underwriting_share_recipients r
+     LEFT JOIN underwriting_share_actions a
+       ON a.share_id = r.share_id AND a.recipient_hash = r.recipient_hash
+     WHERE r.share_id = $1
+     GROUP BY r.id, r.source, r.created_at, r.last_opened_at
+     ORDER BY
+       CASE
+         WHEN r.last_opened_at IS NULL THEN 0
+         WHEN COALESCE(BOOL_OR(a.action = 'challenge' AND a.qualified = true), false) = false THEN 1
+         WHEN COALESCE(BOOL_OR(a.action IN ('fork', 'saved_version') AND a.qualified = true), false) = false THEN 2
+         WHEN COALESCE(BOOL_OR(a.action = 'signup' AND a.qualified = true), false) = false THEN 3
+         ELSE 4
+       END ASC,
+       r.created_at DESC
+     LIMIT $2`,
+    [shareId, limit],
+  );
+
+  return result.rows.map((row) => {
+    const opened = Boolean(row.last_opened_at);
+    const hasChallenge = Boolean(row.has_challenge);
+    const hasVersion = Boolean(row.has_version);
+    const hasSignup = Boolean(row.has_signup);
+
+    let status: RecipientInviteFollowUp['status'] = 'account_loop_complete';
+    let nextQualifiedAction: QualifiedShareAction = 'fork';
+    let suggestedCopy = 'Challenge my underwriting — share the strongest saved version onward to another qualified recipient.';
+
+    if (!opened) {
+      status = 'unopened';
+      nextQualifiedAction = 'unique_open';
+      suggestedCopy = 'Challenge my underwriting — open this tracked link and tell me which assumption you would change first.';
+    } else if (!hasChallenge) {
+      status = 'opened';
+      nextQualifiedAction = 'challenge';
+      suggestedCopy = 'Challenge my underwriting — rent, vacancy, expenses, exit cap, or cash flow: what would you change?';
+    } else if (!hasVersion) {
+      status = 'challenged';
+      nextQualifiedAction = 'saved_version';
+      suggestedCopy = 'Challenge my underwriting — save or fork your changed assumptions so we can compare versions.';
+    } else if (!hasSignup) {
+      status = 'versioned';
+      nextQualifiedAction = 'signup';
+      suggestedCopy = 'Challenge my underwriting — create an account from your saved version so you can keep it and share onward.';
+    }
+
+    return {
+      recipientLinkId: Number(row.id),
+      source: row.source || 'manual',
+      status,
+      nextQualifiedAction,
+      suggestedCopy,
+      creditAwarded: Number(row.credit_awarded || 0),
+      createdAt: row.created_at || null,
+      lastOpenedAt: row.last_opened_at || null,
+      guardrail: 'Follow up for the next qualified action only; never award credits for raw clicks, duplicate actions, or link creation alone.',
+    };
+  });
+}
+
 export async function getShareActionSummary(database: DatabaseAdapter, shareId: number, recentLimit = 10) {
   const summaryResult = await database.query(
     `SELECT action,
@@ -1174,6 +1260,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
   );
 
   const inviteFunnel = await getRecipientInviteFunnel(database, shareId);
+  const inviteFollowUps = await getRecipientInviteFollowUps(database, shareId);
 
   const totals = Object.values(byAction).reduce(
     (runningTotals, actionSummary) => ({
@@ -1198,6 +1285,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     invitedRecipientCount,
     unopenedRecipientCount,
     inviteFunnel,
+    inviteFollowUps,
     conversionRates: {
       openToChallenge: getConversionRate(byAction.challenge.qualifiedCount, byAction.unique_open.qualifiedCount),
       challengeToForkOrSavedVersion: getConversionRate(

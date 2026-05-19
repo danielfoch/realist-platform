@@ -7,6 +7,7 @@ import {
   getPublicShareRewardLadder,
   getQualifiedShareAssist,
   getQualifiedShareDigest,
+  getRecipientInviteFollowUps,
   getQualifiedRecipientInvitePlan,
   getRecipientChallengeCoach,
   getRecipientInviteFunnel,
@@ -338,7 +339,7 @@ describe('viral underwriting share qualification', () => {
         };
       }
 
-      if (text.includes('LEFT JOIN underwriting_share_actions')) {
+      if (text.includes('GROUP BY r.source')) {
         return {
           rows: [
             {
@@ -349,6 +350,23 @@ describe('viral underwriting share qualification', () => {
               versioned_count: '1',
               signup_count: '0',
               credit_awarded: '7',
+            },
+          ],
+        };
+      }
+
+      if (text.includes('GROUP BY r.id')) {
+        return {
+          rows: [
+            {
+              id: 301,
+              source: 'manual',
+              created_at: '2026-04-29T04:00:00.000Z',
+              last_opened_at: '2026-04-29T04:20:00.000Z',
+              has_challenge: false,
+              has_version: false,
+              has_signup: false,
+              credit_awarded: '1',
             },
           ],
         };
@@ -396,6 +414,19 @@ describe('viral underwriting share qualification', () => {
         challengeRate: 1,
         versionRate: 1,
         signupRate: 0,
+      },
+    ]);
+    expect(summary.inviteFollowUps).toEqual([
+      {
+        recipientLinkId: 301,
+        source: 'manual',
+        status: 'opened',
+        nextQualifiedAction: 'challenge',
+        suggestedCopy: expect.stringContaining('Challenge my underwriting'),
+        creditAwarded: 1,
+        createdAt: '2026-04-29T04:00:00.000Z',
+        lastOpenedAt: '2026-04-29T04:20:00.000Z',
+        guardrail: expect.stringContaining('never award credits for raw clicks'),
       },
     ]);
     expect(summary.conversionRates).toEqual({
@@ -456,6 +487,55 @@ describe('viral underwriting share qualification', () => {
     expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2'), [7, 5]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('FROM underwriting_share_recipients'), [7]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN underwriting_share_actions'), [7]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2'), [7, 25]);
+  });
+
+  it('prioritizes recipient follow-ups by next qualified action without exposing hashes', async () => {
+    const query = jest.fn(async () => ({
+      rows: [
+        {
+          id: 10,
+          source: 'agent_dm',
+          created_at: '2026-05-19T01:00:00.000Z',
+          last_opened_at: null,
+          has_challenge: false,
+          has_version: false,
+          has_signup: false,
+          credit_awarded: '0',
+        },
+        {
+          id: 11,
+          source: 'agent_dm',
+          created_at: '2026-05-19T01:05:00.000Z',
+          last_opened_at: '2026-05-19T01:10:00.000Z',
+          has_challenge: true,
+          has_version: false,
+          has_signup: false,
+          credit_awarded: '3',
+        },
+      ],
+    }));
+
+    const followUps = await getRecipientInviteFollowUps({ query }, 7, 10);
+
+    expect(followUps).toEqual([
+      expect.objectContaining({
+        recipientLinkId: 10,
+        status: 'unopened',
+        nextQualifiedAction: 'unique_open',
+        suggestedCopy: expect.stringContaining('open this tracked link'),
+      }),
+      expect.objectContaining({
+        recipientLinkId: 11,
+        status: 'challenged',
+        nextQualifiedAction: 'saved_version',
+        creditAwarded: 3,
+      }),
+    ]);
+    expect(followUps[0]).not.toHaveProperty('recipientHash');
+    expect(followUps[0]?.guardrail).toContain('never award credits for raw clicks');
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('GROUP BY r.id'), [7, 10]);
+    expect(query).toHaveBeenCalledWith(expect.not.stringContaining('recipient_hash AS'), expect.anything());
   });
 
   it('segments recipient-specific invite performance without exposing visitor identity', async () => {
