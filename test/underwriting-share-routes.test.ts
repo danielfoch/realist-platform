@@ -640,6 +640,37 @@ describe('viral underwriting share qualification', () => {
     );
   });
 
+  it('deduplicates recipient invite labels within a batch before issuing tracked links', async () => {
+    const query = jest.fn(async () => ({ rows: [{ id: 201, created_at: '2026-05-02T05:10:00.000Z' }] }));
+
+    const links = await createUnderwritingShareRecipientLinks({ query }, {
+      shareId: 7,
+      token: 'share-token',
+      createdByUserId: 42,
+      recipients: [
+        'Investor A',
+        ' investor a ',
+        { label: 'Neighbourhood Agent', source: 'agent_dm' },
+        { label: 'neighbourhood agent', source: 'manual' },
+      ],
+    });
+
+    expect(links).toHaveLength(2);
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('INSERT INTO underwriting_share_recipients'),
+      [7, links[0].recipientHash, expect.any(String), 'manual', 42],
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO underwriting_share_recipients'),
+      [7, links[1].recipientHash, expect.any(String), 'agent_dm', 42],
+    );
+    expect(links[0].shareUrl).toContain('/underwriting/share-token?recipient=');
+    expect(links[1].shareUrl).toContain('/underwriting/share-token?recipient=');
+  });
+
   it('returns stage-specific growth nudges for the underwriting loop', () => {
     const emptySummary = Object.fromEntries(
       ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [

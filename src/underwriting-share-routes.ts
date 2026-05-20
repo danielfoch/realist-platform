@@ -148,15 +148,24 @@ export async function createUnderwritingShareRecipientLinks(database: DatabaseAd
 }) {
   const recipientInputs = input.recipients.slice(0, 25);
   const links = [];
+  const seenRecipientLabelHashes = new Set<string>();
 
   for (const recipientInput of recipientInputs) {
     const label = typeof recipientInput === 'string' ? recipientInput : recipientInput.label;
+    const labelHash = getRecipientLabelHash(label);
+
+    if (labelHash) {
+      if (seenRecipientLabelHashes.has(labelHash)) {
+        continue;
+      }
+      seenRecipientLabelHashes.add(labelHash);
+    }
+
     const source = typeof recipientInput === 'object' && recipientInput.source
       ? recipientInput.source
       : input.source || 'manual';
     const recipientKey = randomRecipientKey();
     const recipientHash = getExplicitRecipientHash(recipientKey);
-    const labelHash = getRecipientLabelHash(label);
 
     const result = await database.query(
       `INSERT INTO underwriting_share_recipients (
