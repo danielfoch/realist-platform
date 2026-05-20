@@ -36,10 +36,10 @@ const EVENT_TAGLINE = "Toronto's Premier Multiplex Development Conference";
 const EVENT_HERO_IMAGE = "/events/unpacking-multiplexes-toronto.png";
 
 const VENUE = {
-  name: "Innis Town Hall",
-  address: "2 Sussex Avenue, Toronto, ON M5S 1J5",
-  lat: 43.6655722,
-  lng: -79.39958469999999,
+  name: "The Terminal Theatre",
+  address: "Queens Quay Terminal, Third Floor, 207 Queens Quay West, Toronto, ON M5J 1A7",
+  lat: 43.639526,
+  lng: -79.379194,
 };
 
 const learnPoints = [
@@ -91,8 +91,8 @@ const faqs = [
     a: "Yes. Complimentary food and refreshments are included with every ticket.",
   },
   {
-    q: "What's the best way to get to Innis Town Hall?",
-    a: "Innis Town Hall is in the heart of the University of Toronto's St. George campus. The closest TTC stations are St. George (Line 1/2) and Spadina (Line 1/2/streetcar). Paid parking is available nearby.",
+    q: "What's the best way to get to The Terminal Theatre?",
+    a: "The Terminal Theatre is on the third floor of Queens Quay Terminal at 207 Queens Quay West, right on Toronto's waterfront. The closest TTC station is Union (Line 1), a short walk or one stop on the 509/510 streetcar. Paid parking is available in the building.",
   },
   {
     q: "Who should attend this event?",
@@ -106,7 +106,7 @@ const faqs = [
 
 export default function UnpackingMultiplexesToronto() {
   const { toast } = useToast();
-  const eventDate = new Date("2026-09-21T17:00:00-04:00");
+  const eventDate = new Date("2026-09-15T17:00:00-04:00");
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -131,7 +131,7 @@ export default function UnpackingMultiplexesToronto() {
     <div className="min-h-screen bg-background">
       <SEO
         title="Unpacking Multiplexes — Toronto | Realist"
-        description="Toronto's premier multiplex development conference. Join developers, architects, planners and investors at Innis Town Hall on September 21, 2026."
+        description="Toronto's premier multiplex development conference. Join developers, architects, planners and investors at The Terminal Theatre, Queens Quay Terminal on Tuesday, September 15, 2026."
         ogImage={EVENT_HERO_IMAGE}
       />
       <Navigation />
@@ -180,7 +180,7 @@ export default function UnpackingMultiplexesToronto() {
               <div>
                 <div className="text-xs text-muted-foreground">Date</div>
                 <div className="font-semibold" data-testid="text-event-date">
-                  Monday, September 21, 2026
+                  Tuesday, September 15, 2026
                 </div>
               </div>
             </div>
@@ -399,7 +399,7 @@ export default function UnpackingMultiplexesToronto() {
                   </div>
                   <div className="rounded-lg overflow-hidden border border-border/60 aspect-video bg-muted">
                     <iframe
-                      title="Map of Innis Town Hall"
+                      title="Map of The Terminal Theatre"
                       src={`https://www.openstreetmap.org/export/embed.html?bbox=${VENUE.lng - 0.005}%2C${VENUE.lat - 0.003}%2C${VENUE.lng + 0.005}%2C${VENUE.lat + 0.003}&layer=mapnik&marker=${VENUE.lat}%2C${VENUE.lng}`}
                       className="w-full h-full border-0"
                       loading="lazy"
