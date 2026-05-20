@@ -237,7 +237,7 @@ export default function MarketReport() {
     },
   });
 
-  const { data: archivePosts = [] } = useQuery<{ id: number; title: string; slug: string; excerpt: string; publishedAt: string; tags: string[] }[]>({
+  const { data: archivePosts = [] } = useQuery<{ id: string; title: string; slug: string; excerpt: string; publishedAt: string; tags: string[] }[]>({
     queryKey: ["/api/blog/posts/db", "market-analysis"],
     queryFn: async () => {
       const res = await fetch("/api/blog/posts/db?category=market-analysis");
@@ -433,6 +433,23 @@ export default function MarketReport() {
           <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
           <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link href="/reports/cmhc-2025-annual-report-housing-market">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-cmhc-annual-report-2025">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                      <FileText className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">CMHC 2025</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">CMHC 2025 Annual Report</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Housing starts, rental vacancy, mortgage insurance, multi-unit financing, and federal supply programs through a market lens.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/insights/labour-mortgage-stress-april-2026">
               <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-labour-mortgage-stress">
                 <CardContent className="p-5">
@@ -1163,16 +1180,16 @@ export default function MarketReport() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Monthly Report Archive
+                    Market Report Archive
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Every month, Realist.ca publishes detailed investment reports for 30 Canadian cities — covering yields, rents, pricing, and strategy insights. Browse past editions below.
+                    Browse published market reports, macro research, and housing intelligence for Canadian real estate investors.
                   </p>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {archivePosts.map(post => (
-                      <Link key={post.id} href={`/insights/blog/${post.slug}`}>
+                      <Link key={post.id} href={`/reports/${post.slug}`}>
                         <div className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer" data-testid={`archive-post-${post.slug}`}>
                           <p className="text-sm font-medium leading-snug">{post.title}</p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -1183,7 +1200,7 @@ export default function MarketReport() {
                     ))}
                   </div>
                   <div className="mt-4 text-center">
-                    <Link href="/insights/blog">
+                    <Link href="/reports">
                       <Button variant="outline" size="sm" data-testid="view-all-reports-btn">
                         View All Reports & Research
                       </Button>

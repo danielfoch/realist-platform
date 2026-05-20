@@ -474,6 +474,11 @@ export default function Events() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
                   {[
                     { name: "CMHC", logo: "/partners/cmhc.png", url: "https://www.cmhc-schl.gc.ca" },
+                    { name: "KV Capital", logo: "/partners/kv-capital.png", url: "https://www.kvcapital.ca/" },
+                    { name: "City of Edmonton", logo: "/partners/edmonton.png", url: "https://www.edmonton.ca/" },
+                    { name: "Calvert Home Mortgage", logo: "/partners/calvert-home-mortgage.png", url: "https://chmic.ca/" },
+                    { name: "Ndura Developments", logo: "/partners/ndura.png", url: "https://ndura.ca/" },
+                    { name: "M3 Development Management", logo: "/partners/m3-development.png", url: "https://www.m3dm.ca/" },
                     { name: "Vancity", logo: "/partners/vancity.png", url: "https://www.vancity.com" },
                     { name: "BLD Financial", logo: "/partners/bld-financial.png", url: "https://bldfinancial.ca/" },
                     { name: "Forefront Multiplex Marketing", logo: "/partners/forefront.png", url: "https://weareforefront.ca/" },
