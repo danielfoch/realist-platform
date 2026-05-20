@@ -493,6 +493,8 @@ export default function Events() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
                   {[
                     { name: "CMHC", logo: "/partners/cmhc.png", url: "https://www.cmhc-schl.gc.ca" },
+                    { name: "BLD Financial", logo: "/partners/bld-financial.png", url: "https://bldfinancial.ca/" },
+                    { name: "TCI Podcast Network", logo: "/partners/tci-podcast.png", url: "https://thecanadianinvestorpodcast.com/podcast/the-canadian-real-estate-investor" },
                     { name: "KV Capital", logo: "/partners/kv-capital.png", url: "https://www.kvcapital.ca/" },
                     { name: "City of Edmonton", logo: "/partners/edmonton.png", url: "https://www.edmonton.ca/" },
                     { name: "Calvert Home Mortgage", logo: "/partners/calvert-home-mortgage.png", url: "https://chmic.ca/" },
@@ -500,7 +502,6 @@ export default function Events() {
                     { name: "M3 Development Management", logo: "/partners/m3-development.png", url: "https://www.m3dm.ca/" },
                     { name: "Infill Development in Edmonton Association", logo: "/partners/infill-edmonton.png", url: "https://www.infilledmonton.com/" },
                     { name: "Vancity", logo: "/partners/vancity.png", url: "https://www.vancity.com" },
-                    { name: "BLD Financial", logo: "/partners/bld-financial.png", url: "https://bldfinancial.ca/" },
                     { name: "Forefront Multiplex Marketing", logo: "/partners/forefront.png", url: "https://weareforefront.ca/" },
                     { name: "Theorem Developments", logo: "/partners/theorem.png", url: "https://theoremdevelopments.com" },
                     { name: "Burke by Burke", logo: "/partners/burke-by-burke.png", url: "https://www.burkebyburke.com/" },
