@@ -6,6 +6,7 @@ import { db } from './db';
 import { courseEnrollments, users } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import Stripe from 'stripe';
+import { fulfillRealistEventCheckout } from './eventsModule';
 
 const processedEventIds = new Set<string>();
 const PROCESSED_EVENT_MAX = 1000;
@@ -62,6 +63,10 @@ export class WebhookHandlers {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        if (session.metadata?.source === 'realist_events') {
+          await fulfillRealistEventCheckout(session);
+        }
         
         if (session.metadata?.product === 'multiplex_masterclass') {
           const customerEmail = session.customer_email || session.customer_details?.email;

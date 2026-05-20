@@ -87,6 +87,7 @@ import {
 import { authStorage } from "./replit_integrations/auth/storage";
 import { logUserActivity, rebuildUserInferenceProfile } from "./userActivity";
 import { trackRealistEvent } from "./realistEvents";
+import { registerRealistEventRoutes } from "./eventsModule";
 import {
   getCurrentSaleEstimate,
   lookupSoldPriceForListing,
@@ -559,6 +560,8 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerRealistEventRoutes(app);
+
   // Keep crawler control files independent of auth/session middleware.
   // Google Search Console can report transient "Couldn't fetch" when sitemap
   // requests inherit private cache/session behavior from the app stack.

@@ -154,6 +154,143 @@ export const inspectionRequestsRelations = relations(inspectionRequests, ({ one 
   }),
 }));
 
+export const realistEvents = pgTable("realist_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  shortDescription: text("short_description"),
+  longDescription: text("long_description"),
+  headerImageUrl: text("header_image_url"),
+  eventType: text("event_type").notNull().default("IN_PERSON"),
+  status: text("status").notNull().default("DRAFT"),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at"),
+  timezone: text("timezone").notNull().default("America/Toronto"),
+  venueName: text("venue_name"),
+  venueAddress: text("venue_address"),
+  onlineUrl: text("online_url"),
+  agendaSections: jsonb("agenda_sections").$type<Array<{ title: string; description?: string; time?: string }>>().default([]),
+  capacity: integer("capacity"),
+  refundPolicy: text("refund_policy"),
+  seoTitle: text("seo_title"),
+  seoDescription: text("seo_description"),
+  createdByEmail: text("created_by_email").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const realistEventSpeakers = pgTable("realist_event_speakers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  title: text("title"),
+  company: text("company"),
+  bio: text("bio"),
+  imageUrl: text("image_url"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const realistEventTicketTypes = pgTable("realist_event_ticket_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  priceCents: integer("price_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("cad").notNull(),
+  quantityTotal: integer("quantity_total"),
+  quantitySold: integer("quantity_sold").default(0).notNull(),
+  salesStartAt: timestamp("sales_start_at"),
+  salesEndAt: timestamp("sales_end_at"),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const realistEventOrders = pgTable("realist_event_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id).notNull(),
+  ticketTypeId: varchar("ticket_type_id").references(() => realistEventTicketTypes.id).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  email: text("email").notNull(),
+  name: text("name"),
+  quantity: integer("quantity").default(1).notNull(),
+  amountPaidCents: integer("amount_paid_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("cad").notNull(),
+  stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull().unique(),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  status: text("status").notNull().default("PAID"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const realistEventAttendees = pgTable("realist_event_attendees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id).notNull(),
+  ticketTypeId: varchar("ticket_type_id").references(() => realistEventTicketTypes.id).notNull(),
+  orderId: varchar("order_id").references(() => realistEventOrders.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  email: text("email").notNull(),
+  name: text("name"),
+  checkedInAt: timestamp("checked_in_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const realistEventsRelations = relations(realistEvents, ({ many }) => ({
+  speakers: many(realistEventSpeakers),
+  ticketTypes: many(realistEventTicketTypes),
+  orders: many(realistEventOrders),
+  attendees: many(realistEventAttendees),
+}));
+
+export const realistEventSpeakersRelations = relations(realistEventSpeakers, ({ one }) => ({
+  event: one(realistEvents, {
+    fields: [realistEventSpeakers.eventId],
+    references: [realistEvents.id],
+  }),
+}));
+
+export const realistEventTicketTypesRelations = relations(realistEventTicketTypes, ({ one, many }) => ({
+  event: one(realistEvents, {
+    fields: [realistEventTicketTypes.eventId],
+    references: [realistEvents.id],
+  }),
+  orders: many(realistEventOrders),
+  attendees: many(realistEventAttendees),
+}));
+
+export const realistEventOrdersRelations = relations(realistEventOrders, ({ one, many }) => ({
+  event: one(realistEvents, {
+    fields: [realistEventOrders.eventId],
+    references: [realistEvents.id],
+  }),
+  ticketType: one(realistEventTicketTypes, {
+    fields: [realistEventOrders.ticketTypeId],
+    references: [realistEventTicketTypes.id],
+  }),
+  user: one(users, {
+    fields: [realistEventOrders.userId],
+    references: [users.id],
+  }),
+  attendees: many(realistEventAttendees),
+}));
+
+export const realistEventAttendeesRelations = relations(realistEventAttendees, ({ one }) => ({
+  event: one(realistEvents, {
+    fields: [realistEventAttendees.eventId],
+    references: [realistEvents.id],
+  }),
+  ticketType: one(realistEventTicketTypes, {
+    fields: [realistEventAttendees.ticketTypeId],
+    references: [realistEventTicketTypes.id],
+  }),
+  order: one(realistEventOrders, {
+    fields: [realistEventAttendees.orderId],
+    references: [realistEventOrders.id],
+  }),
+  user: one(users, {
+    fields: [realistEventAttendees.userId],
+    references: [users.id],
+  }),
+}));
+
 export const discoverySignals = pgTable(
   "discovery_signals",
   {
@@ -482,6 +619,21 @@ export const insertInspectionRequestSchema = createInsertSchema(inspectionReques
   updatedAt: true,
 });
 
+export const insertRealistEventSchema = createInsertSchema(realistEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRealistEventSpeakerSchema = createInsertSchema(realistEventSpeakers).omit({
+  id: true,
+});
+
+export const insertRealistEventTicketTypeSchema = createInsertSchema(realistEventTicketTypes).omit({
+  id: true,
+  quantitySold: true,
+});
+
 export const insertDiscoverySignalSchema = createInsertSchema(discoverySignals).omit({
   id: true,
   createdAt: true,
@@ -549,6 +701,15 @@ export type InsertSavedDeal = z.infer<typeof insertSavedDealSchema>;
 export type SavedDeal = typeof savedDeals.$inferSelect;
 export type InsertInspectionRequest = z.infer<typeof insertInspectionRequestSchema>;
 export type InspectionRequest = typeof inspectionRequests.$inferSelect;
+
+export type InsertRealistEvent = z.infer<typeof insertRealistEventSchema>;
+export type RealistEvent = typeof realistEvents.$inferSelect;
+export type InsertRealistEventSpeaker = z.infer<typeof insertRealistEventSpeakerSchema>;
+export type RealistEventSpeaker = typeof realistEventSpeakers.$inferSelect;
+export type InsertRealistEventTicketType = z.infer<typeof insertRealistEventTicketTypeSchema>;
+export type RealistEventTicketType = typeof realistEventTicketTypes.$inferSelect;
+export type RealistEventOrder = typeof realistEventOrders.$inferSelect;
+export type RealistEventAttendee = typeof realistEventAttendees.$inferSelect;
 
 export type InsertDiscoverySignal = z.infer<typeof insertDiscoverySignalSchema>;
 export type DiscoverySignal = typeof discoverySignals.$inferSelect;

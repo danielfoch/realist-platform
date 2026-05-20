@@ -19,6 +19,11 @@ import Shop from "@/pages/Shop";
 import Compare from "@/pages/Compare";
 import Podcast from "@/pages/Podcast";
 import Admin from "@/pages/Admin";
+import AdminEvents from "@/pages/AdminEvents";
+import AdminEventNew from "@/pages/AdminEventNew";
+import AdminEventEdit from "@/pages/AdminEventEdit";
+import EventDetail from "@/pages/EventDetail";
+import EventSuccess from "@/pages/EventSuccess";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 import InvestorPortal from "@/pages/InvestorPortal";
@@ -219,6 +224,11 @@ function Router() {
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />
       <Route path="/admin" component={Admin} />
+      <Route path="/admin/events" component={AdminEvents} />
+      <Route path="/admin/events/new" component={AdminEventNew} />
+      <Route path="/admin/events/:id/edit" component={AdminEventEdit} />
+      <Route path="/events/:slug/success" component={EventSuccess} />
+      <Route path="/events/:slug" component={EventDetail} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/terms" component={Terms} />
       <Route path="/investor" component={InvestorPortal} />
