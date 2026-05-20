@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
@@ -410,57 +411,75 @@ export default function Events() {
                     <Badge className="bg-primary text-primary-foreground">Special</Badge>
                   </div>
                   <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
-                    {featuredEvents.map((event) => (
-                      <Card key={event.id} className="overflow-hidden border-primary/20" data-testid={`card-featured-event-${event.id}`}>
-                        <div className="md:flex">
-                          {(event.logoUrl || event.imageUrl) && (
-                            <div className="md:w-1/3 shrink-0">
-                              <img
-                                src={event.logoUrl || event.imageUrl}
-                                alt={event.name}
-                                className="w-full h-48 md:h-full object-cover"
-                              />
-                            </div>
-                          )}
-                          <CardContent className={`p-6 flex flex-col justify-between ${(event.logoUrl || event.imageUrl) ? 'md:w-2/3' : 'w-full'}`}>
-                            <div>
-                              <h3 className="text-xl font-bold mb-2" data-testid={`text-featured-title-${event.id}`}>
-                                {event.name}
-                              </h3>
-                              {event.summary && (
-                                <p className="text-muted-foreground mb-4 line-clamp-3">{event.summary}</p>
-                              )}
-                              <div className="space-y-2 mb-4">
-                                {event.startDate && (
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Clock className="h-4 w-4 text-primary" />
-                                    <span className="font-medium">
-                                      {format(parseISO(event.startDate), "EEEE, MMMM d, yyyy 'at' h:mm a")}
-                                    </span>
-                                  </div>
-                                )}
-                                {event.venueName && (
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <MapPin className="h-4 w-4" />
-                                    <span>{event.venueName}</span>
-                                  </div>
-                                )}
+                    {featuredEvents.map((event) => {
+                      const haystack = `${event.name} ${event.venueName ?? ""} ${event.venueAddress ?? ""}`.toLowerCase();
+                      const isTorontoMultiplex =
+                        haystack.includes("unpacking multiplex") &&
+                        (haystack.includes("toronto") || haystack.includes("innis town hall"));
+                      const internalHref = isTorontoMultiplex
+                        ? "/community/events/unpacking-multiplexes-toronto"
+                        : null;
+                      const CardLinkWrapper = ({ children }: { children: React.ReactNode }) =>
+                        internalHref ? (
+                          <Link
+                            href={internalHref}
+                            data-testid={`link-featured-internal-${event.id}`}
+                          >
+                            {children}
+                          </Link>
+                        ) : (
+                          <a href={event.eventUrl} target="_blank" rel="noopener noreferrer">
+                            {children}
+                          </a>
+                        );
+                      return (
+                        <Card key={event.id} className="overflow-hidden border-primary/20" data-testid={`card-featured-event-${event.id}`}>
+                          <div className="md:flex">
+                            {(event.logoUrl || event.imageUrl) && (
+                              <div className="md:w-1/3 shrink-0">
+                                <img
+                                  src={event.logoUrl || event.imageUrl}
+                                  alt={event.name}
+                                  className="w-full h-48 md:h-full object-cover"
+                                />
                               </div>
-                            </div>
-                            <a
-                              href={event.eventUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Button className="w-full gap-2" data-testid={`button-featured-register-${event.id}`}>
-                                Register Now
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                            </a>
-                          </CardContent>
-                        </div>
-                      </Card>
-                    ))}
+                            )}
+                            <CardContent className={`p-6 flex flex-col justify-between ${(event.logoUrl || event.imageUrl) ? 'md:w-2/3' : 'w-full'}`}>
+                              <div>
+                                <h3 className="text-xl font-bold mb-2" data-testid={`text-featured-title-${event.id}`}>
+                                  {event.name}
+                                </h3>
+                                {event.summary && (
+                                  <p className="text-muted-foreground mb-4 line-clamp-3">{event.summary}</p>
+                                )}
+                                <div className="space-y-2 mb-4">
+                                  {event.startDate && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <Clock className="h-4 w-4 text-primary" />
+                                      <span className="font-medium">
+                                        {format(parseISO(event.startDate), "EEEE, MMMM d, yyyy 'at' h:mm a")}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {event.venueName && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <MapPin className="h-4 w-4" />
+                                      <span>{event.venueName}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <CardLinkWrapper>
+                                <Button className="w-full gap-2" data-testid={`button-featured-register-${event.id}`}>
+                                  {internalHref ? "View Event" : "Register Now"}
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </CardLinkWrapper>
+                            </CardContent>
+                          </div>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
               )}

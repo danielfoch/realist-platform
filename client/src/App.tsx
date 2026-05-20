@@ -12,6 +12,7 @@ import Home from "@/pages/Home";
 import InvestorStart from "@/pages/InvestorStart";
 import About from "@/pages/About";
 import Events from "@/pages/Events";
+import UnpackingMultiplexesToronto from "@/pages/UnpackingMultiplexesToronto";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import Shop from "@/pages/Shop";
@@ -174,6 +175,7 @@ function Router() {
       {/* New Community routes */}
       <Route path="/community" component={CommunityHub} />
       <Route path="/community/events" component={Events} />
+      <Route path="/community/events/unpacking-multiplexes-toronto" component={UnpackingMultiplexesToronto} />
       <Route path="/community/network" component={NetworkHub} />
       
       {/* New Insights routes */}
