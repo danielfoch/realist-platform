@@ -1,25 +1,19 @@
 # REPLIT PULL TODAY
 
 ## 1. Date
-Tuesday, May 19, 2026
+Wednesday, May 20, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-19-qualified-share-dashboard`
-- Code commit SHA: `d110d3b0aa8831f3ab785ae652b84140d4a97235`
+- Branch: `realist-nightly/2026-05-20-share-rewards-caps`
+- Code commit SHA: `0e5481779e56df33ff011fcf50cb6fabab970187`
 - Handoff file is committed after the code commit, so final branch tip may be newer.
 
 ## 3. What changed
-Added recipient follow-up guidance to the viral underwriting share status payload.
+Tightened anti-abuse on recipient-specific underwriting share invites.
 
-Owners can now see, per issued recipient-specific link, the next qualified action to ask for:
+When an owner creates a batch of “Challenge my underwriting.” recipient links, the server now normalizes and hashes each provided recipient label, then deduplicates repeated labels within the same request before issuing tracked links. This avoids accidentally creating multiple unique-open-credit-eligible links for the same named recipient in one batch.
 
-- unopened recipient link → ask for a tracked open and first challenge
-- opened but not challenged → ask them to challenge one assumption
-- challenged but no saved/forked version → ask them to save or fork changed assumptions
-- versioned but no signup → ask them to create an account and continue the loop
-- complete loop → share the strongest saved version onward
-
-The follow-up payload keeps the core anti-abuse rule explicit: no credits for raw clicks, duplicate actions, or link creation alone. It also avoids exposing recipient hashes.
+The reward logic remains unchanged: creating links still awards zero credits, and credits only flow after qualified actions such as issued-recipient unique opens, meaningful challenges, forks, signups, or saved versions within daily caps.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
@@ -29,7 +23,7 @@ The follow-up payload keeps the core anti-abuse rule explicit: no credits for ra
 ## 5. Migration steps
 No database migration required.
 
-This uses the existing `underwriting_share_recipients` and `underwriting_share_actions` tables added by prior viral underwriting migrations.
+This uses the existing `recipient_label_hash` field from the prior `underwriting_share_recipients` migration and only deduplicates within the invite creation request.
 
 ## 6. Env vars needed
 No new environment variables.
@@ -51,15 +45,12 @@ npm test
 Passed locally:
 
 ```bash
-npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
+npm test -- underwriting-share-routes.test.ts
 # PASS test/underwriting-share-routes.test.ts
-# 26 tests passed
+# 27 tests passed
 
 npm run type-check
 # tsc --noEmit passed
-
-npm run build
-# tsc passed
 ```
 
 No deploy was run.
@@ -68,8 +59,8 @@ No deploy was run.
 - No deploy was run.
 - No outbound messages/emails were sent.
 - No paid APIs were called.
-- The new follow-up list is returned from share status, so very large shares could add one extra grouped query. It is capped to 25 follow-ups by default.
-- The follow-up records include recipient link IDs and status only; no recipient hashes or raw labels are returned.
+- This deduplicates labels only within the current invite batch; it does not block a later request from creating another link with the same recipient label hash.
+- Blank/missing recipient labels are not deduplicated because there is no safe label hash to compare.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull this branch to make the “Challenge my underwriting” loop easier to operate. The owner status view can now tell Dan exactly which recipient-specific links need the next qualified action, without rewarding vanity clicks or exposing visitor identity. This helps move recipients from open → challenge → saved/forked version → account/share onward, while keeping Google Sheets export credits tied only to qualified actions.
+Pull this branch to reduce accidental reward abuse in the viral underwriting loop. If Dan creates recipient-specific “Challenge my underwriting.” links and accidentally includes the same investor/realtor twice with different casing or whitespace, Realist now issues only one tracked link for that recipient in that batch, keeping Google Sheets export credits tied to real qualified recipient actions instead of duplicate invite creation.
