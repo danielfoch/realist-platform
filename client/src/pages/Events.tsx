@@ -479,6 +479,7 @@ export default function Events() {
                     { name: "Calvert Home Mortgage", logo: "/partners/calvert-home-mortgage.png", url: "https://chmic.ca/" },
                     { name: "Ndura Developments", logo: "/partners/ndura.png", url: "https://ndura.ca/" },
                     { name: "M3 Development Management", logo: "/partners/m3-development.png", url: "https://www.m3dm.ca/" },
+                    { name: "Infill Development in Edmonton Association", logo: "/partners/infill-edmonton.png", url: "https://www.infilledmonton.com/" },
                     { name: "Vancity", logo: "/partners/vancity.png", url: "https://www.vancity.com" },
                     { name: "BLD Financial", logo: "/partners/bld-financial.png", url: "https://bldfinancial.ca/" },
                     { name: "Forefront Multiplex Marketing", logo: "/partners/forefront.png", url: "https://weareforefront.ca/" },
