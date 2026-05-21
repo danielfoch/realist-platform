@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 import {
   Bar,
   BarChart,
@@ -21,7 +22,10 @@ import {
   Calculator,
   ChevronRight,
   Landmark,
+  Loader2,
+  Search,
   ShieldCheck,
+  Target,
 } from "lucide-react";
 
 import { Navigation } from "@/components/Navigation";
@@ -33,6 +37,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 type TierKey = "A" | "B" | "C";
 
@@ -230,6 +243,133 @@ export default function ABCLendersCanadaGuide() {
   const [income, setIncome] = useState<"t4" | "bfs" | "stated">("t4");
   const [ltv, setLtv] = useState<"low" | "mid" | "high">("mid");
   const [urgency, setUrgency] = useState<"flexible" | "fast" | "asap">("flexible");
+
+  // Deal Matcher inputs
+  const { toast } = useToast();
+  const [mlsInput, setMlsInput] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState<number>(750_000);
+  const [downPaymentPct, setDownPaymentPct] = useState<number>(20);
+  const [units, setUnits] = useState<number>(1);
+  const [annualRent, setAnnualRent] = useState<number>(0);
+  const [dealCredit, setDealCredit] = useState<"high" | "mid" | "low">("high");
+  const [dealIncome, setDealIncome] = useState<"t4" | "bfs" | "stated">("t4");
+  const [strategy, setStrategy] = useState<
+    "buy-hold" | "brrr" | "flip" | "multiplex-mli" | "construction" | "bridge"
+  >("buy-hold");
+  const [dealAddress, setDealAddress] = useState<string>("");
+  const [mlsSource, setMlsSource] = useState<string | null>(null);
+
+  const mlsLookup = useMutation({
+    mutationFn: async (mls: string) => {
+      const cleaned = mls.replace(/[^a-zA-Z0-9]/g, "");
+      if (!cleaned) throw new Error("Enter a valid MLS number");
+      const res = await fetch(`/api/ddf/mls/${encodeURIComponent(cleaned)}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Lookup failed (${res.status})`);
+      }
+      return (await res.json()) as { listing: any; source: string };
+    },
+    onSuccess: ({ listing, source }) => {
+      if (listing.price) setPurchasePrice(listing.price);
+      if (listing.numberOfUnits) setUnits(listing.numberOfUnits);
+      if (listing.totalActualRent) setAnnualRent(listing.totalActualRent * 12);
+      const addr = [listing.address, listing.city, listing.province].filter(Boolean).join(", ");
+      setDealAddress(addr);
+      setMlsSource(source);
+      toast({
+        title: "Listing loaded",
+        description: addr || `Loaded MLS ${listing.listingId}`,
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Couldn't load that MLS#",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const dealMatch = useMemo(() => {
+    const reasons: { tier: TierKey; weight: number; note: string }[] = [];
+    const loan = Math.max(0, purchasePrice * (1 - downPaymentPct / 100));
+    const dscr =
+      annualRent > 0 && loan > 0
+        ? (annualRent * 0.5) / (monthlyPayment(loan, 5.5, 25) * 12) // banks offset rent at 50%
+        : null;
+
+    // Strategy
+    if (strategy === "flip") {
+      reasons.push({ tier: "C", weight: 4, note: "Flips need fast, interest-only capital — private/MIC is standard." });
+    } else if (strategy === "construction") {
+      reasons.push({ tier: "C", weight: 4, note: "Ground-up construction is almost exclusively private / specialty until completion." });
+    } else if (strategy === "bridge") {
+      reasons.push({ tier: "C", weight: 3, note: "Bridge financing is a private-lender product (6-24 month term)." });
+    } else if (strategy === "brrr") {
+      reasons.push({ tier: "B", weight: 2, note: "BRRR typically uses a B-lender or private mortgage during reno, then refinances to an A lender after stabilization." });
+    } else if (strategy === "multiplex-mli") {
+      if (units >= 5) {
+        reasons.push({ tier: "A", weight: 4, note: `${units} units qualifies for CMHC MLI Select — insured A-lender financing at the lowest rates in Canada.` });
+      } else {
+        reasons.push({ tier: "A", weight: 1, note: "MLI Select requires 5+ units — under 5 units defaults to standard residential underwriting." });
+      }
+    } else {
+      reasons.push({ tier: "A", weight: 2, note: "Standard buy-and-hold is an A-lender product by default." });
+    }
+
+    // Credit
+    if (dealCredit === "high") {
+      reasons.push({ tier: "A", weight: 2, note: "Beacon 680+ qualifies for prime A-lender pricing." });
+    } else if (dealCredit === "mid") {
+      reasons.push({ tier: "B", weight: 2, note: "Beacon 550-679 typically pushes the file to a B / alt-A lender." });
+    } else {
+      reasons.push({ tier: "C", weight: 3, note: "Credit under 550 essentially eliminates A and most B lenders — private is the realistic path." });
+    }
+
+    // Income
+    if (dealIncome === "t4") {
+      reasons.push({ tier: "A", weight: 1, note: "T4 employment income is the cleanest underwriting story for A lenders." });
+    } else if (dealIncome === "bfs") {
+      reasons.push({ tier: "B", weight: 2, note: "Self-employed (BFS) typically lands at a B lender unless 2+ yrs of strong NOAs are available." });
+    } else {
+      reasons.push({ tier: "C", weight: 3, note: "Stated or no provable income forces an equity-based / private mortgage." });
+    }
+
+    // LTV
+    const effLtv = 100 - downPaymentPct;
+    if (effLtv <= 65) {
+      reasons.push({ tier: "A", weight: 1, note: `LTV of ${effLtv}% is conservative — every tier will lend.` });
+    } else if (effLtv <= 80) {
+      reasons.push({ tier: "B", weight: 1, note: `LTV of ${effLtv}% is at the residential ceiling — most A & B lenders OK on insurable product.` });
+    } else {
+      reasons.push({ tier: "C", weight: 3, note: `LTV of ${effLtv}% is above the 80% conventional cap — only private or insured high-ratio (owner-occupied) works.` });
+    }
+
+    // DSCR rental check
+    if (dscr !== null) {
+      if (dscr >= 1.2) {
+        reasons.push({ tier: "A", weight: 1, note: `Rental DSCR ${dscr.toFixed(2)}x clears the 1.2 hurdle most A lenders use on rentals.` });
+      } else if (dscr >= 0.9) {
+        reasons.push({ tier: "B", weight: 1, note: `Rental DSCR ${dscr.toFixed(2)}x is borderline — expect a B-lender rental program.` });
+      } else {
+        reasons.push({ tier: "C", weight: 2, note: `Rental DSCR ${dscr.toFixed(2)}x is below 0.9 — only equity-based private lenders will look at this.` });
+      }
+    }
+
+    const score: Record<TierKey, number> = { A: 0, B: 0, C: 0 };
+    reasons.forEach((r) => {
+      score[r.tier] += r.weight;
+    });
+    const winner = (Object.entries(score) as [TierKey, number][])
+      .sort((a, b) => b[1] - a[1])[0][0];
+
+    const tier = TIERS.find((t) => t.key === winner)!;
+    const fee = (loan * ((tier.feeLow + tier.feeHigh) / 2)) / 100;
+    const monthly = monthlyPayment(loan + fee, tier.midRate, tier.maxAmort || 25);
+
+    return { winner, score, reasons, loan, fee, monthly, tier, dscr, effLtv };
+  }, [purchasePrice, downPaymentPct, units, annualRent, dealCredit, dealIncome, strategy]);
 
   const tierRecommendation: TierKey = useMemo(() => {
     let score = 0; // higher = more risk, pushes toward C
@@ -734,6 +874,264 @@ export default function ABCLendersCanadaGuide() {
         </Card>
 
         {/* Quiz: Which tier are you? */}
+        {/* Deal Matcher: MLS# or manual underwriting → tier recommendation */}
+        <Card className="mb-12 border-2 border-primary/50" data-testid="card-deal-matcher">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" /> Match a Real Deal to a Lender Tier
+            </CardTitle>
+            <CardDescription>
+              Drop in an MLS# (Canadian CREA DDF), or type your own underwriting numbers, pick a
+              strategy, and we'll point you at the lender tier the deal actually fits.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* MLS lookup */}
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <Label htmlFor="mls-input" className="text-sm font-semibold">
+                Option 1 — Pull a live Canadian listing by MLS#
+              </Label>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  id="mls-input"
+                  placeholder="e.g. W7384562"
+                  value={mlsInput}
+                  onChange={(e) => setMlsInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && mlsInput.trim()) {
+                      mlsLookup.mutate(mlsInput.trim());
+                    }
+                  }}
+                  data-testid="input-mls"
+                />
+                <Button
+                  type="button"
+                  onClick={() => mlsLookup.mutate(mlsInput.trim())}
+                  disabled={!mlsInput.trim() || mlsLookup.isPending}
+                  data-testid="button-mls-lookup"
+                >
+                  {mlsLookup.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" /> Load listing
+                    </>
+                  )}
+                </Button>
+              </div>
+              {dealAddress && (
+                <p className="mt-2 text-xs text-muted-foreground" data-testid="text-loaded-address">
+                  Loaded: <span className="font-medium text-foreground">{dealAddress}</span>
+                  {mlsSource && <span> · source: {mlsSource}</span>}
+                </p>
+              )}
+            </div>
+
+            {/* Manual underwriting */}
+            <div>
+              <p className="mb-3 text-sm font-semibold">
+                Option 2 — Or enter / adjust your own underwriting
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="dm-price">Purchase price (CAD)</Label>
+                  <Input
+                    id="dm-price"
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={purchasePrice}
+                    onChange={(e) => setPurchasePrice(Number(e.target.value) || 0)}
+                    data-testid="input-purchase-price"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatCurrency(purchasePrice)}
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="dm-units"># of units</Label>
+                  <Input
+                    id="dm-units"
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={units}
+                    onChange={(e) => setUnits(Math.max(1, Number(e.target.value) || 1))}
+                    data-testid="input-units"
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <Label htmlFor="dm-down">Down payment</Label>
+                    <span className="text-sm font-semibold tabular-nums">{downPaymentPct}%</span>
+                  </div>
+                  <Slider
+                    id="dm-down"
+                    value={[downPaymentPct]}
+                    min={5}
+                    max={50}
+                    step={1}
+                    onValueChange={(v) => setDownPaymentPct(v[0])}
+                    aria-label={`Down payment, ${downPaymentPct}%`}
+                    data-testid="slider-down-payment"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Loan: {formatCurrency(dealMatch.loan)} · LTV {dealMatch.effLtv}%
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="dm-rent">Annual gross rent (CAD)</Label>
+                  <Input
+                    id="dm-rent"
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={annualRent}
+                    onChange={(e) => setAnnualRent(Number(e.target.value) || 0)}
+                    placeholder="Optional — enables DSCR check"
+                    data-testid="input-annual-rent"
+                  />
+                  {dealMatch.dscr !== null && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Bank-stress DSCR: <span className="font-semibold">{dealMatch.dscr.toFixed(2)}x</span> (rent offset 50%)
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="dm-credit">Borrower credit</Label>
+                  <Select value={dealCredit} onValueChange={(v) => setDealCredit(v as typeof dealCredit)}>
+                    <SelectTrigger id="dm-credit" data-testid="select-deal-credit">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">Beacon 680+</SelectItem>
+                      <SelectItem value="mid">Beacon 550-679</SelectItem>
+                      <SelectItem value="low">Under 550 / no score</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="dm-income">Income type</Label>
+                  <Select value={dealIncome} onValueChange={(v) => setDealIncome(v as typeof dealIncome)}>
+                    <SelectTrigger id="dm-income" data-testid="select-deal-income">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="t4">T4 employed (2+ yrs)</SelectItem>
+                      <SelectItem value="bfs">Self-employed (BFS)</SelectItem>
+                      <SelectItem value="stated">Stated / no provable income</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label htmlFor="dm-strategy">Investment strategy</Label>
+                  <Select value={strategy} onValueChange={(v) => setStrategy(v as typeof strategy)}>
+                    <SelectTrigger id="dm-strategy" data-testid="select-strategy">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="buy-hold">Buy &amp; Hold (conventional)</SelectItem>
+                      <SelectItem value="brrr">BRRR (Buy / Reno / Rent / Refi)</SelectItem>
+                      <SelectItem value="flip">Flip (6-12 month resale)</SelectItem>
+                      <SelectItem value="multiplex-mli">Multiplex / CMHC MLI Select (5+ units)</SelectItem>
+                      <SelectItem value="construction">Ground-up construction</SelectItem>
+                      <SelectItem value="bridge">Bridge / short-term hold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Result */}
+            <div
+              className="rounded-lg border-2 p-5"
+              style={{ borderColor: dealMatch.tier.color, background: `${dealMatch.tier.color}10` }}
+              data-testid={`result-deal-tier-${dealMatch.winner}`}
+              aria-live="polite"
+            >
+              <div className="flex flex-wrap items-start gap-4">
+                <dealMatch.tier.icon
+                  className="h-8 w-8 shrink-0"
+                  style={{ color: dealMatch.tier.color }}
+                />
+                <div className="flex-1 min-w-[200px]">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Most likely mortgage tier
+                  </div>
+                  <div className="text-2xl font-bold">
+                    {dealMatch.tier.name} — {dealMatch.tier.fullName}
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    Score: A {dealMatch.score.A} · B {dealMatch.score.B} · C {dealMatch.score.C}
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Est. rate</div>
+                    <div className="font-semibold tabular-nums">{dealMatch.tier.midRate}%</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Lender fee</div>
+                    <div className="font-semibold tabular-nums">{formatCurrency(dealMatch.fee)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Est. monthly</div>
+                    <div className="font-semibold tabular-nums">{formatCurrency(dealMatch.monthly)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Why this tier
+                </div>
+                <ul className="space-y-1.5 text-sm">
+                  {dealMatch.reasons.map((r, i) => {
+                    const t = TIERS.find((x) => x.key === r.tier)!;
+                    return (
+                      <li key={i} className="flex gap-2" data-testid={`reason-${i}`}>
+                        <span
+                          className="mt-0.5 inline-flex h-5 w-6 shrink-0 items-center justify-center rounded text-xs font-semibold"
+                          style={{ background: `${t.color}25`, color: t.color }}
+                        >
+                          {r.tier}
+                        </span>
+                        <span>{r.note}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link href="/tools/analyzer">
+                  <Button size="sm" data-testid="button-deal-analyzer">
+                    Open in Deal Analyzer <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/insights/mortgage-rates">
+                  <Button size="sm" variant="outline">
+                    See live {dealMatch.tier.name.split(" ")[0]}-lender rates
+                  </Button>
+                </Link>
+              </div>
+
+              <p className="mt-3 text-xs text-muted-foreground">
+                Heuristic only — actual lender decisions also depend on property type, location,
+                appraisal, and your full broker package. This isn't a mortgage commitment.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="mb-12 border-2 border-primary/30" data-testid="card-tier-finder">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
