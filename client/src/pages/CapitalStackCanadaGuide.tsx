@@ -100,7 +100,7 @@ const LAYERS: CapitalLayer[] = [
     ],
     canadianContext:
       "In Canada, a senior commercial mortgage is typically 5-yr fixed (vs 10-yr norm in the US) with a 25-30 yr amortization. CMHC-insured loans through MLI Select are the cheapest senior debt available — often 75-100 bps tighter than conventional — and explicitly reward affordability, accessibility, and energy efficiency with bonus points.",
-    color: "hsl(217, 91%, 60%)",
+    color: "hsl(215, 35%, 28%)",
     icon: Landmark,
   },
   {
@@ -131,7 +131,7 @@ const LAYERS: CapitalLayer[] = [
     ],
     canadianContext:
       "Canadian mezz is dominated by MICs and private debt funds. Expect 10-15% all-in with 1-2 pt lender fees, 1-3 yr terms, and an intercreditor agreement (ICA) the senior lender must approve. On CMHC-insured deals, postponed second mortgages are tightly restricted — mezz typically sits behind conventional senior only.",
-    color: "hsl(189, 85%, 50%)",
+    color: "hsl(200, 32%, 44%)",
     icon: Layers,
   },
   {
@@ -162,7 +162,7 @@ const LAYERS: CapitalLayer[] = [
     ],
     canadianContext:
       "Most Canadian pref-equity is structured as a separate class of LP units in a limited partnership, with a 10-14% accruing preferred return and a hard maturity. Bay Street family offices and PE shops like Slate, Equiton, and Centurion are active in this layer for multi-res and self-storage.",
-    color: "hsl(262, 83%, 58%)",
+    color: "hsl(255, 22%, 56%)",
     icon: ShieldCheck,
   },
   {
@@ -193,7 +193,7 @@ const LAYERS: CapitalLayer[] = [
     ],
     canadianContext:
       "Canadian syndicators raise LP equity under the Offering Memorandum (NI 45-106) or Accredited Investor exemptions. Typical structure: 8% pref to LPs, then a 70/30 or 80/20 split above the pref in favour of LPs. AUM-heavy sponsors like Equiton, Centurion, and Avenue Living run this playbook at scale.",
-    color: "hsl(45, 93%, 47%)",
+    color: "hsl(35, 48%, 56%)",
     icon: PiggyBank,
   },
   {
@@ -223,7 +223,7 @@ const LAYERS: CapitalLayer[] = [
     ],
     canadianContext:
       "A typical Canadian GP promote: 1.5-2.5% acquisition fee, 1-2% asset-mgmt fee on equity, then a 20-30% promote above an 8-10% IRR hurdle, sometimes with a second hurdle at 15% IRR that bumps the promote to 40%. CRA taxes carry as ordinary income — there is no US-style long-term capital-gains treatment for carry.",
-    color: "hsl(0, 84%, 60%)",
+    color: "hsl(12, 55%, 52%)",
     icon: TrendingUp,
   },
 ];
@@ -361,18 +361,47 @@ export default function CapitalStackCanadaGuide() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Lookup failed (${res.status})`);
       }
-      return (await res.json()) as { listing: any; source: string };
+      return (await res.json()) as {
+        listing: {
+          price?: number | string | null;
+          numberOfUnits?: number | string | null;
+          totalActualRent?: number | string | null;
+          address?: string | null;
+          city?: string | null;
+          province?: string | null;
+          listingId?: string | null;
+        };
+        source: string;
+      };
     },
     onSuccess: ({ listing }) => {
-      if (listing.price) setDealCost(listing.price);
-      if (listing.numberOfUnits) {
-        setDealUnits(listing.numberOfUnits);
-        if (listing.numberOfUnits >= 5) setStrategy("mli-select");
-        else if (listing.numberOfUnits <= 4) setStrategy("sfr");
+      const toFiniteNumber = (v: unknown): number | null => {
+        if (v === null || v === undefined || v === "") return null;
+        const n = typeof v === "number" ? v : Number(String(v).replace(/[^0-9.\-]/g, ""));
+        return Number.isFinite(n) ? n : null;
+      };
+      const price = toFiniteNumber(listing.price);
+      if (price !== null && price > 0) setDealCost(price);
+      const units = toFiniteNumber(listing.numberOfUnits);
+      if (units !== null && units > 0) {
+        const u = Math.max(1, Math.round(units));
+        setDealUnits(u);
+        if (u >= 5) setStrategy("mli-select");
+        else setStrategy("sfr");
       }
       const addr = [listing.address, listing.city, listing.province].filter(Boolean).join(", ");
       setDealAddress(addr);
-      toast({ title: "Listing loaded", description: addr || `Loaded MLS ${listing.listingId}` });
+      if (price === null && units === null) {
+        toast({
+          title: "Listing loaded but missing key fields",
+          description: "We couldn't read price or unit count — enter them manually below.",
+        });
+      } else {
+        toast({
+          title: "Listing loaded",
+          description: addr || `Loaded MLS ${listing.listingId ?? ""}`.trim(),
+        });
+      }
     },
     onError: (err: Error) => {
       toast({ title: "Couldn't load that MLS#", description: err.message, variant: "destructive" });
@@ -698,33 +727,62 @@ export default function CapitalStackCanadaGuide() {
                     Blended cost: {blendedCost.toFixed(2)}%
                   </span>
                 </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stackedBarData} layout="vertical" stackOffset="expand">
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <XAxis type="number" tickFormatter={(v) => `${Math.round(v * 100)}%`} />
-                      <YAxis type="category" dataKey="name" hide />
-                      <Tooltip
-                        formatter={(value: number, key: string) => {
-                          const l = LAYERS.find((x) => x.key === key);
-                          const dollars = (value / 100) * dealCost;
-                          return [`${value.toFixed(1)}% • ${formatCurrency(dollars)}`, l?.name];
+                <div
+                  className="relative mx-auto flex h-[420px] w-full max-w-[280px] flex-col-reverse overflow-hidden rounded-xl border border-border bg-gradient-to-b from-muted/40 to-background shadow-sm"
+                  role="group"
+                  aria-label="Interactive capital stack — click a layer to inspect it"
+                  data-testid="visual-capital-stack"
+                >
+                  {LAYERS.map((l, idx) => {
+                    const pct = normalized[l.key];
+                    if (pct <= 0) return null;
+                    const isSelected = selectedLayer === l.key;
+                    const isBottom = idx === 0;
+                    const isTop =
+                      LAYERS.slice(idx + 1).every((next) => normalized[next.key] <= 0);
+                    return (
+                      <button
+                        key={l.key}
+                        type="button"
+                        onClick={() => setSelectedLayer(l.key)}
+                        aria-pressed={isSelected}
+                        aria-label={`${l.name}: ${pct.toFixed(1)} percent, ${formatCurrency((pct / 100) * dealCost)}`}
+                        className={`group relative flex w-full items-center justify-between px-4 text-left transition-all focus:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring ${
+                          isSelected ? "ring-2 ring-foreground ring-inset z-10" : ""
+                        }`}
+                        style={{
+                          flexBasis: `${pct}%`,
+                          minHeight: pct < 4 ? "18px" : undefined,
+                          background: `linear-gradient(180deg, ${l.color} 0%, ${l.color}dd 100%)`,
+                          color: "white",
+                          borderTopLeftRadius: isTop ? "11px" : 0,
+                          borderTopRightRadius: isTop ? "11px" : 0,
+                          borderBottomLeftRadius: isBottom ? "11px" : 0,
+                          borderBottomRightRadius: isBottom ? "11px" : 0,
+                          boxShadow: isSelected
+                            ? "inset 0 0 0 1px rgba(255,255,255,0.4)"
+                            : "inset 0 -1px 0 0 rgba(0,0,0,0.15), inset 0 1px 0 0 rgba(255,255,255,0.08)",
                         }}
-                      />
-                      {LAYERS.map((l) => (
-                        <Bar
-                          key={l.key}
-                          dataKey={l.key}
-                          stackId="a"
-                          fill={l.color}
-                          stroke={selectedLayer === l.key ? "hsl(var(--foreground))" : "none"}
-                          strokeWidth={selectedLayer === l.key ? 2 : 0}
-                          onClick={() => setSelectedLayer(l.key)}
-                          style={{ cursor: "pointer" }}
-                        />
-                      ))}
-                    </BarChart>
-                  </ResponsiveContainer>
+                        data-testid={`stack-segment-${l.key}`}
+                      >
+                        <span className="flex items-center gap-2 truncate text-xs font-semibold tracking-wide drop-shadow-sm sm:text-sm">
+                          <l.icon className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" />
+                          <span className="truncate">{l.name}</span>
+                        </span>
+                        <span className="ml-2 shrink-0 text-xs font-semibold tabular-nums drop-shadow-sm sm:text-sm">
+                          {pct.toFixed(0)}%
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <span>↑ Higher risk / return</span>
+                  </span>
+                  <span className="font-medium text-foreground">
+                    Total: {formatCurrency(dealCost)}
+                  </span>
                 </div>
               </div>
 
