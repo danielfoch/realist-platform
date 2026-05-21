@@ -753,7 +753,9 @@ export default function CapitalStackCanadaGuide() {
                         style={{
                           flexBasis: `${pct}%`,
                           minHeight: pct < 4 ? "18px" : undefined,
-                          background: `linear-gradient(180deg, ${l.color} 0%, ${l.color}dd 100%)`,
+                          backgroundColor: l.color,
+                          backgroundImage:
+                            "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(0,0,0,0.18) 100%)",
                           color: "white",
                           borderTopLeftRadius: isTop ? "11px" : 0,
                           borderTopRightRadius: isTop ? "11px" : 0,
