@@ -7,8 +7,33 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { BookOpen, Calculator, Handshake, Clock, ArrowRight } from "lucide-react";
+import { BookOpen, Calculator, Handshake, Clock, ArrowRight, Layers, Landmark } from "lucide-react";
 import type { Guide } from "@shared/schema";
+
+const featuredGuides = [
+  {
+    slug: "capital-stack-canada",
+    title: "The Capital Stack in Canadian Real Estate",
+    excerpt:
+      "Senior debt, mezzanine, preferred equity, LP equity, and GP promote — explained for Canadian investors with an interactive capital stack builder and worked $10M example.",
+    category: "Advanced",
+    difficulty: "advanced" as const,
+    readTime: "18 min read",
+    icon: Layers,
+    accent: "from-blue-500/15 to-purple-500/15",
+  },
+  {
+    slug: "a-vs-b-vs-c-lenders-canada",
+    title: "A Lenders vs B Lenders vs C Lenders in Canada",
+    excerpt:
+      "Compare Canadian prime banks, alt-A trusts, and private MICs side-by-side with a live cost calculator and a 4-question tier-finder quiz.",
+    category: "Intermediate",
+    difficulty: "intermediate" as const,
+    readTime: "15 min read",
+    icon: Landmark,
+    accent: "from-emerald-500/15 to-amber-500/15",
+  },
+];
 
 const categories = [
   { value: "all", label: "All" },
@@ -66,6 +91,54 @@ export default function GuidesHub() {
             Educational content to help you become a better real estate investor.
           </p>
         </div>
+
+        <section className="mb-12" aria-labelledby="featured-heading">
+          <h2 id="featured-heading" className="text-2xl font-bold mb-6" data-testid="text-featured-guides-title">
+            Featured Guides
+          </h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            {featuredGuides.map((g) => (
+              <Link key={g.slug} href={`/insights/guides/${g.slug}`}>
+                <Card
+                  className={`h-full hover-elevate cursor-pointer transition-all bg-gradient-to-br ${g.accent}`}
+                  data-testid={`card-featured-${g.slug}`}
+                >
+                  <CardHeader>
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <Badge variant="secondary" className={difficultyColors[g.difficulty] || ""}>
+                        {g.category}
+                      </Badge>
+                      <Badge variant="outline">Interactive</Badge>
+                      <Badge variant="outline">Canadian</Badge>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-background/70 flex items-center justify-center shrink-0">
+                        <g.icon className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl" data-testid={`text-featured-title-${g.slug}`}>
+                          {g.title}
+                        </CardTitle>
+                        <CardDescription className="text-sm mt-2">{g.excerpt}</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        <span>{g.readTime}</span>
+                      </div>
+                      <span className="flex items-center gap-1 font-medium text-foreground">
+                        Read guide <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
 
         <div className="flex items-center gap-2 mb-8 flex-wrap" data-testid="filter-categories">
           {categories.map((cat) => (
