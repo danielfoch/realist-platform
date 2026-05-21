@@ -21,6 +21,8 @@ The repo currently has `/api/guides` backed by database rows plus demo data, and
 
 Start with static calculators for: capital stack, waterfall structure, cap rate, DSCR, cash-on-cash, IRR, NOI, LTV, GDS/TDS, mortgage stress test, vacancy allowance, break-even occupancy, yield on cost, refinance risk, sensitivity analysis, rent roll/pro forma, and land transfer tax.
 
+Batch 2 adds specs for: development charge estimator, land transfer tax/rebate calculator, rent increase/AGI scenario tool, condo fee/reserve stress test, preconstruction closing cost estimator, construction draw/holdback calculator, after-repair value/sales comp grid, environmental risk checklist, gross-vs-net lease comparison, and property management fee impact calculator.
+
 Show assumptions, units, caveats, and date-stamped rule inputs. Do not produce a black-box investment score.
 
 ## Launch checklist
