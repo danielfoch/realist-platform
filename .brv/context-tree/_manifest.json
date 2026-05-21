@@ -1,0 +1,67 @@
+{
+  "active_context": [
+    {
+      "order": 3,
+      "path": "_index.md",
+      "tokens": 369,
+      "type": "summary"
+    },
+    {
+      "order": 2,
+      "path": "frontend/_index.md",
+      "tokens": 534,
+      "type": "summary"
+    },
+    {
+      "order": 1,
+      "path": "frontend/design_system/_index.md",
+      "tokens": 304,
+      "type": "summary"
+    },
+    {
+      "order": 1,
+      "path": "frontend/realtor_join_flow/_index.md",
+      "tokens": 459,
+      "type": "summary"
+    },
+    {
+      "importance": 55,
+      "path": "frontend/design_system/join_form_design_system.md",
+      "tokens": 402,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "frontend/context.md",
+      "tokens": 110,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "frontend/design_system/context.md",
+      "tokens": 59,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "frontend/realtor_join_flow/context.md",
+      "tokens": 82,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "frontend/realtor_join_flow/realtor_join_flow.md",
+      "tokens": 691,
+      "type": "context"
+    }
+  ],
+  "generated_at": "2026-04-25T06:04:59.991Z",
+  "lane_tokens": {
+    "contexts": 1344,
+    "stubs": 0,
+    "summaries": 1666
+  },
+  "source_fingerprint": "8829c2dd623316a21ae2318b8b4eb19bad249462643259bebf4c6522efdbc785",
+  "total_tokens": 3010,
+  "version": 1
+}

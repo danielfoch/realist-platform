@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Realist IDX Monitoring</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --card: #ffffff;
+        --ink: #17263c;
+        --subtle: #5f7187;
+        --accent: #00798c;
+        --danger: #c62828;
+      }
+      body {
+        margin: 0;
+        font-family: 'IBM Plex Sans', sans-serif;
+        background: radial-gradient(circle at top left, #c7e6ec, var(--bg) 30%);
+        color: var(--ink);
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 32px auto;
+        padding: 0 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 8px 24px rgba(23, 38, 60, 0.08);
+      }
+      .label {
+        color: var(--subtle);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .value {
+        margin-top: 8px;
+        font-size: 28px;
+        font-weight: 700;
+      }
+      pre {
+        overflow: auto;
+        white-space: pre-wrap;
+        background: #eff4f8;
+        padding: 12px;
+        border-radius: 8px;
+      }
+      .danger {
+        color: var(--danger);
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      button {
+        border: 0;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <h1>Realist IDX Monitoring Dashboard</h1>
+        <button id="refresh">Refresh</button>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="label">Last Sync Status</div>
+          <div class="value" id="status">-</div>
+        </div>
+        <div class="card">
+          <div class="label">Processed</div>
+          <div class="value" id="processed">-</div>
+        </div>
+        <div class="card">
+          <div class="label">Inserted / Updated</div>
+          <div class="value" id="mutations">-</div>
+        </div>
+        <div class="card">
+          <div class="label">Failed</div>
+          <div class="value" id="failed">-</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <div class="label">Recent Errors</div>
+        <pre id="errors">Loading...</pre>
+      </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <div class="label">Prometheus Metrics (excerpt)</div>
+        <pre id="prom">Loading...</pre>
+      </div>
+    </div>
+
+    <script>
+      async function load() {
+        const response = await fetch('/metrics');
+        const data = await response.json();
+        const sync = data.stats.sync || {};
+
+        document.getElementById('status').textContent = sync.finished_at ? 'Healthy' : 'Pending';
+        document.getElementById('processed').textContent = String(sync.processed_count ?? 0);
+        document.getElementById('mutations').textContent = `${sync.inserted_count ?? 0} / ${sync.updated_count ?? 0}`;
+
+        const failed = document.getElementById('failed');
+        failed.textContent = String(sync.failed_count ?? 0);
+        if ((sync.failed_count ?? 0) > 0) {
+          failed.classList.add('danger');
+        }
+
+        document.getElementById('errors').textContent = JSON.stringify(data.stats.recentErrors || [], null, 2);
+        document.getElementById('prom').textContent = String(data.prometheus || '').split('\n').slice(0, 30).join('\n');
+      }
+
+      document.getElementById('refresh').addEventListener('click', load);
+      load();
+      setInterval(load, 30000);
+    </script>
+  </body>
+</html>
