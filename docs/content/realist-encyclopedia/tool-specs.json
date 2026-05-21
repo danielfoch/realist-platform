@@ -1124,5 +1124,784 @@
       "assessment-vs-market-value",
       "hst-new-residential-rental-rebate"
     ]
+  },
+  {
+    "id": "development-charge-estimator",
+    "slug": "development-charge-estimator",
+    "guideSlug": "development-charges",
+    "title": "Development Charge Estimator",
+    "category": "Development",
+    "status": "spec-ready",
+    "userProblem": "Estimate municipal charge exposure before a pro forma pretends density is profitable.",
+    "inputs": [
+      {
+        "name": "municipality",
+        "label": "Municipality",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "assetType",
+        "label": "Asset type",
+        "type": "select",
+        "required": true
+      },
+      {
+        "name": "unitCount",
+        "label": "Units",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "grossFloorArea",
+        "label": "Gross floor area",
+        "type": "number",
+        "required": true,
+        "unit": "sq ft"
+      },
+      {
+        "name": "eligibleCredits",
+        "label": "Eligible credits/exemptions",
+        "type": "number",
+        "required": false,
+        "unit": "CAD"
+      },
+      {
+        "name": "ruleDate",
+        "label": "Rule date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "outputs": [
+      "municipalCharges",
+      "regionalCharges",
+      "educationCharges",
+      "credits",
+      "netDevelopmentCharges",
+      "perUnitCharge"
+    ],
+    "formulaNotes": "Apply current charge schedules by municipality, asset class, unit count/GFA, then subtract eligible credits, exemptions, or deferrals.",
+    "uiCopy": {
+      "headline": "Estimate municipal charge exposure before a pro forma pretends density is profitable.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "development-charges",
+      "parkland-dedication",
+      "site-plan-approval",
+      "building-permit"
+    ]
+  },
+  {
+    "id": "land-transfer-tax-rebate-calculator",
+    "slug": "land-transfer-tax-rebate-calculator",
+    "guideSlug": "land-transfer-tax-rebate",
+    "title": "Land Transfer Tax + Rebate Calculator",
+    "category": "Tax",
+    "status": "spec-ready",
+    "userProblem": "Separate purchase tax, rebates, municipal tax, and investor ineligibility instead of burying it in closing costs.",
+    "inputs": [
+      {
+        "name": "province",
+        "label": "Province",
+        "type": "select",
+        "required": true
+      },
+      {
+        "name": "municipality",
+        "label": "Municipality",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "purchasePrice",
+        "label": "Purchase price",
+        "type": "number",
+        "required": true,
+        "unit": "CAD"
+      },
+      {
+        "name": "buyerType",
+        "label": "Buyer type",
+        "type": "select",
+        "required": true
+      },
+      {
+        "name": "isFirstTimeBuyer",
+        "label": "First-time buyer",
+        "type": "boolean",
+        "required": true
+      },
+      {
+        "name": "isNonResident",
+        "label": "Non-resident buyer",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "outputs": [
+      "provincialTax",
+      "municipalTax",
+      "rebateAmount",
+      "nrstExposure",
+      "netTax",
+      "effectiveRate"
+    ],
+    "formulaNotes": "Apply marginal provincial/municipal LTT bands, subtract eligible rebates, and flag NRST/foreign-buyer constraints separately.",
+    "uiCopy": {
+      "headline": "Separate purchase tax, rebates, municipal tax, and investor ineligibility instead of burying it in closing costs.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "land-transfer-tax-rebate",
+      "land-transfer-tax",
+      "non-resident-speculation-tax",
+      "foreign-buyer-ban"
+    ]
+  },
+  {
+    "id": "rent-increase-agi-scenario-tool",
+    "slug": "rent-increase-agi-scenario-tool",
+    "guideSlug": "above-guideline-increase",
+    "title": "Rent Increase / AGI Scenario Tool",
+    "category": "Operations",
+    "status": "spec-ready",
+    "userProblem": "Model legal rent paths, AGI timing, and NOI impact without assuming every increase is collectible.",
+    "inputs": [
+      {
+        "name": "currentRent",
+        "label": "Current legal rent",
+        "type": "number",
+        "required": true,
+        "unit": "CAD/mo"
+      },
+      {
+        "name": "guidelineIncreasePct",
+        "label": "Guideline increase",
+        "type": "number",
+        "required": true,
+        "unit": "%"
+      },
+      {
+        "name": "agiPct",
+        "label": "Requested/approved AGI",
+        "type": "number",
+        "required": false,
+        "unit": "%"
+      },
+      {
+        "name": "approvalDelayMonths",
+        "label": "Approval delay",
+        "type": "number",
+        "required": false,
+        "unit": "months"
+      },
+      {
+        "name": "unitCount",
+        "label": "Unit count",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "collectionRiskPct",
+        "label": "Collection risk",
+        "type": "number",
+        "required": false,
+        "unit": "%"
+      }
+    ],
+    "outputs": [
+      "newLegalRent",
+      "monthlyNOIImpact",
+      "annualNOIImpact",
+      "delayCost",
+      "capitalizedValueImpact"
+    ],
+    "formulaNotes": "Legal rent path equals current rent plus allowed guideline and approved AGI, adjusted for timing and collection risk.",
+    "uiCopy": {
+      "headline": "Model legal rent paths, AGI timing, and NOI impact without assuming every increase is collectible.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "above-guideline-increase",
+      "rent-control",
+      "ltb",
+      "vacancy-control"
+    ]
+  },
+  {
+    "id": "condo-fee-reserve-stress-test",
+    "slug": "condo-fee-reserve-stress-test",
+    "guideSlug": "condo-reserve-fund",
+    "title": "Condo Fee / Reserve Stress Test",
+    "category": "Operations",
+    "status": "spec-ready",
+    "userProblem": "Stress-test condo fee increases and special assessments before a cheap unit becomes expensive paper.",
+    "inputs": [
+      {
+        "name": "currentCondoFee",
+        "label": "Current condo fee",
+        "type": "number",
+        "required": true,
+        "unit": "CAD/mo"
+      },
+      {
+        "name": "reserveBalance",
+        "label": "Reserve fund balance",
+        "type": "number",
+        "required": true,
+        "unit": "CAD"
+      },
+      {
+        "name": "plannedMajorRepairs",
+        "label": "Planned major repairs",
+        "type": "number",
+        "required": false,
+        "unit": "CAD"
+      },
+      {
+        "name": "unitsInCorp",
+        "label": "Units in corporation",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "feeIncreasePct",
+        "label": "Projected fee increase",
+        "type": "number",
+        "required": false,
+        "unit": "%"
+      },
+      {
+        "name": "specialAssessment",
+        "label": "Special assessment",
+        "type": "number",
+        "required": false,
+        "unit": "CAD"
+      }
+    ],
+    "outputs": [
+      "newMonthlyFee",
+      "annualCashFlowHit",
+      "perUnitAssessment",
+      "reserveCoverageRatio",
+      "dscrAfterStress"
+    ],
+    "formulaNotes": "Compare reserve balance to upcoming repairs, allocate assessments per unit, and flow fee increases through NOI/DSCR.",
+    "uiCopy": {
+      "headline": "Stress-test condo fee increases and special assessments before a cheap unit becomes expensive paper.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "condo-reserve-fund",
+      "reserve-fund-study",
+      "special-assessment",
+      "condo-status-certificate"
+    ]
+  },
+  {
+    "id": "preconstruction-closing-cost-estimator",
+    "slug": "preconstruction-closing-cost-estimator",
+    "guideSlug": "preconstruction-deposit-structure",
+    "title": "Preconstruction Closing Cost Estimator",
+    "category": "Financing",
+    "status": "spec-ready",
+    "userProblem": "Show deposits, occupancy fees, HST exposure, assignment costs, levies, and final cash to close.",
+    "inputs": [
+      {
+        "name": "purchasePrice",
+        "label": "Purchase price",
+        "type": "number",
+        "required": true,
+        "unit": "CAD"
+      },
+      {
+        "name": "depositPaid",
+        "label": "Deposits paid",
+        "type": "number",
+        "required": true,
+        "unit": "CAD"
+      },
+      {
+        "name": "mortgageProceeds",
+        "label": "Mortgage proceeds",
+        "type": "number",
+        "required": false,
+        "unit": "CAD"
+      },
+      {
+        "name": "occupancyFeeMonths",
+        "label": "Interim occupancy months",
+        "type": "number",
+        "required": false,
+        "unit": "months"
+      },
+      {
+        "name": "monthlyOccupancyFee",
+        "label": "Monthly occupancy fee",
+        "type": "number",
+        "required": false,
+        "unit": "CAD/mo"
+      },
+      {
+        "name": "developmentLevies",
+        "label": "Capped/uncapped levies",
+        "type": "number",
+        "required": false,
+        "unit": "CAD"
+      },
+      {
+        "name": "hstExposure",
+        "label": "HST exposure/rebate gap",
+        "type": "number",
+        "required": false,
+        "unit": "CAD"
+      }
+    ],
+    "outputs": [
+      "cashToClose",
+      "occupancyCost",
+      "levyExposure",
+      "hstGap",
+      "assignmentProfitBeforeTax",
+      "totalClosingNeed"
+    ],
+    "formulaNotes": "Cash to close equals final price and adjustments less deposits and mortgage proceeds, plus occupancy, HST gaps, levies, assignment and legal costs.",
+    "uiCopy": {
+      "headline": "Show deposits, occupancy fees, HST exposure, assignment costs, levies, and final cash to close.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "preconstruction-deposit-structure",
+      "occupancy-fee",
+      "interim-occupancy",
+      "gst-hst-on-assignment"
+    ]
+  },
+  {
+    "id": "construction-draw-holdback-calculator",
+    "slug": "construction-draw-holdback-calculator",
+    "guideSlug": "draw-schedule",
+    "title": "Construction Draw / Holdback Calculator",
+    "category": "Financing",
+    "status": "spec-ready",
+    "userProblem": "Track draw availability, lender holdbacks, statutory holdbacks, and cash gaps through a build.",
+    "inputs": [
+      {
+        "name": "approvedLoan",
+        "label": "Approved construction loan",
+        "type": "number",
+        "required": true,
+        "unit": "CAD"
+      },
+      {
+        "name": "loanToCost",
+        "label": "Loan to cost",
+        "type": "number",
+        "required": true,
+        "unit": "%"
+      },
+      {
+        "name": "completedWorkValue",
+        "label": "Certified completed work",
+        "type": "number",
+        "required": true,
+        "unit": "CAD"
+      },
+      {
+        "name": "priorDraws",
+        "label": "Prior draws",
+        "type": "number",
+        "required": true,
+        "unit": "CAD"
+      },
+      {
+        "name": "lenderHoldbackPct",
+        "label": "Lender holdback",
+        "type": "number",
+        "required": false,
+        "unit": "%"
+      },
+      {
+        "name": "statutoryHoldbackPct",
+        "label": "Statutory holdback",
+        "type": "number",
+        "required": false,
+        "unit": "%"
+      }
+    ],
+    "outputs": [
+      "availableDraw",
+      "lenderHoldback",
+      "statutoryHoldback",
+      "equityRequiredNow",
+      "remainingLoanBudget"
+    ],
+    "formulaNotes": "Available draw is the lesser of loan budget/progress advance less prior draws and required holdbacks.",
+    "uiCopy": {
+      "headline": "Track draw availability, lender holdbacks, statutory holdbacks, and cash gaps through a build.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "draw-schedule",
+      "holdback",
+      "lien",
+      "insured-construction-loan"
+    ]
+  },
+  {
+    "id": "after-repair-value-sales-comp-grid",
+    "slug": "after-repair-value-sales-comp-grid",
+    "guideSlug": "after-repair-value",
+    "title": "After-Repair Value / Sales Comp Grid",
+    "category": "Analysis",
+    "status": "spec-ready",
+    "userProblem": "Force ARV to come from adjusted comparable sales instead of renovation optimism.",
+    "inputs": [
+      {
+        "name": "subjectAddress",
+        "label": "Subject address",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "subjectSize",
+        "label": "Subject size",
+        "type": "number",
+        "required": true,
+        "unit": "sq ft"
+      },
+      {
+        "name": "renoBudget",
+        "label": "Renovation budget",
+        "type": "number",
+        "required": false,
+        "unit": "CAD"
+      },
+      {
+        "name": "compSalePrices",
+        "label": "Comparable sale prices",
+        "type": "array",
+        "required": true
+      },
+      {
+        "name": "compAdjustments",
+        "label": "Comparable adjustments",
+        "type": "array",
+        "required": true
+      },
+      {
+        "name": "confidenceRating",
+        "label": "Comp confidence",
+        "type": "select",
+        "required": true
+      }
+    ],
+    "outputs": [
+      "adjustedCompValues",
+      "weightedARV",
+      "pricePerSqFt",
+      "spreadToCostBasis",
+      "confidenceFlag"
+    ],
+    "formulaNotes": "Adjust comps for size, condition, location, parking, suite legality, timing, and concessions; weight by similarity.",
+    "uiCopy": {
+      "headline": "Force ARV to come from adjusted comparable sales instead of renovation optimism.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "after-repair-value",
+      "sales-comparison-approach",
+      "forced-appreciation",
+      "brrrr"
+    ]
+  },
+  {
+    "id": "environmental-risk-checklist",
+    "slug": "environmental-risk-checklist",
+    "guideSlug": "phase-1-esa",
+    "title": "Environmental Risk Checklist",
+    "category": "Development",
+    "status": "spec-ready",
+    "userProblem": "Screen contamination, lender friction, insurance issues, and diligence escalation before waiver.",
+    "inputs": [
+      {
+        "name": "currentUse",
+        "label": "Current use",
+        "type": "select",
+        "required": true
+      },
+      {
+        "name": "historicalUses",
+        "label": "Historical uses",
+        "type": "array",
+        "required": true
+      },
+      {
+        "name": "nearbyRiskUses",
+        "label": "Nearby risk uses",
+        "type": "array",
+        "required": true
+      },
+      {
+        "name": "recordsReviewComplete",
+        "label": "Records review complete",
+        "type": "boolean",
+        "required": true
+      },
+      {
+        "name": "siteVisitRedFlags",
+        "label": "Site visit red flags",
+        "type": "array",
+        "required": true
+      },
+      {
+        "name": "lenderRequiresESA",
+        "label": "Lender requires ESA",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "outputs": [
+      "riskScore",
+      "phase2Recommended",
+      "lenderConcernFlags",
+      "insuranceConcernFlags",
+      "diligenceActions"
+    ],
+    "formulaNotes": "Weighted checklist flags uses, records, neighboring properties, visual evidence, lender requirements, and whether Phase 2 ESA is recommended.",
+    "uiCopy": {
+      "headline": "Screen contamination, lender friction, insurance issues, and diligence escalation before waiver.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "phase-1-esa",
+      "phase-2-esa",
+      "brownfield",
+      "floodplain"
+    ]
+  },
+  {
+    "id": "lease-comparison-gross-vs-net",
+    "slug": "lease-comparison-gross-vs-net",
+    "guideSlug": "gross-lease",
+    "title": "Lease Comparison: Gross vs Net",
+    "category": "Operations",
+    "status": "spec-ready",
+    "userProblem": "Compare true occupancy cost and NOI under gross, net, and triple-net lease structures.",
+    "inputs": [
+      {
+        "name": "baseRent",
+        "label": "Base rent",
+        "type": "number",
+        "required": true,
+        "unit": "CAD/mo"
+      },
+      {
+        "name": "recoverableExpenses",
+        "label": "Recoverable expenses",
+        "type": "number",
+        "required": false,
+        "unit": "CAD/mo"
+      },
+      {
+        "name": "camCharges",
+        "label": "CAM charges",
+        "type": "number",
+        "required": false,
+        "unit": "CAD/mo"
+      },
+      {
+        "name": "taxesInsuranceMaintenance",
+        "label": "Taxes/insurance/maintenance",
+        "type": "number",
+        "required": false,
+        "unit": "CAD/mo"
+      },
+      {
+        "name": "escalationPct",
+        "label": "Annual escalation",
+        "type": "number",
+        "required": false,
+        "unit": "%"
+      },
+      {
+        "name": "termYears",
+        "label": "Lease term",
+        "type": "number",
+        "required": true,
+        "unit": "years"
+      }
+    ],
+    "outputs": [
+      "tenantTotalCost",
+      "landlordNetRent",
+      "expenseRecovery",
+      "fiveYearNOI",
+      "breakEvenRent"
+    ],
+    "formulaNotes": "Model tenant occupancy cost and landlord net rent under each structure after recoveries, CAM, escalations, and exclusions.",
+    "uiCopy": {
+      "headline": "Compare true occupancy cost and NOI under gross, net, and triple-net lease structures.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "gross-lease",
+      "net-lease",
+      "triple-net-lease",
+      "cam"
+    ]
+  },
+  {
+    "id": "property-management-fee-impact-calculator",
+    "slug": "property-management-fee-impact-calculator",
+    "guideSlug": "property-management-agreement",
+    "title": "Property Management Fee Impact Calculator",
+    "category": "Operations",
+    "status": "spec-ready",
+    "userProblem": "Show how management fees, leasing fees, turnover, and repair markups change investor cash flow.",
+    "inputs": [
+      {
+        "name": "monthlyRent",
+        "label": "Monthly rent",
+        "type": "number",
+        "required": true,
+        "unit": "CAD/mo"
+      },
+      {
+        "name": "managementFeePct",
+        "label": "Management fee",
+        "type": "number",
+        "required": true,
+        "unit": "%"
+      },
+      {
+        "name": "leasingFee",
+        "label": "Leasing fee",
+        "type": "number",
+        "required": false,
+        "unit": "CAD"
+      },
+      {
+        "name": "turnoverFrequencyMonths",
+        "label": "Turnover frequency",
+        "type": "number",
+        "required": false,
+        "unit": "months"
+      },
+      {
+        "name": "repairMarkupPct",
+        "label": "Repair markup",
+        "type": "number",
+        "required": false,
+        "unit": "%"
+      },
+      {
+        "name": "annualRepairs",
+        "label": "Annual repairs",
+        "type": "number",
+        "required": false,
+        "unit": "CAD"
+      }
+    ],
+    "outputs": [
+      "annualManagementFee",
+      "annualizedLeasingCost",
+      "repairMarkupCost",
+      "noiImpact",
+      "cashOnCashImpact"
+    ],
+    "formulaNotes": "Annual impact equals recurring management fee plus annualized leasing, turnover, repair markups, and admin charges.",
+    "uiCopy": {
+      "headline": "Show how management fees, leasing fees, turnover, and repair markups change investor cash flow.",
+      "primaryCta": "Run the numbers",
+      "emptyState": "Enter the assumptions you can defend. Leave unknowns blank until sourced.",
+      "caveat": "Educational estimate only. Verify with lender, accountant, lawyer, appraiser, insurer, or local authority where applicable."
+    },
+    "validationRules": [
+      "Reject negative currency values unless explicitly marked as proceeds, credits, or cash flow.",
+      "Show units on every input and output.",
+      "Date-stamp assumptions and rule tables; allow scenario save/export.",
+      "Do not hide constraints behind a single blended score."
+    ],
+    "relatedGuideSlugs": [
+      "property-management-agreement",
+      "leasing-commission",
+      "turnover-cost",
+      "maintenance-reserve"
+    ]
   }
 ]
