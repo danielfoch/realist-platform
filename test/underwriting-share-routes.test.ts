@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import {
   createUnderwritingShareRecipientLinks,
   createUnderwritingShare,
@@ -656,19 +658,54 @@ describe('viral underwriting share qualification', () => {
     });
 
     expect(links).toHaveLength(2);
-    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenCalledTimes(3);
     expect(query).toHaveBeenNthCalledWith(
       1,
+      expect.stringContaining('SELECT recipient_label_hash'),
+      [7, expect.arrayContaining([expect.any(String), expect.any(String), expect.any(String), expect.any(String)])],
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      2,
       expect.stringContaining('INSERT INTO underwriting_share_recipients'),
       [7, links[0].recipientHash, expect.any(String), 'manual', 42],
     );
     expect(query).toHaveBeenNthCalledWith(
-      2,
+      3,
       expect.stringContaining('INSERT INTO underwriting_share_recipients'),
       [7, links[1].recipientHash, expect.any(String), 'agent_dm', 42],
     );
     expect(links[0].shareUrl).toContain('/underwriting/share-token?recipient=');
     expect(links[1].shareUrl).toContain('/underwriting/share-token?recipient=');
+  });
+
+  it('skips recipient labels that already have issued share links', async () => {
+    const existingLabelHash = crypto.createHash('sha256').update('investor a').digest('hex');
+    const query = jest.fn(async (text: string) => {
+      if (text.includes('SELECT recipient_label_hash')) {
+        return { rows: [{ recipient_label_hash: existingLabelHash }] };
+      }
+      return { rows: [{ id: 202, created_at: '2026-05-21T05:10:00.000Z' }] };
+    });
+
+    const links = await createUnderwritingShareRecipientLinks({ query }, {
+      shareId: 7,
+      token: 'share-token',
+      createdByUserId: 42,
+      recipients: ['Investor A', 'Investor B'],
+    });
+
+    expect(links).toHaveLength(1);
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('SELECT recipient_label_hash'),
+      [7, expect.arrayContaining([existingLabelHash])],
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO underwriting_share_recipients'),
+      [7, links[0].recipientHash, expect.any(String), 'manual', 42],
+    );
   });
 
   it('returns stage-specific growth nudges for the underwriting loop', () => {

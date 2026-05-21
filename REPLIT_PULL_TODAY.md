@@ -1,29 +1,41 @@
 # REPLIT PULL TODAY
 
 ## 1. Date
-Wednesday, May 20, 2026
+Thursday, May 21, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-20-share-rewards-caps`
-- Code commit SHA: `0e5481779e56df33ff011fcf50cb6fabab970187`
-- Handoff file is committed after the code commit, so final branch tip may be newer.
+- Branch: `realist-nightly/2026-05-21-recipient-label-dedupe`
+- Commit SHA: `c3011ed6cebb2725f8c2c9560144200c95e4f3a5`
 
 ## 3. What changed
-Tightened anti-abuse on recipient-specific underwriting share invites.
+Added persistent deduping for recipient-specific “Challenge my underwriting.” share invites.
 
-When an owner creates a batch of “Challenge my underwriting.” recipient links, the server now normalizes and hashes each provided recipient label, then deduplicates repeated labels within the same request before issuing tracked links. This avoids accidentally creating multiple unique-open-credit-eligible links for the same named recipient in one batch.
+Owners already could dedupe repeated recipient labels inside one request. This patch also checks prior issued invite labels for the same share before creating more recipient links, and adds a database uniqueness guard on `(share_id, recipient_label_hash)` so repeated investor/realtor labels cannot quietly receive multiple unique-open-credit-eligible links across later requests or races.
 
-The reward logic remains unchanged: creating links still awards zero credits, and credits only flow after qualified actions such as issued-recipient unique opens, meaningful challenges, forks, signups, or saved versions within daily caps.
+Credit rules remain unchanged: creating links awards zero credits. Premium Google Sheets export credits still require qualified actions: issued-recipient unique open, meaningful challenge, fork, signup, or saved version within duplicate checks and daily caps.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
 - `test/underwriting-share-routes.test.ts`
+- `db/migrations/016_underwriting_share_recipient_label_dedupe.sql`
 - `REPLIT_PULL_TODAY.md`
 
 ## 5. Migration steps
-No database migration required.
+Run the new migration before/with app startup:
 
-This uses the existing `recipient_label_hash` field from the prior `underwriting_share_recipients` migration and only deduplicates within the invite creation request.
+```bash
+npm run migrate
+```
+
+New migration:
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS idx_underwriting_share_recipients_label_once
+  ON underwriting_share_recipients(share_id, recipient_label_hash)
+  WHERE recipient_label_hash IS NOT NULL;
+```
+
+If production already has duplicate `(share_id, recipient_label_hash)` rows, the migration will fail until duplicates are cleaned up. The app-level pre-check should prevent new duplicates once deployed.
 
 ## 6. Env vars needed
 No new environment variables.
@@ -31,12 +43,14 @@ No new environment variables.
 ## 7. Replit commands to run
 ```bash
 npm install
+npm run migrate
 npm run type-check
 npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 npm run build
 ```
 
 Optional broader verification:
+
 ```bash
 npm test
 ```
@@ -45,12 +59,15 @@ npm test
 Passed locally:
 
 ```bash
-npm test -- underwriting-share-routes.test.ts
+npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 # PASS test/underwriting-share-routes.test.ts
-# 27 tests passed
+# 28 tests passed
 
 npm run type-check
 # tsc --noEmit passed
+
+npm run build
+# tsc passed
 ```
 
 No deploy was run.
@@ -59,8 +76,9 @@ No deploy was run.
 - No deploy was run.
 - No outbound messages/emails were sent.
 - No paid APIs were called.
-- This deduplicates labels only within the current invite batch; it does not block a later request from creating another link with the same recipient label hash.
-- Blank/missing recipient labels are not deduplicated because there is no safe label hash to compare.
+- Migration risk: if existing data has duplicate non-null label hashes for the same share, the unique index creation will fail and duplicates must be cleaned first.
+- Blank/missing recipient labels still cannot be deduped safely because there is no label hash to compare.
+- Existing pre-cron untracked files remain in the repo working tree and were not included: `REPLIT_HANDOFF_CONTRACT.md`, `REPLIT_PULL_TEMPLATE.md`, `scripts/`.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull this branch to reduce accidental reward abuse in the viral underwriting loop. If Dan creates recipient-specific “Challenge my underwriting.” links and accidentally includes the same investor/realtor twice with different casing or whitespace, Realist now issues only one tracked link for that recipient in that batch, keeping Google Sheets export credits tied to real qualified recipient actions instead of duplicate invite creation.
+Pull this branch to close another reward-abuse gap in the viral underwriting loop. Realist now avoids issuing multiple tracked invite links for the same hashed recipient label on the same underwriting share, even across separate requests, so Google Sheets export credits stay tied to real qualified recipient actions instead of duplicate invite-link generation.

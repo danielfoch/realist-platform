@@ -149,13 +149,33 @@ export async function createUnderwritingShareRecipientLinks(database: DatabaseAd
   const recipientInputs = input.recipients.slice(0, 25);
   const links = [];
   const seenRecipientLabelHashes = new Set<string>();
+  const requestedLabelHashes = recipientInputs
+    .map((recipientInput) => getRecipientLabelHash(typeof recipientInput === 'string' ? recipientInput : recipientInput.label))
+    .filter((labelHash): labelHash is string => Boolean(labelHash));
+  const existingRecipientLabelHashes = new Set<string>();
+
+  if (requestedLabelHashes.length > 0) {
+    const existingRecipients = await database.query(
+      `SELECT recipient_label_hash
+       FROM underwriting_share_recipients
+       WHERE share_id = $1
+         AND recipient_label_hash = ANY($2::char(64)[])`,
+      [input.shareId, requestedLabelHashes],
+    );
+
+    for (const row of existingRecipients.rows) {
+      if (hasNonEmptyString(row.recipient_label_hash)) {
+        existingRecipientLabelHashes.add(String(row.recipient_label_hash).trim());
+      }
+    }
+  }
 
   for (const recipientInput of recipientInputs) {
     const label = typeof recipientInput === 'string' ? recipientInput : recipientInput.label;
     const labelHash = getRecipientLabelHash(label);
 
     if (labelHash) {
-      if (seenRecipientLabelHashes.has(labelHash)) {
+      if (seenRecipientLabelHashes.has(labelHash) || existingRecipientLabelHashes.has(labelHash)) {
         continue;
       }
       seenRecipientLabelHashes.add(labelHash);
@@ -171,18 +191,22 @@ export async function createUnderwritingShareRecipientLinks(database: DatabaseAd
       `INSERT INTO underwriting_share_recipients (
          share_id, recipient_hash, recipient_label_hash, source, created_by_user_id
        ) VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (share_id, recipient_hash) DO NOTHING
+       ON CONFLICT DO NOTHING
        RETURNING id, created_at`,
       [input.shareId, recipientHash, labelHash, String(source).slice(0, 64), input.createdByUserId],
     );
 
+    if (!result.rows[0]) {
+      continue;
+    }
+
     links.push({
-      id: result.rows[0]?.id || null,
+      id: result.rows[0].id,
       recipientKey,
       recipientHash,
       shareUrl: `/underwriting/${input.token}?recipient=${recipientKey}`,
       cta: 'Challenge my underwriting.',
-      createdAt: result.rows[0]?.created_at || null,
+      createdAt: result.rows[0].created_at || null,
       qualifiedActionsRequired: ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'] as QualifiedShareAction[],
     });
   }
