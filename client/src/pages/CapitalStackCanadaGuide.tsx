@@ -1,4 +1,16 @@
 import { useMemo, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Search, Target } from "lucide-react";
 import { Link } from "wouter";
 import {
   Bar,
@@ -240,6 +252,56 @@ const SCENARIO_DATA = [
 
 const PROJECT_COST = 10_000_000;
 
+type StrategyKey =
+  | "buy-hold"
+  | "mli-select"
+  | "value-add"
+  | "development"
+  | "flip"
+  | "sfr";
+
+const STRATEGY_PRESETS: Record<
+  StrategyKey,
+  { label: string; shares: Record<LayerKey, number>; rationale: string }
+> = {
+  "buy-hold": {
+    label: "Stabilized Buy & Hold (conventional)",
+    shares: { senior: 70, mezz: 5, pref: 5, lp: 17, gp: 3 },
+    rationale:
+      "Conventional commercial senior at 65-70% LTV, a thin mezz tranche if the lender allows it, and the balance from LP equity. Pref is optional and used to backstop the equity raise.",
+  },
+  "mli-select": {
+    label: "Multiplex 5+ units (CMHC MLI Select)",
+    shares: { senior: 85, mezz: 0, pref: 5, lp: 7, gp: 3 },
+    rationale:
+      "CMHC MLI Select can push insured senior to 85-95% LTC at 75-150 bps inside conventional. That collapses the equity requirement so much that mezz is usually unnecessary — pref equity bridges any remaining gap.",
+  },
+  "value-add": {
+    label: "Value-Add / BRRR",
+    shares: { senior: 60, mezz: 12, pref: 8, lp: 17, gp: 3 },
+    rationale:
+      "Lower senior at acquisition (60% on as-is value), a private mezz tranche to fund the reno, plus pref equity. Refinanced into long-term CMHC or conventional senior after stabilization.",
+  },
+  development: {
+    label: "Ground-up Development",
+    shares: { senior: 55, mezz: 15, pref: 10, lp: 17, gp: 3 },
+    rationale:
+      "Construction senior caps at 50-65% LTC. Mezz / pref are the only practical ways to reduce common-equity dilution. Larger GP co-invest is usually required by the senior.",
+  },
+  flip: {
+    label: "Short-term Flip",
+    shares: { senior: 70, mezz: 15, pref: 0, lp: 12, gp: 3 },
+    rationale:
+      "Private (C-tier) senior + mezz dominates because of the 6-12 month hold. No pref — the deal exits before any meaningful accrual. Sponsor takes more risk-adjusted promote.",
+  },
+  sfr: {
+    label: "Single-Family Rental (1-4 units)",
+    shares: { senior: 75, mezz: 0, pref: 0, lp: 22, gp: 3 },
+    rationale:
+      "Standard residential mortgage at 75-80% LTV from an A or B lender, balance from sponsor + LP equity. No mezz or pref — the deal is too small to support the structuring cost.",
+  },
+};
+
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
@@ -280,6 +342,52 @@ export default function CapitalStackCanadaGuide() {
   const [shares, setShares] = useState<Record<LayerKey, number>>(
     LAYERS.reduce((acc, l) => ({ ...acc, [l.key]: l.defaultShare }), {} as Record<LayerKey, number>),
   );
+  const [dealCost, setDealCost] = useState<number>(PROJECT_COST);
+
+  // Deal plugin state
+  const { toast } = useToast();
+  const [mlsInput, setMlsInput] = useState("");
+  const [dealAddress, setDealAddress] = useState<string>("");
+  const [dealUnits, setDealUnits] = useState<number>(1);
+  const [strategy, setStrategy] = useState<StrategyKey>("buy-hold");
+  const [appliedStrategy, setAppliedStrategy] = useState<StrategyKey | null>(null);
+
+  const mlsLookup = useMutation({
+    mutationFn: async (mls: string) => {
+      const cleaned = mls.replace(/[^a-zA-Z0-9]/g, "");
+      if (!cleaned) throw new Error("Enter a valid MLS number");
+      const res = await fetch(`/api/ddf/mls/${encodeURIComponent(cleaned)}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Lookup failed (${res.status})`);
+      }
+      return (await res.json()) as { listing: any; source: string };
+    },
+    onSuccess: ({ listing }) => {
+      if (listing.price) setDealCost(listing.price);
+      if (listing.numberOfUnits) {
+        setDealUnits(listing.numberOfUnits);
+        if (listing.numberOfUnits >= 5) setStrategy("mli-select");
+        else if (listing.numberOfUnits <= 4) setStrategy("sfr");
+      }
+      const addr = [listing.address, listing.city, listing.province].filter(Boolean).join(", ");
+      setDealAddress(addr);
+      toast({ title: "Listing loaded", description: addr || `Loaded MLS ${listing.listingId}` });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Couldn't load that MLS#", description: err.message, variant: "destructive" });
+    },
+  });
+
+  function applyStrategy(s: StrategyKey) {
+    const preset = STRATEGY_PRESETS[s];
+    setShares({ ...preset.shares });
+    setAppliedStrategy(s);
+    toast({
+      title: `Stack set: ${preset.label}`,
+      description: "Scroll down — the builder now reflects your deal.",
+    });
+  }
 
   const totalShare = useMemo(
     () => LAYERS.reduce((sum, l) => sum + shares[l.key], 0),
@@ -415,6 +523,160 @@ export default function CapitalStackCanadaGuide() {
           </p>
         </header>
 
+        {/* Deal Plugin: load a real deal and auto-fill the stack */}
+        <Card className="mb-8 border-2 border-primary/50" data-testid="card-deal-plugin">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" /> Plug in a Real Deal
+            </CardTitle>
+            <CardDescription>
+              Load a Canadian listing by MLS# (CREA DDF) or enter your own deal cost, pick the
+              strategy, and we'll auto-set a realistic capital stack you can then tweak below.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* MLS lookup */}
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <Label htmlFor="cs-mls-input" className="text-sm font-semibold">
+                Option 1 — Pull a live Canadian listing by MLS#
+              </Label>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  id="cs-mls-input"
+                  placeholder="e.g. W7384562"
+                  value={mlsInput}
+                  onChange={(e) => setMlsInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && mlsInput.trim()) mlsLookup.mutate(mlsInput.trim());
+                  }}
+                  data-testid="input-cs-mls"
+                />
+                <Button
+                  type="button"
+                  onClick={() => mlsLookup.mutate(mlsInput.trim())}
+                  disabled={!mlsInput.trim() || mlsLookup.isPending}
+                  data-testid="button-cs-mls-lookup"
+                >
+                  {mlsLookup.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" /> Load listing
+                    </>
+                  )}
+                </Button>
+              </div>
+              {dealAddress && (
+                <p className="mt-2 text-xs text-muted-foreground" data-testid="text-cs-loaded-address">
+                  Loaded: <span className="font-medium text-foreground">{dealAddress}</span>
+                  {dealUnits > 1 && <span> · {dealUnits} units</span>}
+                </p>
+              )}
+            </div>
+
+            {/* Manual */}
+            <div>
+              <p className="mb-3 text-sm font-semibold">
+                Option 2 — Or enter / adjust your own deal
+              </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <Label htmlFor="cs-cost">Total project cost (CAD)</Label>
+                  <Input
+                    id="cs-cost"
+                    type="number"
+                    min={0}
+                    step={10_000}
+                    value={dealCost}
+                    onChange={(e) => setDealCost(Math.max(0, Number(e.target.value) || 0))}
+                    data-testid="input-deal-cost"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">{formatCurrency(dealCost)}</p>
+                </div>
+                <div>
+                  <Label htmlFor="cs-units"># of units</Label>
+                  <Input
+                    id="cs-units"
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={dealUnits}
+                    onChange={(e) => setDealUnits(Math.max(1, Number(e.target.value) || 1))}
+                    data-testid="input-deal-units"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="cs-strategy">Strategy</Label>
+                  <Select value={strategy} onValueChange={(v) => setStrategy(v as StrategyKey)}>
+                    <SelectTrigger id="cs-strategy" data-testid="select-cs-strategy">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(STRATEGY_PRESETS) as StrategyKey[]).map((k) => (
+                        <SelectItem key={k} value={k}>
+                          {STRATEGY_PRESETS[k].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                onClick={() => applyStrategy(strategy)}
+                data-testid="button-apply-strategy"
+              >
+                <Layers className="mr-2 h-4 w-4" /> Apply strategy to the stack
+              </Button>
+              {appliedStrategy && (
+                <span className="text-xs text-muted-foreground" aria-live="polite">
+                  Applied: <span className="font-medium text-foreground">{STRATEGY_PRESETS[appliedStrategy].label}</span>
+                </span>
+              )}
+            </div>
+
+            {appliedStrategy && (
+              <div
+                className="rounded-md border bg-muted/30 p-4 text-sm"
+                data-testid="text-strategy-rationale"
+              >
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Why this stack
+                </div>
+                <p className="leading-relaxed">{STRATEGY_PRESETS[appliedStrategy].rationale}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                  {LAYERS.map((l) => {
+                    const pct = STRATEGY_PRESETS[appliedStrategy].shares[l.key];
+                    return (
+                      <div
+                        key={l.key}
+                        className="rounded border bg-background p-2"
+                        style={{ borderColor: l.color }}
+                      >
+                        <div className="text-muted-foreground">{l.shortName}</div>
+                        <div className="font-semibold tabular-nums">{pct}%</div>
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          {formatCurrency((pct / 100) * dealCost)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Heuristic only — real capital stacks depend on lender appetite, sponsor experience,
+              and the specific property. Use the builder below to fine-tune.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Interactive Stack Builder */}
         <Card className="mb-12 border-2" data-testid="card-stack-builder">
           <CardHeader>
@@ -422,7 +684,7 @@ export default function CapitalStackCanadaGuide() {
               <Layers className="h-5 w-5" /> Interactive Capital Stack Builder
             </CardTitle>
             <CardDescription>
-              Drag the sliders to change each layer's share of a {formatCurrency(PROJECT_COST)} Canadian deal.
+              Drag the sliders to change each layer's share of a {formatCurrency(dealCost)} Canadian deal.
               Click any layer name to see how it's structured in Canada.
             </CardDescription>
           </CardHeader>
@@ -445,7 +707,7 @@ export default function CapitalStackCanadaGuide() {
                       <Tooltip
                         formatter={(value: number, key: string) => {
                           const l = LAYERS.find((x) => x.key === key);
-                          const dollars = (value / 100) * PROJECT_COST;
+                          const dollars = (value / 100) * dealCost;
                           return [`${value.toFixed(1)}% • ${formatCurrency(dollars)}`, l?.name];
                         }}
                       />
@@ -498,7 +760,7 @@ export default function CapitalStackCanadaGuide() {
                           className="text-sm tabular-nums text-muted-foreground"
                           aria-live="polite"
                         >
-                          {normalized[l.key].toFixed(1)}% • {formatCurrency((normalized[l.key] / 100) * PROJECT_COST)}
+                          {normalized[l.key].toFixed(1)}% • {formatCurrency((normalized[l.key] / 100) * dealCost)}
                         </span>
                       </div>
                       <label htmlFor={sliderId} className="sr-only">
