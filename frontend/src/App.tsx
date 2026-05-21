@@ -13,6 +13,7 @@ import { InvestorAuthPage } from './pages/InvestorAuthPage'
 import { InvestorDashboard } from './pages/InvestorDashboard'
 import { AnalysisHistoryPage } from './pages/AnalysisHistory'
 import { SavedListingsPage } from './pages/SavedListingsPage'
+import { UnderwritingSharePage } from './pages/UnderwritingSharePage'
 import CreaStatsPage from './pages/CreaStatsPage'
 import { Toaster } from './components/ui/toaster'
 
@@ -93,6 +94,7 @@ function App() {
             <Route path="/investor/dashboard" element={<InvestorDashboard />} />
             <Route path="/investor/analyses" element={<AnalysisHistoryPage />} />
             <Route path="/investor/saved" element={<SavedListingsPage />} />
+            <Route path="/underwriting/:token" element={<UnderwritingSharePage />} />
           </Routes>
         </main>
         
