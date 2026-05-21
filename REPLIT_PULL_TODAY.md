@@ -5,7 +5,8 @@ Thursday, May 21, 2026
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-21-recipient-label-dedupe`
-- Commit SHA: `c3011ed6cebb2725f8c2c9560144200c95e4f3a5`
+- Code commit SHA: `4857e3899e2b26b8a4a45daa209da7791959048a`
+- Handoff file may be committed after the code commit, so final branch tip can be newer.
 
 ## 3. What changed
 Added persistent deduping for recipient-specific “Challenge my underwriting.” share invites.
