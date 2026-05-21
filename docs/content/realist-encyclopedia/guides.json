@@ -1,0 +1,3967 @@
+[
+  {
+    "id": "realist-encyclopedia-001",
+    "title": "Capital Stack",
+    "slug": "capital-stack",
+    "canonicalPath": "/insights/encyclopedia/capital-stack",
+    "summary": "Capital Stack: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "The capital stack is the order of money in a deal: senior debt, junior debt, preferred equity, common equity, and sometimes seller financing. It tells you who gets paid first and who absorbs losses first.",
+    "whyItMatters": "capital stack changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Total sources = senior debt + junior debt + preferred equity + common equity + seller financing. Loan-to-cost = total debt / total cost.",
+    "example": "A $5M acquisition uses $3.25M senior debt, $500k VTB, $250k preferred equity, and $1M common equity. The common equity has the highest upside but is first to take losses.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "capital-stack",
+      "mezzanine-debt",
+      "preferred-equity",
+      "joint-venture",
+      "waterfall-structure"
+    ],
+    "realistTieIn": "Realist.ca can make capital stack searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "capital stack",
+      "financing",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "capital-stack-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-002",
+    "title": "A Lender vs B Lender",
+    "slug": "a-lender-vs-b-lender",
+    "canonicalPath": "/insights/encyclopedia/a-lender-vs-b-lender",
+    "summary": "A Lender vs B Lender: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A lenders are prime banks and credit unions with lower rates and tighter boxes. B lenders are alternative institutions that price for exceptions: weaker income proof, higher leverage, blemished credit, or unusual properties.",
+    "whyItMatters": "A lender vs B lender changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag A lender vs B lender beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "private-mortgage",
+      "mortgage-stress-test",
+      "dscr",
+      "ltv"
+    ],
+    "realistTieIn": "Realist.ca can make A lender vs B lender searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "a lender vs b lender",
+      "canadian real estate",
+      "financing",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-003",
+    "title": "LTV",
+    "slug": "ltv",
+    "canonicalPath": "/insights/encyclopedia/ltv",
+    "summary": "LTV: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Loan-to-value is debt divided by property value or purchase price. It measures how much of the asset is financed with debt.",
+    "whyItMatters": "LTV changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "LTV = loan amount / appraised value or purchase price.",
+    "example": "In underwriting, tag LTV beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Debt should make a solid deal more efficient, not hide a weak one. If the asset fails unlevered, leverage usually makes the failure arrive faster.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "dscr",
+      "debt-service",
+      "cmhc-insurance",
+      "refinance-risk"
+    ],
+    "realistTieIn": "Realist.ca can make LTV searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "ltv",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "ltv-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-004",
+    "title": "DSCR",
+    "slug": "dscr",
+    "canonicalPath": "/insights/encyclopedia/dscr",
+    "summary": "DSCR: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Debt service coverage ratio is NOI divided by annual debt service. It measures whether the property income can carry the loan before investor distributions.",
+    "whyItMatters": "DSCR changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "DSCR = net operating income / annual debt service.",
+    "example": "If NOI is $180,000 and annual debt service is $150,000, DSCR is 1.20x. That is thin if taxes, vacancy, or renewal rates move against you.",
+    "investorInterpretation": "Debt should make a solid deal more efficient, not hide a weak one. If the asset fails unlevered, leverage usually makes the failure arrive faster.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "noi",
+      "debt-service",
+      "break-even-occupancy",
+      "refinance-risk"
+    ],
+    "realistTieIn": "Realist.ca can make DSCR searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "dscr",
+      "financing",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "dscr-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-005",
+    "title": "GDS/TDS",
+    "slug": "gds-vs-tds",
+    "canonicalPath": "/insights/encyclopedia/gds-vs-tds",
+    "summary": "GDS/TDS: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Gross debt service and total debt service are borrower qualification ratios used in Canadian mortgage underwriting. GDS looks at housing costs versus gross income; TDS adds other debts.",
+    "whyItMatters": "GDS/TDS changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "GDS = housing costs / gross income. TDS = housing costs plus other debt payments / gross income.",
+    "example": "In underwriting, tag GDS/TDS beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "mortgage-stress-test",
+      "a-lender-vs-b-lender",
+      "cmhc-insurance"
+    ],
+    "realistTieIn": "Realist.ca can make GDS/TDS searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "gds/tds",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "gds-vs-tds-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-006",
+    "title": "Mortgage Stress Test",
+    "slug": "mortgage-stress-test",
+    "canonicalPath": "/insights/encyclopedia/mortgage-stress-test",
+    "summary": "Mortgage Stress Test: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "The mortgage stress test qualifies a borrower at the higher of the contract rate plus a buffer or the regulatory minimum qualifying rate.",
+    "whyItMatters": "mortgage stress test changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Qualifying payment uses max(contract rate + required buffer, minimum qualifying rate).",
+    "example": "In underwriting, tag mortgage stress test beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "gds-vs-tds",
+      "a-lender-vs-b-lender",
+      "debt-service"
+    ],
+    "realistTieIn": "Realist.ca can make mortgage stress test searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Lender, insurer, and regulator rules change. Confirm current underwriting criteria before relying on the numbers.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "mortgage stress test",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "mortgage-stress-test-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-007",
+    "title": "Private Mortgage",
+    "slug": "private-mortgage",
+    "canonicalPath": "/insights/encyclopedia/private-mortgage",
+    "summary": "Private Mortgage: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A private mortgage is a loan from an individual or private lender, usually faster and more flexible than institutional debt but more expensive and shorter term.",
+    "whyItMatters": "private mortgage changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag private mortgage beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "bridge-loan",
+      "a-lender-vs-b-lender",
+      "ltv"
+    ],
+    "realistTieIn": "Realist.ca can make private mortgage searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "private mortgage",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-008",
+    "title": "VTB",
+    "slug": "vtb",
+    "canonicalPath": "/insights/encyclopedia/vtb",
+    "summary": "VTB: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A vendor take-back mortgage is seller financing where the seller leaves some sale proceeds in the deal as debt owed by the buyer.",
+    "whyItMatters": "VTB changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag VTB beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "capital-stack",
+      "bridge-loan",
+      "joint-venture"
+    ],
+    "realistTieIn": "Realist.ca can make VTB searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "real estate investing",
+      "underwriting",
+      "vtb"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-009",
+    "title": "Bridge Loan",
+    "slug": "bridge-loan",
+    "canonicalPath": "/insights/encyclopedia/bridge-loan",
+    "summary": "Bridge Loan: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A bridge loan is short-term debt used to close timing gaps, complete repositioning, or carry a property until permanent financing or sale.",
+    "whyItMatters": "bridge loan changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag bridge loan beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "private-mortgage",
+      "refinance-risk",
+      "capex"
+    ],
+    "realistTieIn": "Realist.ca can make bridge loan searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "bridge loan",
+      "canadian real estate",
+      "financing",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-010",
+    "title": "Mezzanine Debt",
+    "slug": "mezzanine-debt",
+    "canonicalPath": "/insights/encyclopedia/mezzanine-debt",
+    "summary": "Mezzanine Debt: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Mezzanine debt sits behind senior debt and ahead of equity. It usually has higher pricing and extra control rights because it takes more risk.",
+    "whyItMatters": "mezzanine debt changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag mezzanine debt beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "capital-stack",
+      "preferred-equity",
+      "waterfall-structure"
+    ],
+    "realistTieIn": "Realist.ca can make mezzanine debt searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "mezzanine debt",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-011",
+    "title": "Preferred Equity",
+    "slug": "preferred-equity",
+    "canonicalPath": "/insights/encyclopedia/preferred-equity",
+    "summary": "Preferred Equity: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Preferred equity sits ahead of common equity but behind debt. It usually receives a preferred return before sponsors and common equity split upside.",
+    "whyItMatters": "preferred equity changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag preferred equity beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "capital-stack",
+      "waterfall-structure",
+      "gp-vs-lp"
+    ],
+    "realistTieIn": "Realist.ca can make preferred equity searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "preferred equity",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-012",
+    "title": "Power Of Sale vs Foreclosure",
+    "slug": "power-of-sale-vs-foreclosure",
+    "canonicalPath": "/insights/encyclopedia/power-of-sale-vs-foreclosure",
+    "summary": "Power Of Sale vs Foreclosure: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Power of sale is a lender sale process common in Ontario where title does not transfer to the lender. Foreclosure is a court process where the lender may take title and extinguish borrower equity.",
+    "whyItMatters": "power of sale vs foreclosure can change after-tax proceeds, legal risk, carrying cost, and closing certainty. Ignoring it can turn a good spreadsheet into a bad real deal.",
+    "formula": null,
+    "example": "In underwriting, tag power of sale vs foreclosure beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "private-mortgage",
+      "refinance-risk",
+      "appraisal"
+    ],
+    "realistTieIn": "Realist.ca can make power of sale vs foreclosure searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Canadian tax, legal, municipal, and provincial rules change. Treat this as investor education, not legal or tax advice; confirm with local counsel/accountants.",
+    "category": "Legal",
+    "tags": [
+      "legal",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "legal",
+      "power of sale vs foreclosure",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-013",
+    "title": "Cap Rate",
+    "slug": "cap-rate",
+    "canonicalPath": "/insights/encyclopedia/cap-rate",
+    "summary": "Cap Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Cap rate is NOI divided by property value. It is the unlevered yield on the current income stream before debt.",
+    "whyItMatters": "cap rate changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Cap rate = NOI / property value.",
+    "example": "If a property has $120,000 of NOI and trades for $2,000,000, the cap rate is 6.0%.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "noi",
+      "stabilized-cap-rate",
+      "going-in-cap-rate",
+      "exit-cap"
+    ],
+    "realistTieIn": "Realist.ca can make cap rate searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "cap rate",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "cap-rate-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-014",
+    "title": "Stabilized Cap Rate",
+    "slug": "stabilized-cap-rate",
+    "canonicalPath": "/insights/encyclopedia/stabilized-cap-rate",
+    "summary": "Stabilized Cap Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Stabilized cap rate values a property using normalized NOI after lease-up, renovations, or operational cleanup are complete.",
+    "whyItMatters": "stabilized cap rate changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag stabilized cap rate beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "stabilized-yield-vs-cap-rate",
+      "yield-on-cost",
+      "cap-rate"
+    ],
+    "realistTieIn": "Realist.ca can make stabilized cap rate searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "real estate investing",
+      "stabilized cap rate",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-015",
+    "title": "Going-In Cap Rate",
+    "slug": "going-in-cap-rate",
+    "canonicalPath": "/insights/encyclopedia/going-in-cap-rate",
+    "summary": "Going-In Cap Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Going-in cap rate is the cap rate based on current or first-year NOI at purchase, before the business plan is executed.",
+    "whyItMatters": "going-in cap rate changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag going-in cap rate beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "cap-rate",
+      "pro-forma",
+      "value-add"
+    ],
+    "realistTieIn": "Realist.ca can make going-in cap rate searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "going-in cap rate",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-016",
+    "title": "Cash-On-Cash",
+    "slug": "cash-on-cash",
+    "canonicalPath": "/insights/encyclopedia/cash-on-cash",
+    "summary": "Cash-On-Cash: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Cash-on-cash return is annual pre-tax cash flow divided by total cash invested.",
+    "whyItMatters": "cash-on-cash changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Cash-on-cash = annual pre-tax cash flow / total cash invested.",
+    "example": "In underwriting, tag cash-on-cash beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "debt-service",
+      "noi",
+      "ltv"
+    ],
+    "realistTieIn": "Realist.ca can make cash-on-cash searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "cash-on-cash",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "cash-on-cash-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-017",
+    "title": "IRR",
+    "slug": "irr",
+    "canonicalPath": "/insights/encyclopedia/irr",
+    "summary": "IRR: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Internal rate of return is the discount rate that makes all investor cash inflows and outflows equal zero over the hold period.",
+    "whyItMatters": "IRR changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "IRR is the discount rate where NPV of all cash flows equals zero.",
+    "example": "In underwriting, tag IRR beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Letting an optimistic exit or refinance assumption rescue a deal that does not work today."
+    ],
+    "relatedTerms": [
+      "equity-multiple",
+      "exit-cap",
+      "waterfall-structure"
+    ],
+    "realistTieIn": "Realist.ca can make IRR searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "irr",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "irr-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-018",
+    "title": "NOI",
+    "slug": "noi",
+    "canonicalPath": "/insights/encyclopedia/noi",
+    "summary": "NOI: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Net operating income is effective rental income plus other property income minus operating expenses, before debt service, income tax, depreciation, and capital events.",
+    "whyItMatters": "NOI changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "NOI = gross potential rent - vacancy and credit loss + other income - operating expenses.",
+    "example": "In underwriting, tag NOI beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Start with what is contractual and collected, then normalize. A model should expose the lie, not decorate it.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Mixing actual, normalized, and projected numbers without labeling them clearly."
+    ],
+    "relatedTerms": [
+      "cap-rate",
+      "operating-expense-ratio",
+      "pro-forma",
+      "t12"
+    ],
+    "realistTieIn": "Realist.ca can make NOI searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "noi",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "noi-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-019",
+    "title": "GRM",
+    "slug": "grm",
+    "canonicalPath": "/insights/encyclopedia/grm",
+    "summary": "GRM: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Gross rent multiplier is price divided by annual gross rent. It is a blunt screening metric, not a substitute for NOI.",
+    "whyItMatters": "GRM changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag GRM beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "noi",
+      "cap-rate",
+      "price-per-door"
+    ],
+    "realistTieIn": "Realist.ca can make GRM searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "grm",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-020",
+    "title": "Price Per Door",
+    "slug": "price-per-door",
+    "canonicalPath": "/insights/encyclopedia/price-per-door",
+    "summary": "Price Per Door: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Price per door is purchase price divided by unit count. It helps compare multifamily assets but ignores income quality and unit mix.",
+    "whyItMatters": "price per door changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag price per door beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "grm",
+      "noi",
+      "market-rent-vs-in-place-rent"
+    ],
+    "realistTieIn": "Realist.ca can make price per door searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "price per door",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-021",
+    "title": "Debt Service",
+    "slug": "debt-service",
+    "canonicalPath": "/insights/encyclopedia/debt-service",
+    "summary": "Debt Service: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Debt service is the required principal and interest payment on a loan over a period.",
+    "whyItMatters": "debt service changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag debt service beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "dscr",
+      "cash-on-cash",
+      "ltv"
+    ],
+    "realistTieIn": "Realist.ca can make debt service searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "debt service",
+      "financing",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-022",
+    "title": "Operating Expense Ratio",
+    "slug": "operating-expense-ratio",
+    "canonicalPath": "/insights/encyclopedia/operating-expense-ratio",
+    "summary": "Operating Expense Ratio: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Operating expense ratio is operating expenses divided by effective gross income. It shows how much revenue the building consumes before debt.",
+    "whyItMatters": "operating expense ratio changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag operating expense ratio beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "noi",
+      "t12",
+      "replacement-reserve"
+    ],
+    "realistTieIn": "Realist.ca can make operating expense ratio searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "operating expense ratio",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-023",
+    "title": "Vacancy Allowance",
+    "slug": "vacancy-allowance",
+    "canonicalPath": "/insights/encyclopedia/vacancy-allowance",
+    "summary": "Vacancy Allowance: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Vacancy allowance is the income haircut used for expected downtime, nonpayment, and lease-up friction.",
+    "whyItMatters": "vacancy allowance changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Vacancy allowance = gross potential rent × vacancy assumption.",
+    "example": "In underwriting, tag vacancy allowance beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Mixing actual, normalized, and projected numbers without labeling them clearly."
+    ],
+    "relatedTerms": [
+      "vacancy-rate",
+      "noi",
+      "break-even-occupancy"
+    ],
+    "realistTieIn": "Realist.ca can make vacancy allowance searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "real estate investing",
+      "underwriting",
+      "vacancy allowance"
+    ],
+    "toolSpecSlug": "vacancy-allowance-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-024",
+    "title": "Replacement Reserve",
+    "slug": "replacement-reserve",
+    "canonicalPath": "/insights/encyclopedia/replacement-reserve",
+    "summary": "Replacement Reserve: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Replacement reserve is money set aside for recurring capital items like roofs, boilers, appliances, paving, and unit turns.",
+    "whyItMatters": "replacement reserve changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag replacement reserve beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "capex",
+      "noi",
+      "operating-expense-ratio"
+    ],
+    "realistTieIn": "Realist.ca can make replacement reserve searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "real estate investing",
+      "replacement reserve",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-025",
+    "title": "Break-Even Occupancy",
+    "slug": "break-even-occupancy",
+    "canonicalPath": "/insights/encyclopedia/break-even-occupancy",
+    "summary": "Break-Even Occupancy: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Break-even occupancy is the occupancy level required for property income to cover operating expenses and debt service.",
+    "whyItMatters": "break-even occupancy changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Break-even occupancy = (operating expenses + debt service) / gross potential income.",
+    "example": "In underwriting, tag break-even occupancy beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "dscr",
+      "vacancy-allowance",
+      "debt-service"
+    ],
+    "realistTieIn": "Realist.ca can make break-even occupancy searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "break-even occupancy",
+      "canadian real estate",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": "break-even-occupancy-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-026",
+    "title": "Yield On Cost",
+    "slug": "yield-on-cost",
+    "canonicalPath": "/insights/encyclopedia/yield-on-cost",
+    "summary": "Yield On Cost: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Yield on cost is stabilized NOI divided by total project cost. It tells you whether your basis creates value versus buying a stabilized asset.",
+    "whyItMatters": "yield on cost changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Yield on cost = stabilized NOI / total project cost.",
+    "example": "In underwriting, tag yield on cost beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "The investor question is simple: does stabilized NOI on your all-in cost beat the market cap rate by enough to justify the work, time, and risk? If not, you bought a job, not value creation.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "stabilized-yield-vs-cap-rate",
+      "value-add",
+      "forced-appreciation"
+    ],
+    "realistTieIn": "Realist.ca can make yield on cost searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "real estate investing",
+      "underwriting",
+      "yield on cost"
+    ],
+    "toolSpecSlug": "yield-on-cost-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-027",
+    "title": "Return On Equity",
+    "slug": "return-on-equity",
+    "canonicalPath": "/insights/encyclopedia/return-on-equity",
+    "summary": "Return On Equity: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Return on equity is annual cash flow divided by current equity. It shows whether trapped equity is still earning enough.",
+    "whyItMatters": "return on equity changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag return on equity beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "cash-on-cash",
+      "refinance-risk",
+      "equity-multiple"
+    ],
+    "realistTieIn": "Realist.ca can make return on equity searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "real estate investing",
+      "return on equity",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-028",
+    "title": "Equity Multiple",
+    "slug": "equity-multiple",
+    "canonicalPath": "/insights/encyclopedia/equity-multiple",
+    "summary": "Equity Multiple: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Equity multiple is total cash returned divided by total equity invested.",
+    "whyItMatters": "equity multiple changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag equity multiple beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "irr",
+      "cash-on-cash",
+      "waterfall-structure"
+    ],
+    "realistTieIn": "Realist.ca can make equity multiple searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "equity multiple",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-029",
+    "title": "Levered vs Unlevered Return",
+    "slug": "levered-vs-unlevered-return",
+    "canonicalPath": "/insights/encyclopedia/levered-vs-unlevered-return",
+    "summary": "Levered vs Unlevered Return: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Unlevered return ignores debt. Levered return includes debt and shows what the equity actually earns after financing.",
+    "whyItMatters": "levered vs unlevered return changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag levered vs unlevered return beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "negative-vs-positive-leverage",
+      "ltv",
+      "cap-rate"
+    ],
+    "realistTieIn": "Realist.ca can make levered vs unlevered return searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "levered vs unlevered return",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-030",
+    "title": "Stabilized Yield vs Cap Rate",
+    "slug": "stabilized-yield-vs-cap-rate",
+    "canonicalPath": "/insights/encyclopedia/stabilized-yield-vs-cap-rate",
+    "summary": "Stabilized Yield vs Cap Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Stabilized yield is NOI on your cost basis; cap rate is market pricing on NOI. The spread is the cleanest test of value creation.",
+    "whyItMatters": "stabilized yield vs cap rate changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag stabilized yield vs cap rate beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "The investor question is simple: does stabilized NOI on your all-in cost beat the market cap rate by enough to justify the work, time, and risk? If not, you bought a job, not value creation.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "yield-on-cost",
+      "stabilized-cap-rate",
+      "forced-appreciation"
+    ],
+    "realistTieIn": "Realist.ca can make stabilized yield vs cap rate searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "real estate investing",
+      "stabilized yield vs cap rate",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-031",
+    "title": "Pro Forma",
+    "slug": "pro-forma",
+    "canonicalPath": "/insights/encyclopedia/pro-forma",
+    "summary": "Pro Forma: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A pro forma is a forward-looking operating model. It should expose the assumptions that make the deal work or fail.",
+    "whyItMatters": "pro forma changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag pro forma beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Start with what is contractual and collected, then normalize. A model should expose the lie, not decorate it.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Mixing actual, normalized, and projected numbers without labeling them clearly."
+    ],
+    "relatedTerms": [
+      "t12",
+      "rent-roll",
+      "sensitivity-analysis"
+    ],
+    "realistTieIn": "Realist.ca can make pro forma searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "pro forma",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-032",
+    "title": "Rent Roll",
+    "slug": "rent-roll",
+    "canonicalPath": "/insights/encyclopedia/rent-roll",
+    "summary": "Rent Roll: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A rent roll is the unit-by-unit schedule of tenants, rents, lease dates, deposits, arrears, and rentability.",
+    "whyItMatters": "rent roll changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Gross scheduled rent = sum(unit rent). Loss to lease = market rent - in-place rent. Occupancy = occupied units / total units.",
+    "example": "In underwriting, tag rent roll beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Start with what is contractual and collected, then normalize. A model should expose the lie, not decorate it.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Mixing actual, normalized, and projected numbers without labeling them clearly."
+    ],
+    "relatedTerms": [
+      "market-rent-vs-in-place-rent",
+      "loss-to-lease",
+      "bad-debt-allowance"
+    ],
+    "realistTieIn": "Realist.ca can make rent roll searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "real estate investing",
+      "rent roll",
+      "underwriting"
+    ],
+    "toolSpecSlug": "rent-roll-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-033",
+    "title": "T12",
+    "slug": "t12",
+    "canonicalPath": "/insights/encyclopedia/t12",
+    "summary": "T12: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A trailing twelve-month statement is the last 12 months of property income and expenses. It is the starting point for normalizing NOI.",
+    "whyItMatters": "T12 changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag T12 beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Start with what is contractual and collected, then normalize. A model should expose the lie, not decorate it.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Mixing actual, normalized, and projected numbers without labeling them clearly."
+    ],
+    "relatedTerms": [
+      "noi",
+      "operating-expense-ratio",
+      "pro-forma"
+    ],
+    "realistTieIn": "Realist.ca can make T12 searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "real estate investing",
+      "t12",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-034",
+    "title": "Net Effective Rent",
+    "slug": "net-effective-rent",
+    "canonicalPath": "/insights/encyclopedia/net-effective-rent",
+    "summary": "Net Effective Rent: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Net effective rent spreads concessions, free rent, and incentives across the lease term to show the true rent.",
+    "whyItMatters": "net effective rent changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag net effective rent beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "market-rent-vs-in-place-rent",
+      "loss-to-lease",
+      "rent-roll"
+    ],
+    "realistTieIn": "Realist.ca can make net effective rent searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "net effective rent",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-035",
+    "title": "Market Rent vs In-Place Rent",
+    "slug": "market-rent-vs-in-place-rent",
+    "canonicalPath": "/insights/encyclopedia/market-rent-vs-in-place-rent",
+    "summary": "Market Rent vs In-Place Rent: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Market rent is what a unit should rent for today. In-place rent is what the current tenant actually pays.",
+    "whyItMatters": "market rent vs in-place rent changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag market rent vs in-place rent beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "loss-to-lease",
+      "rent-roll",
+      "value-add"
+    ],
+    "realistTieIn": "Realist.ca can make market rent vs in-place rent searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "market rent vs in-place rent",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-036",
+    "title": "Loss To Lease",
+    "slug": "loss-to-lease",
+    "canonicalPath": "/insights/encyclopedia/loss-to-lease",
+    "summary": "Loss To Lease: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Loss to lease is the gap between market rent and in-place rent on occupied units.",
+    "whyItMatters": "loss to lease changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag loss to lease beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Mixing actual, normalized, and projected numbers without labeling them clearly."
+    ],
+    "relatedTerms": [
+      "market-rent-vs-in-place-rent",
+      "rent-roll",
+      "forced-appreciation"
+    ],
+    "realistTieIn": "Realist.ca can make loss to lease searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "loss to lease",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-037",
+    "title": "Bad Debt Allowance",
+    "slug": "bad-debt-allowance",
+    "canonicalPath": "/insights/encyclopedia/bad-debt-allowance",
+    "summary": "Bad Debt Allowance: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Bad debt allowance estimates rent that is billed but not collected because of arrears, defaults, disputes, or eviction delays.",
+    "whyItMatters": "bad debt allowance changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag bad debt allowance beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "vacancy-allowance",
+      "rent-roll",
+      "noi"
+    ],
+    "realistTieIn": "Realist.ca can make bad debt allowance searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "bad debt allowance",
+      "canadian real estate",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-038",
+    "title": "Capex",
+    "slug": "capex",
+    "canonicalPath": "/insights/encyclopedia/capex",
+    "summary": "Capex: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Capital expenditure is money spent to maintain or improve long-lived property components, not ordinary recurring operations.",
+    "whyItMatters": "capex changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag capex beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "replacement-reserve",
+      "value-add",
+      "bridge-loan"
+    ],
+    "realistTieIn": "Realist.ca can make capex searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "capex",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-039",
+    "title": "Property Tax Reassessment",
+    "slug": "property-tax-reassessment",
+    "canonicalPath": "/insights/encyclopedia/property-tax-reassessment",
+    "summary": "Property Tax Reassessment: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Property tax reassessment is a change in assessed value or tax treatment that can materially reset operating expenses after purchase or improvement.",
+    "whyItMatters": "property tax reassessment can change after-tax proceeds, legal risk, carrying cost, and closing certainty. Ignoring it can turn a good spreadsheet into a bad real deal.",
+    "formula": null,
+    "example": "In underwriting, tag property tax reassessment beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "assessment-vs-market-value",
+      "mpac",
+      "noi"
+    ],
+    "realistTieIn": "Realist.ca can make property tax reassessment searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Canadian tax, legal, municipal, and provincial rules change. Treat this as investor education, not legal or tax advice; confirm with local counsel/accountants.",
+    "category": "Tax",
+    "tags": [
+      "tax",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "property tax reassessment",
+      "real estate investing",
+      "tax",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-040",
+    "title": "Sensitivity Analysis",
+    "slug": "sensitivity-analysis",
+    "canonicalPath": "/insights/encyclopedia/sensitivity-analysis",
+    "summary": "Sensitivity Analysis: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Sensitivity analysis changes key assumptions to see how returns break under stress: rates, vacancy, exit cap, rent growth, taxes, costs, and timing.",
+    "whyItMatters": "sensitivity analysis changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Scenario return = base model recalculated after changing one or more assumptions.",
+    "example": "In underwriting, tag sensitivity analysis beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Letting an optimistic exit or refinance assumption rescue a deal that does not work today."
+    ],
+    "relatedTerms": [
+      "exit-cap",
+      "refinance-risk",
+      "vacancy-allowance"
+    ],
+    "realistTieIn": "Realist.ca can make sensitivity analysis searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "real estate investing",
+      "sensitivity analysis",
+      "underwriting"
+    ],
+    "toolSpecSlug": "sensitivity-analysis-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-041",
+    "title": "Exit Cap",
+    "slug": "exit-cap",
+    "canonicalPath": "/insights/encyclopedia/exit-cap",
+    "summary": "Exit Cap: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Exit cap is the cap rate assumed at sale. Small changes can dominate projected IRR and equity multiple.",
+    "whyItMatters": "exit cap changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag exit cap beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Letting an optimistic exit or refinance assumption rescue a deal that does not work today."
+    ],
+    "relatedTerms": [
+      "irr",
+      "cap-rate",
+      "sensitivity-analysis"
+    ],
+    "realistTieIn": "Realist.ca can make exit cap searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Analysis",
+    "tags": [
+      "analysis",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "analysis",
+      "canadian real estate",
+      "exit cap",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-042",
+    "title": "Refinance Risk",
+    "slug": "refinance-risk",
+    "canonicalPath": "/insights/encyclopedia/refinance-risk",
+    "summary": "Refinance Risk: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Refinance risk is the chance a property cannot replace or extend debt on acceptable terms when the loan matures.",
+    "whyItMatters": "refinance risk changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": "Refi proceeds = stabilized NOI / lender debt yield or value × max LTV, constrained by DSCR and amortization.",
+    "example": "In underwriting, tag refinance risk beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Debt should make a solid deal more efficient, not hide a weak one. If the asset fails unlevered, leverage usually makes the failure arrive faster.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Letting an optimistic exit or refinance assumption rescue a deal that does not work today."
+    ],
+    "relatedTerms": [
+      "ltv",
+      "dscr",
+      "debt-service",
+      "sensitivity-analysis"
+    ],
+    "realistTieIn": "Realist.ca can make refinance risk searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "real estate investing",
+      "refinance risk",
+      "underwriting"
+    ],
+    "toolSpecSlug": "refinance-risk-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-043",
+    "title": "negative/positive leverage",
+    "slug": "negative-vs-positive-leverage",
+    "canonicalPath": "/insights/encyclopedia/negative-vs-positive-leverage",
+    "summary": "negative/positive leverage: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Positive leverage means debt costs less than the asset yield and boosts equity returns. Negative leverage means debt costs more than the asset yield and drags returns.",
+    "whyItMatters": "negative/positive leverage changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag negative/positive leverage beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Debt should make a solid deal more efficient, not hide a weak one. If the asset fails unlevered, leverage usually makes the failure arrive faster.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "cap-rate",
+      "debt-service",
+      "levered-vs-unlevered-return"
+    ],
+    "realistTieIn": "Realist.ca can make negative/positive leverage searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "negative/positive leverage",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-044",
+    "title": "Forced Appreciation",
+    "slug": "forced-appreciation",
+    "canonicalPath": "/insights/encyclopedia/forced-appreciation",
+    "summary": "Forced Appreciation: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Forced appreciation is value created by increasing NOI or reducing risk, not by hoping the market gets hotter.",
+    "whyItMatters": "forced appreciation matters because it links the strategy to cost basis, execution risk, financing, and actual investor returns.",
+    "formula": null,
+    "example": "In underwriting, tag forced appreciation beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "noi",
+      "yield-on-cost",
+      "value-add"
+    ],
+    "realistTieIn": "Realist.ca can make forced appreciation searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Strategy",
+    "tags": [
+      "strategy",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "forced appreciation",
+      "real estate investing",
+      "strategy",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-045",
+    "title": "BRRRR",
+    "slug": "brrrr",
+    "canonicalPath": "/insights/encyclopedia/brrrr",
+    "summary": "BRRRR: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "BRRRR means buy, renovate, rent, refinance, repeat. It works only when the stabilized value and refinance proceeds are real.",
+    "whyItMatters": "BRRRR matters because it links the strategy to cost basis, execution risk, financing, and actual investor returns.",
+    "formula": null,
+    "example": "In underwriting, tag BRRRR beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "forced-appreciation",
+      "refinance-risk",
+      "ltv"
+    ],
+    "realistTieIn": "Realist.ca can make BRRRR searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Strategy",
+    "tags": [
+      "strategy",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "brrrr",
+      "canadian real estate",
+      "real estate investing",
+      "strategy",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-046",
+    "title": "House Hacking",
+    "slug": "house-hacking",
+    "canonicalPath": "/insights/encyclopedia/house-hacking",
+    "summary": "House Hacking: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "House hacking is buying a property, living in part of it, and renting the rest to reduce housing cost and build investor reps.",
+    "whyItMatters": "house hacking matters because it links the strategy to cost basis, execution risk, financing, and actual investor returns.",
+    "formula": null,
+    "example": "In underwriting, tag house hacking beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "gds-vs-tds",
+      "mortgage-stress-test",
+      "cmhc-insurance"
+    ],
+    "realistTieIn": "Realist.ca can make house hacking searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Strategy",
+    "tags": [
+      "strategy",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "house hacking",
+      "real estate investing",
+      "strategy",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-047",
+    "title": "Value-Add",
+    "slug": "value-add",
+    "canonicalPath": "/insights/encyclopedia/value-add",
+    "summary": "Value-Add: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Value-add is a business plan to improve NOI, asset quality, tenant profile, or risk so the property is worth more on a rational basis.",
+    "whyItMatters": "value-add matters because it links the strategy to cost basis, execution risk, financing, and actual investor returns.",
+    "formula": null,
+    "example": "In underwriting, tag value-add beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "forced-appreciation",
+      "yield-on-cost",
+      "capex"
+    ],
+    "realistTieIn": "Realist.ca can make value-add searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Strategy",
+    "tags": [
+      "strategy",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "real estate investing",
+      "strategy",
+      "underwriting",
+      "value-add"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-048",
+    "title": "Land Assembly",
+    "slug": "land-assembly",
+    "canonicalPath": "/insights/encyclopedia/land-assembly",
+    "summary": "Land Assembly: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Land assembly combines adjacent parcels to create a larger site with higher development value than the pieces alone.",
+    "whyItMatters": "land assembly matters because it links the strategy to cost basis, execution risk, financing, and actual investor returns.",
+    "formula": null,
+    "example": "In underwriting, tag land assembly beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "infill-development",
+      "assessment-vs-market-value",
+      "land-transfer-tax"
+    ],
+    "realistTieIn": "Realist.ca can make land assembly searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Development",
+    "tags": [
+      "development",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "development",
+      "land assembly",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-049",
+    "title": "Infill Development",
+    "slug": "infill-development",
+    "canonicalPath": "/insights/encyclopedia/infill-development",
+    "summary": "Infill Development: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Infill development adds housing or commercial space inside already built-up areas using existing urban infrastructure.",
+    "whyItMatters": "infill development matters because it links the strategy to cost basis, execution risk, financing, and actual investor returns.",
+    "formula": null,
+    "example": "In underwriting, tag infill development beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "land-assembly",
+      "housing-starts",
+      "completions"
+    ],
+    "realistTieIn": "Realist.ca can make infill development searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Development",
+    "tags": [
+      "development",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "development",
+      "infill development",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-050",
+    "title": "Syndication",
+    "slug": "syndication",
+    "canonicalPath": "/insights/encyclopedia/syndication",
+    "summary": "Syndication: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Syndication pools investor capital into a real estate deal, usually with a sponsor managing the asset and passive investors contributing equity.",
+    "whyItMatters": "syndication decides control, downside, upside, investor rights, and who gets paid when the deal performs or disappoints.",
+    "formula": null,
+    "example": "In underwriting, tag syndication beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "The structure is the deal. Before chasing headline returns, map who controls decisions, who writes more cheques, who gets paid first, and who is left holding the bag.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Leaving control, capital calls, guarantees, deadlock rights, and exit mechanics vague."
+    ],
+    "relatedTerms": [
+      "gp-vs-lp",
+      "waterfall-structure",
+      "limited-partnership"
+    ],
+    "realistTieIn": "Realist.ca can make syndication searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Structures",
+    "tags": [
+      "structures",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "real estate investing",
+      "structures",
+      "syndication",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-051",
+    "title": "Joint Venture",
+    "slug": "joint-venture",
+    "canonicalPath": "/insights/encyclopedia/joint-venture",
+    "summary": "Joint Venture: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A joint venture is a deal-specific partnership where parties combine capital, credit, labour, land, or expertise and share economics by agreement.",
+    "whyItMatters": "joint venture decides control, downside, upside, investor rights, and who gets paid when the deal performs or disappoints.",
+    "formula": null,
+    "example": "In underwriting, tag joint venture beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "The structure is the deal. Before chasing headline returns, map who controls decisions, who writes more cheques, who gets paid first, and who is left holding the bag.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Leaving control, capital calls, guarantees, deadlock rights, and exit mechanics vague."
+    ],
+    "relatedTerms": [
+      "jv",
+      "capital-stack",
+      "gp-vs-lp"
+    ],
+    "realistTieIn": "Realist.ca can make joint venture searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Structures",
+    "tags": [
+      "structures",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "joint venture",
+      "real estate investing",
+      "structures",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-052",
+    "title": "JV (Joint Venture)",
+    "slug": "jv",
+    "canonicalPath": "/insights/encyclopedia/jv",
+    "summary": "JV (Joint Venture): a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "JV is shorthand for joint venture: a deal-level partnership built around who brings what and how risk, control, and profit are split.",
+    "whyItMatters": "JV decides control, downside, upside, investor rights, and who gets paid when the deal performs or disappoints.",
+    "formula": null,
+    "example": "In underwriting, tag JV beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "The structure is the deal. Before chasing headline returns, map who controls decisions, who writes more cheques, who gets paid first, and who is left holding the bag.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Leaving control, capital calls, guarantees, deadlock rights, and exit mechanics vague."
+    ],
+    "relatedTerms": [
+      "joint-venture",
+      "capital-stack",
+      "waterfall-structure"
+    ],
+    "realistTieIn": "Realist.ca can make JV searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Structures",
+    "tags": [
+      "structures",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "jv",
+      "jv (joint venture)",
+      "real estate investing",
+      "structures",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-053",
+    "title": "Limited Partnership",
+    "slug": "limited-partnership",
+    "canonicalPath": "/insights/encyclopedia/limited-partnership",
+    "summary": "Limited Partnership: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A limited partnership usually has a general partner who controls the deal and limited partners who provide capital with limited liability and limited control.",
+    "whyItMatters": "limited partnership decides control, downside, upside, investor rights, and who gets paid when the deal performs or disappoints.",
+    "formula": null,
+    "example": "In underwriting, tag limited partnership beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "The structure is the deal. Before chasing headline returns, map who controls decisions, who writes more cheques, who gets paid first, and who is left holding the bag.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Leaving control, capital calls, guarantees, deadlock rights, and exit mechanics vague."
+    ],
+    "relatedTerms": [
+      "gp-vs-lp",
+      "syndication",
+      "waterfall-structure"
+    ],
+    "realistTieIn": "Realist.ca can make limited partnership searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Structures",
+    "tags": [
+      "structures",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "limited partnership",
+      "real estate investing",
+      "structures",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-054",
+    "title": "Gp vs Lp",
+    "slug": "gp-vs-lp",
+    "canonicalPath": "/insights/encyclopedia/gp-vs-lp",
+    "summary": "Gp vs Lp: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "The general partner manages, controls, and often guarantees parts of the deal. Limited partners are passive capital with economics and rights defined by the agreement.",
+    "whyItMatters": "GP vs LP decides control, downside, upside, investor rights, and who gets paid when the deal performs or disappoints.",
+    "formula": null,
+    "example": "In underwriting, tag GP vs LP beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "The structure is the deal. Before chasing headline returns, map who controls decisions, who writes more cheques, who gets paid first, and who is left holding the bag.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Leaving control, capital calls, guarantees, deadlock rights, and exit mechanics vague."
+    ],
+    "relatedTerms": [
+      "limited-partnership",
+      "waterfall-structure",
+      "preferred-equity"
+    ],
+    "realistTieIn": "Realist.ca can make GP vs LP searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Structures",
+    "tags": [
+      "structures",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "gp vs lp",
+      "real estate investing",
+      "structures",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-055",
+    "title": "Waterfall Structure",
+    "slug": "waterfall-structure",
+    "canonicalPath": "/insights/encyclopedia/waterfall-structure",
+    "summary": "Waterfall Structure: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A waterfall structure defines how cash flow and sale proceeds are distributed across investors and sponsors after return of capital, preferred returns, catch-ups, and promote splits.",
+    "whyItMatters": "waterfall structure decides control, downside, upside, investor rights, and who gets paid when the deal performs or disappoints.",
+    "formula": "Distributions follow tiers: return of capital, preferred return, catch-up if used, then promote splits.",
+    "example": "Investors receive capital back, then an 8% preferred return, then remaining profits split 70/30 until a 15% IRR, then 60/40 above that.",
+    "investorInterpretation": "The structure is the deal. Before chasing headline returns, map who controls decisions, who writes more cheques, who gets paid first, and who is left holding the bag.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing.",
+      "Letting an optimistic exit or refinance assumption rescue a deal that does not work today."
+    ],
+    "relatedTerms": [
+      "gp-vs-lp",
+      "preferred-equity",
+      "irr",
+      "equity-multiple"
+    ],
+    "realistTieIn": "Realist.ca can make waterfall structure searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Structures",
+    "tags": [
+      "structures",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "real estate investing",
+      "structures",
+      "underwriting",
+      "waterfall structure"
+    ],
+    "toolSpecSlug": "waterfall-structure-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-056",
+    "title": "REIT",
+    "slug": "reit",
+    "canonicalPath": "/insights/encyclopedia/reit",
+    "summary": "REIT: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "A real estate investment trust is a vehicle that owns real estate and distributes income to unit holders, often traded publicly but sometimes private.",
+    "whyItMatters": "REIT decides control, downside, upside, investor rights, and who gets paid when the deal performs or disappoints.",
+    "formula": null,
+    "example": "In underwriting, tag REIT beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "The structure is the deal. Before chasing headline returns, map who controls decisions, who writes more cheques, who gets paid first, and who is left holding the bag.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "cap-rate",
+      "noi",
+      "equity-multiple"
+    ],
+    "realistTieIn": "Realist.ca can make REIT searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Structures",
+    "tags": [
+      "structures",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "real estate investing",
+      "reit",
+      "structures",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-057",
+    "title": "SNLR",
+    "slug": "snlr",
+    "canonicalPath": "/insights/encyclopedia/snlr",
+    "summary": "SNLR: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Sales-to-new-listings ratio compares sales to new listings. In Canada it is a common resale market balance indicator.",
+    "whyItMatters": "SNLR helps separate market signal from noise. Investors use it to judge bargaining power, liquidity, rent pressure, and exit risk.",
+    "formula": null,
+    "example": "In underwriting, tag SNLR beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use this as a funnel input, not a buy signal. A market is investable when demand, income, supply, regulation, financing, and your operator edge line up.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "months-of-inventory",
+      "absorption-rate",
+      "crea-hpi"
+    ],
+    "realistTieIn": "Realist.ca can make SNLR searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Markets",
+    "tags": [
+      "markets",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "markets",
+      "real estate investing",
+      "snlr",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-058",
+    "title": "Months Of Inventory",
+    "slug": "months-of-inventory",
+    "canonicalPath": "/insights/encyclopedia/months-of-inventory",
+    "summary": "Months Of Inventory: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Months of inventory estimates how long current listings would take to sell at the current sales pace.",
+    "whyItMatters": "months of inventory helps separate market signal from noise. Investors use it to judge bargaining power, liquidity, rent pressure, and exit risk.",
+    "formula": null,
+    "example": "In underwriting, tag months of inventory beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use this as a funnel input, not a buy signal. A market is investable when demand, income, supply, regulation, financing, and your operator edge line up.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "snlr",
+      "absorption-rate",
+      "benchmark-vs-average-vs-median-price"
+    ],
+    "realistTieIn": "Realist.ca can make months of inventory searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Markets",
+    "tags": [
+      "markets",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "markets",
+      "months of inventory",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-059",
+    "title": "Absorption Rate",
+    "slug": "absorption-rate",
+    "canonicalPath": "/insights/encyclopedia/absorption-rate",
+    "summary": "Absorption Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Absorption rate measures how quickly available supply is being sold or leased over a period.",
+    "whyItMatters": "absorption rate helps separate market signal from noise. Investors use it to judge bargaining power, liquidity, rent pressure, and exit risk.",
+    "formula": null,
+    "example": "In underwriting, tag absorption rate beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use this as a funnel input, not a buy signal. A market is investable when demand, income, supply, regulation, financing, and your operator edge line up.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "months-of-inventory",
+      "vacancy-rate",
+      "housing-starts"
+    ],
+    "realistTieIn": "Realist.ca can make absorption rate searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Markets",
+    "tags": [
+      "markets",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "absorption rate",
+      "canadian real estate",
+      "markets",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-060",
+    "title": "Housing Starts",
+    "slug": "housing-starts",
+    "canonicalPath": "/insights/encyclopedia/housing-starts",
+    "summary": "Housing Starts: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Housing starts count new residential construction projects that have begun. They signal future supply, not current availability.",
+    "whyItMatters": "housing starts helps separate market signal from noise. Investors use it to judge bargaining power, liquidity, rent pressure, and exit risk.",
+    "formula": null,
+    "example": "In underwriting, tag housing starts beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use this as a funnel input, not a buy signal. A market is investable when demand, income, supply, regulation, financing, and your operator edge line up.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "completions",
+      "vacancy-rate",
+      "infill-development"
+    ],
+    "realistTieIn": "Realist.ca can make housing starts searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Markets",
+    "tags": [
+      "markets",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "housing starts",
+      "markets",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-061",
+    "title": "Completions",
+    "slug": "completions",
+    "canonicalPath": "/insights/encyclopedia/completions",
+    "summary": "Completions: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Completions count units finished and ready for occupancy. They matter more than starts for near-term rental and resale supply.",
+    "whyItMatters": "completions helps separate market signal from noise. Investors use it to judge bargaining power, liquidity, rent pressure, and exit risk.",
+    "formula": null,
+    "example": "In underwriting, tag completions beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use this as a funnel input, not a buy signal. A market is investable when demand, income, supply, regulation, financing, and your operator edge line up.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "housing-starts",
+      "vacancy-rate",
+      "market-rent-vs-in-place-rent"
+    ],
+    "realistTieIn": "Realist.ca can make completions searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Markets",
+    "tags": [
+      "markets",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "completions",
+      "markets",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-062",
+    "title": "Vacancy Rate",
+    "slug": "vacancy-rate",
+    "canonicalPath": "/insights/encyclopedia/vacancy-rate",
+    "summary": "Vacancy Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Vacancy rate is vacant units divided by total rentable units. It is a direct signal of rental market tightness.",
+    "whyItMatters": "vacancy rate helps separate market signal from noise. Investors use it to judge bargaining power, liquidity, rent pressure, and exit risk.",
+    "formula": null,
+    "example": "In underwriting, tag vacancy rate beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use this as a funnel input, not a buy signal. A market is investable when demand, income, supply, regulation, financing, and your operator edge line up.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "vacancy-allowance",
+      "net-effective-rent",
+      "housing-starts"
+    ],
+    "realistTieIn": "Realist.ca can make vacancy rate searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Markets",
+    "tags": [
+      "markets",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "markets",
+      "real estate investing",
+      "underwriting",
+      "vacancy rate"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-063",
+    "title": "CREA HPI",
+    "slug": "crea-hpi",
+    "canonicalPath": "/insights/encyclopedia/crea-hpi",
+    "summary": "CREA HPI: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "CREA HPI is the Canadian Real Estate Association Home Price Index, designed to track quality-adjusted home price movement.",
+    "whyItMatters": "CREA HPI helps separate market signal from noise. Investors use it to judge bargaining power, liquidity, rent pressure, and exit risk.",
+    "formula": null,
+    "example": "In underwriting, tag CREA HPI beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use this as a funnel input, not a buy signal. A market is investable when demand, income, supply, regulation, financing, and your operator edge line up.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "benchmark-vs-average-vs-median-price",
+      "snlr",
+      "months-of-inventory"
+    ],
+    "realistTieIn": "Realist.ca can make CREA HPI searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Markets",
+    "tags": [
+      "markets",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "crea hpi",
+      "markets",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-064",
+    "title": "benchmark vs average/median price",
+    "slug": "benchmark-vs-average-vs-median-price",
+    "canonicalPath": "/insights/encyclopedia/benchmark-vs-average-vs-median-price",
+    "summary": "benchmark vs average/median price: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Benchmark price tracks a typical property through an index model. Average and median prices reflect the mix of homes sold in a period.",
+    "whyItMatters": "benchmark vs average/median price helps separate market signal from noise. Investors use it to judge bargaining power, liquidity, rent pressure, and exit risk.",
+    "formula": null,
+    "example": "In underwriting, tag benchmark vs average/median price beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use this as a funnel input, not a buy signal. A market is investable when demand, income, supply, regulation, financing, and your operator edge line up.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "crea-hpi",
+      "snlr",
+      "appraisal"
+    ],
+    "realistTieIn": "Realist.ca can make benchmark vs average/median price searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Markets",
+    "tags": [
+      "markets",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "benchmark vs average/median price",
+      "canadian real estate",
+      "markets",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-065",
+    "title": "Cmhc Insurance",
+    "slug": "cmhc-insurance",
+    "canonicalPath": "/insights/encyclopedia/cmhc-insurance",
+    "summary": "Cmhc Insurance: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "CMHC mortgage insurance protects lenders on insured mortgages and allows lower down payments or higher leverage under specific rules.",
+    "whyItMatters": "CMHC insurance changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag CMHC insurance beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "mli-select",
+      "mortgage-stress-test",
+      "ltv"
+    ],
+    "realistTieIn": "Realist.ca can make CMHC insurance searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Lender, insurer, and regulator rules change. Confirm current underwriting criteria before relying on the numbers.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "cmhc insurance",
+      "financing",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-066",
+    "title": "Mli Select",
+    "slug": "mli-select",
+    "canonicalPath": "/insights/encyclopedia/mli-select",
+    "summary": "Mli Select: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "MLI Select is a CMHC multifamily mortgage insurance program that rewards affordability, energy efficiency, and accessibility with better financing terms.",
+    "whyItMatters": "MLI Select changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag MLI Select beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "cmhc-insurance",
+      "dscr",
+      "noi"
+    ],
+    "realistTieIn": "Realist.ca can make MLI Select searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Lender, insurer, and regulator rules change. Confirm current underwriting criteria before relying on the numbers.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "financing",
+      "mli select",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-067",
+    "title": "Hst New Residential Rental Rebate",
+    "slug": "hst-new-residential-rental-rebate",
+    "canonicalPath": "/insights/encyclopedia/hst-new-residential-rental-rebate",
+    "summary": "Hst New Residential Rental Rebate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "The HST new residential rental property rebate can recover part of HST paid on qualifying new rental housing, subject to strict conditions.",
+    "whyItMatters": "HST new residential rental rebate can change after-tax proceeds, legal risk, carrying cost, and closing certainty. Ignoring it can turn a good spreadsheet into a bad real deal.",
+    "formula": null,
+    "example": "In underwriting, tag HST new residential rental rebate beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "infill-development",
+      "land-transfer-tax",
+      "pre"
+    ],
+    "realistTieIn": "Realist.ca can make HST new residential rental rebate searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Canadian tax, legal, municipal, and provincial rules change. Treat this as investor education, not legal or tax advice; confirm with local counsel/accountants.",
+    "category": "Tax",
+    "tags": [
+      "tax",
+      "advanced",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "advanced",
+    "searchKeywords": [
+      "canadian real estate",
+      "hst new residential rental rebate",
+      "real estate investing",
+      "tax",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-068",
+    "title": "PRE",
+    "slug": "pre",
+    "canonicalPath": "/insights/encyclopedia/pre",
+    "summary": "PRE: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "The principal residence exemption can shelter eligible gains on a principal residence from Canadian capital gains tax.",
+    "whyItMatters": "PRE can change after-tax proceeds, legal risk, carrying cost, and closing certainty. Ignoring it can turn a good spreadsheet into a bad real deal.",
+    "formula": null,
+    "example": "In underwriting, tag PRE beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "vacancy-tax",
+      "hst-new-residential-rental-rebate",
+      "assessment-vs-market-value"
+    ],
+    "realistTieIn": "Realist.ca can make PRE searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Canadian tax, legal, municipal, and provincial rules change. Treat this as investor education, not legal or tax advice; confirm with local counsel/accountants.",
+    "category": "Tax",
+    "tags": [
+      "tax",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "pre",
+      "real estate investing",
+      "tax",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-069",
+    "title": "Vacancy Tax",
+    "slug": "vacancy-tax",
+    "canonicalPath": "/insights/encyclopedia/vacancy-tax",
+    "summary": "Vacancy Tax: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Vacancy taxes penalize residential properties left vacant beyond local thresholds. They vary by city, province, and federal rules.",
+    "whyItMatters": "vacancy tax can change after-tax proceeds, legal risk, carrying cost, and closing certainty. Ignoring it can turn a good spreadsheet into a bad real deal.",
+    "formula": null,
+    "example": "In underwriting, tag vacancy tax beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "pre",
+      "rent-control",
+      "vacancy-rate"
+    ],
+    "realistTieIn": "Realist.ca can make vacancy tax searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Canadian tax, legal, municipal, and provincial rules change. Treat this as investor education, not legal or tax advice; confirm with local counsel/accountants.",
+    "category": "Tax",
+    "tags": [
+      "tax",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "real estate investing",
+      "tax",
+      "underwriting",
+      "vacancy tax"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-070",
+    "title": "Land Transfer Tax",
+    "slug": "land-transfer-tax",
+    "canonicalPath": "/insights/encyclopedia/land-transfer-tax",
+    "summary": "Land Transfer Tax: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Land transfer tax is a transaction tax paid by buyers in many Canadian provinces and municipalities based on purchase price.",
+    "whyItMatters": "land transfer tax can change after-tax proceeds, legal risk, carrying cost, and closing certainty. Ignoring it can turn a good spreadsheet into a bad real deal.",
+    "formula": "Tax = sum(price bands × applicable marginal rates). Province and municipality matter.",
+    "example": "A Toronto buyer may owe both Ontario land transfer tax and municipal land transfer tax. The calculator must separate province and city rules.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "land-assembly",
+      "assessment-vs-market-value",
+      "hst-new-residential-rental-rebate"
+    ],
+    "realistTieIn": "Realist.ca can make land transfer tax searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Canadian tax, legal, municipal, and provincial rules change. Treat this as investor education, not legal or tax advice; confirm with local counsel/accountants.",
+    "category": "Tax",
+    "tags": [
+      "tax",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting",
+      "calculator"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "land transfer tax",
+      "real estate investing",
+      "tax",
+      "underwriting"
+    ],
+    "toolSpecSlug": "land-transfer-tax-calculator",
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-071",
+    "title": "Rent Control",
+    "slug": "rent-control",
+    "canonicalPath": "/insights/encyclopedia/rent-control",
+    "summary": "Rent Control: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Rent control limits rent increases, usually based on province, building age, tenancy status, and exemption rules.",
+    "whyItMatters": "rent control can change after-tax proceeds, legal risk, carrying cost, and closing certainty. Ignoring it can turn a good spreadsheet into a bad real deal.",
+    "formula": null,
+    "example": "In underwriting, tag rent control beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "market-rent-vs-in-place-rent",
+      "loss-to-lease",
+      "noi"
+    ],
+    "realistTieIn": "Realist.ca can make rent control searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Canadian tax, legal, municipal, and provincial rules change. Treat this as investor education, not legal or tax advice; confirm with local counsel/accountants.",
+    "category": "Legal",
+    "tags": [
+      "legal",
+      "intermediate",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "intermediate",
+    "searchKeywords": [
+      "canadian real estate",
+      "legal",
+      "real estate investing",
+      "rent control",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-072",
+    "title": "Appraisal",
+    "slug": "appraisal",
+    "canonicalPath": "/insights/encyclopedia/appraisal",
+    "summary": "Appraisal: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "An appraisal is a third-party opinion of property value used by lenders, buyers, sellers, courts, and tax authorities.",
+    "whyItMatters": "appraisal changes what a disciplined buyer can pay, how much debt the asset can safely carry, and whether the return is coming from operations or fragile assumptions.",
+    "formula": null,
+    "example": "In underwriting, tag appraisal beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "ltv",
+      "assessment-vs-market-value",
+      "cap-rate"
+    ],
+    "realistTieIn": "Realist.ca can make appraisal searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Use current local data and source documents. Realist should show assumptions and date-stamp market inputs because stale inputs create fake precision.",
+    "category": "Financing",
+    "tags": [
+      "financing",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "appraisal",
+      "canadian real estate",
+      "financing",
+      "real estate investing",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-073",
+    "title": "Assessment vs Market Value",
+    "slug": "assessment-vs-market-value",
+    "canonicalPath": "/insights/encyclopedia/assessment-vs-market-value",
+    "summary": "Assessment vs Market Value: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "Assessment value is used for property tax allocation. Market value is what a buyer would likely pay today.",
+    "whyItMatters": "assessment vs market value can change after-tax proceeds, legal risk, carrying cost, and closing certainty. Ignoring it can turn a good spreadsheet into a bad real deal.",
+    "formula": null,
+    "example": "In underwriting, tag assessment vs market value beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "mpac",
+      "property-tax-reassessment",
+      "appraisal"
+    ],
+    "realistTieIn": "Realist.ca can make assessment vs market value searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Canadian tax, legal, municipal, and provincial rules change. Treat this as investor education, not legal or tax advice; confirm with local counsel/accountants.",
+    "category": "Tax",
+    "tags": [
+      "tax",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "assessment vs market value",
+      "canadian real estate",
+      "real estate investing",
+      "tax",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  },
+  {
+    "id": "realist-encyclopedia-074",
+    "title": "MPAC",
+    "slug": "mpac",
+    "canonicalPath": "/insights/encyclopedia/mpac",
+    "summary": "MPAC: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+    "definition": "MPAC is Ontario’s Municipal Property Assessment Corporation, which assesses properties for municipal tax purposes.",
+    "whyItMatters": "MPAC can change after-tax proceeds, legal risk, carrying cost, and closing certainty. Ignoring it can turn a good spreadsheet into a bad real deal.",
+    "formula": null,
+    "example": "In underwriting, tag MPAC beside the exact source input and rerun the model when that input changes. The point is not a pretty metric; it is a better buy, hold, refinance, or walk decision.",
+    "investorInterpretation": "Use it to kill bad deals quickly. If the back-of-envelope version does not survive conservative assumptions, do not spend five hours making it look alive.",
+    "commonMistakes": [
+      "Treating the metric as a verdict instead of a screen.",
+      "Using broker-package assumptions without checking the source documents.",
+      "Ignoring taxes, capex, vacancy, financing terms, and timing."
+    ],
+    "relatedTerms": [
+      "assessment-vs-market-value",
+      "property-tax-reassessment",
+      "land-transfer-tax"
+    ],
+    "realistTieIn": "Realist.ca can make MPAC searchable as an encyclopedia entry, link it to property underwriting, and show it beside listings, saved analyses, market pages, and investor lead magnets.",
+    "sourceCaveatNotes": "Canadian tax, legal, municipal, and provincial rules change. Treat this as investor education, not legal or tax advice; confirm with local counsel/accountants.",
+    "category": "Tax",
+    "tags": [
+      "tax",
+      "beginner",
+      "canadian-real-estate",
+      "investor-underwriting"
+    ],
+    "difficulty": "beginner",
+    "searchKeywords": [
+      "canadian real estate",
+      "mpac",
+      "real estate investing",
+      "tax",
+      "underwriting"
+    ],
+    "toolSpecSlug": null,
+    "status": "draft-ready",
+    "contentSections": [
+      "summary",
+      "definition",
+      "whyItMatters",
+      "formula",
+      "example",
+      "investorInterpretation",
+      "commonMistakes",
+      "relatedTerms",
+      "realistTieIn",
+      "sourceCaveatNotes"
+    ]
+  }
+]
