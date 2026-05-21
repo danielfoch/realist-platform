@@ -99,6 +99,7 @@ import CommunityHub from "@/pages/CommunityHub";
 import InsightsHub from "@/pages/InsightsHub";
 import GuidesHub from "@/pages/GuidesHub";
 import GuidePage from "@/pages/GuidePage";
+import CapitalStackCanadaGuide from "@/pages/CapitalStackCanadaGuide";
 import ReportsHub from "@/pages/ReportsHub";
 import ReportPage from "@/pages/ReportPage";
 import MarketsHub from "@/pages/MarketsHub";
@@ -189,6 +190,7 @@ function Router() {
       <Route path="/insights/blog" component={Blog} />
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />
+      <Route path="/insights/guides/capital-stack-canada" component={CapitalStackCanadaGuide} />
       <Route path="/insights/guides/:slug" component={GuidePage} />
       <Route path="/reports" component={ReportsHub} />
       <Route path="/reports/:slug" component={ReportPage} />
