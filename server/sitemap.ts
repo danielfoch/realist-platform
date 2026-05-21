@@ -77,6 +77,7 @@ export async function buildPagesSitemap() {
     { loc: `${BASE}/community/network`, lastmod: now, changefreq: "weekly", priority: 0.7 },
     { loc: `${BASE}/insights`, lastmod: now, changefreq: "weekly", priority: 0.9 },
     { loc: `${BASE}/insights/guides/capital-stack-canada`, lastmod: now, changefreq: "monthly", priority: 0.8 },
+    { loc: `${BASE}/insights/guides/a-vs-b-vs-c-lenders-canada`, lastmod: now, changefreq: "monthly", priority: 0.8 },
     { loc: `${BASE}/insights/market-report`, lastmod: now, changefreq: "weekly", priority: 0.9 },
     { loc: `${BASE}/insights/distress-report`, lastmod: now, changefreq: "daily", priority: 0.85 },
     { loc: `${BASE}/insights/mortgage-rates`, lastmod: now, changefreq: "daily", priority: 0.85 },

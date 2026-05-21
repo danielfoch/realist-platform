@@ -100,6 +100,7 @@ import InsightsHub from "@/pages/InsightsHub";
 import GuidesHub from "@/pages/GuidesHub";
 import GuidePage from "@/pages/GuidePage";
 import CapitalStackCanadaGuide from "@/pages/CapitalStackCanadaGuide";
+import ABCLendersCanadaGuide from "@/pages/ABCLendersCanadaGuide";
 import ReportsHub from "@/pages/ReportsHub";
 import ReportPage from "@/pages/ReportPage";
 import MarketsHub from "@/pages/MarketsHub";
@@ -191,6 +192,7 @@ function Router() {
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />
       <Route path="/insights/guides/capital-stack-canada" component={CapitalStackCanadaGuide} />
+      <Route path="/insights/guides/a-vs-b-vs-c-lenders-canada" component={ABCLendersCanadaGuide} />
       <Route path="/insights/guides/:slug" component={GuidePage} />
       <Route path="/reports" component={ReportsHub} />
       <Route path="/reports/:slug" component={ReportPage} />
