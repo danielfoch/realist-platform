@@ -1501,7 +1501,12 @@ export async function registerRoutes(
     const normalizedStatus = (status || "").toLowerCase().replace(/[\s-]+/g, "_");
     const isSold = ["sold", "closed", "recently_sold"].includes(normalizedStatus);
     const isOffMarket = ["off_market", "off_market_unknown", "inactive", "delisted"].includes(normalizedStatus);
-    const isActive = listing.isActive ?? listing.is_active ?? (!isSold && !isOffMarket);
+    // Status is authoritative: a sold/off-market `status` forces isActive=false
+    // even if the client/scraper explicitly sent isActive=true. Active flag from
+    // the client is only honoured when status doesn't already mark the row terminal.
+    const isActive = isSold || isOffMarket
+      ? false
+      : (listing.isActive ?? listing.is_active ?? true);
     const now = new Date();
     const scrapedAt = listing.scrapedAt || listing.scraped_at || now;
     return {
@@ -1725,6 +1730,10 @@ export async function registerRoutes(
     }
   });
 
+  // `isActive` accepts "true" | "false" | "all". Default is "true" so any caller
+  // that doesn't explicitly opt in to sold/off-market inventory gets active-only.
+  const isActiveFilter = z.enum(["true", "false", "all"]).default("true");
+
   const usListingsQuerySchema = z.object({
     city: z.string().trim().optional(),
     state: z.string().trim().optional(),
@@ -1734,7 +1743,7 @@ export async function registerRoutes(
     baths: z.coerce.number().optional(),
     propertyType: z.string().trim().optional(),
     status: z.string().trim().optional(),
-    isActive: z.enum(["true", "false"]).optional(),
+    isActive: isActiveFilter,
     source: z.string().trim().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
     offset: z.coerce.number().int().min(0).default(0),
@@ -1746,7 +1755,7 @@ export async function registerRoutes(
     south: z.coerce.number().min(-90).max(90).optional(),
     east: z.coerce.number().min(-180).max(180).optional(),
     west: z.coerce.number().min(-180).max(180).optional(),
-    isActive: z.enum(["true", "false"]).default("true"),
+    isActive: isActiveFilter,
   });
 
   function buildUsListingsConditions(filters: z.infer<typeof usListingsQuerySchema>) {
@@ -1759,7 +1768,7 @@ export async function registerRoutes(
       filters.baths !== undefined ? gte(usListings.baths, filters.baths) : undefined,
       filters.propertyType ? ilike(usListings.propertyType, `%${filters.propertyType}%`) : undefined,
       filters.status ? ilike(usListings.status, filters.status) : undefined,
-      filters.isActive !== undefined ? eq(usListings.isActive, filters.isActive === "true") : undefined,
+      filters.isActive === "all" ? undefined : eq(usListings.isActive, filters.isActive === "true"),
       filters.source ? eq(usListings.source, filters.source) : undefined,
     ].filter(Boolean);
   }
