@@ -1872,8 +1872,11 @@ export async function registerRoutes(
         active: sql<number>`COUNT(*) FILTER (WHERE ${usListings.isActive} = true)`,
         sold: sql<number>`COUNT(*) FILTER (WHERE lower(coalesce(${usListings.status}, '')) IN ('sold', 'closed', 'recently_sold'))`,
         offMarketUnknown: sql<number>`COUNT(*) FILTER (WHERE ${usListings.status} = 'off_market_unknown')`,
+        withCoords: sql<number>`COUNT(*) FILTER (WHERE ${usListings.lat} IS NOT NULL AND ${usListings.lng} IS NOT NULL)`,
+        activeWithCoords: sql<number>`COUNT(*) FILTER (WHERE ${usListings.isActive} = true AND ${usListings.lat} IS NOT NULL AND ${usListings.lng} IS NOT NULL)`,
         latestFirstSeenAt: sql<Date | null>`MAX(${usListings.firstSeenAt})`,
         latestLastSeenAt: sql<Date | null>`MAX(${usListings.lastSeenAt})`,
+        latestUpdatedAt: sql<Date | null>`MAX(${usListings.updatedAt})`,
         latestSyncTime: sql<Date | null>`MAX(COALESCE(${usListings.lastCheckedAt}, ${usListings.updatedAt}, ${usListings.scrapedAt}))`,
       }).from(usListings);
       const byMarket = await db
