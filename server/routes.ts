@@ -1541,9 +1541,22 @@ export async function registerRoutes(
       isActive,
       statusConfidence: listing.statusConfidence || listing.status_confidence || (isSold || isOffMarket ? "high" : "high"),
       scrapedAt,
+      // Freshness semantics (do not change without updating /listings/us badges):
+      //   firstSeenAt   — original first observation; payload may seed it on
+      //                   first insert, but the upsert SET clause below never
+      //                   overwrites it on update.
+      //   lastSeenAt    — bumped on every successful source observation.
+      //                   Always derived from scrapedAt (payload.scrapedAt if
+      //                   present, else now). Payload-provided lastSeenAt is
+      //                   intentionally ignored: scrapers historically send
+      //                   stale values copied from the source row, which
+      //                   poisoned the freshness badges in prod.
+      //   lastCheckedAt — bumped on every ingest/check attempt, always now.
+      //                   Payload-provided lastCheckedAt is ignored for the
+      //                   same reason.
       firstSeenAt: listing.firstSeenAt || listing.first_seen_at || scrapedAt,
-      lastSeenAt: listing.lastSeenAt || listing.last_seen_at || scrapedAt,
-      lastCheckedAt: listing.lastCheckedAt || listing.last_checked_at || now,
+      lastSeenAt: scrapedAt,
+      lastCheckedAt: now,
       soldDetectedAt: listing.soldDetectedAt || listing.sold_detected_at || (isSold ? now : null),
       offMarketDetectedAt: listing.offMarketDetectedAt || listing.off_market_detected_at || (isOffMarket ? now : null),
       raw: listing.raw ?? raw,
