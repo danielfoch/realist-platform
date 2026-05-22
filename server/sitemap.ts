@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { encyclopediaGuides } from "@shared/encyclopedia";
 
 const BASE = "https://realist.ca";
 
@@ -44,7 +45,7 @@ function urlset(urls: SitemapUrl[]) {
 
 export function buildSitemapIndex() {
   const lastmod = today();
-  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-podcast.xml"];
+  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-podcast.xml", "sitemap-encyclopedia.xml"];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemaps.map((name) => `  <sitemap>\n    <loc>${BASE}/${name}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`).join("\n")}\n</sitemapindex>\n`;
 }
 
@@ -94,6 +95,7 @@ export async function buildPagesSitemap() {
     { loc: `${BASE}/biggest-price-drops-gta`, lastmod: now, changefreq: "daily", priority: 0.85 },
     { loc: `${BASE}/insights/blog`, lastmod: now, changefreq: "weekly", priority: 0.8 },
     { loc: `${BASE}/insights/guides`, lastmod: now, changefreq: "weekly", priority: 0.8 },
+    { loc: `${BASE}/insights/encyclopedia`, lastmod: now, changefreq: "weekly", priority: 0.82 },
     { loc: `${BASE}/join/realtors`, lastmod: now, changefreq: "monthly", priority: 0.7 },
     { loc: `${BASE}/join/lenders`, lastmod: now, changefreq: "monthly", priority: 0.7 },
   ];
@@ -126,6 +128,19 @@ export async function buildPagesSitemap() {
   } catch {}
 
   return urlset(urls);
+}
+
+export function buildEncyclopediaSitemap() {
+  const now = today();
+  return urlset([
+    { loc: `${BASE}/insights/encyclopedia`, lastmod: now, changefreq: "weekly", priority: 0.82 },
+    ...encyclopediaGuides.map((guide) => ({
+      loc: `${BASE}${guide.canonicalPath}`,
+      lastmod: now,
+      changefreq: "monthly",
+      priority: guide.toolSpecSlug ? 0.74 : 0.68,
+    })),
+  ]);
 }
 
 export async function buildReportsSitemap() {

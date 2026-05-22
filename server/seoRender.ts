@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { encyclopediaGuides, getEncyclopediaGuide } from "@shared/encyclopedia";
 import { getProgrammaticMarket, getProgrammaticStrategy, PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } from "@shared/programmaticSeo";
 
 function escapeHtml(value: string): string {
@@ -342,6 +343,37 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
         <p style="font-size:18px;color:#4b5563;max-width:760px;line-height:1.7;">Guides built to answer recurring investor questions around financing, taxes, strategy, and execution in Canada.</p>
       </header>
       ${renderLinkList(guides.map((guide) => ({ href: `/insights/guides/${guide.slug}`, label: guide.title })))}
+    `);
+  }
+
+  if (reqPath === "/insights/encyclopedia") {
+    return renderShell(`
+      <header>
+        <h1 style="font-size:40px;margin:0 0 12px;">Real Estate Investor Encyclopedia</h1>
+        <p style="font-size:18px;color:#4b5563;max-width:760px;line-height:1.7;">Plain-English Canadian real estate investing definitions, formulas, examples, caveats, and calculator specs.</p>
+      </header>
+      ${renderLinkList(encyclopediaGuides.map((guide) => ({ href: guide.canonicalPath, label: guide.title })))}
+    `);
+  }
+
+  const encyclopediaMatch = reqPath.match(/^\/insights\/encyclopedia\/([^/]+)$/);
+  if (encyclopediaMatch) {
+    const guide = getEncyclopediaGuide(encyclopediaMatch[1]);
+    if (!guide) return null;
+    return renderShell(`
+      <article>
+        <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">Investor Encyclopedia</p>
+        <h1 style="font-size:42px;line-height:1.1;margin:8px 0 14px;">${escapeHtml(guide.title)}</h1>
+        <p style="font-size:18px;color:#4b5563;line-height:1.7;max-width:760px;">${escapeHtml(guide.summary)}</p>
+        <h2>Definition</h2>
+        <p>${escapeHtml(guide.definition)}</p>
+        ${guide.formula ? `<h2>Formula</h2><p>${escapeHtml(guide.formula)}</p>` : ""}
+        ${guide.example ? `<h2>Example</h2><p>${escapeHtml(guide.example)}</p>` : ""}
+        <h2>Why It Matters</h2>
+        <p>${escapeHtml(guide.whyItMatters)}</p>
+        ${guide.investorInterpretation ? `<h2>Investor Interpretation</h2><p>${escapeHtml(guide.investorInterpretation)}</p>` : ""}
+        ${guide.realistTieIn ? `<h2>Realist Tie-In</h2><p>${escapeHtml(guide.realistTieIn)}</p>` : ""}
+      </article>
     `);
   }
 

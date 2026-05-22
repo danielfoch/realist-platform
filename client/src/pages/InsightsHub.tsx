@@ -100,6 +100,14 @@ const insightSections = [
         badge: "Education",
         cta: "View Guides",
       },
+      {
+        href: "/insights/encyclopedia",
+        title: "Investor Encyclopedia",
+        description: "Search definitions, formulas, examples, caveats, and calculator specs for Canadian real estate underwriting.",
+        icon: BookOpen,
+        badge: "New",
+        cta: "Search Terms",
+      },
     ],
   },
 ];

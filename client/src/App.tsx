@@ -55,6 +55,7 @@ import Premium from "@/pages/Premium";
 import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
 import ListingIntelligence from "@/pages/ListingIntelligence";
+import UsListings from "@/pages/UsListings";
 import RealtorNetwork from "@/pages/RealtorNetwork";
 import MarketReport from "@/pages/MarketReport";
 import MortgageRates from "@/pages/MortgageRates";
@@ -99,6 +100,8 @@ import CommunityHub from "@/pages/CommunityHub";
 import InsightsHub from "@/pages/InsightsHub";
 import GuidesHub from "@/pages/GuidesHub";
 import GuidePage from "@/pages/GuidePage";
+import EncyclopediaIndex from "@/pages/EncyclopediaIndex";
+import EncyclopediaDetail from "@/pages/EncyclopediaDetail";
 import CapitalStackCanadaGuide from "@/pages/CapitalStackCanadaGuide";
 import ABCLendersCanadaGuide from "@/pages/ABCLendersCanadaGuide";
 import ReportsHub from "@/pages/ReportsHub";
@@ -136,6 +139,8 @@ function Router() {
       <Route path="/tools/cap-rates" component={CapRates} />
       <Route path="/listing-intelligence" component={ListingIntelligence} />
       <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
+      <Route path="/listings/us" component={UsListings} />
+      <Route path="/us-listings" component={UsListings} />
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
       <Route path="/deals" component={InvestorOperatingSystem} />
       <Route path="/watchlist" component={InvestorOperatingSystem} />
@@ -191,6 +196,8 @@ function Router() {
       <Route path="/insights/blog" component={Blog} />
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />
+      <Route path="/insights/encyclopedia" component={EncyclopediaIndex} />
+      <Route path="/insights/encyclopedia/:slug" component={EncyclopediaDetail} />
       <Route path="/insights/guides/capital-stack-canada" component={CapitalStackCanadaGuide} />
       <Route path="/insights/guides/a-vs-b-vs-c-lenders-canada" component={ABCLendersCanadaGuide} />
       <Route path="/insights/guides/:slug" component={GuidePage} />

@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { encyclopediaGuides, getEncyclopediaGuide } from "@shared/encyclopedia";
 import { getProgrammaticMarket, getProgrammaticStrategy } from "@shared/programmaticSeo";
 
 const BASE_URL = "https://realist.ca";
@@ -205,6 +206,31 @@ const STATIC_META: Record<string, PageMeta> = {
     title: "Canadian Real Estate Guides - Realist.ca",
     description: "Plain-English guides to Canadian real estate investing: BRRR, multiplex, HST, financing, taxes, and strategy.",
   },
+  "/insights/encyclopedia": {
+    title: "Real Estate Investor Encyclopedia - Realist.ca",
+    description: "Search Canadian real estate investing definitions, formulas, examples, caveats, and underwriting calculator specs.",
+    canonicalPath: "/insights/encyclopedia",
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: "Realist.ca Investor Encyclopedia",
+        description: "Canadian real estate investing definitions, formulas, examples, caveats, and calculator specs.",
+        url: "https://realist.ca/insights/encyclopedia",
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: "Realist.ca Investor Encyclopedia Entries",
+        itemListElement: encyclopediaGuides.map((guide, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name: guide.title,
+          url: `https://realist.ca${guide.canonicalPath}`,
+        })),
+      },
+    ],
+  },
   // Join
   "/join/realtors": {
     title: "Realtor Partner Program - Realist.ca",
@@ -355,6 +381,31 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
         };
       }
     } catch { /* fall through */ }
+  }
+
+  const encyclopediaMatch = path.match(/^\/insights\/encyclopedia\/([^\/]+)$/);
+  if (encyclopediaMatch) {
+    const guide = getEncyclopediaGuide(encyclopediaMatch[1]);
+    if (guide) {
+      return {
+        title: `${guide.title} - Real Estate Investor Encyclopedia | Realist.ca`,
+        description: guide.summary,
+        ogType: "article",
+        canonicalPath: guide.canonicalPath,
+        keywords: [guide.title, guide.slug, guide.category, ...(guide.tags ?? []), ...(guide.searchKeywords ?? [])].join(", "),
+        structuredData: [
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: "https://realist.ca/" },
+              { "@type": "ListItem", position: 2, name: "Encyclopedia", item: "https://realist.ca/insights/encyclopedia" },
+              { "@type": "ListItem", position: 3, name: guide.title, item: `https://realist.ca${guide.canonicalPath}` },
+            ],
+          },
+        ],
+      };
+    }
   }
 
   const marketMatch = path.match(/^\/markets\/([^\/]+)$/);

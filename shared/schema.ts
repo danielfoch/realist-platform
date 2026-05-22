@@ -506,9 +506,16 @@ export const usListings = pgTable("us_listings", {
   daysOnMarket: integer("days_on_market"),
   listDate: timestamp("list_date"),
   status: text("status"),
+  isActive: boolean("is_active").default(true).notNull(),
+  statusConfidence: text("status_confidence"),
   motivatedSellerSignals: text("motivated_seller_signals").array(),
   raw: jsonb("raw"),
   scrapedAt: timestamp("scraped_at").notNull(),
+  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+  lastCheckedAt: timestamp("last_checked_at"),
+  soldDetectedAt: timestamp("sold_detected_at"),
+  offMarketDetectedAt: timestamp("off_market_detected_at"),
   delistedAt: timestamp("delisted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -523,6 +530,11 @@ export const insertUsListingSchema = createInsertSchema(usListings).omit({
 }).extend({
   scrapedAt: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
   listDate: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+  firstSeenAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? undefined : (typeof v === "string" ? new Date(v) : v)),
+  lastSeenAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? undefined : (typeof v === "string" ? new Date(v) : v)),
+  lastCheckedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+  soldDetectedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+  offMarketDetectedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
   delistedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
 });
 

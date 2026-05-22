@@ -39,6 +39,7 @@ const navCategories: NavCategory[] = [
     items: [
       { href: "/tools/cap-rates", label: "Yield Map", description: "Browse listings by estimated gross yield", icon: <Map className="h-4 w-4" /> },
       { href: "/listing-intelligence", label: "Listing Intelligence", description: "Collaborative underwriting card with structured feedback", icon: <FileSearch className="h-4 w-4" />, badge: "AI-ready" },
+      { href: "/listings/us", label: "US Listings", description: "HomeHarvest US listing beta, isolated from CREA", icon: <Building className="h-4 w-4" />, badge: "Beta" },
       { href: "/tools/distress-deals", label: "Distress Deals", description: "Power of sale, foreclosure, VTB finder", icon: <Gavel className="h-4 w-4" />, badge: "New" },
       { href: "/tools/buybox", label: "BuyBox Builder", description: "Define and share your investment criteria", icon: <MapPin className="h-4 w-4" /> },
       { href: "/tools/coinvest", label: "Co-Invest", description: "Find investment partners", icon: <Handshake className="h-4 w-4" /> },
@@ -66,6 +67,7 @@ const navCategories: NavCategory[] = [
       { href: "/insights/podcast", label: "Podcast", description: "Real estate investor conversations", icon: <Radio className="h-4 w-4" /> },
       { href: "/insights/blog", label: "Blog & Research", description: "Market analysis and strategy", icon: <BookOpen className="h-4 w-4" /> },
       { href: "/insights/guides", label: "Guides", description: "How-to guides and educational resources", icon: <FileText className="h-4 w-4" /> },
+      { href: "/insights/encyclopedia", label: "Encyclopedia", description: "Definitions, formulas, and underwriting calculator specs", icon: <BookOpen className="h-4 w-4" />, badge: "New" },
     ],
   },
   {

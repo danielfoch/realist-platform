@@ -63,7 +63,7 @@ import {
   usRents,
   insertUsRentSchema,
 } from "@shared/schema";
-import { eq, and, desc, inArray, sql, count } from "drizzle-orm";
+import { eq, and, desc, inArray, notInArray, sql, count, gte, lte, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { COMMUNITY_DEFAULTS, COMMUNITY_FLAGS, computeConsensusLabel, sanitizeUserText, summarizeCommunityMetrics, truncateText } from "@shared/community";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
@@ -573,6 +573,7 @@ export async function registerRoutes(
       "Disallow: /admin",
       "",
       "Sitemap: https://realist.ca/sitemap.xml",
+      "Sitemap: https://realist.ca/sitemap-encyclopedia.xml",
       "",
     ].join("\n");
     res.removeHeader("Set-Cookie");
@@ -620,6 +621,20 @@ export async function registerRoutes(
       res.status(200).end(await buildPodcastSitemap());
     } catch (err: any) {
       console.error("[sitemap-podcast] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
+  app.get("/sitemap-encyclopedia.xml", async (_req, res) => {
+    try {
+      const { buildEncyclopediaSitemap } = await import("./sitemap");
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(buildEncyclopediaSitemap());
+    } catch (err: any) {
+      console.error("[sitemap-encyclopedia] error:", err.message);
       res.status(500).type("text/plain").send("sitemap error");
     }
   });
@@ -1387,8 +1402,143 @@ export async function registerRoutes(
   // Auth: shared secret in `X-Ingest-Token` header (env: US_LISTINGS_INGEST_TOKEN)
   // Body: { listings: InsertUsListing[] }  — batches of up to 1000
   // Behavior: idempotent upsert keyed on (source, source_id)
+  const nullableNumber = z.union([z.number(), z.string()]).optional().nullable()
+    .transform((value) => {
+      if (value === null || value === undefined || value === "") return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    });
+  const nullableString = z.union([z.string(), z.number()]).optional().nullable()
+    .transform((value) => value === null || value === undefined ? null : String(value));
+  const nullableDate = z.union([z.string(), z.date()]).optional().nullable()
+    .transform((value) => {
+      if (!value) return null;
+      const date = value instanceof Date ? value : new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    });
+  const homeHarvestListingSchema = z.object({
+    source: nullableString.default("homeharvest"),
+    sourceId: nullableString,
+    source_id: nullableString,
+    id: nullableString,
+    property_id: nullableString,
+    mls: nullableString,
+    mlsNumber: nullableString,
+    mls_number: nullableString,
+    sourceUrl: nullableString,
+    source_url: nullableString,
+    property_url: nullableString,
+    formattedAddress: nullableString,
+    formatted_address: nullableString,
+    full_address: nullableString,
+    streetAddress: nullableString,
+    street_address: nullableString,
+    city: nullableString,
+    state: nullableString,
+    postalCode: nullableString,
+    postal_code: nullableString,
+    zip_code: nullableString,
+    county: nullableString,
+    lat: nullableNumber,
+    latitude: nullableNumber,
+    lng: nullableNumber,
+    lon: nullableNumber,
+    longitude: nullableNumber,
+    propertyType: nullableString,
+    property_type: nullableString,
+    beds: nullableNumber,
+    bedrooms: nullableNumber,
+    baths: nullableNumber,
+    bathrooms: nullableNumber,
+    sqft: nullableNumber,
+    living_area: nullableNumber,
+    lotSqft: nullableNumber,
+    lot_sqft: nullableNumber,
+    lot_size: nullableNumber,
+    yearBuilt: nullableNumber,
+    year_built: nullableNumber,
+    listPrice: nullableNumber,
+    list_price: nullableNumber,
+    price: nullableNumber,
+    daysOnMarket: nullableNumber,
+    days_on_market: nullableNumber,
+    listDate: nullableDate,
+    list_date: nullableDate,
+    status: nullableString,
+    isActive: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    statusConfidence: nullableString,
+    status_confidence: nullableString,
+    scrapedAt: nullableDate,
+    scraped_at: nullableDate,
+    firstSeenAt: nullableDate,
+    first_seen_at: nullableDate,
+    lastSeenAt: nullableDate,
+    last_seen_at: nullableDate,
+    lastCheckedAt: nullableDate,
+    last_checked_at: nullableDate,
+    soldDetectedAt: nullableDate,
+    sold_detected_at: nullableDate,
+    offMarketDetectedAt: nullableDate,
+    off_market_detected_at: nullableDate,
+    raw: z.unknown().optional(),
+  }).passthrough().transform((listing, ctx) => {
+    const raw = { ...listing };
+    const source = listing.source || "homeharvest";
+    const sourceId = listing.sourceId || listing.source_id || listing.id || listing.property_id || listing.mlsNumber || listing.mls_number || listing.mls;
+    const streetAddress = listing.streetAddress || listing.street_address;
+    const city = listing.city;
+    const state = listing.state;
+    const postalCode = listing.postalCode || listing.postal_code || listing.zip_code;
+    const formattedAddress = listing.formattedAddress || listing.formatted_address || listing.full_address || [streetAddress, city, state, postalCode].filter(Boolean).join(", ");
+    if (!sourceId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "sourceId is required; accepted aliases: source_id, id, property_id, mls, mlsNumber" });
+    }
+    if (!formattedAddress) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "formattedAddress is required or derivable from street/city/state/postalCode" });
+    }
+    const status = listing.status;
+    const normalizedStatus = (status || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const isSold = ["sold", "closed", "recently_sold"].includes(normalizedStatus);
+    const isOffMarket = ["off_market", "off_market_unknown", "inactive", "delisted"].includes(normalizedStatus);
+    const isActive = listing.isActive ?? listing.is_active ?? (!isSold && !isOffMarket);
+    const now = new Date();
+    const scrapedAt = listing.scrapedAt || listing.scraped_at || now;
+    return {
+      source,
+      sourceId: sourceId || "",
+      sourceUrl: listing.sourceUrl || listing.source_url || listing.property_url,
+      formattedAddress: formattedAddress || "",
+      streetAddress,
+      city,
+      state,
+      postalCode,
+      county: listing.county,
+      lat: listing.lat ?? listing.latitude,
+      lng: listing.lng ?? listing.lon ?? listing.longitude,
+      propertyType: listing.propertyType || listing.property_type,
+      beds: listing.beds ?? listing.bedrooms,
+      baths: listing.baths ?? listing.bathrooms,
+      sqft: Math.round(listing.sqft ?? listing.living_area ?? 0) || null,
+      lotSqft: Math.round(listing.lotSqft ?? listing.lot_sqft ?? listing.lot_size ?? 0) || null,
+      yearBuilt: Math.round(listing.yearBuilt ?? listing.year_built ?? 0) || null,
+      listPrice: Math.round(listing.listPrice ?? listing.list_price ?? listing.price ?? 0) || null,
+      daysOnMarket: Math.round(listing.daysOnMarket ?? listing.days_on_market ?? 0) || null,
+      listDate: listing.listDate || listing.list_date,
+      status,
+      isActive,
+      statusConfidence: listing.statusConfidence || listing.status_confidence || (isSold || isOffMarket ? "high" : "high"),
+      scrapedAt,
+      firstSeenAt: listing.firstSeenAt || listing.first_seen_at || scrapedAt,
+      lastSeenAt: listing.lastSeenAt || listing.last_seen_at || scrapedAt,
+      lastCheckedAt: listing.lastCheckedAt || listing.last_checked_at || now,
+      soldDetectedAt: listing.soldDetectedAt || listing.sold_detected_at || (isSold ? now : null),
+      offMarketDetectedAt: listing.offMarketDetectedAt || listing.off_market_detected_at || (isOffMarket ? now : null),
+      raw: listing.raw ?? raw,
+    };
+  });
   const ingestBatchSchema = z.object({
-    listings: z.array(insertUsListingSchema).min(1).max(1000),
+    listings: z.array(homeHarvestListingSchema.pipe(insertUsListingSchema)).min(1).max(1000),
   });
 
   app.post("/api/ingest/us-listings", async (req, res) => {
@@ -1421,7 +1571,13 @@ export async function registerRoutes(
 
       const result = await db
         .insert(usListings)
-        .values(rows.map((r) => ({ ...r, updatedAt: now })))
+        .values(rows.map((r) => ({
+          ...r,
+          firstSeenAt: r.firstSeenAt ?? now,
+          lastSeenAt: r.lastSeenAt ?? now,
+          lastCheckedAt: r.lastCheckedAt ?? now,
+          updatedAt: now,
+        })))
         .onConflictDoUpdate({
           target: [usListings.source, usListings.sourceId],
           set: {
@@ -1447,9 +1603,15 @@ export async function registerRoutes(
             daysOnMarket: sql`excluded.days_on_market`,
             listDate: sql`excluded.list_date`,
             status: sql`excluded.status`,
+            isActive: sql`excluded.is_active`,
+            statusConfidence: sql`excluded.status_confidence`,
             motivatedSellerSignals: sql`excluded.motivated_seller_signals`,
             raw: sql`excluded.raw`,
             scrapedAt: sql`excluded.scraped_at`,
+            lastSeenAt: sql`excluded.last_seen_at`,
+            lastCheckedAt: sql`excluded.last_checked_at`,
+            soldDetectedAt: sql`COALESCE(excluded.sold_detected_at, ${usListings.soldDetectedAt})`,
+            offMarketDetectedAt: sql`COALESCE(excluded.off_market_detected_at, ${usListings.offMarketDetectedAt})`,
             delistedAt: sql`excluded.delisted_at`,
             updatedAt: sql`excluded.updated_at`,
           },
@@ -1487,6 +1649,251 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("[/api/ingest/us-listings] error:", err);
       return res.status(500).json({ error: "Ingest failed", message: err?.message ?? String(err) });
+    }
+  });
+
+  const reconcileUsListingsSchema = z.object({
+    source: z.string().trim().default("homeharvest"),
+    market: z.object({
+      city: z.string().trim().min(1),
+      state: z.string().trim().min(1),
+    }),
+    scrapeCompletedAt: z.union([z.string(), z.date()]).optional().transform((value) => {
+      if (!value) return new Date();
+      const date = value instanceof Date ? value : new Date(value);
+      return Number.isNaN(date.getTime()) ? new Date() : date;
+    }),
+    activeSourceIds: z.array(z.union([z.string(), z.number()]).transform(String)),
+    scrapeSucceeded: z.boolean().optional().default(true),
+  });
+
+  app.post("/api/ingest/us-listings/reconcile", async (req, res) => {
+    try {
+      const expected = process.env.US_LISTINGS_INGEST_TOKEN;
+      if (!expected) {
+        return res.status(503).json({ error: "Ingest endpoint not configured (missing token)" });
+      }
+      const provided = req.header("x-ingest-token");
+      if (!provided || provided !== expected) {
+        return res.status(401).json({ error: "Invalid or missing ingest token" });
+      }
+
+      const parsed = reconcileUsListingsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      }
+      const { source, market, activeSourceIds, scrapeCompletedAt, scrapeSucceeded } = parsed.data;
+      const normalizedActiveSourceIds = Array.from(new Set(activeSourceIds.filter(Boolean)));
+      if (!scrapeSucceeded || normalizedActiveSourceIds.length === 0) {
+        return res.status(400).json({
+          error: "Reconcile skipped",
+          message: "Only reconcile after a successful scrape with at least one activeSourceId",
+        });
+      }
+
+      const now = new Date();
+      const staleRows = await db
+        .update(usListings)
+        .set({
+          status: "off_market_unknown",
+          isActive: false,
+          offMarketDetectedAt: now,
+          statusConfidence: "medium",
+          lastCheckedAt: scrapeCompletedAt,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(usListings.source, source),
+          ilike(usListings.city, market.city),
+          ilike(usListings.state, market.state),
+          eq(usListings.isActive, true),
+          notInArray(usListings.sourceId, normalizedActiveSourceIds),
+        ))
+        .returning({ id: usListings.id, sourceId: usListings.sourceId });
+
+      return res.json({
+        ok: true,
+        source,
+        market,
+        activeSourceIds: normalizedActiveSourceIds.length,
+        markedOffMarket: staleRows.length,
+        serverTime: now.toISOString(),
+      });
+    } catch (err: any) {
+      console.error("[/api/ingest/us-listings/reconcile] error:", err);
+      return res.status(500).json({ error: "Reconcile failed", message: err?.message ?? String(err) });
+    }
+  });
+
+  const usListingsQuerySchema = z.object({
+    city: z.string().trim().optional(),
+    state: z.string().trim().optional(),
+    minPrice: z.coerce.number().optional(),
+    maxPrice: z.coerce.number().optional(),
+    beds: z.coerce.number().optional(),
+    baths: z.coerce.number().optional(),
+    propertyType: z.string().trim().optional(),
+    status: z.string().trim().optional(),
+    isActive: z.enum(["true", "false"]).optional(),
+    source: z.string().trim().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    offset: z.coerce.number().int().min(0).default(0),
+  });
+
+  const usListingsMapQuerySchema = usListingsQuerySchema.extend({
+    limit: z.coerce.number().int().min(1).max(1000).default(500),
+    north: z.coerce.number().min(-90).max(90).optional(),
+    south: z.coerce.number().min(-90).max(90).optional(),
+    east: z.coerce.number().min(-180).max(180).optional(),
+    west: z.coerce.number().min(-180).max(180).optional(),
+    isActive: z.enum(["true", "false"]).default("true"),
+  });
+
+  function buildUsListingsConditions(filters: z.infer<typeof usListingsQuerySchema>) {
+    return [
+      filters.city ? ilike(usListings.city, `%${filters.city}%`) : undefined,
+      filters.state ? ilike(usListings.state, filters.state) : undefined,
+      filters.minPrice !== undefined ? gte(usListings.listPrice, filters.minPrice) : undefined,
+      filters.maxPrice !== undefined ? lte(usListings.listPrice, filters.maxPrice) : undefined,
+      filters.beds !== undefined ? gte(usListings.beds, filters.beds) : undefined,
+      filters.baths !== undefined ? gte(usListings.baths, filters.baths) : undefined,
+      filters.propertyType ? ilike(usListings.propertyType, `%${filters.propertyType}%`) : undefined,
+      filters.status ? ilike(usListings.status, filters.status) : undefined,
+      filters.isActive !== undefined ? eq(usListings.isActive, filters.isActive === "true") : undefined,
+      filters.source ? eq(usListings.source, filters.source) : undefined,
+    ].filter(Boolean);
+  }
+
+  app.get("/api/us-listings", async (req, res) => {
+    try {
+      const parsed = usListingsQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid filters", details: parsed.error.flatten() });
+      }
+      const filters = parsed.data;
+      const conditions = buildUsListingsConditions(filters);
+      const where = conditions.length ? and(...conditions as any[]) : undefined;
+      const [totalRow] = await db
+        .select({ count: count() })
+        .from(usListings)
+        .where(where);
+      const listings = await db
+        .select()
+        .from(usListings)
+        .where(where)
+        .orderBy(desc(usListings.scrapedAt), desc(usListings.createdAt))
+        .limit(filters.limit)
+        .offset(filters.offset);
+      res.json({
+        listings,
+        total: totalRow?.count ?? 0,
+        limit: filters.limit,
+        offset: filters.offset,
+      });
+    } catch (err: any) {
+      console.error("[/api/us-listings] error:", err);
+      res.status(500).json({ error: "Failed to fetch US listings", message: err?.message ?? String(err) });
+    }
+  });
+
+  app.get("/api/us-listings/map", async (req, res) => {
+    try {
+      const parsed = usListingsMapQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid filters", details: parsed.error.flatten() });
+      }
+      const filters = parsed.data;
+      const boundsAreValid = (
+        filters.north !== undefined &&
+        filters.south !== undefined &&
+        filters.east !== undefined &&
+        filters.west !== undefined &&
+        filters.north >= filters.south
+      );
+      const conditions = [
+        ...buildUsListingsConditions(filters),
+        sql`${usListings.lat} IS NOT NULL`,
+        sql`${usListings.lng} IS NOT NULL`,
+        boundsAreValid ? lte(usListings.lat, filters.north!) : undefined,
+        boundsAreValid ? gte(usListings.lat, filters.south!) : undefined,
+        boundsAreValid ? lte(usListings.lng, filters.east!) : undefined,
+        boundsAreValid ? gte(usListings.lng, filters.west!) : undefined,
+      ].filter(Boolean);
+      const where = conditions.length ? and(...conditions as any[]) : undefined;
+      const [totalRow] = await db
+        .select({ count: count() })
+        .from(usListings)
+        .where(where);
+      const listings = await db
+        .select({
+          id: usListings.id,
+          source: usListings.source,
+          sourceId: usListings.sourceId,
+          formattedAddress: usListings.formattedAddress,
+          sourceUrl: usListings.sourceUrl,
+          city: usListings.city,
+          state: usListings.state,
+          lat: usListings.lat,
+          lng: usListings.lng,
+          propertyType: usListings.propertyType,
+          beds: usListings.beds,
+          baths: usListings.baths,
+          sqft: usListings.sqft,
+          lotSqft: usListings.lotSqft,
+          yearBuilt: usListings.yearBuilt,
+          listPrice: usListings.listPrice,
+          daysOnMarket: usListings.daysOnMarket,
+          status: usListings.status,
+          isActive: usListings.isActive,
+          statusConfidence: usListings.statusConfidence,
+          lastSeenAt: usListings.lastSeenAt,
+        })
+        .from(usListings)
+        .where(where)
+        .orderBy(desc(usListings.lastSeenAt), desc(usListings.scrapedAt))
+        .limit(filters.limit)
+        .offset(filters.offset);
+      res.json({
+        listings,
+        total: totalRow?.count ?? 0,
+        limit: filters.limit,
+        offset: filters.offset,
+      });
+    } catch (err: any) {
+      console.error("[/api/us-listings/map] error:", err);
+      res.status(500).json({ error: "Failed to fetch US listings map data", message: err?.message ?? String(err) });
+    }
+  });
+
+  app.get("/api/us-listings/status", async (_req, res) => {
+    try {
+      const [summary] = await db.select({
+        total: count(),
+        active: sql<number>`COUNT(*) FILTER (WHERE ${usListings.isActive} = true)`,
+        sold: sql<number>`COUNT(*) FILTER (WHERE lower(coalesce(${usListings.status}, '')) IN ('sold', 'closed', 'recently_sold'))`,
+        offMarketUnknown: sql<number>`COUNT(*) FILTER (WHERE ${usListings.status} = 'off_market_unknown')`,
+        latestFirstSeenAt: sql<Date | null>`MAX(${usListings.firstSeenAt})`,
+        latestLastSeenAt: sql<Date | null>`MAX(${usListings.lastSeenAt})`,
+        latestSyncTime: sql<Date | null>`MAX(COALESCE(${usListings.lastCheckedAt}, ${usListings.updatedAt}, ${usListings.scrapedAt}))`,
+      }).from(usListings);
+      const byMarket = await db
+        .select({
+          city: usListings.city,
+          state: usListings.state,
+          total: count(),
+          active: sql<number>`COUNT(*) FILTER (WHERE ${usListings.isActive} = true)`,
+          sold: sql<number>`COUNT(*) FILTER (WHERE lower(coalesce(${usListings.status}, '')) IN ('sold', 'closed', 'recently_sold'))`,
+          offMarketUnknown: sql<number>`COUNT(*) FILTER (WHERE ${usListings.status} = 'off_market_unknown')`,
+          latestLastSeenAt: sql<Date | null>`MAX(${usListings.lastSeenAt})`,
+        })
+        .from(usListings)
+        .groupBy(usListings.city, usListings.state)
+        .orderBy(desc(sql`COUNT(*)`))
+        .limit(100);
+      res.json({ ...summary, byMarket });
+    } catch (err: any) {
+      console.error("[/api/us-listings/status] error:", err);
+      res.status(500).json({ error: "Failed to fetch US listings status", message: err?.message ?? String(err) });
     }
   });
 
@@ -7109,6 +7516,7 @@ export async function registerRoutes(
       "Disallow: /admin",
       "",
       "Sitemap: https://realist.ca/sitemap.xml",
+      "Sitemap: https://realist.ca/sitemap-encyclopedia.xml",
       "",
     ].join("\n");
     res.set("Content-Type", "text/plain; charset=utf-8");
@@ -7162,6 +7570,7 @@ export async function registerRoutes(
         { path: "/insights/podcast", priority: 0.8, changefreq: "weekly" },
         { path: "/insights/blog", priority: 0.8, changefreq: "weekly" },
         { path: "/insights/guides", priority: 0.8, changefreq: "weekly" },
+        { path: "/insights/encyclopedia", priority: 0.82, changefreq: "weekly" },
         { path: "/join/realtors", priority: 0.7, changefreq: "monthly" },
         { path: "/join/lenders", priority: 0.7, changefreq: "monthly" },
       ];
@@ -7210,6 +7619,14 @@ export async function registerRoutes(
           urls.push(`  <url>\n    <loc>${BASE}/insights/guides/${g.slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.70</priority>\n  </url>`);
         }
       } catch (e) { /* skip if storage unavailable */ }
+
+      // Static investor encyclopedia pages
+      try {
+        const { encyclopediaGuides } = await import("@shared/encyclopedia");
+        for (const guide of encyclopediaGuides) {
+          urls.push(`  <url>\n    <loc>${BASE}${guide.canonicalPath}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>${(guide.toolSpecSlug ? 0.74 : 0.68).toFixed(2)}</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip if static content unavailable */ }
 
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
       const cleanXml = xml.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").trim() + "\n";

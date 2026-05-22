@@ -190,6 +190,30 @@ interface DistressListing {
   rawRemarks: string;
 }
 
+interface UsMapListing {
+  id: string;
+  source: string;
+  sourceId: string;
+  formattedAddress: string;
+  sourceUrl?: string | null;
+  city?: string | null;
+  state?: string | null;
+  lat: number;
+  lng: number;
+  propertyType?: string | null;
+  beds?: number | null;
+  baths?: number | null;
+  sqft?: number | null;
+  lotSqft?: number | null;
+  yearBuilt?: number | null;
+  listPrice?: number | null;
+  daysOnMarket?: number | null;
+  status?: string | null;
+  isActive?: boolean;
+  statusConfidence?: string | null;
+  lastSeenAt?: string | null;
+}
+
 const MAP_WORKSPACE_STATE_KEY = "realist_cap_rates_workspace_state";
 
 interface MapWorkspaceState {
@@ -231,6 +255,15 @@ function formatPriceFull(price: number | string): string {
   const num = typeof price === "string" ? parseFloat(price) : price;
   if (isNaN(num)) return "$0";
   return "$" + num.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+function escapeHtml(value: string | number | null | undefined): string {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function formatAddress(addr: RepliersListing["address"]): string {
@@ -550,6 +583,36 @@ function createMetricMarkerIcon(input: {
       text-align: center;
     ">${input.label}</div>${badgeHtml}${distressRing}</div>`,
     iconSize: [size + 10, size + 10],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function createUsListingMarkerIcon(listing: UsMapListing, isSelected: boolean): L.DivIcon {
+  const size = isSelected ? 46 : 38;
+  const priceLabel = listing.listPrice ? formatPrice(listing.listPrice) : "US";
+  return L.divIcon({
+    className: "us-listing-marker",
+    html: `<div style="
+      position:relative;
+      width:${size}px;
+      height:${size}px;
+      border-radius:999px;
+      background:#1d4ed8;
+      border:${isSelected ? "3px solid #f8fafc" : "2px solid white"};
+      box-shadow:${isSelected ? "0 0 0 2px #1d4ed8, 0 8px 18px rgba(15,23,42,0.28)" : "0 2px 8px rgba(15,23,42,0.24)"};
+      color:white;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      font-family:system-ui,-apple-system,sans-serif;
+      line-height:1;
+      cursor:pointer;
+    ">
+      <span style="font-size:8px;font-weight:900;letter-spacing:0;">US</span>
+      <span style="font-size:${isSelected ? 11 : 9}px;font-weight:900;margin-top:2px;">${escapeHtml(priceLabel)}</span>
+    </div>`,
+    iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
 }
@@ -967,6 +1030,106 @@ function DistressListingsLayer({
   return null;
 }
 
+function UsListingsLayer({
+  listings,
+  selectedListingId,
+  onSelectListing,
+}: {
+  listings: UsMapListing[];
+  selectedListingId?: string | null;
+  onSelectListing: (listing: UsMapListing) => void;
+}) {
+  const map = useMap();
+  const clusterRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (clusterRef.current) {
+      map.removeLayer(clusterRef.current);
+    }
+
+    const cluster = (L as any).markerClusterGroup({
+      maxClusterRadius: 65,
+      spiderfyOnMaxZoom: false,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: false,
+      chunkedLoading: true,
+      disableClusteringAtZoom: 14,
+      iconCreateFunction: (clusterGroup: any) => {
+        const size = clusterGroup.getChildCount() > 24 ? 48 : 40;
+        return L.divIcon({
+          className: "us-listing-cluster-marker",
+          html: `<div style="
+            width:${size}px;
+            height:${size}px;
+            border-radius:999px;
+            background:#1d4ed8;
+            border:3px solid rgba(255,255,255,0.95);
+            box-shadow:0 6px 18px rgba(15,23,42,0.24);
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            color:white;
+            font-family:system-ui,-apple-system,sans-serif;
+            line-height:1.05;
+          ">
+            <span style="font-size:11px;font-weight:900;">US</span>
+            <span style="font-size:10px;font-weight:800;opacity:0.95;">${clusterGroup.getChildCount()}</span>
+          </div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        });
+      },
+    });
+
+    cluster.on("clusterclick", (event: any) => {
+      zoomToClusterBounds(map, event.layer, 14);
+    });
+
+    for (const listing of listings) {
+      if (!Number.isFinite(listing.lat) || !Number.isFinite(listing.lng)) continue;
+      const marker = L.marker(
+        [listing.lat, listing.lng],
+        { icon: createUsListingMarkerIcon(listing, selectedListingId === listing.id) },
+      );
+      const details = [
+        listing.beds != null ? `${listing.beds} bd` : null,
+        listing.baths != null ? `${listing.baths} ba` : null,
+        listing.sqft ? `${listing.sqft.toLocaleString()} sqft` : null,
+      ].filter(Boolean).join(" · ");
+      const sourceLink = listing.sourceUrl
+        ? `<a href="${escapeHtml(listing.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-weight:700;">Open source listing</a>`
+        : "";
+      marker.bindPopup(`
+        <div style="min-width:220px;font-family:system-ui,-apple-system,sans-serif;">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px;">
+            <strong style="font-size:14px;">${escapeHtml(listing.listPrice ? formatPriceFull(listing.listPrice) : "Price unavailable")}</strong>
+            <span style="font-size:10px;font-weight:800;color:#1d4ed8;">US beta</span>
+          </div>
+          <div style="font-size:12px;color:#374151;margin-bottom:4px;">${escapeHtml(listing.formattedAddress)}</div>
+          ${details ? `<div style="font-size:11px;color:#4b5563;margin-bottom:4px;">${escapeHtml(details)}</div>` : ""}
+          <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">${escapeHtml([listing.propertyType, listing.status].filter(Boolean).join(" · ") || listing.source)}</div>
+          ${sourceLink}
+        </div>
+      `);
+      marker.on("click", () => onSelectListing(listing));
+      cluster.addLayer(marker);
+    }
+
+    map.addLayer(cluster);
+    clusterRef.current = cluster;
+
+    return () => {
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+      }
+      clusterRef.current = null;
+    };
+  }, [listings, map, onSelectListing, selectedListingId]);
+
+  return null;
+}
+
 function GeolocateOnMount() {
   const map = useMap();
   const attempted = useRef(false);
@@ -1259,6 +1422,7 @@ export default function CapRates() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showDistressOverlay, setShowDistressOverlay] = useState(true);
   const [showDistressOnly, setShowDistressOnly] = useState(false);
+  const [showUsListingsLayer, setShowUsListingsLayer] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearchSignal[]>(() => getSavedSearchSignals().slice(0, 4));
   const [savedShortlist, setSavedShortlist] = useState<SavedListingSignal[]>(() => getSavedListingSignals().slice(0, 4));
   const [recentViewedListings, setRecentViewedListings] = useState<SavedListingSignal[]>(() => getRecentViewedListingSignals().slice(0, 4));
@@ -1299,6 +1463,43 @@ export default function CapRates() {
     },
     enabled: showDistressOverlay || showDistressOnly,
     staleTime: 15 * 60 * 1000,
+  });
+
+  const { data: usMapData, isFetching: usMapLoading } = useQuery<{ listings: UsMapListing[]; total: number; limit: number; offset: number }>({
+    queryKey: [
+      "/api/us-listings/map",
+      mapBounds?.north,
+      mapBounds?.south,
+      mapBounds?.east,
+      mapBounds?.west,
+      minPrice,
+      maxPrice,
+      minBeds,
+      propertyType,
+      showUsListingsLayer,
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: "750",
+        isActive: "true",
+        source: "homeharvest",
+      });
+      if (mapBounds) {
+        params.set("north", String(mapBounds.north));
+        params.set("south", String(mapBounds.south));
+        params.set("east", String(mapBounds.east));
+        params.set("west", String(mapBounds.west));
+      }
+      if (minPrice) params.set("minPrice", minPrice);
+      if (maxPrice) params.set("maxPrice", maxPrice);
+      if (minBeds !== "any") params.set("beds", minBeds);
+      if (propertyType !== "all") params.set("propertyType", propertyType);
+      const res = await fetch(`/api/us-listings/map?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch US listings map data");
+      return res.json();
+    },
+    enabled: showUsListingsLayer && !findDealsActive,
+    staleTime: 5 * 60 * 1000,
   });
 
   const selectedMls = selectedListing?.mlsNumber;
@@ -3794,6 +3995,16 @@ export default function CapRates() {
                 <p className="text-[10px] text-muted-foreground">Filter standard listings down to overlap with distress matches.</p>
               </div>
             </div>
+            <div className="flex min-w-[220px] items-center gap-2 rounded-md border border-blue-200 bg-background px-3 py-2">
+              <Switch
+                checked={showUsListingsLayer}
+                onCheckedChange={setShowUsListingsLayer}
+              />
+              <div>
+                <p className="text-[11px] font-medium">US listings beta</p>
+                <p className="text-[10px] text-muted-foreground">HomeHarvest markers, separate from CREA yields.</p>
+              </div>
+            </div>
             <Button
               size="sm"
               className="h-8"
@@ -3830,6 +4041,7 @@ export default function CapRates() {
                 setIncludeUnavailableMetrics(false);
                 setShowDistressOverlay(true);
                 setShowDistressOnly(false);
+                setShowUsListingsLayer(false);
               }}
               disabled={activeFilterCount === 0}
               data-testid="button-reset-filters"
@@ -3867,6 +4079,7 @@ export default function CapRates() {
               </div>
               <p className="max-w-[240px] text-[10px] leading-snug text-muted-foreground">
                 Markers show {metricShortLabel(sortMetric)}. Clusters show {sortMetric === "community_consensus" ? "consensus + listing count" : "average + listing count"}.
+                {showUsListingsLayer ? ` US beta: ${usMapLoading ? "loading" : `${usMapData?.listings?.length ?? 0} visible`} HomeHarvest markers.` : ""}
               </p>
             </div>
           )}
@@ -3931,6 +4144,13 @@ export default function CapRates() {
                 listings={distressOnlyListingsInView}
                 selectedMlsNumber={selectedDistressListing?.mlsNumber}
                 onSelectListing={handleSelectDistressListing}
+              />
+            )}
+            {!findDealsActive && showUsListingsLayer && (usMapData?.listings?.length ?? 0) > 0 && (
+              <UsListingsLayer
+                listings={usMapData?.listings ?? []}
+                selectedListingId={null}
+                onSelectListing={() => undefined}
               />
             )}
             <NeighbourhoodOverlay layers={mapLayers} />

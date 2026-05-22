@@ -2,6 +2,7 @@ import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
 import { buildCreditSpreadsData } from "./buildCreditSpreadsData";
+import { validateEncyclopediaContent } from "./validateEncyclopediaContent";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -35,6 +36,12 @@ const allowlist = [
 
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
+
+  console.log("validating encyclopedia content...");
+  const encyclopediaValidation = await validateEncyclopediaContent();
+  console.log(
+    `encyclopedia content valid: ${encyclopediaValidation.guideCount} guides, ${encyclopediaValidation.toolSpecCount} tool specs`,
+  );
 
   console.log("building static report data...");
   await buildCreditSpreadsData();

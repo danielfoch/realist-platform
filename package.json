@@ -10,6 +10,8 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "type-check": "tsc",
+    "validate:encyclopedia": "tsx script/validateEncyclopediaContent.ts",
     "db:push": "drizzle-kit push",
     "market-intel:rebuild": "tsx scripts/rebuild-market-intelligence.ts rebuild",
     "leaderboard:finalize-month": "tsx scripts/rebuild-market-intelligence.ts finalize-month",
