@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, uniqueIndex, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, uniqueIndex, index, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -540,6 +540,41 @@ export const insertUsListingSchema = createInsertSchema(usListings).omit({
 
 export type InsertUsListing = z.infer<typeof insertUsListingSchema>;
 export type UsListing = typeof usListings.$inferSelect;
+
+// Append-only price history. One row per observed list_price change for a
+// (source, source_id) listing. Powers "Price reduced 5% — 3 days ago" badges,
+// the originalListPrice / priceCutCount aggregates, and back-tested
+// price-reduction analysis. Ingest writes a row only when the new list_price
+// differs from the row currently stored in us_listings (see ingest path).
+export const usListingPriceHistory = pgTable("us_listing_price_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingId: varchar("listing_id").notNull().references(() => usListings.id, { onDelete: "cascade" }),
+  source: text("source").notNull(),
+  sourceId: text("source_id").notNull(),
+  oldPrice: integer("old_price"),
+  newPrice: integer("new_price"),
+  changeAmount: integer("change_amount"),
+  changePercent: real("change_percent"),
+  detectedAt: timestamp("detected_at").defaultNow().notNull(),
+  scrapedAt: timestamp("scraped_at"),
+}, (table) => ({
+  listingIdx: index("us_listing_price_history_listing_idx").on(table.listingId, table.detectedAt),
+  sourceIdx: index("us_listing_price_history_source_idx").on(table.source, table.sourceId, table.detectedAt),
+  // Dedupe key: two concurrent ingests of the same scrape (same listing,
+  // same scraped_at, same new_price) MUST collapse to one row. Partial
+  // index because scrapedAt is nullable (manual / non-scrape ingests
+  // bypass the dedupe and that's intentional).
+  dedupeIdx: uniqueIndex("us_listing_price_history_dedupe_idx")
+    .on(table.listingId, table.scrapedAt, table.newPrice)
+    .where(sql`scraped_at IS NOT NULL`),
+}));
+
+export const insertUsListingPriceHistorySchema = createInsertSchema(usListingPriceHistory).omit({
+  id: true,
+  detectedAt: true,
+});
+export type InsertUsListingPriceHistory = z.infer<typeof insertUsListingPriceHistorySchema>;
+export type UsListingPriceHistory = typeof usListingPriceHistory.$inferSelect;
 
 export const usRents = pgTable("us_rents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

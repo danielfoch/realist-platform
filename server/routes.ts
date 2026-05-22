@@ -59,6 +59,7 @@ import {
   courseEnrollments,
   courseProgress,
   usListings,
+  usListingPriceHistory,
   insertUsListingSchema,
   usRents,
   insertUsRentSchema,
@@ -1578,7 +1579,19 @@ export async function registerRoutes(
           inArray(usListings.sourceId, uniqueSourceIds),
         ))
         : [];
-      const existingByKey = new Map(existingRows.map((row) => [`${row.source}:${row.sourceId}`, row]));
+      // Scope to the (source, sourceId) tuples actually present in the payload.
+      // The pre-fetch above uses two independent IN clauses (source IN [...]
+      // AND sourceId IN [...]) which over-fetches when a batch mixes sources;
+      // post-filtering here guarantees we only diff against rows that match a
+      // payload tuple. Today Clyde sends single-source ("homeharvest") batches
+      // so the over-fetch is harmless, but this keeps the diff correct under
+      // future multi-source ingests.
+      const payloadKeys = new Set(rows.map((r) => `${r.source}:${r.sourceId}`));
+      const existingByKey = new Map(
+        existingRows
+          .filter((row) => payloadKeys.has(`${row.source}:${row.sourceId}`))
+          .map((row) => [`${row.source}:${row.sourceId}`, row])
+      );
 
       const result = await db
         .insert(usListings)
@@ -1641,6 +1654,54 @@ export async function registerRoutes(
         if (previous.listPrice === row.listPrice && previous.status === row.status) return [];
         return [{ previous, current: row }];
       });
+
+      // Append-only price history. Two correctness rules:
+      //   1. Derive `oldPrice` from the pre-upsert snapshot (`existingByKey`)
+      //      and `newPrice` from the validated payload row — NOT from a
+      //      post-upsert re-read. A re-read can see another writer's value
+      //      that landed between our upsert and our select, which would
+      //      mis-attribute the transition.
+      //   2. Insertion is guarded by a partial unique index on
+      //      (listing_id, scraped_at, new_price); concurrent retries of the
+      //      same scrape collapse to one row via ON CONFLICT DO NOTHING.
+      const idByKey = new Map(result.map((r) => [`${r.source}:${r.sourceId}`, r.id]));
+      const priceHistoryRows = rows.flatMap((r) => {
+        const key = `${r.source}:${r.sourceId}`;
+        const previous = existingByKey.get(key);
+        const listingId = idByKey.get(key);
+        if (!previous || !listingId) return [];
+        if (previous.listPrice == null || r.listPrice == null) return [];
+        if (previous.listPrice === r.listPrice) return [];
+        const changeAmount = r.listPrice - previous.listPrice;
+        const changePercent = previous.listPrice !== 0
+          ? Number(((changeAmount / previous.listPrice) * 100).toFixed(4))
+          : null;
+        return [{
+          listingId,
+          source: r.source,
+          sourceId: r.sourceId,
+          oldPrice: previous.listPrice,
+          newPrice: r.listPrice,
+          changeAmount,
+          changePercent,
+          scrapedAt: r.scrapedAt,
+        }];
+      });
+      if (priceHistoryRows.length > 0) {
+        // No `target` here on purpose: the dedupe index is PARTIAL
+        // (WHERE scraped_at IS NOT NULL) and Postgres requires the ON CONFLICT
+        // clause to repeat the predicate to match a partial index. Drizzle's
+        // `target` shorthand doesn't emit that predicate, so we use the bare
+        // `onConflictDoNothing()` which catches any unique-constraint
+        // violation on the table — and only one unique index exists.
+        await db
+          .insert(usListingPriceHistory)
+          .values(priceHistoryRows)
+          .onConflictDoNothing()
+          .catch((error) => {
+            console.error("[/api/ingest/us-listings] price-history insert error:", error);
+          });
+      }
 
       await Promise.all([
         queueSavedSearchMatchNotifications(currentRows).catch((error) => {
@@ -1764,6 +1825,60 @@ export async function registerRoutes(
     isActive: isActiveFilter,
   });
 
+  type PriceChangeStats = {
+    lastPriceChangeAt: string | null;
+    lastPriceChangeAmount: number | null;
+    lastPriceChangePercent: number | null;
+    originalListPrice: number | null;
+    priceCutCount: number;
+  };
+
+  async function fetchPriceChangeStats(listingIds: string[]): Promise<Map<string, PriceChangeStats>> {
+    const result = new Map<string, PriceChangeStats>();
+    if (!listingIds.length) return result;
+    const rows = await db
+      .select({
+        listingId: usListingPriceHistory.listingId,
+        lastChangeAt: sql<string>`MAX(${usListingPriceHistory.detectedAt})`,
+        priceCutCount: sql<number>`COUNT(*) FILTER (WHERE ${usListingPriceHistory.changeAmount} < 0)`,
+        // `id DESC` is a deterministic tiebreaker when two history rows share
+        // the same detected_at timestamp (rare but possible under concurrent
+        // ingest of distinct scrapes that complete in the same microsecond).
+        lastChangeAmount: sql<number | null>`(array_agg(${usListingPriceHistory.changeAmount} ORDER BY ${usListingPriceHistory.detectedAt} DESC, ${usListingPriceHistory.id} DESC))[1]`,
+        lastChangePercent: sql<number | null>`(array_agg(${usListingPriceHistory.changePercent} ORDER BY ${usListingPriceHistory.detectedAt} DESC, ${usListingPriceHistory.id} DESC))[1]`,
+        originalListPrice: sql<number | null>`(array_agg(${usListingPriceHistory.oldPrice} ORDER BY ${usListingPriceHistory.detectedAt} ASC, ${usListingPriceHistory.id} ASC))[1]`,
+      })
+      .from(usListingPriceHistory)
+      .where(inArray(usListingPriceHistory.listingId, listingIds))
+      .groupBy(usListingPriceHistory.listingId);
+    for (const r of rows) {
+      result.set(r.listingId, {
+        lastPriceChangeAt: r.lastChangeAt ?? null,
+        lastPriceChangeAmount: r.lastChangeAmount == null ? null : Number(r.lastChangeAmount),
+        lastPriceChangePercent: r.lastChangePercent == null ? null : Number(r.lastChangePercent),
+        originalListPrice: r.originalListPrice == null ? null : Number(r.originalListPrice),
+        priceCutCount: Number(r.priceCutCount ?? 0),
+      });
+    }
+    return result;
+  }
+
+  function mergePriceStats<T extends { id: string; listPrice?: number | null }>(
+    listing: T,
+    stats: Map<string, PriceChangeStats>,
+  ) {
+    const s = stats.get(listing.id);
+    return {
+      ...listing,
+      lastPriceChangeAt: s?.lastPriceChangeAt ?? null,
+      lastPriceChangeAmount: s?.lastPriceChangeAmount ?? null,
+      lastPriceChangePercent: s?.lastPriceChangePercent ?? null,
+      // If a listing has never changed price, "original" === current.
+      originalListPrice: s?.originalListPrice ?? listing.listPrice ?? null,
+      priceCutCount: s?.priceCutCount ?? 0,
+    };
+  }
+
   function buildUsListingsConditions(filters: z.infer<typeof usListingsQuerySchema>) {
     return [
       filters.city ? ilike(usListings.city, `%${filters.city}%`) : undefined,
@@ -1799,8 +1914,9 @@ export async function registerRoutes(
         .orderBy(desc(usListings.scrapedAt), desc(usListings.createdAt))
         .limit(filters.limit)
         .offset(filters.offset);
+      const priceStats = await fetchPriceChangeStats(listings.map((l) => l.id));
       res.json({
-        listings,
+        listings: listings.map((l) => mergePriceStats(l, priceStats)),
         total: totalRow?.count ?? 0,
         limit: filters.limit,
         offset: filters.offset,
@@ -1868,8 +1984,9 @@ export async function registerRoutes(
         .orderBy(desc(usListings.lastSeenAt), desc(usListings.scrapedAt))
         .limit(filters.limit)
         .offset(filters.offset);
+      const priceStats = await fetchPriceChangeStats(listings.map((l) => l.id));
       res.json({
-        listings,
+        listings: listings.map((l) => mergePriceStats(l, priceStats)),
         total: totalRow?.count ?? 0,
         limit: filters.limit,
         offset: filters.offset,
