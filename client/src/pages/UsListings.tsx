@@ -33,6 +33,60 @@ type UsListing = {
   lastCheckedAt?: string | null;
   soldDetectedAt?: string | null;
   offMarketDetectedAt?: string | null;
+  lastPriceChangeAt?: string | null;
+  lastPriceChangeAmount?: number | null;
+  lastPriceChangePercent?: number | null;
+  originalListPrice?: number | null;
+  priceCutCount?: number | null;
+};
+
+// Freshness anchor: the most recent moment we know the listing was alive in
+// the source feed. Prefer lastCheckedAt (set on every ingest touch — includes
+// no-op re-scrapes) and fall back to lastSeenAt (only bumped when the row
+// actually appeared in a scrape).
+type FreshnessTone = "fresh" | "stale" | "cold" | "unknown";
+
+function freshnessTone(anchor: string | null | undefined): { tone: FreshnessTone; label: string } {
+  if (!anchor) return { tone: "unknown", label: "Unknown" };
+  const ts = new Date(anchor).getTime();
+  if (!Number.isFinite(ts)) return { tone: "unknown", label: "Unknown" };
+  const ageMs = Date.now() - ts;
+  const day = 24 * 60 * 60 * 1000;
+  if (ageMs < day) return { tone: "fresh", label: "Fresh" };
+  if (ageMs < 7 * day) return { tone: "stale", label: "Stale" };
+  return { tone: "cold", label: "Cold" };
+}
+
+const FRESHNESS_TEXT_CLASSES: Record<FreshnessTone, string> = {
+  fresh: "text-emerald-600 dark:text-emerald-400",
+  stale: "text-amber-600 dark:text-amber-400",
+  cold: "text-rose-600 dark:text-rose-400",
+  unknown: "text-muted-foreground",
+};
+
+function timeAgo(value: string | null | undefined): string {
+  if (!value) return "—";
+  const ts = new Date(value).getTime();
+  if (!Number.isFinite(ts)) return "—";
+  const diffMs = Date.now() - ts;
+  if (diffMs < 0) return "just now";
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const d = Math.floor(hr / 24);
+  if (d < 30) return `${d}d ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(mo / 12)}y ago`;
+}
+
+const FRESHNESS_CLASSES: Record<"fresh" | "stale" | "cold" | "unknown", string> = {
+  fresh: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  stale: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  cold: "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30",
+  unknown: "bg-muted text-muted-foreground border-border",
 };
 
 type ApiResponse = {
@@ -181,12 +235,33 @@ export default function UsListings() {
         )}
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {listings.map((listing) => (
-            <Card key={listing.id} className="h-full">
+          {listings.map((listing) => {
+            const freshAnchor = listing.lastCheckedAt ?? listing.lastSeenAt;
+            const freshness = freshnessTone(freshAnchor);
+            const priceChangeAmount = listing.lastPriceChangeAmount ?? 0;
+            // Per spec, color the price-change line by RECENCY of the change
+            // (green <24h, yellow 1-7d, red >7d), not by direction (cut vs
+            // increase). The cut/increase distinction stays in the wording.
+            const priceChangeTone = FRESHNESS_TEXT_CLASSES[freshnessTone(listing.lastPriceChangeAt).tone];
+            const priceChangeDetail = typeof listing.lastPriceChangeAmount === "number"
+              ? ` (${priceChangeAmount < 0 ? "−" : "+"}${currency.format(Math.abs(listing.lastPriceChangeAmount))}${
+                  typeof listing.lastPriceChangePercent === "number" ? ` · ${listing.lastPriceChangePercent.toFixed(1)}%` : ""
+                })`
+              : "";
+            return (
+            <Card key={listing.id} className="h-full" data-testid={`card-listing-${listing.id}`}>
               <CardHeader className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <Badge variant="secondary">{listing.source}</Badge>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <Badge
+                      variant="outline"
+                      className={FRESHNESS_CLASSES[freshness.tone]}
+                      data-testid={`badge-freshness-${listing.id}`}
+                      title={freshAnchor ? `Updated ${timeAgo(freshAnchor)} (${new Date(freshAnchor).toLocaleString()})` : "No freshness data"}
+                    >
+                      {freshness.label} · {timeAgo(freshAnchor)}
+                    </Badge>
                     <Badge variant={listing.isActive ? "default" : "outline"}>
                       {listing.isActive ? "active" : "inactive"}
                     </Badge>
@@ -221,15 +296,34 @@ export default function UsListings() {
                     </a>
                   )}
                 </div>
-                <div className="border-t pt-3 text-xs text-muted-foreground">
-                  <div>Last seen: {listing.lastSeenAt ? new Date(listing.lastSeenAt).toLocaleString() : "-"}</div>
-                  {listing.soldDetectedAt && <div>Sold detected: {new Date(listing.soldDetectedAt).toLocaleString()}</div>}
-                  {listing.offMarketDetectedAt && <div>Off market detected: {new Date(listing.offMarketDetectedAt).toLocaleString()}</div>}
+                <div className="border-t pt-3 text-xs text-muted-foreground space-y-1" data-testid={`block-meta-${listing.id}`}>
+                  <div data-testid={`text-updated-${listing.id}`}>
+                    Updated {timeAgo(listing.lastCheckedAt ?? listing.lastSeenAt)}
+                    {listing.lastCheckedAt && <span className="opacity-60"> · {new Date(listing.lastCheckedAt).toLocaleString()}</span>}
+                  </div>
+                  <div>Last seen: {timeAgo(listing.lastSeenAt)}</div>
+                  <div>Scraped: {timeAgo(listing.scrapedAt)}</div>
+                  {listing.lastPriceChangeAt && (
+                    <div data-testid={`text-price-change-${listing.id}`} className={priceChangeTone}>
+                      {`Price ${priceChangeAmount < 0 ? "cut" : "increase"} ${timeAgo(listing.lastPriceChangeAt)}${priceChangeDetail}`}
+                      {typeof listing.priceCutCount === "number" && listing.priceCutCount > 1 && (
+                        <span className="text-muted-foreground">{` · ${listing.priceCutCount} cuts total`}</span>
+                      )}
+                    </div>
+                  )}
+                  {listing.originalListPrice && listing.originalListPrice !== listing.listPrice && (
+                    <div className="text-muted-foreground">
+                      Originally listed at {currency.format(listing.originalListPrice)}
+                    </div>
+                  )}
+                  {listing.soldDetectedAt && <div>Sold detected: {timeAgo(listing.soldDetectedAt)}</div>}
+                  {listing.offMarketDetectedAt && <div>Off market: {timeAgo(listing.offMarketDetectedAt)}</div>}
                   {listing.statusConfidence && <div>Confidence: {listing.statusConfidence}</div>}
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       </main>
     </div>
