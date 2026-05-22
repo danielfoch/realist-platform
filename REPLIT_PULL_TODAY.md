@@ -6,6 +6,7 @@ Friday, May 22, 2026
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-22-qualified-share-credits`
 - Implementation commit: `a533240a9394511fe02c5e4e20c2f731a52e4507`
+- Pull-brief docs commit: `5870b8d` (branch also includes the implementation commit above).
 
 ## 3. What changed
 Added a qualified viral underwriting loop for Realist.ca using the required CTA: **“Challenge my underwriting.”**
@@ -96,6 +97,8 @@ npm --prefix frontend run build
 
 ## 9. Risks/blockers
 - Not deployed.
+- Branch pushed to GitHub: `origin/realist-nightly/2026-05-22-qualified-share-credits`.
+- PR URL: https://github.com/danielfoch/realist-platform/pull/new/realist-nightly/2026-05-22-qualified-share-credits
 - No outbound emails/messages were sent.
 - No paid APIs were called.
 - Credits are intentionally server-controlled and qualified-only; creating share links or receiving raw clicks does not award credits.
