@@ -19,16 +19,6 @@ interface Analysis {
   notes: string | null;
 }
 
-interface AnalysisListResponse {
-  success: boolean;
-  data: {
-    analyses: Analysis[];
-    total: number;
-    page: number;
-    limit: number;
-  };
-}
-
 const PAGE_SIZE = 20;
 
 function formatCurrency(value: number | null): string {
@@ -85,6 +75,8 @@ export function AnalysisHistoryPage() {
   const [expandedNotes, setExpandedNotes] = useState<number | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingNoteText, setEditingNoteText] = useState("");
+  const [sharingAnalysisId, setSharingAnalysisId] = useState<number | null>(null);
+  const [shareMessage, setShareMessage] = useState('');
 
   useEffect(() => {
     fetchAnalyses(page);
@@ -160,6 +152,29 @@ export function AnalysisHistoryPage() {
     setEditingNoteText(currentNotes || "");
   };
 
+  const handleCreateShare = async (id: number) => {
+    setSharingAnalysisId(id);
+    setShareMessage('');
+    setError('');
+    try {
+      const res = await fetch(`/api/analyses/${id}/share`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'analysis_history' }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || `Share failed (${res.status})`);
+      const absoluteUrl = `${window.location.origin}${payload.shareUrl}`;
+      await navigator.clipboard?.writeText(absoluteUrl);
+      setShareMessage(`Copied share link: ${absoluteUrl}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create share link');
+    } finally {
+      setSharingAnalysisId(null);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hasData = total > 0;
 
@@ -182,6 +197,12 @@ export function AnalysisHistoryPage() {
       {error && (
         <div className="error-banner" role="alert">
           {error}
+        </div>
+      )}
+
+      {shareMessage && (
+        <div className="share-success-banner" role="status">
+          {shareMessage}
         </div>
       )}
 
@@ -317,6 +338,16 @@ export function AnalysisHistoryPage() {
                       </div>
                     )}
                     <div className="analysis-actions">
+                      <button
+                        className="text-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCreateShare(a.id);
+                        }}
+                        disabled={sharingAnalysisId === a.id}
+                      >
+                        {sharingAnalysisId === a.id ? 'Creating…' : 'Challenge my underwriting'}
+                      </button>
                       <button
                         className="text-btn"
                         onClick={(e) => {

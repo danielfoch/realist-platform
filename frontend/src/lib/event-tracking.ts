@@ -23,6 +23,7 @@ type EventName =
   | 'deal_analyzer_saved'
   | 'listing_analyze_click'
   | 'listing_lead_submitted'
+  | 'homepage_cta_click'
   | 'investor_signup_started'
   | 'investor_signup_completed'
   | 'lead_form_started'

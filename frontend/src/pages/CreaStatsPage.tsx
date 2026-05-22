@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Share2, TrendingUp, TrendingDown, MapPin, BarChart3 } from 'lucide-react';
 
@@ -227,9 +227,9 @@ export default function CreaStatsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
               <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-              <Tooltip formatter={(v: number) => formatValue(v, measureInfo.format)} />
+              <Tooltip formatter={(v) => formatValue(Number(v), measureInfo.format)} />
               <Legend />
-              {Array.from(new Set(chartData.map(d => d.geography))).values().map((g, i) => (
+              {Array.from(new Set(chartData.map(d => d.geography))).map((g, i) => (
                 <Line key={g} type="monotone" dataKey="value" data={chartData.filter(d => d.geography === g)} name={g} stroke={COLORS[i % COLORS.length]} dot={false} strokeWidth={2} />
               ))}
             </LineChart>
@@ -240,7 +240,7 @@ export default function CreaStatsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
               <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-              <Tooltip formatter={(v: number) => formatValue(v, measureInfo.format)} />
+              <Tooltip formatter={(v) => formatValue(Number(v), measureInfo.format)} />
               <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -250,7 +250,7 @@ export default function CreaStatsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
               <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-              <Tooltip formatter={(v: number) => formatValue(v, measureInfo.format)} />
+              <Tooltip formatter={(v) => formatValue(Number(v), measureInfo.format)} />
               <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>

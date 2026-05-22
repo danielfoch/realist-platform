@@ -241,7 +241,6 @@ export function SixixplexReportPage() {
             onBlur={() => {
               if (notes.trim() && lead) {
                 // Auto-save notes when user types and leaves the field
-                const storedToken = localStorage.getItem('session_token') || crypto.randomUUID();
                 fetch('/api/analyses', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
