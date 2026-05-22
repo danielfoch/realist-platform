@@ -1501,10 +1501,16 @@ export async function registerRoutes(
     const normalizedStatus = (status || "").toLowerCase().replace(/[\s-]+/g, "_");
     const isSold = ["sold", "closed", "recently_sold"].includes(normalizedStatus);
     const isOffMarket = ["off_market", "off_market_unknown", "inactive", "delisted"].includes(normalizedStatus);
-    // Status is authoritative: a sold/off-market `status` forces isActive=false
-    // even if the client/scraper explicitly sent isActive=true. Active flag from
-    // the client is only honoured when status doesn't already mark the row terminal.
-    const isActive = isSold || isOffMarket
+    // PENDING / CONTINGENT / under-contract rows are technically still listed
+    // but the buyer cannot transact on them — for the default product surface
+    // (search, map, /listings/us) we treat them as inactive inventory. Investors
+    // can still pull them via `?isActive=false` or `?isActive=all`.
+    const isUnderContract = ["pending", "pending_sale", "under_contract", "contingent"].includes(normalizedStatus);
+    // Status is authoritative: a sold / off-market / under-contract `status`
+    // forces isActive=false even if the client/scraper sent isActive=true.
+    // The client-provided active flag is only honoured when status doesn't
+    // already mark the row terminal or unavailable.
+    const isActive = isSold || isOffMarket || isUnderContract
       ? false
       : (listing.isActive ?? listing.is_active ?? true);
     const now = new Date();
