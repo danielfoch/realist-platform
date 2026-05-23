@@ -9,6 +9,7 @@ import {
   getShareConversionInsights,
   getShareGrowthNudge,
   getQualifiedShareRewardBrief,
+  getRecipientShareCoaching,
   hasMeaningfulChallengePayload,
   recordQualifiedShareAction,
 } from '../src/underwriting-share-routes';
@@ -237,6 +238,12 @@ describe('viral underwriting share qualification', () => {
       antiAbuseGuardrail: expect.stringContaining('never granted for raw clicks alone'),
     });
     expect(summary.rewardBrief.bestNextReward).toMatchObject({ action: 'signup', creditAmount: 5 });
+    expect(summary.recipientCoaching[0]).toMatchObject({
+      source: 'manual',
+      stage: 'convert_to_accounts',
+      nextQualifiedAction: 'signup',
+    });
+    expect(summary.recipientCoaching[0].creditGuardrail).toContain('never raw share clicks');
     expect(summary.recentActions[0]).not.toHaveProperty('recipientHash');
     expect(query).toHaveBeenCalledWith(expect.stringContaining('COUNT(DISTINCT recipient_hash)'), [7]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2'), [7, 5]);
@@ -401,6 +408,50 @@ describe('viral underwriting share qualification', () => {
       antiAbuseGuardrail: expect.stringContaining('raw clicks'),
     });
     expect(brief.bestNextReward).toEqual({ action: 'saved_version', creditAmount: 4, remainingToday: 3 });
+  });
+
+  it('ranks recipient-source coaching by the next qualified underwriting loop action', () => {
+    const coaching = getRecipientShareCoaching([
+      {
+        source: 'agent_dm',
+        invitedCount: 8,
+        openedCount: 0,
+        challengedCount: 0,
+        versionedCount: 0,
+        signupCount: 0,
+        creditAwarded: 0,
+        openRate: 0,
+        challengeRate: 0,
+        versionRate: 0,
+        signupRate: 0,
+      },
+      {
+        source: 'investor_group',
+        invitedCount: 5,
+        openedCount: 5,
+        challengedCount: 4,
+        versionedCount: 1,
+        signupCount: 0,
+        creditAwarded: 13,
+        openRate: 1,
+        challengeRate: 0.8,
+        versionRate: 0.25,
+        signupRate: 0,
+      },
+    ]);
+
+    expect(coaching[0]).toMatchObject({
+      source: 'agent_dm',
+      stage: 'get_opens',
+      nextQualifiedAction: 'unique_open',
+      suggestedCopy: expect.stringContaining('Challenge my underwriting'),
+    });
+    expect(coaching[1]).toMatchObject({
+      source: 'investor_group',
+      stage: 'convert_to_versions',
+      nextQualifiedAction: 'saved_version',
+    });
+    expect(coaching.every((item) => item.creditGuardrail.includes('never raw share clicks'))).toBe(true);
   });
 
   it('exposes the current Google Sheets export reward policy snapshot', () => {

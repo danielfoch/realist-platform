@@ -305,6 +305,16 @@ type RecipientInviteFunnelSegment = {
   signupRate: number;
 };
 
+type RecipientShareCoaching = {
+  source: string;
+  priority: number;
+  stage: 'get_opens' | 'ask_for_challenges' | 'convert_to_versions' | 'convert_to_accounts' | 'amplify';
+  nextQualifiedAction: QualifiedShareAction;
+  headline: string;
+  suggestedCopy: string;
+  creditGuardrail: string;
+};
+
 function getConversionRate(numerator: number, denominator: number) {
   return denominator > 0 ? Number((numerator / denominator).toFixed(4)) : 0;
 }
@@ -447,6 +457,74 @@ export function getShareConversionInsights(input: {
     remainingCreditsToday,
     creditGuardrail: 'Credits are only awarded for qualified opens, challenges, forks, signups, and saved versions within anti-abuse caps — never raw share clicks alone.',
   };
+}
+
+export function getRecipientShareCoaching(funnel: RecipientInviteFunnelSegment[]): RecipientShareCoaching[] {
+  return funnel
+    .map((segment) => {
+      const unopenedCount = Math.max(segment.invitedCount - segment.openedCount, 0);
+      const baseGuardrail = 'Reward copy should promise Google Sheets export credits only for qualified opens, challenges, forks, signups, or saved versions — never raw share clicks.';
+
+      if (segment.openedCount === 0) {
+        return {
+          source: segment.source,
+          priority: segment.invitedCount * 10,
+          stage: 'get_opens' as const,
+          nextQualifiedAction: 'unique_open' as const,
+          headline: `${segment.source} has ${unopenedCount} unopened Challenge my underwriting invite${unopenedCount === 1 ? '' : 's'}.`,
+          suggestedCopy: 'Challenge my underwriting — open the deal and tell me which assumption you disagree with first.',
+          creditGuardrail: baseGuardrail,
+        };
+      }
+
+      if (segment.challengeRate < 0.35) {
+        return {
+          source: segment.source,
+          priority: Math.round((segment.openedCount - segment.challengedCount) * 12),
+          stage: 'ask_for_challenges' as const,
+          nextQualifiedAction: 'challenge' as const,
+          headline: `${segment.source} recipients are opening, but not challenging assumptions yet.`,
+          suggestedCopy: 'Challenge my underwriting — rent, vacancy, expenses, or exit cap: pick one number you would change.',
+          creditGuardrail: baseGuardrail,
+        };
+      }
+
+      if (segment.versionRate < 0.5) {
+        return {
+          source: segment.source,
+          priority: Math.round((segment.challengedCount - segment.versionedCount) * 14),
+          stage: 'convert_to_versions' as const,
+          nextQualifiedAction: 'saved_version' as const,
+          headline: `${segment.source} is producing challenges. Push for saved/forked versions next.`,
+          suggestedCopy: 'Challenge my underwriting and save your version — I want to compare your assumptions side by side.',
+          creditGuardrail: baseGuardrail,
+        };
+      }
+
+      if (segment.signupRate < 0.4) {
+        return {
+          source: segment.source,
+          priority: Math.round((segment.versionedCount - segment.signupCount) * 16),
+          stage: 'convert_to_accounts' as const,
+          nextQualifiedAction: 'signup' as const,
+          headline: `${segment.source} has saved/forked versions that are not tied to accounts yet.`,
+          suggestedCopy: 'Challenge my underwriting, save your version, and create an account so you can share it onward for Google Sheets export credits.',
+          creditGuardrail: baseGuardrail,
+        };
+      }
+
+      return {
+        source: segment.source,
+        priority: Math.max(1, segment.signupCount * 8 + segment.versionedCount * 4),
+        stage: 'amplify' as const,
+        nextQualifiedAction: 'fork' as const,
+        headline: `${segment.source} is moving recipients through the underwriting loop.`,
+        suggestedCopy: 'Challenge my underwriting — this version already has investor feedback. What did we miss?',
+        creditGuardrail: baseGuardrail,
+      };
+    })
+    .filter((coaching) => coaching.priority > 0)
+    .sort((left, right) => right.priority - left.priority || left.source.localeCompare(right.source));
 }
 
 export async function getRecipientInviteFunnel(database: DatabaseAdapter, shareId: number): Promise<RecipientInviteFunnelSegment[]> {
@@ -601,6 +679,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     growthNudge: getShareGrowthNudge(byAction),
     conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     rewardBrief: getQualifiedShareRewardBrief(byAction),
+    recipientCoaching: getRecipientShareCoaching(inviteFunnel),
     recentActions: recentResult.rows.map((row) => ({
       id: row.id,
       action: row.action,
