@@ -1138,10 +1138,19 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <SEO
-        title="Canadian Real Estate Deal Analyzer - Toronto Property Calculator"
-        description="Free real estate analyzer for Canadian investors. Calculate yields, IRR, cash-on-cash for Toronto, Vancouver, Calgary. Home of Daniel Foch's podcast."
+        title={isStandaloneTool
+          ? "Real Estate Deal Analyzer - Cap Rate, IRR & Cash-on-Cash Calculator"
+          : "Canadian Real Estate Deal Analyzer - Toronto Property Calculator"}
+        description={isStandaloneTool
+          ? "Standalone deal analyzer for Canadian real estate investors. Calculate cap rate, IRR, and cash-on-cash returns on any property with MLS# import."
+          : "Free real estate analyzer for Canadian investors. Calculate yields, IRR, cash-on-cash for Toronto, Vancouver, Calgary. Home of Daniel Foch's podcast."}
         keywords="canadian real estate, toronto real estate, real estate investing in canada, daniel foch, yield calculator canada, BRRR strategy, multiplex investing"
-        canonicalUrl="/"
+        // Canonical must match the current URL — both `/tools/analyzer` and
+        // `/deal-analyzer` render this same `Home` component but are distinct
+        // SEO destinations, so each gets its own canonical instead of always
+        // pointing at `/`. Lighthouse flags a page→canonical URL mismatch as
+        // "Multiple conflicting URLs"; this resolves it.
+        canonicalUrl={isStandaloneTool ? location : "/"}
         structuredData={combinedSchema}
       />
       <Navigation />
