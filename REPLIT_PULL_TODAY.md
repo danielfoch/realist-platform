@@ -6,7 +6,7 @@ Saturday, May 23, 2026
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-23-share-recipient-coaching`
 - Implementation commit: `f29230cf0dd37066a192fd9cf12d5f92cf7ac5d3`
-- Handoff docs commit: this branch HEAD after the docs-only SHA update.
+- Handoff docs commit: `85143a5` (branch also includes the implementation commit above).
 
 ## 3. What changed
 Added recipient-source coaching to the viral underwriting share status payload so owners can see which invite/channel segment needs the next qualified action in the loop.
@@ -59,7 +59,8 @@ npm run type-check
 - No outbound emails/messages were sent.
 - No paid APIs were called.
 - No new env vars or migrations.
-- Branch is local unless the commit was pushed successfully after this file was written.
+- Branch pushed to GitHub: `origin/realist-nightly/2026-05-23-share-recipient-coaching`.
+- PR URL: https://github.com/danielfoch/realist-platform/pull/new/realist-nightly/2026-05-23-share-recipient-coaching
 - This branch is based on the prior nightly branch `realist-nightly/2026-05-22-qualified-share-credits`, so Dan should pull it as an incremental improvement on top of that viral underwriting loop work.
 - Pre-existing untracked files remain uncommitted intentionally:
   - `REPLIT_HANDOFF_CONTRACT.md`
