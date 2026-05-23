@@ -252,10 +252,102 @@ These are deliberately deferred. Spec changes if/when we add them; nothing in v1
 
 ---
 
-## Open Questions for Implementation Task
+## 11. Locked Decisions (Implementation Kickoff Contract)
 
-1. Where does the scheduler run? Replit cron, an external box (Clyde's), or a small worker the Express server spawns? Affects how `run_id` is minted and how failures are surfaced.
-2. Does `us_listing_sync_runs` get written by the scheduler directly (needs DB credentials there) or via a new `/api/ingest/us-listings/run-status` endpoint? Latter keeps the DB single-writer.
-3. Slack alerting plumbing — does Realist already have a generic admin alert webhook, or do we add one for this?
+These were open questions in an earlier draft; they are now frozen for the v1 implementation task.
 
-None of these block this spec; they're decisions for the implementation kickoff.
+### 11.1 Scheduler location: Clyde's box
+
+The nightly scheduler runs on Clyde's machine, alongside the existing HomeHarvest scrape pipeline. Not in the Replit Express server, not in Replit cron.
+
+Rationale: HomeHarvest, the local SQLite cache (`data/us-listings.db`), and the diff/normalize scripts already live on Clyde's box. Replit stays as the product/API surface only — scraping never runs inside the web server. This also keeps the Replit container free of long-running scrape state and source IP rate-limit exposure.
+
+Implication: `run_id` is minted by Clyde's scheduler, included in every batch's metadata, and used as the join key for all run lifecycle events.
+
+### 11.2 `us_listing_sync_runs` writes: via authenticated endpoint
+
+The sync-runs table is written *only* through an authenticated Replit endpoint, never via direct DB connection from Clyde's box.
+
+```
+POST /api/ingest/us-listings/sync-runs        — create or update a run row
+  Header: x-ingest-token (same secret as /api/ingest/us-listings)
+  Body:   { runId, source, city, state, tier, startedAt, status,
+            completedAt?, listingsSeen?, listingsUpserted?,
+            listingsReconciledOff?, batchesAttempted?, batchesSucceeded?,
+            error? }
+  Semantics: upsert on runId. Status transitions are server-validated
+             (cannot go from a terminal state back to running).
+```
+
+Rationale: prod DB is read-only from Replit agent tooling, and we already pay for token-authenticated mutation through `/api/ingest/us-listings`. Direct DB writes from Clyde would create a second writer and split-brain risk on `usListings` if the contract ever drifts. One ingest token, one path, one writer.
+
+Alternative considered and rejected: extending the existing `/api/ingest/us-listings` POST to also carry run metadata. Rejected because a single batch's success/failure is independent of the run's success/failure (batches can succeed while the scrape later fails), so they need separate transactions.
+
+### 11.3 Alerting: Telegram via Clyde, deferred Slack
+
+For v1, Clyde sends Dan a daily/failed-run summary via Telegram (the existing channel he uses for ad-hoc reports). Generic Slack/webhook plumbing is not built.
+
+**Daily summary payload (Clyde-side, not server-side):**
+- Markets attempted / succeeded / partial / failed
+- Total listings seen, total upserted
+- Total price changes detected
+- Stale markets (no successful run in >2× their tier interval)
+- Anomalies: reconciles that flipped >10% of a market off-market
+
+**Failed-run alert (immediate):** any market that has 3 consecutive failed runs.
+
+If Realist later adds a generic admin webhook, an alert sink can be added then. Not needed for kickoff.
+
+---
+
+## 12. Implementation Constraints (Frozen for v1)
+
+The implementation task **must** honor these. Any deviation is a spec change, not a judgment call.
+
+**On Clyde's side:**
+
+1. Reuse the existing local stack as the source of truth:
+   - `data/us-listings.db` — local scrape cache
+   - `scripts/us-listings-scraper.py` — primary scrape entry point
+   - `scripts/us-listings-resume.py` — partial-scrape resumption
+   - `scripts/sync-us-listings-to-realist.py` — ingest sender (extend this; don't rewrite)
+   - `scripts/backfill-us-listings-active-flags.py` — reference pattern for safe batched ingest
+2. Batch size = **25** rows per POST to `/api/ingest/us-listings`. Do not raise without first implementing byte-size batching; the server's `ingestBatchSchema.max(1000)` is a ceiling, not a target.
+3. **Never send `isActive` in the payload.** The server derives `isActive` from `status` (see `homeHarvestListingSchema` transform at `server/routes.ts:~1514`). Sending it is at best ignored, at worst confusing in logs.
+4. **Never call reconcile after a failed or partial scrape.** The server already guards on `scrapeSucceeded=true && activeSourceIds.length > 0`; Clyde's caller must additionally not pass `scrapeSucceeded=true` when the local scrape errored out partway.
+5. **One `run_id` per market scrape attempt.** All batches for that attempt carry the same `run_id`; reconcile (if called) carries the same `run_id`; sync-runs lifecycle events all reference it.
+6. Source-of-truth flow is fixed: local scrape result → local normalize → authenticated ingest POST → prod API. No direct prod-DB connections from Clyde for any reason.
+
+**On Replit / server side:**
+
+7. Scheduler functionality (cadence, tiering, retry) must work even if `us_listing_sync_runs` is temporarily unavailable or dropped. The table is observability, not control flow. If `POST /api/ingest/us-listings/sync-runs` 500s, the scrape pipeline keeps running and just logs the lost event.
+8. New endpoints in scope for the implementation task:
+   - `POST /api/ingest/us-listings/sync-runs` (write, token-authenticated)
+   - `GET  /api/admin/us-listings/sync-status` (read, admin-authenticated)
+   - `GET  /api/admin/us-listings/sync-status/runs?city=&state=` (read, admin-authenticated)
+   - `GET  /api/admin/us-listings/sync-status/failures?limit=50` (read, admin-authenticated)
+9. New schema in scope: `us_listing_sync_runs` table per §7. No changes to `usListings` or `usListingPriceHistory`.
+10. Admin UI `/admin/listings/sync` per §8 — read-only, no controls.
+
+**Explicitly out of scope for the implementation task (still deferred from §10):**
+
+- User-facing refresh button (none).
+- Per-listing notification delivery to users (`queueUsListingChangeNotifications` already collects the change set; delivery is a separate task).
+- Separate per-listing refresh queue (§9 path B).
+- Email / Slack / user-facing alert plumbing beyond Clyde's Telegram summary.
+- Any scheduler logic on Replit (cron, queue worker, etc.). All scheduling lives on Clyde's box.
+
+---
+
+## Next Implementation Task
+
+**Title:** Build v1 Clyde-run market sync runner + Replit ingest/status support for sync_runs.
+
+**Acceptance criteria:**
+- Clyde's scheduler runs all markets at their tier cadence, posting batches + reconcile + sync-runs lifecycle events through the documented endpoints with the documented constraints.
+- `us_listing_sync_runs` table exists, populated, retained 90 days, queryable through the three admin endpoints.
+- `/admin/listings/sync` shows the markets table, 24h KPIs, failures feed, and reconcile audit per §8.
+- Daily Telegram summary from Clyde with the §11.3 payload.
+- Failed-run Telegram alert after 3 consecutive failures of the same market.
+
+No UI polish. No refresh button. No notification delivery. Just reliable pipeline + observability.
