@@ -73,7 +73,8 @@ npx jest test/underwriting-share-routes.test.ts --runInBand
 - No outbound emails/messages were sent.
 - No paid APIs were called.
 - Requires one additive DB migration before redemption endpoints are used.
-- Branch is local at handoff time unless push succeeds after this file is committed.
+- Branch pushed to GitHub: `origin/realist-nightly/2026-05-24-qualified-share-ledger`.
+- PR URL: https://github.com/danielfoch/realist-platform/pull/new/realist-nightly/2026-05-24-qualified-share-ledger
 - Pre-existing untracked files remain uncommitted intentionally:
   - `REPLIT_HANDOFF_CONTRACT.md`
   - `REPLIT_PULL_TEMPLATE.md`
