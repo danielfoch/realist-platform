@@ -3,6 +3,7 @@ import {
   createUnderwritingShare,
   getActionPolicy,
   getExplicitRecipientHash,
+  getGoogleSheetsExportCreditBalance,
   getRecipientInviteFunnel,
   getRewardPolicySnapshot,
   getShareActionSummary,
@@ -12,6 +13,7 @@ import {
   getRecipientShareCoaching,
   hasMeaningfulChallengePayload,
   recordQualifiedShareAction,
+  redeemGoogleSheetsExportCredits,
 } from '../src/underwriting-share-routes';
 
 function createShareDb(options: { existing?: any; shareCount?: number; recipientCount?: number } = {}) {
@@ -457,6 +459,63 @@ describe('viral underwriting share qualification', () => {
   it('exposes the current Google Sheets export reward policy snapshot', () => {
     expect(getRewardPolicySnapshot().fork).toEqual(getActionPolicy('fork'));
     expect(getRewardPolicySnapshot().challenge.creditAmount).toBe(2);
+  });
+
+  it('calculates Google Sheets export credit balance from earned minus redeemed credits', async () => {
+    const query = jest.fn(async () => ({ rows: [{ earned_credits: '14', redeemed_credits: '3' }] }));
+
+    const balance = await getGoogleSheetsExportCreditBalance({ query }, 42);
+
+    expect(balance).toMatchObject({
+      creditType: 'google_sheets_export',
+      earnedCredits: 14,
+      redeemedCredits: 3,
+      availableCredits: 11,
+      cta: 'Challenge my underwriting.',
+    });
+    expect(balance.antiAbuseGuardrail).toContain('never raw share clicks alone');
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('premium_credit_redemptions'), [42, 'google_sheets_export']);
+  });
+
+  it('redeems Google Sheets export credits only when a qualified earned balance exists', async () => {
+    const query = jest.fn(async () => ({
+      rows: [{ available_credits_before: '5', id: 909, credit_amount: '1', created_at: '2026-05-24T05:15:00.000Z' }],
+    }));
+
+    const redemption = await redeemGoogleSheetsExportCredits({ query }, {
+      userId: 42,
+      creditAmount: 1,
+      reason: 'Export challenge comparison',
+      metadata: { analysisId: 123 },
+    });
+
+    expect(redemption).toMatchObject({
+      status: 'redeemed',
+      redeemed: true,
+      redemptionId: 909,
+      creditAmount: 1,
+      availableCreditsBefore: 5,
+      availableCreditsAfter: 4,
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO premium_credit_redemptions'),
+      [42, 'google_sheets_export', 1, 'Export challenge comparison', { analysisId: 123 }],
+    );
+  });
+
+  it('blocks Google Sheets export redemption when earned credits are insufficient', async () => {
+    const query = jest.fn(async () => ({ rows: [{ available_credits_before: '0', id: null }] }));
+
+    const redemption = await redeemGoogleSheetsExportCredits({ query }, { userId: 42, creditAmount: 2 });
+
+    expect(redemption).toMatchObject({
+      status: 'insufficient_credits',
+      redeemed: false,
+      creditAmount: 2,
+      availableCreditsBefore: 0,
+      availableCreditsAfter: 0,
+      cta: 'Challenge my underwriting.',
+    });
   });
 
   it('creates lineage-aware onward shares for challenged versions', async () => {

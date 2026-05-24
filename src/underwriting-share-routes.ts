@@ -31,6 +31,8 @@ const QUALIFIED_ACTIONS: QualifiedShareAction[] = [
   'saved_version',
 ];
 
+const GOOGLE_SHEETS_EXPORT_CREDIT_TYPE = 'google_sheets_export';
+
 function randomToken() {
   return crypto.randomBytes(18).toString('base64url');
 }
@@ -150,6 +152,102 @@ export function getRewardPolicySnapshot() {
   return Object.fromEntries(
     QUALIFIED_ACTIONS.map((action) => [action, ACTION_POLICIES[action]]),
   ) as Record<QualifiedShareAction, QualifiedActionPolicy>;
+}
+
+export async function getGoogleSheetsExportCreditBalance(database: DatabaseAdapter, userId: number) {
+  const result = await database.query(
+    `SELECT
+       COALESCE((
+         SELECT SUM(credit_amount)::int
+         FROM premium_credit_ledger
+         WHERE user_id = $1 AND credit_type = $2
+       ), 0)::int AS earned_credits,
+       COALESCE((
+         SELECT SUM(credit_amount)::int
+         FROM premium_credit_redemptions
+         WHERE user_id = $1 AND credit_type = $2
+       ), 0)::int AS redeemed_credits`,
+    [userId, GOOGLE_SHEETS_EXPORT_CREDIT_TYPE],
+  );
+
+  const earnedCredits = Number(result.rows[0]?.earned_credits || 0);
+  const redeemedCredits = Number(result.rows[0]?.redeemed_credits || 0);
+
+  return {
+    creditType: GOOGLE_SHEETS_EXPORT_CREDIT_TYPE,
+    earnedCredits,
+    redeemedCredits,
+    availableCredits: Math.max(earnedCredits - redeemedCredits, 0),
+    cta: 'Challenge my underwriting.',
+    earnPolicy: getRewardPolicySnapshot(),
+    antiAbuseGuardrail: 'Google Sheets export credits are earned only from qualified underwriting share actions — never raw share clicks alone.',
+  };
+}
+
+export async function redeemGoogleSheetsExportCredits(database: DatabaseAdapter, input: {
+  userId: number;
+  creditAmount?: number;
+  reason?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const creditAmount = Math.max(1, Math.floor(Number(input.creditAmount || 1)));
+  const reason = hasNonEmptyString(input.reason)
+    ? String(input.reason).trim().slice(0, 255)
+    : 'Google Sheets export';
+
+  const result = await database.query(
+    `WITH balance AS (
+       SELECT
+         COALESCE((
+           SELECT SUM(credit_amount)::int
+           FROM premium_credit_ledger
+           WHERE user_id = $1 AND credit_type = $2
+         ), 0)
+         - COALESCE((
+           SELECT SUM(credit_amount)::int
+           FROM premium_credit_redemptions
+           WHERE user_id = $1 AND credit_type = $2
+         ), 0) AS available_credits
+     ), inserted AS (
+       INSERT INTO premium_credit_redemptions (user_id, credit_type, credit_amount, reason, metadata)
+       SELECT $1, $2, $3, $4, $5
+       FROM balance
+       WHERE available_credits >= $3
+       RETURNING id, credit_amount, created_at
+     )
+     SELECT
+       balance.available_credits::int AS available_credits_before,
+       inserted.id,
+       inserted.credit_amount,
+       inserted.created_at
+     FROM balance
+     LEFT JOIN inserted ON true`,
+    [input.userId, GOOGLE_SHEETS_EXPORT_CREDIT_TYPE, creditAmount, reason, input.metadata || {}],
+  );
+
+  const row = result.rows[0] || {};
+  const availableCreditsBefore = Number(row.available_credits_before || 0);
+  if (!row.id) {
+    return {
+      status: 'insufficient_credits' as const,
+      redeemed: false,
+      creditAmount,
+      availableCreditsBefore,
+      availableCreditsAfter: availableCreditsBefore,
+      cta: 'Challenge my underwriting.',
+    };
+  }
+
+  return {
+    status: 'redeemed' as const,
+    redeemed: true,
+    redemptionId: row.id,
+    creditAmount: Number(row.credit_amount || creditAmount),
+    availableCreditsBefore,
+    availableCreditsAfter: Math.max(availableCreditsBefore - creditAmount, 0),
+    createdAt: row.created_at,
+    cta: 'Challenge my underwriting.',
+  };
 }
 
 function isQualifiedShareAction(action: string): action is QualifiedShareAction {
@@ -940,6 +1038,43 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         shareUrl: `/underwriting/${share.token}`,
         rewardPolicy: getRewardPolicySnapshot(),
         actionSummary,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.get('/premium-credits/google-sheets-export', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const balance = await getGoogleSheetsExportCreditBalance(database, req.userId!);
+      res.json({ success: true, ...balance });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/premium-credits/google-sheets-export/redemptions', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const redemption = await redeemGoogleSheetsExportCredits(database, {
+        userId: req.userId!,
+        creditAmount: req.body?.creditAmount || 1,
+        reason: req.body?.reason || 'Google Sheets export',
+        metadata: req.body?.metadata || {},
+      });
+
+      if (!redemption.redeemed) {
+        res.status(402).json({
+          success: false,
+          ...redemption,
+          earnPrompt: 'Challenge my underwriting — earn export credits when recipients open, challenge, fork, sign up, or save versions within anti-abuse caps.',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        ...redemption,
+        creditGuardrail: 'Credits redeemed here must have been earned from qualified underwriting share actions, never raw share clicks alone.',
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
