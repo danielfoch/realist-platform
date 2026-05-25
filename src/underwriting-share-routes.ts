@@ -15,6 +15,14 @@ interface QualifiedActionPolicy {
   dailyRecipientCap: number;
 }
 
+type QualifiedActionCatalogItem = QualifiedActionPolicy & {
+  action: QualifiedShareAction;
+  qualifiesWhen: string;
+  recipientPrompt: string;
+  ownerPrompt: string;
+  antiAbuseRule: string;
+};
+
 const ACTION_POLICIES: Record<QualifiedShareAction, QualifiedActionPolicy> = {
   unique_open: { creditAmount: 1, dailyShareCap: 5, dailyRecipientCap: 1 },
   challenge: { creditAmount: 2, dailyShareCap: 8, dailyRecipientCap: 2 },
@@ -32,6 +40,39 @@ const QUALIFIED_ACTIONS: QualifiedShareAction[] = [
 ];
 
 const GOOGLE_SHEETS_EXPORT_CREDIT_TYPE = 'google_sheets_export';
+
+const ACTION_CATALOG_COPY: Record<QualifiedShareAction, Omit<QualifiedActionCatalogItem, keyof QualifiedActionPolicy | 'action'>> = {
+  unique_open: {
+    qualifiesWhen: 'A distinct recipient opens a tracked underwriting link for the first time today within caps.',
+    recipientPrompt: 'Open the deal, then challenge one assumption instead of just clicking through.',
+    ownerPrompt: 'Send recipient-specific links so unique opens can be attributed without exposing raw recipient identity.',
+    antiAbuseRule: 'Duplicate opens from the same recipient/share/action are ignored; daily share and recipient caps still apply.',
+  },
+  challenge: {
+    qualifiesWhen: 'The recipient submits a specific disagreement: changed fields, assumptions, metrics, inputs, notes, or a 10+ character comment.',
+    recipientPrompt: 'Challenge my underwriting — rent, vacancy, expenses, or exit cap: pick one number you would change.',
+    ownerPrompt: 'Ask opened recipients for one concrete assumption challenge, not a generic opinion.',
+    antiAbuseRule: 'Credits require meaningful challenge evidence and are capped by share and recipient per day.',
+  },
+  fork: {
+    qualifiesWhen: 'The recipient forks the analysis with changed assumptions or metrics that create a comparison version.',
+    recipientPrompt: 'Fork my underwriting with your assumptions so we can compare versions side by side.',
+    ownerPrompt: 'Push strong challengers to fork the deal so their version can be shared onward.',
+    antiAbuseRule: 'Fork credits require changed underwriting payloads and only the first qualifying recipient/share/action counts.',
+  },
+  signup: {
+    qualifiesWhen: 'The recipient creates or associates an account after engaging with the shared underwriting.',
+    recipientPrompt: 'Create an account to keep your challenged version and share it onward.',
+    ownerPrompt: 'Convert people who saved or forked versions into accounts so the loop can continue.',
+    antiAbuseRule: 'Signup credits are limited by recipient and share daily caps; repeated signups from the same recipient are duplicates.',
+  },
+  saved_version: {
+    qualifiesWhen: 'The recipient saves a version with changed assumptions, metrics, inputs, notes, or challenged fields.',
+    recipientPrompt: 'Save your version after changing the assumptions you disagree with.',
+    ownerPrompt: 'Ask challengers to save their version so it can become the next shareable underwriting artifact.',
+    antiAbuseRule: 'Saved-version credits require a meaningful changed payload and are capped per share and recipient.',
+  },
+};
 
 function randomToken() {
   return crypto.randomBytes(18).toString('base64url');
@@ -152,6 +193,14 @@ export function getRewardPolicySnapshot() {
   return Object.fromEntries(
     QUALIFIED_ACTIONS.map((action) => [action, ACTION_POLICIES[action]]),
   ) as Record<QualifiedShareAction, QualifiedActionPolicy>;
+}
+
+export function getQualifiedActionCatalog(): QualifiedActionCatalogItem[] {
+  return QUALIFIED_ACTIONS.map((action) => ({
+    action,
+    ...ACTION_POLICIES[action],
+    ...ACTION_CATALOG_COPY[action],
+  }));
 }
 
 export async function getGoogleSheetsExportCreditBalance(database: DatabaseAdapter, userId: number) {
@@ -490,6 +539,7 @@ export function getQualifiedShareRewardBrief(byAction: ShareActionSummary) {
     } : null,
     sharePrompt: 'Challenge my underwriting — fork the assumptions you disagree with, save your version, and share it onward.',
     antiAbuseGuardrail: 'Credits are never granted for raw clicks alone. Rewards require unique opens, challenges, forks, signups, or saved versions within daily caps.',
+    qualifiedActionCatalog: getQualifiedActionCatalog(),
   };
 }
 
@@ -821,6 +871,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         cta: created.cta,
         shareDepth: created.shareDepth,
         rewardPolicy: created.rewardPolicy,
+        qualifiedActionCatalog: getQualifiedActionCatalog(),
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -876,6 +927,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
           notes: row.notes,
         },
         visitorQualification: open,
+        qualifiedActionCatalog: getQualifiedActionCatalog(),
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -913,6 +965,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         cta: 'Challenge my underwriting.',
         links,
         rewardPolicy: getRewardPolicySnapshot(),
+        qualifiedActionCatalog: getQualifiedActionCatalog(),
         creditGuardrail: 'Creating recipient links never awards credits. Credits require qualified opens, challenges, forks, signups, or saved versions within caps.',
       });
     } catch (err) {
@@ -1008,7 +1061,13 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         }
       }
 
-      res.json({ success: true, ...recorded, savedAnalysisId, onwardShare });
+      res.json({
+        success: true,
+        ...recorded,
+        savedAnalysisId,
+        onwardShare,
+        qualifiedActionCatalog: getQualifiedActionCatalog(),
+      });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
@@ -1037,6 +1096,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         cta: 'Challenge my underwriting.',
         shareUrl: `/underwriting/${share.token}`,
         rewardPolicy: getRewardPolicySnapshot(),
+        qualifiedActionCatalog: getQualifiedActionCatalog(),
         actionSummary,
       });
     } catch (err) {
@@ -1047,7 +1107,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
   router.get('/premium-credits/google-sheets-export', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const balance = await getGoogleSheetsExportCreditBalance(database, req.userId!);
-      res.json({ success: true, ...balance });
+      res.json({ success: true, ...balance, qualifiedActionCatalog: getQualifiedActionCatalog() });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }

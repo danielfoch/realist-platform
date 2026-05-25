@@ -10,6 +10,7 @@ import {
   getShareConversionInsights,
   getShareGrowthNudge,
   getQualifiedShareRewardBrief,
+  getQualifiedActionCatalog,
   getRecipientShareCoaching,
   hasMeaningfulChallengePayload,
   recordQualifiedShareAction,
@@ -408,6 +409,9 @@ describe('viral underwriting share qualification', () => {
       qualifiedActions: ['challenge'],
       sharePrompt: expect.stringContaining('fork the assumptions'),
       antiAbuseGuardrail: expect.stringContaining('raw clicks'),
+      qualifiedActionCatalog: expect.arrayContaining([
+        expect.objectContaining({ action: 'saved_version', recipientPrompt: expect.stringContaining('Save your version') }),
+      ]),
     });
     expect(brief.bestNextReward).toEqual({ action: 'saved_version', creditAmount: 4, remainingToday: 3 });
   });
@@ -459,6 +463,19 @@ describe('viral underwriting share qualification', () => {
   it('exposes the current Google Sheets export reward policy snapshot', () => {
     expect(getRewardPolicySnapshot().fork).toEqual(getActionPolicy('fork'));
     expect(getRewardPolicySnapshot().challenge.creditAmount).toBe(2);
+  });
+
+  it('documents the qualified action catalog for Challenge my underwriting CTAs', () => {
+    const catalog = getQualifiedActionCatalog();
+
+    expect(catalog).toHaveLength(5);
+    expect(catalog.find((item) => item.action === 'challenge')).toMatchObject({
+      creditAmount: getActionPolicy('challenge').creditAmount,
+      recipientPrompt: expect.stringContaining('Challenge my underwriting'),
+      qualifiesWhen: expect.stringContaining('specific disagreement'),
+      antiAbuseRule: expect.stringContaining('meaningful challenge evidence'),
+    });
+    expect(catalog.every((item) => item.dailyShareCap > 0 && item.dailyRecipientCap > 0)).toBe(true);
   });
 
   it('calculates Google Sheets export credit balance from earned minus redeemed credits', async () => {
