@@ -66,6 +66,8 @@ npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 - No outbound emails/messages were sent.
 - No paid APIs were called.
 - No DB migration required.
+- Branch pushed to GitHub: `origin/realist-nightly/2026-05-25-share-intent-caps`.
+- PR URL: https://github.com/danielfoch/realist-platform/pull/new/realist-nightly/2026-05-25-share-intent-caps
 - Existing untracked files were left untouched and uncommitted intentionally:
   - `REPLIT_HANDOFF_CONTRACT.md`
   - `REPLIT_PULL_TEMPLATE.md`
