@@ -5,7 +5,7 @@ Monday, May 25, 2026
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-25-share-intent-caps`
-- Implementation commit: `a6acb14d8538f291ca63a603dc58ce2bbab8152c`
+- Implementation commit: `9b13ecb2a603798498868c644ee46ff8b53469f5`
 
 ## 3. What changed
 Added a structured qualified-action catalog for the viral underwriting loop so Replit/frontend surfaces can explain exactly what earns Google Sheets export credits under the **“Challenge my underwriting.”** CTA.
