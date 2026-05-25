@@ -151,11 +151,13 @@ function Router() {
       <Route path="/tools/hst-rebate" component={OntarioHstRebateCalculator} />
       <Route path="/tools/land-claim-screener" component={LandClaimScreener} />
       <Route path="/tools/distress-deals" component={DistressDeals} />
+      <Route path="/tools/motivated-deals" component={DistressDeals} />
       <Route path="/tools/multiplex-feasibility" component={MultiplexFeasibilityPage} />
       <Route path="/multiplex-investor-fit" component={MultiplexFit} />
       <Route path="/masterclass" component={MultiplexMasterclass} />
       <Route path="/course" component={Course} />
       <Route path="/insights/distress-report" component={DistressReport} />
+      <Route path="/insights/motivated-report" component={DistressReport} />
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/community/leaderboard/full" component={FullLeaderboard} />
       <Route path="/my-performance" component={MyPerformance} />

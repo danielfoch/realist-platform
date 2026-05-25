@@ -556,7 +556,7 @@ function createMetricMarkerIcon(input: {
         align-items:center;
         justify-content:center;
         border:2px solid white;
-      ">D</div>`
+      ">M</div>`
     : "";
 
   return L.divIcon({
@@ -990,7 +990,7 @@ function DistressListingsLayer({
             font-family:system-ui,-apple-system,sans-serif;
             line-height:1.05;
           ">
-            <span style="font-size:11px;font-weight:900;">D</span>
+            <span style="font-size:11px;font-weight:900;">M</span>
             <span style="font-size:10px;font-weight:700;opacity:0.92;">${clusterGroup.getChildCount()}</span>
           </div>`,
           iconSize: [size, size],
@@ -2279,7 +2279,7 @@ export default function CapRates() {
   const handleAnalyzeDistressListing = (listing: DistressListing) => {
     const seedQuery = buildAnalyzerSeed(listing);
     const meta = {
-      title: "Analyze Distress Opportunity",
+      title: "Analyze Motivated Opportunity",
       subtitle: `${formatShortAddress(listing.address as RepliersListing["address"])}${listing.address?.city ? `, ${listing.address.city}` : ""}`,
     };
     setAnalyzerSeedQuery(seedQuery);
@@ -2680,7 +2680,7 @@ export default function CapRates() {
               {listing.distress.categoriesTriggered.motivated && <Badge variant="outline" className="text-[10px]">Motivated</Badge>}
             </div>
             <p className="mt-1.5 line-clamp-2 text-[10px] text-muted-foreground">
-              {listing.rawRemarks || listing.details?.description || "Distress indicators detected in listing remarks."}
+              {listing.rawRemarks || listing.details?.description || "Motivated-seller indicators detected in listing remarks."}
             </p>
           </div>
         </div>
@@ -3607,8 +3607,8 @@ export default function CapRates() {
                   <CardContent className="p-3 space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700 dark:text-red-300">Distress matches</p>
-                        <p className="text-xs text-muted-foreground">Additional distressed opportunities in the current map view.</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700 dark:text-red-300">Motivated matches</p>
+                        <p className="text-xs text-muted-foreground">Additional motivated-seller opportunities in the current map view.</p>
                       </div>
                       <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
                         {distressOnlyListingsInView.length}
@@ -3978,8 +3978,8 @@ export default function CapRates() {
                 }}
               />
               <div>
-                <p className="text-[11px] font-medium">Show distress overlay</p>
-                <p className="text-[10px] text-muted-foreground">Red D markers and badges on distressed listings.</p>
+                <p className="text-[11px] font-medium">Show motivated-seller overlay</p>
+                <p className="text-[10px] text-muted-foreground">Red M markers and badges on motivated listings.</p>
               </div>
             </div>
             <div className="flex min-w-[220px] items-center gap-2 rounded-md border border-red-200 bg-background px-3 py-2">
@@ -3991,8 +3991,8 @@ export default function CapRates() {
                 }}
               />
               <div>
-                <p className="text-[11px] font-medium">Only show distressed deals</p>
-                <p className="text-[10px] text-muted-foreground">Filter standard listings down to overlap with distress matches.</p>
+                <p className="text-[11px] font-medium">Only show motivated deals</p>
+                <p className="text-[10px] text-muted-foreground">Filter standard listings down to overlap with motivated matches.</p>
               </div>
             </div>
             <div className="flex min-w-[220px] items-center gap-2 rounded-md border border-blue-200 bg-background px-3 py-2">

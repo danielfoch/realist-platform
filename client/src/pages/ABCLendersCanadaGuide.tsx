@@ -164,7 +164,7 @@ const TIERS: LenderTier[] = [
     termLow: 0.5,
     termHigh: 2,
     regulator: "Provincial (FSRA in Ontario)",
-    borrowerProfile: "Equity-based: distress, BFS with no docs, construction, bridge, 2nd/3rd position",
+    borrowerProfile: "Equity-based: motivated sellers, BFS with no docs, construction, bridge, 2nd/3rd position",
     examples: [
       "MICs: Fisgard, Neighbourhood Holdings, CMI, AlphaPro, Westboro",
       "Larger funds: Romspen, Trez Capital, Atrium MIC",
@@ -184,7 +184,7 @@ const TIERS: LenderTier[] = [
     ],
     exitStrategy: "Short-term bridge — refinance to a B or A lender, or sell the asset before term",
     longDescription:
-      "C-tier private lenders are MICs, syndicated mortgages, and individual private lenders sourced through licensed mortgage brokers. They are regulated provincially (FSRA in Ontario, BCFSA in BC, etc.) and underwrite primarily on the property — credit and income are secondary. They are the lender of last resort and a critical tool for distressed sellers, BRRR/flip investors, and developers who need fast, flexible capital. Treat private money as a short-term bridge, never long-term financing.",
+      "C-tier private lenders are MICs, syndicated mortgages, and individual private lenders sourced through licensed mortgage brokers. They are regulated provincially (FSRA in Ontario, BCFSA in BC, etc.) and underwrite primarily on the property — credit and income are secondary. They are the lender of last resort and a critical tool for motivated sellers, BRRR/flip investors, and developers who need fast, flexible capital. Treat private money as a short-term bridge, never long-term financing.",
     color: "hsl(0, 84%, 60%)",
     icon: AlertTriangle,
   },

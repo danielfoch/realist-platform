@@ -515,6 +515,17 @@ async function ensureAppTables() {
     res.redirect(301, target);
   });
 
+  app.get(["/tools/distress-deals", "/insights/distress-report"], (req, res, next) => {
+    const map: Record<string, string> = {
+      "/tools/distress-deals": "/tools/motivated-deals",
+      "/insights/distress-report": "/insights/motivated-report",
+    };
+    const target = map[req.path];
+    if (!target) return next();
+    const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+    res.redirect(301, `${target}${query}`);
+  });
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

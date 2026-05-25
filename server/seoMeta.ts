@@ -75,9 +75,9 @@ const STATIC_META: Record<string, PageMeta> = {
     title: "Indigenous Land Claim Screener - Canadian Real Estate Due Diligence",
     description: "Free screening tool to check whether a property in Canada falls within or near an Indigenous land claim, treaty, or reserve.",
   },
-  "/tools/distress-deals": {
-    title: "Canadian Distress Deals - Power of Sale & Foreclosure Tracker",
-    description: "Live tracker of distressed Canadian listings: power of sale, foreclosure, court order sale, motivated sellers. Updated daily.",
+  "/tools/motivated-deals": {
+    title: "Canadian Motivated Deals - Motivated Sellers, Power of Sale & VTB Tracker",
+    description: "Live tracker of motivated Canadian listings: motivated sellers, power of sale, foreclosure, court order sale, and VTB opportunities. Updated daily.",
   },
   "/tools/hst-rebate": {
     title: "Ontario New Home HST Rebate Calculator | Realist",
@@ -115,10 +115,10 @@ const STATIC_META: Record<string, PageMeta> = {
   },
   "/insights/market-report": {
     title: "Canadian Real Estate Market Report - Live Data | Realist.ca",
-    description: "Live Canadian housing market dashboard. Sales, prices, inventory, mortgage rates, yield, distress, and macro indicators across every major Canadian city.",
+    description: "Live Canadian housing market dashboard. Sales, prices, inventory, mortgage rates, yield, motivated-seller signals, and macro indicators across every major Canadian city.",
   },
-  "/insights/distress-report": {
-    title: "Canadian Distress Real Estate Report - Power of Sale Trends",
+  "/insights/motivated-report": {
+    title: "Canadian Motivated Real Estate Report - Motivated Seller & Power of Sale Trends",
     description: "Tracking power of sale, foreclosure, and motivated-seller listings across Canada — by city, province, and time.",
   },
   "/insights/mortgage-rates": {

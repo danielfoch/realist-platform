@@ -432,8 +432,8 @@ function ListingDetailModal({
 
 function SignUpGateModal({ onClose, toolName, pendingMls }: { onClose: () => void; toolName: string; pendingMls?: string | null }) {
   const returnUrl = pendingMls
-    ? `/tools/distress-deals?listing=${encodeURIComponent(pendingMls)}`
-    : "/tools/distress-deals";
+    ? `/tools/motivated-deals?listing=${encodeURIComponent(pendingMls)}`
+    : "/tools/motivated-deals";
   const loginHref = authPath("/login", returnUrl);
 
   const handleAuthClick = () => {
@@ -455,7 +455,7 @@ function SignUpGateModal({ onClose, toolName, pendingMls }: { onClose: () => voi
           </div>
           <h2 className="text-xl font-bold" data-testid="text-gate-title">Sign up to view details</h2>
           <p className="text-sm text-muted-foreground">
-            Create a free account to view full listing details, distress analysis, and property photos in the {toolName}.
+            Create a free account to view full listing details, motivated-seller analysis, and property photos in the {toolName}.
           </p>
           <div className="space-y-2 pt-2">
             <Button asChild className="w-full gap-2" data-testid="button-gate-signup">
@@ -602,18 +602,18 @@ export default function DistressDeals() {
   }, [city]);
 
   const handleShare = useCallback(() => {
-    navigator.clipboard.writeText(`${window.location.origin}/tools/distress-deals`).then(() => {
+    navigator.clipboard.writeText(`${window.location.origin}/tools/motivated-deals`).then(() => {
       toast({ title: "Link copied", description: "Share link has been copied to clipboard" });
     });
   }, [toast]);
 
   return (
-    <div className="h-screen h-[100dvh] bg-background flex flex-col overflow-hidden" data-testid="distress-deals-page">
+    <div className="h-screen h-[100dvh] bg-background flex flex-col overflow-hidden" data-testid="motivated-deals-page">
       <SEO
-        title="Distress Deals Browser - Foreclosure, Power of Sale, VTB | Realist.ca"
+        title="Motivated Deals Browser - Motivated Sellers, Power of Sale, VTB | Realist.ca"
         description="Find power-of-sale, court-ordered, bank-owned, motivated-seller, and seller-financing opportunities across Canada using MLS data."
-        keywords="foreclosure canada, power of sale, court ordered sale, motivated seller, vtb, vendor take back, distressed property, bank owned"
-        canonicalUrl="/tools/distress-deals"
+        keywords="motivated deals canada, motivated sellers, power of sale, court ordered sale, vtb, vendor take back, foreclosure, bank owned"
+        canonicalUrl="/tools/motivated-deals"
       />
       <Navigation />
 
@@ -624,7 +624,7 @@ export default function DistressDeals() {
               <div>
                 <h1 className="text-lg md:text-xl font-bold flex items-center gap-2" data-testid="text-page-title">
                   <Gavel className="h-5 w-5 text-red-500" />
-                  Distress Deals
+                  Motivated Deals
                 </h1>
                 <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
                   Foreclosure, Power of Sale, motivated sellers, and VTB opportunities
@@ -710,7 +710,7 @@ export default function DistressDeals() {
 
                 {filtersOpen && (
                   <div className="text-xs text-muted-foreground px-1 py-1">
-                    All {data?.totalCount || 0} distress listings loaded across Canada.
+                    All {data?.totalCount || 0} motivated-seller listings loaded across Canada.
                     {mapBounds && ` Showing ${listings.length} in current view.`}
                   </div>
                 )}
@@ -721,7 +721,7 @@ export default function DistressDeals() {
                   <div className="p-6 space-y-4">
                     <div className="flex flex-col items-center text-center space-y-2 py-4">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <p className="text-sm font-medium">{data?.warming ? "Building distress database..." : "Loading distress listings..."}</p>
+                      <p className="text-sm font-medium">{data?.warming ? "Building motivated-deals database..." : "Loading motivated listings..."}</p>
                       <p className="text-xs text-muted-foreground">{data?.warming ? "First-time scan takes 2-3 minutes. This page will auto-refresh." : "Data should appear momentarily"}</p>
                     </div>
                     {[...Array(4)].map((_, i) => (
@@ -733,7 +733,7 @@ export default function DistressDeals() {
                 {!isLoading && listings.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-64 text-center p-8">
                     <Search className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                    <h3 className="font-medium mb-1">No distress listings in this area</h3>
+                    <h3 className="font-medium mb-1">No motivated-seller listings in this area</h3>
                     <p className="text-sm text-muted-foreground">
                       Try zooming out or panning the map to a different region. You can also toggle more categories above.
                     </p>
@@ -852,7 +852,7 @@ export default function DistressDeals() {
       {showSignUpGate && (
         <SignUpGateModal
           onClose={() => setShowSignUpGate(false)}
-          toolName="Distress Deals Browser"
+          toolName="Motivated Deals Browser"
           pendingMls={pendingListingMls}
         />
       )}

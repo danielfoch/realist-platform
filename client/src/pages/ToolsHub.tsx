@@ -106,8 +106,8 @@ const tools = [
     badge: "New",
   },
   {
-    href: "/tools/distress-deals",
-    title: "Distress Deals",
+    href: "/tools/motivated-deals",
+    title: "Motivated Deals",
     description: "Find power-of-sale, court-ordered, bank-owned, motivated sellers, and seller-financing opportunities across Canadian MLS listings.",
     icon: Gavel,
     badge: "New",

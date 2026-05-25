@@ -355,10 +355,10 @@ export default function DistressReport() {
   const hasData = provinceSnapshots.length > 0;
 
   return (
-    <div className="min-h-screen bg-background" data-testid="distress-report-page">
+    <div className="min-h-screen bg-background" data-testid="motivated-report-page">
       <SEO
-        title={activeMonth ? `Distress Deals Report — ${getMonthLabel(activeMonth)} | Realist.ca` : "Distress Deals Report | Realist.ca"}
-        description="Monthly Canadian distress deals report: foreclosures, power of sale, motivated sellers, and VTB opportunities across all provinces."
+        title={activeMonth ? `Motivated Deals Report — ${getMonthLabel(activeMonth)} | Realist.ca` : "Motivated Deals Report | Realist.ca"}
+        description="Monthly Canadian motivated-deals report: motivated sellers, power of sale, foreclosures, and VTB opportunities across all provinces."
       />
       <Navigation />
 
@@ -386,7 +386,7 @@ export default function DistressReport() {
                 </SelectContent>
               </Select>
             )}
-            <Link href="/tools/distress-deals">
+            <Link href="/tools/motivated-deals">
               <Button variant="outline" data-testid="browse-deals-btn">
                 Browse Deals <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -408,10 +408,10 @@ export default function DistressReport() {
               <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
               <h2 className="text-xl font-semibold mb-2">Failed to Load Report Data</h2>
               <p className="text-muted-foreground mb-6">
-                There was an error fetching the distress report data. Please try again later.
+                There was an error fetching the motivated-deals report data. Please try again later.
               </p>
-              <Link href="/tools/distress-deals">
-                <Button variant="outline" data-testid="browse-deals-error">Browse Live Distress Deals</Button>
+              <Link href="/tools/motivated-deals">
+                <Button variant="outline" data-testid="browse-deals-error">Browse Live Motivated Deals</Button>
               </Link>
             </CardContent>
           </Card>
@@ -423,10 +423,10 @@ export default function DistressReport() {
               <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h2 className="text-xl font-semibold mb-2">No Report Data Available</h2>
               <p className="text-muted-foreground mb-6">
-                Distress report snapshots haven't been generated yet. Reports are auto-generated on the 2nd of each month.
+                Motivated-deals report snapshots haven't been generated yet. Reports are auto-generated on the 2nd of each month.
               </p>
-              <Link href="/tools/distress-deals">
-                <Button data-testid="browse-deals-empty">Browse Live Distress Deals</Button>
+              <Link href="/tools/motivated-deals">
+                <Button data-testid="browse-deals-empty">Browse Live Motivated Deals</Button>
               </Link>
             </CardContent>
           </Card>
@@ -506,9 +506,9 @@ export default function DistressReport() {
               <Card>
                 <CardHeader>
                   <div>
-                    <CardTitle className="text-lg">Distress Deals by Province</CardTitle>
+                    <CardTitle className="text-lg">Motivated Deals by Province</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Total flagged distress listings by province.
+                      Total flagged motivated-seller listings by province.
                     </p>
                   </div>
                 </CardHeader>
@@ -582,7 +582,7 @@ export default function DistressReport() {
                     Top Cities in Canada
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Ranked by total distress listing volume.
+                    Ranked by total motivated listing volume.
                   </p>
                 </div>
               </CardHeader>
@@ -603,7 +603,7 @@ export default function DistressReport() {
                         formatter={(value: number, _name: string, item: any) => {
                           return [
                             fmt(value),
-                            `${item?.payload?.province ? `${item.payload.city}, ${item.payload.province}` : "Distress listings"}`,
+                            `${item?.payload?.province ? `${item.payload.city}, ${item.payload.province}` : "Motivated listings"}`,
                           ];
                         }}
                         labelFormatter={(label: string, payload: any[]) => {
@@ -613,7 +613,7 @@ export default function DistressReport() {
                       />
                       <Bar
                         dataKey="distressListings"
-                        name="Distress Listings"
+                        name="Motivated Listings"
                         fill="#ef4444"
                         radius={[4, 4, 0, 0]}
                       />
@@ -629,9 +629,9 @@ export default function DistressReport() {
                   <CardHeader className="space-y-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                       <div>
-                        <CardTitle className="text-lg">Historical Distress Trend</CardTitle>
+                        <CardTitle className="text-lg">Historical Motivated-Deals Trend</CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Saved monthly distress trends for Canada, provinces, and captured cities.
+                          Saved monthly motivated-deals trends for Canada, provinces, and captured cities.
                         </p>
                       </div>
                       <Badge variant="secondary">{selectedTrendHistory.length} months tracked</Badge>
@@ -691,7 +691,7 @@ export default function DistressReport() {
                   <CardHeader>
                     <CardTitle className="text-lg">Historical Signal Mix</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Category counts, average distress score, and high-confidence share over time.
+                      Category counts, average motivation score, and high-confidence share over time.
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -704,7 +704,7 @@ export default function DistressReport() {
                           <YAxis yAxisId="right" orientation="right" />
                           <Tooltip
                             formatter={(value: number, name: string) => {
-                              if (name === "Avg distress score") return [Number(value).toFixed(1), name];
+                              if (name === "Avg motivation score") return [Number(value).toFixed(1), name];
                               if (name === "High-confidence share") return [`${Number(value).toFixed(1)}%`, name];
                               return [fmt(value), name];
                             }}
@@ -714,7 +714,7 @@ export default function DistressReport() {
                           <Line yAxisId="left" type="monotone" dataKey="foreclosurePosCount" name="Foreclosure/POS" stroke="#ef4444" strokeWidth={2} dot={false} />
                           <Line yAxisId="left" type="monotone" dataKey="motivatedCount" name="Motivated" stroke="#f59e0b" strokeWidth={2} dot={false} />
                           <Line yAxisId="left" type="monotone" dataKey="vtbCount" name="VTB" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                          <Line yAxisId="right" type="monotone" dataKey="avgDistressScore" name="Avg distress score" stroke="#111827" strokeWidth={2.5} dot={{ r: 2.5 }} />
+                          <Line yAxisId="right" type="monotone" dataKey="avgDistressScore" name="Avg motivation score" stroke="#111827" strokeWidth={2.5} dot={{ r: 2.5 }} />
                           <Line yAxisId="right" type="monotone" dataKey="highConfidenceShare" name="High-confidence share" stroke="#22c55e" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
@@ -778,7 +778,7 @@ export default function DistressReport() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground mb-4">
-                    Read the complete {getMonthLabel(activeMonth)} distress deals report with full analysis, methodology, and investment insights.
+                    Read the complete {getMonthLabel(activeMonth)} motivated deals report with full analysis, methodology, and investment insights.
                   </p>
                   <Link href={getDistressReportSlug(activeMonth)}>
                     <Button variant="outline" data-testid="read-report-btn">
@@ -794,11 +794,11 @@ export default function DistressReport() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground mb-4">
-                    Search and filter distress listings in real time across all Canadian provinces. Updated continuously from CREA DDF.
+                    Search and filter motivated-seller listings in real time across all Canadian provinces. Updated continuously from CREA DDF.
                   </p>
-                  <Link href="/tools/distress-deals">
+                  <Link href="/tools/motivated-deals">
                     <Button data-testid="browse-live-btn">
-                      Open Distress Deals Browser <ArrowRight className="ml-2 h-4 w-4" />
+                      Open Motivated Deals Browser <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                 </CardContent>

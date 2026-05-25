@@ -112,17 +112,17 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
       { href: "/investing/buy-and-hold", label: "Buy and hold strategy page" },
     ],
   },
-  "/insights/distress-report": {
+  "/insights/motivated-report": {
     h1: "Canadian Motivated Sellers Report",
-    intro: "This report summarizes distress-related listing signals across Canada, including power of sale, foreclosure, motivated-seller language, and related opportunity patterns.",
+    intro: "This report summarizes motivated-seller listing signals across Canada, including power of sale, foreclosure, motivated-seller language, and related opportunity patterns.",
     sections: [
-      { title: "Why it exists", body: "Distress is one of the clearest sourcing signals for investors, but it needs context and careful verification." },
-      { title: "How to use it", body: "Use this page to identify markets or patterns worth following, then inspect live listings in the Distress Deals Browser." },
+      { title: "Why it exists", body: "Motivated-seller language is one of the clearest sourcing signals for investors, but it needs context and careful verification." },
+      { title: "How to use it", body: "Use this page to identify markets or patterns worth following, then inspect live listings in the Motivated Deals Browser." },
     ],
     links: [
-      { href: "/tools/distress-deals", label: "Open Distress Deals Browser" },
+      { href: "/tools/motivated-deals", label: "Open Motivated Deals Browser" },
       { href: "/reports", label: "All reports" },
-      { href: "/investing/distress", label: "Distress investing strategy page" },
+      { href: "/investing/distress", label: "Motivated-seller investing strategy page" },
     ],
   },
   "/insights/mortgage-rates": {
@@ -178,7 +178,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
           The homepage links to the core indexable surfaces Google should understand: reports for market research, markets for city-level context, investing pages for strategy education, and tools for underwriting. Those links are plain HTML anchors in the initial response so crawlers can discover the rest of the site without waiting for client-side JavaScript.
         </p>
         <p>
-          Realist's research focus is Canadian housing. Topics include the CREA MLS Home Price Index, sales-to-new-listings ratios, CMHC rental benchmarks, new construction supply, pre-construction price movement, mortgage rates, distress signals, multiplex policy, BRRR execution, and buy-and-hold underwriting. The goal is not generic real estate content; it is practical Canadian deal analysis that connects market data to investment decisions.
+          Realist's research focus is Canadian housing. Topics include the CREA MLS Home Price Index, sales-to-new-listings ratios, CMHC rental benchmarks, new construction supply, pre-construction price movement, mortgage rates, motivated-seller signals, multiplex policy, BRRR execution, and buy-and-hold underwriting. The goal is not generic real estate content; it is practical Canadian deal analysis that connects market data to investment decisions.
         </p>
         <p>
           Start with a report when you need market context, start with a market page when you are comparing cities, and start with the analyzer when a specific property is ready for diligence. Realist keeps those paths connected so a search for an AI real estate deal finder, a CREA housing indicator, or a local investment market can lead to the same practical workflow.
@@ -188,7 +188,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
         ${[
           { title: "Analyze a Deal", body: "Turn an address, listing, or MLS number into cash flow, cap rate, cash-on-cash return, risk signals, financing sensitivity, and next steps.", href: "/tools/analyzer" },
           { title: "Explore the Map", body: "Search Canadian listings through an investor lens with yield, market fit, price movement, property type, and risk context.", href: "/tools/cap-rates" },
-          { title: "Distress Deals", body: "Browse motivated seller, power of sale, foreclosure, court ordered sale, and related opportunity language before it becomes obvious to everyone else.", href: "/tools/distress-deals" },
+          { title: "Motivated Deals", body: "Browse motivated seller, power of sale, foreclosure, court ordered sale, and related opportunity language before it becomes obvious to everyone else.", href: "/tools/motivated-deals" },
           { title: "Market Intelligence", body: "Follow market reports, city pages, strategy pages, and housing data that shape underwriting assumptions for Canadian investors.", href: "/insights" },
         ].map((item) => `
           <article style="border:1px solid #e5e7eb;border-radius:16px;padding:18px;">
@@ -224,7 +224,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
           { href: "/markets/calgary", label: "Calgary real estate investment market" },
           { href: "/investing/multiplex", label: "Multiplex investing in Canada" },
           { href: "/investing/brrr", label: "BRRR real estate investing in Canada" },
-          { href: "/investing/distress", label: "Distress property investing in Canada" },
+          { href: "/investing/distress", label: "Motivated-seller investing in Canada" },
         ])}
       </section>
       <section style="font-size:16px;line-height:1.85;color:#111827;max-width:900px;margin-top:40px;">
@@ -252,7 +252,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
           { title: "Reports", body: "Crawlable Canadian housing reports and market intelligence.", href: "/reports" },
           { title: "CMHC Land Use Regulations Report", body: "Analysis of CMHC's 2026 research on zoning, approvals, affordability, and housing supply.", href: "/reports/cmhc-land-use-regulations-housing-canada-2026" },
           { title: "Mortgage Rates", body: "Current Canadian mortgage rate context for investors.", href: "/insights/mortgage-rates" },
-          { title: "Distress Report", body: "Monthly power of sale, foreclosure, and motivated-seller signals.", href: "/insights/distress-report" },
+          { title: "Motivated Report", body: "Monthly power of sale, foreclosure, and motivated-seller signals.", href: "/insights/motivated-report" },
         ].map((item) => `
           <article style="border:1px solid #e5e7eb;border-radius:16px;padding:18px;">
             <h2 style="font-size:20px;margin:0 0 10px;">${escapeHtml(item.title)}</h2>
@@ -446,7 +446,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
         <p style="font-size:18px;color:#4b5563;max-width:760px;line-height:1.7;">These strategy pages are designed to connect search intent to Realist tools, markets, and reports in a stable indexable structure.</p>
       </header>
       <section style="font-size:16px;line-height:1.85;color:#111827;max-width:900px;margin:24px 0;">
-        <p>Realist strategy pages explain how Canadian investors evaluate buy-and-hold, BRRR, multiplex, and distress opportunities. Each strategy has different risk layers: financing, renovation scope, rent quality, zoning, holding period, exit value, and market liquidity.</p>
+        <p>Realist strategy pages explain how Canadian investors evaluate buy-and-hold, BRRR, multiplex, and motivated-seller opportunities. Each strategy has different risk layers: financing, renovation scope, rent quality, zoning, holding period, exit value, and market liquidity.</p>
         <p>This index also supports Realist's AI real estate deal finder positioning. The search problem is not just finding more listings; it is finding listings that fit a strategy and then testing whether the numbers survive conservative assumptions.</p>
         <p>Start with a strategy below, compare the related markets, then use the analyzer and reports to decide whether a property is worth deeper diligence.</p>
       </section>

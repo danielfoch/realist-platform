@@ -1175,12 +1175,12 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                    <Link href="/tools/distress-deals">
+                    <Link href="/tools/motivated-deals">
                       <Button
                         variant="outline"
                         size="sm"
                         className="gap-2"
-                        onClick={() => track({ event: "cta_clicked", cta: "find_deals_from_nl_prompt", location: "analyzer_entry", destination: "/tools/distress-deals" })}
+                        onClick={() => track({ event: "cta_clicked", cta: "find_deals_from_nl_prompt", location: "analyzer_entry", destination: "/tools/motivated-deals" })}
                       >
                         Find Deals
                         <ArrowRight className="h-4 w-4" />
@@ -1225,13 +1225,13 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-                <Link href="/tools/distress-deals">
+                <Link href="/tools/motivated-deals">
                   <Button
                     variant="ghost"
                     className="gap-2"
-                    onClick={() => track({ event: "cta_clicked", cta: "switch_to_distress_from_analyzer", location: "analyzer_header", destination: "/tools/distress-deals" })}
+                    onClick={() => track({ event: "cta_clicked", cta: "switch_to_motivated_from_analyzer", location: "analyzer_header", destination: "/tools/motivated-deals" })}
                   >
-                    Browse distress deals
+                    Browse motivated deals
                   </Button>
                 </Link>
               </div>
@@ -1374,13 +1374,13 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Link href="/tools/distress-deals">
+                        <Link href="/tools/motivated-deals">
                           <Button
                             variant="ghost"
                             className="w-full justify-between"
-                            onClick={() => track({ event: "cta_clicked", cta: "open_distress_from_sidebar", location: "analyzer_sidebar", destination: "/tools/distress-deals" })}
+                            onClick={() => track({ event: "cta_clicked", cta: "open_motivated_from_sidebar", location: "analyzer_sidebar", destination: "/tools/motivated-deals" })}
                           >
-                            Browse distress deals
+                            Browse motivated deals
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         </Link>

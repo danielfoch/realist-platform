@@ -149,7 +149,7 @@ function generateSeoSummary(params: {
       ? `strong rental rates that support positive cash flow on moderately leveraged properties`
       : cmhcRents.twoBed >= 1400
       ? `solid mid-market rents that can pencil out with conservative underwriting`
-      : `lower rents that favour investors who can acquire properties below market value through distress deals or vendor take-back financing`;
+      : `lower rents that favour investors who can acquire properties below market value through motivated-seller deals or vendor take-back financing`;
     sections.push(`<p>On the rental side, ${city} features ${rentContext}. A typical 2-bedroom unit rents for approximately <strong>${fmtDollar(cmhcRents.twoBed)}/month</strong> according to CMHC benchmarks — a critical input for any buy-and-hold analysis.</p>`);
   }
 
@@ -368,7 +368,7 @@ function generateReportHtml(params: {
   sections.push(`
     <h2>Past Reports & Related Resources</h2>
     <p>This report is part of the Realist.ca Monthly Market Report series covering 30 Canadian cities. Browse the full archive of past reports in the <a href="/insights/blog">Blog &amp; Research</a> section, or explore the interactive <a href="/insights/market-report">Market Report Dashboard</a> for city-by-city comparisons.</p>
-    <p>Related tools: <a href="/tools/analyzer">Deal Analyzer</a> · <a href="/tools/distress-deals">Distress Deals Browser</a> · <a href="/insights/distress-report">Monthly Distress Report</a> · <a href="/tools/cap-rates">Cap Rates Explorer</a></p>
+    <p>Related tools: <a href="/tools/analyzer">Deal Analyzer</a> · <a href="/tools/motivated-deals">Motivated Deals Browser</a> · <a href="/insights/motivated-report">Monthly Motivated Deals Report</a> · <a href="/tools/cap-rates">Cap Rates Explorer</a></p>
   `);
 
   return sections.join("\n");

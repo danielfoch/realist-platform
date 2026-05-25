@@ -25,8 +25,8 @@ const insightSections = [
         cta: "See Rates",
       },
       {
-        href: "/insights/distress-report",
-        title: "Distress Report",
+        href: "/insights/motivated-report",
+        title: "Motivated Report",
         description: "Monthly snapshot of power of sale, foreclosures, motivated sellers, and VTB opportunities across Canada.",
         icon: AlertTriangle,
         badge: "Monthly",
@@ -129,10 +129,10 @@ const contextBridges: Record<string, { text: string; cta: string; href: string }
     cta: "Browse Yield Map",
     href: "/tools/cap-rates",
   },
-  "Distress Report": {
-    text: "Search live distress opportunities in your market",
+  "Motivated Report": {
+    text: "Search live motivated-seller opportunities in your market",
     cta: "Find Deals",
-    href: "/tools/distress-deals",
+    href: "/tools/motivated-deals",
   },
 };
 

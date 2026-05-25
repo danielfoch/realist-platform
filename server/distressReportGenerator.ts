@@ -255,7 +255,7 @@ function generateDistressReportHtml(params: {
 
   sections.push(`
     <h2>National Summary — ${monthName} ${year}</h2>
-    <p>Realist.ca scanned active MLS listings across all Canadian provinces for distress-related language in ${monthName} ${year}. We identified <strong>${fmt(totalListings)}</strong> listings${trend(totalListings, prevTotal)} with distress signals, categorized by type and severity.</p>
+    <p>Realist.ca scanned active MLS listings across all Canadian provinces for motivated-seller language in ${monthName} ${year}. We identified <strong>${fmt(totalListings)}</strong> listings${trend(totalListings, prevTotal)} with motivated-seller signals, categorized by type and severity.</p>
 
     <table style="width:100%; border-collapse:collapse; margin:16px 0;">
       <thead>
@@ -272,7 +272,7 @@ function generateDistressReportHtml(params: {
       </tbody>
     </table>
 
-    <p><strong>${fmt(totalHigh)}</strong> listings were flagged with <strong>high confidence</strong> (score ≥ 40) and <strong>${fmt(totalMedium)}</strong> with medium confidence (score 15–39). These represent the strongest investment opportunities for distress-focused buyers.</p>
+    <p><strong>${fmt(totalHigh)}</strong> listings were flagged with <strong>high confidence</strong> (score ≥ 40) and <strong>${fmt(totalMedium)}</strong> with medium confidence (score 15–39). These represent the strongest investment opportunities for motivated-seller-focused buyers.</p>
   `);
 
   const provSorted = [...national].sort((a, b) => (b.totalListings || 0) - (a.totalListings || 0));
@@ -298,7 +298,7 @@ function generateDistressReportHtml(params: {
   }).join("");
 
   sections.push(`
-    <h2>Distress Deals by Province</h2>
+    <h2>Motivated Deals by Province</h2>
     <table style="width:100%; border-collapse:collapse; margin:16px 0;">
       <thead>
         <tr style="background:#f1f5f9; text-align:left;">
@@ -330,7 +330,7 @@ function generateDistressReportHtml(params: {
 
       sections.push(`
         <h2>Top Cities in ${provName}</h2>
-        <p>${provName} leads the country with ${fmt(topProvince.totalListings)} distress-flagged listings. Here are the top cities by volume:</p>
+        <p>${provName} leads the country with ${fmt(topProvince.totalListings)} motivated-seller-flagged listings. Here are the top cities by volume:</p>
         <table style="width:100%; border-collapse:collapse; margin:16px 0; max-width:500px;">
           <thead>
             <tr style="background:#f1f5f9; text-align:left;">
@@ -356,13 +356,13 @@ function generateDistressReportHtml(params: {
 
   sections.push(`
     <h2>Methodology</h2>
-    <p>Realist.ca's Distress Deals engine scans all active listings on the CREA DDF (Data Distribution Facility) for distress-related language in the public remarks field. Each listing is scored using a proprietary algorithm that weighs keyword matches, negation patterns, and provincial legal terminology. Listings are classified into three confidence tiers: <strong>High</strong> (score ≥ 40), <strong>Medium</strong> (15–39), and <strong>Low</strong> (1–14).</p>
-    <p>Data is sourced from the Canadian Real Estate Association and refreshed monthly. Some listings may appear in multiple categories if they match keywords across different distress types.</p>
+    <p>Realist.ca's Motivated Deals engine scans all active listings on the CREA DDF (Data Distribution Facility) for motivated-seller language in the public remarks field. Each listing is scored using a proprietary algorithm that weighs keyword matches, negation patterns, and provincial legal terminology. Listings are classified into three confidence tiers: <strong>High</strong> (score ≥ 40), <strong>Medium</strong> (15–39), and <strong>Low</strong> (1–14).</p>
+    <p>Data is sourced from the Canadian Real Estate Association and refreshed monthly. Some listings may appear in multiple categories if they match keywords across different motivated-seller signal types.</p>
   `);
 
   sections.push(`
     <h2>Explore the Data</h2>
-    <p>Want to see the actual listings? Visit the <a href="/tools/distress-deals">Distress Deals Browser</a> on Realist.ca to search, filter, and map distress listings in real time across all Canadian provinces.</p>
+    <p>Want to see the actual listings? Visit the <a href="/tools/motivated-deals">Motivated Deals Browser</a> on Realist.ca to search, filter, and map motivated-seller listings in real time across all Canadian provinces.</p>
   `);
 
   return sections.join("\n");
@@ -378,7 +378,7 @@ export async function generateDistressReport(month: string): Promise<{ created: 
 
   const existingPost = await storage.getBlogPostBySlug(slug);
   if (existingPost) {
-    return { created: false, slug, message: `Distress report already exists for ${monthName} ${year}` };
+    return { created: false, slug, message: `Motivated deals report already exists for ${monthName} ${year}` };
   }
 
   const national = await db.select().from(distressSnapshots)
@@ -398,16 +398,16 @@ export async function generateDistressReport(month: string): Promise<{ created: 
   const totalForeclosure = national.reduce((s, p) => s + (p.foreclosurePosCount || 0), 0);
   const totalVtb = national.reduce((s, p) => s + (p.vtbCount || 0), 0);
 
-  const title = `Canada Distress Deals Report — ${monthName} ${year}`;
+  const title = `Canada Motivated Deals Report — ${monthName} ${year}`;
   const content = generateDistressReportHtml({
     monthName, year, month, national, prevNational,
   });
 
-  const excerpt = `${monthName} ${year} Canadian distress deals report: ${fmt(totalListings)} active distress-flagged listings found nationwide. ${fmt(totalForeclosure)} foreclosure/POS, ${fmt(totalVtb)} VTB opportunities. Province-by-province breakdown with month-over-month trends.`;
+  const excerpt = `${monthName} ${year} Canadian motivated deals report: ${fmt(totalListings)} active motivated-seller-flagged listings found nationwide. ${fmt(totalForeclosure)} foreclosure/POS, ${fmt(totalVtb)} VTB opportunities. Province-by-province breakdown with month-over-month trends.`;
   const wordCount = content.replace(/<[^>]*>/g, " ").split(/\s+/).length;
   const readTimeMinutes = Math.max(4, Math.ceil(wordCount / 200));
 
-  const tags = ["Distress Deals", "Power of Sale", "Foreclosure", "Investment Report", monthName + " " + year, "VTB", "Motivated Seller"];
+  const tags = ["Motivated Deals", "Motivated Seller", "Power of Sale", "Foreclosure", "Investment Report", monthName + " " + year, "VTB"];
 
   await storage.createBlogPost({
     title,
@@ -418,13 +418,13 @@ export async function generateDistressReport(month: string): Promise<{ created: 
     category: "distress-report",
     tags,
     status: "published",
-    metaTitle: `Canada Distress Deals Report ${monthName} ${year} — Foreclosure, POS & VTB | Realist.ca`,
+    metaTitle: `Canada Motivated Deals Report ${monthName} ${year} — Motivated Sellers, POS & VTB | Realist.ca`,
     metaDescription: excerpt.substring(0, 160),
     readTimeMinutes,
     publishedAt: new Date(),
   });
 
-  return { created: true, slug, message: `Published distress report for ${monthName} ${year}` };
+  return { created: true, slug, message: `Published motivated deals report for ${monthName} ${year}` };
 }
 
 export async function runMonthlyDistressReport(): Promise<{ action: string; details: string }> {

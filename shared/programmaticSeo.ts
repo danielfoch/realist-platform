@@ -140,13 +140,13 @@ export const PROGRAMMATIC_STRATEGIES: ProgrammaticStrategyPage[] = [
   },
   {
     slug: "distress",
-    title: "Distress Property Investing in Canada",
-    description: "Distress investing page connecting motivated listings, legal caution, and underwriting workflows.",
-    intro: "Distress investing is attractive because it can create pricing dislocation, but it only becomes investable when the buyer understands provincial process, title risk, financing constraints, and property-level downside clearly.",
+    title: "Motivated-Seller Investing in Canada",
+    description: "Motivated-seller investing page connecting motivated listings, legal caution, and underwriting workflows.",
+    intro: "Motivated-seller investing is attractive because it can create pricing dislocation, but it only becomes investable when the buyer understands provincial process, title risk, financing constraints, and property-level downside clearly.",
     bullets: [
       "Listing remarks alone are not enough; buyers need to validate process, occupancy, and execution risk.",
-      "Distress signals are most useful when connected directly to underwriting and next-step diligence.",
-      "Realist treats distress as a sourcing advantage, not a substitute for deal quality.",
+      "Motivated-seller signals are most useful when connected directly to underwriting and next-step diligence.",
+      "Realist treats motivated-seller language as a sourcing advantage, not a substitute for deal quality.",
     ],
     relatedMarkets: ["calgary", "hamilton", "toronto"],
     relatedReports: ["new-construction-canada"],

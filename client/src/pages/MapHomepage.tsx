@@ -68,7 +68,7 @@ const NL_EXAMPLES = [
   "Find cash-flowing duplexes in Ontario under $900k",
   "Analyze this fourplex as a BRRR strategy",
   "What are cap rates in Hamilton vs Kitchener right now?",
-  "Show me distress deals near Toronto with VTB potential",
+  "Show me motivated deals near Toronto with VTB potential",
   "Best neighbourhoods for legal secondary suites in BC?",
   "How does this listing perform as short-term rental?",
 ];
@@ -136,10 +136,10 @@ const sourcingPaths = [
   },
   {
     icon: Building2,
-    title: "Browse distress deals",
+    title: "Browse motivated deals",
     description: "Look for power of sale, motivated sellers, and off-consensus entry points worth underwriting.",
-    href: "/tools/distress-deals",
-    cta: "Search distress",
+    href: "/tools/motivated-deals",
+    cta: "Search motivated",
   },
   {
     icon: Calculator,
@@ -448,8 +448,8 @@ export default function MapHomepage() {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <SEO
         title="Discover Real Estate Deals | Realist.ca"
-        description="Search for Canadian real estate deals with the yield map, distress filters, and natural-language sourcing workflows."
-        keywords="canadian real estate deals, yield map, distress deals, cap rates canada, real estate sourcing, investment property search"
+        description="Search for Canadian real estate deals with the yield map, motivated-seller filters, and natural-language sourcing workflows."
+        keywords="canadian real estate deals, yield map, motivated deals, motivated sellers, cap rates canada, real estate sourcing, investment property search"
         canonicalUrl="/discover"
         structuredData={combinedSchema}
       />
@@ -772,7 +772,7 @@ export default function MapHomepage() {
                 <div className="space-y-2 text-muted-foreground">
                   <Link href="/tools/analyzer" className="block hover:text-foreground transition-colors">Deal Analyzer</Link>
                   <Link href="/tools/cap-rates" className="block hover:text-foreground transition-colors">Yield Map</Link>
-                  <Link href="/tools/distress-deals" className="block hover:text-foreground transition-colors">Distress Deals</Link>
+                  <Link href="/tools/motivated-deals" className="block hover:text-foreground transition-colors">Motivated Deals</Link>
                   <Link href="/tools" className="block hover:text-foreground transition-colors">All Tools</Link>
                 </div>
               </div>
