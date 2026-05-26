@@ -3,7 +3,7 @@
     {
       "order": 3,
       "path": "_index.md",
-      "tokens": 369,
+      "tokens": 862,
       "type": "summary"
     },
     {
@@ -19,15 +19,15 @@
       "type": "summary"
     },
     {
-      "order": 1,
-      "path": "frontend/realtor_join_flow/_index.md",
-      "tokens": 459,
-      "type": "summary"
-    },
-    {
       "importance": 55,
       "path": "frontend/design_system/join_form_design_system.md",
       "tokens": 402,
+      "type": "context"
+    },
+    {
+      "importance": 55,
+      "path": "growth/viral_sharing/underwriting_share_rewards.md",
+      "tokens": 1004,
       "type": "context"
     },
     {
@@ -53,15 +53,33 @@
       "path": "frontend/realtor_join_flow/realtor_join_flow.md",
       "tokens": 691,
       "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "growth/context.md",
+      "tokens": 157,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "growth/viral_sharing/context.md",
+      "tokens": 191,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "growth/viral_sharing/premium_credit_eligibility_rules.md",
+      "tokens": 387,
+      "type": "context"
     }
   ],
-  "generated_at": "2026-04-25T06:04:59.991Z",
+  "generated_at": "2026-05-26T05:06:45.262Z",
   "lane_tokens": {
-    "contexts": 1344,
+    "contexts": 3083,
     "stubs": 0,
-    "summaries": 1666
+    "summaries": 1700
   },
-  "source_fingerprint": "8829c2dd623316a21ae2318b8b4eb19bad249462643259bebf4c6522efdbc785",
-  "total_tokens": 3010,
+  "source_fingerprint": "14d312fb47aeddd0328c6c4f69c957d2b727944d70b6686d5eeadb69875da6b9",
+  "total_tokens": 4783,
   "version": 1
 }
