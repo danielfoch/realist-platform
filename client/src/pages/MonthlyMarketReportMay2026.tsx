@@ -512,6 +512,47 @@ const playbookCards = [
 
 const PIE_COLORS = [CHART.positive, CHART.negative] as const;
 
+const rentalsKpis = [
+  { label: "National avg asking rent", value: "$2,027", delta: "−4.7% YoY · +0.9% MoM" },
+  { label: "Consecutive YoY declines", value: "19 months", delta: "Longest stretch since the series began" },
+  { label: "vs April 2024 (2yr)", value: "−7.4%", delta: "Two-year cumulative decline" },
+  { label: "vs April 2021 (COVID low)", value: "+21.9%", delta: "Still well above the pandemic trough" },
+  { label: "Rent / sq ft", value: "$2.54", delta: "$2.68 in Apr 2024 → $2.54 today" },
+  { label: "Avg unit size listed", value: "827 sf", delta: "Down from 865 sf two years ago" },
+];
+
+const rentByUnitType = [
+  { type: "Purpose-built apt", rent: 2027, yoy: -3.7 },
+  { type: "Condominium", rent: 2087, yoy: -5.6 },
+  { type: "House / Townhouse", rent: 1998, yoy: -7.8 },
+];
+
+const topRentalCities = [
+  { city: "North Vancouver", rent: 3001, yoy: -5.9 },
+  { city: "Vancouver", rent: 2679, yoy: -7.0 },
+  { city: "Toronto", rent: 2504, yoy: -4.7 },
+  { city: "North York", rent: 2488, yoy: -3.1 },
+  { city: "Burnaby", rent: 2484, yoy: -10.2 },
+  { city: "Oakville", rent: 2464, yoy: -3.4 },
+  { city: "Etobicoke", rent: 2431, yoy: -2.2 },
+  { city: "Kanata", rent: 2424, yoy: -2.4 },
+  { city: "Coquitlam", rent: 2416, yoy: -10.5 },
+  { city: "Burlington", rent: 2376, yoy: -3.4 },
+  { city: "Mississauga", rent: 2355, yoy: -4.4 },
+  { city: "Vaughan", rent: 2314, yoy: -8.3 },
+];
+
+const provincialApartmentRent = [
+  { prov: "NS", rent: 2299, yoy: 3.3 },
+  { prov: "SK", rent: 1383, yoy: 2.2 },
+  { prov: "MB", rent: 1640, yoy: 1.3 },
+  { prov: "QC", rent: null as number | null, yoy: -1.9 },
+  { prov: "AB", rent: null as number | null, yoy: -3.4 },
+  { prov: "NB", rent: 1472, yoy: -3.9 },
+  { prov: "ON", rent: 2216, yoy: -5.2 },
+  { prov: "BC", rent: 2336, yoy: -5.9 },
+];
+
 const cycleHistory = [
   { period: "1990", unemp: 8.1, arrears: 0.65, hpiYoY: -7.5 },
   { period: "1991", unemp: 10.3, arrears: 0.85, hpiYoY: -4.0 },
@@ -1703,6 +1744,124 @@ export default function MonthlyMarketReportMay2026() {
         ]}
         source="Source: CREA — months of inventory and sales-to-new-listings ratio."
       />
+    )),
+
+    slideDef("rentals-overview", "Rentals.ca · national", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Rentals.ca + Urbanation · May 2026 Rent Report" title="Rents have fallen for 19 straight months">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {rentalsKpis.map((k) => (
+            <div key={k.label} className="border rounded-lg p-3" data-testid={`kpi-rentals-${k.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`}>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{k.label}</p>
+              <p className="text-xl md:text-2xl font-bold mt-1 tabular-nums">{k.value}</p>
+              <p className="text-[11px] mt-1 text-muted-foreground">{k.delta}</p>
+            </div>
+          ))}
+        </div>
+        <Card className="mt-4" data-testid="chart-rent-by-type">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">YoY change in asking rent by unit type (April 2026)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={rentByUnitType} layout="vertical" margin={{ top: 8, right: 32, left: 16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <YAxis dataKey="type" type="category" tick={{ fontSize: 11 }} width={160} />
+                <Tooltip formatter={(v: number) => `${v}%`} />
+                <Bar dataKey="yoy" fill={CHART.negative}>
+                  {rentByUnitType.map((d, i) => (
+                    <Cell key={i} fill={d.yoy < 0 ? CHART.negative : CHART.positive} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <p className="text-sm text-muted-foreground mt-3">
+          Houses and townhomes are leading the decline (−7.8% YoY), then condos (−5.6%), with purpose-built rentals the most resilient (−3.7%) — though landlords are increasingly using free-rent incentives, so the effective rent gap is larger than headline.
+        </p>
+        <SourceFootnote>Source: Rentals.ca + Urbanation, May 2026 Rent Report (April 2026 data).</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("rentals-cities", "Top rental markets", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Rentals.ca · top 12 markets" title="GTA and Lower Mainland satellites are cracking">
+        <Card data-testid="chart-rentals-cities">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Top 12 cities — total average asking rent + YoY change</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[28rem]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={topRentalCities} margin={{ top: 8, right: 24, left: 0, bottom: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis dataKey="city" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" interval={0} height={60} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} domain={[-12, 2]} />
+                <Tooltip formatter={(v: number, name: string) => (name === "YoY" ? `${v}%` : `$${v.toLocaleString()}`)} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar yAxisId="left" dataKey="rent" name="Avg rent ($)" fill={CHART.primary} />
+                <Line yAxisId="right" type="monotone" dataKey="yoy" name="YoY" stroke={CHART.negative} strokeWidth={2} />
+                <ReferenceLine yAxisId="right" y={0} stroke={CHART.neutral} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <div className="grid md:grid-cols-3 gap-3 mt-4">
+          <div className="border rounded-lg p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Steepest GTA drop</p>
+            <p className="text-sm mt-1">Markham −12.0%, Oakville −11.1% (2-bed −13.9%) — secondary GTA is doing the bulk of the adjustment.</p>
+          </div>
+          <div className="border rounded-lg p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Steepest Vancouver drop</p>
+            <p className="text-sm mt-1">Richmond −13.1%, Burnaby −10.2%, Coquitlam −10.5% — same story in Metro Van.</p>
+          </div>
+          <div className="border rounded-lg p-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Outliers up</p>
+            <p className="text-sm mt-1">Kingston 1-bed +4.6%, 2-bed +12.4%; Waterloo and Brampton still mildly positive — university and immigration-anchor markets.</p>
+          </div>
+        </div>
+        <SourceFootnote>Source: Rentals.ca + Urbanation, May 2026 Rent Report — top 20 Canadian markets (top 12 shown).</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("rentals-provinces", "Rents by province", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Rentals.ca · apartment rent by province" title="Atlantic and Prairies up, BC and Ontario down hard">
+        <Card data-testid="chart-rent-by-province">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">YoY change in apartment asking rent by province (April 2026)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={provincialApartmentRent} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis dataKey="prov" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip formatter={(v: number) => `${v}%`} />
+                <ReferenceLine y={0} stroke={CHART.neutral} />
+                <Bar dataKey="yoy" name="YoY (%)">
+                  {provincialApartmentRent.map((d, i) => (
+                    <Cell key={i} fill={d.yoy >= 0 ? CHART.positive : CHART.negative} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <div className="grid md:grid-cols-2 gap-3 mt-4">
+          <div className="border rounded-lg p-3">
+            <p className="text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-semibold">Still rising</p>
+            <p className="text-sm mt-1">NS +3.3% ($2,299), SK +2.2% ($1,383), MB +1.3% ($1,640). Saskatchewan is also the 3-year leader at +25.9% since April 2023.</p>
+          </div>
+          <div className="border rounded-lg p-3">
+            <p className="text-[10px] uppercase tracking-wider text-rose-600 dark:text-rose-400 font-semibold">Rolling over</p>
+            <p className="text-sm mt-1">BC −5.9% ($2,336), ON −5.2% ($2,216), NB −3.9% ($1,472), AB −3.4%, QC −1.9%. Only ON and BC are negative on a 3-year basis (ON −8.5%, BC −5.4%).</p>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground mt-3">
+          Investor read-through: the rent map mirrors the HPI-by-province map almost perfectly — Atlantic and Prairies are still the income-growth story; GTA and Lower Mainland multifamily underwriting needs to assume flat-to-down rent for 12+ months.
+        </p>
+        <SourceFootnote>Source: Rentals.ca + Urbanation, May 2026 Rent Report — provincial apartment rent (purpose-built + condo).</SourceFootnote>
+      </SlideShell>
     )),
 
     slideDef("housing-starts", "Housing starts", (n, total) => (
