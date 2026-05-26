@@ -5,7 +5,8 @@ Tuesday, May 26, 2026
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-26-qualified-share-credits`
-- Commit SHA: branch HEAD for this handoff (`git log -1 --format=%H`)
+- Code commit SHA: `60984f560ccc8d039d0268317cfd3016505bdb79`
+- Branch HEAD: latest pushed commit on this branch (`git log -1 --format=%H`)
 
 ## 3. What changed
 Tightened the viral underwriting reward loop so a recipient cannot spoof a `signup` qualified action from an anonymous request.
@@ -21,6 +22,7 @@ This keeps the growth loop aligned with the rule: Google Sheets export credits a
 - `src/underwriting-share-routes.ts`
 - `test/underwriting-share-routes.test.ts`
 - `REPLIT_PULL_TODAY.md`
+- `.brv/context-tree/growth/**` (local project context for future agents)
 
 ## 5. Migration steps
 No database migration required.
