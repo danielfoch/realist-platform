@@ -5,8 +5,8 @@ Tuesday, May 26, 2026
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-26-qualified-share-credits`
-- Code commit SHA: `60984f560ccc8d039d0268317cfd3016505bdb79`
-- Branch HEAD: latest pushed commit on this branch (`git log -1 --format=%H`)
+- Branch HEAD / handoff commit SHA: `d8830249f7f430a8a51be81d7bd64c63a9d2ce3f`
+- Code change commit SHA: `60984f560ccc8d039d0268317cfd3016505bdb79`
 
 ## 3. What changed
 Tightened the viral underwriting reward loop so a recipient cannot spoof a `signup` qualified action from an anonymous request.
