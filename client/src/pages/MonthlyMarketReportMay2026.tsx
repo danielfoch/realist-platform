@@ -33,6 +33,8 @@ import {
   Legend,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -47,7 +49,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const REPORT_TITLE = "Canadian Real Estate — Monthly Market Report, May 2026";
 const REPORT_SUBTITLE =
-  "Upcoming events, labour, inflation, oil, mortgage stress and the housing cycle, in 13 slides.";
+  "A 30-45 minute investor webinar deck: events, macro snapshot, labour, inflation, oil, BoC outlook, mortgage stress, supply, demographics, distress and the playbook.";
 const REPORT_SLUG = "monthly-market-report-may-2026";
 const PUBLISH_DATE = "May 25, 2026";
 
@@ -183,13 +185,11 @@ const thesisPoints = [
 ] as const;
 
 const unemploymentTrend = [
-  { period: "Apr 2024", rate: 6.1 },
-  { period: "Jul 2024", rate: 6.4 },
-  { period: "Oct 2024", rate: 6.5 },
-  { period: "Jan 2025", rate: 6.6 },
-  { period: "Apr 2025", rate: 6.8 },
-  { period: "Jul 2025", rate: 7.0 },
-  { period: "Sep 2025", rate: 7.1 },
+  { period: "Apr 2024", rate: 6.2 },
+  { period: "Aug 2024", rate: 6.6 },
+  { period: "Dec 2024", rate: 6.7 },
+  { period: "Apr 2025", rate: 6.9 },
+  { period: "Aug 2025", rate: 7.1 },
   { period: "Dec 2025", rate: 6.7 },
   { period: "Jan 2026", rate: 6.5 },
   { period: "Feb 2026", rate: 6.6 },
@@ -296,6 +296,205 @@ const motivatedListingsTrend = [
   { period: "May 2026", motivated: 3110, pos: 760, vtb: 480 },
 ];
 
+const macroSnapshot = [
+  { label: "Unemployment", value: "6.9%", delta: "+0.2 pp MoM", tone: "neg" },
+  { label: "Headline CPI YoY", value: "2.9%", delta: "+0.3 pp MoM", tone: "neg" },
+  { label: "BoC overnight", value: "2.25%", delta: "Hold — Apr 2026", tone: "neu" },
+  { label: "Brent (US$/bbl)", value: "$95", delta: "+32% YTD", tone: "neg" },
+  { label: "Mortgage arrears", value: "0.28%", delta: "Off 0.14% low", tone: "neg" },
+  { label: "Active listings YoY", value: "+11.8%", delta: "CREA, Apr 2026", tone: "neg" },
+  { label: "Benchmark price YoY", value: "−2.4%", delta: "$687,400", tone: "neg" },
+  { label: "Motivated listings", value: "3,110", delta: "+71% YoY", tone: "neg" },
+] as const;
+
+const employmentRateTrend = [
+  { period: "Apr 2024", rate: 61.4 },
+  { period: "Aug 2024", rate: 61.0 },
+  { period: "Dec 2024", rate: 60.8 },
+  { period: "Apr 2025", rate: 60.8 },
+  { period: "Aug 2025", rate: 60.5 },
+  { period: "Dec 2025", rate: 60.7 },
+  { period: "Jan 2026", rate: 60.7 },
+  { period: "Feb 2026", rate: 60.7 },
+  { period: "Mar 2026", rate: 60.6 },
+  { period: "Apr 2026", rate: 60.5 },
+];
+
+const labourCoolingSignals = [
+  { signal: "LFS employment (Apr)", change: -18 },
+  { signal: "LFS full-time (Apr)", change: -47 },
+  { signal: "Payroll employment (Feb)", change: -60 },
+  { signal: "Job vacancies YoY", change: -29 },
+];
+
+const provincialUnemployment = [
+  { region: "Manitoba", rate: 5.0 },
+  { region: "Saskatchewan", rate: 5.6 },
+  { region: "Alberta", rate: 6.0 },
+  { region: "Quebec", rate: 6.2 },
+  { region: "BC", rate: 6.4 },
+  { region: "Nova Scotia", rate: 6.5 },
+  { region: "New Brunswick", rate: 7.2 },
+  { region: "Ontario", rate: 7.5 },
+  { region: "N. & L.", rate: 10.0 },
+];
+
+const industryEmploymentChange = [
+  { industry: "Business support", change: 22 },
+  { industry: "Health & social", change: 18 },
+  { industry: "Accom. & food", change: 13 },
+  { industry: "Other services", change: -13 },
+  { industry: "Construction", change: -16 },
+  { industry: "Info, culture & rec", change: -25 },
+];
+
+const payrollSectorLosses = [
+  { sector: "Transportation", change: -14.0 },
+  { sector: "Admin support", change: -7.5 },
+  { sector: "Retail", change: -5.9 },
+  { sector: "Construction", change: -4.2 },
+  { sector: "Accommodation", change: -4.1 },
+];
+
+const vacancyRateProvince = [
+  { province: "BC", rate: 3.3 },
+  { province: "Nova Scotia", rate: 3.0 },
+  { province: "Alberta", rate: 3.0 },
+  { province: "Quebec", rate: 2.7 },
+  { province: "Ontario", rate: 2.5 },
+  { province: "N. & L.", rate: 2.3 },
+];
+
+const cpiCategoryDetail = [
+  { component: "Rent", value: 4.1 },
+  { component: "Groceries", value: 4.4 },
+  { component: "Energy", value: 5.8 },
+  { component: "Shelter (all-in)", value: 4.2 },
+  { component: "Services", value: 3.4 },
+  { component: "Goods (ex-energy)", value: 1.4 },
+  { component: "Durables", value: -0.6 },
+];
+
+const bocCpiPath = [
+  { period: "Feb 2026", cpi: 1.8 },
+  { period: "Mar 2026", cpi: 2.4 },
+  { period: "Apr 2026", cpi: 2.9 },
+  { period: "Peak (BoC)", cpi: 3.0 },
+  { period: "Mid 2027 target", cpi: 2.0 },
+];
+
+const bocOilScenarios = [
+  { period: "Q2 2026", baseCase: 90, persistent: 100 },
+  { period: "Q4 2026", baseCase: 85, persistent: 102 },
+  { period: "Mid 2027", baseCase: 75, persistent: 100 },
+];
+
+const bocGdpForecast = [
+  { year: "2026", growth: 1.2 },
+  { year: "2027", growth: 1.6 },
+  { year: "2028", growth: 1.7 },
+];
+
+const tariffComparison = [
+  { side: "US tariffs on Canadian goods", rate: 5.1 },
+  { side: "Canadian tariffs on US goods", rate: 1.5 },
+];
+
+const arrearsSensitivity = [
+  { point: "Apr 2026 arrears", arrears: 0.28 },
+  { point: "+1 pp unemployment", arrears: 0.38 },
+  { point: "+2 pp unemployment", arrears: 0.55 },
+];
+
+const mortgageStatusPie = [
+  { name: "Not in arrears", value: 99.72 },
+  { name: "In arrears (90+ days)", value: 0.28 },
+];
+
+const housingStarts = [
+  { period: "2000–2019 avg", total: 200, purposeBuiltRental: 24 },
+  { period: "2024", total: 245, purposeBuiltRental: 95 },
+  { period: "2025", total: 260, purposeBuiltRental: 120 },
+];
+
+const permitsTrend = [
+  { month: "Sep 2025", residential: 7.5, nonResidential: 4.8 },
+  { month: "Oct 2025", residential: 8.3, nonResidential: 5.2 },
+  { month: "Nov 2025", residential: 7.8, nonResidential: 4.9 },
+  { month: "Dec 2025", residential: 8.0, nonResidential: 5.0 },
+  { month: "Jan 2026", residential: 8.0, nonResidential: 5.2 },
+  { month: "Feb 2026", residential: 8.1, nonResidential: 4.0 },
+];
+
+const dwellingUnits = [
+  { month: "Oct 2025", multiFamily: 24200, singleFamily: 4400 },
+  { month: "Nov 2025", multiFamily: 22600, singleFamily: 4100 },
+  { month: "Dec 2025", multiFamily: 23000, singleFamily: 4000 },
+  { month: "Jan 2026", multiFamily: 21200, singleFamily: 3900 },
+  { month: "Feb 2026", multiFamily: 21000, singleFamily: 3900 },
+];
+
+const populationGrowth = [
+  { quarter: "Q2 2024", growthPct: 3.2 },
+  { quarter: "Q4 2024", growthPct: 1.8 },
+  { quarter: "Q2 2025", growthPct: 0.7 },
+  { quarter: "Q4 2025", growthPct: -0.2 },
+  { quarter: "Q1 2026", growthPct: -0.3 },
+];
+
+const playbookCards = [
+  {
+    audience: "Buyers",
+    icon: Home,
+    accent: "text-emerald-600 dark:text-emerald-400",
+    bg: "bg-emerald-100 dark:bg-emerald-900/30",
+    body:
+      "Negotiate hard on price, not on terms. Lock pre-approvals while bond yields are soft. Target motivated-seller and assignment listings — supply is on your side.",
+  },
+  {
+    audience: "Sellers",
+    icon: TrendingDown,
+    accent: "text-rose-600 dark:text-rose-400",
+    bg: "bg-rose-100 dark:bg-rose-900/30",
+    body:
+      "Price ahead of the market, not at last sale. 5.1 months of inventory means staging, professional photos, and a realistic CMA matter more than ever.",
+  },
+  {
+    audience: "Investors",
+    icon: Briefcase,
+    accent: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-100 dark:bg-blue-900/30",
+    body:
+      "Underwrite to today's rents and a 7%+ unemployment scenario. Multiplexes with CMHC MLI Select still pencil; condo flips do not. Watch power-of-sale velocity.",
+  },
+  {
+    audience: "Renewers",
+    icon: Wallet,
+    accent: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-100 dark:bg-amber-900/30",
+    body:
+      "Shop the renewal. 41% of renewers in CMHC's 2026 survey didn't — and the spread between best and posted rates is the widest since 2020.",
+  },
+  {
+    audience: "Realtors & lenders",
+    icon: Users,
+    accent: "text-violet-600 dark:text-violet-400",
+    bg: "bg-violet-100 dark:bg-violet-900/30",
+    body:
+      "Lead with data, not narrative. Buyers want comps, days-on-market, and stress-test math. Realist.ca's deal analyzer is built for exactly these client conversations.",
+  },
+  {
+    audience: "Watchlist",
+    icon: ShieldAlert,
+    accent: "text-slate-700 dark:text-slate-300",
+    bg: "bg-slate-100 dark:bg-slate-800",
+    body:
+      "Next BoC: Jun 4. Next LFS: Jun 6. Next CPI: Jun 17. Next CREA: Jun 16. Watch oil, the unemployment print, and the 90+ day arrears series for any acceleration.",
+  },
+] as const;
+
+const PIE_COLORS = [CHART.positive, CHART.negative] as const;
+
 const cycleHistory = [
   { period: "1990", unemp: 8.1, arrears: 0.65, hpiYoY: -7.5 },
   { period: "1991", unemp: 10.3, arrears: 0.85, hpiYoY: -4.0 },
@@ -374,8 +573,9 @@ export default function MonthlyMarketReportMay2026() {
           Canadian Real Estate — May 2026
         </h1>
         <p className="text-base md:text-lg text-muted-foreground max-w-2xl mb-10">
-          Upcoming events, labour, inflation, oil, mortgage stress and the housing cycle, in 13 slides.
-          Built for an investor briefing — scroll, or use the arrow keys, to advance.
+          A 30-45 minute investor webinar: events, macro snapshot, labour, inflation, the oil shock,
+          Bank of Canada outlook, mortgage stress, supply, demographics, distress and the cycle playbook.
+          Scroll, or use the arrow keys, to advance.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-muted-foreground">
           <Badge variant="secondary">Realist.ca</Badge>
@@ -492,6 +692,35 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
+    slideDef("macro", "Macro snapshot", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Macro snapshot · May 2026" title="The numbers, in one screen">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {macroSnapshot.map((k) => (
+            <div
+              key={k.label}
+              className="border rounded-lg p-3"
+              data-testid={`kpi-macro-${k.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+            >
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{k.label}</p>
+              <p className="text-xl md:text-2xl font-bold mt-1 tabular-nums">{k.value}</p>
+              <p
+                className={`text-[11px] mt-1 ${
+                  k.tone === "neg"
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {k.delta}
+              </p>
+            </div>
+          ))}
+        </div>
+        <SourceFootnote>
+          Sources: StatCan LFS &amp; CPI; Bank of Canada; CMHC RMIR; CREA; Realist.ca motivated-deals engine.
+        </SourceFootnote>
+      </SlideShell>
+    )),
+
     slideDef("labour", "Labour", (n, total) => (
       <SlideShell number={n} total={total} eyebrow="Labour Force Survey · April 2026" title="Unemployment ticks back to 6.9%">
         <div className="grid lg:grid-cols-5 gap-4">
@@ -542,6 +771,61 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
+    slideDef("employment-rate", "Employment rate", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Labour Force Survey · Apr 2026" title="Employment rate keeps grinding lower">
+        <Card data-testid="chart-employment-rate">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Employment-to-population ratio (%) — 24 months</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={employmentRateTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                <YAxis domain={[60, 62]} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Area type="monotone" dataKey="rate" stroke={CHART.primary} fill={CHART.primary} fillOpacity={0.18} strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <p className="text-sm text-muted-foreground mt-3">
+          The employment rate has fallen ~0.9 pp from April 2024 to April 2026 — a slow-bleed labour story even when the
+          unemployment headline bounces around. This is the single best leading indicator of housing-demand erosion.
+        </p>
+        <SourceFootnote>Source: Statistics Canada, Labour Force Survey, April 2026.</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("labour-cooling", "Labour cooling", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Beyond the headline" title="Every labour signal is cooling at once">
+        <Card data-testid="chart-labour-cooling">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Labour signals (000s; vacancies = % YoY)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={labourCoolingSignals} layout="vertical" margin={{ top: 8, right: 24, left: 24, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis dataKey="signal" type="category" tick={{ fontSize: 11 }} width={170} />
+                <Tooltip />
+                <Bar dataKey="change">
+                  {labourCoolingSignals.map((d, i) => (
+                    <Cell key={i} fill={d.change >= 0 ? CHART.positive : CHART.negative} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <SourceFootnote>
+          Sources: StatCan LFS (April 2026); Survey of Employment, Payrolls &amp; Hours (Feb 2026); Job Vacancy &amp;
+          Wage Survey.
+        </SourceFootnote>
+      </SlideShell>
+    )),
+
     slideDef("provinces", "Provinces", (n, total) => (
       <SlideShell number={n} total={total} eyebrow="Geography of the slowdown" title="Quebec is doing the heavy lifting (the wrong way)">
         <Card data-testid="chart-provincial-employment">
@@ -579,6 +863,113 @@ export default function MonthlyMarketReportMay2026() {
           </div>
         </div>
         <SourceFootnote>Source: Statistics Canada, Labour Force Survey, April 2026.</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("prov-unemp", "Provincial unemp", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Provincial unemployment · Apr 2026" title="Ontario's 7.5% is the story of the year">
+        <Card data-testid="chart-provincial-unemployment">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Unemployment rate by province (%)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={provincialUnemployment} layout="vertical" margin={{ top: 8, right: 24, left: 16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis dataKey="region" type="category" tick={{ fontSize: 11 }} width={110} />
+                <Tooltip />
+                <ReferenceLine x={6.9} stroke={CHART.neutral} strokeDasharray="4 4" label={{ value: "Nat'l 6.9%", fontSize: 10 }} />
+                <Bar dataKey="rate">
+                  {provincialUnemployment.map((d, i) => (
+                    <Cell key={i} fill={d.rate >= 6.9 ? CHART.negative : CHART.positive} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <SourceFootnote>Source: StatCan LFS, April 2026.</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("industry", "Industry mix", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="LFS · Industry breakdown" title="Construction and info/culture are bleeding jobs">
+        <Card data-testid="chart-industry-change">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Employment change by industry, April 2026 (000s)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={industryEmploymentChange} margin={{ top: 8, right: 16, left: 0, bottom: 32 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis dataKey="industry" tick={{ fontSize: 10 }} interval={0} angle={-18} textAnchor="end" height={50} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="change">
+                  {industryEmploymentChange.map((d, i) => (
+                    <Cell key={i} fill={d.change >= 0 ? CHART.positive : CHART.negative} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <p className="text-sm text-muted-foreground mt-3">
+          Construction losing 16k jobs while permits decelerate is the early warning for housing supply — fewer trades on
+          site today means fewer completions in 2027.
+        </p>
+        <SourceFootnote>Source: StatCan LFS, April 2026.</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("payrolls", "Payroll losses", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="SEPH · February 2026" title="Payroll data confirms the slowdown">
+        <Card data-testid="chart-payroll-losses">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Payroll job losses by sector (000s)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={payrollSectorLosses} layout="vertical" margin={{ top: 8, right: 24, left: 16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis dataKey="sector" type="category" tick={{ fontSize: 11 }} width={120} />
+                <Tooltip />
+                <Bar dataKey="change" fill={CHART.negative} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <SourceFootnote>
+          Source: Statistics Canada, Survey of Employment, Payrolls and Hours (SEPH), February 2026.
+        </SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("vacancies", "Vacancies", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Job Vacancy &amp; Wage Survey" title="Hiring demand is at a four-year low">
+        <Card data-testid="chart-vacancies">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Job vacancy rate by province (%, Feb 2026)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={vacancyRateProvince} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis dataKey="province" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="rate" fill={CHART.warn} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <p className="text-sm text-muted-foreground mt-3">
+          Vacancies are down ~29% YoY nationally. When employers stop posting jobs, layoffs are usually 2-3 quarters
+          behind.
+        </p>
+        <SourceFootnote>Source: StatCan Job Vacancy and Wage Survey, February 2026.</SourceFootnote>
       </SlideShell>
     )),
 
@@ -630,6 +1021,60 @@ export default function MonthlyMarketReportMay2026() {
           just as oil prices spike, complicating the case for further cuts.
         </p>
         <SourceFootnote>Source: Statistics Canada, Consumer Price Index portal (subjects-start/prices_and_price_indexes).</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("cpi-detail", "CPI detail", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="What's actually hot" title="Rent, groceries and energy are doing the lifting">
+        <Card data-testid="chart-cpi-detail">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">YoY change by category (%, Apr 2026)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={cpiCategoryDetail} layout="vertical" margin={{ top: 8, right: 24, left: 16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis dataKey="component" type="category" tick={{ fontSize: 11 }} width={130} />
+                <Tooltip />
+                <ReferenceLine x={2} stroke={CHART.neutral} strokeDasharray="4 4" label={{ value: "BoC 2%", fontSize: 10 }} />
+                <Bar dataKey="value">
+                  {cpiCategoryDetail.map((d, i) => (
+                    <Cell key={i} fill={d.value >= 3 ? CHART.negative : d.value >= 2 ? CHART.warn : CHART.positive} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <SourceFootnote>Source: StatCan CPI; Spring Economic Update component breakdown.</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("boc-cpi-path", "BoC CPI path", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Bank of Canada · April 2026 MPR" title="BoC sees CPI peaking at 3.0% before returning to target">
+        <Card data-testid="chart-boc-cpi-path">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Bank of Canada CPI forecast path (%)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={bocCpiPath} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                <YAxis domain={[1, 3.5]} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <ReferenceLine y={2} stroke={CHART.neutral} strokeDasharray="4 4" label={{ value: "2% target", fontSize: 10 }} />
+                <Line type="monotone" dataKey="cpi" stroke={CHART.primary} strokeWidth={2} dot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <p className="text-sm text-muted-foreground mt-3">
+          BoC's central scenario assumes the inflation overshoot is temporary — driven by oil and tariffs, not wages.
+          A persistent-shock path delays the return to 2% past mid-2027.
+        </p>
+        <SourceFootnote>Source: Bank of Canada, Monetary Policy Report, April 2026.</SourceFootnote>
       </SlideShell>
     )),
 
@@ -692,6 +1137,75 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
+    slideDef("boc-oil", "BoC oil scenarios", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Bank of Canada · oil scenarios" title="Two oil paths, two very different rate trajectories">
+        <Card data-testid="chart-boc-oil-scenarios">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Brent oil: BoC base case vs persistent-high (US$/bbl)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={bocOilScenarios} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                <YAxis domain={[60, 110]} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="baseCase" name="Base case" stroke={CHART.positive} strokeWidth={2} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="persistent" name="Persistent shock" stroke={CHART.negative} strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <p className="text-sm text-muted-foreground mt-3">
+          Under the persistent scenario, BoC stays on hold deep into 2027 and inflation lingers above 3%. Under the
+          base case, rate cuts can resume by Q4 2026. Investors should underwrite both.
+        </p>
+        <SourceFootnote>Source: Bank of Canada, Monetary Policy Report, April 2026.</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("boc-gdp-tariffs", "BoC GDP &amp; tariffs", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Growth + trade frictions" title="Sub-trend GDP and a real tariff differential">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card data-testid="chart-boc-gdp">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">BoC GDP forecast (%)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={bocGdpForecast} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                  <XAxis dataKey="year" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 3]} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <ReferenceLine y={2} stroke={CHART.neutral} strokeDasharray="4 4" label={{ value: "Trend ~2%", fontSize: 10 }} />
+                  <Bar dataKey="growth" fill={CHART.warn} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          <Card data-testid="chart-tariff-comparison">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Average tariff rate (%)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={tariffComparison} layout="vertical" margin={{ top: 8, right: 24, left: 16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis dataKey="side" type="category" tick={{ fontSize: 10 }} width={180} />
+                  <Tooltip />
+                  <Bar dataKey="rate" fill={CHART.negative} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+        <SourceFootnote>Source: Bank of Canada, Monetary Policy Report, April 2026; tariff schedule per BoC analysis.</SourceFootnote>
+      </SlideShell>
+    )),
+
     slideDef("arrears", "Arrears", (n, total) => (
       <SlideShell number={n} total={total} eyebrow="CMHC · Residential Mortgage Industry Report" title="Mortgage arrears are rising off a generational low">
         <Card data-testid="chart-cmhc-arrears">
@@ -728,6 +1242,59 @@ export default function MonthlyMarketReportMay2026() {
           </div>
         </div>
         <SourceFootnote>Source: CMHC, Residential Mortgage Industry Report (latest edition).</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("arrears-stress", "Arrears stress", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="CMHC stress sensitivity" title="What happens if unemployment goes higher">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card data-testid="chart-arrears-sensitivity">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Arrears rate under stress (%)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={arrearsSensitivity} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                  <XAxis dataKey="point" tick={{ fontSize: 10 }} interval={0} />
+                  <YAxis domain={[0, 0.7]} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="arrears" fill={CHART.negative} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          <Card data-testid="chart-mortgage-status">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Mortgage status (% of bank mortgages)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={mortgageStatusPie}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={50}
+                    outerRadius={90}
+                    label={(d) => `${d.name}: ${d.value}%`}
+                    labelLine={false}
+                  >
+                    {mortgageStatusPie.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+        <p className="text-sm text-muted-foreground mt-3">
+          The system is healthy — 99.72% of bank mortgages are current. But the arrears curve is convex: a single
+          percentage-point rise in unemployment historically pushes the arrears rate ~40% higher.
+        </p>
+        <SourceFootnote>Source: CMHC RMIR; historical CBA arrears sensitivity to unemployment shocks.</SourceFootnote>
       </SlideShell>
     )),
 
@@ -791,6 +1358,106 @@ export default function MonthlyMarketReportMay2026() {
           </p>
         </div>
         <SourceFootnote>Source: Statistics Canada housing portal (theme18) — used as the national housing context indicator.</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("housing-starts", "Housing starts", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Supply pipeline" title="Starts are high — but the trades are leaving">
+        <Card data-testid="chart-housing-starts">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Total housing starts vs purpose-built rental (000s)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={housingStarts} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="total" name="Total starts" fill={CHART.primary} />
+                <Bar dataKey="purposeBuiltRental" name="Purpose-built rental" fill={CHART.warn} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <p className="text-sm text-muted-foreground mt-3">
+          Purpose-built rental starts have 5x'd since the 2000–2019 average. That's the structural shift CMHC has been
+          underwriting through MLI Select — and it's the only segment that still pencils for new investors.
+        </p>
+        <SourceFootnote>Source: Spring Economic Update 2026; CMHC housing starts.</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("permits", "Permits", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Building permits · Feb 2026" title="Permits are softening — supply will follow">
+        <div className="grid lg:grid-cols-5 gap-4">
+          <Card className="lg:col-span-3" data-testid="chart-permits-trend">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Permit value, seasonally adjusted ($B)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={permitsTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="residential" stackId="a" name="Residential" fill={CHART.housing} />
+                  <Bar dataKey="nonResidential" stackId="a" name="Non-residential" fill={CHART.neutral} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-2" data-testid="chart-dwelling-units">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Dwelling units authorized (000s)</CardTitle>
+            </CardHeader>
+            <CardContent className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={dwellingUnits} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <Bar dataKey="multiFamily" name="Multi-family" fill={CHART.primary} />
+                  <Line dataKey="singleFamily" name="Single-family" stroke={CHART.negative} strokeWidth={2} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+        <SourceFootnote>Source: StatCan Building Permits Survey, February 2026.</SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("population", "Population", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Demographics" title="Population growth has gone negative">
+        <Card data-testid="chart-population">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Quarterly YoY population growth (%)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={populationGrowth} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
+                <XAxis dataKey="quarter" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <ReferenceLine y={0} stroke={CHART.neutral} />
+                <Area type="monotone" dataKey="growthPct" stroke={CHART.negative} fill={CHART.negative} fillOpacity={0.18} strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <p className="text-sm text-muted-foreground mt-3">
+          This is the biggest demand shock for Canadian housing in a generation. From +3.2% YoY in mid-2024 to outright
+          negative by Q4 2025. Rents and condo demand in immigration-heavy markets (GTA, Metro Vancouver) feel this
+          first.
+        </p>
+        <SourceFootnote>Source: Statistics Canada population estimates; Spring Economic Update 2026.</SourceFootnote>
       </SlideShell>
     )),
 
@@ -880,6 +1547,31 @@ export default function MonthlyMarketReportMay2026() {
         <SourceFootnote>
           Sources: Statistics Canada LFS history; CMHC arrears series; CREA HPI history. Reference chart context: pbs.twimg.com cycle image.
         </SourceFootnote>
+      </SlideShell>
+    )),
+
+    slideDef("playbook", "Playbook", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="What to do about it" title="The May 2026 playbook">
+        <div className="grid md:grid-cols-3 gap-3">
+          {playbookCards.map((c) => {
+            const Icon = c.icon;
+            return (
+              <Card key={c.audience} className="h-full" data-testid={`card-playbook-${c.audience.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-md ${c.bg} flex items-center justify-center`}>
+                      <Icon className={`h-4 w-4 ${c.accent}`} />
+                    </div>
+                    <CardTitle className="text-sm">{c.audience}</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{c.body}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </SlideShell>
     )),
 
@@ -975,7 +1667,7 @@ export default function MonthlyMarketReportMay2026() {
     <div className="min-h-screen bg-background">
       <SEO
         title={`${REPORT_TITLE} | Realist.ca`}
-        description="A 13-slide presentation: upcoming events, Canadian labour, inflation, oil shock, CMHC mortgage stress, CREA stats and the housing cycle — built for an investor briefing."
+        description="A 30-45 minute investor webinar deck covering Canadian labour, inflation, the oil shock, Bank of Canada outlook, CMHC mortgage stress, supply, demographics, distress and the housing cycle."
         canonical={`https://realist.ca/insights/${REPORT_SLUG}`}
         structuredData={{
           "@context": "https://schema.org",

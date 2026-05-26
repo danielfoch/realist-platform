@@ -444,7 +444,7 @@ export default function MarketReport() {
                   </div>
                   <h3 className="font-bold text-sm mb-1">Monthly Market Report — May 2026</h3>
                   <p className="text-xs text-muted-foreground mb-2">
-                    A 13-slide presentation covering upcoming events, labour, CPI, the oil shock, CMHC mortgage stress, CREA stats and the housing cycle — built for an investor briefing call.
+                    A 30-45 minute investor webinar deck covering labour, CPI, the oil shock, the Bank of Canada outlook, CMHC mortgage stress, supply, demographics, distress and the cycle playbook.
                   </p>
                   <span className="text-xs text-primary font-medium">Open slide deck →</span>
                 </CardContent>
