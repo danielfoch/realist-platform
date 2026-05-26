@@ -12,6 +12,7 @@ import {
   getQualifiedShareRewardBrief,
   getQualifiedActionCatalog,
   getRecipientShareCoaching,
+  getShareActionQualificationBlockReason,
   hasMeaningfulChallengePayload,
   recordQualifiedShareAction,
   redeemGoogleSheetsExportCredits,
@@ -53,6 +54,13 @@ describe('viral underwriting share qualification', () => {
     expect(hasMeaningfulChallengePayload('challenge', { challengedFields: ['rent', 'vacancy'] })).toBe(true);
     expect(hasMeaningfulChallengePayload('saved_version', { inputs: { rent: 3200 } })).toBe(true);
     expect(hasMeaningfulChallengePayload('signup', undefined)).toBe(true);
+  });
+
+  it('blocks spoofed signup rewards unless the recipient is authenticated', () => {
+    expect(getShareActionQualificationBlockReason('signup', {}, null)).toContain('authenticated');
+    expect(getShareActionQualificationBlockReason('signup', {}, 77)).toBeNull();
+    expect(getShareActionQualificationBlockReason('challenge', { comment: 'too short' }, 77)).toContain('10+ character comment');
+    expect(getShareActionQualificationBlockReason('challenge', { comment: 'raise exit cap assumption' }, null)).toBeNull();
   });
 
   it('awards Google Sheets export credits for a qualified challenge', async () => {

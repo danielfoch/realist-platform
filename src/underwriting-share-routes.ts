@@ -336,6 +336,22 @@ export function hasMeaningfulChallengePayload(action: QualifiedShareAction, meta
   );
 }
 
+export function getShareActionQualificationBlockReason(
+  action: QualifiedShareAction,
+  metadata: unknown,
+  authenticatedUserId?: number | null,
+) {
+  if (action === 'signup' && !authenticatedUserId) {
+    return 'Signup credits require the recipient to be authenticated so a real account can be associated with the shared underwriting.';
+  }
+
+  if (!hasMeaningfulChallengePayload(action, metadata)) {
+    return 'Challenge/fork/saved-version credits require changed assumptions, challenged fields, metrics, inputs, notes, or a 10+ character comment.';
+  }
+
+  return null;
+}
+
 async function countDailyShareActions(database: DatabaseAdapter, shareId: number, action: QualifiedShareAction) {
   const result = await database.query(
     `SELECT COUNT(*)::int AS count
@@ -981,9 +997,12 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         return;
       }
 
-      if (!hasMeaningfulChallengePayload(action, metadata)) {
-        res.status(400).json({
-          error: 'Challenge/fork actions need changed assumptions, challenged fields, metrics, inputs, notes, or a comment before credits can qualify',
+      const qualificationBlockReason = getShareActionQualificationBlockReason(action, metadata, req.userId);
+      if (qualificationBlockReason) {
+        res.status(action === 'signup' ? 401 : 400).json({
+          error: qualificationBlockReason,
+          cta: 'Challenge my underwriting.',
+          creditGuardrail: 'Credits require qualified opens, challenges, forks, signups, or saved versions within anti-abuse caps — never raw share clicks alone.',
         });
         return;
       }
