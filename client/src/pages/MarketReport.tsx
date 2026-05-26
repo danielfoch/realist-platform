@@ -433,6 +433,23 @@ export default function MarketReport() {
           <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
           <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link href="/insights/monthly-market-report-may-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-primary/40" data-testid="card-macro-monthly-market-may-2026">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                      <FileText className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <Badge variant="default" className="text-[10px]">New · Slide deck</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Monthly Market Report — May 2026</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    A 12-slide presentation covering labour, CPI, the oil shock, CMHC mortgage stress, CREA stats and the housing cycle — built for an investor briefing call.
+                  </p>
+                  <span className="text-xs text-primary font-medium">Open slide deck →</span>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/reports/cmhc-2025-annual-report-housing-market">
               <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-cmhc-annual-report-2025">
                 <CardContent className="p-5">
