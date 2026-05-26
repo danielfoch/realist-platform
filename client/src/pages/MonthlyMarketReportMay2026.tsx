@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowUp,
   Briefcase,
+  Calendar,
   ChevronLeft,
   ChevronRight,
   Droplet,
@@ -12,7 +13,10 @@ import {
   Flame,
   Home,
   Landmark,
+  PlayCircle,
   ShieldAlert,
+  Sparkles,
+  Ticket,
   TrendingDown,
   TrendingUp,
   Users,
@@ -43,7 +47,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const REPORT_TITLE = "Canadian Real Estate — Monthly Market Report, May 2026";
 const REPORT_SUBTITLE =
-  "Labour, inflation, oil, mortgage stress and the housing cycle, in 12 slides.";
+  "Upcoming events, labour, inflation, oil, mortgage stress and the housing cycle, in 13 slides.";
 const REPORT_SLUG = "monthly-market-report-may-2026";
 const PUBLISH_DATE = "May 25, 2026";
 
@@ -92,6 +96,56 @@ const SOURCES = [
   { label: "Valery.ca — Mortgage marketplace data", url: "https://valery.ca" },
   { label: "Meet Your Homies — Investor community", url: "https://meetyourhomies.com" },
 ] as const;
+
+const EVENTS = [
+  {
+    id: "tech-week",
+    icon: Sparkles,
+    accent: "text-violet-600 dark:text-violet-400",
+    bg: "bg-violet-100 dark:bg-violet-900/30",
+    name: "Real Estate @ Toronto Tech Week",
+    tagline: "Where Toronto's PropTech, capital, and operators meet during Tech Week.",
+    url: "https://luma.com/zkxtsqcv",
+    cta: "Register on Luma",
+    promo: null as string | null,
+  },
+  {
+    id: "ai-meets-re",
+    icon: Ticket,
+    accent: "text-rose-600 dark:text-rose-400",
+    bg: "bg-rose-100 dark:bg-rose-900/30",
+    name: "AI Meets Real Estate 2026",
+    tagline: "The future of real estate, AI-first. Use code REALESTATE50 for 50% off.",
+    url: "https://www.eventbrite.com/e/ai-meets-real-estate-2026-the-future-of-real-estate-is-happening-here-tickets-1988504454352",
+    cta: "Get tickets on Eventbrite",
+    promo: "REALESTATE50 · 50% OFF",
+  },
+  {
+    id: "multiplex-edmonton",
+    icon: Calendar,
+    accent: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-100 dark:bg-amber-900/30",
+    name: "Unpacking Multiplexes — Edmonton",
+    tagline: "Underwriting, financing and zoning for Alberta multiplex deals. Use REM25 for 25% off.",
+    url: "https://www.eventbrite.ca/e/unpacking-multiplexes-edmonton-tickets-1987646800085",
+    cta: "Get tickets on Eventbrite",
+    promo: "REM25 · 25% OFF",
+  },
+  {
+    id: "aigent-webinar",
+    icon: PlayCircle,
+    accent: "text-emerald-600 dark:text-emerald-400",
+    bg: "bg-emerald-100 dark:bg-emerald-900/30",
+    name: "Free Webinar — Automate 80% of Your Business",
+    tagline: "AIgent live workshop on automating the busywork in a real-estate operation.",
+    url: "https://www.skool.com/aigent/calendar?calDate=1782485994&eid=b7f04c710c6a4d69b540e776239dd573",
+    cta: "Reserve your seat (free)",
+    promo: "FREE",
+  },
+] as const;
+
+const qrUrl = (data: string, size = 220) =>
+  `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(data)}`;
 
 const thesisPoints = [
   {
@@ -259,10 +313,10 @@ const cycleHistory = [
 type Slide = {
   id: string;
   label: string;
-  render: () => JSX.Element;
+  render: (n: number, total: number) => JSX.Element;
 };
 
-const slideDef = (id: string, label: string, render: () => JSX.Element): Slide => ({
+const slideDef = (id: string, label: string, render: (n: number, total: number) => JSX.Element): Slide => ({
   id,
   label,
   render,
@@ -311,7 +365,7 @@ function SlideShell({
 
 export default function MonthlyMarketReportMay2026() {
   const slides: Slide[] = [
-    slideDef("cover", "Cover", () => (
+    slideDef("cover", "Cover", (n, total) => (
       <div className="h-full w-full flex flex-col items-center justify-center text-center px-4 sm:px-8 lg:px-16 py-12 max-w-5xl mx-auto">
         <Badge variant="outline" className="mb-6 text-xs uppercase tracking-widest">
           Monthly Market Report · {PUBLISH_DATE}
@@ -320,7 +374,7 @@ export default function MonthlyMarketReportMay2026() {
           Canadian Real Estate — May 2026
         </h1>
         <p className="text-base md:text-lg text-muted-foreground max-w-2xl mb-10">
-          Labour, inflation, oil, mortgage stress and the housing cycle, in 12 slides.
+          Upcoming events, labour, inflation, oil, mortgage stress and the housing cycle, in 13 slides.
           Built for an investor briefing — scroll, or use the arrow keys, to advance.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-muted-foreground">
@@ -342,8 +396,71 @@ export default function MonthlyMarketReportMay2026() {
       </div>
     )),
 
-    slideDef("thesis", "Thesis", () => (
-      <SlideShell number={2} total={12} eyebrow="Executive Thesis" title="Four things to remember">
+    slideDef("events", "Events", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Upcoming events · scan to register" title="Where we're showing up next">
+        <div className="grid sm:grid-cols-2 gap-4">
+          {EVENTS.map((ev) => {
+            const Icon = ev.icon;
+            return (
+              <Card key={ev.id} className="h-full" data-testid={`card-event-${ev.id}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <a
+                      href={ev.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 rounded-md border bg-white p-1.5 hover:border-primary/50 transition-colors"
+                      data-testid={`qr-event-${ev.id}`}
+                      aria-label={`QR code linking to ${ev.name}`}
+                    >
+                      <img
+                        src={qrUrl(ev.url, 200)}
+                        alt={`Scan to open ${ev.name}`}
+                        width={104}
+                        height={104}
+                        className="block h-[104px] w-[104px]"
+                        loading="lazy"
+                      />
+                    </a>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className={`w-7 h-7 rounded-md ${ev.bg} flex items-center justify-center shrink-0`}>
+                          <Icon className={`h-4 w-4 ${ev.accent}`} />
+                        </div>
+                        {ev.promo && (
+                          <Badge variant="secondary" className="text-[10px] font-semibold">
+                            {ev.promo}
+                          </Badge>
+                        )}
+                      </div>
+                      <h3 className="font-semibold text-sm leading-snug mb-1" data-testid={`title-event-${ev.id}`}>
+                        {ev.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground leading-snug mb-2">{ev.tagline}</p>
+                      <a
+                        href={ev.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+                        data-testid={`link-event-${ev.id}`}
+                      >
+                        {ev.cta} <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-3 italic">
+          Point a phone camera at any QR code to open the event page. Promo codes shown apply where noted.
+        </p>
+      </SlideShell>
+    )),
+
+    slideDef("thesis", "Thesis", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Executive Thesis" title="Four things to remember">
         <div className="grid md:grid-cols-2 gap-4">
           {thesisPoints.map((p) => {
             const Icon = p.icon;
@@ -375,8 +492,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("labour", "Labour", () => (
-      <SlideShell number={3} total={12} eyebrow="Labour Force Survey · April 2026" title="Unemployment ticks back to 6.9%">
+    slideDef("labour", "Labour", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Labour Force Survey · April 2026" title="Unemployment ticks back to 6.9%">
         <div className="grid lg:grid-cols-5 gap-4">
           <Card className="lg:col-span-3" data-testid="chart-unemployment-trend">
             <CardHeader className="pb-2">
@@ -425,8 +542,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("provinces", "Provinces", () => (
-      <SlideShell number={4} total={12} eyebrow="Geography of the slowdown" title="Quebec is doing the heavy lifting (the wrong way)">
+    slideDef("provinces", "Provinces", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Geography of the slowdown" title="Quebec is doing the heavy lifting (the wrong way)">
         <Card data-testid="chart-provincial-employment">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Provincial Employment Change, April 2026 (000s)</CardTitle>
@@ -465,8 +582,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("cpi", "CPI", () => (
-      <SlideShell number={5} total={12} eyebrow="Consumer Price Index" title="Inflation is creeping back to 3%">
+    slideDef("cpi", "CPI", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Consumer Price Index" title="Inflation is creeping back to 3%">
         <div className="grid lg:grid-cols-2 gap-4">
           <Card data-testid="chart-cpi-trend">
             <CardHeader className="pb-2">
@@ -516,8 +633,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("oil", "Oil Shock", () => (
-      <SlideShell number={6} total={12} eyebrow="Energy" title="The oil shock is loud — and lagged">
+    slideDef("oil", "Oil Shock", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Energy" title="The oil shock is loud — and lagged">
         <div className="grid lg:grid-cols-2 gap-4">
           <Card data-testid="chart-oil-trend">
             <CardHeader className="pb-2">
@@ -575,8 +692,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("arrears", "Arrears", () => (
-      <SlideShell number={7} total={12} eyebrow="CMHC · Residential Mortgage Industry Report" title="Mortgage arrears are rising off a generational low">
+    slideDef("arrears", "Arrears", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="CMHC · Residential Mortgage Industry Report" title="Mortgage arrears are rising off a generational low">
         <Card data-testid="chart-cmhc-arrears">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">National mortgages in arrears (% of total, 3+ months)</CardTitle>
@@ -614,8 +731,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("consumer", "Consumer", () => (
-      <SlideShell number={8} total={12} eyebrow="CMHC · 2026 Mortgage Consumer Survey" title="Buyers are cautious — and shopping harder">
+    slideDef("consumer", "Consumer", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="CMHC · 2026 Mortgage Consumer Survey" title="Buyers are cautious — and shopping harder">
         <Card data-testid="chart-mcs">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Selected findings — share of respondents (%)</CardTitle>
@@ -646,8 +763,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("crea", "CREA", () => (
-      <SlideShell number={9} total={12} eyebrow="National housing activity" title="CREA: inventory up, prices still drifting lower">
+    slideDef("crea", "CREA", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="National housing activity" title="CREA: inventory up, prices still drifting lower">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {creaStats.map((d) => {
             const Icon = d.icon;
@@ -677,8 +794,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("motivated", "Motivated", () => (
-      <SlideShell number={10} total={12} eyebrow="Realist.ca — Motivated Deals engine" title="Motivated-seller listings keep climbing">
+    slideDef("motivated", "Motivated", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Realist.ca — Motivated Deals engine" title="Motivated-seller listings keep climbing">
         <Card data-testid="chart-motivated">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Active motivated-seller listings (national, quarterly)</CardTitle>
@@ -722,8 +839,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("cycle", "Cycle", () => (
-      <SlideShell number={11} total={12} eyebrow="The cycle thesis" title="Housing doesn't bottom until both indicators stop rising">
+    slideDef("cycle", "Cycle", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="The cycle thesis" title="Housing doesn't bottom until both indicators stop rising">
         <Card data-testid="chart-cycle-history">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Unemployment, arrears and home prices — three Canadian episodes</CardTitle>
@@ -766,8 +883,8 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
-    slideDef("sources", "Sources", () => (
-      <SlideShell number={12} total={12} eyebrow="Sources & disclaimer" title="Where the data came from">
+    slideDef("sources", "Sources", (n, total) => (
+      <SlideShell number={n} total={total} eyebrow="Sources & disclaimer" title="Where the data came from">
         <ul className="space-y-2">
           {SOURCES.map((s) => (
             <li key={s.url} className="flex items-start gap-2 text-sm">
@@ -858,7 +975,7 @@ export default function MonthlyMarketReportMay2026() {
     <div className="min-h-screen bg-background">
       <SEO
         title={`${REPORT_TITLE} | Realist.ca`}
-        description="A 12-slide presentation: Canadian labour, inflation, oil shock, CMHC mortgage stress, CREA stats and the housing cycle — built for an investor briefing."
+        description="A 13-slide presentation: upcoming events, Canadian labour, inflation, oil shock, CMHC mortgage stress, CREA stats and the housing cycle — built for an investor briefing."
         canonical={`https://realist.ca/insights/${REPORT_SLUG}`}
         structuredData={{
           "@context": "https://schema.org",
@@ -942,7 +1059,7 @@ export default function MonthlyMarketReportMay2026() {
             className="snap-start snap-always h-full min-h-full w-full flex border-b last:border-b-0"
             style={{ height: "calc(100vh - 8.5rem)" }}
           >
-            {s.render()}
+            {s.render(i + 1, total)}
           </section>
         ))}
       </div>
