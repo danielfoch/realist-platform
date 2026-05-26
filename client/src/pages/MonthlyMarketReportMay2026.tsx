@@ -47,6 +47,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+import imgCoSigners from "@assets/image_1779812661171.png";
+import imgMortgageWebsites from "@assets/image_1779812672472.png";
+import imgGiftedDown from "@assets/image_1779812678982.png";
+import imgVariableRate from "@assets/image_1779812698294.png";
+import imgDelinquencyLender from "@assets/image_1779812713059.png";
+import imgFredPrices from "@assets/image_1779812719077.png";
+import imgInsolvencies from "@assets/image_1779812732059.png";
+import imgHpiProvince from "@assets/image_1779812751418.png";
+import imgTorontoDecade from "@assets/image_1779812772941.png";
+import imgMonthlySales from "@assets/image_1779812780813.png";
+import imgMlsBenchmark from "@assets/image_1779812787411.png";
+import imgYoYByProv from "@assets/image_1779812799714.png";
+import imgHpiByType from "@assets/image_1779812803689.png";
+import imgSalesActivity from "@assets/image_1779812809612.png";
+import imgNewListings from "@assets/image_1779812814854.png";
+import imgMarketBalance from "@assets/image_1779812820655.png";
+
 const REPORT_TITLE = "Canadian Real Estate — Monthly Market Report, May 2026";
 const REPORT_SUBTITLE =
   "A 30-45 minute investor webinar deck: events, macro snapshot, labour, inflation, oil, BoC outlook, mortgage stress, supply, demographics, distress and the playbook.";
@@ -559,6 +576,61 @@ function SlideShell({
       </h2>
       <div className="flex-1 min-h-0 overflow-auto">{children}</div>
     </div>
+  );
+}
+
+function ImageSlide({
+  number,
+  total,
+  eyebrow,
+  title,
+  src,
+  alt,
+  caption,
+  bullets,
+  source,
+}: {
+  number: number;
+  total: number;
+  eyebrow: string;
+  title: string;
+  src: string;
+  alt: string;
+  caption?: string;
+  bullets?: string[];
+  source?: React.ReactNode;
+}) {
+  return (
+    <SlideShell number={number} total={total} eyebrow={eyebrow} title={title}>
+      <div className="grid lg:grid-cols-5 gap-4 items-stretch">
+        <div className="lg:col-span-3 rounded-lg border bg-white p-3 flex items-center justify-center shadow-sm">
+          <img
+            src={src}
+            alt={alt}
+            className="max-h-[58vh] w-auto object-contain"
+            data-testid={`img-${alt.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40)}`}
+          />
+        </div>
+        <div className="lg:col-span-2 space-y-3">
+          {caption && (
+            <div className="border rounded-lg p-3 bg-muted/30">
+              <p className="text-sm leading-relaxed">{caption}</p>
+            </div>
+          )}
+          {bullets && bullets.length > 0 && (
+            <ul className="space-y-2">
+              {bullets.map((b, i) => (
+                <li key={i} className="text-sm flex gap-2 leading-relaxed">
+                  <span className="text-primary mt-1 shrink-0">•</span>
+                  <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+      {source && <SourceFootnote>{source}</SourceFootnote>}
+    </SlideShell>
   );
 }
 
@@ -1298,6 +1370,25 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
+    slideDef("delinquency-lender", "Delinquency by lender", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CMHC · Residential Mortgage Industry Report"
+        title="Arrears are concentrated in the riskiest lender bucket"
+        src={imgDelinquencyLender}
+        alt="Mortgage 90+ days delinquency rate by lender type"
+        caption="Chartered bank arrears barely moved off the pandemic low. MIE (Mortgage Investment Entity) arrears nearly doubled, from 1.0% to almost 2.0% in two years."
+        bullets={[
+          "Chartered banks: 0.20% → 0.25% — still benign.",
+          "Credit unions and non-bank lenders: drifting up, but contained.",
+          "MIEs: the canary. 1.04% in 2020 Q1 → 1.97% in 2025 Q4.",
+          "Read-through: distress shows up first in the highest-rate, lowest-doc segment — exactly where motivated-seller deals come from.",
+        ]}
+        source="Source: CMHC Residential Mortgage Industry Report (Canadian Bankers Association + Survey of Non-Bank Mortgage Lenders)."
+      />
+    )),
+
     slideDef("consumer", "Consumer", (n, total) => (
       <SlideShell number={n} total={total} eyebrow="CMHC · 2026 Mortgage Consumer Survey" title="Buyers are cautious — and shopping harder">
         <Card data-testid="chart-mcs">
@@ -1330,6 +1421,83 @@ export default function MonthlyMarketReportMay2026() {
       </SlideShell>
     )),
 
+    slideDef("co-signers", "Co-signers", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CMHC · 2026 Mortgage Consumer Survey"
+        title="28% of first-time buyers needed a co-signer"
+        src={imgCoSigners}
+        alt="Share of first-time homebuyers needing a co-signer"
+        caption="Aside from a partner or spouse, 28% of first-time homebuyers needed a co-signer to qualify. More than half of those co-signers were parents."
+        bullets={[
+          "Parents: 54% of all co-signers — the Bank of Mom & Dad on the mortgage application.",
+          "Children and other family members: 25% each — multi-generational underwriting.",
+          "Affordability hasn't actually improved — buyers are just stacking more income on the file.",
+          "Investor read-through: rental demand stays sticky as a chunk of would-be buyers can't qualify alone.",
+        ]}
+        source="Source: CMHC 2026 Mortgage Consumer Survey."
+      />
+    )),
+
+    slideDef("mortgage-websites", "Mortgage info channels", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="How buyers shop for mortgages"
+        title="AI is now a mainstream mortgage research channel"
+        src={imgMortgageWebsites}
+        alt="Main websites used for mortgage-related information"
+        caption="Among buyers who researched online, comparison sites, brokers and lenders still lead — but 16% already use AI tools, ahead of government sources."
+        bullets={[
+          "Rate comparison sites: 33% — top of funnel.",
+          "Mortgage broker channel: 32% — share continues to climb (good for Valery.ca, Meet Your Homies).",
+          "AI tools: 16%, brand new category — beating CMHC and government sources.",
+          "Distribution lesson: be on comparison sites, broker portals AND inside AI workflows — Realist.ca's MCP plugin is built for this.",
+        ]}
+        source="Source: CMHC 2026 Mortgage Consumer Survey — main websites used for mortgage-related information."
+      />
+    )),
+
+    slideDef("gifted-down", "Gifted down payments", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="The Bank of Mom & Dad"
+        title="Gifted down payments are the new normal"
+        src={imgGiftedDown}
+        alt="Average gifted down payment by region"
+        caption="Among buyers who received a gift, the average gifted down payment ranged from $25k in Ontario to $50k in BC — basically unchanged year-over-year, but a structurally large share of the down payment stack."
+        bullets={[
+          "BC: $50,000 average gift (flat YoY).",
+          "Prairies & Quebec: $30,000.",
+          "Ontario: $25,000 — actually down from $30,000 in 2025.",
+          "Atlantic: $30,000 — up from $20,000 (gifts spreading east).",
+          "Without the family balance sheet, FTHB participation would be materially lower.",
+        ]}
+        source="Source: CMHC 2026 Mortgage Consumer Survey — gifted down payments by region."
+      />
+    )),
+
+    slideDef("variable-rate", "Variable rate rebound", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="Newly extended mortgages · share by term"
+        title="Variable-rate share has rebounded hard"
+        src={imgVariableRate}
+        alt="Share of newly extended mortgages by rate type at chartered banks"
+        caption="Variable-rate share collapsed in 2022 as the BoC hiked, bottomed near 5% in 2023, and has now rebounded to ~42% of new mortgages — a clear bet on rate cuts."
+        bullets={[
+          "5-year fixed: dominant for decades, now under 11%.",
+          "3-to-5 year fixed: still ~35% — the new default.",
+          "Variable: 6% (2023 low) → 42% (Jan 2026) — biggest swing in the dataset.",
+          "Interpretation: borrowers are positioned for the BoC to keep cutting. If oil-driven inflation forces a hold or hike, those files reprice fast.",
+        ]}
+        source="Source: Statistics Canada Table 10-10-0006-01, Bank of Canada, CMHC calculations."
+      />
+    )),
+
     slideDef("crea", "CREA", (n, total) => (
       <SlideShell number={n} total={total} eyebrow="National housing activity" title="CREA: inventory up, prices still drifting lower">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1359,6 +1527,182 @@ export default function MonthlyMarketReportMay2026() {
         </div>
         <SourceFootnote>Source: Statistics Canada housing portal (theme18) — used as the national housing context indicator.</SourceFootnote>
       </SlideShell>
+    )),
+
+    slideDef("hpi-by-province", "HPI by province", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CREA HPI · indexed Jan 2020 = 100"
+        title="The map: Atlantic up, Ontario rolling over"
+        src={imgHpiProvince}
+        alt="Canada home price index by province since 2020"
+        caption="Re-based to Jan 2020, the provinces have split into two completely different markets: Atlantic and Prairie keep climbing, Ontario and BC have rolled over from peak."
+        bullets={[
+          "NB & NS: leaders, +85–95% since 2020.",
+          "QC, PEI, NL, MB, SK: steady grind higher.",
+          "BC: -10% from 2022 peak, still elevated.",
+          "ON: -25%+ from 2022 peak — the largest drawdown in the country.",
+          "Headline 'Canadian housing' is now a fiction. Underwrite the province, not the country.",
+        ]}
+        source="Source: CREA MLS HPI by province."
+      />
+    )),
+
+    slideDef("toronto-decade", "Toronto by decade", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="Toronto · CREA + TRREB via valery.ca"
+        title="The 2020s decade is now the worst since the 1990s"
+        src={imgTorontoDecade}
+        alt="Toronto average home price index growth by decade"
+        caption="Each decade rebased to 100. The 1980s and 2010s were tearaway booms. The 2020s decade is tracking closer to the 1990s lost decade — not the recent boom decades."
+        bullets={[
+          "1980s: +260% by month ~120 — the original Toronto boom.",
+          "2000s and 2010s: +100% over the decade.",
+          "1990s: flat-to-down for ten years — the famous 'lost decade'.",
+          "2020s (to date): up modestly, then back to start — pattern looks closer to the 1990s than the 2010s.",
+          "Multi-decade context for clients who think this is 'just a normal pullback'.",
+        ]}
+        source="Source: CREA + TRREB, via valery.ca."
+      />
+    )),
+
+    slideDef("monthly-sales", "Monthly home sales", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CREA · monthly home sales"
+        title="Sales are back below the 10-year average"
+        src={imgMonthlySales}
+        alt="Canadian monthly home sales 2007 to 2026"
+        caption="Monthly home sales spiked to ~67,000 in early 2021 and have round-tripped all the way back. April 2026 sits modestly below the 10-year monthly moving average — not a crisis, but not a recovery."
+        bullets={[
+          "2021 peak: ~67k/mo — pulled forward years of demand.",
+          "2022 trough: ~16k/mo at the depth of the rate shock.",
+          "2024–25: rebuilt to ~40–45k, the long-run average.",
+          "2026 YTD: drifting back below average. No reacceleration yet.",
+        ]}
+        source="Source: The Canadian Real Estate Association."
+      />
+    )),
+
+    slideDef("mls-benchmark", "MLS benchmark", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CREA · aggregate composite"
+        title="National benchmark: -20% from peak and still drifting"
+        src={imgMlsBenchmark}
+        alt="MLS HPI benchmark price aggregate composite 2005 to 2026"
+        caption="The aggregate composite benchmark peaked near $830k in early 2022, fell hard through 2023, faked a small rally in 2024, and has been drifting lower ever since. Now ~$660k."
+        bullets={[
+          "Peak (Feb 2022): ~$830,000.",
+          "Today: ~$660,000 — a 20% nominal drawdown.",
+          "After inflation, the real drawdown is closer to 28% (see FRED chart later in deck).",
+          "Smooth shape — not capitulation, just steady distribution.",
+        ]}
+        source="Source: CREA MLS HPI aggregate composite, seasonally adjusted."
+      />
+    )),
+
+    slideDef("yoy-by-prov", "YoY by province", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CREA · residential average price YoY"
+        title="Saskatchewan and Newfoundland lead, Ontario and PEI are negative"
+        src={imgYoYByProv}
+        alt="Residential average price year over year by province, April 2026"
+        caption="April 2026 average price vs April 2025: Saskatchewan (+8.2%) and Newfoundland (+8.7%) at the top; PEI (-5%) and Ontario (-2%) at the bottom."
+        bullets={[
+          "Atlantic + Prairies: still hot, still appreciating.",
+          "Ontario: -2% YoY at the average-price level — confirms the HPI drawdown.",
+          "PEI: -5% YoY, the country's biggest annual decliner.",
+          "BC: +1% YoY — barely positive, masks Lower Mainland weakness.",
+          "Average price is noisy (mix effect) — always cross-check with HPI.",
+        ]}
+        source="Source: CREA — residential average price, not seasonally adjusted."
+      />
+    )),
+
+    slideDef("hpi-by-type", "HPI by type", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CREA · benchmark by property type"
+        title="Detached holding up, apartments leading the drawdown"
+        src={imgHpiByType}
+        alt="MLS HPI benchmark by property type"
+        caption="Splitting the composite by property type: two-storey single family is still ~$860k (off the peak but still elevated); apartments are the most discounted segment vs their 2022 high."
+        bullets={[
+          "Two-storey single family: most expensive, holding ~$860k.",
+          "One-storey single family: ~$590k, sticky.",
+          "Townhouse / row: ~$580k.",
+          "Apartments: ~$460k — largest % drawdown from peak; matches the GTA pre-construction overhang.",
+          "Investor takeaway: condo entry points are the most attractive they've been since 2017.",
+        ]}
+        source="Source: CREA MLS HPI by property type."
+      />
+    )),
+
+    slideDef("sales-activity", "Sales activity (annualized)", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CREA · residential sales activity"
+        title="Annualized sales are back at 2023 lows"
+        src={imgSalesActivity}
+        alt="Residential sales activity Canada quarterly"
+        caption="Seasonally-adjusted annualized sales peaked above 750k in 2021, bottomed near 410k in 2022 Q4, recovered to ~510k in 2024 Q4, and have now slipped back to ~425k by April 2026."
+        bullets={[
+          "2021 boom: >700k SAAR.",
+          "2022 bust: 410k SAAR — the policy-rate trough.",
+          "2024 recovery: 510k SAAR.",
+          "Q1 2026: 425k SAAR. Recovery has failed to follow through.",
+          "Volume is critical context: it's hard for prices to firm without throughput.",
+        ]}
+        source="Source: CREA — seasonally adjusted at annual rates."
+      />
+    )),
+
+    slideDef("new-listings", "New listings", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CREA · residential new listings"
+        title="New listings keep climbing — supply is the loose variable"
+        src={imgNewListings}
+        alt="Residential new listings Canada quarterly"
+        caption="Annualized new listings hit a cycle low near 720k in early 2023, then climbed steadily to ~960k in 2025. April 2026 is back at 940k — sellers keep coming to market."
+        bullets={[
+          "2023 trough: ~720k — sellers waiting out the rate shock.",
+          "2025 peak: ~965k — the 'I can't wait anymore' wave.",
+          "2026 YTD: 940k — sustained high inflow.",
+          "More supply + soft sales = exactly the math that builds inventory and pushes prices lower.",
+        ]}
+        source="Source: CREA — new listings, seasonally adjusted at annual rates."
+      />
+    )),
+
+    slideDef("market-balance", "Market balance", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="CREA · months of inventory + sales/new-listings"
+        title="Inventory has rebuilt — market is now buyer-leaning"
+        src={imgMarketBalance}
+        alt="Residential market balance Canada"
+        caption="Months of inventory have climbed from ~2 in early 2022 to ~5.2 today — the highest level since 2019. Sales-to-new-listings ratio is at the bottom of the balanced range (~45%)."
+        bullets={[
+          "Months of inventory: 2.0 (2022) → 5.2 (Apr 2026).",
+          "Sales-to-new-listings: 87% (2021 boom) → 45% today.",
+          "CREA convention: <40% buyer's market, 40–60% balanced, >60% seller's market.",
+          "We're at the cool edge of balanced — historically the entry to negotiating leverage.",
+        ]}
+        source="Source: CREA — months of inventory and sales-to-new-listings ratio."
+      />
     )),
 
     slideDef("housing-starts", "Housing starts", (n, total) => (
@@ -1548,6 +1892,47 @@ export default function MonthlyMarketReportMay2026() {
           Sources: Statistics Canada LFS history; CMHC arrears series; CREA HPI history. Reference chart context: pbs.twimg.com cycle image.
         </SourceFootnote>
       </SlideShell>
+    )),
+
+    slideDef("fred-prices", "Long cycle (FRED)", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="50-year context · BIS via FRED"
+        title="Real prices: the current drawdown is the second-deepest on record"
+        src={imgFredPrices}
+        alt="Real residential property prices for Canada from FRED"
+        caption="The Bank for International Settlements real residential price series for Canada (1970–2025). The current 2022–2026 drawdown (-28%) is already deeper than 1989–1998 (-21%) and 1981–1984 (-22%)."
+        bullets={[
+          "1981–84: -22% — Volcker shock.",
+          "1989–98: -21% — Toronto's lost decade.",
+          "2008–09: -9% — GFC, then the recovery launched.",
+          "2017–19: -2.5% — the policy-driven cool-off.",
+          "2022–26 to date: -28% in real terms — the biggest drawdown on record.",
+          "Investor context: every prior drawdown ended in a generational buying window.",
+        ]}
+        source="Source: Bank for International Settlements via FRED — Real Residential Property Prices for Canada."
+      />
+    )),
+
+    slideDef("insolvencies", "Consumer insolvencies", (n, total) => (
+      <ImageSlide
+        number={n}
+        total={total}
+        eyebrow="OSB · consumer insolvencies (March)"
+        title="Consumer insolvencies are at the second-highest level on record"
+        src={imgInsolvencies}
+        alt="Canadian consumer insolvencies March 1988 to 2026"
+        caption="March 2026 consumer insolvencies (~13,500) are the second-highest March reading in the 38-year series — exceeded only by the 2008 GFC spike."
+        bullets={[
+          "March 2008: ~13,700 — the all-time record.",
+          "March 2026: ~13,500 — basically tied.",
+          "2014–2019 baseline: ~9,000–11,000.",
+          "Household debt service is finally cracking — even with rates already off the peak.",
+          "Historically, household insolvencies lead mortgage arrears by 6–12 months.",
+        ]}
+        source="Source: Office of the Superintendent of Bankruptcy (OSB); chart via Better Dwelling."
+      />
     )),
 
     slideDef("playbook", "Playbook", (n, total) => (
