@@ -444,6 +444,69 @@ export async function recordQualifiedShareAction(database: DatabaseAdapter, inpu
   return { status, qualified, creditAmount, actionId };
 }
 
+export async function previewQualifiedShareActionCredit(database: DatabaseAdapter, input: {
+  shareId: number;
+  action: QualifiedShareAction;
+  recipientHash: string;
+  metadata?: Record<string, unknown>;
+  authenticatedUserId?: number | null;
+}) {
+  const qualificationBlockReason = getShareActionQualificationBlockReason(
+    input.action,
+    input.metadata,
+    input.authenticatedUserId,
+  );
+
+  if (qualificationBlockReason) {
+    return {
+      status: 'blocked' as const,
+      eligible: false,
+      qualified: false,
+      creditAmount: 0,
+      blockReason: qualificationBlockReason,
+      cta: 'Challenge my underwriting.',
+      creditGuardrail: 'Credits require qualified opens, challenges, forks, signups, or saved versions within anti-abuse caps — never raw share clicks alone.',
+    };
+  }
+
+  const existing = await findExistingAction(database, input.shareId, input.recipientHash, input.action);
+  if (existing) {
+    return {
+      status: 'duplicate' as const,
+      eligible: false,
+      qualified: Boolean(existing.qualified),
+      creditAmount: Number(existing.credit_amount || 0),
+      blockReason: 'This recipient already completed this qualified action for the shared underwriting.',
+      cta: 'Challenge my underwriting.',
+      creditGuardrail: 'Duplicate recipient/share/action combinations do not earn additional credits.',
+    };
+  }
+
+  const policy = ACTION_POLICIES[input.action];
+  const [shareActionCount, recipientActionCount] = await Promise.all([
+    countDailyShareActions(database, input.shareId, input.action),
+    countDailyRecipientActions(database, input.recipientHash, input.action),
+  ]);
+  const shareRemainingToday = Math.max(policy.dailyShareCap - shareActionCount, 0);
+  const recipientRemainingToday = Math.max(policy.dailyRecipientCap - recipientActionCount, 0);
+  const eligible = shareRemainingToday > 0 && recipientRemainingToday > 0;
+
+  return {
+    status: eligible ? 'eligible' as const : 'capped' as const,
+    eligible,
+    qualified: eligible,
+    creditAmount: eligible ? policy.creditAmount : 0,
+    potentialCreditAmount: policy.creditAmount,
+    shareRemainingToday,
+    recipientRemainingToday,
+    dailyShareCap: policy.dailyShareCap,
+    dailyRecipientCap: policy.dailyRecipientCap,
+    blockReason: eligible ? null : 'Daily share or recipient caps have already been reached for this qualified action.',
+    cta: 'Challenge my underwriting.',
+    creditGuardrail: 'This is a preview only. Credits are awarded only after the qualified action is recorded and anti-abuse checks pass.',
+  };
+}
+
 type ShareActionSummary = Record<QualifiedShareAction, {
   totalCount: number;
   qualifiedCount: number;
@@ -1085,6 +1148,43 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         ...recorded,
         savedAnalysisId,
         onwardShare,
+        qualifiedActionCatalog: getQualifiedActionCatalog(),
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/underwriting-shares/:token/actions/preview', authenticateOptional, async (req: AuthRequest, res: Response) => {
+    try {
+      const { action, recipient, metadata } = req.body || {};
+      if (!isQualifiedShareAction(action) || action === 'unique_open') {
+        res.status(400).json({ error: 'A qualified action is required: challenge, fork, signup, saved_version' });
+        return;
+      }
+
+      const shareResult = await database.query(
+        `SELECT id, status FROM underwriting_shares WHERE token = $1`,
+        [req.params.token],
+      );
+      const share = shareResult.rows[0];
+      if (!share || share.status !== 'active') {
+        res.status(404).json({ error: 'Share not found' });
+        return;
+      }
+
+      const preview = await previewQualifiedShareActionCredit(database, {
+        shareId: share.id,
+        action,
+        recipientHash: getRecipientHash(req, recipient),
+        metadata,
+        authenticatedUserId: req.userId || null,
+      });
+
+      res.json({
+        success: true,
+        action,
+        ...preview,
         qualifiedActionCatalog: getQualifiedActionCatalog(),
       });
     } catch (err) {

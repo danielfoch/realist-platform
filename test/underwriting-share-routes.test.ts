@@ -14,6 +14,7 @@ import {
   getRecipientShareCoaching,
   getShareActionQualificationBlockReason,
   hasMeaningfulChallengePayload,
+  previewQualifiedShareActionCredit,
   recordQualifiedShareAction,
   redeemGoogleSheetsExportCredits,
 } from '../src/underwriting-share-routes';
@@ -110,6 +111,66 @@ describe('viral underwriting share qualification', () => {
     expect(result.qualified).toBe(false);
     expect(result.creditAmount).toBe(0);
     expect(db.calls.some((call) => call.text.includes('INSERT INTO premium_credit_ledger'))).toBe(false);
+  });
+
+  it('previews whether a challenge will earn credits without mutating ledgers', async () => {
+    const db = createShareDb({ recipientCount: 1 });
+
+    const preview = await previewQualifiedShareActionCredit(db, {
+      shareId: 7,
+      action: 'challenge',
+      recipientHash: 'd'.repeat(64),
+      metadata: { comment: 'raise vacancy and lower rent growth assumptions' },
+    });
+
+    expect(preview).toMatchObject({
+      status: 'eligible',
+      eligible: true,
+      qualified: true,
+      creditAmount: getActionPolicy('challenge').creditAmount,
+      potentialCreditAmount: getActionPolicy('challenge').creditAmount,
+      shareRemainingToday: getActionPolicy('challenge').dailyShareCap,
+      recipientRemainingToday: getActionPolicy('challenge').dailyRecipientCap - 1,
+      cta: 'Challenge my underwriting.',
+    });
+    expect(db.calls.some((call) => call.text.includes('INSERT INTO underwriting_share_actions'))).toBe(false);
+    expect(db.calls.some((call) => call.text.includes('INSERT INTO premium_credit_ledger'))).toBe(false);
+  });
+
+  it('previews blocked and capped share actions before the recipient submits them', async () => {
+    const blockedDb = createShareDb();
+    const blocked = await previewQualifiedShareActionCredit(blockedDb, {
+      shareId: 7,
+      action: 'signup',
+      recipientHash: 'e'.repeat(64),
+      metadata: {},
+      authenticatedUserId: null,
+    });
+
+    expect(blocked).toMatchObject({
+      status: 'blocked',
+      eligible: false,
+      creditAmount: 0,
+      blockReason: expect.stringContaining('authenticated'),
+    });
+    expect(blockedDb.calls).toHaveLength(0);
+
+    const cappedDb = createShareDb({ shareCount: getActionPolicy('saved_version').dailyShareCap });
+    const capped = await previewQualifiedShareActionCredit(cappedDb, {
+      shareId: 7,
+      action: 'saved_version',
+      recipientHash: 'f'.repeat(64),
+      metadata: { inputs: { rent: 3200 } },
+    });
+
+    expect(capped).toMatchObject({
+      status: 'capped',
+      eligible: false,
+      creditAmount: 0,
+      potentialCreditAmount: getActionPolicy('saved_version').creditAmount,
+      shareRemainingToday: 0,
+      blockReason: expect.stringContaining('Daily share or recipient caps'),
+    });
   });
 
   it('summarizes share status by qualified action without exposing recipient hashes', async () => {
