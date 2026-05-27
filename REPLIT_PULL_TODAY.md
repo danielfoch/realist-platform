@@ -24,6 +24,7 @@ This helps Replit/UI show recipients exactly what they need to do before submitt
 - `src/underwriting-share-routes.ts`
 - `test/underwriting-share-routes.test.ts`
 - `REPLIT_PULL_TODAY.md`
+- `.brv/context-tree/growth/viral_sharing/credit_preview_system.md` (local project context for future nightly agents)
 
 Existing untracked local files were left untouched and are not part of this patch:
 - `REPLIT_HANDOFF_CONTRACT.md`
