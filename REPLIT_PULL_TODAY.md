@@ -6,7 +6,7 @@ Wednesday, May 27, 2026
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-05-27-credit-preview`
 - Primary code change commit SHA: `d9a557958fecb50bce5d21d4dc7cf1c3a08f2750`
-- Latest branch HEAD / handoff commit SHA: `a4855cec6f8c355e0fc62437e766d64fac7edf4d`
+- Latest pushed branch HEAD can be verified with: `git log -1 --format=%H`
 
 ## 3. What changed
 Added a non-mutating credit eligibility preview for the viral underwriting loop.

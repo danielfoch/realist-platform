@@ -3,7 +3,7 @@
     {
       "order": 3,
       "path": "_index.md",
-      "tokens": 862,
+      "tokens": 962,
       "type": "summary"
     },
     {
@@ -68,18 +68,18 @@
     },
     {
       "importance": 50,
-      "path": "growth/viral_sharing/premium_credit_eligibility_rules.md",
-      "tokens": 387,
+      "path": "growth/viral_sharing/credit_preview_system.md",
+      "tokens": 1292,
       "type": "context"
     }
   ],
-  "generated_at": "2026-05-26T05:06:45.262Z",
+  "generated_at": "2026-05-27T05:06:12.046Z",
   "lane_tokens": {
-    "contexts": 3083,
+    "contexts": 3988,
     "stubs": 0,
-    "summaries": 1700
+    "summaries": 1800
   },
-  "source_fingerprint": "14d312fb47aeddd0328c6c4f69c957d2b727944d70b6686d5eeadb69875da6b9",
-  "total_tokens": 4783,
+  "source_fingerprint": "7c97994383b416137c0954b3d9a7e817acb3be9806628b00c242b673b53569a5",
+  "total_tokens": 5788,
   "version": 1
 }

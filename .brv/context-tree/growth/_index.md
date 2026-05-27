@@ -1,63 +1,67 @@
 ---
-children_hash: 2509314ff7ec41898c39c0675c89adae936a88a70d1c299a19a68ce0128d2c3e
-compression_ratio: 0.6984978540772532
+children_hash: 6aa8d450e6635677ed73b2e373dc899bf0dd8b63f0056829bf932d970cc1526c
+compression_ratio: 0.7374881964117092
 condensation_order: 2
 covers: [context.md, viral_sharing/_index.md]
-covers_token_total: 932
+covers_token_total: 1059
 summary_level: d2
-token_count: 651
+token_count: 781
 type: summary
 ---
-# Growth Domain: Viral Sharing System
+# Growth Domain — Structural Summary
 
 ## Domain Scope
-The `growth` domain covers viral growth mechanics, referral systems, and user acquisition features. Excludes authentication and database schema details. Related to `frontend/realtor_join_flow` and `frontend/design_system`.
+The **growth** domain covers viral growth mechanics, referral systems, and user acquisition features driving platform adoption. Includes viral sharing, credit/reward systems, growth analytics, and conversion optimization. Excludes authentication and database schema details.
 
-## Viral Sharing Architecture
-Core implementation in `src/underwriting-share-routes.ts` with comprehensive test coverage. Tracks viral chains through `parentShareId`/`parentShareActionId`/`parentShareDepth` lineage fields.
+---
 
-### Token & URL Structure
-- Tokens: `crypto.randomBytes(18).toString("base64url")`
-- Recipient URLs: `/underwriting/${token}?recipient=${recipientKey}`
-- Max 25 recipients per `createUnderwritingShareRecipientLinks` call
-- SHA256 hashed recipient keys
+## Viral Sharing System (`viral_sharing/`)
 
-### Core Functions
-- `createUnderwritingShare` — token generation + lineage tracking
-- `recordQualifiedShareAction` — cap enforcement + credit awarding
-- `getShareActionSummary` — analytics + conversion coaching
-- `getGoogleSheetsExportCreditBalance` / `redeemGoogleSheetsExportCredits` — credit management
+### Core Reward Architecture
+Five qualified share actions with escalating credit values and daily caps (all typed as `google_sheets_export`):
 
-## Premium Credit System
-Credit type: `google_sheets_export`. Storage via `premium_credit_ledger` (earned) and `premium_credit_redemptions` (redeemed).
+| Action | Credits | Share Cap | Recipient Cap |
+|--------|---------|-----------|---------------|
+| `unique_open` | 1 | 5 | 1 |
+| `challenge` | 2 | 8 | 2 |
+| `fork` | 3 | 8 | 2 |
+| `saved_version` | 4 | 8 | 2 |
+| `signup` | 5 | 5 | 1 |
 
-### Reward Tiers & Caps
-| Action | Credits | Daily Share Cap | Daily Recipient Cap |
-|--------|---------|-----------------|---------------------|
-| unique_open | 1 | 5-8 | 1-2 |
-| challenge | 2 | 5-8 | 1-2 |
-| fork | 3 | 5-8 | 1-2 |
-| saved_version | 4 | 5-8 | 1-2 |
-| signup | 5 | 5-8 | 1-2 |
+Duplicate recipient/share/action combinations are blocked. Raw clicks never qualify.
 
-### Eligibility Enforcement
-- Anonymous signups excluded (requires `req.userId`)
-- Challenge/fork/saved-version actions require meaningful payload changes (10+ chars or non-empty objects/arrays)
-- Duplicate actions (same recipient/action/share) prevented
-- Daily caps: `shareActionCount < policy.dailyShareCap AND recipientActionCount < policy.dailyRecipientCap`
+### Eligibility & Qualification
+- **Signup actions**: Require authenticated `req.userId`; anonymous signups earn zero credits
+- **Challenge/fork/saved_version**: Require meaningful payload evidence (non-empty `challengedFields`, changed `assumptions`/`inputs`/`metrics`, or 10+ char comment)
+- See **premium_credit_eligibility_rules.md** for route-level auth enforcement details
 
-## Growth Analytics & Coaching
-### Health Score Formula
-`min(100, round(min(opens,5)*8 + min(challenges,4)*10 + min(forkOrSavedVersions,3)*12 + min(signups,2)*12))`
+### Share Mechanics & Lineage
+- **Token generation**: `crypto.randomBytes(18).toString("base64url")`
+- **Recipient URLs**: `/underwriting/${token}?recipient=${recipientKey}`
+- **Privacy**: SHA-256 hashing for recipient identifiers
+- **Batch limit**: Max 25 recipients per `createUnderwritingShareRecipientLinks` call
+- **Viral chain attribution**: `parentShareId`, `parentShareActionId`, `parentShareDepth` track lineage (`shareDepth = parentShareId ? Number(parentShareDepth || 0) + 1 : 0`)
 
-### Conversion Nudge Stages
-`first_open → convert_opens_to_challenges → convert_challenges_to_versions → convert_versions_to_accounts → amplify`
+### Credit Preview System
+- **Helper**: `previewQualifiedShareActionCredit`
+- **Endpoint**: `POST /underwriting-shares/:token/actions/preview`
+- Read-only eligibility checks without mutating `underwriting_share_actions` or `premium_credit_ledger`
+- Returns: status (`eligible`/`blocked`/`duplicate`/`capped`), remaining caps, CTA text, guardrail copy
+- See **credit_preview_system.md** for block reason validation and payload evidence checks
 
-### Conversion Thresholds
-- openToChallenge: <0.35
-- challengeToVersion: <0.5
-- versionToSignup: <0.4
+### Growth Analytics & Nudges
+- **Health score**: `min(100, round(min(opens,5)*8 + min(challenges,4)*10 + min(forkOrSavedVersions,3)*12 + min(signups,2)*12))`
+- **Nudge progression**: `first_open` → `convert_opens_to_challenges` → `convert_challenges_to_versions` → `convert_versions_to_accounts` → `amplify`
+- **Conversion thresholds**: open→challenge <0.35, challenge→version <0.5, version→signup <0.4
+- See **underwriting_share_rewards.md** for core reward logic, lineage tracking, and growth nudge implementation
 
-## Drill-Down References
-- **Premium Credit Eligibility Rules** (`premium_credit_eligibility_rules.md`) — Authentication requirements and payload validation logic
-- **Underwriting Share Rewards** (`underwriting_share_rewards.md`) — Core functions, reward tiers, enforcement rules, and growth optimization details
+---
+
+## Key Implementation Files
+- `src/flywheel-routes.ts` — Preview endpoint and credit helpers
+- `src/underwriting-share-routes.ts` — Core share routes with test coverage
+- `db/migrations/016_premium_credit_redemptions.sql` — Credit ledger and redemption schema
+
+## Related Domains
+- **frontend/realtor_join_flow** — Realtor onboarding flows with potential viral sharing integration
+- **frontend/design_system** — UI components for share flows
