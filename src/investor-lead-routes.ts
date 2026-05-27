@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { spawn } from 'child_process';
 import { db } from './db';
+import { appendLead } from '../server/leadsSheet';
 
 const GHL_API_BASE = process.env.GHL_API_BASE || 'https://rest.gohighlevel.com/v1';
 const GHL_API_KEY = process.env.GHL_API_KEY;
@@ -87,6 +88,20 @@ export function createInvestorLeadRouter(): Router {
           `INSERT INTO agreement_acceptances (user_id, agreement_type, accepted_at, ip_address, user_agent) VALUES ($1, 'referral_agreement', CURRENT_TIMESTAMP, $2, $3)`,
           [user.id, req.ip || null, req.get('user-agent') || null]
         );
+
+        // Pipe to owner's Google Sheet (replaces GHL as primary destination).
+        appendLead('InvestorSignups', {
+          userId: user.id,
+          fullName: full_name,
+          email,
+          phone: phone || '',
+          strategy: Array.isArray(strategy) ? strategy.join(', ') : (strategy || ''),
+          preferredCities: Array.isArray(preferred_cities) ? preferred_cities.join(', ') : (preferred_cities || ''),
+          budgetRange: budget_range || '',
+          propertyTypes: Array.isArray(property_types) ? property_types.join(', ') : (property_types || ''),
+          experienceLevel: experience_level || '',
+          source: source || 'organic',
+        });
 
         // Sync to GHL if configured
         if (GHL_API_KEY && GHL_LOCATION_ID) {
@@ -346,6 +361,26 @@ export function createInvestorLeadRouter(): Router {
             );
           }
         }
+
+        // Pipe to owner's Google Sheet (replaces GHL as primary destination).
+        appendLead('InvestorLeads', {
+          leadId: lead.id,
+          fullName: full_name,
+          email,
+          phone: phone || '',
+          investmentType: investment_type || '',
+          budgetMin: budget_min || '',
+          budgetMax: budget_max || '',
+          targetCities: Array.isArray(target_cities) ? target_cities.join(', ') : '',
+          targetProvinces: Array.isArray(target_provinces) ? target_provinces.join(', ') : '',
+          timeline: timeline || '',
+          experience: investment_experience || '',
+          notes: notes || '',
+          utmSource: utm_source,
+          utmMedium: utm_medium || '',
+          utmCampaign: utm_campaign || '',
+          matchedRealtors: notifiedCount,
+        });
 
         // Sync to GHL if configured (for lead tracking)
         let ghlContactId = null;

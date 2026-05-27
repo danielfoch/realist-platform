@@ -10,8 +10,20 @@ import { eq, and, gt, sql } from "drizzle-orm";
 import { storage } from "./storage";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
 import { sendWelcomeAccountEmail } from "./resend";
+import { appendLead } from "./leadsSheet";
 
 async function sendLoginWebhookToGHL(user: { id: string; email: string; firstName: string | null; lastName: string | null; phone?: string | null }) {
+  // Pipe to the owner's Google Sheet (replaces GHL).
+  appendLead("Logins", {
+    email: user.email,
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    phone: user.phone || "",
+    userId: user.id,
+    source: "realist.ca",
+    event: "login",
+  });
+
   const webhookUrl = process.env.GHL_WEBHOOK_URL;
   if (!webhookUrl) return;
 
@@ -39,6 +51,17 @@ async function sendLoginWebhookToGHL(user: { id: string; email: string; firstNam
 }
 
 async function sendSignupWebhookToGHL(user: { id: string; email: string; firstName: string | null; lastName: string | null; phone?: string | null }) {
+  // Pipe to the owner's Google Sheet (replaces GHL).
+  appendLead("Signups", {
+    email: user.email,
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    phone: user.phone || "",
+    userId: user.id,
+    source: "realist.ca",
+    event: "signup",
+  });
+
   const webhookUrl = process.env.GHL_WEBHOOK_URL;
   if (!webhookUrl) return;
 

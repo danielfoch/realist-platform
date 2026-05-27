@@ -2,7 +2,39 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { google } from "googleapis";
+import { appendLead } from "./leadsSheet";
 import { storage } from "./storage";
+
+// Maps the formTag/source value already present on every lead payload to a
+// friendly tab name in the owner's Google Sheet. Anything not in this map
+// falls back to the raw formTag (sanitized).
+const LEAD_TAB_BY_FORMTAG: Record<string, string> = {
+  realist_signup: "Signups",
+  realist_login: "Logins",
+  realist_deal_analysis: "Deals",
+  deal_analyzer: "DealAnalyzerLeads",
+  mli_select_quote: "MLISelectLeads",
+  engagement: "Engagements",
+  meetup_contact: "MeetupContacts",
+  expert_application: "MarketExpertApps",
+  realtor_application: "RealtorApplications",
+  lender_application: "LenderApplications",
+  deal_match_request: "DealMatch",
+  multiplex_masterclass: "MasterclassLeads",
+  multiplexmasterclass: "MultiplexFitAssessment",
+  land_claim_screener: "LandClaimLeads",
+  "Deal Analyzer": "DealAnalyzerLeads",
+  "MLI Select Calculator": "MLISelectLeads",
+  "Multiplex Masterclass Sales Page": "MasterclassLeads",
+  "Multiplex Investor Fit Assessment": "MultiplexFitAssessment",
+  "Land Claim Screener": "LandClaimLeads",
+};
+
+function sanitizeTab(s?: string): string {
+  if (!s) return "";
+  return s.replace(/[^A-Za-z0-9_]/g, "_").slice(0, 60);
+}
+
 import { db } from "./db";
 import { 
   insertLeadSchema, 
@@ -290,9 +322,16 @@ function buildDiscoveryHref(input: {
 }
 
 async function sendWebhook(leadId: string, payload: object) {
+  // Always pipe to owner's Google Sheet first (replaces GHL). This is the
+  // single canonical sheet-write path for every lead/contact event; the
+  // companion sendToGoogleSheets() helper deliberately does NOT also append
+  // to avoid duplicate rows when both are called for the same event.
+  const p = payload as Record<string, any>;
+  const tab = LEAD_TAB_BY_FORMTAG[p.formTag] || sanitizeTab(p.formTag) || "Leads";
+  appendLead(tab, { leadId, ...p });
+
   const webhookUrl = process.env.GHL_WEBHOOK_URL;
   if (!webhookUrl) {
-    console.log("No GHL_WEBHOOK_URL configured, skipping webhook");
     return;
   }
 
@@ -359,9 +398,6 @@ async function sendDealAnalysisWebhookToGHL(data: {
   resultsJson?: any;
   inputsJson?: any;
 }) {
-  const webhookUrl = process.env.GHL_WEBHOOK_URL;
-  if (!webhookUrl) return;
-
   let email = "";
   let firstName = "";
   let lastName = "";
@@ -376,7 +412,7 @@ async function sendDealAnalysisWebhookToGHL(data: {
   }
 
   if (!email) {
-    console.log(`[ghl-analysis] Skipping webhook for analysis ${data.analysisId}: no email to match in GHL`);
+    console.log(`[deal-analysis] Skipping sheet append for analysis ${data.analysisId}: no email on file`);
     return;
   }
 
@@ -404,15 +440,21 @@ async function sendDealAnalysisWebhookToGHL(data: {
     totalDealsAnalyzed: dealCount,
   };
 
-  try {
-    const resp = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    console.log(`[ghl-analysis] Webhook sent for analysis ${data.analysisId}: ${resp.status}`);
-  } catch (err: any) {
-    console.error(`[ghl-analysis] Webhook failed for analysis ${data.analysisId}:`, err.message);
+  // Pipe to owner's Google Sheet (replaces GHL).
+  appendLead("Deals", payload);
+
+  const webhookUrl = process.env.GHL_WEBHOOK_URL;
+  if (webhookUrl) {
+    try {
+      const resp = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      console.log(`[ghl-analysis] Webhook sent for analysis ${data.analysisId}: ${resp.status}`);
+    } catch (err: any) {
+      console.error(`[ghl-analysis] Webhook failed for analysis ${data.analysisId}:`, err.message);
+    }
   }
 
   const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
@@ -439,7 +481,10 @@ async function sendDealAnalysisWebhookToGHL(data: {
   }
 }
 
-// Backup leads to Google Sheets via webhook
+// Legacy Google Sheets backup webhook. The primary sheet write happens in
+// sendWebhook(); this helper is only kept for the optional external
+// SHEETS_WEBHOOK_URL integration. Do NOT call appendLead() here or every
+// lead would be written to the owner's sheet twice.
 async function sendToGoogleSheets(leadData: {
   email: string;
   firstName: string;
@@ -447,12 +492,11 @@ async function sendToGoogleSheets(leadData: {
   phone?: string;
   source: string;
   tags?: string[];
+  [k: string]: any;
 }) {
   const url = process.env.SHEETS_WEBHOOK_URL;
   const secret = process.env.WEBHOOK_SECRET;
-  
   if (!url || !secret) {
-    console.log("Google Sheets webhook not configured, skipping backup");
     return;
   }
 
@@ -9744,6 +9788,8 @@ export async function registerRoutes(
       const parsed = insertRealtorApplicationSchema.parse(req.body);
       const [application] = await db.insert(realtorApplications).values(parsed).returning();
 
+      appendLead("RealtorApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
+
       try {
         const webhookUrl = process.env.GHL_WEBHOOK_URL;
         if (webhookUrl) {
@@ -9787,6 +9833,8 @@ export async function registerRoutes(
       const { insertLenderApplicationSchema } = await import("@shared/schema");
       const parsed = insertLenderApplicationSchema.parse(req.body);
       const [application] = await db.insert(lenderApplications).values(parsed).returning();
+
+      appendLead("LenderApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
 
       try {
         const webhookUrl = process.env.GHL_WEBHOOK_URL;
@@ -9834,6 +9882,8 @@ export async function registerRoutes(
         userId: req.session?.userId || null,
       });
       const [match] = await db.insert(dealMatchRequests).values(parsed).returning();
+
+      appendLead("DealMatch", { ...parsed, matchId: match.id, source: "realist.ca" });
 
       try {
         const webhookUrl = process.env.GHL_WEBHOOK_URL;

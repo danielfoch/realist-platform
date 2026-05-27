@@ -673,10 +673,8 @@ export async function queueCommentNotification(params: {
 }
 
 export async function processPendingGhlNotifications(limit = 50): Promise<{ sent: number; failed: number; skipped: number }> {
+  const { appendLead } = await import("./leadsSheet");
   const webhookUrl = process.env.GHL_WEBHOOK_URL;
-  if (!webhookUrl) {
-    return { sent: 0, failed: 0, skipped: 0 };
-  }
 
   const queue = await storage.getPendingNotificationQueue(limit);
   let sent = 0;
@@ -684,6 +682,24 @@ export async function processPendingGhlNotifications(limit = 50): Promise<{ sent
   let skipped = 0;
 
   for (const item of queue) {
+    // Always mirror the notification event to the owner's Google Sheet
+    // (replaces GHL as the primary destination).
+    const payload = (item.payloadJson || {}) as Record<string, any>;
+    appendLead("GhlNotifications", {
+      queueId: item.id,
+      eventType: (item as any).eventType || payload.eventType || "",
+      recipientEmail: payload.email || payload.recipientEmail || "",
+      recipientFirstName: payload.firstName || "",
+      ...payload,
+    });
+
+    if (!webhookUrl) {
+      // No GHL configured — count the sheet write as the successful send.
+      sent++;
+      await storage.markNotificationQueueItemSent(item.id);
+      continue;
+    }
+
     try {
       const response = await fetch(webhookUrl, {
         method: "POST",

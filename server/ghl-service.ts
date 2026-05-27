@@ -1,5 +1,14 @@
 // GoHighLevel CRM Integration Service
-// Pushes contacts to GHL when new signups occur
+// Pushes contacts to GHL when new signups occur.
+// Also pipes every contact to the owner's Google Sheet (replaces GHL as the primary CRM).
+
+import { appendLead } from "./leadsSheet";
+
+const SOURCE_TO_TAB: Record<string, string> = {
+  realtor_join: "Realtors",
+  lender_join: "Lenders",
+  deal_lead: "DealLeads",
+};
 
 interface GHLContact {
   firstName: string;
@@ -29,11 +38,21 @@ const GHL_BASE_URL = 'https://services.leadconnectorhq.com';
  * Does not throw - errors are logged but don't fail the main flow
  */
 export async function pushToGHL(contact: GHLContact): Promise<void> {
+  // Always pipe to owner's Google Sheet (replaces GHL as primary destination).
+  const tab = SOURCE_TO_TAB[contact.source] || "Contacts";
+  appendLead(tab, {
+    firstName: contact.firstName,
+    lastName: contact.lastName,
+    email: contact.email,
+    phone: contact.phone,
+    tags: contact.tags,
+    source: contact.source,
+  });
+
   const config = getConfig();
-  
-  // Skip if no credentials configured
+
+  // Skip GHL if no credentials configured
   if (!config.token || !config.locationId) {
-    console.log('[GHL] Skipping - no credentials configured');
     return;
   }
 
