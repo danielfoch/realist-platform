@@ -12,6 +12,7 @@ import {
   getQualifiedShareRewardBrief,
   getQualifiedActionCatalog,
   getRecipientShareCoaching,
+  getChallengeShareCard,
   getShareActionQualificationBlockReason,
   hasMeaningfulChallengePayload,
   previewQualifiedShareActionCredit,
@@ -377,6 +378,11 @@ describe('viral underwriting share qualification', () => {
       id: 201,
       shareUrl: expect.stringContaining('/underwriting/share-token?recipient='),
       cta: 'Challenge my underwriting.',
+      shareCard: expect.objectContaining({
+        cta: 'Challenge my underwriting.',
+        nextQualifiedAction: 'challenge',
+        antiAbuseGuardrail: expect.stringContaining('Raw share clicks alone never earn credits'),
+      }),
       qualifiedActionsRequired: ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'],
     });
     expect(links[0].recipientHash).toBe(getExplicitRecipientHash(links[0].recipientKey));
@@ -483,6 +489,34 @@ describe('viral underwriting share qualification', () => {
       ]),
     });
     expect(brief.bestNextReward).toEqual({ action: 'saved_version', creditAmount: 4, remainingToday: 3 });
+  });
+
+  it('builds recipient-specific Challenge my underwriting cards without promising raw-click credits', () => {
+    const card = getChallengeShareCard({
+      token: 'share-token',
+      recipientKey: 'recipient key/with spaces',
+      source: 'agent_dm',
+      nextQualifiedAction: 'saved_version',
+    });
+
+    expect(card).toMatchObject({
+      headline: 'Challenge my underwriting.',
+      cta: 'Challenge my underwriting.',
+      source: 'agent_dm',
+      nextQualifiedAction: 'saved_version',
+      rewardTeaser: 'Earn 4 Google Sheets export credits when this becomes a qualified saved version.',
+      loopSteps: [
+        'Analyze deal',
+        'Share underwriting',
+        'Recipient challenges or forks assumptions',
+        'Save account-tied version',
+        'Share onward',
+      ],
+      qualifiedActionsRequired: ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'],
+    });
+    expect(card.shareUrl).toBe('/underwriting/share-token?recipient=recipient%20key%2Fwith%20spaces');
+    expect(card.recipientInstruction).toContain('Save your version');
+    expect(card.antiAbuseGuardrail).toContain('Raw share clicks alone never earn credits');
   });
 
   it('ranks recipient-source coaching by the next qualified underwriting loop action', () => {

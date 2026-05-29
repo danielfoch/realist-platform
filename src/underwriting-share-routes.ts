@@ -111,6 +111,7 @@ export async function createUnderwritingShare(database: DatabaseAdapter, input: 
     shareDepth: Number(row.share_depth || shareDepth),
     shareUrl: `/underwriting/${row.token}`,
     cta: 'Challenge my underwriting.',
+    shareCard: getChallengeShareCard({ token: row.token, source }),
     rewardPolicy: getRewardPolicySnapshot(),
   };
 }
@@ -177,6 +178,12 @@ export async function createUnderwritingShareRecipientLinks(database: DatabaseAd
       recipientHash,
       shareUrl: `/underwriting/${input.token}?recipient=${recipientKey}`,
       cta: 'Challenge my underwriting.',
+      shareCard: getChallengeShareCard({
+        token: input.token,
+        recipientKey,
+        source: String(source).slice(0, 64),
+        nextQualifiedAction: 'challenge',
+      }),
       createdAt: result.rows[0]?.created_at || null,
       qualifiedActionsRequired: ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'] as QualifiedShareAction[],
     });
@@ -540,6 +547,41 @@ type RecipientShareCoaching = {
   suggestedCopy: string;
   creditGuardrail: string;
 };
+
+export type ChallengeShareCardInput = {
+  token: string;
+  recipientKey?: string | null;
+  nextQualifiedAction?: QualifiedShareAction;
+  source?: string | null;
+};
+
+export function getChallengeShareCard(input: ChallengeShareCardInput) {
+  const nextQualifiedAction = input.nextQualifiedAction || 'challenge';
+  const actionCopy = ACTION_CATALOG_COPY[nextQualifiedAction];
+  const shareUrl = input.recipientKey
+    ? `/underwriting/${input.token}?recipient=${encodeURIComponent(input.recipientKey)}`
+    : `/underwriting/${input.token}`;
+
+  return {
+    headline: 'Challenge my underwriting.',
+    cta: 'Challenge my underwriting.',
+    shareUrl,
+    source: input.source || 'analysis',
+    nextQualifiedAction,
+    recipientInstruction: actionCopy.recipientPrompt,
+    ownerInstruction: actionCopy.ownerPrompt,
+    rewardTeaser: `Earn ${ACTION_POLICIES[nextQualifiedAction].creditAmount} Google Sheets export credit${ACTION_POLICIES[nextQualifiedAction].creditAmount === 1 ? '' : 's'} when this becomes a qualified ${nextQualifiedAction.replace('_', ' ')}.`,
+    loopSteps: [
+      'Analyze deal',
+      'Share underwriting',
+      'Recipient challenges or forks assumptions',
+      'Save account-tied version',
+      'Share onward',
+    ],
+    qualifiedActionsRequired: QUALIFIED_ACTIONS,
+    antiAbuseGuardrail: 'Credits require qualified actions with unique recipient tracking and daily caps. Raw share clicks alone never earn credits.',
+  };
+}
 
 function getConversionRate(numerator: number, denominator: number) {
   return denominator > 0 ? Number((numerator / denominator).toFixed(4)) : 0;
@@ -949,6 +991,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         shareUrl: created.shareUrl,
         cta: created.cta,
         shareDepth: created.shareDepth,
+        shareCard: created.shareCard,
         rewardPolicy: created.rewardPolicy,
         qualifiedActionCatalog: getQualifiedActionCatalog(),
       });
@@ -1006,6 +1049,12 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
           notes: row.notes,
         },
         visitorQualification: open,
+        shareCard: getChallengeShareCard({
+          token: row.token,
+          recipientKey: typeof req.query.recipient === 'string' ? req.query.recipient : null,
+          source: 'recipient_open',
+          nextQualifiedAction: 'challenge',
+        }),
         qualifiedActionCatalog: getQualifiedActionCatalog(),
       });
     } catch (err) {
@@ -1043,6 +1092,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         success: true,
         cta: 'Challenge my underwriting.',
         links,
+        shareCard: getChallengeShareCard({ token: share.token, source: req.body?.source || 'manual' }),
         rewardPolicy: getRewardPolicySnapshot(),
         qualifiedActionCatalog: getQualifiedActionCatalog(),
         creditGuardrail: 'Creating recipient links never awards credits. Credits require qualified opens, challenges, forks, signups, or saved versions within caps.',
@@ -1214,6 +1264,11 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         ...share,
         cta: 'Challenge my underwriting.',
         shareUrl: `/underwriting/${share.token}`,
+        shareCard: getChallengeShareCard({
+          token: share.token,
+          source: 'status',
+          nextQualifiedAction: actionSummary.conversionInsights.nextQualifiedAction,
+        }),
         rewardPolicy: getRewardPolicySnapshot(),
         qualifiedActionCatalog: getQualifiedActionCatalog(),
         actionSummary,
