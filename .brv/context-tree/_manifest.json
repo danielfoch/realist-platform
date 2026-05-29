@@ -3,7 +3,7 @@
     {
       "order": 3,
       "path": "_index.md",
-      "tokens": 962,
+      "tokens": 845,
       "type": "summary"
     },
     {
@@ -13,9 +13,9 @@
       "type": "summary"
     },
     {
-      "order": 1,
-      "path": "frontend/design_system/_index.md",
-      "tokens": 304,
+      "order": 2,
+      "path": "growth/_index.md",
+      "tokens": 586,
       "type": "summary"
     },
     {
@@ -62,24 +62,30 @@
     },
     {
       "importance": 50,
-      "path": "growth/viral_sharing/context.md",
-      "tokens": 191,
+      "path": "growth/viral_sharing/challenge_share_card_pattern.md",
+      "tokens": 340,
       "type": "context"
     },
     {
       "importance": 50,
-      "path": "growth/viral_sharing/credit_preview_system.md",
-      "tokens": 1292,
+      "path": "growth/viral_sharing/challenge_share_system.md",
+      "tokens": 917,
+      "type": "context"
+    },
+    {
+      "importance": 50,
+      "path": "growth/viral_sharing/context.md",
+      "tokens": 191,
       "type": "context"
     }
   ],
-  "generated_at": "2026-05-27T05:06:12.046Z",
+  "generated_at": "2026-05-29T05:07:28.536Z",
   "lane_tokens": {
-    "contexts": 3988,
+    "contexts": 3953,
     "stubs": 0,
-    "summaries": 1800
+    "summaries": 1965
   },
-  "source_fingerprint": "7c97994383b416137c0954b3d9a7e817acb3be9806628b00c242b673b53569a5",
-  "total_tokens": 5788,
+  "source_fingerprint": "c3f59270a4f39508e3b32d9960c231ea5897d79ce76513ab4fddd49947c310c1",
+  "total_tokens": 5918,
   "version": 1
 }

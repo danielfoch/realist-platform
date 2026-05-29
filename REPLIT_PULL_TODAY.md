@@ -24,6 +24,12 @@ This makes the growth loop easier to wire in Replit: Analyze deal → Share unde
 - `src/underwriting-share-routes.ts`
 - `test/underwriting-share-routes.test.ts`
 - `REPLIT_PULL_TODAY.md`
+- `.brv/context-tree/growth/viral_sharing/challenge_share_system.md` (local project context for future nightly agents)
+- `.brv/context-tree/growth/viral_sharing/challenge_share_card_pattern.md` (local project context for future nightly agents)
+- `.brv/context-tree/_index.md`
+- `.brv/context-tree/_manifest.json`
+- `.brv/context-tree/growth/_index.md`
+- `.brv/context-tree/growth/viral_sharing/_index.md`
 
 Existing untracked local files were left untouched and are not part of this patch:
 - `REPLIT_HANDOFF_CONTRACT.md`

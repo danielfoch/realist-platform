@@ -1,60 +1,48 @@
 ---
-children_hash: 197b4d73dacea4052120a5b78de14a9169538e9bbbb09aa3785c54812c094893
-compression_ratio: 0.28427279053583854
+children_hash: 636d6c99177c7f0e065a15f0e2a5e9b7be72edf387b06f0dfcd7a8ca2048925c
+compression_ratio: 0.16025175502299685
 condensation_order: 1
-covers: [context.md, credit_preview_system.md, premium_credit_eligibility_rules.md, underwriting_share_rewards.md]
-covers_token_total: 2874
+covers: [challenge_share_card_pattern.md, challenge_share_system.md, context.md, credit_preview_system.md, premium_credit_eligibility_rules.md, underwriting_share_rewards.md]
+covers_token_total: 4131
 summary_level: d1
-token_count: 817
+token_count: 662
 type: summary
 ---
 # Viral Sharing System — Structural Summary
 
 ## Overview
-The viral underwriting share system rewards users with premium credits when recipients engage meaningfully with shared property analyses. It encompasses share creation, recipient tracking, action qualification, credit management, and growth analytics.
+The viral underwriting share system rewards users with premium credits when recipients engage meaningfully with shared property analyses. Implemented in `src/underwriting-share-routes.ts` with test coverage in `test/underwriting-share-routes.test.ts`.
 
 ## Core Architecture
+- **Share Creation**: Token generation via `crypto.randomBytes(18).toString("base64url")`, lineage tracking through `parent_share_id`, `parent_share_action_id`, `shareDepth`
+- **Recipient Management**: Max 25 recipients per call, keys hashed via `sha256` for privacy, anonymous recipients hashed from IP+user-agent
+- **URL Format**: `/underwriting/${token}?recipient=${recipientKey}`
+- **Database Tables**: `underwriting_shares`, `underwriting_share_recipients`, `underwriting_share_actions`, `premium_credit_ledger`, `premium_credit_redemptions`
 
-### Qualified Share Actions & Credit Rewards
-Five action types with escalating credit values and daily caps:
-- **unique_open** — 1 credit (share cap: 5, recipient cap: 1)
-- **challenge** — 2 credits (share cap: 8, recipient cap: 2)
-- **fork** — 3 credits (share cap: 8, recipient cap: 2)
-- **saved_version** — 4 credits (share cap: 8, recipient cap: 2)
-- **signup** — 5 credits (share cap: 5, recipient cap: 1)
+## Qualified Action Types & Credits
+| Action | Credits | Daily Share Cap | Daily Recipient Cap |
+|--------|---------|-----------------|---------------------|
+| `unique_open` | 1 | 5 | 1 |
+| `challenge` | 2 | 8 | 2 |
+| `fork` | 3 | 8 | 2 |
+| `saved_version` | 4 | 8 | 2 |
+| `signup` | 5 | 5 | 1 |
 
-All credits are typed as `google_sheets_export`. Duplicate recipient/share/action combinations are blocked.
+Credit type: `google_sheets_export`
 
-### Eligibility & Qualification Rules
-- **Signup actions** require authenticated `req.userId`; anonymous signups earn zero credits
-- **Challenge/fork/saved_version** require meaningful payload evidence: non-empty `challengedFields` array, changed `assumptions`/`inputs`/`metrics` objects, or 10+ character comment/notes
-- Raw clicks alone never qualify — only unique opens, challenges, forks, signups, or saved versions within daily caps
+## Key Rules & Constraints
+- Raw clicks never earn credits — only qualified actions within daily caps
+- Signup requires authenticated `req.userId` (anonymous signups excluded)
+- Challenge/fork/saved_version require meaningful payload: `challengedFields[]`, `assumptions/inputs/metrics` objects, or 10+ char comment/notes
+- Duplicate detection on same share/recipient/action combination
+- Health score: `min(100, round(min(opens,5)*8 + min(challenges,4)*10 + min(forkOrSavedVersions,3)*12 + min(signups,2)*12))`
 
-### Share Mechanics
-- **Token generation**: `crypto.randomBytes(18).toString("base64url")`
-- **Recipient URLs**: `/underwriting/${token}?recipient=${recipientKey}`
-- **Recipient hashing**: SHA-256 for privacy
-- **Max recipients**: 25 per `createUnderwritingShareRecipientLinks` call
-- **Lineage tracking**: `parentShareId`, `parentShareActionId`, `parentShareDepth` enable viral chain attribution (`shareDepth = parentShareId ? Number(parentShareDepth || 0) + 1 : 0`)
-
-### Credit Preview System
-The `previewQualifiedShareActionCredit` helper and `POST /underwriting-shares/:token/actions/preview` endpoint provide read-only eligibility checks without mutating `underwriting_share_actions` or `premium_credit_ledger` tables. Returns status (`eligible`/`blocked`/`duplicate`/`capped`), remaining caps, CTA text, and guardrail copy.
-
-### Growth & Analytics
-- **Health score**: `min(100, round(min(opens,5)*8 + min(challenges,4)*10 + min(forkOrSavedVersions,3)*12 + min(signups,2)*12))`
-- **Nudge stages**: `first_open` → `convert_opens_to_challenges` → `convert_challenges_to_versions` → `convert_versions_to_accounts` → `amplify`
-- **Conversion thresholds**: open→challenge <0.35, challenge→version <0.5, version→signup <0.4
-
-## Key Files
-- `src/underwriting-share-routes.ts` — Core share routes, credit preview endpoint, reward logic, lineage tracking, and growth analytics with test coverage
-- `test/underwriting-share-routes.test.ts` — Viral underwriting reward and preview coverage
-- `db/migrations/016_premium_credit_redemptions.sql` — Credit ledger and redemption schema
-
-## Related Topics
-- `frontend/realtor_join_flow` — Realtor onboarding flows that may integrate viral sharing
-- `frontend/design_system` — UI components for share flows
+## System Components
+- **Credit Preview**: `previewQualifiedShareActionCredit` helper + `POST /underwriting-shares/:token/actions/preview` endpoint — read-only eligibility check without database mutations
+- **Analytics Coaching**: Funnel stages (`get_first_qualified_open` → `convert_opens_to_challenges` → `convert_challenges_to_versions` → `convert_versions_to_accounts` → `amplify_working_loop`) with bottleneck thresholds: `openToChallenge < 0.35`, `challengeToVersion < 0.5`, `versionToSignup < 0.4`
 
 ## Entry References
-- **credit_preview_system.md** — Non-mutating preview endpoint, block reason validation, payload evidence checks
-- **premium_credit_eligibility_rules.md** — Route-level auth enforcement, anonymous signup exclusion
-- **underwriting_share_rewards.md** — Core reward logic, lineage tracking, health scoring, growth nudges
+- **challenge_share_system.md**: Core share system implementation, qualified action tracking, analytics coaching
+- **credit_preview_system.md**: Non-mutating preview endpoint for credit eligibility
+- **premium_credit_eligibility_rules.md**: Authentication requirements and payload validation rules
+- **underwriting_share_rewards.md**: Reward structure, lineage tracking, credit management functions

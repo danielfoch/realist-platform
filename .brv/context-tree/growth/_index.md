@@ -1,67 +1,52 @@
 ---
-children_hash: 6aa8d450e6635677ed73b2e373dc899bf0dd8b63f0056829bf932d970cc1526c
-compression_ratio: 0.7374881964117092
+children_hash: 3a59289295df593d345c27f27599ceec8426d685d0385e570754e0fc64423310
+compression_ratio: 0.6376496191512514
 condensation_order: 2
 covers: [context.md, viral_sharing/_index.md]
-covers_token_total: 1059
+covers_token_total: 919
 summary_level: d2
-token_count: 781
+token_count: 586
 type: summary
 ---
-# Growth Domain — Structural Summary
+# Growth Domain — Structural Summary (d2)
 
 ## Domain Scope
-The **growth** domain covers viral growth mechanics, referral systems, and user acquisition features driving platform adoption. Includes viral sharing, credit/reward systems, growth analytics, and conversion optimization. Excludes authentication and database schema details.
+Covers viral growth mechanics, referral systems, credit/reward systems, and user acquisition features. Excludes authentication and database schema details.
 
----
+## Viral Sharing System Architecture
 
-## Viral Sharing System (`viral_sharing/`)
+**Implementation**: `src/underwriting-share-routes.ts` | **Tests**: `test/underwriting-share-routes.test.ts`
 
-### Core Reward Architecture
-Five qualified share actions with escalating credit values and daily caps (all typed as `google_sheets_export`):
+### Core Mechanics
+- **Token Generation**: `crypto.randomBytes(18).toString("base64url")` with lineage tracking (`parent_share_id`, `parent_share_action_id`, `shareDepth`)
+- **Recipient Management**: Max 25/call, SHA-256 hashed keys, anonymous recipients hashed from IP+user-agent
+- **URL Pattern**: `/underwriting/${token}?recipient=${recipientKey}`
+- **Database**: `underwriting_shares`, `underwriting_share_recipients`, `underwriting_share_actions`, `premium_credit_ledger`, `premium_credit_redemptions`
 
-| Action | Credits | Share Cap | Recipient Cap |
-|--------|---------|-----------|---------------|
+### Credit Reward Structure
+| Qualified Action | Credits | Share Cap | Recipient Cap |
+|------------------|---------|-----------|---------------|
 | `unique_open` | 1 | 5 | 1 |
 | `challenge` | 2 | 8 | 2 |
 | `fork` | 3 | 8 | 2 |
 | `saved_version` | 4 | 8 | 2 |
 | `signup` | 5 | 5 | 1 |
 
-Duplicate recipient/share/action combinations are blocked. Raw clicks never qualify.
+Credit type: `google_sheets_export`
 
-### Eligibility & Qualification
-- **Signup actions**: Require authenticated `req.userId`; anonymous signups earn zero credits
-- **Challenge/fork/saved_version**: Require meaningful payload evidence (non-empty `challengedFields`, changed `assumptions`/`inputs`/`metrics`, or 10+ char comment)
-- See **premium_credit_eligibility_rules.md** for route-level auth enforcement details
+### Validation Rules
+- Raw clicks excluded; only qualified actions within daily caps earn credits
+- Signup requires authenticated `req.userId`
+- Challenge/fork/saved_version require meaningful payloads (`challengedFields[]`, `assumptions/inputs/metrics`, or 10+ char comment)
+- Duplicate detection on share/recipient/action combination
+- Health score: `min(100, round(min(opens,5)*8 + min(challenges,4)*10 + min(forkOrSavedVersions,3)*12 + min(signups,2)*12))`
 
-### Share Mechanics & Lineage
-- **Token generation**: `crypto.randomBytes(18).toString("base64url")`
-- **Recipient URLs**: `/underwriting/${token}?recipient=${recipientKey}`
-- **Privacy**: SHA-256 hashing for recipient identifiers
-- **Batch limit**: Max 25 recipients per `createUnderwritingShareRecipientLinks` call
-- **Viral chain attribution**: `parentShareId`, `parentShareActionId`, `parentShareDepth` track lineage (`shareDepth = parentShareId ? Number(parentShareDepth || 0) + 1 : 0`)
+### System Components
+- **Credit Preview**: `previewQualifiedShareActionCredit` helper + `POST /underwriting-shares/:token/actions/preview` (read-only eligibility check)
+- **Analytics Coaching**: Funnel stages with bottleneck thresholds: `openToChallenge < 0.35`, `challengeToVersion < 0.5`, `versionToSignup < 0.4`
 
-### Credit Preview System
-- **Helper**: `previewQualifiedShareActionCredit`
-- **Endpoint**: `POST /underwriting-shares/:token/actions/preview`
-- Read-only eligibility checks without mutating `underwriting_share_actions` or `premium_credit_ledger`
-- Returns: status (`eligible`/`blocked`/`duplicate`/`capped`), remaining caps, CTA text, guardrail copy
-- See **credit_preview_system.md** for block reason validation and payload evidence checks
-
-### Growth Analytics & Nudges
-- **Health score**: `min(100, round(min(opens,5)*8 + min(challenges,4)*10 + min(forkOrSavedVersions,3)*12 + min(signups,2)*12))`
-- **Nudge progression**: `first_open` → `convert_opens_to_challenges` → `convert_challenges_to_versions` → `convert_versions_to_accounts` → `amplify`
-- **Conversion thresholds**: open→challenge <0.35, challenge→version <0.5, version→signup <0.4
-- See **underwriting_share_rewards.md** for core reward logic, lineage tracking, and growth nudge implementation
-
----
-
-## Key Implementation Files
-- `src/flywheel-routes.ts` — Preview endpoint and credit helpers
-- `src/underwriting-share-routes.ts` — Core share routes with test coverage
-- `db/migrations/016_premium_credit_redemptions.sql` — Credit ledger and redemption schema
-
-## Related Domains
-- **frontend/realtor_join_flow** — Realtor onboarding flows with potential viral sharing integration
-- **frontend/design_system** — UI components for share flows
+## Child Entry References
+- **challenge_share_system.md**: Core implementation, qualified action tracking, analytics coaching
+- **credit_preview_system.md**: Non-mutating preview endpoint
+- **premium_credit_eligibility_rules.md**: Authentication requirements, payload validation
+- **underwriting_share_rewards.md**: Reward structure, lineage tracking, credit management
