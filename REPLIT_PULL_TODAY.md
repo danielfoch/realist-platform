@@ -5,7 +5,7 @@
 
 2. Branch and commit SHA
 - Branch: realist-nightly/2026-05-30-share-quality-score
-- Commit SHA: 5bf45e33e07a1ac8df942fb39968a51f194ae5d1
+- Commit SHA: 9990f40cc27ed1806127d503bfcde9c300c329c5 (latest pushed branch head before this handoff metadata update)
 
 3. What changed
 - Added a qualified-only viral loop plan to underwriting share status summaries.
