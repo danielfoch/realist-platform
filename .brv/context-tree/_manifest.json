@@ -3,7 +3,7 @@
     {
       "order": 3,
       "path": "_index.md",
-      "tokens": 845,
+      "tokens": 750,
       "type": "summary"
     },
     {
@@ -13,9 +13,9 @@
       "type": "summary"
     },
     {
-      "order": 2,
-      "path": "growth/_index.md",
-      "tokens": 586,
+      "order": 1,
+      "path": "frontend/design_system/_index.md",
+      "tokens": 304,
       "type": "summary"
     },
     {
@@ -79,13 +79,13 @@
       "type": "context"
     }
   ],
-  "generated_at": "2026-05-29T05:07:28.536Z",
+  "generated_at": "2026-05-30T05:06:03.742Z",
   "lane_tokens": {
     "contexts": 3953,
     "stubs": 0,
-    "summaries": 1965
+    "summaries": 1588
   },
-  "source_fingerprint": "c3f59270a4f39508e3b32d9960c231ea5897d79ce76513ab4fddd49947c310c1",
-  "total_tokens": 5918,
+  "source_fingerprint": "9bdfcba6aef4143a50ff6e5b4bae85f026f1f30024ad274ef6c810b4074b0788",
+  "total_tokens": 5541,
   "version": 1
 }
