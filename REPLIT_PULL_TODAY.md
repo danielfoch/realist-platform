@@ -5,7 +5,7 @@
 
 2. Branch and commit SHA
 - Branch: realist-nightly/2026-05-30-share-quality-score
-- Commit SHA: 7e0ef57b8a6faf54c855d8af8cb54cb21086f542
+- Commit SHA: 5bf45e33e07a1ac8df942fb39968a51f194ae5d1
 
 3. What changed
 - Added a qualified-only viral loop plan to underwriting share status summaries.
@@ -15,6 +15,7 @@
 4. Files changed
 - src/underwriting-share-routes.ts
 - test/underwriting-share-routes.test.ts
+- .brv/context-tree/growth/viral_sharing/qualified_share_loop_plan.md
 - REPLIT_PULL_TODAY.md
 
 5. Migration steps
