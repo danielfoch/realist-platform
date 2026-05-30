@@ -728,6 +728,77 @@ export function getShareConversionInsights(input: {
   };
 }
 
+export function getQualifiedShareLoopPlan(input: {
+  byAction: ShareActionSummary;
+  inviteFunnel: RecipientInviteFunnelSegment[];
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const { byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount } = input;
+  const conversionInsights = getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount });
+  const rewardBrief = getQualifiedShareRewardBrief(byAction);
+  const topSegment = inviteFunnel[0] || null;
+  const opens = byAction.unique_open.qualifiedCount;
+  const challenges = byAction.challenge.qualifiedCount;
+  const versions = byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount;
+  const signups = byAction.signup.qualifiedCount;
+
+  const milestones = [
+    {
+      key: 'first_qualified_open',
+      complete: opens > 0,
+      qualifiedAction: 'unique_open' as const,
+      label: 'Get one qualified recipient open from a tracked underwriting link.',
+    },
+    {
+      key: 'first_challenge',
+      complete: challenges > 0,
+      qualifiedAction: 'challenge' as const,
+      label: 'Turn an open into a concrete assumption challenge.',
+    },
+    {
+      key: 'first_version',
+      complete: versions > 0,
+      qualifiedAction: 'saved_version' as const,
+      label: 'Convert a challenge into a saved or forked comparison version.',
+    },
+    {
+      key: 'account_tied_loop',
+      complete: signups > 0,
+      qualifiedAction: 'signup' as const,
+      label: 'Tie a challenged version to an account so it can be saved and shared onward.',
+    },
+  ];
+  const completedMilestones = milestones.filter((milestone) => milestone.complete).length;
+  const nextMilestone = milestones.find((milestone) => !milestone.complete) || null;
+
+  return {
+    headline: 'Qualified sharing loop plan',
+    cta: 'Challenge my underwriting.',
+    loop: 'Analyze deal -> Share underwriting -> Recipient challenges/forks assumptions -> Account/save version -> Share onward',
+    phase: conversionInsights.bottleneck,
+    healthScore: conversionInsights.healthScore,
+    completedMilestones,
+    totalMilestones: milestones.length,
+    nextMilestone,
+    milestones,
+    nextQualifiedAction: conversionInsights.nextQualifiedAction,
+    ownerAction: conversionInsights.ownerAction,
+    recommendedRecipientSource: topSegment ? {
+      source: topSegment.source,
+      openRate: topSegment.openRate,
+      challengeRate: topSegment.challengeRate,
+      versionRate: topSegment.versionRate,
+      signupRate: topSegment.signupRate,
+      creditAwarded: topSegment.creditAwarded,
+    } : null,
+    earnedCredits: rewardBrief.earnedCredits,
+    bestNextReward: rewardBrief.bestNextReward,
+    creditGuardrail: 'Premium credits, including Google Sheets export credits, are earned only from qualified actions with unique recipient tracking and daily caps — never raw share clicks alone.',
+    sharePrompt: rewardBrief.sharePrompt,
+  };
+}
+
 export function getRecipientShareCoaching(funnel: RecipientInviteFunnelSegment[]): RecipientShareCoaching[] {
   return funnel
     .map((segment) => {
@@ -948,6 +1019,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     growthNudge: getShareGrowthNudge(byAction),
     conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     rewardBrief: getQualifiedShareRewardBrief(byAction),
+    loopPlan: getQualifiedShareLoopPlan({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
     recipientCoaching: getRecipientShareCoaching(inviteFunnel),
     recentActions: recentResult.rows.map((row) => ({
       id: row.id,
