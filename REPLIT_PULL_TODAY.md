@@ -1,45 +1,43 @@
-# REPLIT PULL TODAY
+# REPLIT PULL TODAY — 2026-05-31
 
-1. Date
-- 2026-05-30
+## 1. Date
+2026-05-31
 
-2. Branch and commit SHA
-- Branch: realist-nightly/2026-05-30-share-quality-score
-- Commit SHA: 9990f40cc27ed1806127d503bfcde9c300c329c5 (latest pushed branch head before this handoff metadata update)
+## 2. Branch and commit SHA
+Branch: `realist-nightly/2026-05-31-reciprocal-challenge-nudges`
+Commit: `0c9e161`
 
-3. What changed
-- Added a qualified-only viral loop plan to underwriting share status summaries.
-- The plan packages the current funnel phase, next qualified action, milestone progress, recommended recipient source, earned Google Sheets export credits, and anti-abuse guardrail copy.
-- Keeps the “Challenge my underwriting.” loop focused on qualified actions only: unique open, challenge, fork, signup, saved version.
+## 3. What changed
+Added qualified-only challenge response nudges to the viral underwriting loop. Share status and loop-plan payloads now include ranked next-response prompts that tell the owner which qualified action to push next (challenge, saved version, fork, signup), which recipient source to use, the exact “Challenge my underwriting” style prompt, reward copy for Google Sheets export credits, and the anti-abuse guardrail.
 
-4. Files changed
-- src/underwriting-share-routes.ts
-- test/underwriting-share-routes.test.ts
-- .brv/context-tree/growth/viral_sharing/qualified_share_loop_plan.md
-- REPLIT_PULL_TODAY.md
+The action response for successful onward-share creation also returns nudges so a challenger who saves/forks can immediately be prompted to share the next version onward.
 
-5. Migration steps
-- No database migration required.
-- This only adds response payload fields and tests around existing underwriting share analytics.
+## 4. Files changed
+- `src/underwriting-share-routes.ts`
+- `test/underwriting-share-routes.test.ts`
+- `REPLIT_PULL_TODAY.md`
 
-6. Env vars needed
-- No new env vars.
+## 5. Migration steps
+None. This is API payload/helper logic only; no schema changes.
 
-7. Replit commands to run
+## 6. Env vars needed
+None new.
+
+## 7. Replit commands to run
 ```bash
 npm install
 npm run type-check
-npm test -- underwriting-share-routes.test.ts
+npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
 ```
 
-8. Test/build result
-- PASS: `npm test -- underwriting-share-routes.test.ts` (22 tests passed)
-- PASS: `npm run type-check`
+## 8. Test/build result
+- `npm test -- --runTestsByPath test/underwriting-share-routes.test.ts` ✅ 23 tests passed
+- `npm run type-check` ✅ passed
 
-9. Risks/blockers
-- No blocker found.
-- Existing untracked repo files were left untouched: `REPLIT_HANDOFF_CONTRACT.md`, `REPLIT_PULL_TEMPLATE.md`, and `scripts/`.
-- Replit UI needs to decide where to show `actionSummary.loopPlan`; API payload is now available from share status summaries.
+## 9. Risks/blockers
+- Existing untracked repo files were present before this run and were left untouched: `REPLIT_HANDOFF_CONTRACT.md`, `REPLIT_PULL_TEMPLATE.md`, `scripts/`.
+- No deploy was performed.
+- No outbound messages/emails were sent.
 
-10. Plain-English “what Dan should pull into Replit at 10am”
-- Pull the new branch to get a cleaner viral underwriting status payload that tells the UI exactly where a shared deal is in the loop and what qualified action to ask for next — without ever rewarding raw share clicks.
+## 10. What Dan should pull into Replit at 10am
+Pull `realist-nightly/2026-05-31-reciprocal-challenge-nudges` to add the next viral-loop layer: after someone opens/challenges/saves/forks an underwriting share, the API can now tell the UI exactly what qualified action to ask for next and why it earns Google Sheets export credits. The guardrail remains clear: no credits for raw share clicks alone.

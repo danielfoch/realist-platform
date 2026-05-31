@@ -12,6 +12,7 @@ import {
   getQualifiedShareRewardBrief,
   getQualifiedShareLoopPlan,
   getQualifiedActionCatalog,
+  getChallengeResponseNudges,
   getRecipientShareCoaching,
   getChallengeShareCard,
   getShareActionQualificationBlockReason,
@@ -576,6 +577,13 @@ describe('viral underwriting share qualification', () => {
       earnedCredits: 8,
       recommendedRecipientSource: expect.objectContaining({ source: 'realtor_partner_dm' }),
       sharePrompt: expect.stringContaining('share it onward'),
+      challengeResponseNudges: expect.arrayContaining([
+        expect.objectContaining({
+          nextQualifiedAction: 'saved_version',
+          recipientSource: 'realtor_partner_dm',
+          rewardCopy: expect.stringContaining('qualified saved version'),
+        }),
+      ]),
     });
     expect(plan.nextMilestone).toMatchObject({ key: 'first_version', qualifiedAction: 'saved_version' });
     expect(plan.creditGuardrail).toContain('never raw share clicks alone');
@@ -585,6 +593,54 @@ describe('viral underwriting share qualification', () => {
       'saved_version',
       'signup',
     ]);
+  });
+
+  it('builds challenge response nudges without using raw clicks as a reward trigger', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: 0,
+          cappedCount: 0,
+          creditAwarded: 0,
+          dailyQualifiedCount: 0,
+          dailyRemainingShareCap: action === 'challenge' ? 0 : 2,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getChallengeResponseNudges>[0]['byAction'];
+
+    const nudges = getChallengeResponseNudges({
+      byAction,
+      inviteFunnel: [
+        {
+          source: 'agent_dm',
+          invitedCount: 5,
+          openedCount: 5,
+          challengedCount: 1,
+          versionedCount: 0,
+          signupCount: 0,
+          creditAwarded: 7,
+          openRate: 1,
+          challengeRate: 0.2,
+          versionRate: 0,
+          signupRate: 0,
+        },
+      ],
+    });
+
+    expect(nudges).toHaveLength(3);
+    expect(nudges[0]).toMatchObject({
+      rank: 1,
+      nextQualifiedAction: 'saved_version',
+      recipientSource: 'agent_dm',
+      prompt: expect.stringContaining('Save your version'),
+      rewardCopy: expect.stringContaining('qualified saved version'),
+      antiAbuseGuardrail: expect.stringContaining('meaningful changed payload'),
+    });
+    expect(nudges.map((nudge) => nudge.nextQualifiedAction)).not.toContain('challenge');
+    expect(nudges.map((nudge) => nudge.rewardCopy).join(' ')).not.toContain('raw share clicks');
   });
 
   it('ranks recipient-source coaching by the next qualified underwriting loop action', () => {

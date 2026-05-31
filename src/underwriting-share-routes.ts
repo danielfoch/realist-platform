@@ -548,6 +548,15 @@ type RecipientShareCoaching = {
   creditGuardrail: string;
 };
 
+type ChallengeResponseNudge = {
+  rank: number;
+  nextQualifiedAction: QualifiedShareAction;
+  recipientSource: string | null;
+  prompt: string;
+  rewardCopy: string;
+  antiAbuseGuardrail: string;
+};
+
 export type ChallengeShareCardInput = {
   token: string;
   recipientKey?: string | null;
@@ -662,6 +671,39 @@ export function getQualifiedShareRewardBrief(byAction: ShareActionSummary) {
     antiAbuseGuardrail: 'Credits are never granted for raw clicks alone. Rewards require unique opens, challenges, forks, signups, or saved versions within daily caps.',
     qualifiedActionCatalog: getQualifiedActionCatalog(),
   };
+}
+
+export function getChallengeResponseNudges(input: {
+  byAction: ShareActionSummary;
+  inviteFunnel: RecipientInviteFunnelSegment[];
+}): ChallengeResponseNudge[] {
+  const coaching = getRecipientShareCoaching(input.inviteFunnel);
+  const fallbackActions: QualifiedShareAction[] = ['challenge', 'saved_version', 'fork', 'signup'];
+  const sourceByAction = new Map<QualifiedShareAction, string>();
+  const bestSource = coaching[0]?.source || input.inviteFunnel[0]?.source || null;
+
+  for (const item of coaching) {
+    if (!sourceByAction.has(item.nextQualifiedAction)) {
+      sourceByAction.set(item.nextQualifiedAction, item.source);
+    }
+  }
+
+  const candidateActions = [
+    ...coaching.map((item) => item.nextQualifiedAction),
+    ...fallbackActions,
+  ].filter((action, index, actions) => actions.indexOf(action) === index);
+
+  return candidateActions
+    .filter((action) => input.byAction[action].dailyRemainingShareCap > 0)
+    .slice(0, 3)
+    .map((action, index) => ({
+      rank: index + 1,
+      nextQualifiedAction: action,
+      recipientSource: sourceByAction.get(action) || bestSource,
+      prompt: ACTION_CATALOG_COPY[action].recipientPrompt,
+      rewardCopy: `This can earn ${ACTION_POLICIES[action].creditAmount} Google Sheets export credit${ACTION_POLICIES[action].creditAmount === 1 ? '' : 's'} only after a qualified ${action.replace('_', ' ')} passes unique-recipient and daily-cap checks.`,
+      antiAbuseGuardrail: ACTION_CATALOG_COPY[action].antiAbuseRule,
+    }));
 }
 
 export function getShareConversionInsights(input: {
@@ -794,6 +836,7 @@ export function getQualifiedShareLoopPlan(input: {
     } : null,
     earnedCredits: rewardBrief.earnedCredits,
     bestNextReward: rewardBrief.bestNextReward,
+    challengeResponseNudges: getChallengeResponseNudges({ byAction, inviteFunnel }),
     creditGuardrail: 'Premium credits, including Google Sheets export credits, are earned only from qualified actions with unique recipient tracking and daily caps — never raw share clicks alone.',
     sharePrompt: rewardBrief.sharePrompt,
   };
@@ -1020,6 +1063,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     rewardBrief: getQualifiedShareRewardBrief(byAction),
     loopPlan: getQualifiedShareLoopPlan({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
+    challengeResponseNudges: getChallengeResponseNudges({ byAction, inviteFunnel }),
     recipientCoaching: getRecipientShareCoaching(inviteFunnel),
     recentActions: recentResult.rows.map((row) => ({
       id: row.id,
@@ -1270,6 +1314,23 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         ...recorded,
         savedAnalysisId,
         onwardShare,
+        challengeResponseNudges: onwardShare ? getChallengeResponseNudges({
+          byAction: Object.fromEntries(
+            QUALIFIED_ACTIONS.map((qualifiedAction) => [
+              qualifiedAction,
+              {
+                totalCount: qualifiedAction === action ? 1 : 0,
+                qualifiedCount: qualifiedAction === action && recorded.qualified ? 1 : 0,
+                cappedCount: recorded.status === 'capped' && qualifiedAction === action ? 1 : 0,
+                creditAwarded: qualifiedAction === action ? recorded.creditAmount : 0,
+                dailyQualifiedCount: qualifiedAction === action && recorded.qualified ? 1 : 0,
+                dailyRemainingShareCap: Math.max(ACTION_POLICIES[qualifiedAction].dailyShareCap - (qualifiedAction === action && recorded.qualified ? 1 : 0), 0),
+                lastActionAt: null,
+              },
+            ]),
+          ) as ShareActionSummary,
+          inviteFunnel: [],
+        }) : [],
         qualifiedActionCatalog: getQualifiedActionCatalog(),
       });
     } catch (err) {
