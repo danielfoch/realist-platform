@@ -5,7 +5,7 @@
 
 ## 2. Branch and commit SHA
 Branch: `realist-nightly/2026-05-31-reciprocal-challenge-nudges`
-Commit: `0c9e161`
+Code commit: `823b0a73e4e0c46d66dcd3ec86286585ae5dc525`
 
 ## 3. What changed
 Added qualified-only challenge response nudges to the viral underwriting loop. Share status and loop-plan payloads now include ranked next-response prompts that tell the owner which qualified action to push next (challenge, saved version, fork, signup), which recipient source to use, the exact “Challenge my underwriting” style prompt, reward copy for Google Sheets export credits, and the anti-abuse guardrail.
