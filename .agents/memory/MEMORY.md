@@ -1,0 +1,1 @@
+- [StatCan/macro report pattern](statcan-report-pattern.md) — how to add a new market-report blog post + accuracy rules for recreated charts.

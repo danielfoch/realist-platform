@@ -433,6 +433,23 @@ export default function MarketReport() {
           <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
           <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link href="/insights/statcan-gdp-q1-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-rose-300/60" data-testid="card-macro-gdp-q1-2026">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                      <BarChart3 className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    <Badge variant="default" className="text-[10px]">New · May 29, 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">GDP Q1 2026 — Economy Stalls</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Real GDP flatlines at 0.0% and the per-capita recession deepens. Residential investment is the biggest drag, with resale activity down 9.9%. All six StatCan charts recreated.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/insights/monthly-market-report-may-2026">
               <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-primary/40" data-testid="card-macro-monthly-market-may-2026">
                 <CardContent className="p-5">
@@ -462,6 +479,40 @@ export default function MarketReport() {
                   <h3 className="font-bold text-sm mb-1">CMHC 2025 Annual Report</h3>
                   <p className="text-xs text-muted-foreground mb-2">
                     Housing starts, rental vacancy, mortgage insurance, multi-unit financing, and federal supply programs through a market lens.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/reports/bank-of-canada-consumers-path-mortgage-delinquency-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-amber-300/60" data-testid="card-macro-boc-mortgage-delinquency-2026">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                      <AlertTriangle className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">BoC · Feb 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Mortgage Delinquency Early Warning Signals</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Bank of Canada research shows credit-card utilization and arrears often rise one to two years before mortgage delinquency.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/reports/bank-of-canada-financial-stability-report-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-rose-300/60" data-testid="card-macro-boc-fsr-2026">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                      <Landmark className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">BoC · May 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Financial Stability Report 2026</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Bank of Canada read-through on mortgage arrears, renewal shock, Toronto stress pockets, valuations, and funding-market risk.
                   </p>
                   <span className="text-xs text-primary font-medium">View Report →</span>
                 </CardContent>

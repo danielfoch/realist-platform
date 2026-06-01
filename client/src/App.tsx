@@ -79,6 +79,7 @@ import SpringEconomicUpdate2026Report from "@/pages/SpringEconomicUpdate2026Repo
 import PreconResale1990sReport from "@/pages/PreconResale1990sReport";
 import BankOfCanadaApril2026Report, { BankOfCanadaApril2026ReportEmbed } from "@/pages/BankOfCanadaApril2026Report";
 import LabourForceSurveyApril2026Report from "@/pages/LabourForceSurveyApril2026Report";
+import StatCanGdpQ12026Report from "@/pages/StatCanGdpQ12026Report";
 import LabourMortgageStressApril2026Report from "@/pages/LabourMortgageStressApril2026Report";
 import MonthlyMarketReportMay2026 from "@/pages/MonthlyMarketReportMay2026";
 import SeoProjectDetail from "@/pages/SeoProjectDetail";
@@ -177,6 +178,7 @@ function Router() {
       <Route path="/insights/bank-of-canada-april-2026">{() => <BankOfCanadaApril2026Report />}</Route>
       <Route path="/embed/insights/bank-of-canada-april-2026" component={BankOfCanadaApril2026ReportEmbed} />
       <Route path="/insights/statcan-labour-force-survey-april-2026" component={LabourForceSurveyApril2026Report} />
+      <Route path="/insights/statcan-gdp-q1-2026" component={StatCanGdpQ12026Report} />
       <Route path="/insights/labour-mortgage-stress-april-2026" component={LabourMortgageStressApril2026Report} />
       <Route path="/insights/monthly-market-report-may-2026" component={MonthlyMarketReportMay2026} />
       {/* SEO landing pages — programmatic + query-driven */}
