@@ -99,23 +99,34 @@ function baseUrlFromRequest(req: Request) {
 }
 
 async function getSessionUser(req: Request) {
-  if (!req.session?.userId) return null;
-  const [user] = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
+  const userId = req.session?.userId;
+  if (!userId) return null;
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return user || null;
 }
 
 async function requireEventAdmin(req: Request, res: Response, next: NextFunction) {
-  const user = await getSessionUser(req);
-  if (!user) return res.status(401).json({ error: "Authentication required" });
-  if (!EVENT_ADMIN_EMAILS.has(user.email.toLowerCase())) {
-    return res.status(403).json({ error: "Event admin access required" });
+  try {
+    const user = await getSessionUser(req);
+    if (!user) return res.status(401).json({ error: "Authentication required" });
+    if (!EVENT_ADMIN_EMAILS.has(user.email.toLowerCase())) {
+      return res.status(403).json({ error: "Event admin access required" });
+    }
+    next();
+  } catch (error) {
+    console.error("[events] admin auth check failed:", error);
+    return res.status(401).json({ error: "Authentication required" });
   }
-  next();
 }
 
 async function isEventAdminRequest(req: Request) {
-  const user = await getSessionUser(req);
-  return user?.email ? EVENT_ADMIN_EMAILS.has(user.email.toLowerCase()) : false;
+  try {
+    const user = await getSessionUser(req);
+    return user?.email ? EVENT_ADMIN_EMAILS.has(user.email.toLowerCase()) : false;
+  } catch (error) {
+    console.error("[events] public admin check failed:", error);
+    return false;
+  }
 }
 
 export async function ensureRealistEventTables() {
