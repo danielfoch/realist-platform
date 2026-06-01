@@ -5,7 +5,7 @@
 
 ## 2. Branch and commit SHA
 Branch: `realist-nightly/2026-06-01-qualified-action-defense`
-Commit: `30d61b0`
+Commit: `7072337` (code/handoff commit before this metadata-only SHA refresh)
 
 ## 3. What changed
 Added defense-in-depth to the viral underwriting reward path: `recordQualifiedShareAction` now enforces the same qualified-action rules used by the HTTP route before it looks up duplicates, inserts share actions, or writes premium credit ledger entries.
