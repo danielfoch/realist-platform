@@ -1,15 +1,11 @@
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Calendar, Plus } from "lucide-react";
-import { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { apiRequest } from "@/lib/queryClient";
 
 type AdminEventRow = {
   id: string;
@@ -21,27 +17,10 @@ type AdminEventRow = {
 };
 
 export default function AdminEvents() {
-  const [password, setPassword] = useState("");
-  const [unlocking, setUnlocking] = useState(false);
-  const [unlockError, setUnlockError] = useState<string | null>(null);
-  const { data: events = [], isLoading, error, refetch } = useQuery<AdminEventRow[]>({
+  const { data: events = [], isLoading, error } = useQuery<AdminEventRow[]>({
     queryKey: ["/api/admin/events"],
     retry: false,
   });
-
-  async function unlockEventsAdmin() {
-    setUnlocking(true);
-    setUnlockError(null);
-    try {
-      await apiRequest("POST", "/api/admin/events/unlock", { password });
-      setPassword("");
-      await refetch();
-    } catch {
-      setUnlockError("That password did not work.");
-    } finally {
-      setUnlocking(false);
-    }
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,30 +39,11 @@ export default function AdminEvents() {
           <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" /> Event list</CardTitle></CardHeader>
           <CardContent>
             {error ? (
-              <div className="max-w-md space-y-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Enter event admin password</h2>
-                  <p className="text-sm text-muted-foreground">
-                    This temporary gate unlocks event admin tools for the current browser session.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="events-admin-password">Password</Label>
-                  <Input
-                    id="events-admin-password"
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") unlockEventsAdmin();
-                    }}
-                    autoComplete="current-password"
-                  />
-                </div>
-                {unlockError && <p className="text-sm text-destructive">{unlockError}</p>}
-                <Button onClick={unlockEventsAdmin} disabled={unlocking || !password}>
-                  {unlocking ? "Unlocking..." : "Unlock Events Admin"}
-                </Button>
+              <div className="max-w-md space-y-2">
+                <h2 className="text-lg font-semibold">Events admin access required</h2>
+                <p className="text-sm text-muted-foreground">
+                  Sign in as jonathan@realist.ca or danielfoch@gmail.com to create and publish events.
+                </p>
               </div>
             ) : isLoading ? (
               <p className="text-sm text-muted-foreground">Loading events...</p>
