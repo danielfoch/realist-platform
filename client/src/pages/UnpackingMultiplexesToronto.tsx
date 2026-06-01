@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
 const EVENT_TITLE = "Unpacking Multiplexes";
 const EVENT_TAGLINE = "Toronto's Premier Multiplex Development Conference";
-const EVENT_HERO_IMAGE = "/events/unpacking-multiplexes-toronto.png";
+const EVENT_HERO_IMAGE = "/events/unpacking-multiplexes-toronto-ai-hero.png";
 
 const VENUE = {
   name: "The Terminal Theatre",
