@@ -1,0 +1,1 @@
+{"extends":"./tsconfig.json","include":["server/eventsModule.ts","server/webhookHandlers.ts","shared/models/auth.ts","shared/schema.ts"]}
