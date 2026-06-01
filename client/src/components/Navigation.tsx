@@ -81,6 +81,11 @@ const navCategories: NavCategory[] = [
   },
 ];
 
+const eventAdminEmails = new Set([
+  "jonathan@realist.ca",
+  "danielfoch@gmail.com",
+]);
+
 function NavItemRow({ item }: { item: NavItem }) {
   const content = (
     <DropdownMenuItem className="cursor-pointer py-2.5">
@@ -117,6 +122,7 @@ export function Navigation() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const canAccessEventsAdmin = user?.email ? eventAdminEmails.has(user.email.toLowerCase()) : false;
 
   const isActiveCategory = (category: NavCategory) =>
     category.items.some(item => !item.external && location.startsWith(item.href.split("?")[0])) ||
@@ -219,6 +225,14 @@ export function Navigation() {
                           Realtor Network
                         </DropdownMenuItem>
                       </Link>
+                      {canAccessEventsAdmin && (
+                        <Link href="/admin/events">
+                          <DropdownMenuItem className="cursor-pointer" data-testid="link-events-admin">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            Events Admin
+                          </DropdownMenuItem>
+                        </Link>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="cursor-pointer text-destructive"
@@ -337,6 +351,14 @@ export function Navigation() {
                       Partner Portal
                     </Button>
                   </Link>
+                  {canAccessEventsAdmin && (
+                    <Link href="/admin/events" onClick={closeMobile}>
+                      <Button variant="ghost" className="w-full justify-start h-9 text-sm" data-testid="link-mobile-events-admin">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        Events Admin
+                      </Button>
+                    </Link>
+                  )}
                   <Button
                     variant="ghost"
                     className="w-full justify-start h-9 text-sm text-destructive"
