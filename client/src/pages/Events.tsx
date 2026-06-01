@@ -20,6 +20,7 @@ import { getHostByEventName } from "@/lib/meetupHosts";
 import { ContactHostDialog } from "@/components/ContactHostDialog";
 import { MarketExpertApplicationDialog } from "@/components/MarketExpertApplicationDialog";
 import unpackingMultiplexesEdmontonImg from "@assets/ChatGPT_Image_Jun_1,_2026,_04_10_07_PM_1780344719233.png";
+import unpackingMultiplexesTorontoImg from "@assets/ChatGPT_Image_Jun_1,_2026,_04_12_34_PM_1780344761775.png";
 
 interface GroupedEvents {
   date: Date;
@@ -74,6 +75,8 @@ function normalizeEventbriteEvent(event: EventbriteEvent): EventbriteEvent {
 
   return {
     ...event,
+    imageUrl: unpackingMultiplexesTorontoImg,
+    logoUrl: unpackingMultiplexesTorontoImg,
     name: "Unpacking Multiplexes Toronto",
     description: "Toronto's premier multiplex development conference at The Terminal Theatre.",
     summary: "Join developers, architects, planners, lenders, and investors for Toronto's premier multiplex development conference.",
