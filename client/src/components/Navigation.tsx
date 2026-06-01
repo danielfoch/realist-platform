@@ -149,6 +149,38 @@ export function Navigation() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-0.5">
             {navCategories.map((category) => (
+              category.label === "Community" ? (
+                <div key={category.label} className="flex items-center gap-0.5">
+                  <Link href="/community/events">
+                    <Button
+                      variant={location.startsWith("/community/events") ? "secondary" : "ghost"}
+                      size="sm"
+                      className="gap-1 text-sm h-9"
+                      data-testid="nav-events"
+                    >
+                      Events
+                    </Button>
+                  </Link>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant={isActiveCategory(category) && !location.startsWith("/community/events") ? "secondary" : "ghost"}
+                        size="sm"
+                        className="gap-1 text-sm h-9"
+                        data-testid={`nav-${category.label.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        {category.label}
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-72">
+                      {category.items.map((item) => (
+                        <NavItemRow key={item.href} item={item} />
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : (
               <DropdownMenu key={category.label}>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -167,6 +199,7 @@ export function Navigation() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              )
             ))}
           </div>
 
@@ -283,6 +316,16 @@ export function Navigation() {
               <Button className="w-full gap-2" data-testid="button-mobile-analyze">
                 <Calculator className="h-4 w-4" />
                 Analyze a Deal
+              </Button>
+            </Link>
+            <Link href="/community/events" onClick={closeMobile}>
+              <Button
+                variant={location.startsWith("/community/events") ? "secondary" : "outline"}
+                className="w-full gap-2"
+                data-testid="button-mobile-events"
+              >
+                <Calendar className="h-4 w-4" />
+                Events
               </Button>
             </Link>
 
