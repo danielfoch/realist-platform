@@ -19,6 +19,7 @@ import { marketExperts, type MarketExpert } from "@/lib/marketExperts";
 import { getHostByEventName } from "@/lib/meetupHosts";
 import { ContactHostDialog } from "@/components/ContactHostDialog";
 import { MarketExpertApplicationDialog } from "@/components/MarketExpertApplicationDialog";
+import unpackingMultiplexesEdmontonImg from "@assets/ChatGPT_Image_Jun_1,_2026,_04_10_07_PM_1780344719233.png";
 
 interface GroupedEvents {
   date: Date;
@@ -50,6 +51,18 @@ interface EventsResponse {
 
 function normalizeEventbriteEvent(event: EventbriteEvent): EventbriteEvent {
   const haystack = `${event.id} ${event.name} ${event.venueName ?? ""} ${event.venueAddress ?? ""}`.toLowerCase();
+
+  const isEdmontonMultiplex =
+    haystack.includes("unpacking multiplex") && haystack.includes("edmonton");
+
+  if (isEdmontonMultiplex) {
+    return {
+      ...event,
+      imageUrl: unpackingMultiplexesEdmontonImg,
+      logoUrl: unpackingMultiplexesEdmontonImg,
+    };
+  }
+
   const isTorontoMultiplex =
     event.id === "1982604532527" ||
     (
