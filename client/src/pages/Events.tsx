@@ -481,7 +481,7 @@ export default function Events() {
                                 <img
                                   src={event.logoUrl || event.imageUrl}
                                   alt={event.name}
-                                  className="w-full h-48 md:h-full object-cover"
+                                  className="w-full aspect-square object-cover"
                                 />
                               </div>
                             )}
@@ -490,9 +490,6 @@ export default function Events() {
                                 <h3 className="text-xl font-bold mb-2" data-testid={`text-featured-title-${event.id}`}>
                                   {event.name}
                                 </h3>
-                                {event.summary && (
-                                  <p className="text-muted-foreground mb-4 line-clamp-3">{event.summary}</p>
-                                )}
                                 <div className="space-y-2 mb-4">
                                   {event.startDate && (
                                     <div className="flex items-center gap-2 text-sm">
