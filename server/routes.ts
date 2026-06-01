@@ -605,8 +605,6 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  registerRealistEventRoutes(app);
-
   // Keep crawler control files independent of auth/session middleware.
   // Google Search Console can report transient "Couldn't fetch" when sitemap
   // requests inherit private cache/session behavior from the app stack.
@@ -696,6 +694,7 @@ export async function registerRoutes(
   // Set up email/password authentication
   setupAuth(app);
   registerAuthRoutes(app);
+  registerRealistEventRoutes(app);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);

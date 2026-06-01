@@ -14,6 +14,10 @@ import { InvestorDashboard } from './pages/InvestorDashboard'
 import { AnalysisHistoryPage } from './pages/AnalysisHistory'
 import { SavedListingsPage } from './pages/SavedListingsPage'
 import { UnderwritingSharePage } from './pages/UnderwritingSharePage'
+import { AdminEventsPage } from './pages/AdminEventsPage'
+import { AdminEventEditorPage } from './pages/AdminEventEditorPage'
+import { EventDetailsPage } from './pages/EventDetailsPage'
+import { EventSuccessPage } from './pages/EventSuccessPage'
 import CreaStatsPage from './pages/CreaStatsPage'
 import { Toaster } from './components/ui/toaster'
 
@@ -95,6 +99,13 @@ function App() {
             <Route path="/investor/analyses" element={<AnalysisHistoryPage />} />
             <Route path="/investor/saved" element={<SavedListingsPage />} />
             <Route path="/underwriting/:token" element={<UnderwritingSharePage />} />
+
+            {/* Realist Events */}
+            <Route path="/admin/events" element={<AdminEventsPage />} />
+            <Route path="/admin/events/new" element={<AdminEventEditorPage mode="new" />} />
+            <Route path="/admin/events/:id/edit" element={<AdminEventEditorPage mode="edit" />} />
+            <Route path="/events/:slug" element={<EventDetailsPage />} />
+            <Route path="/events/:slug/success" element={<EventSuccessPage />} />
           </Routes>
         </main>
         

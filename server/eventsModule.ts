@@ -1,4 +1,5 @@
 import type { Express, Request, Response, NextFunction } from "express";
+import "express-session";
 import crypto from "crypto";
 import Stripe from "stripe";
 import { and, asc, eq, gt, lte, sql } from "drizzle-orm";
@@ -18,6 +19,12 @@ import {
 } from "@shared/schema";
 
 const EVENT_ADMIN_EMAIL = "jonathan@realist.ca";
+
+declare module "express-session" {
+  interface SessionData {
+    userId?: string;
+  }
+}
 
 const agendaSectionSchema = z.object({
   title: z.string().min(1),
@@ -397,8 +404,18 @@ async function createOrUpdateEventUser(session: Stripe.Checkout.Session) {
   if (!email) return null;
   const name = session.customer_details?.name || "";
   const [firstName, ...lastParts] = name.split(" ").filter(Boolean);
+  const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
   const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  if (existing) return existing;
+  if (existing) {
+    if (stripeCustomerId && !existing.stripeCustomerId) {
+      const [updated] = await db.update(users)
+        .set({ stripeCustomerId, updatedAt: new Date() })
+        .where(eq(users.id, existing.id))
+        .returning();
+      return updated || existing;
+    }
+    return existing;
+  }
 
   const [user] = await db.insert(users).values({
     email,
@@ -406,6 +423,7 @@ async function createOrUpdateEventUser(session: Stripe.Checkout.Session) {
     lastName: lastParts.join(" ") || null,
     role: "investor",
     emailVerified: true,
+    stripeCustomerId,
   }).returning();
 
   const baseUrl = process.env.PUBLIC_BASE_URL || "https://realist.ca";
