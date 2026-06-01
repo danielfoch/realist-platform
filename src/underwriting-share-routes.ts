@@ -399,7 +399,23 @@ export async function recordQualifiedShareAction(database: DatabaseAdapter, inpu
   action: QualifiedShareAction;
   recipientHash: string;
   metadata?: Record<string, unknown>;
+  authenticatedUserId?: number | null;
 }) {
+  const qualificationBlockReason = getShareActionQualificationBlockReason(
+    input.action,
+    input.metadata,
+    input.authenticatedUserId,
+  );
+
+  if (qualificationBlockReason) {
+    return {
+      status: 'blocked' as const,
+      qualified: false,
+      creditAmount: 0,
+      blockReason: qualificationBlockReason,
+    };
+  }
+
   const existing = await findExistingAction(database, input.shareId, input.recipientHash, input.action);
   if (existing) {
     return {
@@ -1252,6 +1268,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         action,
         recipientHash: getRecipientHash(req, recipient),
         metadata: { ...(metadata || {}), userId: req.userId || null },
+        authenticatedUserId: req.userId || null,
       });
 
       let savedAnalysisId: number | null = null;

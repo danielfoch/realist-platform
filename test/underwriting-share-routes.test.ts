@@ -75,6 +75,7 @@ describe('viral underwriting share qualification', () => {
       inviterUserId: 42,
       action: 'challenge',
       recipientHash: 'a'.repeat(64),
+      metadata: { comment: 'raise vacancy and lower rent growth assumptions' },
     });
 
     expect(result.status).toBe('qualified');
@@ -85,6 +86,42 @@ describe('viral underwriting share qualification', () => {
     );
   });
 
+  it('blocks unqualified direct action recording before any credit mutation', async () => {
+    const db = createShareDb();
+
+    const emptyChallenge = await recordQualifiedShareAction(db, {
+      shareId: 7,
+      inviterUserId: 42,
+      action: 'challenge',
+      recipientHash: 'b'.repeat(64),
+      metadata: {},
+    });
+
+    expect(emptyChallenge).toMatchObject({
+      status: 'blocked',
+      qualified: false,
+      creditAmount: 0,
+      blockReason: expect.stringContaining('Challenge/fork/saved-version credits require changed assumptions'),
+    });
+
+    const anonymousSignup = await recordQualifiedShareAction(db, {
+      shareId: 7,
+      inviterUserId: 42,
+      action: 'signup',
+      recipientHash: 'c'.repeat(64),
+      metadata: {},
+      authenticatedUserId: null,
+    });
+
+    expect(anonymousSignup).toMatchObject({
+      status: 'blocked',
+      qualified: false,
+      creditAmount: 0,
+      blockReason: expect.stringContaining('authenticated'),
+    });
+    expect(db.calls).toHaveLength(0);
+  });
+
   it('does not grant duplicate credits for the same recipient/action/share', async () => {
     const db = createShareDb({ existing: { id: 1, qualified: true, credit_amount: 2 } });
 
@@ -93,6 +130,7 @@ describe('viral underwriting share qualification', () => {
       inviterUserId: 42,
       action: 'challenge',
       recipientHash: 'b'.repeat(64),
+      metadata: { comment: 'raise vacancy and lower rent growth assumptions' },
     });
 
     expect(result.status).toBe('duplicate');
@@ -108,6 +146,7 @@ describe('viral underwriting share qualification', () => {
       inviterUserId: 42,
       action: 'fork',
       recipientHash: 'c'.repeat(64),
+      metadata: { assumptions: { rentGrowth: 0.01 } },
     });
 
     expect(result.status).toBe('capped');
