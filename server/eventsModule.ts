@@ -18,7 +18,11 @@ import {
   users,
 } from "@shared/schema";
 
-const EVENT_ADMIN_EMAIL = "jonathan@realist.ca";
+const EVENT_ADMIN_EMAILS = new Set([
+  "jonathan@realist.ca",
+  "danielfoch@gmail.com",
+]);
+const DEFAULT_EVENT_ADMIN_EMAIL = "jonathan@realist.ca";
 
 declare module "express-session" {
   interface SessionData {
@@ -103,7 +107,7 @@ async function getSessionUser(req: Request) {
 async function requireEventAdmin(req: Request, res: Response, next: NextFunction) {
   const user = await getSessionUser(req);
   if (!user) return res.status(401).json({ error: "Authentication required" });
-  if (user.email.toLowerCase() !== EVENT_ADMIN_EMAIL) {
+  if (!EVENT_ADMIN_EMAILS.has(user.email.toLowerCase())) {
     return res.status(403).json({ error: "Event admin access required" });
   }
   next();
@@ -298,7 +302,7 @@ export function registerRealistEventRoutes(app: Express) {
     try {
       const admin = await getSessionUser(req);
       const payload = eventPayloadSchema.parse(req.body);
-      const event = await saveEvent(payload, admin?.email || EVENT_ADMIN_EMAIL);
+      const event = await saveEvent(payload, admin?.email || DEFAULT_EVENT_ADMIN_EMAIL);
       res.status(201).json(event);
     } catch (error: any) {
       res.status(400).json({ error: error.errors?.[0]?.message || error.message || "Invalid event" });
@@ -319,7 +323,7 @@ export function registerRealistEventRoutes(app: Express) {
 
   app.get("/api/events/:slug", async (req, res) => {
     const user = await getSessionUser(req);
-    const isAdmin = user?.email?.toLowerCase() === EVENT_ADMIN_EMAIL;
+    const isAdmin = user?.email ? EVENT_ADMIN_EMAILS.has(user.email.toLowerCase()) : false;
     const [event] = await db.select().from(realistEvents).where(eq(realistEvents.slug, req.params.slug)).limit(1);
     if (!event || (event.status !== "PUBLISHED" && !isAdmin)) {
       return res.status(404).json({ error: "Event not found" });
