@@ -48,6 +48,29 @@ interface EventsResponse {
   lastFetched: string | null;
 }
 
+function normalizeEventbriteEvent(event: EventbriteEvent): EventbriteEvent {
+  const haystack = `${event.id} ${event.name} ${event.venueName ?? ""} ${event.venueAddress ?? ""}`.toLowerCase();
+  const isTorontoMultiplex =
+    event.id === "1982604532527" ||
+    (
+      haystack.includes("unpacking multiplex") &&
+      (haystack.includes("toronto") || haystack.includes("innis town hall"))
+    );
+
+  if (!isTorontoMultiplex) return event;
+
+  return {
+    ...event,
+    name: "Unpacking Multiplexes Toronto",
+    description: "Toronto's premier multiplex development conference at The Terminal Theatre.",
+    summary: "Join developers, architects, planners, lenders, and investors for Toronto's premier multiplex development conference.",
+    startDate: "2026-09-15T21:00:00Z",
+    endDate: "2026-09-16T02:00:00Z",
+    venueName: "The Terminal Theatre",
+    venueAddress: "Queens Quay Terminal, Third Floor, 207 Queens Quay West, Toronto, ON M5J 1A7",
+  };
+}
+
 function EventCard({ event }: { event: EventbriteEvent }) {
   const startDate = event.startDate ? parseISO(event.startDate) : null;
   const isUpcoming = startDate ? isFuture(startDate) : true;
@@ -305,7 +328,9 @@ export default function Events() {
            nameLower.includes("summit");
   };
 
-  const allUpcoming = (data?.events?.filter(e => {
+  const normalizedEvents = data?.events?.map(normalizeEventbriteEvent) || [];
+
+  const allUpcoming = (normalizedEvents.filter(e => {
     if (!e.startDate) return true;
     return isFuture(parseISO(e.startDate));
   }) || []).sort((a, b) => {
@@ -318,7 +343,7 @@ export default function Events() {
   const featuredEvents = allUpcoming.filter(isFeaturedEvent);
   const upcomingMeetups = allUpcoming.filter(e => !isFeaturedEvent(e));
 
-  const pastEvents = (data?.events?.filter(e => {
+  const pastEvents = (normalizedEvents.filter(e => {
     if (!e.startDate) return false;
     return isPast(parseISO(e.startDate));
   }) || []).sort((a, b) => {
