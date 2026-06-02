@@ -5,7 +5,7 @@
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-06-02-share-playbook`
-- Commit SHA: `e075b67e641993b4c6a7bcfbd8a19cbf5aaf50e4`
+- Commit SHA: `4ba1a365e2d62b63742ed06b90ff50697174adc8`
 
 ## 3. What changed
 Added a qualified-action share playbook for the viral underwriting loop. Share status now turns funnel bottlenecks and recipient-source coaching into ranked next actions for the owner, including:
