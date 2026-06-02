@@ -11,6 +11,7 @@ import {
   getShareGrowthNudge,
   getQualifiedShareRewardBrief,
   getQualifiedShareLoopPlan,
+  getQualifiedSharePlaybook,
   getQualifiedActionCatalog,
   getChallengeResponseNudges,
   getRecipientShareCoaching,
@@ -362,6 +363,13 @@ describe('viral underwriting share qualification', () => {
       creditGuardrail: expect.stringContaining('never raw share clicks alone'),
     });
     expect(summary.loopPlan.nextMilestone).toMatchObject({ key: 'account_tied_loop', qualifiedAction: 'signup' });
+    expect(summary.loopPlan.sharePlaybook.primaryStep).toMatchObject({ qualifiedAction: 'signup', status: 'ready' });
+    expect(summary.sharePlaybook).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      phase: 'version_to_signup',
+      primaryStep: expect.objectContaining({ qualifiedAction: 'signup' }),
+      creditGuardrail: expect.stringContaining('Raw share clicks alone never earn Google Sheets export credits'),
+    });
     expect(summary.recipientCoaching[0]).toMatchObject({
       source: 'manual',
       stage: 'convert_to_accounts',
@@ -568,6 +576,61 @@ describe('viral underwriting share qualification', () => {
     expect(card.shareUrl).toBe('/underwriting/share-token?recipient=recipient%20key%2Fwith%20spaces');
     expect(card.recipientInstruction).toContain('Save your version');
     expect(card.antiAbuseGuardrail).toContain('Raw share clicks alone never earn credits');
+  });
+
+  it('builds a next-action playbook from qualified share caps and funnel bottlenecks', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: 0,
+          qualifiedCount: action === 'unique_open' ? 5 : action === 'challenge' ? 1 : 0,
+          cappedCount: 0,
+          creditAwarded: 0,
+          dailyQualifiedCount: 0,
+          dailyRemainingShareCap: action === 'saved_version' ? 0 : 2,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getQualifiedSharePlaybook>[0]['byAction'];
+
+    const playbook = getQualifiedSharePlaybook({
+      byAction,
+      invitedRecipientCount: 5,
+      unopenedRecipientCount: 0,
+      inviteFunnel: [
+        {
+          source: 'investor_dm',
+          invitedCount: 5,
+          openedCount: 5,
+          challengedCount: 1,
+          versionedCount: 0,
+          signupCount: 0,
+          creditAwarded: 7,
+          openRate: 1,
+          challengeRate: 0.2,
+          versionRate: 0,
+          signupRate: 0,
+        },
+      ],
+    });
+
+    expect(playbook).toMatchObject({
+      headline: 'Next qualified share actions',
+      cta: 'Challenge my underwriting.',
+      phase: 'open_to_challenge',
+      primaryStep: expect.objectContaining({
+        qualifiedAction: 'challenge',
+        status: 'ready',
+        recipientSource: 'investor_dm',
+        creditAmount: getActionPolicy('challenge').creditAmount,
+      }),
+      dailyCapSummary: expect.objectContaining({
+        saved_version: expect.objectContaining({ remainingShareCreditsToday: 0 }),
+      }),
+    });
+    expect(playbook.steps.find((step) => step.qualifiedAction === 'saved_version')).toMatchObject({ status: 'capped' });
+    expect(playbook.creditGuardrail).toContain('Raw share clicks alone never earn Google Sheets export credits');
   });
 
   it('turns share funnel status into a qualified-only viral loop plan', () => {

@@ -573,6 +573,19 @@ type ChallengeResponseNudge = {
   antiAbuseGuardrail: string;
 };
 
+type QualifiedSharePlaybookStep = {
+  rank: number;
+  qualifiedAction: QualifiedShareAction;
+  status: 'ready' | 'capped';
+  recipientSource: string | null;
+  prompt: string;
+  ownerAction: string;
+  qualifiesWhen: string;
+  creditAmount: number;
+  remainingShareCreditsToday: number;
+  antiAbuseGuardrail: string;
+};
+
 export type ChallengeShareCardInput = {
   token: string;
   recipientKey?: string | null;
@@ -722,6 +735,76 @@ export function getChallengeResponseNudges(input: {
     }));
 }
 
+export function getQualifiedSharePlaybook(input: {
+  byAction: ShareActionSummary;
+  inviteFunnel: RecipientInviteFunnelSegment[];
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const { byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount } = input;
+  const insights = getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount });
+  const coaching = getRecipientShareCoaching(inviteFunnel);
+  const sourceByAction = new Map<QualifiedShareAction, string>();
+  const topSource = coaching[0]?.source || inviteFunnel[0]?.source || null;
+
+  for (const item of coaching) {
+    if (!sourceByAction.has(item.nextQualifiedAction)) {
+      sourceByAction.set(item.nextQualifiedAction, item.source);
+    }
+  }
+
+  const candidateActions = [
+    insights.nextQualifiedAction,
+    ...coaching.map((item) => item.nextQualifiedAction),
+    'challenge' as const,
+    'saved_version' as const,
+    'fork' as const,
+    'signup' as const,
+    'unique_open' as const,
+  ].filter((action, index, actions) => actions.indexOf(action) === index);
+
+  const steps: QualifiedSharePlaybookStep[] = candidateActions.slice(0, 4).map((action, index) => {
+    const policy = ACTION_POLICIES[action];
+    const copy = ACTION_CATALOG_COPY[action];
+    const remainingShareCreditsToday = byAction[action].dailyRemainingShareCap;
+
+    return {
+      rank: index + 1,
+      qualifiedAction: action,
+      status: remainingShareCreditsToday > 0 ? 'ready' : 'capped',
+      recipientSource: sourceByAction.get(action) || topSource,
+      prompt: copy.recipientPrompt,
+      ownerAction: action === insights.nextQualifiedAction ? insights.ownerAction : copy.ownerPrompt,
+      qualifiesWhen: copy.qualifiesWhen,
+      creditAmount: policy.creditAmount,
+      remainingShareCreditsToday,
+      antiAbuseGuardrail: copy.antiAbuseRule,
+    };
+  });
+
+  const primaryStep = steps.find((step) => step.status === 'ready') || steps[0] || null;
+
+  return {
+    headline: 'Next qualified share actions',
+    cta: 'Challenge my underwriting.',
+    phase: insights.bottleneck,
+    primaryStep,
+    steps,
+    dailyCapSummary: Object.fromEntries(
+      QUALIFIED_ACTIONS.map((action) => [
+        action,
+        {
+          creditAmount: ACTION_POLICIES[action].creditAmount,
+          remainingShareCreditsToday: byAction[action].dailyRemainingShareCap,
+          dailyShareCap: ACTION_POLICIES[action].dailyShareCap,
+          dailyRecipientCap: ACTION_POLICIES[action].dailyRecipientCap,
+        },
+      ]),
+    ),
+    creditGuardrail: 'Use this playbook only for qualified actions: unique tracked opens, meaningful challenges, forks, signups, or saved versions within caps. Raw share clicks alone never earn Google Sheets export credits.',
+  };
+}
+
 export function getShareConversionInsights(input: {
   byAction: ShareActionSummary;
   invitedRecipientCount: number;
@@ -853,6 +936,7 @@ export function getQualifiedShareLoopPlan(input: {
     earnedCredits: rewardBrief.earnedCredits,
     bestNextReward: rewardBrief.bestNextReward,
     challengeResponseNudges: getChallengeResponseNudges({ byAction, inviteFunnel }),
+    sharePlaybook: getQualifiedSharePlaybook({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
     creditGuardrail: 'Premium credits, including Google Sheets export credits, are earned only from qualified actions with unique recipient tracking and daily caps — never raw share clicks alone.',
     sharePrompt: rewardBrief.sharePrompt,
   };
@@ -1079,6 +1163,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     rewardBrief: getQualifiedShareRewardBrief(byAction),
     loopPlan: getQualifiedShareLoopPlan({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
+    sharePlaybook: getQualifiedSharePlaybook({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
     challengeResponseNudges: getChallengeResponseNudges({ byAction, inviteFunnel }),
     recipientCoaching: getRecipientShareCoaching(inviteFunnel),
     recentActions: recentResult.rows.map((row) => ({

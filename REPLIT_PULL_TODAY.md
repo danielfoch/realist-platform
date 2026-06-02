@@ -1,16 +1,26 @@
-# REPLIT_PULL_TODAY — 2026-06-01
+# REPLIT_PULL_TODAY
 
 ## 1. Date
-2026-06-01
+2026-06-02
 
 ## 2. Branch and commit SHA
-Branch: `realist-nightly/2026-06-01-qualified-action-defense`
-Commit: `7072337` (code/handoff commit before this metadata-only SHA refresh)
+- Branch: `realist-nightly/2026-06-02-share-playbook`
+- Commit SHA: `e075b67e641993b4c6a7bcfbd8a19cbf5aaf50e4`
 
 ## 3. What changed
-Added defense-in-depth to the viral underwriting reward path: `recordQualifiedShareAction` now enforces the same qualified-action rules used by the HTTP route before it looks up duplicates, inserts share actions, or writes premium credit ledger entries.
+Added a qualified-action share playbook for the viral underwriting loop. Share status now turns funnel bottlenecks and recipient-source coaching into ranked next actions for the owner, including:
 
-This protects Google Sheets export credits if future internal callers try to record a `challenge`, `fork`, `saved_version`, or `signup` directly without meaningful changed-underwriting evidence or an authenticated signup user.
+- Primary next qualified action for the current funnel phase.
+- Stage-specific “Challenge my underwriting.” recipient prompt.
+- Owner action copy tied to the bottleneck.
+- Source recommendation when invite data exists.
+- Credit amount and daily cap remaining for each action.
+- `ready` / `capped` status so UI can avoid promising unavailable rewards.
+- Explicit guardrail that raw share clicks alone never earn Google Sheets export credits.
+
+The playbook is exposed at both:
+- `actionSummary.sharePlaybook`
+- `actionSummary.loopPlan.sharePlaybook`
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
@@ -18,10 +28,10 @@ This protects Google Sheets export credits if future internal callers try to rec
 - `REPLIT_PULL_TODAY.md`
 
 ## 5. Migration steps
-None.
+None. This is a TypeScript/API payload helper change only. No database migration required.
 
 ## 6. Env vars needed
-None.
+None new.
 
 ## 7. Replit commands to run
 ```bash
@@ -30,14 +40,30 @@ npm run type-check
 npm test -- underwriting-share-routes.test.ts
 ```
 
+Optional full gate if time allows:
+```bash
+npm run check
+```
+
 ## 8. Test/build result
-- `npm test -- underwriting-share-routes.test.ts` — PASS (24 tests)
-- `npm run type-check` — PASS
+Passed locally:
+
+```bash
+npm test -- underwriting-share-routes.test.ts
+# Test Suites: 1 passed, 1 total
+# Tests: 25 passed, 25 total
+
+npm run type-check
+# tsc --noEmit
+# TYPECHECK_EXIT=0
+```
 
 ## 9. Risks/blockers
 - No deploy was performed.
-- Existing unrelated dirty workspace files were left unstaged: ByteRover index files plus prior handoff/template/script files.
-- Behavior change: direct internal calls to `recordQualifiedShareAction` for challenge/fork/saved_version now need meaningful metadata; signup needs `authenticatedUserId`. `unique_open` remains allowed without metadata.
+- No outbound messages/emails were sent.
+- No paid API calls were made.
+- Existing uncommitted repo artifacts from prior work were left unstaged unless directly related to this patch.
+- ByteRover curate was attempted after implementation, but the `brv curate` process exited with SIGKILL; this did not affect repo code/tests.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull the branch `realist-nightly/2026-06-01-qualified-action-defense` to harden the “Challenge my underwriting” reward loop. It makes the credit-award function itself reject empty challenges and anonymous signup rewards before any credit mutation, so premium Google Sheets export credits remain tied to real qualified actions — not raw clicks or spoofed internal calls.
+Pull `realist-nightly/2026-06-02-share-playbook` to give the Realist.ca share-status UI a concrete next-action playbook for the “Challenge my underwriting” loop. It tells users what qualified action to drive next, what copy to use, which recipient source is working, and whether the Google Sheets export credit reward is still available under daily caps — while keeping the rule clear that raw share clicks do not earn credits.
