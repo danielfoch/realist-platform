@@ -23,6 +23,16 @@ type QualifiedActionCatalogItem = QualifiedActionPolicy & {
   antiAbuseRule: string;
 };
 
+type QualifiedActionProofGuideItem = {
+  action: QualifiedShareAction;
+  creditAmount: number;
+  requiredEvidence: string[];
+  acceptedMetadataKeys: string[];
+  sampleMetadata: Record<string, unknown>;
+  qualificationCopy: string;
+  antiAbuseGuardrail: string;
+};
+
 const ACTION_POLICIES: Record<QualifiedShareAction, QualifiedActionPolicy> = {
   unique_open: { creditAmount: 1, dailyShareCap: 5, dailyRecipientCap: 1 },
   challenge: { creditAmount: 2, dailyShareCap: 8, dailyRecipientCap: 2 },
@@ -71,6 +81,40 @@ const ACTION_CATALOG_COPY: Record<QualifiedShareAction, Omit<QualifiedActionCata
     recipientPrompt: 'Save your version after changing the assumptions you disagree with.',
     ownerPrompt: 'Ask challengers to save their version so it can become the next shareable underwriting artifact.',
     antiAbuseRule: 'Saved-version credits require a meaningful changed payload and are capped per share and recipient.',
+  },
+};
+
+
+const ACTION_PROOF_GUIDE: Record<QualifiedShareAction, Omit<QualifiedActionProofGuideItem, 'action' | 'creditAmount' | 'antiAbuseGuardrail'>> = {
+  unique_open: {
+    requiredEvidence: ['A recipient-specific share URL or a distinct anonymous visitor fingerprint opens the underwriting page.'],
+    acceptedMetadataKeys: ['referrer'],
+    sampleMetadata: { referrer: 'https://example.com/investor-thread' },
+    qualificationCopy: 'A unique open is recorded automatically on the tracked underwriting link; it is capped and deduped per recipient.',
+  },
+  challenge: {
+    requiredEvidence: ['At least one changed/challenged assumption or a clear 10+ character disagreement comment.'],
+    acceptedMetadataKeys: ['challengedFields', 'assumptions', 'inputs', 'metrics', 'comment', 'notes'],
+    sampleMetadata: { challengedFields: ['rent', 'vacancy'], comment: 'I would underwrite lower rent growth and higher vacancy.' },
+    qualificationCopy: 'Challenge my underwriting by naming the exact number or assumption you would change.',
+  },
+  fork: {
+    requiredEvidence: ['Changed assumptions or metrics that create a comparison version of the shared underwriting.'],
+    acceptedMetadataKeys: ['assumptions', 'inputs', 'metrics', 'notes'],
+    sampleMetadata: { assumptions: { rentGrowth: 0.01, exitCapRate: 0.0575 }, notes: 'Forked with more conservative growth.' },
+    qualificationCopy: 'Forks qualify only when the recipient changes the underwriting payload enough to compare versions.',
+  },
+  signup: {
+    requiredEvidence: ['Authenticated recipient account associated with the shared underwriting journey.'],
+    acceptedMetadataKeys: ['userId'],
+    sampleMetadata: { userId: 77 },
+    qualificationCopy: 'Signup credits require authentication so a real account can save and share the challenged version onward.',
+  },
+  saved_version: {
+    requiredEvidence: ['Saved analysis version with changed assumptions, inputs, metrics, challenged fields, notes, or comment.'],
+    acceptedMetadataKeys: ['challengedFields', 'assumptions', 'inputs', 'metrics', 'comment', 'notes', 'savedAnalysisId'],
+    sampleMetadata: { inputs: { monthlyRent: 3200, vacancyRate: 0.05 }, notes: 'Saved with my revised rent and vacancy assumptions.' },
+    qualificationCopy: 'Saved-version credits require proof that the recipient changed and saved a version, not merely clicked save.',
   },
 };
 
@@ -207,6 +251,17 @@ export function getQualifiedActionCatalog(): QualifiedActionCatalogItem[] {
     action,
     ...ACTION_POLICIES[action],
     ...ACTION_CATALOG_COPY[action],
+  }));
+}
+
+export function getQualifiedActionProofGuide(action?: QualifiedShareAction): QualifiedActionProofGuideItem[] {
+  const actions = action ? [action] : QUALIFIED_ACTIONS;
+
+  return actions.map((qualifiedAction) => ({
+    action: qualifiedAction,
+    creditAmount: ACTION_POLICIES[qualifiedAction].creditAmount,
+    ...ACTION_PROOF_GUIDE[qualifiedAction],
+    antiAbuseGuardrail: ACTION_CATALOG_COPY[qualifiedAction].antiAbuseRule,
   }));
 }
 
@@ -617,6 +672,7 @@ export function getChallengeShareCard(input: ChallengeShareCardInput) {
       'Share onward',
     ],
     qualifiedActionsRequired: QUALIFIED_ACTIONS,
+    proofGuide: getQualifiedActionProofGuide(nextQualifiedAction),
     antiAbuseGuardrail: 'Credits require qualified actions with unique recipient tracking and daily caps. Raw share clicks alone never earn credits.',
   };
 }
@@ -1211,6 +1267,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         shareCard: created.shareCard,
         rewardPolicy: created.rewardPolicy,
         qualifiedActionCatalog: getQualifiedActionCatalog(),
+        qualifiedActionProofGuide: getQualifiedActionProofGuide(),
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -1273,6 +1330,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
           nextQualifiedAction: 'challenge',
         }),
         qualifiedActionCatalog: getQualifiedActionCatalog(),
+        qualifiedActionProofGuide: getQualifiedActionProofGuide('challenge'),
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -1312,6 +1370,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         shareCard: getChallengeShareCard({ token: share.token, source: req.body?.source || 'manual' }),
         rewardPolicy: getRewardPolicySnapshot(),
         qualifiedActionCatalog: getQualifiedActionCatalog(),
+        qualifiedActionProofGuide: getQualifiedActionProofGuide(),
         creditGuardrail: 'Creating recipient links never awards credits. Credits require qualified opens, challenges, forks, signups, or saved versions within caps.',
       });
     } catch (err) {
@@ -1434,6 +1493,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
           inviteFunnel: [],
         }) : [],
         qualifiedActionCatalog: getQualifiedActionCatalog(),
+        qualifiedActionProofGuide: getQualifiedActionProofGuide(action),
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -1471,6 +1531,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         action,
         ...preview,
         qualifiedActionCatalog: getQualifiedActionCatalog(),
+        qualifiedActionProofGuide: getQualifiedActionProofGuide(action),
       });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -1506,6 +1567,7 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         }),
         rewardPolicy: getRewardPolicySnapshot(),
         qualifiedActionCatalog: getQualifiedActionCatalog(),
+        qualifiedActionProofGuide: getQualifiedActionProofGuide(actionSummary.conversionInsights.nextQualifiedAction),
         actionSummary,
       });
     } catch (err) {

@@ -13,6 +13,7 @@ import {
   getQualifiedShareLoopPlan,
   getQualifiedSharePlaybook,
   getQualifiedActionCatalog,
+  getQualifiedActionProofGuide,
   getChallengeResponseNudges,
   getRecipientShareCoaching,
   getChallengeShareCard,
@@ -575,6 +576,7 @@ describe('viral underwriting share qualification', () => {
     });
     expect(card.shareUrl).toBe('/underwriting/share-token?recipient=recipient%20key%2Fwith%20spaces');
     expect(card.recipientInstruction).toContain('Save your version');
+    expect(card.proofGuide).toEqual([expect.objectContaining({ action: 'saved_version' })]);
     expect(card.antiAbuseGuardrail).toContain('Raw share clicks alone never earn credits');
   });
 
@@ -805,6 +807,28 @@ describe('viral underwriting share qualification', () => {
       antiAbuseRule: expect.stringContaining('meaningful challenge evidence'),
     });
     expect(catalog.every((item) => item.dailyShareCap > 0 && item.dailyRecipientCap > 0)).toBe(true);
+  });
+
+  it('exposes proof requirements for qualified recipient actions', () => {
+    const allProof = getQualifiedActionProofGuide();
+    const challengeProof = getQualifiedActionProofGuide('challenge');
+
+    expect(allProof).toHaveLength(5);
+    expect(challengeProof).toEqual([
+      expect.objectContaining({
+        action: 'challenge',
+        creditAmount: getActionPolicy('challenge').creditAmount,
+        requiredEvidence: expect.arrayContaining([expect.stringContaining('10+ character')]),
+        acceptedMetadataKeys: expect.arrayContaining(['challengedFields', 'assumptions', 'comment']),
+        sampleMetadata: expect.objectContaining({ challengedFields: ['rent', 'vacancy'] }),
+        qualificationCopy: expect.stringContaining('Challenge my underwriting'),
+        antiAbuseGuardrail: expect.stringContaining('meaningful challenge evidence'),
+      }),
+    ]);
+    expect(allProof.find((item) => item.action === 'signup')).toMatchObject({
+      acceptedMetadataKeys: ['userId'],
+      qualificationCopy: expect.stringContaining('authentication'),
+    });
   });
 
   it('calculates Google Sheets export credit balance from earned minus redeemed credits', async () => {
