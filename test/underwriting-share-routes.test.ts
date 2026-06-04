@@ -17,6 +17,7 @@ import {
   getChallengeResponseNudges,
   getRecipientShareCoaching,
   getChallengeShareCard,
+  getRecipientLoopHandoff,
   getShareActionQualificationBlockReason,
   hasMeaningfulChallengePayload,
   previewQualifiedShareActionCredit,
@@ -549,6 +550,51 @@ describe('viral underwriting share qualification', () => {
       ]),
     });
     expect(brief.bestNextReward).toEqual({ action: 'saved_version', creditAmount: 4, remainingToday: 3 });
+  });
+
+  it('builds recipient loop handoffs that push saved challengers to share onward', () => {
+    const handoff = getRecipientLoopHandoff({
+      action: 'saved_version',
+      status: 'qualified',
+      qualified: true,
+      creditAmount: getActionPolicy('saved_version').creditAmount,
+      savedAnalysisId: 321,
+      onwardShare: { token: 'onward-token', shareUrl: '/underwriting/onward-token', cta: 'Challenge my underwriting.' },
+    });
+
+    expect(handoff).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      canShareOnward: true,
+      hasAccountTiedVersion: true,
+      nextQualifiedAction: 'unique_open',
+      recipientNextStep: expect.stringContaining('Send the onward link'),
+      antiAbuseGuardrail: expect.stringContaining('Do not award credits for raw share clicks'),
+    });
+    expect(handoff.onwardShareCard).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      shareUrl: '/underwriting/onward-token',
+      nextQualifiedAction: 'challenge',
+    });
+  });
+
+  it('coaches plain challenges toward saved versions before onward sharing', () => {
+    const handoff = getRecipientLoopHandoff({
+      action: 'challenge',
+      status: 'qualified',
+      qualified: true,
+      creditAmount: getActionPolicy('challenge').creditAmount,
+      savedAnalysisId: null,
+      onwardShare: null,
+    });
+
+    expect(handoff).toMatchObject({
+      canShareOnward: false,
+      hasAccountTiedVersion: false,
+      nextQualifiedAction: 'saved_version',
+      headline: expect.stringContaining('saved version'),
+      ownerNextStep: expect.stringContaining('save'),
+    });
+    expect(handoff.rewardTeaser).toContain('Google Sheets export credit');
   });
 
   it('builds recipient-specific Challenge my underwriting cards without promising raw-click credits', () => {

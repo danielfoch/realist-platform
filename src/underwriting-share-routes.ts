@@ -677,6 +677,56 @@ export function getChallengeShareCard(input: ChallengeShareCardInput) {
   };
 }
 
+export function getRecipientLoopHandoff(input: {
+  action: QualifiedShareAction;
+  status: string;
+  qualified: boolean;
+  creditAmount: number;
+  savedAnalysisId?: number | null;
+  onwardShare?: { token: string; shareUrl?: string; cta?: string } | null;
+}) {
+  const hasAccountTiedVersion = Boolean(input.savedAnalysisId);
+  const canShareOnward = input.qualified && hasAccountTiedVersion && Boolean(input.onwardShare?.token);
+  const nextQualifiedAction: QualifiedShareAction = canShareOnward
+    ? 'unique_open'
+    : input.action === 'challenge'
+      ? 'saved_version'
+      : input.action === 'signup'
+        ? 'fork'
+        : 'signup';
+  const actionCopy = ACTION_CATALOG_COPY[nextQualifiedAction];
+
+  return {
+    cta: 'Challenge my underwriting.',
+    status: input.status,
+    qualified: input.qualified,
+    creditAmount: input.creditAmount,
+    hasAccountTiedVersion,
+    canShareOnward,
+    nextQualifiedAction,
+    headline: canShareOnward
+      ? 'Your challenged version is ready to share onward.'
+      : hasAccountTiedVersion
+        ? 'Save the account-tied version, then share it onward.'
+        : 'Turn this challenge into a saved version so the loop can continue.',
+    recipientNextStep: canShareOnward
+      ? 'Send the onward link to one specific investor or realtor and ask them to challenge your assumptions.'
+      : actionCopy.recipientPrompt,
+    ownerNextStep: canShareOnward
+      ? 'Track qualified opens, challenges, signups, and saved versions from the onward share before awarding more credits.'
+      : actionCopy.ownerPrompt,
+    onwardShareCard: canShareOnward && input.onwardShare?.token
+      ? getChallengeShareCard({
+        token: input.onwardShare.token,
+        source: 'recipient_onward',
+        nextQualifiedAction: 'challenge',
+      })
+      : null,
+    rewardTeaser: `Next qualified ${nextQualifiedAction.replace('_', ' ')} can earn ${ACTION_POLICIES[nextQualifiedAction].creditAmount} Google Sheets export credit${ACTION_POLICIES[nextQualifiedAction].creditAmount === 1 ? '' : 's'} after anti-abuse checks pass.`,
+    antiAbuseGuardrail: 'Do not award credits for raw share clicks. Credits require qualified unique opens, challenges, forks, signups, or saved versions with unique-recipient tracking and daily caps.',
+  };
+}
+
 function getConversionRate(numerator: number, denominator: number) {
   return denominator > 0 ? Number((numerator / denominator).toFixed(4)) : 0;
 }
@@ -1475,6 +1525,14 @@ export function createUnderwritingShareRouter(database: DatabaseAdapter = defaul
         ...recorded,
         savedAnalysisId,
         onwardShare,
+        recipientLoopHandoff: getRecipientLoopHandoff({
+          action,
+          status: recorded.status,
+          qualified: recorded.qualified,
+          creditAmount: recorded.creditAmount,
+          savedAnalysisId,
+          onwardShare,
+        }),
         challengeResponseNudges: onwardShare ? getChallengeResponseNudges({
           byAction: Object.fromEntries(
             QUALIFIED_ACTIONS.map((qualifiedAction) => [
