@@ -382,7 +382,19 @@ export default function InvestorStart() {
               <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-xs">R</span>
               </div>
-              <span>Realist.ca</span>
+              <span>
+                Realist.ca powered by Valery Lbs (
+                <a
+                  href="https://valery.ca"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-foreground transition-colors"
+                  data-testid="link-valery"
+                >
+                  Valery.ca
+                </a>
+                )
+              </span>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
               <a href="/markets" className="hover:text-foreground transition-colors">Markets</a>
