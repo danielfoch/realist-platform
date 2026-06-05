@@ -103,12 +103,12 @@ import CommunityHub from "@/pages/CommunityHub";
 import InsightsHub from "@/pages/InsightsHub";
 import GuidesHub from "@/pages/GuidesHub";
 import GuidePage from "@/pages/GuidePage";
-import EncyclopediaIndex from "@/pages/EncyclopediaIndex";
 import EncyclopediaDetail from "@/pages/EncyclopediaDetail";
 import CapitalStackCanadaGuide from "@/pages/CapitalStackCanadaGuide";
 import ABCLendersCanadaGuide from "@/pages/ABCLendersCanadaGuide";
 import ReportsHub from "@/pages/ReportsHub";
 import ReportPage from "@/pages/ReportPage";
+import IrccImmigrationDashboardReport from "@/pages/IrccImmigrationDashboardReport";
 import MarketsHub from "@/pages/MarketsHub";
 import ProgrammaticMarketPage from "@/pages/ProgrammaticMarketPage";
 import StrategiesHub from "@/pages/StrategiesHub";
@@ -204,12 +204,13 @@ function Router() {
       <Route path="/insights/blog" component={Blog} />
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />
-      <Route path="/insights/encyclopedia" component={EncyclopediaIndex} />
+      <Route path="/insights/encyclopedia" component={GuidesHub} />
       <Route path="/insights/encyclopedia/:slug" component={EncyclopediaDetail} />
       <Route path="/insights/guides/capital-stack-canada" component={CapitalStackCanadaGuide} />
       <Route path="/insights/guides/a-vs-b-vs-c-lenders-canada" component={ABCLendersCanadaGuide} />
       <Route path="/insights/guides/:slug" component={GuidePage} />
       <Route path="/reports" component={ReportsHub} />
+      <Route path="/reports/canada-immigration-dashboard-2026" component={IrccImmigrationDashboardReport} />
       <Route path="/reports/:slug" component={ReportPage} />
       <Route path="/markets" component={MarketsHub} />
       <Route path="/markets/:city" component={ProgrammaticMarketPage} />

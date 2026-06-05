@@ -5,6 +5,7 @@ import { SEO, organizationSchema, websiteSchema } from "@/components/SEO";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import type { BlogPost } from "@shared/schema";
 
 export default function ReportsHub() {
@@ -37,6 +38,25 @@ export default function ReportsHub() {
             Market intelligence, pricing reports, and housing data pages designed to be crawlable, readable, and useful to investors.
           </p>
         </div>
+
+        <Card className="mb-10 overflow-hidden border-stone-200 bg-[radial-gradient(circle_at_top_left,#fef3c7,transparent_28%),linear-gradient(135deg,#1c1917_0%,#292524_58%,#44403c_100%)] text-stone-50">
+          <CardContent className="grid gap-6 p-8 md:grid-cols-[1.3fr_0.7fr] md:items-end">
+            <div>
+              <Badge variant="outline" className="mb-3 border-amber-200/40 bg-amber-100/10 text-amber-100">
+                New report
+              </Badge>
+              <h2 className="text-3xl font-bold leading-tight">Canada Immigration Dashboard 2026</h2>
+              <p className="mt-3 max-w-2xl text-stone-300">
+                Interactive IRCC dashboard for temporary resident approvals, permanent resident admissions, and asylum claimant movement.
+              </p>
+            </div>
+            <div className="md:text-right">
+              <Link href="/reports/canada-immigration-dashboard-2026">
+                <Button className="bg-amber-500 text-stone-950 hover:bg-amber-400">Open dashboard</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
 
         {isLoading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

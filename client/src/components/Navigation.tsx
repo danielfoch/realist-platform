@@ -9,7 +9,7 @@ import {
   Menu, X, User, LogOut, Briefcase, Building, ChevronDown,
   Calculator, MapPin, Users, Handshake, Calendar, Radio,
   BookOpen, FileText, TrendingUp, BarChart3, Shield, Gavel,
-  Map, DollarSign, AlertTriangle, Layers, Building2, FileSearch,
+  Map, DollarSign, Layers, Building2, FileSearch,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -61,13 +61,10 @@ const navCategories: NavCategory[] = [
   {
     label: "Market Intel",
     items: [
-      { href: "/insights/market-report", label: "Market Report", description: "Monthly yield and rent trends by city", icon: <BarChart3 className="h-4 w-4" /> },
-      { href: "/insights/mortgage-rates", label: "Mortgage Rates", description: "Best current rates across Canada", icon: <TrendingUp className="h-4 w-4" /> },
-      { href: "/insights/motivated-report", label: "Motivated Report", description: "Monthly motivated-seller and POS snapshot", icon: <AlertTriangle className="h-4 w-4" /> },
+      { href: "/insights/market-report", label: "Market Reports", description: "Monthly yield, rates, motivated-seller, and research coverage", icon: <BarChart3 className="h-4 w-4" /> },
+      { href: "/reports/canada-immigration-dashboard-2026", label: "Immigration Dashboard", description: "IRCC approvals, permanent residents, and asylum flow dashboard", icon: <FileText className="h-4 w-4" />, badge: "New" },
       { href: "/insights/podcast", label: "Podcast", description: "Real estate investor conversations", icon: <Radio className="h-4 w-4" /> },
-      { href: "/insights/blog", label: "Blog & Research", description: "Market analysis and strategy", icon: <BookOpen className="h-4 w-4" /> },
-      { href: "/insights/guides", label: "Guides", description: "How-to guides and educational resources", icon: <FileText className="h-4 w-4" /> },
-      { href: "/insights/encyclopedia", label: "Encyclopedia", description: "Definitions, formulas, and underwriting calculator specs", icon: <BookOpen className="h-4 w-4" />, badge: "New" },
+      { href: "/insights/guides", label: "Guides & Encyclopedia", description: "How-to guides, definitions, formulas, and underwriting specs", icon: <FileText className="h-4 w-4" /> },
     ],
   },
   {

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { BookOpen, Calculator, Handshake, Clock, ArrowRight, Layers, Landmark } from "lucide-react";
+import { BookOpen, Calculator, Handshake, Clock, ArrowRight, Layers, Landmark, Search } from "lucide-react";
+import { encyclopediaGuides, encyclopediaManifest, searchEncyclopediaGuides } from "@shared/encyclopedia";
 import type { Guide } from "@shared/schema";
 
 const featuredGuides = [
@@ -66,29 +67,33 @@ const toolGuides = [
 
 export default function GuidesHub() {
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [encyclopediaQuery, setEncyclopediaQuery] = useState("");
+  const [encyclopediaCategory, setEncyclopediaCategory] = useState("all");
 
   const { data: guides = [], isLoading } = useQuery<Guide[]>({
     queryKey: ["/api/guides/published"],
   });
 
+  const encyclopediaCategories = ["all", ...encyclopediaManifest.categories];
   const filteredGuides = selectedCategory === "all"
     ? guides
     : guides.filter((g) => g.category === selectedCategory);
+  const encyclopediaResults = searchEncyclopediaGuides(encyclopediaQuery, encyclopediaCategory);
 
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Guides & Resources"
-        description="Educational guides to help you become a better real estate investor. Learn strategies, analysis techniques, and best practices."
+        title="Guides & Encyclopedia"
+        description="Educational guides plus a searchable real estate investor encyclopedia with definitions, formulas, examples, and underwriting specs."
         canonicalUrl="/insights/guides"
       />
       <Navigation />
 
       <main className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4" data-testid="text-guides-title">Guides & Resources</h1>
+          <h1 className="text-4xl font-bold mb-4" data-testid="text-guides-title">Guides & Encyclopedia</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Educational content to help you become a better real estate investor.
+            Educational content, underwriting definitions, formulas, and calculator specs for Canadian real estate investors.
           </p>
         </div>
 
@@ -250,6 +255,87 @@ export default function GuidesHub() {
             ))}
           </div>
         </div>
+
+        <section className="border-t border-border pt-12 mt-12" aria-labelledby="encyclopedia-heading">
+          <div className="mb-8">
+            <div className="flex items-center gap-3 flex-wrap mb-3">
+              <h2 id="encyclopedia-heading" className="text-2xl font-bold">Investor Encyclopedia</h2>
+              <Badge variant="outline">{encyclopediaGuides.length} terms</Badge>
+            </div>
+            <p className="text-muted-foreground max-w-3xl">
+              Search plain-English definitions, formulas, examples, caveats, and calculator specs without leaving the guides library.
+            </p>
+          </div>
+
+          <div className="mb-8 space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={encyclopediaQuery}
+                onChange={(event) => setEncyclopediaQuery(event.target.value)}
+                placeholder="Search by term, formula, tag, category, keyword, or related term"
+                className="h-11 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                data-testid="input-encyclopedia-search"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {encyclopediaCategories.map((item) => (
+                <Button
+                  key={item}
+                  type="button"
+                  size="sm"
+                  variant={encyclopediaCategory === item ? "default" : "outline"}
+                  onClick={() => setEncyclopediaCategory(item)}
+                  data-testid={`filter-encyclopedia-${item.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  {item === "all" ? "All" : item}
+                </Button>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Showing {encyclopediaResults.length} of {encyclopediaGuides.length} terms
+            </p>
+          </div>
+
+          {encyclopediaResults.length === 0 ? (
+            <div className="rounded-md border border-dashed p-10 text-center">
+              <BookOpen className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+              <p className="font-medium">No encyclopedia entries found.</p>
+              <p className="text-sm text-muted-foreground">Try a broader term like financing, rent, tax, or cap rate.</p>
+            </div>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {encyclopediaResults.map((guide) => (
+                <Link key={guide.slug} href={`/insights/encyclopedia/${guide.slug}`}>
+                  <Card className="h-full hover-elevate cursor-pointer transition-all">
+                    <CardHeader className="space-y-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary">{guide.category}</Badge>
+                        {guide.toolSpecSlug && (
+                          <Badge variant="outline" className="gap-1">
+                            <Calculator className="h-3 w-3" />
+                            Calculator spec
+                          </Badge>
+                        )}
+                      </div>
+                      <CardTitle className="text-xl">{guide.title}</CardTitle>
+                      <CardDescription className="text-sm">{guide.summary}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex flex-wrap gap-1.5">
+                        {(guide.tags ?? []).slice(0, 4).map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-[10px]">
+                            {tag.replace(/-/g, " ")}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );
