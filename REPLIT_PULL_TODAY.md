@@ -6,7 +6,7 @@
 ## 2. Branch and commit SHA
 - Repo: `https://github.com/danielfoch/realist-platform.git`
 - Branch: `realist-nightly/2026-06-05-qualified-share-digest`
-- Code commit SHA: `cb65051`
+- Code commit SHA: `f5a0f33`
 - Handoff verification: `PASS`
 
 ## 3. What changed
