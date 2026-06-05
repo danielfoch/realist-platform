@@ -641,6 +641,27 @@ type QualifiedSharePlaybookStep = {
   antiAbuseGuardrail: string;
 };
 
+type QualifiedShareDigest = {
+  headline: string;
+  cta: string;
+  loopStage: string;
+  healthScore: number;
+  earnedCredits: number;
+  remainingCreditsToday: number;
+  nextQualifiedAction: QualifiedShareAction;
+  prioritizedRecipientSource: string | null;
+  morningChecklist: Array<{
+    rank: number;
+    ownerAction: string;
+    recipientCopy: string;
+    qualifiesWhen: string;
+    creditAmount: number;
+  }>;
+  exportCreditCopy: string;
+  riskFlags: string[];
+  antiAbuseGuardrail: string;
+};
+
 export type ChallengeShareCardInput = {
   token: string;
   recipientKey?: string | null;
@@ -1048,6 +1069,64 @@ export function getQualifiedShareLoopPlan(input: {
   };
 }
 
+export function getQualifiedShareDigest(input: {
+  byAction: ShareActionSummary;
+  inviteFunnel: RecipientInviteFunnelSegment[];
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}): QualifiedShareDigest {
+  const { byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount } = input;
+  const insights = getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount });
+  const rewardBrief = getQualifiedShareRewardBrief(byAction);
+  const playbook = getQualifiedSharePlaybook({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount });
+  const primaryStep = playbook.primaryStep;
+  const prioritizedRecipientSource = primaryStep?.recipientSource || inviteFunnel[0]?.source || null;
+  const versions = byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount;
+  const allDailyCapsExhausted = QUALIFIED_ACTIONS.every((action) => byAction[action].dailyRemainingShareCap <= 0);
+
+  const riskFlags = [
+    invitedRecipientCount > 0 && unopenedRecipientCount === invitedRecipientCount
+      ? 'All generated recipient links are still unopened; do not count these as credit-worthy activity yet.'
+      : null,
+    byAction.unique_open.qualifiedCount > 0 && byAction.challenge.qualifiedCount === 0
+      ? 'Recipients are opening without submitting a meaningful challenge; tighten the “Challenge my underwriting” ask.'
+      : null,
+    byAction.challenge.qualifiedCount > 0 && versions === 0
+      ? 'Challenges are not becoming saved or forked versions, so the onward-sharing loop can stall.'
+      : null,
+    allDailyCapsExhausted
+      ? 'All qualified-action daily share caps are exhausted; wait until tomorrow before promising more export credits.'
+      : null,
+  ].filter((flag): flag is string => Boolean(flag));
+
+  const readySteps = playbook.steps
+    .filter((step) => step.status === 'ready')
+    .slice(0, 3);
+
+  return {
+    headline: 'Morning qualified-share digest',
+    cta: 'Challenge my underwriting.',
+    loopStage: insights.bottleneck,
+    healthScore: insights.healthScore,
+    earnedCredits: rewardBrief.earnedCredits,
+    remainingCreditsToday: insights.remainingCreditsToday,
+    nextQualifiedAction: insights.nextQualifiedAction,
+    prioritizedRecipientSource,
+    morningChecklist: readySteps.map((step, index) => ({
+      rank: index + 1,
+      ownerAction: step.ownerAction,
+      recipientCopy: step.prompt,
+      qualifiesWhen: step.qualifiesWhen,
+      creditAmount: step.creditAmount,
+    })),
+    exportCreditCopy: rewardBrief.bestNextReward
+      ? `Next best reward: ${rewardBrief.bestNextReward.creditAmount} Google Sheets export credit${rewardBrief.bestNextReward.creditAmount === 1 ? '' : 's'} for a qualified ${rewardBrief.bestNextReward.action.replace('_', ' ')}.`
+      : 'No Google Sheets export credits should be promised until a qualified action has remaining cap.',
+    riskFlags,
+    antiAbuseGuardrail: 'This digest is qualified-action only: unique opens, meaningful challenges, forks, signups, and saved versions can earn Google Sheets export credits within caps. Raw share clicks never earn credits.',
+  };
+}
+
 export function getRecipientShareCoaching(funnel: RecipientInviteFunnelSegment[]): RecipientShareCoaching[] {
   return funnel
     .map((segment) => {
@@ -1270,6 +1349,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     rewardBrief: getQualifiedShareRewardBrief(byAction),
     loopPlan: getQualifiedShareLoopPlan({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
     sharePlaybook: getQualifiedSharePlaybook({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
+    qualifiedShareDigest: getQualifiedShareDigest({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
     challengeResponseNudges: getChallengeResponseNudges({ byAction, inviteFunnel }),
     recipientCoaching: getRecipientShareCoaching(inviteFunnel),
     recentActions: recentResult.rows.map((row) => ({

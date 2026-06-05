@@ -12,6 +12,7 @@ import {
   getQualifiedShareRewardBrief,
   getQualifiedShareLoopPlan,
   getQualifiedSharePlaybook,
+  getQualifiedShareDigest,
   getQualifiedActionCatalog,
   getQualifiedActionProofGuide,
   getChallengeResponseNudges,
@@ -364,6 +365,15 @@ describe('viral underwriting share qualification', () => {
       recommendedRecipientSource: expect.objectContaining({ source: 'manual' }),
       creditGuardrail: expect.stringContaining('never raw share clicks alone'),
     });
+    expect(summary.qualifiedShareDigest).toMatchObject({
+      headline: 'Morning qualified-share digest',
+      cta: 'Challenge my underwriting.',
+      loopStage: 'version_to_signup',
+      nextQualifiedAction: 'signup',
+      prioritizedRecipientSource: 'manual',
+      earnedCredits: 13,
+      antiAbuseGuardrail: expect.stringContaining('Raw share clicks never earn credits'),
+    });
     expect(summary.loopPlan.nextMilestone).toMatchObject({ key: 'account_tied_loop', qualifiedAction: 'signup' });
     expect(summary.loopPlan.sharePlaybook.primaryStep).toMatchObject({ qualifiedAction: 'signup', status: 'ready' });
     expect(summary.sharePlaybook).toMatchObject({
@@ -422,7 +432,7 @@ describe('viral underwriting share qualification', () => {
   });
 
   it('creates recipient-specific share links without awarding credits', async () => {
-    const query = jest.fn(async (text: string, params?: readonly unknown[]) => {
+    const query = jest.fn(async (text: string) => {
       expect(text).not.toContain('premium_credit_ledger');
       return { rows: [{ id: 201, created_at: '2026-05-02T05:10:00.000Z' }] };
     });
@@ -791,6 +801,63 @@ describe('viral underwriting share qualification', () => {
     });
     expect(nudges.map((nudge) => nudge.nextQualifiedAction)).not.toContain('challenge');
     expect(nudges.map((nudge) => nudge.rewardCopy).join(' ')).not.toContain('raw share clicks');
+  });
+
+  it('builds a morning digest that tells owners the next qualified share action', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: action === 'unique_open' ? 6 : action === 'challenge' ? 2 : 0,
+          qualifiedCount: action === 'unique_open' ? 6 : action === 'challenge' ? 2 : 0,
+          cappedCount: 0,
+          creditAwarded: action === 'unique_open' ? 6 : action === 'challenge' ? 4 : 0,
+          dailyQualifiedCount: 0,
+          dailyRemainingShareCap: 3,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getQualifiedShareDigest>[0]['byAction'];
+
+    const digest = getQualifiedShareDigest({
+      byAction,
+      invitedRecipientCount: 8,
+      unopenedRecipientCount: 2,
+      inviteFunnel: [
+        {
+          source: 'realtor_partner_dm',
+          invitedCount: 8,
+          openedCount: 6,
+          challengedCount: 2,
+          versionedCount: 0,
+          signupCount: 0,
+          creditAwarded: 10,
+          openRate: 0.75,
+          challengeRate: 0.3333,
+          versionRate: 0,
+          signupRate: 0,
+        },
+      ],
+    });
+
+    expect(digest).toMatchObject({
+      headline: 'Morning qualified-share digest',
+      cta: 'Challenge my underwriting.',
+      loopStage: 'open_to_challenge',
+      nextQualifiedAction: 'challenge',
+      prioritizedRecipientSource: 'realtor_partner_dm',
+      earnedCredits: 10,
+      exportCreditCopy: expect.stringContaining('Google Sheets export'),
+      antiAbuseGuardrail: expect.stringContaining('Raw share clicks never earn credits'),
+    });
+    expect(digest.morningChecklist[0]).toMatchObject({
+      rank: 1,
+      recipientCopy: expect.stringContaining('Challenge my underwriting'),
+      creditAmount: getActionPolicy('challenge').creditAmount,
+    });
+    expect(digest.riskFlags).toEqual([
+      expect.stringContaining('saved or forked versions'),
+    ]);
   });
 
   it('ranks recipient-source coaching by the next qualified underwriting loop action', () => {
