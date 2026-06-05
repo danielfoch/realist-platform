@@ -433,6 +433,23 @@ export default function MarketReport() {
           <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
           <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link href="/insights/statcan-labour-force-survey-may-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-emerald-300/60" data-testid="card-macro-lfs-may-2026">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                      <Users className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <Badge variant="default" className="text-[10px]">New · Jun 5, 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Labour Force Survey — May 2026</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Jobs jump 88,000 and unemployment falls to 6.6% as full-time work rebounds. What the latest StatCan jobs print means for buyers, sellers, investors, renewers and Realtors.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/insights/housing-correction-locked-out-2026">
               <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-rose-300/60" data-testid="card-macro-housing-correction-2026">
                 <CardContent className="p-5">
