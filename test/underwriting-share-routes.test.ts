@@ -13,6 +13,7 @@ import {
   getQualifiedShareLoopPlan,
   getQualifiedSharePlaybook,
   getQualifiedShareDigest,
+  getQualifiedShareAbuseAudit,
   getQualifiedActionCatalog,
   getQualifiedActionProofGuide,
   getChallengeResponseNudges,
@@ -374,6 +375,15 @@ describe('viral underwriting share qualification', () => {
       earnedCredits: 13,
       antiAbuseGuardrail: expect.stringContaining('Raw share clicks never earn credits'),
     });
+    expect(summary.abuseAudit).toMatchObject({
+      status: 'watch',
+      cappedActionCount: 1,
+      openedWithoutChallengeCount: 3,
+      unopenedRecipientCount: 2,
+      nextSafeAction: 'signup',
+      creditGuardrail: expect.stringContaining('raw share clicks alone never qualify'),
+    });
+    expect(summary.abuseAudit.riskFlags).toEqual(expect.arrayContaining([expect.stringContaining('attempted qualified action')]));
     expect(summary.loopPlan.nextMilestone).toMatchObject({ key: 'account_tied_loop', qualifiedAction: 'signup' });
     expect(summary.loopPlan.sharePlaybook.primaryStep).toMatchObject({ qualifiedAction: 'signup', status: 'ready' });
     expect(summary.sharePlaybook).toMatchObject({
@@ -461,6 +471,43 @@ describe('viral underwriting share qualification', () => {
       expect.stringContaining('INSERT INTO underwriting_share_recipients'),
       [7, links[0].recipientHash, expect.any(String), 'manual', 42],
     );
+  });
+
+  it('audits abuse and cap risk for qualified share credit copy', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: action === 'unique_open' ? 8 : 0,
+          qualifiedCount: action === 'unique_open' ? 5 : 0,
+          cappedCount: action === 'unique_open' ? 3 : 0,
+          creditAwarded: action === 'unique_open' ? 5 : 0,
+          dailyQualifiedCount: action === 'unique_open' ? getActionPolicy('unique_open').dailyShareCap : 0,
+          dailyRemainingShareCap: action === 'unique_open' ? 0 : getActionPolicy(action as any).dailyShareCap,
+          lastActionAt: null,
+        },
+      ]),
+    ) as any;
+
+    const audit = getQualifiedShareAbuseAudit({
+      byAction,
+      invitedRecipientCount: 5,
+      unopenedRecipientCount: 0,
+    });
+
+    expect(audit).toMatchObject({
+      status: 'watch',
+      cappedActionCount: 3,
+      cappedActions: ['unique_open'],
+      openedWithoutChallengeCount: 5,
+      nextSafeAction: 'challenge',
+    });
+    expect(audit.dailyCapWarnings[0]).toMatchObject({
+      action: 'unique_open',
+      remainingShareCreditsToday: 0,
+      dailyShareCap: getActionPolicy('unique_open').dailyShareCap,
+    });
+    expect(audit.creditGuardrail).toContain('raw share clicks alone never qualify');
   });
 
   it('returns stage-specific growth nudges for the underwriting loop', () => {

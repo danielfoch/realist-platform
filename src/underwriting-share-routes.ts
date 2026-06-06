@@ -662,6 +662,24 @@ type QualifiedShareDigest = {
   antiAbuseGuardrail: string;
 };
 
+type QualifiedShareAbuseAudit = {
+  status: 'healthy' | 'watch' | 'capped';
+  cappedActionCount: number;
+  cappedActions: QualifiedShareAction[];
+  openedWithoutChallengeCount: number;
+  unopenedRecipientCount: number;
+  dailyCapWarnings: Array<{
+    action: QualifiedShareAction;
+    creditAmount: number;
+    remainingShareCreditsToday: number;
+    dailyShareCap: number;
+  }>;
+  nextSafeAction: QualifiedShareAction;
+  ownerAction: string;
+  creditGuardrail: string;
+  riskFlags: string[];
+};
+
 export type ChallengeShareCardInput = {
   token: string;
   recipientKey?: string | null;
@@ -1127,6 +1145,52 @@ export function getQualifiedShareDigest(input: {
   };
 }
 
+export function getQualifiedShareAbuseAudit(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}): QualifiedShareAbuseAudit {
+  const { byAction, invitedRecipientCount, unopenedRecipientCount } = input;
+  const insights = getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount });
+  const cappedActions = QUALIFIED_ACTIONS.filter((action) => byAction[action].dailyRemainingShareCap <= 0);
+  const cappedActionCount = Object.values(byAction).reduce((total, actionSummary) => total + actionSummary.cappedCount, 0);
+  const openedWithoutChallengeCount = Math.max(byAction.unique_open.qualifiedCount - byAction.challenge.qualifiedCount, 0);
+  const allDailyCapsExhausted = cappedActions.length === QUALIFIED_ACTIONS.length;
+
+  const riskFlags = [
+    cappedActionCount > 0
+      ? `${cappedActionCount} attempted qualified action${cappedActionCount === 1 ? ' was' : 's were'} tracked without credits after caps or duplicate controls.`
+      : null,
+    openedWithoutChallengeCount > 0
+      ? `${openedWithoutChallengeCount} qualified open${openedWithoutChallengeCount === 1 ? '' : 's'} still need a meaningful underwriting challenge before higher-value credits are possible.`
+      : null,
+    invitedRecipientCount > 0 && unopenedRecipientCount === invitedRecipientCount
+      ? 'All recipient-specific links are unopened; keep credits off until unique opens or downstream qualified actions occur.'
+      : null,
+    allDailyCapsExhausted
+      ? 'All daily share caps are exhausted; pause reward promises until caps reset.'
+      : null,
+  ].filter((flag): flag is string => Boolean(flag));
+
+  return {
+    status: allDailyCapsExhausted ? 'capped' : riskFlags.length > 0 ? 'watch' : 'healthy',
+    cappedActionCount,
+    cappedActions,
+    openedWithoutChallengeCount,
+    unopenedRecipientCount,
+    dailyCapWarnings: cappedActions.map((action) => ({
+      action,
+      creditAmount: ACTION_POLICIES[action].creditAmount,
+      remainingShareCreditsToday: byAction[action].dailyRemainingShareCap,
+      dailyShareCap: ACTION_POLICIES[action].dailyShareCap,
+    })),
+    nextSafeAction: insights.nextQualifiedAction,
+    ownerAction: insights.ownerAction,
+    creditGuardrail: 'Audit premium-credit copy against this object: Google Sheets export credits require qualified unique opens, challenges, forks, signups, or saved versions with unique-recipient tracking and daily caps; raw share clicks alone never qualify.',
+    riskFlags,
+  };
+}
+
 export function getRecipientShareCoaching(funnel: RecipientInviteFunnelSegment[]): RecipientShareCoaching[] {
   return funnel
     .map((segment) => {
@@ -1350,6 +1414,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     loopPlan: getQualifiedShareLoopPlan({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
     sharePlaybook: getQualifiedSharePlaybook({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
     qualifiedShareDigest: getQualifiedShareDigest({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
+    abuseAudit: getQualifiedShareAbuseAudit({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     challengeResponseNudges: getChallengeResponseNudges({ byAction, inviteFunnel }),
     recipientCoaching: getRecipientShareCoaching(inviteFunnel),
     recentActions: recentResult.rows.map((row) => ({
