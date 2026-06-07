@@ -13,6 +13,7 @@ import {
   getQualifiedShareLoopPlan,
   getQualifiedSharePlaybook,
   getQualifiedShareDigest,
+  getQualifiedShareRewardAttribution,
   getQualifiedShareAbuseAudit,
   getQualifiedActionCatalog,
   getQualifiedActionProofGuide,
@@ -375,6 +376,22 @@ describe('viral underwriting share qualification', () => {
       earnedCredits: 13,
       antiAbuseGuardrail: expect.stringContaining('Raw share clicks never earn credits'),
     });
+    expect(summary.rewardAttribution).toMatchObject({
+      headline: 'Qualified reward attribution',
+      cta: 'Challenge my underwriting.',
+      totalEarnedCredits: 13,
+      primaryAttribution: expect.objectContaining({
+        action: 'signup',
+        bestRecipientSource: 'manual',
+        remainingShareCreditsToday: getActionPolicy('signup').dailyShareCap,
+      }),
+      creditGuardrail: expect.stringContaining('Raw share clicks alone never earn credits'),
+    });
+    expect(summary.rewardAttribution.byAction.find((item: any) => item.action === 'challenge')).toMatchObject({
+      status: 'earning',
+      creditAwarded: 4,
+      antiAbuseGuardrail: expect.stringContaining('capped by share and recipient'),
+    });
     expect(summary.abuseAudit).toMatchObject({
       status: 'watch',
       cappedActionCount: 1,
@@ -471,6 +488,64 @@ describe('viral underwriting share qualification', () => {
       expect.stringContaining('INSERT INTO underwriting_share_recipients'),
       [7, links[0].recipientHash, expect.any(String), 'manual', 42],
     );
+  });
+
+
+  it('attributes Google Sheets export rewards only to qualified recipient actions', () => {
+    const byAction = Object.fromEntries(
+      ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'].map((action) => [
+        action,
+        {
+          totalCount: action === 'challenge' ? 3 : 0,
+          qualifiedCount: action === 'challenge' ? 2 : 0,
+          cappedCount: 0,
+          creditAwarded: action === 'challenge' ? 4 : 0,
+          dailyQualifiedCount: action === 'challenge' ? 2 : 0,
+          dailyRemainingShareCap: action === 'unique_open' ? 0 : getActionPolicy(action as any).dailyShareCap,
+          lastActionAt: null,
+        },
+      ]),
+    ) as Parameters<typeof getQualifiedShareRewardAttribution>[0]['byAction'];
+
+    const attribution = getQualifiedShareRewardAttribution({
+      byAction,
+      inviteFunnel: [
+        {
+          source: 'realtor_partner',
+          invitedCount: 6,
+          openedCount: 5,
+          challengedCount: 2,
+          versionedCount: 1,
+          signupCount: 0,
+          creditAwarded: 4,
+          openRate: 0.8333,
+          challengeRate: 0.4,
+          versionRate: 0.5,
+          signupRate: 0,
+        },
+      ],
+    });
+
+    expect(attribution).toMatchObject({
+      cta: 'Challenge my underwriting.',
+      totalEarnedCredits: 4,
+      primaryAttribution: expect.objectContaining({
+        action: 'signup',
+        status: 'not_started',
+        bestRecipientSource: 'realtor_partner',
+        creditAmount: getActionPolicy('signup').creditAmount,
+      }),
+      creditGuardrail: expect.stringContaining('Raw share clicks alone never earn credits'),
+    });
+    expect(attribution.byAction.find((item) => item.action === 'unique_open')).toMatchObject({
+      status: 'capped',
+      remainingShareCreditsToday: 0,
+    });
+    expect(attribution.byAction.find((item) => item.action === 'challenge')).toMatchObject({
+      status: 'earning',
+      qualifiedCount: 2,
+      creditAwarded: 4,
+    });
   });
 
   it('audits abuse and cap risk for qualified share credit copy', () => {

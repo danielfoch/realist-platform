@@ -641,6 +641,31 @@ type QualifiedSharePlaybookStep = {
   antiAbuseGuardrail: string;
 };
 
+
+type QualifiedShareRewardAttributionItem = {
+  action: QualifiedShareAction;
+  status: 'earning' | 'ready' | 'capped' | 'not_started';
+  qualifiedCount: number;
+  creditAwarded: number;
+  creditAmount: number;
+  remainingShareCreditsToday: number;
+  bestRecipientSource: string | null;
+  recipientPrompt: string;
+  ownerAction: string;
+  qualifiesWhen: string;
+  antiAbuseGuardrail: string;
+};
+
+type QualifiedShareRewardAttribution = {
+  headline: string;
+  cta: string;
+  totalEarnedCredits: number;
+  totalRemainingCreditsToday: number;
+  primaryAttribution: QualifiedShareRewardAttributionItem | null;
+  byAction: QualifiedShareRewardAttributionItem[];
+  creditGuardrail: string;
+};
+
 type QualifiedShareDigest = {
   headline: string;
   cta: string;
@@ -1087,6 +1112,76 @@ export function getQualifiedShareLoopPlan(input: {
   };
 }
 
+
+export function getQualifiedShareRewardAttribution(input: {
+  byAction: ShareActionSummary;
+  inviteFunnel?: RecipientInviteFunnelSegment[];
+}): QualifiedShareRewardAttribution {
+  const bestSourceByStage: Partial<Record<QualifiedShareAction, string>> = {};
+  const funnel = input.inviteFunnel || [];
+
+  for (const segment of funnel) {
+    if (segment.openedCount < segment.invitedCount && !bestSourceByStage.unique_open) {
+      bestSourceByStage.unique_open = segment.source;
+    }
+    if (segment.openedCount > segment.challengedCount && !bestSourceByStage.challenge) {
+      bestSourceByStage.challenge = segment.source;
+    }
+    if (segment.challengedCount > segment.versionedCount && !bestSourceByStage.saved_version) {
+      bestSourceByStage.saved_version = segment.source;
+      bestSourceByStage.fork = segment.source;
+    }
+    if (segment.versionedCount > segment.signupCount && !bestSourceByStage.signup) {
+      bestSourceByStage.signup = segment.source;
+    }
+  }
+
+  const byAction = QUALIFIED_ACTIONS.map((action) => {
+    const summary = input.byAction[action];
+    const policy = ACTION_POLICIES[action];
+    const copy = ACTION_CATALOG_COPY[action];
+    const status: QualifiedShareRewardAttributionItem['status'] = summary.dailyRemainingShareCap === 0
+      ? 'capped'
+      : summary.qualifiedCount > 0
+        ? 'earning'
+        : summary.totalCount > 0
+          ? 'ready'
+          : 'not_started';
+
+    return {
+      action,
+      status,
+      qualifiedCount: summary.qualifiedCount,
+      creditAwarded: summary.creditAwarded,
+      creditAmount: policy.creditAmount,
+      remainingShareCreditsToday: summary.dailyRemainingShareCap,
+      bestRecipientSource: bestSourceByStage[action] || funnel[0]?.source || null,
+      recipientPrompt: copy.recipientPrompt,
+      ownerAction: copy.ownerPrompt,
+      qualifiesWhen: copy.qualifiesWhen,
+      antiAbuseGuardrail: copy.antiAbuseRule,
+    };
+  });
+
+  const primaryAttribution = [...byAction]
+    .filter((item) => item.status !== 'capped')
+    .sort((left, right) => {
+      if (left.status === 'ready' && right.status !== 'ready') return -1;
+      if (right.status === 'ready' && left.status !== 'ready') return 1;
+      return right.creditAmount - left.creditAmount;
+    })[0] || byAction[0] || null;
+
+  return {
+    headline: 'Qualified reward attribution',
+    cta: 'Challenge my underwriting.',
+    totalEarnedCredits: byAction.reduce((total, item) => total + item.creditAwarded, 0),
+    totalRemainingCreditsToday: byAction.reduce((total, item) => total + item.remainingShareCreditsToday, 0),
+    primaryAttribution,
+    byAction,
+    creditGuardrail: 'Attribute Google Sheets export credits only to qualified unique opens, challenges, forks, signups, and saved versions with recipient tracking and daily caps. Raw share clicks alone never earn credits.',
+  };
+}
+
 export function getQualifiedShareDigest(input: {
   byAction: ShareActionSummary;
   inviteFunnel: RecipientInviteFunnelSegment[];
@@ -1414,6 +1509,7 @@ export async function getShareActionSummary(database: DatabaseAdapter, shareId: 
     loopPlan: getQualifiedShareLoopPlan({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
     sharePlaybook: getQualifiedSharePlaybook({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
     qualifiedShareDigest: getQualifiedShareDigest({ byAction, inviteFunnel, invitedRecipientCount, unopenedRecipientCount }),
+    rewardAttribution: getQualifiedShareRewardAttribution({ byAction, inviteFunnel }),
     abuseAudit: getQualifiedShareAbuseAudit({ byAction, invitedRecipientCount, unopenedRecipientCount }),
     challengeResponseNudges: getChallengeResponseNudges({ byAction, inviteFunnel }),
     recipientCoaching: getRecipientShareCoaching(inviteFunnel),

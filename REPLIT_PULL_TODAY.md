@@ -1,32 +1,30 @@
-# REPLIT_PULL_TODAY
+# REPLIT PULL TODAY
 
 ## 1. Date
-2026-06-06
+2026-06-07
 
 ## 2. Branch and commit SHA
-- Repo: `https://github.com/danielfoch/realist-platform.git`
-- Branch: `realist-nightly/2026-06-06-share-qualified-ledger`
-- Code commit SHA: `5844ec4`
-- Handoff doc commit SHA: see latest branch commit after this file is committed
-- Handoff verification: `PASS`
+- Branch: `realist-nightly/2026-06-07-share-reward-attribution`
+- Commit SHA: `0aae9e5a8069f762fe2302415086d3dff6802043`
 
 ## 3. What changed
-Added a structured qualified-share abuse audit to the viral underwriting loop so Dan/Replit can safely show credit status and growth prompts without rewarding low-quality or abusive sharing.
+Added a qualified reward attribution payload for the viral underwriting loop. Share status responses now include `rewardAttribution`, which explains where Google Sheets export credits were actually earned, which qualified action should be pursued next, the best recipient source to target, remaining daily caps, and explicit anti-abuse copy.
 
-Highlights:
-- New `getQualifiedShareAbuseAudit()` helper flags capped/duplicate-controlled actions, qualified opens that have not become meaningful challenges, unopened recipient-specific links, and exhausted daily caps.
-- `getShareActionSummary()` now returns `abuseAudit` alongside the qualified-share digest, loop plan, playbook, reward brief, challenge nudges, and recipient coaching.
-- The audit includes the next safe qualified action, owner action, daily cap warnings, and explicit Google Sheets export credit guardrail copy.
-- Tests cover the new audit directly and verify the status summary surfaces it without exposing recipient hashes.
-- Growth direction is preserved: “Challenge my underwriting.” remains the CTA, and raw share clicks alone still never earn credits.
+This supports the loop: Analyze deal -> Share underwriting -> Recipient challenges/forks assumptions -> Account/save version -> Share onward, using the CTA “Challenge my underwriting.”
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
+  - Added `getQualifiedShareRewardAttribution()`.
+  - Added reward attribution data to `getShareActionSummary()` / share status payload.
+  - Preserved the rule that raw share clicks alone never earn credits.
 - `test/underwriting-share-routes.test.ts`
+  - Added direct unit coverage for qualified-only reward attribution.
+  - Extended share summary coverage to verify `rewardAttribution` is returned and does not expose recipient hashes.
 - `REPLIT_PULL_TODAY.md`
+  - Updated this handoff.
 
 ## 5. Migration steps
-None. This is a TypeScript/API payload and test change only. No database migration required.
+None. No database schema changes.
 
 ## 6. Env vars needed
 None new.
@@ -34,44 +32,24 @@ None new.
 ## 7. Replit commands to run
 ```bash
 npm install
-npm run build
-npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
-```
-
-Optional targeted lint check:
-```bash
-npx eslint src/underwriting-share-routes.ts test/underwriting-share-routes.test.ts
+npm run type-check
+npm test -- underwriting-share-routes.test.ts --runInBand
+# optional full gate if time allows:
+npm run check
 ```
 
 ## 8. Test/build result
 Passed locally:
-
 ```bash
-npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
-# Test Suites: 1 passed, 1 total
-# Tests: 30 passed, 30 total
-# exit 0
-
+npm test -- underwriting-share-routes.test.ts --runInBand
 npm run type-check
-# tsc --noEmit
-# exit 0
-
-npm run build
-# tsc
-# exit 0
-
-npx eslint src/underwriting-share-routes.ts test/underwriting-share-routes.test.ts
-# exit 0
 ```
 
-Deploy status: No deploy was run.
-
 ## 9. Risks/blockers
-- No deploy was performed.
-- No outbound messages/emails were sent.
-- No paid API calls were made.
-- This adds API payload fields only; frontend/Replit UI still needs to render `actionSummary.abuseAudit` if Dan wants an abuse/risk panel visible in-product.
-- The audit uses existing aggregate counts, so it does not expose recipient hashes or raw visitor identity.
+- No deploy performed.
+- No outbound messages sent.
+- No paid API calls made.
+- Full `npm run check` was not run; targeted Jest coverage and TypeScript type-check passed.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull `realist-nightly/2026-06-06-share-qualified-ledger`. The underwriting share status response now includes an `abuseAudit` object that tells the app whether the viral underwriting loop is healthy, needs watching, or is capped for the day. It highlights capped actions, opens that still need real challenges, unopened recipient-specific links, and the next safe qualified action to chase. This makes the “Challenge my underwriting.” growth loop easier to promote while protecting Google Sheets export credits from raw-click abuse.
+Pull `realist-nightly/2026-06-07-share-reward-attribution` to add a clearer reward-attribution layer to underwriting share status. It tells users which qualified recipient actions earned Google Sheets export credits, what to ask for next, and reinforces that raw clicks do not qualify for credits.
