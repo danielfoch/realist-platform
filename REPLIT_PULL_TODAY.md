@@ -5,7 +5,8 @@
 
 ## 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-06-07-share-reward-attribution`
-- Commit SHA: `0aae9e5a8069f762fe2302415086d3dff6802043`
+- Code/handoff commit SHA: `a8e032eb1f0b8bbdb01a528bde46340ff2e0e297`
+- Note: this SHA identifies the local commit containing the code changes before this handoff line was refreshed; run `git rev-parse HEAD` after pull for the exact branch tip.
 
 ## 3. What changed
 Added a qualified reward attribution payload for the viral underwriting loop. Share status responses now include `rewardAttribution`, which explains where Google Sheets export credits were actually earned, which qualified action should be pursued next, the best recipient source to target, remaining daily caps, and explicit anti-abuse copy.
