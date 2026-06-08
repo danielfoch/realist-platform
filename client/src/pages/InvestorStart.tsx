@@ -383,7 +383,7 @@ export default function InvestorStart() {
                 <span className="text-primary-foreground font-bold text-xs">R</span>
               </div>
               <span>
-                Realist.ca powered by Valery Lbs (
+                Realist.ca powered by{" "}
                 <a
                   href="https://valery.ca"
                   target="_blank"
@@ -393,7 +393,6 @@ export default function InvestorStart() {
                 >
                   Valery.ca
                 </a>
-                )
               </span>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
