@@ -11,6 +11,46 @@ import { authenticateToken, authenticateOptional, AuthRequest } from './auth-mid
 
 const router = Router();
 
+export interface ChallengeUnderwritingSharePrompt {
+  cta: string;
+  headline: string;
+  suggestedCopy: string;
+  shareUrl: string;
+  qualifiedActionsRequired: string[];
+  reward: {
+    creditType: string;
+    teaser: string;
+    guardrail: string;
+  };
+  antiAbuse: {
+    recipientTracking: string;
+    dailyCaps: string;
+    rawClicksDoNotQualify: boolean;
+  };
+}
+
+export function buildChallengeUnderwritingSharePrompt(analysisId: number | string): ChallengeUnderwritingSharePrompt {
+  const encodedAnalysisId = encodeURIComponent(String(analysisId));
+
+  return {
+    cta: 'Challenge my underwriting.',
+    headline: 'Share this deal as an underwriting challenge, not a passive link.',
+    suggestedCopy: 'Challenge my underwriting — tell me which rent, vacancy, expense, or exit-cap assumption you would change.',
+    shareUrl: `/analyses/${encodedAnalysisId}/challenge`,
+    qualifiedActionsRequired: ['unique_open', 'challenge_or_fork', 'signup', 'saved_version'],
+    reward: {
+      creditType: 'google_sheets_export',
+      teaser: 'Qualified recipient challenges, forks, signups, and saved versions can earn Google Sheets export credits.',
+      guardrail: 'Do not award premium credits for raw share clicks alone.',
+    },
+    antiAbuse: {
+      recipientTracking: 'Use recipient-specific share URLs or visitor fingerprints so repeat visitors do not mint duplicate rewards.',
+      dailyCaps: 'Apply daily caps per share, recipient, and qualified action before granting export credits.',
+      rawClicksDoNotQualify: true,
+    },
+  };
+}
+
 interface SaveAnalysisBody {
   propertyAddress: string;
   metrics?: Record<string, number | string>;
@@ -75,7 +115,7 @@ router.post('/', authenticateOptional, async (req: AuthRequest, res: Response) =
     );
 
     const analysisId = (result.rows as any[])[0].id;
-    res.json({ success: true, analysisId });
+    res.json({ success: true, analysisId, shareChallenge: buildChallengeUnderwritingSharePrompt(analysisId) });
     logger.debug('Analysis saved', { analysisId, userId });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -96,7 +136,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     }
 
     const result = await db.query(
-      `SELECT id, property_address, metrics, inputs, verdict_check, listing_id, city, property_type, bedrooms, sqft, year_built, analyzed_at
+      `SELECT id, property_address, metrics, inputs, verdict_check, listing_id, city, property_type, bedrooms, sqft, year_built, notes, analyzed_at
        FROM deal_analyses
        WHERE user_id = $1
        ORDER BY analyzed_at DESC
@@ -117,6 +157,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       inputs: row.inputs || {},
       notes: row.notes || null,
       analyzedAt: row.analyzed_at,
+      shareChallenge: buildChallengeUnderwritingSharePrompt(row.id),
     }));
 
     res.json(analyses);
@@ -160,6 +201,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
         inputs: row.inputs || {},
         notes: row.notes || null,
         analyzedAt: row.analyzed_at,
+        shareChallenge: buildChallengeUnderwritingSharePrompt(row.id),
       };
       res.json(analysis);
     } else {
