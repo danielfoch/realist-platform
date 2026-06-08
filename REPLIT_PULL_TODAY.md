@@ -5,7 +5,7 @@
 
 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-06-08-recipient-nudge`
-- Commit SHA: `38c550b`
+- Commit SHA: `bee10c3` (code commit; this handoff note may be one commit ahead)
 
 3. What changed
 - Added an API share-challenge payload to saved analysis responses so each underwriting save/list/detail response can immediately drive the viral loop.
