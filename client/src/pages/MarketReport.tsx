@@ -552,6 +552,23 @@ export default function MarketReport() {
                 </CardContent>
               </Card>
             </Link>
+            <Link href="/reports/equifax-consumer-credit-trends-q1-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-sky-300/60" data-testid="card-macro-equifax-q1-2026">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                      <FileText className="h-4.5 w-4.5 text-sky-600 dark:text-sky-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Equifax · Q1 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Equifax Consumer Credit Trends Q1 2026</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Ontario and BC mortgage holders are driving consumer-credit stress as insolvencies rise and renewal pressure persists.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/insights/labour-mortgage-stress-april-2026">
               <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-labour-mortgage-stress">
                 <CardContent className="p-5">
