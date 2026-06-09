@@ -5,7 +5,7 @@
 
 2. Branch and commit SHA
 - Branch: `realist-nightly/2026-06-09-qualified-challenge-caps`
-- Commit: `a6913fb`
+- Commit: `567b959` (code + handoff commit before SHA self-reference update)
 
 3. What changed
 - Added backend API support for the viral underwriting loop: analyze deal → share underwriting → recipient opens/challenges/forks assumptions → authenticated user can save a version → share onward.
