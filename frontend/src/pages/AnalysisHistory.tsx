@@ -76,10 +76,54 @@ export function AnalysisHistoryPage() {
   const [expandedNotes, setExpandedNotes] = useState<number | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingNoteText, setEditingNoteText] = useState("");
+  const [exportingId, setExportingId] = useState<number | null>(null);
+  const [googleNotice, setGoogleNotice] = useState('');
 
   useEffect(() => {
     fetchAnalyses(page);
   }, [page]);
+
+  useEffect(() => {
+    const google = new URLSearchParams(window.location.search).get('google');
+    if (google === 'connected') setGoogleNotice('Google Sheets connected — exports now go to your own Drive.');
+    else if (google === 'denied') setGoogleNotice('Google connection was cancelled.');
+    else if (google === 'error') setGoogleNotice('Google connection failed — please try again.');
+  }, []);
+
+  const authHeaders = (): Record<string, string> => {
+    const token = localStorage.getItem('realist_token') || localStorage.getItem('investor_token') || '';
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const handleExportSheets = async (id: number) => {
+    setExportingId(id);
+    setError('');
+    try {
+      const res = await fetch(`/api/integrations/google/export/${id}`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (res.status === 409 && data?.error === 'google_not_connected') {
+        // First export: send them through Google consent, then they retry
+        const urlRes = await fetch('/api/integrations/google/auth-url', { headers: authHeaders() });
+        const urlData = await urlRes.json();
+        if (urlData?.data?.url) {
+          window.location.href = urlData.data.url;
+          return;
+        }
+        setError(urlData?.error || 'Google Sheets is not configured yet');
+      } else if (res.ok && data?.data?.spreadsheetUrl) {
+        window.open(data.data.spreadsheetUrl, '_blank', 'noopener');
+      } else {
+        setError(data?.error || 'Export to Google Sheets failed');
+      }
+    } catch {
+      setError('Export to Google Sheets failed');
+    } finally {
+      setExportingId(null);
+    }
+  };
 
   const fetchAnalyses = async (p: number) => {
     setLoading(true);
@@ -173,6 +217,12 @@ export function AnalysisHistoryPage() {
       {error && (
         <div className="error-banner" role="alert">
           {error}
+        </div>
+      )}
+
+      {googleNotice && (
+        <div className="error-banner" role="status" style={{ background: '#ecfdf5', borderColor: '#10b981', color: '#065f46' }}>
+          {googleNotice}
         </div>
       )}
 
@@ -319,6 +369,16 @@ export function AnalysisHistoryPage() {
                         }}
                       >
                         Submit to Deal Desk
+                      </button>
+                      <button
+                        className="text-btn"
+                        disabled={exportingId === a.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportSheets(a.id);
+                        }}
+                      >
+                        {exportingId === a.id ? 'Exporting…' : 'Export to Sheets'}
                       </button>
                       <button
                         className="text-btn"
