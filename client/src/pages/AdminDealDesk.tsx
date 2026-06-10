@@ -31,6 +31,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock, CheckSquare, Settings } from "lucide-react";
 import { Link } from "wouter";
 
@@ -704,7 +710,25 @@ export default function AdminDealDesk() {
                               <div className="text-xs text-green-600">{fmtTime(t.sentAt)}</div>
                             )}
                             {t.failureReason && (
-                              <div className="text-xs text-red-500 max-w-48 truncate" title={t.failureReason}>{t.failureReason}</div>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div
+                                      className="text-xs text-red-500 max-w-48 truncate cursor-help underline decoration-dotted underline-offset-2"
+                                      data-testid={`failure-reason-${t.id}`}
+                                    >
+                                      {t.failureReason}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="left"
+                                    className="max-w-sm break-words text-xs"
+                                    data-testid={`tooltip-failure-${t.id}`}
+                                  >
+                                    {t.failureReason}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                             {!t.sentAt && !t.failureReason && (
                               <span className="text-xs text-muted-foreground">—</span>
