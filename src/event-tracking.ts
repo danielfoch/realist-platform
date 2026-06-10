@@ -56,7 +56,9 @@ export type EventName =
   | 'crm_status_updated'
   | 'lost_reason_added'
   | 'closed'
-  | 'cashback_due';
+  | 'cashback_due'
+  | 'analysis_shared'
+  | 'share_accepted';
 
 /** Events that affect intent scoring — recompute on insert. */
 const SCORING_EVENTS = new Set<string>([
@@ -73,6 +75,8 @@ const SCORING_EVENTS = new Set<string>([
   'buyer_rep_requested',
   'referral_requested',
   'call_booked',
+  'analysis_shared',
+  'share_accepted',
 ]);
 
 export interface TrackEventInput {

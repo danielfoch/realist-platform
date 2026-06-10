@@ -78,6 +78,7 @@ export function AnalysisHistoryPage() {
   const [editingNoteText, setEditingNoteText] = useState("");
   const [exportingId, setExportingId] = useState<number | null>(null);
   const [googleNotice, setGoogleNotice] = useState('');
+  const [shareNotice, setShareNotice] = useState('');
 
   useEffect(() => {
     fetchAnalyses(page);
@@ -122,6 +123,49 @@ export function AnalysisHistoryPage() {
       setError('Export to Google Sheets failed');
     } finally {
       setExportingId(null);
+    }
+  };
+
+  const handleShare = async (id: number) => {
+    const recipientEmail = prompt(
+      'Who should see this analysis? Enter their email (or leave blank to just copy a link):',
+    );
+    if (recipientEmail === null) return; // cancelled
+    setError('');
+    setShareNotice('');
+    try {
+      const authToken =
+        localStorage.getItem('realist_token') || localStorage.getItem('investor_token') || '';
+      const res = await fetch('/api/shares', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({
+          analysisId: id,
+          recipientEmail: recipientEmail.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(data?.error || 'Failed to create share link');
+        return;
+      }
+      const shareUrl: string = data.data.shareUrl;
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareNotice(
+          recipientEmail.trim()
+            ? `Invite queued for ${recipientEmail.trim()} — share link copied to clipboard. They'll need a free account to view it.`
+            : 'Share link copied to clipboard. Viewers need a free account to see the full analysis.',
+        );
+      } catch {
+        setShareNotice(`Share link: ${shareUrl}`);
+      }
+      track('analysis_shared', { source: 'analysis_history' }, id);
+    } catch {
+      setError('Failed to create share link');
     }
   };
 
@@ -223,6 +267,12 @@ export function AnalysisHistoryPage() {
       {googleNotice && (
         <div className="error-banner" role="status" style={{ background: '#ecfdf5', borderColor: '#10b981', color: '#065f46' }}>
           {googleNotice}
+        </div>
+      )}
+
+      {shareNotice && (
+        <div className="error-banner" role="status" style={{ background: '#ecfdf5', borderColor: '#10b981', color: '#065f46' }}>
+          {shareNotice}
         </div>
       )}
 
@@ -379,6 +429,15 @@ export function AnalysisHistoryPage() {
                         }}
                       >
                         {exportingId === a.id ? 'Exporting…' : 'Export to Sheets'}
+                      </button>
+                      <button
+                        className="text-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShare(a.id);
+                        }}
+                      >
+                        Share
                       </button>
                       <button
                         className="text-btn"

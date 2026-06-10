@@ -45,7 +45,9 @@ type EventName =
   | 'return_threshold_hit'
   | 'deal_desk_cta_clicked'
   | 'deal_submitted'
-  | 'call_booked';
+  | 'call_booked'
+  | 'analysis_shared'
+  | 'share_accepted';
 
 const SESSION_KEY = 'realist_session_id';
 
