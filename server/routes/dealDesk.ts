@@ -309,6 +309,17 @@ export function registerDealDeskRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/deal-desk/email-triggers/:id/retry", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.retryEmailTrigger(id);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("Retry email trigger error:", err);
+      res.status(500).json({ ok: false });
+    }
+  });
+
   app.get("/api/deal-desk/export", async (req, res) => {
     const authHeader = req.headers.authorization || "";
     const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;

@@ -182,6 +182,17 @@ export default function AdminDealDesk() {
     },
   });
 
+  const retryTriggerMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("PATCH", `/api/deal-desk/email-triggers/${id}/retry`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/email-triggers"] });
+      toast({ title: "Retry queued — email will send on the next worker cycle" });
+    },
+    onError: () => {
+      toast({ title: "Retry failed", variant: "destructive" });
+    },
+  });
+
   const inlineStatusMutation = useMutation({
     mutationFn: (payload: { id: string; status: string }) =>
       apiRequest("PATCH", `/api/deal-desk/opportunities/${payload.id}/status`, {
@@ -619,6 +630,7 @@ export default function AdminDealDesk() {
                         <TableHead>Status</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead>Sent / Failed</TableHead>
+                        <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -661,6 +673,20 @@ export default function AdminDealDesk() {
                             )}
                             {!t.sentAt && !t.failureReason && (
                               <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {t.status === "failed" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                data-testid={`button-retry-${t.id}`}
+                                disabled={retryTriggerMutation.isPending}
+                                onClick={() => retryTriggerMutation.mutate(t.id)}
+                              >
+                                <RefreshCw className="h-3 w-3 mr-1" /> Retry
+                              </Button>
                             )}
                           </TableCell>
                         </TableRow>

@@ -570,6 +570,7 @@ export interface IStorage {
   listPendingEmailTriggers(): Promise<EmailTrigger[]>;
   updateEmailTriggerStatus(id: string, status: string, sentAt?: Date, failureReason?: string): Promise<void>;
   listEmailTriggers(limit: number): Promise<EmailTrigger[]>;
+  retryEmailTrigger(id: string): Promise<void>;
   listRecentActivityEvents(limit: number): Promise<any[]>;
 }
 
@@ -2645,6 +2646,14 @@ export class DatabaseStorage implements IStorage {
 
   async listEmailTriggers(limit: number): Promise<EmailTrigger[]> {
     return db.select().from(emailTriggers).orderBy(desc(emailTriggers.createdAt)).limit(limit);
+  }
+
+  async retryEmailTrigger(id: string): Promise<void> {
+    await db.update(emailTriggers).set({
+      status: "pending",
+      failureReason: null,
+      sentAt: null,
+    }).where(eq(emailTriggers.id, id));
   }
 
   async listRecentActivityEvents(limit: number): Promise<any[]> {
