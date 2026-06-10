@@ -19,6 +19,7 @@ import { AnalysisHistoryPage } from './pages/AnalysisHistory'
 import { SavedListingsPage } from './pages/SavedListingsPage'
 import { DealDeskPage } from './pages/DealDeskPage'
 import { SharedAnalysisPage } from './pages/SharedAnalysisPage'
+import { DealPitchDeckPage } from './pages/DealPitchDeckPage'
 import { AdminDealDeskPage } from './pages/AdminDealDeskPage'
 import CreaStatsPage from './pages/CreaStatsPage'
 import { Toaster } from './components/ui/toaster'
@@ -111,6 +112,7 @@ function App() {
             <Route path="/investor/login" element={<InvestorAuthPage />} />
             <Route path="/investor/dashboard" element={<InvestorDashboard />} />
             <Route path="/investor/analyses" element={<AnalysisHistoryPage />} />
+            <Route path="/investor/analyses/:id/deck" element={<DealPitchDeckPage />} />
             <Route path="/investor/saved" element={<SavedListingsPage />} />
 
             {/* Shared analyses (account-gated) */}

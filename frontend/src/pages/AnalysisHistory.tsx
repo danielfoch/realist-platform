@@ -443,6 +443,15 @@ export function AnalysisHistoryPage() {
                         className="text-btn"
                         onClick={(e) => {
                           e.stopPropagation();
+                          navigate(`/investor/analyses/${a.id}/deck`);
+                        }}
+                      >
+                        Pitch Deck
+                      </button>
+                      <button
+                        className="text-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           navigate(
                             `/deal-analyzer?address=${encodeURIComponent(a.address)}`,
                           );
