@@ -235,10 +235,20 @@ export function calculateInvestmentMetrics(price: number, rawAssumptions: Invest
     warnings.push("Property tax is inferred or unavailable.");
   }
 
+  const vacancyPercent = assumptions.vacancyPercent ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_VACANCY_PERCENT;
+  const maintenancePercent = assumptions.maintenancePercent ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_MAINTENANCE_PERCENT;
+  const managementPercent = assumptions.managementPercent ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_MANAGEMENT_PERCENT;
+  const downPaymentPercent = assumptions.downPaymentPercent ?? 20;
+  const interestRate = assumptions.interestRate ?? 5.5;
+  const amortizationYears = assumptions.amortizationYears ?? 25;
+  const holdPeriodYears = assumptions.holdPeriodYears ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_HOLD_PERIOD_YEARS;
+  const annualAppreciationPercent = assumptions.annualAppreciationPercent ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_APPRECIATION_PERCENT;
+  const sellingCostPercent = assumptions.sellingCostPercent ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_SELLING_COST_PERCENT;
+
   const annualGrossRent = assumptions.monthlyRent > 0 ? assumptions.monthlyRent * 12 : null;
-  const vacancyAllowance = annualGrossRent != null ? annualGrossRent * (assumptions.vacancyPercent / 100) : null;
-  const maintenance = annualGrossRent != null ? annualGrossRent * (assumptions.maintenancePercent / 100) : null;
-  const management = annualGrossRent != null ? annualGrossRent * (assumptions.managementPercent / 100) : null;
+  const vacancyAllowance = annualGrossRent != null ? annualGrossRent * (vacancyPercent / 100) : null;
+  const maintenance = annualGrossRent != null ? annualGrossRent * (maintenancePercent / 100) : null;
+  const management = annualGrossRent != null ? annualGrossRent * (managementPercent / 100) : null;
   const propertyTax = assumptions.annualPropertyTax ?? (price > 0 ? price * (INVESTMENT_METRIC_DEFAULTS.DEFAULT_PROPERTY_TAX_PERCENT / 100) : 0);
   const annualOperatingExpenses = annualGrossRent == null
     ? null
@@ -259,9 +269,9 @@ export function calculateInvestmentMetrics(price: number, rawAssumptions: Invest
     ? roundMetric((annualOperatingExpenses / annualGrossRent) * 100, 2)
     : null;
 
-  const equityInvested = price > 0 ? price * (assumptions.downPaymentPercent / 100) : 0;
+  const equityInvested = price > 0 ? price * (downPaymentPercent / 100) : 0;
   const loanAmount = price > 0 ? Math.max(0, price - equityInvested) : 0;
-  const monthlyDebtService = calculateMonthlyDebtService(loanAmount, assumptions.interestRate, assumptions.amortizationYears);
+  const monthlyDebtService = calculateMonthlyDebtService(loanAmount, interestRate, amortizationYears);
   const annualDebtService = monthlyDebtService * 12;
   const monthlyCashFlow = noi != null ? roundMetric((noi - annualDebtService) / 12, 2) : null;
   const dscr = noi != null && annualDebtService > 0 ? roundMetric(noi / annualDebtService, 2) : null;
@@ -271,16 +281,16 @@ export function calculateInvestmentMetrics(price: number, rawAssumptions: Invest
   const irrInputsComplete = price > 0
     && assumptions.monthlyRent > 0
     && equityInvested > 0
-    && assumptions.holdPeriodYears > 0
-    && assumptions.sellingCostPercent >= 0;
+    && holdPeriodYears > 0
+    && sellingCostPercent >= 0;
   if (irrInputsComplete && noi != null) {
     const annualCashFlow = noi - annualDebtService;
-    const projectedSalePrice = price * Math.pow(1 + (assumptions.annualAppreciationPercent / 100), assumptions.holdPeriodYears);
-    const sellingCosts = projectedSalePrice * (assumptions.sellingCostPercent / 100);
-    const remainingBalance = calculateRemainingLoanBalance(loanAmount, assumptions.interestRate, assumptions.amortizationYears, assumptions.holdPeriodYears);
+    const projectedSalePrice = price * Math.pow(1 + (annualAppreciationPercent / 100), holdPeriodYears);
+    const sellingCosts = projectedSalePrice * (sellingCostPercent / 100);
+    const remainingBalance = calculateRemainingLoanBalance(loanAmount, interestRate, amortizationYears, holdPeriodYears);
     const cashFlows = [-equityInvested];
-    for (let year = 1; year <= assumptions.holdPeriodYears; year += 1) {
-      cashFlows.push(year === assumptions.holdPeriodYears
+    for (let year = 1; year <= holdPeriodYears; year += 1) {
+      cashFlows.push(year === holdPeriodYears
         ? annualCashFlow + projectedSalePrice - sellingCosts - remainingBalance
         : annualCashFlow);
     }
@@ -300,7 +310,7 @@ export function calculateInvestmentMetrics(price: number, rawAssumptions: Invest
         ? "medium"
         : "low";
   const irrConfidence: MetricConfidence =
-    irr != null && capRateConfidence !== "low" && assumptions.holdPeriodYears >= 5
+    irr != null && capRateConfidence !== "low" && holdPeriodYears >= 5
       ? capRateConfidence
       : "low";
 
