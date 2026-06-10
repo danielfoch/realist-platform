@@ -34,7 +34,18 @@ type EventName =
   | 'realtor_lead_claimed'
   | 'subscription_checkout_started'
   | 'subscription_completed'
-  | 'subscription_canceled';
+  | 'subscription_canceled'
+  | 'model_run'
+  | 'assumption_edited'
+  | 'deal_saved'
+  | 'deal_rejected'
+  | 'report_exported'
+  | 'financing_changed'
+  | 'market_researched'
+  | 'return_threshold_hit'
+  | 'deal_desk_cta_clicked'
+  | 'deal_submitted'
+  | 'call_booked';
 
 const SESSION_KEY = 'realist_session_id';
 
@@ -47,12 +58,15 @@ function getSessionId(): string {
   return id;
 }
 
-export function track(event: EventName, properties?: Record<string, unknown>): void {
-  const payload = {
+export function track(event: EventName, properties?: Record<string, unknown>, dealId?: number): void {
+  const payload: Record<string, unknown> = {
     event,
     properties: properties ?? {},
     session_id: getSessionId(),
   };
+  if (dealId !== undefined) {
+    payload.deal_id = dealId;
+  }
 
   // Fire-and-forget POST — navigator.sendBeacon guarantees delivery on page unload
   const json = JSON.stringify(payload);

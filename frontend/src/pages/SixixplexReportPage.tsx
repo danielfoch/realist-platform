@@ -222,6 +222,22 @@ export function SixixplexReportPage() {
           ))}
         </div>
 
+        <div className="mt-6 bg-white rounded-lg shadow-md p-6 border-2 border-[#F59E0B]/40">
+          <h3 className="text-lg font-semibold text-[#0F172A] mb-1">Ready to move on this property?</h3>
+          <p className="text-sm text-[#64748B] mb-4">
+            Submit it to our Deal Desk and an investment specialist will review it with you.
+          </p>
+          <button
+            onClick={() => {
+              track('deal_desk_cta_clicked', { source: 'sixixplex_report' });
+              navigate(`/deal-desk?address=${encodeURIComponent(lead.address)}&src=sixixplex_report`);
+            }}
+            className="w-full px-4 py-3 bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold rounded-md transition-colors"
+          >
+            Submit to Deal Desk →
+          </button>
+        </div>
+
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <p className="text-xs text-[#64748B]">{report.disclaimer}</p>
         </div>

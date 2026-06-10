@@ -17,6 +17,8 @@ import { InvestorAuthPage } from './pages/InvestorAuthPage'
 import { InvestorDashboard } from './pages/InvestorDashboard'
 import { AnalysisHistoryPage } from './pages/AnalysisHistory'
 import { SavedListingsPage } from './pages/SavedListingsPage'
+import { DealDeskPage } from './pages/DealDeskPage'
+import { AdminDealDeskPage } from './pages/AdminDealDeskPage'
 import CreaStatsPage from './pages/CreaStatsPage'
 import { Toaster } from './components/ui/toaster'
 
@@ -63,6 +65,9 @@ function App() {
               <Link to="/investor/saved" className="text-sm font-medium hover:text-primary">
                 Saved Listings
               </Link>
+              <Link to="/deal-desk" className="text-sm font-medium hover:text-primary">
+                Deal Desk
+              </Link>
             </nav>
           </div>
         </header>
@@ -106,6 +111,10 @@ function App() {
             <Route path="/investor/dashboard" element={<InvestorDashboard />} />
             <Route path="/investor/analyses" element={<AnalysisHistoryPage />} />
             <Route path="/investor/saved" element={<SavedListingsPage />} />
+
+            {/* Deal Desk */}
+            <Route path="/deal-desk" element={<DealDeskPage />} />
+            <Route path="/admin/deal-desk" element={<AdminDealDeskPage />} />
           </Routes>
         </main>
         
