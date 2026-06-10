@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'crypto';
 import { Router, Response } from 'express';
 import { db } from './db';
 import { authenticateOptional, AuthRequest } from './auth-middleware';
-import { decideShareReward, normalizeVisitorKey } from './underwriting-share-rewards';
+import { decideShareReward, normalizeVisitorKey, summarizeShareRewardStatus } from './underwriting-share-rewards';
 
 const router = Router();
 
@@ -26,6 +26,39 @@ async function countCreditedActionsToday(shareId: number): Promise<number> {
   );
 
   return Number.parseInt(result.rows[0]?.count || '0', 10);
+}
+
+
+async function getShareRewardStatus(shareId: number, share: {
+  qualified_action_count: number;
+  export_credit_balance: number;
+}) {
+  const creditedToday = await countCreditedActionsToday(shareId);
+  const counts = await db.query<{
+    action_type: string;
+    status: 'tracked' | 'qualified' | 'duplicate' | 'capped' | 'unqualified';
+    count: string;
+    credit_delta: string;
+  }>(
+    `SELECT action_type, status, COUNT(*)::text AS count, COALESCE(SUM(credit_delta), 0)::text AS credit_delta
+     FROM underwriting_share_actions
+     WHERE share_id = $1
+     GROUP BY action_type, status
+     ORDER BY action_type, status`,
+    [shareId],
+  );
+
+  return summarizeShareRewardStatus({
+    qualifiedActionCount: share.qualified_action_count,
+    exportCreditBalance: share.export_credit_balance,
+    creditedActionsToday: creditedToday,
+    actionCounts: counts.rows.map((row) => ({
+      actionType: row.action_type,
+      status: row.status,
+      count: Number.parseInt(row.count, 10),
+      creditDelta: Number.parseInt(row.credit_delta, 10),
+    })),
+  });
 }
 
 async function recordShareAction(input: {
@@ -78,6 +111,7 @@ async function recordShareAction(input: {
       `UPDATE underwriting_shares
        SET qualified_action_count = qualified_action_count + 1,
            export_credit_balance = export_credit_balance + $1,
+           reward_status = 'qualified',
            updated_at = NOW()
        WHERE id = $2`,
       [finalDecision.creditDelta, input.shareId],
@@ -191,6 +225,85 @@ router.get('/underwriting-shares/:token', authenticateOptional, async (req: Auth
         notes: row.notes,
       },
       reward,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
+  }
+});
+
+
+router.get('/underwriting-shares/:token/reward-status', authenticateOptional, async (req: AuthRequest, res: Response) => {
+  try {
+    const share = await db.query<{
+      id: number;
+      qualified_action_count: number;
+      export_credit_balance: number;
+    }>(
+      `SELECT id, qualified_action_count, export_credit_balance
+       FROM underwriting_shares
+       WHERE share_token = $1
+       LIMIT 1`,
+      [req.params.token],
+    );
+
+    if (share.rows.length === 0) {
+      res.status(404).json({ error: 'Share not found' });
+      return;
+    }
+
+    const row = share.rows[0];
+    const rewardStatus = await getShareRewardStatus(row.id, row);
+
+    res.json({
+      success: true,
+      shareId: row.id,
+      rewardStatus,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
+  }
+});
+
+router.post('/underwriting-shares/:token/signup-credit', authenticateOptional, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.userId) {
+      res.status(401).json({ error: 'Account is required to qualify signup credit' });
+      return;
+    }
+
+    const share = await db.query<{ id: number }>(
+      `SELECT id FROM underwriting_shares WHERE share_token = $1 LIMIT 1`,
+      [req.params.token],
+    );
+
+    if (share.rows.length === 0) {
+      res.status(404).json({ error: 'Share not found' });
+      return;
+    }
+
+    const visitorKey = normalizeVisitorKey({
+      visitorId: req.header('x-realist-visitor-id'),
+      ip: req.ip,
+      userAgent: req.header('user-agent'),
+      actorUserId: req.userId,
+    });
+
+    const reward = await recordShareAction({
+      shareId: share.rows[0].id,
+      actionType: 'signup',
+      visitorKey,
+      recipientEmailHash: hashRecipient(req.body?.recipientEmail),
+      actorUserId: req.userId,
+      metadata: { source: 'recipient_signup' },
+    });
+
+    res.json({
+      success: true,
+      cta: 'Challenge my underwriting.',
+      reward,
+      nextStep: 'Save your challenged version, then share it onward.',
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

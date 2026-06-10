@@ -1,4 +1,5 @@
 export type QualifiedShareAction = 'unique_open' | 'fork_challenge' | 'signup' | 'saved_version';
+export type ShareActionStatus = 'qualified' | 'duplicate' | 'capped' | 'unqualified';
 
 export interface ShareRewardPolicy {
   dailyCreditCap: number;
@@ -16,7 +17,7 @@ export interface ShareActionInput {
 export interface ShareRewardDecision {
   qualified: boolean;
   creditDelta: number;
-  status: 'qualified' | 'duplicate' | 'capped' | 'unqualified';
+  status: ShareActionStatus;
   reason: string;
 }
 
@@ -30,12 +31,14 @@ export const DEFAULT_SHARE_REWARD_POLICY: ShareRewardPolicy = {
   },
 };
 
-const qualifiedActions = new Set<QualifiedShareAction>([
+export const QUALIFIED_SHARE_ACTIONS: QualifiedShareAction[] = [
   'unique_open',
   'fork_challenge',
   'signup',
   'saved_version',
-]);
+];
+
+const qualifiedActions = new Set<QualifiedShareAction>(QUALIFIED_SHARE_ACTIONS);
 
 export function isQualifiedShareAction(actionType: string): actionType is QualifiedShareAction {
   return qualifiedActions.has(actionType as QualifiedShareAction);
@@ -102,5 +105,57 @@ export function decideShareReward(
     creditDelta: policy.creditsByAction[input.actionType as QualifiedShareAction],
     status: 'qualified',
     reason: 'Qualified sharing action eligible for premium export credits.',
+  };
+}
+
+
+export interface ShareActionStatusCount {
+  actionType: string;
+  status: ShareActionStatus | 'tracked';
+  count: number;
+  creditDelta: number;
+}
+
+export interface ShareRewardStatusInput {
+  qualifiedActionCount: number;
+  exportCreditBalance: number;
+  creditedActionsToday: number;
+  actionCounts: ShareActionStatusCount[];
+  policy?: ShareRewardPolicy;
+}
+
+export interface ShareRewardStatusSummary {
+  cta: 'Challenge my underwriting.';
+  exportCreditBalance: number;
+  qualifiedActionCount: number;
+  dailyCreditCap: number;
+  remainingCreditsToday: number;
+  qualifiedActions: QualifiedShareAction[];
+  nextQualifiedActions: QualifiedShareAction[];
+  actionCounts: ShareActionStatusCount[];
+  rewardStatus: 'pending' | 'earning' | 'capped';
+  premiumCreditUse: 'Google Sheets export credits';
+}
+
+export function summarizeShareRewardStatus(input: ShareRewardStatusInput): ShareRewardStatusSummary {
+  const policy = input.policy || DEFAULT_SHARE_REWARD_POLICY;
+  const earnedActionTypes = new Set(
+    input.actionCounts
+      .filter((row) => row.status === 'qualified' && row.creditDelta > 0)
+      .map((row) => row.actionType),
+  );
+  const remainingCreditsToday = Math.max(policy.dailyCreditCap - input.creditedActionsToday, 0);
+
+  return {
+    cta: 'Challenge my underwriting.',
+    exportCreditBalance: input.exportCreditBalance,
+    qualifiedActionCount: input.qualifiedActionCount,
+    dailyCreditCap: policy.dailyCreditCap,
+    remainingCreditsToday,
+    qualifiedActions: QUALIFIED_SHARE_ACTIONS,
+    nextQualifiedActions: QUALIFIED_SHARE_ACTIONS.filter((actionType) => !earnedActionTypes.has(actionType)),
+    actionCounts: input.actionCounts,
+    rewardStatus: remainingCreditsToday === 0 ? 'capped' : input.exportCreditBalance > 0 ? 'earning' : 'pending',
+    premiumCreditUse: 'Google Sheets export credits',
   };
 }

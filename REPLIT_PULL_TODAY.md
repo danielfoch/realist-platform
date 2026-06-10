@@ -1,56 +1,66 @@
-# Replit Pull Today — 2026-06-09
+# REPLIT_PULL_TODAY
 
-1. Date
-- Tuesday, June 9, 2026
+## 1. Date
+2026-06-10
 
-2. Branch and commit SHA
-- Branch: `realist-nightly/2026-06-09-qualified-challenge-caps`
-- Commit: `567b959` (code + handoff commit before SHA self-reference update)
+## 2. Branch and Commit SHA
+Branch: `realist-nightly/2026-06-10-viral-underwriting-status`
+Commit: `PENDING` (will be filled after local commit)
 
-3. What changed
-- Added backend API support for the viral underwriting loop: analyze deal → share underwriting → recipient opens/challenges/forks assumptions → authenticated user can save a version → share onward.
-- Added the exact CTA copy: “Challenge my underwriting.”
-- Added qualified reward logic for Google Sheets/premium export credits.
-- Raw share clicks do **not** grant credits; credits only come from qualified actions: unique open, fork/challenge, signup, saved version.
-- Added anti-abuse controls: visitor/user/recipient identity keys, duplicate status tracking, hashed recipient emails, daily credit cap, qualified/status ledger, and per-share credit balance.
+## 3. What Changed
+- Added a reward-status summary for viral underwriting shares so the UI can show the CTA, earned Google Sheets export credits, qualified action counts, daily cap remaining, action/status counts, and the next qualified actions still available.
+- Added `POST /api/underwriting-shares/:token/signup-credit` to award the existing `signup` qualified action only after an authenticated recipient account exists.
+- Kept the core rule intact: raw share clicks are trackable but never earn credits. Credits continue to require unique/recipient/authenticated signals and respect the daily cap.
+- Marked shares as `qualified` when a qualified action actually adds export credits.
+- Expanded unit coverage for signup credits, reward status summaries, capped status, and raw-click exclusion from next-step progress.
 
-4. Files changed
-- `src/underwriting-share-rewards.ts` — pure reward/qualification policy and visitor-key normalization.
-- `src/underwriting-share-routes.ts` — share creation, share open, and challenge/fork/save-version endpoints.
-- `src/server.ts` — mounts underwriting share routes under `/api`.
-- `db/migrations/013_underwriting_shares.sql` — tables/indexes/check constraints for shares and share actions.
-- `test/underwriting-share-rewards.test.ts` — reward policy unit tests.
-- `REPLIT_PULL_TODAY.md` — this handoff.
+## 4. Files Changed
+- `src/underwriting-share-rewards.ts`
+- `src/underwriting-share-routes.ts`
+- `test/underwriting-share-rewards.test.ts`
+- `REPLIT_PULL_TODAY.md`
 
-5. Migration steps
-- Run the new migration in Replit/Postgres:
-  - `db/migrations/013_underwriting_shares.sql`
-- It creates:
-  - `underwriting_shares`
-  - `underwriting_share_actions`
-  - indexes for share token lookup, analysis lookup, action history, and visitor/recipient/user identity lookup.
+## 5. Migration Steps
+No new migration tonight.
 
-6. Env vars needed
-- No new environment variables.
-- Existing auth/JWT and database env vars continue to apply.
+Required existing migration from the previous underwriting-share patch still applies if not already run:
+- `db/migrations/013_underwriting_shares.sql`
 
-7. Replit commands to run
-- `npm install` only if Replit dependencies are stale.
-- `npm run type-check`
-- `npm run build`
-- Optional targeted test: `npm test -- --runTestsByPath test/underwriting-share-rewards.test.ts`
-- Apply migration before exercising the new routes.
+## 6. Env Vars Needed
+No new env vars.
 
-8. Test/build result
+Existing app env still required as usual:
+- `DATABASE_URL`
+- Auth/JWT/Stripe vars already used by the app where applicable.
+
+## 7. Replit Commands To Run
+```bash
+npm install
+npm run migrate
+npm run type-check
+npm run build
+npm test -- underwriting-share-rewards.test.ts --runInBand
+```
+
+Optional once existing repo-wide lint debt is cleaned up:
+```bash
+npm run lint
+```
+
+## 8. Test/Build Result
+Passed:
+- `npm test -- underwriting-share-rewards.test.ts --runInBand` — 1 suite passed, 8 tests passed.
 - `npm run type-check` — passed.
-- `npm test -- --runTestsByPath test/underwriting-share-rewards.test.ts` — passed, 5 tests.
 - `npm run build` — passed.
 
-9. Risks/blockers
-- Migration must run before the new `/api/analyses/:id/share` and `/api/underwriting-shares/:token...` endpoints are used.
-- Signup attribution is represented in the reward policy/migration but there is not yet a dedicated signup attribution endpoint wired into auth.
-- Credits are tracked in `underwriting_shares.export_credit_balance`; a later patch should connect this balance to the actual Google Sheets export entitlement/spend path.
-- Duplicate protection is application-level with indexed lookup; if very high concurrency appears, add a generated identity key or partial unique constraint.
+Blocked by pre-existing lint debt outside tonight's files:
+- `npm run lint` fails on existing unused variables in files including `src/analysis-routes.ts`, `src/api-routes.ts`, `src/auth-routes.ts`, `src/flywheel-routes.ts`, `src/investor-lead-routes.ts`, `src/realtor-routes.ts`, `src/scripts/generate-market-update.ts`, `src/scripts/seed-comprehensive.ts`, and `src/stripe-integration.ts`.
 
-10. Plain-English “what Dan should pull into Replit at 10am”
-- Pull this branch to give Realist.ca the backend foundation for “Challenge my underwriting.” sharing. It creates share links, records qualified opens/challenges/saved versions, avoids paying for raw clicks, caps daily rewards, and tracks premium export credits so the frontend can start building the viral underwriting flow.
+## 9. Risks/Blockers
+- The new signup-credit endpoint depends on the frontend/auth flow calling it after signup with the share token. It returns `401` unless `req.userId` is present.
+- Export credits are still tracked on `underwriting_shares.export_credit_balance`; wiring spend/decrement into the actual Google Sheets export path remains a follow-up.
+- The reward-status endpoint is token-accessible like the share page. It returns aggregate counts and credit balances for that shared underwriting token, not recipient PII.
+- Repo-wide lint remains blocked by unrelated existing errors.
+
+## 10. What Dan Should Pull Into Replit At 10am
+Pull `realist-nightly/2026-06-10-viral-underwriting-status` for the next viral underwriting loop step: the share flow can now show reward progress and can award qualified signup credit after a recipient creates an account, while raw clicks still earn nothing. In Replit, run the existing underwriting share migration if needed, then run `npm run type-check`, `npm run build`, and the focused underwriting reward test.
