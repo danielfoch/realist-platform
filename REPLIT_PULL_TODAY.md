@@ -5,7 +5,7 @@
 
 ## 2. Branch and Commit SHA
 Branch: `realist-nightly/2026-06-10-viral-underwriting-status`
-Commit: `PENDING` (will be filled after local commit)
+Commit: `17673b6` (code + handoff commit before SHA self-reference update)
 
 ## 3. What Changed
 - Added a reward-status summary for viral underwriting shares so the UI can show the CTA, earned Google Sheets export credits, qualified action counts, daily cap remaining, action/status counts, and the next qualified actions still available.
