@@ -787,6 +787,11 @@ export default function AdminDealDesk() {
                                 <AlertCircle className="h-3 w-3" /> failed
                               </span>
                             )}
+                            {t.status === "cancelled" && (
+                              <span className="flex items-center gap-1 text-muted-foreground text-xs font-medium" data-testid={`status-cancelled-${t.id}`}>
+                                <XCircle className="h-3 w-3" /> cancelled
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="text-xs text-muted-foreground">{fmtTime(t.createdAt)}</div>
@@ -800,7 +805,7 @@ export default function AdminDealDesk() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div
-                                      className="text-xs text-red-500 max-w-48 truncate cursor-help underline decoration-dotted underline-offset-2"
+                                      className={`text-xs max-w-48 truncate cursor-help underline decoration-dotted underline-offset-2 ${t.status === "cancelled" ? "text-muted-foreground" : "text-red-500"}`}
                                       data-testid={`failure-reason-${t.id}`}
                                     >
                                       {t.failureReason}

@@ -305,6 +305,20 @@ function buildLostReasonNurture(payload: Record<string, any>, leadInfo?: { name:
   };
 }
 
+const NUDGE_SUPPRESS_STATUSES = new Set([
+  "contacted",
+  "qualified",
+  "booked_call",
+  "preapproval_started",
+  "buyer_agency_signed",
+  "showing_booked",
+  "offer_submitted",
+  "won",
+  "booked",
+  "closed",
+  "lost",
+]);
+
 async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
   const payload = (trigger.payload as Record<string, any>) || {};
   const now = new Date();
@@ -314,6 +328,19 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
     const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
     if (hoursElapsed < 24) {
       return;
+    }
+  }
+
+  if (trigger.triggerType === "warm_lead_user_nudge" && trigger.opportunityId) {
+    try {
+      const opportunity = await storage.getOpportunityById(trigger.opportunityId);
+      if (opportunity && NUDGE_SUPPRESS_STATUSES.has(opportunity.status)) {
+        console.log(`[email-queue] Cancelled trigger ${trigger.id} (warm_lead_user_nudge) — opportunity ${trigger.opportunityId} already moved to "${opportunity.status}"`);
+        await storage.updateEmailTriggerStatus(trigger.id, "cancelled", undefined, `Lead already moved to "${opportunity.status}" before nudge fired`);
+        return;
+      }
+    } catch (err: any) {
+      console.error(`[email-queue] Could not check opportunity status for trigger ${trigger.id}:`, err?.message || String(err));
     }
   }
 
@@ -415,11 +442,12 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
   }
 }
 
-export async function processPendingEmailTriggers(): Promise<{ processed: number; sent: number; failed: number; skipped: number }> {
+export async function processPendingEmailTriggers(): Promise<{ processed: number; sent: number; failed: number; skipped: number; cancelled: number }> {
   const pending = await storage.listPendingEmailTriggers();
   let sent = 0;
   let failed = 0;
   let skipped = 0;
+  let cancelled = 0;
 
   for (const trigger of pending) {
     const statusBefore = trigger.status;
@@ -435,9 +463,10 @@ export async function processPendingEmailTriggers(): Promise<{ processed: number
     const latest = updated.find(t => t.id === trigger.id);
     if (latest?.status === "sent") sent++;
     else if (latest?.status === "failed") failed++;
+    else if (latest?.status === "cancelled") cancelled++;
   }
 
-  return { processed: pending.length, sent, failed, skipped };
+  return { processed: pending.length, sent, failed, skipped, cancelled };
 }
 
 export function startEmailQueueWorker(intervalMs = 30_000): NodeJS.Timeout {
