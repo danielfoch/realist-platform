@@ -3770,3 +3770,173 @@ export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
 });
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
+
+// ============================================================================
+// DEAL DESK LOOP — opportunities, assignments, status history, consent,
+// email triggers, and underwriting assumption provenance.
+// Ported from the idx app (db/migrations/013_deal_desk_loop.sql), adapted to
+// the live users / property_analyses tables.
+// ============================================================================
+
+// The canonical record routing investor intent into the Deal Desk.
+export const opportunities = pgTable("opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  dealId: varchar("deal_id").references(() => propertyAnalyses.id, { onDelete: "set null" }),
+  intentScore: integer("intent_score").default(0).notNull(),
+  dealScore: integer("deal_score"),
+  // new, hot, warm, nurture, contacted, booked_call, preapproval_started,
+  // buyer_agency_signed, showing_booked, offer_submitted, closed, lost
+  status: varchar("status", { length: 30 }).default("new").notNull(),
+  assignedTo: varchar("assigned_to", { length: 100 }),
+  suggestedNextAction: text("suggested_next_action"),
+  source: varchar("source", { length: 50 }).default("deal_desk"),
+  financingHelp: boolean("financing_help").default(false),
+  buyingHelp: boolean("buying_help").default(false),
+  lostReason: varchar("lost_reason", { length: 100 }),
+  notes: text("notes"),
+  // Submission details — live analyses carry no street address, so the
+  // opportunity is self-contained even without a linked analysis.
+  propertyAddress: text("property_address"),
+  listingUrl: text("listing_url"),
+  market: text("market"),
+  propertyType: text("property_type"),
+  purchasePrice: real("purchase_price"),
+  estimatedRent: real("estimated_rent"),
+  firstContactedAt: timestamp("first_contacted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_opportunities_status").on(table.status),
+  index("idx_opportunities_user").on(table.userId),
+  index("idx_opportunities_score").on(table.intentScore),
+  index("idx_opportunities_assigned").on(table.assignedTo),
+]);
+
+export const assignments = pgTable("assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  opportunityId: varchar("opportunity_id").references(() => opportunities.id, { onDelete: "cascade" }).notNull(),
+  assignedTo: varchar("assigned_to", { length: 100 }).notNull(),
+  assignedBy: varchar("assigned_by", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_assignments_opportunity").on(table.opportunityId),
+]);
+
+export const statusHistory = pgTable("status_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  opportunityId: varchar("opportunity_id").references(() => opportunities.id, { onDelete: "cascade" }).notNull(),
+  oldStatus: varchar("old_status", { length: 30 }),
+  newStatus: varchar("new_status", { length: 30 }).notNull(),
+  changedBy: varchar("changed_by", { length: 100 }),
+  lostReason: varchar("lost_reason", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_status_history_opportunity").on(table.opportunityId),
+]);
+
+// CASL requires proof of when/how consent was obtained — append-only ledger,
+// latest row per (user, channel) wins.
+export const emailConsent = pgTable("email_consent", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  channel: varchar("channel", { length: 10 }).default("email").notNull(), // email, sms
+  status: varchar("status", { length: 10 }).notNull(),                    // granted, revoked
+  source: varchar("source", { length: 100 }),                             // deal_desk_form, signup, unsubscribe_link...
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_email_consent_user").on(table.userId, table.channel, table.createdAt),
+]);
+
+// Queue consumed by the email worker / Clyde. Behavioural emails only.
+export const emailTriggers = pgTable("email_triggers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  opportunityId: varchar("opportunity_id").references(() => opportunities.id, { onDelete: "set null" }),
+  triggerType: varchar("trigger_type", { length: 60 }).notNull(),
+  payload: jsonb("payload"),
+  status: varchar("status", { length: 10 }).default("pending").notNull(), // pending, sent, skipped
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  sentAt: timestamp("sent_at"),
+}, (table) => [
+  index("idx_email_triggers_status").on(table.status, table.createdAt),
+  // One pending trigger of a given type per user — sweeps are idempotent
+  uniqueIndex("idx_email_triggers_dedupe").on(table.userId, table.triggerType).where(sql`status = 'pending'`),
+]);
+
+// One row per assumption per model run, with provenance. The gap between
+// defaults and user edits is the proprietary learning dataset.
+export const underwritingAssumptions = pgTable("underwriting_assumptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id, { onDelete: "cascade" }).notNull(),
+  key: varchar("key", { length: 60 }).notNull(),       // monthly_rent, vacancy_rate, interest_rate...
+  value: text("value").notNull(),
+  source: varchar("source", { length: 20 }).default("default").notNull(), // default, user_edited, comp_derived
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_uw_assumptions_analysis").on(table.analysisId),
+  index("idx_uw_assumptions_key").on(table.key, table.source),
+]);
+
+export const opportunitiesRelations = relations(opportunities, ({ one, many }) => ({
+  user: one(users, { fields: [opportunities.userId], references: [users.id] }),
+  deal: one(propertyAnalyses, { fields: [opportunities.dealId], references: [propertyAnalyses.id] }),
+  assignments: many(assignments),
+  statusHistory: many(statusHistory),
+}));
+
+export const assignmentsRelations = relations(assignments, ({ one }) => ({
+  opportunity: one(opportunities, { fields: [assignments.opportunityId], references: [opportunities.id] }),
+}));
+
+export const statusHistoryRelations = relations(statusHistory, ({ one }) => ({
+  opportunity: one(opportunities, { fields: [statusHistory.opportunityId], references: [opportunities.id] }),
+}));
+
+export const emailTriggersRelations = relations(emailTriggers, ({ one }) => ({
+  opportunity: one(opportunities, { fields: [emailTriggers.opportunityId], references: [opportunities.id] }),
+}));
+
+export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertOpportunity = z.infer<typeof insertOpportunitySchema>;
+export type Opportunity = typeof opportunities.$inferSelect;
+
+export const insertAssignmentSchema = createInsertSchema(assignments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
+export type Assignment = typeof assignments.$inferSelect;
+
+export const insertStatusHistorySchema = createInsertSchema(statusHistory).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertStatusHistory = z.infer<typeof insertStatusHistorySchema>;
+export type StatusHistory = typeof statusHistory.$inferSelect;
+
+export const insertEmailConsentSchema = createInsertSchema(emailConsent).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertEmailConsent = z.infer<typeof insertEmailConsentSchema>;
+export type EmailConsent = typeof emailConsent.$inferSelect;
+
+export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+});
+export type InsertEmailTrigger = z.infer<typeof insertEmailTriggerSchema>;
+export type EmailTrigger = typeof emailTriggers.$inferSelect;
+
+export const insertUnderwritingAssumptionSchema = createInsertSchema(underwritingAssumptions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertUnderwritingAssumption = z.infer<typeof insertUnderwritingAssumptionSchema>;
+export type UnderwritingAssumption = typeof underwritingAssumptions.$inferSelect;

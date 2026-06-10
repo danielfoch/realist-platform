@@ -121,6 +121,7 @@ import { authStorage } from "./replit_integrations/auth/storage";
 import { logUserActivity, rebuildUserInferenceProfile } from "./userActivity";
 import { trackRealistEvent } from "./realistEvents";
 import { registerRealistEventRoutes } from "./eventsModule";
+import { registerDealDeskRoutes } from "./dealDesk";
 import {
   getCurrentSaleEstimate,
   lookupSoldPriceForListing,
@@ -695,6 +696,7 @@ export async function registerRoutes(
   setupAuth(app);
   registerAuthRoutes(app);
   registerRealistEventRoutes(app);
+  registerDealDeskRoutes(app);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
