@@ -3,9 +3,13 @@
  * Stores events in PostgreSQL and exposes a query API.
  */
 
+import { createHmac } from 'crypto';
+import { request as httpsRequest } from 'https';
+import { request as httpRequest } from 'http';
 import { Request, Response } from 'express';
 import { db } from './db';
 import { logger } from './logger';
+import { recomputeIntentForUser } from './intent';
 
 // ---------- Types ----------
 
@@ -29,10 +33,51 @@ export type EventName =
   | 'realtor_lead_claimed'
   | 'subscription_checkout_started'
   | 'subscription_completed'
-  | 'subscription_canceled';
+  | 'subscription_canceled'
+  // Deal Desk loop vocabulary
+  | 'model_run'
+  | 'assumption_edited'
+  | 'deal_saved'
+  | 'deal_rejected'
+  | 'report_exported'
+  | 'financing_changed'
+  | 'market_researched'
+  | 'return_threshold_hit'
+  | 'deal_desk_cta_clicked'
+  | 'deal_submitted'
+  | 'buyer_rep_requested'
+  | 'referral_requested'
+  | 'document_sent'
+  | 'document_signed'
+  | 'call_booked'
+  | 'offer_recommended'
+  | 'offer_drafted'
+  | 'offer_submitted'
+  | 'crm_status_updated'
+  | 'lost_reason_added'
+  | 'closed'
+  | 'cashback_due';
+
+/** Events that affect intent scoring — recompute on insert. */
+const SCORING_EVENTS = new Set<string>([
+  'model_run',
+  'assumption_edited',
+  'deal_saved',
+  'deal_rejected',
+  'report_exported',
+  'financing_changed',
+  'market_researched',
+  'return_threshold_hit',
+  'deal_desk_cta_clicked',
+  'deal_submitted',
+  'buyer_rep_requested',
+  'referral_requested',
+  'call_booked',
+]);
 
 export interface TrackEventInput {
   user_id?: number | null;
+  deal_id?: number | null;
   event: EventName;
   properties?: Record<string, unknown> | null;
   session_id?: string | null;
@@ -41,15 +86,62 @@ export interface TrackEventInput {
   referrer?: string | null;
 }
 
+// ---------- Outbound webhook (downstream automations / Clyde) ----------
+
+function emitWebhook(input: TrackEventInput): void {
+  const url = process.env.REALIST_WEBHOOK_URL;
+  if (!url) return;
+
+  try {
+    const body = JSON.stringify({
+      type: 'activity_event',
+      event: input.event,
+      user_id: input.user_id ?? null,
+      deal_id: input.deal_id ?? null,
+      session_id: input.session_id ?? null,
+      properties: input.properties ?? null,
+      emitted_at: new Date().toISOString(),
+    });
+
+    const secret = process.env.REALIST_WEBHOOK_SECRET || '';
+    const signature = secret ? createHmac('sha256', secret).update(body).digest('hex') : '';
+
+    const target = new URL(url);
+    const makeRequest = target.protocol === 'https:' ? httpsRequest : httpRequest;
+    const req = makeRequest(
+      {
+        method: 'POST',
+        hostname: target.hostname,
+        port: target.port || undefined,
+        path: `${target.pathname}${target.search}`,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          ...(signature ? { 'X-Realist-Signature': `sha256=${signature}` } : {}),
+        },
+        timeout: 5000,
+      },
+      (res) => res.resume(),
+    );
+    req.on('error', (err) => logger.warn('Webhook emit failed', { error: err.message }));
+    req.on('timeout', () => req.destroy());
+    req.write(body);
+    req.end();
+  } catch (err) {
+    logger.warn('Webhook emit failed', { error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
 // ---------- Core tracking ----------
 
 export async function trackEvent(input: TrackEventInput): Promise<void> {
   try {
     await db.query(
-      `INSERT INTO user_events (user_id, event, properties, session_id, ip_address, user_agent, referrer)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO user_events (user_id, deal_id, event, properties, session_id, ip_address, user_agent, referrer)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         input.user_id ?? null,
+        input.deal_id ?? null,
         input.event,
         input.properties ? JSON.stringify(input.properties) : null,
         input.session_id ?? null,
@@ -58,6 +150,13 @@ export async function trackEvent(input: TrackEventInput): Promise<void> {
         input.referrer ?? null,
       ],
     );
+
+    emitWebhook(input);
+
+    // Scoring-relevant events keep open opportunities' intent_score live
+    if (input.user_id && SCORING_EVENTS.has(input.event)) {
+      void recomputeIntentForUser(input.user_id);
+    }
   } catch (err) {
     // Never fail the request because of tracking
     logger.error('Failed to track event', {
@@ -83,18 +182,19 @@ export function eventTrackingMiddleware() {
  * Public-facing endpoint called from the frontend.
  */
 export async function handleTrackEvent(req: Request, res: Response): Promise<void> {
-  const { event, properties, session_id } = req.body;
+  const { event, properties, session_id, deal_id, user_id } = req.body;
 
   if (!event) {
     res.status(400).json({ success: false, error: 'event is required' });
     return;
   }
 
-  const userId = (req as any).user?.id ?? null;
+  const userId = (req as any).user?.id ?? (typeof user_id === 'number' ? user_id : null);
   const ip = req.ip || req.socket.remoteAddress || null;
 
   await trackEvent({
     user_id: userId,
+    deal_id: typeof deal_id === 'number' ? deal_id : null,
     event: event as EventName,
     properties: properties ?? null,
     session_id: session_id ?? null,
@@ -208,18 +308,18 @@ export async function handleGetBroadcastStats(req: Request, res: Response) {
     const [eventsResult, dealsResult] = await Promise.all([
       db.query(
         `SELECT COUNT(*)::int as count FROM user_events
-         WHERE event_name = 'deal_analyzer_report_generated'
+         WHERE event IN ('deal_analyzer_report_generated', 'model_run')
          AND created_at >= $1`,
         [weekAgo.toISOString()]
       ),
       db.query(
         `SELECT
            COUNT(*)::int as total_deals,
-           AVG(cap_rate)::float as avg_cap_rate,
-           AVG(irr)::float as avg_irr,
+           AVG((metrics->>'cap_rate')::float)::float as avg_cap_rate,
+           AVG((metrics->>'irr')::float)::float as avg_irr,
            MODE() WITHIN GROUP (ORDER BY city) as top_market,
            MODE() WITHIN GROUP (ORDER BY property_type) as top_property_type
-         FROM analyzed_deals
+         FROM deal_analyses
          WHERE analyzed_at >= $1`,
         [weekAgo.toISOString()]
       )

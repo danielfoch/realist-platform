@@ -129,7 +129,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
         us.most_active_city
       FROM users u
       JOIN user_stats us ON u.id = us.user_id
-      WHERE us.last_analyzed_at > NOW() - INTERVAL '7 days'
+      WHERE us.last_analyzed_at > ${dateFilter}
       ORDER BY us.total_deals DESC
       LIMIT 50`
     );
@@ -142,7 +142,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
         ROUND(AVG(cash_on_cash)::numeric, 2) as avg_cash_on_cash,
         MODE() WITHIN GROUP (ORDER BY city) as hottest_city
       FROM analyzed_deals
-      WHERE analyzed_at > NOW() - INTERVAL '7 days'`
+      WHERE analyzed_at > ${dateFilter}`
     );
 
     return res.json({
@@ -292,7 +292,7 @@ router.get('/recommendations', async (req: Request, res: Response) => {
 
 // POST /api/deals/join - Enroll after deal analyzer and link pre-enrollment analyses
 router.post('/join', async (req: Request, res: Response) => {
-  const { name, email, phone, session_id } = req.body;
+  const { name, email, session_id } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required' });
@@ -381,7 +381,7 @@ router.post('/join', async (req: Request, res: Response) => {
 });
 
 // Helper function to calculate badges
-function calculateBadges(totalDeals: number, avgCapRate: number, avgCashOnCash: number): string[] {
+export function calculateBadges(totalDeals: number, avgCapRate: number, avgCashOnCash: number): string[] {
   const badges = [];
 
   if (totalDeals >= 1) badges.push("🌱 First Deal");

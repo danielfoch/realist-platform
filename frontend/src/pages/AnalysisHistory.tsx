@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { track } from '../lib/event-tracking';
 import './AnalysisHistory.css';
 
 interface Analysis {
@@ -307,6 +308,18 @@ export function AnalysisHistoryPage() {
                       </div>
                     )}
                     <div className="analysis-actions">
+                      <button
+                        className="text-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          track('deal_desk_cta_clicked', { source: 'analysis_history' });
+                          navigate(
+                            `/deal-desk?address=${encodeURIComponent(a.address)}&analysisId=${a.id}&src=analysis_history`,
+                          );
+                        }}
+                      >
+                        Submit to Deal Desk
+                      </button>
                       <button
                         className="text-btn"
                         onClick={(e) => {

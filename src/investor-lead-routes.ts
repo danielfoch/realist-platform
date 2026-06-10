@@ -193,7 +193,8 @@ export function createInvestorLeadRouter(): Router {
         const token = Buffer.from(`${user.id}:${Date.now()}:${Math.random()}`).toString('base64');
 
         // Sanitize user for response
-        const { password_hash, ...safeUser } = user;
+        const safeUser = { ...user };
+        delete (safeUser as Record<string, unknown>).password_hash;
 
         res.json({
           success: true,
