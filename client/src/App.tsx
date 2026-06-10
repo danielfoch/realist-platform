@@ -96,6 +96,8 @@ import {
 import JoinRealtors from "@/pages/JoinRealtors";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
+import PitchDeck from "@/pages/PitchDeck";
+import UnderwritingShare from "@/pages/UnderwritingShare";
 import AccountApiKeys from "@/pages/AccountApiKeys";
 import ThankYouVancouver from "@/pages/ThankYouVancouver";
 import NotFound from "@/pages/not-found";
@@ -169,6 +171,8 @@ function Router() {
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/community/leaderboard/full" component={FullLeaderboard} />
       <Route path="/my-performance" component={MyPerformance} />
+      <Route path="/analyses/:id/deck" component={PitchDeck} />
+      <Route path="/underwriting/:token" component={UnderwritingShare} />
       <Route path="/account/api-keys" component={AccountApiKeys} />
       <Route path="/insights/market-report" component={MarketReport} />
       <Route path="/insights/mortgage-rates" component={MortgageRates} />

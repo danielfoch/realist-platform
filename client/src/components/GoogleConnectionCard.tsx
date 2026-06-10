@@ -18,13 +18,13 @@ export function GoogleConnectionCard() {
   const queryClient = useQueryClient();
 
   const { data: status, isLoading } = useQuery<GoogleStatus>({
-    queryKey: ["/api/google/status"],
+    queryKey: ["/api/integrations/google/status"],
   });
 
   const disconnectMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/google/disconnect"),
+    mutationFn: () => apiRequest("DELETE", "/api/integrations/google"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/google/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/google/status"] });
       toast({ title: "Google account disconnected" });
     },
     onError: () => {
@@ -32,9 +32,15 @@ export function GoogleConnectionCard() {
     },
   });
 
-  const handleConnect = () => {
-    const returnUrl = encodeURIComponent(window.location.href);
-    window.location.href = `/api/google/authorize?returnUrl=${returnUrl}`;
+  const handleConnect = async () => {
+    try {
+      const res = await fetch("/api/integrations/google/auth-url", { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Failed to start Google authorization");
+      window.location.href = data.url;
+    } catch {
+      toast({ title: "Failed to start Google authorization", variant: "destructive" });
+    }
   };
 
   const handleDisconnect = () => {
@@ -130,8 +136,8 @@ export function GoogleConnectionCard() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Connect your Google account to export your deal analyses directly to your own Google Drive. 
-              Without connecting, exports will be saved to our shared account.
+              Connect your Google account to export your deal analyses directly to your own Google Drive.
+              Connecting is required before exporting to Sheets.
             </p>
             <Button
               onClick={handleConnect}

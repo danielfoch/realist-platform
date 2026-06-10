@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { authPath } from "@/lib/authReturn";
+import { MyAnalysesCard } from "@/components/MyAnalysesCard";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
@@ -305,6 +306,8 @@ export default function MyPerformance() {
                 icon={Target}
               />
             </div>
+
+            <MyAnalysesCard />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card data-testid="card-ranking">
