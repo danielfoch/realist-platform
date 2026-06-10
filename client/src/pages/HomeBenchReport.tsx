@@ -13,7 +13,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
   Legend,
   RadarChart,
   PolarGrid,
@@ -49,12 +48,44 @@ interface ModelMeta {
   badge: string;
 }
 
+interface CostMeta {
+  runCost: number;
+  access: string;
+  rationale: string;
+}
+
 const MODELS: ModelMeta[] = [
   { key: "fable", name: "Fable 5", vendor: "Homies", color: "#0F0F0F", badge: "House" },
   { key: "opus", name: "Opus 4.8", vendor: "Anthropic", color: "#D97757", badge: "Frontier" },
   { key: "gpt", name: "GPT 5.5", vendor: "OpenAI", color: "#10A37F", badge: "Frontier" },
   { key: "gemini", name: "Gemini 3.1", vendor: "Google", color: "#5B8DEF", badge: "Frontier" },
 ];
+
+const COST_ASSUMPTIONS: Record<ModelKey, CostMeta> = {
+  fable: {
+    runCost: 14,
+    access: "API",
+    rationale: "Highest cost in this set; best raw output, but the priciest to run repeatedly.",
+  },
+  opus: {
+    runCost: 9,
+    access: "API",
+    rationale: "Strong writing and research, but still metered per run through API usage.",
+  },
+  gpt: {
+    runCost: 2,
+    access: "OAuth via OpenClaw",
+    rationale: "Lower effective cost because it can run through OpenClaw with OAuth instead of pure API metering.",
+  },
+  gemini: {
+    runCost: 6,
+    access: "API",
+    rationale: "Mid-pack on cost, but still billed as an API model in this setup.",
+  },
+};
+
+const VA_HOURLY_WAGE = 10;
+const LOCAL_ADMIN_HOURLY_WAGE = 20;
 
 interface Category {
   key: string;
@@ -155,10 +186,6 @@ const HARD_FAILS = [
   "Exposes private client info unnecessarily",
 ];
 
-function overall(scores: Record<ModelKey, number>, modelKey: ModelKey) {
-  return scores[modelKey];
-}
-
 function overallAcrossCategories(modelKey: ModelKey) {
   const total = CATEGORIES.reduce((acc, c) => acc + c.scores[modelKey], 0);
   return total / CATEGORIES.length;
@@ -174,6 +201,26 @@ export default function HomeBenchReport() {
       .map((m) => ({ ...m, score: overallAcrossCategories(m.key) }))
       .sort((a, b) => b.score - a.score)
       .map((m, i) => ({ ...m, rank: i + 1 }));
+  }, []);
+
+  const valueRanked = useMemo(() => {
+    return [...MODELS]
+      .map((m) => {
+        const score = overallAcrossCategories(m.key);
+        const cost = COST_ASSUMPTIONS[m.key].runCost;
+
+        return {
+          ...m,
+          score,
+          cost,
+          access: COST_ASSUMPTIONS[m.key].access,
+          rationale: COST_ASSUMPTIONS[m.key].rationale,
+          valueIndex: score / cost,
+          vaMinutes: (cost / VA_HOURLY_WAGE) * 60,
+          adminMinutes: (cost / LOCAL_ADMIN_HOURLY_WAGE) * 60,
+        };
+      })
+      .sort((a, b) => b.valueIndex - a.valueIndex);
   }, []);
 
   const groupedData = useMemo(() => {
@@ -573,6 +620,112 @@ export default function HomeBenchReport() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Cost / benefit */}
+        <Card className="mb-10 border-stone-200 bg-white">
+          <CardHeader className="border-b border-stone-100">
+            <div className={SECTION_TITLE}>Cost / benefit</div>
+            <CardTitle className="text-2xl mt-1 text-stone-950">
+              Best model is not the same as best value
+            </CardTitle>
+            <p className="text-sm text-stone-500 mt-1 max-w-3xl">
+              Fable 5 wins on raw score, but it is also the most expensive model in the stack.
+              When we compare effective cost for the same 60-task HomeBench run, GPT 5.5 comes
+              out as the best value because it can run through OpenClaw with OAuth, while Opus
+              4.8, Gemini 3.1, and Fable 5 are all metered on API usage.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-6">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-stone-200 text-left text-stone-500">
+                      <th className="pb-3 pr-4 font-medium">Model</th>
+                      <th className="pb-3 pr-4 font-medium">Score</th>
+                      <th className="pb-3 pr-4 font-medium">Access</th>
+                      <th className="pb-3 pr-4 font-medium">Est. run cost</th>
+                      <th className="pb-3 pr-4 font-medium">Value index</th>
+                      <th className="pb-3 pr-4 font-medium">VA equiv.</th>
+                      <th className="pb-3 font-medium">Admin equiv.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {valueRanked.map((m, idx) => (
+                      <tr
+                        key={m.key}
+                        className="border-b border-stone-100 align-top"
+                        data-testid={`row-value-${m.key}`}
+                      >
+                        <td className="py-3 pr-4">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full"
+                              style={{ background: m.color }}
+                            />
+                            <span className="font-medium text-stone-950">{m.name}</span>
+                            {idx === 0 && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] py-0 px-1.5 border-emerald-300 bg-emerald-50 text-emerald-800"
+                              >
+                                Best value
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-stone-500 mt-1">{m.rationale}</p>
+                        </td>
+                        <td className="py-3 pr-4 font-semibold text-stone-900">
+                          {m.score.toFixed(1)}
+                        </td>
+                        <td className="py-3 pr-4 text-stone-700">{m.access}</td>
+                        <td className="py-3 pr-4 font-medium text-stone-900">
+                          ${m.cost.toFixed(0)}
+                        </td>
+                        <td className="py-3 pr-4 font-medium text-stone-900">
+                          {m.valueIndex.toFixed(1)}
+                        </td>
+                        <td className="py-3 pr-4 text-stone-700">
+                          {m.vaMinutes.toFixed(0)} min @ ${VA_HOURLY_WAGE}/hr
+                        </td>
+                        <td className="py-3 text-stone-700">
+                          {m.adminMinutes.toFixed(0)} min @ ${LOCAL_ADMIN_HOURLY_WAGE}/hr
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-xl border border-stone-200 bg-[#FAF7F2] p-5">
+                  <div className="flex items-center gap-2 text-stone-950">
+                    <Bot className="h-4 w-4" />
+                    <div className="text-sm font-semibold">Operational takeaway</div>
+                  </div>
+                  <p className="text-sm text-stone-600 mt-3 leading-relaxed">
+                    If you want the absolute best draft quality regardless of spend, Fable 5 still
+                    leads. If you care about output per dollar, GPT 5.5 is the practical default
+                    for most brokerages and lean realtor teams.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-stone-200 bg-white p-5">
+                  <div className="flex items-center gap-2 text-stone-950">
+                    <Building2 className="h-4 w-4" />
+                    <div className="text-sm font-semibold">Human labor lens</div>
+                  </div>
+                  <p className="text-sm text-stone-600 mt-3 leading-relaxed">
+                    On these assumptions, one benchmark-sized GPT 5.5 run is about 12 minutes of a
+                    $10/hr VA or 6 minutes of a $20/hr local admin. Fable 5 is closer to 84
+                    minutes of VA time or 42 minutes of local admin time, so its quality premium
+                    needs to matter enough to justify the spend.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Category deep-dive */}
         <Card className="mb-10 border-stone-200 bg-white">
