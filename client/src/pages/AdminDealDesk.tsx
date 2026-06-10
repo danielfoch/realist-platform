@@ -124,6 +124,15 @@ const STATUSES = [
   "showing_booked", "offer_submitted", "closed", "lost",
 ];
 
+const EMAIL_TRIGGER_OPTIONS: { value: string; label: string }[] = [
+  { value: "deal_submitted_confirmation", label: "Deal Submitted — Confirmation (to lead)" },
+  { value: "hot_lead_immediate_followup", label: "Hot Lead — Immediate Follow-up (to team)" },
+  { value: "warm_lead_24h_followup", label: "Warm Lead — 24h Follow-up (to team)" },
+  { value: "warm_lead_user_nudge", label: "Warm Lead — User Nurture Nudge (to lead)" },
+  { value: "financing_interest_followup", label: "Financing Interest — Follow-up (to team)" },
+  { value: "lost_reason_nurture", label: "Lost Reason — Nurture (to team)" },
+];
+
 function statusBadge(status: string) {
   const variants: Record<string, "destructive" | "default" | "secondary" | "outline"> = {
     hot: "destructive",
@@ -210,6 +219,41 @@ export default function AdminDealDesk() {
 
   const { data: emailTriggers = [], isLoading: triggersLoading } = useQuery<EmailTrigger[]>({
     queryKey: ["/api/deal-desk/email-triggers"],
+  });
+
+  const [previewTriggerType, setPreviewTriggerType] = useState<string>("warm_lead_user_nudge");
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewSubject, setPreviewSubject] = useState<string>("");
+  const [previewAudience, setPreviewAudience] = useState<string>("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const previewMutation = useMutation({
+    mutationFn: async (triggerType: string) => {
+      const res = await apiRequest("POST", "/api/deal-desk/email-triggers/preview", { triggerType });
+      return res.json() as Promise<{ ok: boolean; subject: string; html: string; audience: string }>;
+    },
+    onSuccess: (data) => {
+      setPreviewHtml(data.html);
+      setPreviewSubject(data.subject);
+      setPreviewAudience(data.audience);
+      setPreviewOpen(true);
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to render preview", variant: "destructive" });
+    },
+  });
+
+  const testSendMutation = useMutation({
+    mutationFn: async (triggerType: string) => {
+      const res = await apiRequest("POST", "/api/deal-desk/email-triggers/test-send", { triggerType });
+      return res.json() as Promise<{ ok: boolean; sentTo: string; subject: string }>;
+    },
+    onSuccess: (data) => {
+      toast({ title: `Test email sent to ${data.sentTo}` });
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to send test email", variant: "destructive" });
+    },
   });
 
   const { data: opportunityHistory = [], isLoading: historyLoading } = useQuery<HistoryEntry[]>({
@@ -773,6 +817,47 @@ export default function AdminDealDesk() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="mb-5 rounded-lg border bg-muted/30 p-4" data-testid="panel-email-preview">
+                <p className="text-sm font-medium flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5" /> Preview &amp; test templates
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 mb-3">
+                  Render any trigger email with sample data, or send a test copy to your own inbox before it goes live.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Select value={previewTriggerType} onValueChange={setPreviewTriggerType}>
+                    <SelectTrigger className="sm:max-w-md" data-testid="select-preview-trigger">
+                      <SelectValue placeholder="Select an email template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EMAIL_TRIGGER_OPTIONS.map(o => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => previewMutation.mutate(previewTriggerType)}
+                      disabled={previewMutation.isPending}
+                      data-testid="button-preview-email"
+                    >
+                      <FileText className="h-3.5 w-3.5 mr-1.5" />
+                      {previewMutation.isPending ? "Rendering…" : "Preview"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => testSendMutation.mutate(previewTriggerType)}
+                      disabled={testSendMutation.isPending}
+                      data-testid="button-test-send-email"
+                    >
+                      <Mail className="h-3.5 w-3.5 mr-1.5" />
+                      {testSendMutation.isPending ? "Sending…" : "Send test"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
               {triggersLoading ? (
                 <div className="text-center py-8 text-muted-foreground">Loading…</div>
               ) : emailTriggers.length === 0 ? (
@@ -1101,6 +1186,48 @@ export default function AdminDealDesk() {
               </Tabs>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl" data-testid="dialog-email-preview">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4" /> Email Preview
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm">
+              <span className="text-muted-foreground">Subject: </span>
+              <span className="font-medium" data-testid="text-preview-subject">{previewSubject}</span>
+            </div>
+            {previewAudience && (
+              <div className="text-xs text-muted-foreground">
+                Sent to: <span className="font-medium">{previewAudience === "lead" ? "the lead's email" : "the team notification list"}</span>
+              </div>
+            )}
+            <div className="rounded-md border bg-white max-h-[60vh] overflow-y-auto">
+              <iframe
+                title="Email preview"
+                srcDoc={previewHtml ?? ""}
+                className="w-full"
+                style={{ height: "55vh", border: "none" }}
+                data-testid="iframe-email-preview"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              size="sm"
+              onClick={() => testSendMutation.mutate(previewTriggerType)}
+              disabled={testSendMutation.isPending}
+              data-testid="button-test-send-from-preview"
+            >
+              <Mail className="h-3.5 w-3.5 mr-1.5" />
+              {testSendMutation.isPending ? "Sending…" : "Send test to me"}
+            </Button>
+            <Button variant="ghost" onClick={() => setPreviewOpen(false)} data-testid="button-close-preview">Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

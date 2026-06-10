@@ -350,6 +350,72 @@ export function registerDealDeskRoutes(app: Express) {
     }
   });
 
+  app.post("/api/deal-desk/email-triggers/preview", isAdmin, async (req, res) => {
+    try {
+      const { buildEmailForTrigger, getSampleTriggerPayload, EMAIL_TRIGGER_TYPES } =
+        await import("../emailQueue");
+      const schema = z.object({
+        triggerType: z.enum(EMAIL_TRIGGER_TYPES as unknown as [string, ...string[]]),
+        payload: z.record(z.any()).optional(),
+      });
+      const { triggerType, payload } = schema.parse(req.body);
+      const samplePayload = {
+        ...getSampleTriggerPayload(triggerType),
+        ...(payload || {}),
+      };
+      const { subject, html, audience } = buildEmailForTrigger(triggerType, samplePayload);
+      res.json({ ok: true, triggerType, subject, html, audience });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ ok: false, errors: err.errors });
+      }
+      console.error("Email trigger preview error:", err);
+      res.status(500).json({ ok: false, error: "Failed to render preview" });
+    }
+  });
+
+  app.post("/api/deal-desk/email-triggers/test-send", isAdmin, async (req, res) => {
+    try {
+      const { sendTestTriggerEmail, getSampleTriggerPayload, EMAIL_TRIGGER_TYPES } =
+        await import("../emailQueue");
+      const schema = z.object({
+        triggerType: z.enum(EMAIL_TRIGGER_TYPES as unknown as [string, ...string[]]),
+        payload: z.record(z.any()).optional(),
+        to: z.string().email().optional(),
+      });
+      const { triggerType, payload, to } = schema.parse(req.body);
+
+      let recipient = to;
+      if (!recipient) {
+        const { db } = await import("../db");
+        const { users } = await import("@shared/models/auth");
+        const { eq } = await import("drizzle-orm");
+        const [u] = await db
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.id, (req as any).session.userId));
+        recipient = u?.email;
+      }
+
+      if (!recipient) {
+        return res.status(400).json({ ok: false, error: "No recipient email available for your admin account" });
+      }
+
+      const samplePayload = {
+        ...getSampleTriggerPayload(triggerType),
+        ...(payload || {}),
+      };
+      const { subject } = await sendTestTriggerEmail(triggerType, samplePayload, recipient);
+      res.json({ ok: true, sentTo: recipient, subject });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ ok: false, errors: err.errors });
+      }
+      console.error("Email trigger test-send error:", err);
+      res.status(500).json({ ok: false, error: err instanceof Error ? err.message : "Failed to send test email" });
+    }
+  });
+
   app.get("/api/deal-desk/export", async (req, res) => {
     const authHeader = req.headers.authorization || "";
     const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;

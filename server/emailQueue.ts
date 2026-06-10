@@ -68,7 +68,7 @@ function wrapEmail(body: string) {
   return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">${body}</div>`;
 }
 
-function buildDealSubmittedConfirmation(payload: Record<string, any>): { subject: string; html: string; to: string } {
+export function buildDealSubmittedConfirmation(payload: Record<string, any>): { subject: string; html: string; to: string } {
   const firstName = (payload.name || "there").split(" ")[0];
   const html = wrapEmail(`
     ${emailHeader("Deal Received — We're On It", "Realist Deal Desk", "#22c55e")}
@@ -110,7 +110,7 @@ function buildDealSubmittedConfirmation(payload: Record<string, any>): { subject
   };
 }
 
-function buildHotLeadFollowup(payload: Record<string, any>): { subject: string; html: string } {
+export function buildHotLeadFollowup(payload: Record<string, any>): { subject: string; html: string } {
   const html = wrapEmail(`
     ${emailHeader("🔥 HOT LEAD — Action Required", "High-intent deal desk submission", "#dc2626")}
     <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
@@ -145,7 +145,7 @@ function buildHotLeadFollowup(payload: Record<string, any>): { subject: string; 
   };
 }
 
-function buildWarmLeadFollowup(payload: Record<string, any>): { subject: string; html: string } {
+export function buildWarmLeadFollowup(payload: Record<string, any>): { subject: string; html: string } {
   const html = wrapEmail(`
     ${emailHeader("Warm Lead — 24h Follow-up", "Deal desk submission flagged for follow-up", "#f59e0b")}
     <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
@@ -179,7 +179,7 @@ function buildWarmLeadFollowup(payload: Record<string, any>): { subject: string;
   };
 }
 
-function buildFinancingFollowup(payload: Record<string, any>): { subject: string; html: string } {
+export function buildFinancingFollowup(payload: Record<string, any>): { subject: string; html: string } {
   const html = wrapEmail(`
     ${emailHeader("💰 Financing Help Requested", "Lead is looking for mortgage/financing assistance", "#7c3aed")}
     <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
@@ -213,7 +213,7 @@ function buildFinancingFollowup(payload: Record<string, any>): { subject: string
   };
 }
 
-function buildWarmLeadUserNudge(payload: Record<string, any>): { subject: string; html: string; to: string } {
+export function buildWarmLeadUserNudge(payload: Record<string, any>): { subject: string; html: string; to: string } {
   const firstName = (payload.name || "there").split(" ")[0];
   const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
   const baseUrl = domain ? `https://${domain}` : "https://realist.ca";
@@ -268,7 +268,7 @@ function buildWarmLeadUserNudge(payload: Record<string, any>): { subject: string
   };
 }
 
-function buildLostReasonNurture(payload: Record<string, any>, leadInfo?: { name: string; email: string } | null, teamEmail?: string): { subject: string; html: string; to: string[] } {
+export function buildLostReasonNurture(payload: Record<string, any>, leadInfo?: { name: string; email: string } | null, teamEmail?: string): { subject: string; html: string; to: string[] } {
   const name = leadInfo?.name || "the lead";
   const recipients: string[] = [];
   if (teamEmail) recipients.push(teamEmail);
@@ -318,6 +318,101 @@ const NUDGE_SUPPRESS_STATUSES = new Set([
   "closed",
   "lost",
 ]);
+
+export const EMAIL_TRIGGER_TYPES = [
+  "deal_submitted_confirmation",
+  "hot_lead_immediate_followup",
+  "warm_lead_24h_followup",
+  "warm_lead_user_nudge",
+  "financing_interest_followup",
+  "lost_reason_nurture",
+] as const;
+
+export type EmailTriggerType = (typeof EMAIL_TRIGGER_TYPES)[number];
+
+export function getSampleTriggerPayload(triggerType: string): Record<string, any> {
+  return {
+    name: "Jordan Sample",
+    email: "jordan.sample@example.com",
+    phone: "(416) 555-0188",
+    address: "123 Maple Avenue, Toronto, ON",
+    market: "Toronto",
+    propertyType: "Duplex",
+    purchasePrice: 850000,
+    estimatedRent: 4200,
+    intentScore: 78,
+    status: triggerType === "hot_lead_immediate_followup" ? "hot" : "warm",
+    suggestedNextAction: "Call within 24h to discuss financing options",
+    analysisId: "sample-analysis-id",
+    lostReason: "Went with another lender",
+    opportunityId: "sample-opportunity-id",
+  };
+}
+
+/**
+ * Render the subject + HTML for any trigger type given a payload.
+ * Used by the admin preview / test-send tooling. Returns the same
+ * markup that the live queue would send. `defaultTo` is the recipient
+ * the live queue would resolve (lead email for user-facing emails, or
+ * empty for team-facing alerts which go to the configured notify list).
+ */
+export function buildEmailForTrigger(
+  triggerType: string,
+  payload: Record<string, any>,
+): { subject: string; html: string; defaultTo: string[]; audience: "lead" | "team" } {
+  switch (triggerType) {
+    case "deal_submitted_confirmation": {
+      const { subject, html, to } = buildDealSubmittedConfirmation(payload);
+      return { subject, html, defaultTo: to ? [to] : [], audience: "lead" };
+    }
+    case "hot_lead_immediate_followup": {
+      const { subject, html } = buildHotLeadFollowup(payload);
+      return { subject, html, defaultTo: [], audience: "team" };
+    }
+    case "warm_lead_24h_followup": {
+      const { subject, html } = buildWarmLeadFollowup(payload);
+      return { subject, html, defaultTo: [], audience: "team" };
+    }
+    case "warm_lead_user_nudge": {
+      const { subject, html, to } = buildWarmLeadUserNudge(payload);
+      return { subject, html, defaultTo: to ? [to] : [], audience: "lead" };
+    }
+    case "financing_interest_followup": {
+      const { subject, html } = buildFinancingFollowup(payload);
+      return { subject, html, defaultTo: [], audience: "team" };
+    }
+    case "lost_reason_nurture": {
+      const leadInfo = payload.name || payload.email
+        ? { name: payload.name || "the lead", email: payload.email || "" }
+        : null;
+      const { subject, html, to } = buildLostReasonNurture(payload, leadInfo, payload.teamEmail);
+      return { subject, html, defaultTo: to, audience: "team" };
+    }
+    default:
+      throw new Error(`Unknown trigger type: ${triggerType}`);
+  }
+}
+
+/**
+ * Send a one-off test copy of a rendered trigger email to an explicit
+ * recipient (the requesting admin). Does not touch the email_triggers
+ * queue. Throws on Resend errors so the caller can surface them.
+ */
+export async function sendTestTriggerEmail(
+  triggerType: string,
+  payload: Record<string, any>,
+  to: string,
+): Promise<{ subject: string }> {
+  const { subject, html } = buildEmailForTrigger(triggerType, payload);
+  const { client, fromEmail } = await getResendClient();
+  const testSubject = `[TEST] ${subject}`;
+  const result = await client.emails.send({ from: fromEmail, to, subject: testSubject, html });
+  if (result.error) {
+    const errMsg = typeof result.error === "string" ? result.error : JSON.stringify(result.error);
+    throw new Error(errMsg);
+  }
+  return { subject: testSubject };
+}
 
 async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
   const payload = (trigger.payload as Record<string, any>) || {};

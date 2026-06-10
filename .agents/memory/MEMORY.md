@@ -1,1 +1,2 @@
 - [StatCan/macro report pattern](statcan-report-pattern.md) — how to add a new market-report blog post + accuracy rules for recreated charts.
+- [apiRequest returns Response](apirequest-returns-response.md) — client apiRequest gives raw Response not JSON; new callers must call .json().
