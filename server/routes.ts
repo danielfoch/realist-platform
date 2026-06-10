@@ -3351,7 +3351,7 @@ export async function registerRoutes(
           phone: leadPhone,
           address: propertyData.address,
           projectType: propertyData.persona,
-          squareFootage: propertyData.existingSqft,
+          squareFootage: propertyData.existingSqft ?? undefined,
           estimatedTotal: pricingResult.totalBase,
         }).catch(err => console.error("Reno quote email error:", err));
 
@@ -4473,7 +4473,14 @@ export async function registerRoutes(
           href: "/compare",
           cta: "Compare deals",
         },
-      ].filter(Boolean);
+      ].filter((candidate): candidate is {
+        id: string;
+        score: number;
+        title: string;
+        reason: string;
+        href: string;
+        cta: string;
+      } => Boolean(candidate));
 
       const recommendations = recommendationCandidates
         .sort((a, b) => b.score - a.score)
@@ -11439,7 +11446,8 @@ export async function registerRoutes(
       }).catch(err => console.error("Multiplex fit webhook error:", err));
 
       sendToGoogleSheets({
-        name,
+        firstName,
+        lastName,
         email,
         phone,
         source: "Multiplex Investor Fit Assessment",
@@ -12181,7 +12189,8 @@ export async function registerRoutes(
       }).catch(err => console.error("Webhook error:", err));
 
       sendToGoogleSheets({
-        name: fullName,
+        firstName,
+        lastName: lastName || "",
         email,
         phone,
         source: "Land Claim Screener",
@@ -12191,7 +12200,7 @@ export async function registerRoutes(
       autoEnrollLeadAsUser({
         email,
         firstName,
-        lastName: lastName || undefined,
+        lastName: lastName || "",
       }).catch(err => console.error("Auto-enroll error:", err));
 
       res.json({ success: true, leadId: lead.id });

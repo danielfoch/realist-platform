@@ -541,7 +541,7 @@ export default function CoInvestingGroupNew() {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <RepresentationGate featureName="create a co-investing group">
+      <RepresentationGate>
         <main className="container mx-auto px-4 py-12 max-w-3xl">
           <RepresentationStatusBanner className="mb-6" />
           <div className="mb-8">
