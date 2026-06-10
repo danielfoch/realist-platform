@@ -12,6 +12,7 @@
  */
 
 import { db } from '../db';
+import { isDemoMode } from '../demo-data';
 
 interface CityRentData {
   city: string;
@@ -36,7 +37,7 @@ const CITY_PRICES: Record<string, number> = {
   'Windsor': 380000,
   'Mississauga': 720000,
   'Brampton': 680000,
-  ' Vaughan': 780000,
+  'Vaughan': 780000,
   'Markham': 850000,
   'Richmond Hill': 920000,
   'Burlington': 710000,
@@ -90,6 +91,27 @@ export async function generateMonthlyMarketUpdate(): Promise<{
 }> {
   try {
     console.log('Generating monthly market update...\n');
+
+    // Demo mode - create a demo market update
+    if (isDemoMode()) {
+      console.log('Running in demo mode - creating sample market update...');
+      
+      const monthYear = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const title = `${monthYear}: Top 5 Canadian Cities by Rental Yield`;
+      const slug = slugify(title);
+      
+      console.log(`✅ Created demo market update: "${title}"`);
+      console.log(`   URL: /insights/blog/${slug}`);
+      
+      return {
+        success: true,
+        stats: {
+          citiesAnalyzed: 5,
+          topCity: 'Windsor',
+          avgCapRate: 7.38,
+        },
+      };
+    }
 
     // Get latest rent pulse data for each city (last 7 days)
     const rentData = await db.query<CityRentData>(`
@@ -178,7 +200,7 @@ export async function generateMonthlyMarketUpdate(): Promise<{
       content,
       'Realist Team',
       'published',
-      'Market Update',
+      'Markets',
       title,
       excerpt,
     ]);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { SEO } from '../components/SEO';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 
 interface Guide {
   id: number;
@@ -311,27 +312,7 @@ export function GuidePage() {
             />
           )}
 
-          <div className="prose max-w-none">
-            {/* Render markdown as simple HTML for now */}
-            {guide.content.split('\n').map((line, i) => {
-              if (line.startsWith('# ')) {
-                return <h1 key={i} className="text-3xl font-bold mt-8 mb-4">{line.slice(2)}</h1>;
-              }
-              if (line.startsWith('## ')) {
-                return <h2 key={i} className="text-2xl font-bold mt-6 mb-3">{line.slice(3)}</h2>;
-              }
-              if (line.startsWith('### ')) {
-                return <h3 key={i} className="text-xl font-bold mt-4 mb-2">{line.slice(4)}</h3>;
-              }
-              if (line.startsWith('- ')) {
-                return <li key={i} className="ml-4">{line.slice(2)}</li>;
-              }
-              if (line.trim() === '') {
-                return <br key={i} />;
-              }
-              return <p key={i} className="my-2">{line}</p>;
-            })}
-          </div>
+          <MarkdownRenderer content={guide.content} />
         </article>
 
         <div className="mt-12 pt-8 border-t">

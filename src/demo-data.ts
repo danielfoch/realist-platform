@@ -370,6 +370,7 @@ export interface DemoBlogPost {
   author: string;
   status: string;
   category: string;
+  featured: boolean;
   tags: string[];
   meta_title: string;
   meta_description: string;
@@ -427,6 +428,7 @@ We analyze rental data from Kijiji and Rentals.ca, combined with current listing
     featured_image: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800",
     author: "Realist Team",
     status: "published",
+    featured: true,
     category: "Market Update",
     tags: ["rental yield", "canadian real estate", "investment", "march 2026"],
     meta_title: "March 2026: Top 5 Canadian Cities by Rental Yield | Realist.ca",
@@ -480,6 +482,7 @@ Cap rates don't account for:
     featured_image: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800",
     author: "Realist Team",
     status: "published",
+    featured: false,
     category: "Tutorial",
     tags: ["cap rate", "beginner", "investment basics", "tutorial"],
     meta_title: "Understanding Cap Rates: A Beginner's Guide | Realist.ca",
@@ -516,6 +519,7 @@ Toronto is no longer a get-rich-quick market, but for long-term investors, it re
     featured_image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800",
     author: "Realist Team",
     status: "published",
+    featured: false,
     category: "Analysis",
     tags: ["toronto", "market analysis", "ontario", "2026"],
     meta_title: "The Truth About Toronto Real Estate in 2026 | Realist.ca",
@@ -538,6 +542,7 @@ export interface DemoGuide {
   author: string;
   status: string;
   category: string;
+  featured: boolean;
   difficulty: string;
   estimated_read_time_minutes: number;
   meta_title: string;
@@ -589,6 +594,7 @@ Time is money. Here's how to quickly filter deals.
     featured_image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
     author: "Realist Team",
     status: "published",
+    featured: false,
     category: "Analysis",
     difficulty: "beginner",
     estimated_read_time_minutes: 8,
@@ -641,6 +647,7 @@ Investment properties require higher stress test rates (usually +2% above contra
     featured_image: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800",
     author: "Realist Team",
     status: "published",
+    featured: false,
     category: "Financing",
     difficulty: "beginner",
     estimated_read_time_minutes: 12,
@@ -693,6 +700,7 @@ Rental buildings are depreciated:
     featured_image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800",
     author: "Realist Team",
     status: "published",
+    featured: false,
     category: "Tax & Legal",
     difficulty: "intermediate",
     estimated_read_time_minutes: 15,

@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InvestorLeadForm } from '@/components/monetization/InvestorLeadForm';
+import { track } from '../lib/event-tracking';
 
 export interface Listing {
   id: number;
@@ -90,6 +91,16 @@ export const ListingCard: React.FC<ListingCardProps> = ({
           <Heart className={`h-4 w-4 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
         </Button>
 
+        <Badge
+          className="absolute bottom-2 left-2 bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            track('listing_analyze_click', { mls_number: listing.mls_number, address: listing.address_street, city: listing.address_city, list_price: listing.list_price });
+            window.location.href = `/6ixplex?address=${encodeURIComponent(listing.address_street)}&city=${encodeURIComponent(listing.address_city)}&price=${listing.list_price}`;
+          }}
+        >
+          🧮 Analyze
+        </Badge>
         {showInvestmentMetrics && listing.cap_rate && (
           <Badge className="absolute bottom-2 right-2 bg-green-600 text-white">{listing.cap_rate.toFixed(1)}% Cap Rate</Badge>
         )}

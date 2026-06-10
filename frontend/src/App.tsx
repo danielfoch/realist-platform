@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { HomePage } from './pages/HomePage'
 import { ListingsPage } from './pages/ListingsPage'
 import { RealtorAuthPage } from './pages/RealtorAuthPage'
 import { RealtorDashboard } from './pages/RealtorDashboard'
@@ -8,6 +9,15 @@ import { JoinRealtorsPage } from './pages/JoinRealtorsPage'
 import { JoinLendersPage } from './pages/JoinLendersPage'
 import { JoinRealtorsSuccessPage } from './pages/JoinRealtorsSuccessPage'
 import { JoinLendersSuccessPage } from './pages/JoinLendersSuccessPage'
+import { CityYieldPage } from './pages/CityYieldPage'
+import { SixixplexPage } from './pages/SixixplexPage'
+import { SixixplexReportPage } from './pages/SixixplexReportPage'
+import { SixixplexListingsPage } from './pages/SixixplexListingsPage'
+import { InvestorAuthPage } from './pages/InvestorAuthPage'
+import { InvestorDashboard } from './pages/InvestorDashboard'
+import { AnalysisHistoryPage } from './pages/AnalysisHistory'
+import { SavedListingsPage } from './pages/SavedListingsPage'
+import CreaStatsPage from './pages/CreaStatsPage'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
@@ -20,7 +30,7 @@ function App() {
               <Link to="/">Realist.ca</Link>
             </h1>
             <nav className="flex gap-4">
-              <Link to="/" className="text-sm font-medium hover:text-primary">
+              <Link to="/properties" className="text-sm font-medium hover:text-primary">
                 Browse Listings
               </Link>
               <Link to="/join/realtors" className="text-sm font-medium hover:text-primary">
@@ -32,8 +42,26 @@ function App() {
               <Link to="/insights/guides" className="text-sm font-medium hover:text-primary">
                 Guides
               </Link>
+              <Link to="/insights/city-yields" className="text-sm font-medium hover:text-primary">
+                City Yields
+              </Link>
+              <Link to="/insights/crea-stats" className="text-sm font-medium hover:text-primary">
+                CREA Stats
+              </Link>
               <Link to="/realtor" className="text-sm font-medium hover:text-primary">
                 Realtor Portal
+              </Link>
+              <Link to="/investor" className="text-sm font-medium hover:text-primary">
+                Investors
+              </Link>
+              <Link to="/6ixplex" className="text-sm font-medium hover:text-primary">
+                Tools
+              </Link>
+              <Link to="/investor/analyses" className="text-sm font-medium hover:text-primary">
+                My Analyses
+              </Link>
+              <Link to="/investor/saved" className="text-sm font-medium hover:text-primary">
+                Saved Listings
               </Link>
             </nav>
           </div>
@@ -41,7 +69,8 @@ function App() {
         
         <main>
           <Routes>
-            <Route path="/" element={<ListingsPage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/properties" element={<ListingsPage />} />
             <Route path="/realtor" element={<RealtorAuthPage />} />
             <Route path="/realtor/login" element={<RealtorAuthPage />} />
             <Route path="/realtor/dashboard" element={<RealtorDashboard />} />
@@ -59,6 +88,24 @@ function App() {
             <Route path="/join/realtors/success" element={<JoinRealtorsSuccessPage />} />
             <Route path="/join/lenders" element={<JoinLendersPage />} />
             <Route path="/join/lenders/success" element={<JoinLendersSuccessPage />} />
+
+            {/* City Yield Rankings */}
+            <Route path="/insights/city-yields" element={<CityYieldPage />} />
+            
+            {/* CREA Market Stats */}
+            <Route path="/insights/crea-stats" element={<CreaStatsPage />} />
+            
+            {/* 6ixplex */}
+            <Route path="/6ixplex" element={<SixixplexPage />} />
+            <Route path="/6ixplex/report" element={<SixixplexReportPage />} />
+            <Route path="/6ixplex/listings" element={<SixixplexListingsPage />} />
+            
+            {/* Investor Routes */}
+            <Route path="/investor" element={<InvestorAuthPage />} />
+            <Route path="/investor/login" element={<InvestorAuthPage />} />
+            <Route path="/investor/dashboard" element={<InvestorDashboard />} />
+            <Route path="/investor/analyses" element={<AnalysisHistoryPage />} />
+            <Route path="/investor/saved" element={<SavedListingsPage />} />
           </Routes>
         </main>
         

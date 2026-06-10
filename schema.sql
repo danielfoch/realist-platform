@@ -830,57 +830,47 @@ COMMENT ON TABLE referral_earnings IS 'Tracks referral fee earnings for realtors
 
 -- Blog Posts Table
 CREATE TABLE IF NOT EXISTS blog_posts (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(500) NOT NULL,
-    slug VARCHAR(500) UNIQUE NOT NULL,
-    excerpt TEXT,
-    content TEXT, -- markdown content
-    featured_image TEXT,
-    author VARCHAR(255),
-    published_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    -- SEO Fields
-    meta_title VARCHAR(200),
-    meta_description VARCHAR(500),
-    canonical_url TEXT,
-    
-    -- Status
-    status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
-    featured BOOLEAN DEFAULT FALSE,
-    
-    -- Categorization
-    category VARCHAR(100), -- market-update, news, analysis, tutorial
-    tags TEXT[] -- array of tags for filtering
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  excerpt TEXT,
+  content TEXT NOT NULL, -- Markdown content
+  featured_image VARCHAR(500),
+  author VARCHAR(100) DEFAULT 'Realist Team',
+  status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
+  category VARCHAR(50), -- Market Update, Analysis, News, Tutorial
+  tags TEXT[], -- Array of tags for SEO
+  meta_title VARCHAR(70),
+  meta_description VARCHAR(160),
+  canonical_url VARCHAR(500),
+  view_count INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT false,
+  published_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Guides Table
 CREATE TABLE IF NOT EXISTS guides (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(500) NOT NULL,
-    slug VARCHAR(500) UNIQUE NOT NULL,
-    excerpt TEXT,
-    content TEXT, -- markdown content
-    featured_image TEXT,
-    author VARCHAR(255),
-    published_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    -- SEO Fields
-    meta_title VARCHAR(200),
-    meta_description VARCHAR(500),
-    canonical_url TEXT,
-    
-    -- Status
-    status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
-    featured BOOLEAN DEFAULT FALSE,
-    
-    -- Category - from spec: "Analysis", "Markets", "Tax & Legal", "Financing"
-    category VARCHAR(100), -- analysis, markets, tax-legal, financing
-    difficulty VARCHAR(20), -- beginner, intermediate, advanced
-    estimated_read_time_minutes INTEGER
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  excerpt TEXT,
+  content TEXT NOT NULL, -- Markdown content
+  featured_image VARCHAR(500),
+  author VARCHAR(100) DEFAULT 'Realist Team',
+  status VARCHAR(20) DEFAULT 'draft', -- draft, published, archived
+  category VARCHAR(50), -- Analysis, Markets, Tax & Legal, Financing
+  difficulty VARCHAR(20), -- beginner, intermediate, advanced
+  estimated_read_time_minutes INTEGER,
+  meta_title VARCHAR(70),
+  meta_description VARCHAR(160),
+  canonical_url VARCHAR(500),
+  view_count INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT false,
+  published_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes for performance
@@ -1189,3 +1179,106 @@ CREATE INDEX IF NOT EXISTS idx_rent_listings_source_id ON rent_listings(source_i
 
 COMMENT ON TABLE rent_pulse IS 'City-level rent data for cap rate and yield calculations';
 COMMENT ON TABLE rent_listings IS 'Individual rental listings from scrapers';
+
+-- User sessions table: links localStorage session tokens to authenticated user accounts
+-- Enables backfilling pre-enrollment deal analyses to the correct user
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  session_token VARCHAR(255) UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+
+-- ==================== DEAL ANALYSIS MEMORY ====================
+-- Non-Negotiable #4: Persist user underwriting activity
+CREATE TABLE IF NOT EXISTS deal_analyses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES member_profiles(id) ON DELETE CASCADE,
+  session_token VARCHAR(255),  -- for pre-auth analyses
+  listing_id UUID REFERENCES listings(id) ON DELETE SET NULL,
+
+  -- Property identity
+  address TEXT NOT NULL,
+  city TEXT,
+  province TEXT,
+  postal_code TEXT,
+  property_type TEXT,
+  bedrooms INTEGER,
+  bathrooms NUMERIC(3,1),
+  sqft INTEGER,
+
+  -- Underwriting inputs
+  list_price NUMERIC(12,2) NOT NULL,
+  down_payment NUMERIC(12,2),
+  down_payment_pct NUMERIC(5,2),
+  mortgage_rate NUMERIC(5,3),
+  amortization_years INTEGER,
+  monthly_rent NUMERIC(10,2),
+  annual_vacancy NUMERIC(5,2),
+  annual_appreciation NUMERIC(5,2),
+  closing_costs NUMERIC(10,2),
+  renovation_costs NUMERIC(10,2),
+  property_taxes NUMERIC(10,2),
+  property_insurance NUMERIC(10,2),
+  maintenance_pct NUMERIC(5,2),
+  management_pct NUMERIC(5,2),
+
+  -- Computed outputs (persisted for fast queries)
+  cap_rate NUMERIC(5,2),
+  cash_flow NUMERIC(10,2),
+  cash_on_cash NUMERIC(5,2),
+  monthly_mortgage NUMERIC(10,2),
+  gross_income NUMERIC(12,2),
+  net_income NUMERIC(12,2),
+  total_operating_expenses NUMERIC(12,2),
+  debt_service NUMERIC(10,2),
+  annual_cash_flow NUMERIC(10,2),
+  appreciation NUMERIC(10,2),
+  equity_buildup NUMERIC(10,2),
+  total_return NUMERIC(10,2),
+  total_roi NUMERIC(5,2),
+  is_investment_property BOOLEAN DEFAULT false,
+
+  -- Verdict & notes
+  verdict_check TEXT,  -- '✅ Strong', '⚠️ Moderate', '❌ Weak'
+  notes TEXT,
+  tags JSONB DEFAULT '[]',
+
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_da_user ON deal_analyses(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_da_session ON deal_analyses(session_token) WHERE session_token IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_da_listing ON deal_analyses(listing_id);
+CREATE INDEX IF NOT EXISTS idx_da_city_price ON deal_analyses(city, list_price);
+CREATE INDEX IF NOT EXISTS idx_da_cap ON deal_analyses(cap_rate DESC NULLS LAST);
+
+COMMENT ON TABLE deal_analyses IS 'Persistent deal analysis history — core of the analysis memory layer';
+
+-- ==================== SAVED LISTINGS ====================
+-- Persistent bookmarking of listings by authenticated users
+CREATE TABLE IF NOT EXISTS saved_listings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  listing_id INTEGER REFERENCES listings(id) ON DELETE SET NULL,
+  address TEXT NOT NULL,
+  city VARCHAR(100) NOT NULL DEFAULT '',
+  province VARCHAR(2) NOT NULL DEFAULT '',
+  price BIGINT,
+  property_type VARCHAR(50),
+  bedrooms INTEGER,
+  bathrooms INTEGER,
+  sqft INTEGER,
+  saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notes TEXT,
+  UNIQUE(user_id, listing_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_listings_user ON saved_listings(user_id, saved_at DESC);
+
+COMMENT ON TABLE saved_listings IS 'Saved/bookmarked listings by authenticated investors';

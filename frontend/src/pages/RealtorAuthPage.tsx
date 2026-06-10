@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useToast } from '../hooks/use-toast';
 import { Loader2, Building2 } from 'lucide-react';
+import { track } from '../lib/event-tracking';
 
 interface LoginFormData {
   email: string;
@@ -34,6 +35,14 @@ export function RealtorAuthPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
+
+  // Track when user switches to signup
+  const handleModeChange = (newMode: string) => {
+    setMode(newMode as 'login' | 'signup');
+    if (newMode === 'signup') {
+      track('realtor_signup_started');
+    }
+  };
   
   const [loginData, setLoginData] = useState<LoginFormData>({
     email: '',
@@ -68,6 +77,7 @@ export function RealtorAuthPage() {
       if (result.success) {
         localStorage.setItem('realtor_token', result.data.token);
         localStorage.setItem('realtor_user', JSON.stringify(result.data.user));
+        track('login', { role: 'realtor' });
         toast({ title: 'Welcome back!' });
         navigate('/realtor/dashboard');
       } else {
@@ -115,6 +125,7 @@ export function RealtorAuthPage() {
       if (result.success) {
         localStorage.setItem('realtor_token', result.data.token);
         localStorage.setItem('realtor_user', JSON.stringify(result.data.user));
+        track('realtor_signup_completed');
         toast({ title: 'Welcome to Realist.ca!' });
         navigate('/realtor/dashboard');
       } else {
@@ -145,7 +156,7 @@ export function RealtorAuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={mode} onValueChange={(v: string) => setMode(v as 'login' | 'signup')}>
+          <Tabs value={mode} onValueChange={handleModeChange}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Register</TabsTrigger>

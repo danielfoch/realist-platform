@@ -2,10 +2,34 @@
  * Express API routes for SEO Content (Blog Posts & Guides)
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { QueryResultRow } from 'pg';
 import { db as defaultDb } from './db';
-import { isDemoMode, getDemoBlogPosts, getDemoBlogPostBySlug, demoGuides } from './demo-data';
+import { isDemoMode, getDemoBlogPosts, getDemoBlogPostBySlug, demoGuides, demoBlogPosts } from './demo-data';
+
+// API key authentication middleware
+const authenticateApiKey = (req: Request, res: Response, next: NextFunction) => {
+  const apiKey = req.headers['x-api-key'] || req.query.api_key;
+  
+  // In demo mode, allow all requests
+  if (isDemoMode()) {
+    return next();
+  }
+  
+  // Check if API key matches the rent API key (or a dedicated content API key)
+  const validApiKey = process.env.CONTENT_API_KEY || process.env.RENT_API_KEY;
+  
+  if (!validApiKey) {
+    console.warn('No CONTENT_API_KEY or RENT_API_KEY set in environment');
+    return res.status(401).json({ success: false, error: 'API key not configured' });
+  }
+  
+  if (apiKey !== validApiKey) {
+    return res.status(401).json({ success: false, error: 'Invalid API key' });
+  }
+  
+  next();
+};
 
 interface DatabaseAdapter {
   query: <T extends QueryResultRow = QueryResultRow>(text: string, params?: readonly unknown[]) => Promise<{ rows: T[] }>;
@@ -13,6 +37,21 @@ interface DatabaseAdapter {
 
 export function createContentRouter(database: DatabaseAdapter = defaultDb): Router {
   const router = Router();
+
+  const GUIDE_CATEGORIES = ['Analysis', 'Markets', 'Tax & Legal', 'Financing'] as const;
+  const normalizeGuideCategory = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().toLowerCase();
+    const map: Record<string, string> = {
+      analysis: 'Analysis',
+      markets: 'Markets',
+      'tax & legal': 'Tax & Legal',
+      'tax-legal': 'Tax & Legal',
+      'tax and legal': 'Tax & Legal',
+      financing: 'Financing',
+    };
+    return map[normalized] ?? null;
+  };
 
   // ==================== BLOG POSTS ====================
   
@@ -42,7 +81,7 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
       
       let query = `
         SELECT id, title, slug, excerpt, featured_image, author, published_at, 
-               category, tags, meta_title, meta_description
+               category, tags, meta_title, meta_description, view_count, featured
         FROM blog_posts 
         WHERE status = 'published'
       `;
@@ -90,6 +129,7 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
         });
       }
       
+      // First get the post
       const result = await database.query(
         `SELECT * FROM blog_posts WHERE slug = $1 AND status = 'published'`,
         [slug]
@@ -99,9 +139,20 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
         return res.status(404).json({ success: false, error: 'Blog post not found' });
       }
       
+      const post = result.rows[0];
+      
+      // Increment view count
+      await database.query(
+        `UPDATE blog_posts SET view_count = COALESCE(view_count, 0) + 1 WHERE id = $1`,
+        [post.id]
+      );
+      
+      // Update post with incremented view count
+      post.view_count = (post.view_count || 0) + 1;
+      
       res.json({
         success: true,
-        data: result.rows[0]
+        data: post
       });
     } catch (error) {
       console.error('Error fetching blog post:', error);
@@ -109,13 +160,13 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
     }
   });
 
-  // POST /api/blog - Create new blog post (admin only - no auth for demo)
-  router.post('/blog', async (req: Request, res: Response) => {
+  // POST /api/blog - Create new blog post (admin only)
+  router.post('/blog', authenticateApiKey, async (req: Request, res: Response) => {
     try {
       const { 
         title, slug, excerpt, content, featured_image, author,
         meta_title, meta_description, canonical_url,
-        status, category, tags
+        status, category, tags, featured
       } = req.body;
       
       if (!title || !slug || !content) {
@@ -124,16 +175,15 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
           error: 'Title, slug, and content are required' 
         });
       }
-      
       const result = await database.query(
         `INSERT INTO blog_posts 
-         (title, slug, excerpt, content, featured_image, author, meta_title, meta_description, canonical_url, status, category, tags, published_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         (title, slug, excerpt, content, featured_image, author, meta_title, meta_description, canonical_url, status, category, tags, featured, published_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           title, slug, excerpt, content, featured_image, author,
           meta_title, meta_description, canonical_url,
-          status || 'draft', category, tags,
+          status || 'draft', category, tags, featured || false,
           status === 'published' ? new Date() : null
         ]
       );
@@ -152,13 +202,13 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
   });
 
   // PUT /api/blog/:id - Update blog post (admin only)
-  router.put('/blog/:id', async (req: Request, res: Response) => {
+  router.put('/blog/:id', authenticateApiKey, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { 
         title, slug, excerpt, content, featured_image, author,
         meta_title, meta_description, canonical_url,
-        status, category, tags
+        status, category, tags, featured
       } = req.body;
       
       const result = await database.query(
@@ -175,13 +225,14 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
              status = COALESCE($10, status),
              category = COALESCE($11, category),
              tags = COALESCE($12, tags),
+             featured = COALESCE($13, featured),
              updated_at = CURRENT_TIMESTAMP,
              published_at = CASE WHEN $10 = 'published' AND published_at IS NULL THEN CURRENT_TIMESTAMP ELSE published_at END
-         WHERE id = $13
+         WHERE id = $14
          RETURNING *`,
         [title, slug, excerpt, content, featured_image, author,
          meta_title, meta_description, canonical_url,
-         status, category, tags, id]
+         status, category, tags, featured, id]
       );
       
       if (result.rows.length === 0) {
@@ -199,7 +250,7 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
   });
 
   // DELETE /api/blog/:id - Delete blog post (admin only)
-  router.delete('/blog/:id', async (req: Request, res: Response) => {
+  router.delete('/blog/:id', authenticateApiKey, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       
@@ -250,7 +301,7 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
       
       let query = `
         SELECT id, title, slug, excerpt, featured_image, author, published_at, 
-               category, difficulty, estimated_read_time_minutes, meta_title, meta_description
+               category, difficulty, estimated_read_time_minutes, meta_title, meta_description, view_count, featured
         FROM guides 
         WHERE status = 'published'
       `;
@@ -303,6 +354,7 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
         });
       }
       
+      // First get the guide
       const result = await database.query(
         `SELECT * FROM guides WHERE slug = $1 AND status = 'published'`,
         [slug]
@@ -312,9 +364,20 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
         return res.status(404).json({ success: false, error: 'Guide not found' });
       }
       
+      const guide = result.rows[0];
+      
+      // Increment view count
+      await database.query(
+        `UPDATE guides SET view_count = COALESCE(view_count, 0) + 1 WHERE id = $1`,
+        [guide.id]
+      );
+      
+      // Update guide with incremented view count
+      guide.view_count = (guide.view_count || 0) + 1;
+      
       res.json({
         success: true,
-        data: result.rows[0]
+        data: guide
       });
     } catch (error) {
       console.error('Error fetching guide:', error);
@@ -323,13 +386,14 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
   });
 
   // POST /api/guides - Create new guide (admin only)
-  router.post('/guides', async (req: Request, res: Response) => {
+  router.post('/guides', authenticateApiKey, async (req: Request, res: Response) => {
     try {
       const { 
         title, slug, excerpt, content, featured_image, author,
         meta_title, meta_description, canonical_url,
-        status, category, difficulty, estimated_read_time_minutes
+        status, category, difficulty, estimated_read_time_minutes, featured
       } = req.body;
+      const normalizedCategory = normalizeGuideCategory(category);
       
       if (!title || !slug || !content) {
         return res.status(400).json({ 
@@ -337,16 +401,23 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
           error: 'Title, slug, and content are required' 
         });
       }
+
+      if (category && !normalizedCategory) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid guide category. Allowed: ${GUIDE_CATEGORIES.join(', ')}`,
+        });
+      }
       
       const result = await database.query(
         `INSERT INTO guides 
-         (title, slug, excerpt, content, featured_image, author, meta_title, meta_description, canonical_url, status, category, difficulty, estimated_read_time_minutes, published_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         (title, slug, excerpt, content, featured_image, author, meta_title, meta_description, canonical_url, status, category, difficulty, estimated_read_time_minutes, featured, published_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          RETURNING *`,
         [
           title, slug, excerpt, content, featured_image, author,
           meta_title, meta_description, canonical_url,
-          status || 'draft', category, difficulty, estimated_read_time_minutes,
+          status || 'draft', normalizedCategory, difficulty, estimated_read_time_minutes, featured || false,
           status === 'published' ? new Date() : null
         ]
       );
@@ -365,14 +436,22 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
   });
 
   // PUT /api/guides/:id - Update guide (admin only)
-  router.put('/guides/:id', async (req: Request, res: Response) => {
+  router.put('/guides/:id', authenticateApiKey, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { 
         title, slug, excerpt, content, featured_image, author,
         meta_title, meta_description, canonical_url,
-        status, category, difficulty, estimated_read_time_minutes
+        status, category, difficulty, estimated_read_time_minutes, featured
       } = req.body;
+      const normalizedCategory = category === undefined ? undefined : normalizeGuideCategory(category);
+
+      if (category !== undefined && !normalizedCategory) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid guide category. Allowed: ${GUIDE_CATEGORIES.join(', ')}`,
+        });
+      }
       
       const result = await database.query(
         `UPDATE guides 
@@ -389,13 +468,14 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
              category = COALESCE($11, category),
              difficulty = COALESCE($12, difficulty),
              estimated_read_time_minutes = COALESCE($13, estimated_read_time_minutes),
+             featured = COALESCE($14, featured),
              updated_at = CURRENT_TIMESTAMP,
              published_at = CASE WHEN $10 = 'published' AND published_at IS NULL THEN CURRENT_TIMESTAMP ELSE published_at END
-         WHERE id = $14
+         WHERE id = $15
          RETURNING *`,
         [title, slug, excerpt, content, featured_image, author,
          meta_title, meta_description, canonical_url,
-         status, category, difficulty, estimated_read_time_minutes, id]
+         status, normalizedCategory, difficulty, estimated_read_time_minutes, featured, id]
       );
       
       if (result.rows.length === 0) {
@@ -413,7 +493,7 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
   });
 
   // DELETE /api/guides/:id - Delete guide (admin only)
-  router.delete('/guides/:id', async (req: Request, res: Response) => {
+  router.delete('/guides/:id', authenticateApiKey, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       
@@ -542,6 +622,223 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
     } catch (error) {
       console.error('Error fetching city yields:', error);
       res.status(500).json({ success: false, error: 'Failed to fetch city yields' });
+    }
+  });
+
+  // ==================== FEATURED CONTENT ====================
+
+  // GET /api/content/featured - Get featured blog posts and guides
+  router.get('/content/featured', async (req: Request, res: Response) => {
+    try {
+      const { type = 'all', limit = 5 } = req.query;
+      
+      if (isDemoMode()) {
+        const featuredPosts = demoBlogPosts.filter(p => p.featured).slice(0, Number(limit));
+        const featuredGuides = demoGuides.filter(g => g.featured).slice(0, Number(limit));
+        
+        if (type === 'blog') {
+          return res.json({ success: true, data: featuredPosts });
+        }
+        if (type === 'guides') {
+          return res.json({ success: true, data: featuredGuides });
+        }
+        return res.json({ 
+          success: true, 
+          data: {
+            blog: featuredPosts,
+            guides: featuredGuides
+          }
+        });
+      }
+      
+      const blogQuery = type !== 'guides' 
+        ? await database.query(
+            `SELECT id, title, slug, excerpt, featured_image, author, published_at, category, view_count, 'blog' as type
+             FROM blog_posts WHERE status = 'published' AND featured = true
+             ORDER BY published_at DESC LIMIT $1`,
+            [Number(limit)]
+          )
+        : { rows: [] };
+      
+      const guidesQuery = type !== 'blog'
+        ? await database.query(
+            `SELECT id, title, slug, excerpt, featured_image, author, published_at, category, difficulty, view_count, 'guide' as type
+             FROM guides WHERE status = 'published' AND featured = true
+             ORDER BY published_at DESC LIMIT $1`,
+            [Number(limit)]
+          )
+        : { rows: [] };
+      
+      if (type === 'blog') {
+        return res.json({ success: true, data: blogQuery.rows });
+      }
+      if (type === 'guides') {
+        return res.json({ success: true, data: guidesQuery.rows });
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          blog: blogQuery.rows,
+          guides: guidesQuery.rows
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching featured content:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch featured content' });
+    }
+  });
+
+  // ==================== CONTENT SEARCH ====================
+
+  // GET /api/content/search - Search blog posts and guides
+  router.get('/content/search', async (req: Request, res: Response) => {
+    try {
+      const { q, type, limit = 10 } = req.query;
+      
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ success: false, error: 'Search query required' });
+      }
+      
+      if (isDemoMode()) {
+        const searchLower = q.toLowerCase();
+        let blogResults: typeof demoBlogPosts = [];
+        let guideResults: typeof demoGuides = [];
+        
+        if (type !== 'guides') {
+          blogResults = demoBlogPosts.filter(p => 
+            p.title.toLowerCase().includes(searchLower) ||
+            p.excerpt.toLowerCase().includes(searchLower) ||
+            p.content.toLowerCase().includes(searchLower)
+          ).slice(0, Number(limit));
+        }
+        
+        if (type !== 'blog') {
+          guideResults = demoGuides.filter(g =>
+            g.title.toLowerCase().includes(searchLower) ||
+            g.excerpt.toLowerCase().includes(searchLower) ||
+            g.content.toLowerCase().includes(searchLower)
+          ).slice(0, Number(limit));
+        }
+        
+        return res.json({
+          success: true,
+          data: {
+            query: q,
+            blog: blogResults,
+            guides: guideResults,
+            total: blogResults.length + guideResults.length
+          }
+        });
+      }
+      
+      let blogResults = { rows: [] as QueryResultRow[] };
+      let guideResults = { rows: [] as QueryResultRow[] };
+      
+      if (type !== 'guides') {
+        blogResults = await database.query(
+          `SELECT id, title, slug, excerpt, 'blog' as type, published_at
+           FROM blog_posts 
+           WHERE status = 'published' AND (title ILIKE $1 OR excerpt ILIKE $1 OR content ILIKE $1)
+           ORDER BY published_at DESC
+           LIMIT $2`,
+          [`%${q}%`, Number(limit)]
+        );
+      }
+      
+      if (type !== 'blog') {
+        guideResults = await database.query(
+          `SELECT id, title, slug, excerpt, 'guide' as type, published_at
+           FROM guides 
+           WHERE status = 'published' AND (title ILIKE $1 OR excerpt ILIKE $1 OR content ILIKE $1)
+           ORDER BY published_at DESC
+           LIMIT $2`,
+          [`%${q}%`, Number(limit)]
+        );
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          query: q,
+          blog: blogResults.rows,
+          guides: guideResults.rows,
+          total: blogResults.rows.length + guideResults.rows.length
+        }
+      });
+    } catch (error) {
+      console.error('Error searching content:', error);
+      res.status(500).json({ success: false, error: 'Failed to search content' });
+    }
+  });
+
+  // ==================== SITEMAP DATA ====================
+
+  // GET /api/content/sitemap - Get all published content for sitemap generation
+  router.get('/content/sitemap', async (req: Request, res: Response) => {
+    try {
+      if (isDemoMode()) {
+        const blogUrls = demoBlogPosts
+          .filter(p => p.status === 'published')
+          .map(p => ({
+            url: `/insights/blog/${p.slug}`,
+            lastmod: p.published_at,
+            priority: '0.8',
+            changefreq: 'weekly'
+          }));
+        
+        const guideUrls = demoGuides
+          .filter(g => g.status === 'published')
+          .map(g => ({
+            url: `/insights/guides/${g.slug}`,
+            lastmod: g.published_at,
+            priority: '0.7',
+            changefreq: 'monthly'
+          }));
+        
+        return res.json({
+          success: true,
+          data: {
+            blog: blogUrls,
+            guides: guideUrls
+          }
+        });
+      }
+      
+      const blogResult = await database.query(
+        `SELECT slug, published_at as lastmod, 'blog' as type
+         FROM blog_posts WHERE status = 'published' ORDER BY published_at DESC`
+      );
+      
+      const guideResult = await database.query(
+        `SELECT slug, published_at as lastmod, 'guide' as type
+         FROM guides WHERE status = 'published' ORDER BY published_at DESC`
+      );
+      
+      const blogUrls = blogResult.rows.map(r => ({
+        url: `/insights/blog/${r.slug}`,
+        lastmod: r.lastmod,
+        priority: '0.8',
+        changefreq: 'weekly'
+      }));
+      
+      const guideUrls = guideResult.rows.map(r => ({
+        url: `/insights/guides/${r.slug}`,
+        lastmod: r.lastmod,
+        priority: '0.7',
+        changefreq: 'monthly'
+      }));
+      
+      res.json({
+        success: true,
+        data: {
+          blog: blogUrls,
+          guides: guideUrls
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching sitemap data:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch sitemap data' });
     }
   });
 
