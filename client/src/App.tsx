@@ -22,6 +22,8 @@ import Admin from "@/pages/Admin";
 import AdminEvents from "@/pages/AdminEvents";
 import AdminEventNew from "@/pages/AdminEventNew";
 import AdminEventEdit from "@/pages/AdminEventEdit";
+import DealDesk from "@/pages/DealDesk";
+import AdminDealDesk from "@/pages/AdminDealDesk";
 import EventDetail from "@/pages/EventDetail";
 import EventSuccess from "@/pages/EventSuccess";
 import Privacy from "@/pages/Privacy";
@@ -110,7 +112,7 @@ import ABCLendersCanadaGuide from "@/pages/ABCLendersCanadaGuide";
 import ReportsHub from "@/pages/ReportsHub";
 import ReportPage from "@/pages/ReportPage";
 import IrccImmigrationDashboardReport from "@/pages/IrccImmigrationDashboardReport";
-import RealBenchReport from "@/pages/RealBenchReport";
+import HomeBenchReport from "@/pages/HomeBenchReport";
 import MarketsHub from "@/pages/MarketsHub";
 import ProgrammaticMarketPage from "@/pages/ProgrammaticMarketPage";
 import StrategiesHub from "@/pages/StrategiesHub";
@@ -214,7 +216,7 @@ function Router() {
       <Route path="/insights/guides/:slug" component={GuidePage} />
       <Route path="/reports" component={ReportsHub} />
       <Route path="/reports/canada-immigration-dashboard-2026" component={IrccImmigrationDashboardReport} />
-      <Route path="/reports/realbench-ai-realtor-benchmark" component={RealBenchReport} />
+      <Route path="/reports/homebench-ai-realtor-benchmark" component={HomeBenchReport} />
       <Route path="/reports/:slug" component={ReportPage} />
       <Route path="/markets" component={MarketsHub} />
       <Route path="/markets/:city" component={ProgrammaticMarketPage} />
@@ -247,7 +249,9 @@ function Router() {
       
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />
+      <Route path="/deal-desk" component={DealDesk} />
       <Route path="/admin" component={Admin} />
+      <Route path="/admin/deal-desk" component={AdminDealDesk} />
       <Route path="/admin/events" component={AdminEvents} />
       <Route path="/admin/events/new" component={AdminEventNew} />
       <Route path="/admin/events/:id/edit" component={AdminEventEdit} />

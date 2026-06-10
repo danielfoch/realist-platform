@@ -10,7 +10,8 @@ export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  phone: text("phone").notNull(),
+  phone: text("phone"),
+  consentSms: boolean("consent_sms").default(false),
   consent: boolean("consent").default(false),
   leadSource: text("lead_source").default("Deal Analyzer"),
   utmSource: text("utm_source"),
@@ -2659,6 +2660,8 @@ export const userActivityEvents = pgTable("user_activity_events", {
   metadata: jsonb("metadata"),
   hashedIp: text("hashed_ip"),
   userAgentHash: text("user_agent_hash"),
+  dealId: varchar("deal_id"),
+  source: text("source"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -3770,3 +3773,78 @@ export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
 });
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
+
+// ============================================================================
+// DEAL DESK LOOP — deals, opportunities, email triggers
+// ============================================================================
+
+export const deals = pgTable("deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  userId: varchar("user_id").references(() => users.id),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  address: text("address").notNull(),
+  listingUrl: text("listing_url"),
+  market: text("market"),
+  propertyType: text("property_type"),
+  purchasePrice: real("purchase_price"),
+  estimatedRent: real("estimated_rent"),
+  capRate: real("cap_rate"),
+  cashFlow: real("cash_flow"),
+  targetReturnHit: boolean("target_return_hit").default(false),
+  reportUrl: text("report_url"),
+  financingHelpWanted: boolean("financing_help_wanted").default(false),
+  buyingHelpWanted: boolean("buying_help_wanted").default(false),
+  userNotes: text("user_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDealSchema = createInsertSchema(deals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDeal = z.infer<typeof insertDealSchema>;
+export type Deal = typeof deals.$inferSelect;
+
+export const opportunities = pgTable("opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  userId: varchar("user_id").references(() => users.id),
+  dealId: varchar("deal_id").references(() => deals.id),
+  intentScore: integer("intent_score").default(0).notNull(),
+  status: text("status").default("new").notNull(),
+  assignedTo: text("assigned_to"),
+  suggestedNextAction: text("suggested_next_action").notNull(),
+  source: text("source").default("deal_desk").notNull(),
+  lostReason: text("lost_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertOpportunity = z.infer<typeof insertOpportunitySchema>;
+export type Opportunity = typeof opportunities.$inferSelect;
+
+export const emailTriggers = pgTable("email_triggers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  userId: varchar("user_id").references(() => users.id),
+  opportunityId: varchar("opportunity_id").references(() => opportunities.id),
+  triggerType: text("trigger_type").notNull(),
+  payload: jsonb("payload"),
+  status: text("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertEmailTrigger = z.infer<typeof insertEmailTriggerSchema>;
+export type EmailTrigger = typeof emailTriggers.$inferSelect;

@@ -700,6 +700,9 @@ export async function registerRoutes(
   registerApiKeyManagementRoutes(app);
   registerAgentRoutes(app);
 
+  const { registerDealDeskRoutes } = await import("./routes/dealDesk");
+  registerDealDeskRoutes(app);
+
   // ─── Event Tracking ───────────────────────────────────────────────────────
   // Lightweight behavioral event capture for AI training data pipeline.
   // Every event here is a future labeled data point:

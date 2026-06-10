@@ -45,13 +45,13 @@ export default function ReportsHub() {
               <Badge variant="outline" className="mb-3 border-amber-200/40 bg-amber-100/10 text-amber-100">
                 New · Homies × Realist
               </Badge>
-              <h2 className="text-3xl font-bold leading-tight">RealBench: AI Benchmark for Realtors</h2>
+              <h2 className="text-3xl font-bold leading-tight">HomeBench: AI Benchmark for Realtors</h2>
               <p className="mt-3 max-w-2xl text-stone-300">
                 Fable 5, GPT 5.5, Opus 4.8, and Gemini 3.1 scored on the work agents actually do — offers, showings, CRM, email, research, marketing, and valuation.
               </p>
             </div>
             <div className="md:text-right">
-              <Link href="/reports/realbench-ai-realtor-benchmark">
+              <Link href="/reports/homebench-ai-realtor-benchmark">
                 <Button className="bg-amber-400 text-stone-950 hover:bg-amber-300">See the leaderboard</Button>
               </Link>
             </div>

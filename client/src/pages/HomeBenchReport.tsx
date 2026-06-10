@@ -163,7 +163,7 @@ function overallAcrossCategories(modelKey: ModelKey) {
 
 const SECTION_TITLE = "text-xs uppercase tracking-[0.18em] text-stone-500 font-medium";
 
-export default function RealBenchReport() {
+export default function HomeBenchReport() {
   const [activeCategory, setActiveCategory] = useState<string>("offers");
 
   const ranked = useMemo(() => {
@@ -198,9 +198,9 @@ export default function RealBenchReport() {
   return (
     <div className="min-h-screen bg-[#FAF7F2]">
       <SEO
-        title="RealBench v0.1 — AI Benchmark for Realtors"
+        title="HomeBench v0.1 — AI Benchmark for Realtors"
         description="An independent benchmark of frontier AI models on the actual work real estate agents do: offers, showings, CRM, email, property research, marketing, and valuation."
-        canonicalUrl="/reports/realbench-ai-realtor-benchmark"
+        canonicalUrl="/reports/homebench-ai-realtor-benchmark"
       />
       <Navigation />
 
@@ -220,7 +220,7 @@ export default function RealBenchReport() {
               variant="outline"
               className="border-stone-900/20 bg-stone-900 text-[#FAF7F2] hover:bg-stone-900"
             >
-              <Sparkles className="h-3 w-3 mr-1" /> RealBench v0.1
+              <Sparkles className="h-3 w-3 mr-1" /> HomeBench v0.1
             </Badge>
             <Badge variant="outline" className="border-stone-300 bg-white text-stone-700">
               Powered by Homies × Realist
@@ -234,7 +234,7 @@ export default function RealBenchReport() {
             Which AI is actually good at being a realtor?
           </h1>
           <p className="text-lg text-stone-600 max-w-3xl leading-relaxed">
-            RealBench tests frontier models on the work real estate agents do every day: writing
+            HomeBench tests frontier models on the work real estate agents do every day: writing
             offers, booking showings, managing CRMs, responding to clients, researching properties,
             marketing listings, and valuing homes. No generic benchmarks. No vanity tasks. Just
             client-ready output, scored by working agents.
@@ -591,7 +591,7 @@ export default function RealBenchReport() {
             <CardHeader className="border-b border-stone-100">
               <div className={SECTION_TITLE}>Methodology</div>
               <CardTitle className="text-xl mt-1 text-stone-950">
-                How RealBench scores
+                How HomeBench scores
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-5 text-sm text-stone-700 leading-relaxed">
@@ -658,7 +658,7 @@ export default function RealBenchReport() {
                 v0.5 expands to 75 tasks and adds tool-use & multimodal docs.
               </h3>
               <p className="text-stone-300 mt-3 text-sm max-w-2xl">
-                We re-run RealBench every time a frontier model ships. Want to suggest a task,
+                We re-run HomeBench every time a frontier model ships. Want to suggest a task,
                 contribute as a grader, or get the raw scorecards? We're opening the private beta.
               </p>
             </div>
@@ -688,7 +688,7 @@ export default function RealBenchReport() {
         <div className="flex items-start gap-2 text-xs text-stone-500 leading-relaxed">
           <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <p>
-            RealBench v0.1 · 60 tasks · scored June 2026. Scores shown are an illustrative public
+            HomeBench v0.1 · 60 tasks · scored June 2026. Scores shown are an illustrative public
             run; the private scored set is held out to prevent overfitting. Model names are
             placeholders for the latest publicly available checkpoint at run time.
           </p>
