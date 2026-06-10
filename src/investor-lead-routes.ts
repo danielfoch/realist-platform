@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { spawn } from 'child_process';
 import { db } from './db';
+import { generateToken } from './auth-middleware';
 
 const GHL_API_BASE = process.env.GHL_API_BASE || 'https://rest.gohighlevel.com/v1';
 const GHL_API_KEY = process.env.GHL_API_KEY;
@@ -106,8 +107,13 @@ export function createInvestorLeadRouter(): Router {
           } catch { /* ignore */ }
         }
 
-        // Generate a simple JWT-like token (same approach as realtor auth)
-        const token = Buffer.from(`${user.id}:${Date.now()}:${Math.random()}`).toString('base64');
+        // Real JWT — verified by authenticateToken across analyses/shares/integrations
+        const token = generateToken({
+          id: user.id,
+          email: user.email,
+          tier: user.tier || 'free',
+          subscription_status: user.subscription_status || 'inactive',
+        });
 
         // Fetch full profile for response
         const profileResult = await db.query(
@@ -190,7 +196,12 @@ export function createInvestorLeadRouter(): Router {
           [email]
         );
 
-        const token = Buffer.from(`${user.id}:${Date.now()}:${Math.random()}`).toString('base64');
+        const token = generateToken({
+          id: user.id,
+          email: user.email,
+          tier: user.tier || 'free',
+          subscription_status: user.subscription_status || 'inactive',
+        });
 
         // Sanitize user for response
         const safeUser = { ...user };

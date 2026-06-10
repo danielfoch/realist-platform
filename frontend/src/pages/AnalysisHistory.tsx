@@ -176,7 +176,7 @@ export function AnalysisHistoryPage() {
       const offset = (p - 1) * PAGE_SIZE;
       const res = await fetch(
         `/api/analyses?limit=${PAGE_SIZE}&offset=${offset}`,
-        { credentials: 'include' },
+        { credentials: 'include', headers: authHeaders() },
       );
       if (res.status === 401) {
         navigate('/investor');
@@ -200,7 +200,7 @@ export function AnalysisHistoryPage() {
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this analysis? This cannot be undone.')) return;
     try {
-      const res = await fetch(`/api/analyses/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/analyses/${id}`, { method: 'DELETE', headers: authHeaders() });
       if (res.ok) {
         // Refresh current page, or go back one if page is now empty
         const remaining = total - 1;
@@ -218,7 +218,7 @@ export function AnalysisHistoryPage() {
     try {
       const res = await fetch(`/api/analyses/${id}/notes`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ notes: editingNoteText || null }),
         credentials: 'include',
       });
