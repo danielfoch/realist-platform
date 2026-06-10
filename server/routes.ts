@@ -1,0 +1,12593 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import crypto from "crypto";
+import { google } from "googleapis";
+import { appendLead } from "./leadsSheet";
+import { storage } from "./storage";
+
+// Maps the formTag/source value already present on every lead payload to a
+// friendly tab name in the owner's Google Sheet. Anything not in this map
+// falls back to the raw formTag (sanitized).
+const LEAD_TAB_BY_FORMTAG: Record<string, string> = {
+  realist_signup: "Signups",
+  realist_login: "Logins",
+  realist_deal_analysis: "Deals",
+  deal_analyzer: "DealAnalyzerLeads",
+  mli_select_quote: "MLISelectLeads",
+  engagement: "Engagements",
+  meetup_contact: "MeetupContacts",
+  expert_application: "MarketExpertApps",
+  realtor_application: "RealtorApplications",
+  lender_application: "LenderApplications",
+  deal_match_request: "DealMatch",
+  multiplex_masterclass: "MasterclassLeads",
+  multiplexmasterclass: "MultiplexFitAssessment",
+  land_claim_screener: "LandClaimLeads",
+  "Deal Analyzer": "DealAnalyzerLeads",
+  "MLI Select Calculator": "MLISelectLeads",
+  "Multiplex Masterclass Sales Page": "MasterclassLeads",
+  "Multiplex Investor Fit Assessment": "MultiplexFitAssessment",
+  "Land Claim Screener": "LandClaimLeads",
+};
+
+function sanitizeTab(s?: string): string {
+  if (!s) return "";
+  return s.replace(/[^A-Za-z0-9_]/g, "_").slice(0, 60);
+}
+
+import { db } from "./db";
+import { 
+  insertLeadSchema, 
+  insertPropertySchema, 
+  insertAnalysisSchema, 
+  insertSavedDealSchema,
+  insertInspectionRequestSchema,
+  insertInvestorProfileSchema,
+  insertInvestorKycSchema,
+  insertPortfolioPropertySchema,
+  insertIndustryPartnerSchema,
+  insertCoachingWaitlistSchema,
+  insertUnderwritingNoteSchema,
+  insertListingCommentSchema,
+  insertVoteSchema,
+  insertPropertyAnalysisSchema,
+  users,
+  renoQuoteLineItemSchema,
+  renoQuoteAssumptionsSchema,
+  type RenoQuoteLineItem,
+  type RenoQuoteAssumptions,
+  trueCostInquiries,
+  trueCostBreakdowns,
+  capstoneProjects,
+  capstoneProperties,
+  capstoneCostModels,
+  capstoneProformas,
+  analyses,
+  propertyAnalyses,
+  rentPulse,
+  rentListings,
+  underwritingNotes,
+  listingComments,
+  insertBlogPostSchema,
+  insertGuideSchema,
+  dataCache,
+  distressSnapshots,
+  cityYieldHistory,
+  ddfListingSnapshots,
+  propertySaleEstimates,
+  listingSaleResolutions,
+  userSaleEstimatorMetrics,
+  leaderboardPeriods,
+  leaderboardSnapshots,
+  leaderboardSnapshotEntries,
+  userDealActivityRollups,
+  marketSentimentRollups,
+  marketReportMetrics,
+  analysisUnderwritingComparisons,
+  analysisQualityScores,
+  inspectionRequests,
+  courseModules,
+  courseLessons,
+  courseEnrollments,
+  courseProgress,
+  usListings,
+  usListingPriceHistory,
+  insertUsListingSchema,
+  usRents,
+  insertUsRentSchema,
+} from "@shared/schema";
+import { eq, and, desc, inArray, notInArray, sql, count, gte, lte, ilike } from "drizzle-orm";
+import { z } from "zod";
+import { COMMUNITY_DEFAULTS, COMMUNITY_FLAGS, computeConsensusLabel, sanitizeUserText, summarizeCommunityMetrics, truncateText } from "@shared/community";
+import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
+import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
+import { passwordResetTokens } from "@shared/models/auth";
+import { exportToGoogleSheets } from "./googleSheets";
+import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
+import { 
+  sendPodcastQuestionNotification, 
+  sendLeadNotification, 
+  sendRenoQuoteNotification,
+  sendContactHostNotification,
+  sendExpertApplicationNotification,
+  sendMarketExpertApplyNotification,
+  sendCoachingWaitlistNotification,
+  sendNotificationEmail,
+  sendMLIQuoteNotification,
+  sendRealtorIntroEmail,
+  sendWelcomeAccountEmail,
+} from "./resend";
+import { authStorage } from "./replit_integrations/auth/storage";
+import { logUserActivity, rebuildUserInferenceProfile } from "./userActivity";
+import { trackRealistEvent } from "./realistEvents";
+import { registerRealistEventRoutes } from "./eventsModule";
+import {
+  getCurrentSaleEstimate,
+  lookupSoldPriceForListing,
+  manuallyResolveSoldPrice,
+  markListingsAbsent,
+  markListingsSeenFromActiveFeed,
+  processDueSalePriceLookups,
+  recalculateEstimatorMetrics,
+  upsertSaleEstimate,
+} from "./salePriceOracle";
+import { computeAnalysisQualityScore } from "@shared/analysisQuality";
+import {
+  buildMarketReportMetrics,
+  buildMarketSentimentRollups,
+  buildUserDealActivityRollups,
+  finalizeLeaderboardSnapshot,
+  getLeaderboardHistory,
+  getLiveLeaderboardEntries,
+  rebuildMarketIntelligence,
+  recordUnderwritingComparison,
+} from "./marketIntelligence";
+import {
+  buildAnalysisCompletedPayload,
+  buildSavedSearchMatchPayload,
+  queueAnalysisNotification,
+  queueCommentNotification,
+  queueSavedSearchMatchNotifications,
+  queueUsListingChangeNotifications,
+  syncWatchersFromDiscoverySignals,
+  upsertWatcherFromSavedDeal,
+} from "./notifications";
+import { 
+  calculateTrueCost, 
+  cities, 
+  homeTypes, 
+  buyerTypes,
+  municipalities,
+  matchMunicipality,
+  type TrueCostInput,
+} from "./costData";
+
+const rateLimit = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 5;
+const leaderboardEligibleUserFilter = sql`
+  LOWER(COALESCE(${users.email}, '')) NOT LIKE '%@example.com'
+  AND NOT (
+    LOWER(COALESCE(${users.firstName}, '')) = 'test'
+    AND LOWER(COALESCE(${users.lastName}, '')) = 'user'
+  )
+`;
+
+const leaderboardSourceUrl = (process.env.LEADERBOARD_SOURCE_URL || "https://realist.ca").replace(/\/$/, "");
+const isLocalAttachedDatabase = /@helium\/heliumdb(?:\?|$)/.test(process.env.DATABASE_URL || "");
+
+function shouldUseLiveLeaderboardFallback(totalDeals: number, eligibleUserCount: number) {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    isLocalAttachedDatabase &&
+    !!leaderboardSourceUrl &&
+    (totalDeals < 25 || eligibleUserCount < 5)
+  );
+}
+
+async function fetchLiveLeaderboardFallback(path: string) {
+  const fallbackUrl = `${leaderboardSourceUrl}${path}`;
+  const response = await fetch(fallbackUrl, {
+    headers: {
+      "Accept": "application/json",
+      "User-Agent": "realist-dev-leaderboard-fallback/1.0",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Live leaderboard fallback failed with HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimit.get(ip);
+  
+  if (!entry || now > entry.resetTime) {
+    rateLimit.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+  
+  entry.count++;
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimit.entries()) {
+    if (now > entry.resetTime) {
+      rateLimit.delete(ip);
+    }
+  }
+}, RATE_LIMIT_WINDOW_MS);
+
+const createLeadRequestSchema = z.object({
+  lead: insertLeadSchema,
+  property: insertPropertySchema.omit({ leadId: true }),
+  analysis: insertAnalysisSchema.omit({ leadId: true, propertyId: true }),
+});
+
+const savedSearchSignalSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  label: z.string(),
+  query: z.string().optional(),
+  geography: z.string().optional(),
+  strategy: z.string().optional(),
+  propertyType: z.string().optional(),
+  budgetMax: z.number().optional(),
+  targetGrossYield: z.number().optional(),
+  targetCashOnCash: z.number().optional(),
+  targetIrr: z.number().optional(),
+  financingIntent: z.boolean().optional(),
+  renovationIntent: z.boolean().optional(),
+});
+
+const savedListingSignalSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  label: z.string(),
+  listingId: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  strategy: z.string().optional(),
+  propertyType: z.string().optional(),
+  price: z.number().optional(),
+  monthlyCashFlow: z.number().optional(),
+  capRate: z.number().optional(),
+  source: z.string().optional(),
+});
+
+const discoverySignalsSyncSchema = z.object({
+  savedSearches: z.array(savedSearchSignalSchema).default([]),
+  savedListings: z.array(savedListingSignalSchema).default([]),
+  recentViewedListings: z.array(savedListingSignalSchema).default([]),
+});
+
+const discoverySignalTypeSchema = z.enum([
+  "saved_search",
+  "saved_listing",
+  "recent_viewed_listing",
+]);
+
+function getTopSignalValue(values: Array<string | undefined | null>): string | null {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    const normalized = value?.trim();
+    if (!normalized) continue;
+    counts.set(normalized, (counts.get(normalized) || 0) + 1);
+  }
+
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  return ranked[0]?.[0] || null;
+}
+
+function buildAnalyzerHref(signal: z.infer<typeof savedListingSignalSchema>): string {
+  const params = new URLSearchParams();
+  if (signal.address) params.set("address", signal.address);
+  if (signal.city) params.set("city", signal.city);
+  if (signal.price) params.set("price", String(signal.price));
+  if (signal.listingId) params.set("mls", signal.listingId);
+  return `/tools/analyzer${params.toString() ? `?${params.toString()}` : ""}`;
+}
+
+function buildDiscoveryHref(input: {
+  geography?: string | null;
+  strategy?: string | null;
+  propertyType?: string | null;
+  query?: string | null;
+  budgetMax?: number | null;
+}): string {
+  const prompt = [
+    input.query,
+    input.strategy ? String(input.strategy).replace(/_/g, " ") : null,
+    input.propertyType,
+    input.geography,
+    input.budgetMax ? `under $${Math.round(input.budgetMax).toLocaleString()}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const params = new URLSearchParams();
+  if (prompt) {
+    params.set("q", prompt);
+  }
+  return `/tools/cap-rates${params.toString() ? `?${params.toString()}` : ""}`;
+}
+
+async function sendWebhook(leadId: string, payload: object) {
+  // Always pipe to owner's Google Sheet first (replaces GHL). This is the
+  // single canonical sheet-write path for every lead/contact event; the
+  // companion sendToGoogleSheets() helper deliberately does NOT also append
+  // to avoid duplicate rows when both are called for the same event.
+  const p = payload as Record<string, any>;
+  const tab = LEAD_TAB_BY_FORMTAG[p.formTag] || sanitizeTab(p.formTag) || "Leads";
+  appendLead(tab, { leadId, ...p });
+
+  const webhookUrl = process.env.GHL_WEBHOOK_URL;
+  if (!webhookUrl) {
+    return;
+  }
+
+  const maxAttempts = 3;
+  let attempt = 0;
+  let lastError: Error | null = null;
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await response.text();
+      
+      await storage.createWebhookLog({
+        leadId,
+        endpoint: webhookUrl,
+        payloadJson: payload,
+        status: response.ok ? "success" : "failed",
+        response: responseText,
+        attempts: attempt,
+      });
+
+      if (response.ok) {
+        console.log(`Webhook sent successfully on attempt ${attempt}`);
+        return;
+      }
+      
+      lastError = new Error(`HTTP ${response.status}: ${responseText}`);
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`Webhook attempt ${attempt} failed:`, error);
+    }
+
+    if (attempt < maxAttempts) {
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  await storage.createWebhookLog({
+    leadId,
+    endpoint: webhookUrl,
+    payloadJson: payload,
+    status: "failed",
+    response: lastError?.message || "Unknown error",
+    attempts: maxAttempts,
+  });
+}
+
+async function sendDealAnalysisWebhookToGHL(data: {
+  userId: string | null;
+  analysisId: string;
+  strategyType: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  resultsJson?: any;
+  inputsJson?: any;
+}) {
+  let email = "";
+  let firstName = "";
+  let lastName = "";
+  if (data.userId) {
+    const [user] = await db.select({ email: users.email, firstName: users.firstName, lastName: users.lastName })
+      .from(users).where(eq(users.id, data.userId)).limit(1);
+    if (user) {
+      email = user.email;
+      firstName = user.firstName || "";
+      lastName = user.lastName || "";
+    }
+  }
+
+  if (!email) {
+    console.log(`[deal-analysis] Skipping sheet append for analysis ${data.analysisId}: no email on file`);
+    return;
+  }
+
+  const results = data.resultsJson || {};
+  const dealCount = data.userId
+    ? await db.select({ count: count(analyses.id) }).from(analyses).where(eq(analyses.userId, data.userId)).then(r => Number(r[0]?.count || 0))
+    : 0;
+
+  const payload = {
+    email,
+    firstName,
+    lastName,
+    formTag: "realist_deal_analysis",
+    tags: ["realist-user", "deal-analyzed", `strategy-${data.strategyType}`, ...(data.city ? [`city-${data.city.toLowerCase().replace(/\s+/g, "-")}`] : [])],
+    source: "realist.ca",
+    analysisTimestamp: new Date().toISOString(),
+    analysisId: data.analysisId,
+    strategyType: data.strategyType,
+    propertyAddress: data.address || "",
+    city: data.city || "",
+    province: data.province || "",
+    capRate: results.capRate || "",
+    cashOnCash: results.cashOnCash || "",
+    purchasePrice: data.inputsJson?.purchasePrice || "",
+    totalDealsAnalyzed: dealCount,
+  };
+
+  // Pipe to owner's Google Sheet (replaces GHL).
+  appendLead("Deals", payload);
+
+  const webhookUrl = process.env.GHL_WEBHOOK_URL;
+  if (webhookUrl) {
+    try {
+      const resp = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      console.log(`[ghl-analysis] Webhook sent for analysis ${data.analysisId}: ${resp.status}`);
+    } catch (err: any) {
+      console.error(`[ghl-analysis] Webhook failed for analysis ${data.analysisId}:`, err.message);
+    }
+  }
+
+  const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
+  if (sheetsUrl) {
+    try {
+      await fetch(sheetsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "deal_analysis",
+          email,
+          name: `${firstName} ${lastName}`.trim(),
+          strategy: data.strategyType,
+          address: data.address || "",
+          city: data.city || "",
+          province: data.province || "",
+          capRate: results.capRate || "",
+          cashOnCash: results.cashOnCash || "",
+          price: data.inputsJson?.purchasePrice || "",
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    } catch {}
+  }
+}
+
+// Legacy Google Sheets backup webhook. The primary sheet write happens in
+// sendWebhook(); this helper is only kept for the optional external
+// SHEETS_WEBHOOK_URL integration. Do NOT call appendLead() here or every
+// lead would be written to the owner's sheet twice.
+async function sendToGoogleSheets(leadData: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  source: string;
+  tags?: string[];
+  [k: string]: any;
+}) {
+  const url = process.env.SHEETS_WEBHOOK_URL;
+  const secret = process.env.WEBHOOK_SECRET;
+  if (!url || !secret) {
+    return;
+  }
+
+  try {
+    const payload = {
+      event_id: crypto.randomUUID(),
+      event_ts: new Date().toISOString(),
+      event_type: "lead_created",
+      email: leadData.email,
+      first_name: leadData.firstName,
+      last_name: leadData.lastName,
+      phone: leadData.phone,
+      source_primary: "realist",
+      source_detail: leadData.source,
+      tags: leadData.tags || [],
+    };
+
+    const body = JSON.stringify(payload);
+    const sig = crypto.createHmac("sha256", secret).update(body).digest("hex");
+    const webhookUrl = url.includes("?") ? `${url}&sig=${sig}` : `${url}?sig=${sig}`;
+
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+
+    if (response.ok) {
+      console.log(`Lead backed up to Google Sheets: ${leadData.email}`);
+    } else {
+      console.error(`Google Sheets backup failed: ${response.status}`);
+    }
+  } catch (error) {
+    console.error("Google Sheets backup error:", error);
+  }
+}
+
+async function autoEnrollLeadAsUser(params: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  leadSource?: string;
+}): Promise<{ userId: string; isNew: boolean }> {
+  const emailLower = params.email.toLowerCase();
+
+  const existingUser = await db.select().from(users).where(eq(users.email, emailLower)).limit(1);
+  if (existingUser.length > 0) {
+    return { userId: existingUser[0].id, isNew: false };
+  }
+
+  let newUser;
+  try {
+    const [inserted] = await db.insert(users).values({
+      email: emailLower,
+      firstName: params.firstName || null,
+      lastName: params.lastName || null,
+      phone: params.phone || null,
+      role: "user",
+    }).returning();
+    newUser = inserted;
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      const [existing] = await db.select().from(users).where(eq(users.email, emailLower)).limit(1);
+      if (existing) return { userId: existing.id, isNew: false };
+    }
+    throw err;
+  }
+
+  await db.update(passwordResetTokens)
+    .set({ usedAt: new Date() })
+    .where(and(
+      eq(passwordResetTokens.userId, newUser.id),
+      sql`${passwordResetTokens.usedAt} IS NULL`
+    ));
+
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  await db.insert(passwordResetTokens).values({
+    userId: newUser.id,
+    token: tokenHash,
+    expiresAt,
+  });
+
+  const baseUrl = process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : process.env.REPL_SLUG
+      ? `https://${process.env.REPL_SLUG}.replit.app`
+      : "https://realist.ca";
+  const setupLink = `${baseUrl}/set-password?token=${rawToken}`;
+
+  sendWelcomeAccountEmail({
+    toEmail: emailLower,
+    firstName: params.firstName || "there",
+    setupLink,
+    leadSource: params.leadSource,
+  }).catch(err => console.error("Welcome email error:", err));
+
+  console.log(`Auto-enrolled user for: ${emailLower} (setup link generated)`);
+  return { userId: newUser.id, isNew: true };
+}
+
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express
+): Promise<Server> {
+  // Keep crawler control files independent of auth/session middleware.
+  // Google Search Console can report transient "Couldn't fetch" when sitemap
+  // requests inherit private cache/session behavior from the app stack.
+  app.get("/robots.txt", async (_req, res) => {
+    const body = [
+      "User-agent: *",
+      "Allow: /",
+      "Disallow: /api/",
+      "Disallow: /admin",
+      "",
+      "Sitemap: https://realist.ca/sitemap.xml",
+      "Sitemap: https://realist.ca/sitemap-encyclopedia.xml",
+      "",
+    ].join("\n");
+    res.removeHeader("Set-Cookie");
+    res.set("Content-Type", "text/plain; charset=utf-8");
+    res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+    res.set("X-Content-Type-Options", "nosniff");
+    res.status(200).send(body);
+  });
+
+  app.get("/sitemap-pages.xml", async (_req, res) => {
+    try {
+      const { buildPagesSitemap } = await import("./sitemap");
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(await buildPagesSitemap());
+    } catch (err: any) {
+      console.error("[sitemap-pages] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
+  app.get("/sitemap-reports.xml", async (_req, res) => {
+    try {
+      const { buildReportsSitemap } = await import("./sitemap");
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(await buildReportsSitemap());
+    } catch (err: any) {
+      console.error("[sitemap-reports] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
+  app.get("/sitemap-podcast.xml", async (_req, res) => {
+    try {
+      const { buildPodcastSitemap } = await import("./sitemap");
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(await buildPodcastSitemap());
+    } catch (err: any) {
+      console.error("[sitemap-podcast] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
+  app.get("/sitemap-encyclopedia.xml", async (_req, res) => {
+    try {
+      const { buildEncyclopediaSitemap } = await import("./sitemap");
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(buildEncyclopediaSitemap());
+    } catch (err: any) {
+      console.error("[sitemap-encyclopedia] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
+  app.get("/sitemap.xml", async (_req, res) => {
+    const { buildSitemapIndex } = await import("./sitemap");
+    res.removeHeader("Set-Cookie");
+    res.set("Content-Type", "application/xml; charset=utf-8");
+    res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+    res.set("X-Content-Type-Options", "nosniff");
+    res.status(200).end(buildSitemapIndex());
+  });
+
+  // Set up email/password authentication
+  setupAuth(app);
+  registerAuthRoutes(app);
+  registerRealistEventRoutes(app);
+
+  const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
+  registerApiKeyManagementRoutes(app);
+  registerAgentRoutes(app);
+
+  // ─── Event Tracking ───────────────────────────────────────────────────────
+  // Lightweight behavioral event capture for AI training data pipeline.
+  // Every event here is a future labeled data point:
+  //   - NL queries + clicked results → search relevance labels
+  //   - Analyzer inputs + assumptions → underwriting norm dataset
+  //   - Saved listings + outcomes → investor preference dataset
+  //   - Conversion events → intent classification labels
+  // Schema for future migration: see /docs/PLATFORM_AI_STRATEGY.md
+  app.post("/api/events/track", async (req, res) => {
+    try {
+      const { event: rawEvent, event_type, ts, session_id, page, referrer, ...properties } = req.body;
+      const event = rawEvent || event_type;
+      if (!event || typeof event !== "string" || event.length > 100) {
+        return res.status(400).json({ ok: false });
+      }
+      const userId = (req as any).session?.userId || (req as any).user?.id || null;
+      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+
+      // Log structured event for future pipeline ingestion
+      console.log(JSON.stringify({
+        type: "realist_event",
+        event_id: properties.event_id || null,
+        event,
+        event_type: event,
+        occurred_at: properties.occurred_at || new Date(Number(ts || Date.now())).toISOString(),
+        platform: properties.platform || "web",
+        idempotency_key: properties.idempotency_key || null,
+        session_id,
+        user_id: userId,
+        page,
+        referrer,
+        ip_hash: ip ? crypto.createHash("sha256").update(ip).digest("hex").slice(0, 16) : null,
+        properties,
+        server_ts: new Date().toISOString(),
+      }));
+
+      await logUserActivity(req, {
+        userId,
+        sessionId: session_id || req.sessionID || null,
+        eventName: event,
+        listingId: properties.listing_id || properties.listingId || null,
+        listingKey: properties.listing_key || properties.listingId || properties.listing_id || null,
+        analysisId: properties.analysis_id || properties.analysisId || null,
+        sourcePage: page || null,
+        component: properties.component || null,
+        metadata: properties,
+      });
+
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ ok: false });
+    }
+  });
+
+  const actorFromBody = (body: any, fallbackRole = "investor") => ({
+    id: body.userId || undefined,
+    name: body.name || body.userName || undefined,
+    email: body.email || undefined,
+    role: body.userRole || body.role || fallbackRole,
+  });
+
+  const listingFromBody = (body: any) => ({
+    id: body.listingId || body.dealId || undefined,
+    address: body.address || body.listingAddress || undefined,
+    city: body.city || body.market || undefined,
+    province: body.province || undefined,
+    price: body.price ? Number(body.price) : undefined,
+    url: body.url || undefined,
+  });
+
+  const investorConsultSchema = z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    phone: z.string().optional().default(""),
+    market: z.string().min(2),
+    experienceLevel: z.string().min(1),
+    budget: z.string().min(1),
+    goal: z.string().min(1),
+    message: z.string().optional().default(""),
+  });
+
+  app.post("/api/engagement/consult-request", async (req, res) => {
+    try {
+      const parsed = investorConsultSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid consult request", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "user.requested_consult",
+        actor: { name: data.name, email: data.email, role: "investor" },
+        recipient: { name: data.name, email: data.email, phone: data.phone || undefined },
+        email: {
+          templateKey: "investor_consult_request",
+          subject: `Investor consult request: ${data.market}`,
+          to: data.email,
+          replyTo: data.email,
+          tags: ["consult", "investor", "high-intent"],
+        },
+        metadata: data,
+        target: { type: "user" },
+        trainingRelevance: { canTrainModel: true, category: "user_engagement", confidence: 0.7 },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] consult request failed:", error);
+      res.status(500).json({ error: "Failed to submit consult request" });
+    }
+  });
+
+  const waitlistSchema = z.object({
+    email: z.string().email(),
+    investorType: z.string().min(1),
+    targetMarket: z.string().optional().default(""),
+  });
+
+  app.post("/api/engagement/waitlist", async (req, res) => {
+    try {
+      const parsed = waitlistSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid waitlist signup", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "user.joined_waitlist",
+        actor: { email: data.email, role: "investor" },
+        recipient: { email: data.email },
+        email: {
+          templateKey: "investor_waitlist_signup",
+          to: data.email,
+          tags: ["waitlist", "newsletter", data.investorType],
+        },
+        metadata: data,
+        target: { type: "user" },
+        trainingRelevance: { canTrainModel: true, category: "user_engagement", confidence: 0.6 },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] waitlist failed:", error);
+      res.status(500).json({ error: "Failed to join waitlist" });
+    }
+  });
+
+  const dealNoteSchema = z.object({
+    listingId: z.string().min(1),
+    userName: z.string().optional().default("Anonymous investor"),
+    userRole: z.enum(["investor", "realtor", "contractor", "property_manager", "lender", "appraiser", "inspector", "lawyer", "insurance_broker", "admin"]).default("investor"),
+    visibility: z.enum(["private", "public", "professional", "admin", "team"]).default("public"),
+    noteType: z.enum(["general", "price_feedback", "rent_feedback", "repair_estimate", "arv_feedback", "risk_flag", "offer_strategy", "financing_note", "inspection_note", "comparable_note"]),
+    comment: z.string().min(5),
+    suggestedValue: z.coerce.number().optional(),
+    originalValue: z.coerce.number().optional(),
+    confidence: z.coerce.number().min(0).max(1).optional(),
+    physicallyInspected: z.boolean().optional().default(false),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    price: z.coerce.number().optional(),
+  });
+
+  app.post("/api/engagement/deal-notes", async (req, res) => {
+    try {
+      const parsed = dealNoteSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid deal note", details: parsed.error.issues });
+      const data = parsed.data;
+      const eventType: "deal.risk_flagged" | "deal.note_created" | "deal.feedback_submitted" =
+        data.noteType === "risk_flag" ? "deal.risk_flagged" : data.noteType === "general" ? "deal.note_created" : "deal.feedback_submitted";
+      const result = await trackRealistEvent({
+        eventType,
+        actor: actorFromBody(data),
+        listing: listingFromBody(data),
+        email: {
+          templateKey: eventType === "deal.risk_flagged" ? "deal_risk_flagged" : "deal_note_created",
+          tags: ["deal", "notes", data.noteType, data.visibility],
+        },
+        metadata: data,
+        target: { type: "listing", id: data.listingId },
+        trainingRelevance: {
+          canTrainModel: data.visibility !== "private",
+          category: data.noteType === "rent_feedback" ? "rent_estimation" : data.noteType === "repair_estimate" ? "repair_estimation" : data.noteType === "risk_flag" ? "risk_detection" : "underwriting",
+          confidence: data.confidence,
+        },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] deal note failed:", error);
+      res.status(500).json({ error: "Failed to submit deal note" });
+    }
+  });
+
+  const savedDealEventSchema = z.object({
+    listingId: z.string().min(1),
+    address: z.string().min(1),
+    city: z.string().min(1),
+    price: z.coerce.number().optional(),
+    stage: z.string().default("watching"),
+    interestLevel: z.string().default("medium"),
+    privateNote: z.string().optional().default(""),
+    targetOfferPrice: z.coerce.number().optional(),
+    estimatedRent: z.coerce.number().optional(),
+    estimatedRepairBudget: z.coerce.number().optional(),
+    nextAction: z.string().optional().default(""),
+    confidenceScore: z.coerce.number().optional(),
+    riskScore: z.coerce.number().optional(),
+  });
+
+  app.post("/api/engagement/saved-deal", async (req, res) => {
+    try {
+      const parsed = savedDealEventSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid saved deal", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "deal.saved",
+        actor: actorFromBody(req.body),
+        listing: listingFromBody(data),
+        deal: {
+          id: data.listingId,
+          stage: data.stage,
+          targetOfferPrice: data.targetOfferPrice,
+        },
+        email: { templateKey: "deal_saved", tags: ["deal", "saved", data.stage] },
+        metadata: data,
+        target: { type: "deal", id: data.listingId },
+        trainingRelevance: { canTrainModel: true, category: "user_engagement", confidence: data.confidenceScore },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] saved deal failed:", error);
+      res.status(500).json({ error: "Failed to save deal event" });
+    }
+  });
+
+  const professionalRequestSchema = z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    phone: z.string().optional().default(""),
+    listingId: z.string().optional().default("sample-duplex-001"),
+    dealId: z.string().optional(),
+    address: z.string().optional().default(""),
+    professionalType: z.enum(["contractor", "realtor", "property_manager", "lender", "inspector", "insurance_broker", "lawyer"]),
+    market: z.string().min(2),
+    requestedService: z.string().min(2),
+    timeline: z.string().optional().default(""),
+    message: z.string().optional().default(""),
+  });
+
+  app.post("/api/engagement/professional-request", async (req, res) => {
+    try {
+      const parsed = professionalRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid professional request", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "deal.quote_requested",
+        actor: { name: data.name, email: data.email, role: "investor" },
+        recipient: { name: data.name, email: data.email, phone: data.phone || undefined },
+        listing: listingFromBody(data),
+        professionalRequest: {
+          role: data.professionalType,
+          market: data.market,
+          requestedService: data.requestedService,
+          message: data.message,
+        },
+        email: {
+          templateKey: "professional_quote_requested",
+          subject: `${data.professionalType} request in ${data.market}`,
+          to: data.email,
+          replyTo: data.email,
+          tags: ["professional-request", data.professionalType, data.market],
+        },
+        metadata: data,
+        target: { type: "professional", id: data.professionalType },
+        trainingRelevance: { canTrainModel: true, category: "professional_matching", confidence: 0.75 },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] professional request failed:", error);
+      res.status(500).json({ error: "Failed to submit professional request" });
+    }
+  });
+
+  const challengeSchema = z.object({
+    listingId: z.string().min(1),
+    offerPrice: z.coerce.number(),
+    estimatedRent: z.coerce.number(),
+    repairBudget: z.coerce.number(),
+    riskFlags: z.preprocess(
+      (value) => typeof value === "string" ? value.split(",").map((item) => item.trim()).filter(Boolean) : value,
+      z.array(z.string()).default([]),
+    ),
+    userRole: z.string().default("investor"),
+    confidence: z.coerce.number().min(0).max(1).optional(),
+  });
+
+  app.post("/api/engagement/deal-challenge", async (req, res) => {
+    try {
+      const parsed = challengeSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid challenge submission", details: parsed.error.issues });
+      const data = parsed.data;
+      const result = await trackRealistEvent({
+        eventType: "challenge.submitted",
+        actor: actorFromBody(data),
+        listing: listingFromBody(data),
+        deal: {
+          id: data.listingId,
+          targetOfferPrice: data.offerPrice,
+        },
+        email: { templateKey: "deal_challenge_submitted", tags: ["challenge", "underwriting"] },
+        metadata: data,
+        target: { type: "tool", id: "deal-challenge" },
+        trainingRelevance: { canTrainModel: true, category: "underwriting", confidence: data.confidence },
+      });
+      res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+    } catch (error) {
+      console.error("[engagement] deal challenge failed:", error);
+      res.status(500).json({ error: "Failed to submit challenge" });
+    }
+  });
+
+  app.post("/api/dev/test-crm-webhook", async (_req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const result = await trackRealistEvent({
+      eventType: "admin.webhook_failed",
+      actor: { role: "admin", name: "Realist dev test" },
+      email: { templateKey: "crm_webhook_test", tags: ["dev", "crm-test"] },
+      metadata: {
+        purpose: "Safe CRM webhook adapter test",
+        enabled: process.env.CRM_WEBHOOK_ENABLED === "true",
+        hasUrl: Boolean(process.env.CRM_WEBHOOK_URL),
+        hasSecret: Boolean(process.env.CRM_WEBHOOK_SECRET),
+      },
+      target: { type: "tool", id: "crm-webhook-test" },
+      trainingRelevance: { canTrainModel: false },
+    });
+
+    res.json({ ok: true, eventId: result.event.id, webhook: result.webhook });
+  });
+
+  app.post("/api/hst-info-session/register", async (req, res) => {
+    const payloadSchema = z.object({
+      tag: z.string().default("HST info session"),
+      source: z.string().default("OHBA x Realist HST Rebate Calculator"),
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      email: z.string().email(),
+      company: z.string().optional().default(""),
+      role: z.enum(["Buyer", "Realtor", "Builder", "Mortgage Broker", "Lawyer", "Other"]),
+      currentSalePrice: z.number(),
+      priceMode: z.enum(["includes_hst", "excludes_hst"]),
+      rebateCollector: z.enum(["buyer", "builder"]),
+      estimatedSavings: z.number(),
+      effectivePurchaserPrice: z.number(),
+      timestamp: z.string(),
+    });
+
+    const parsed = payloadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid registration payload", details: parsed.error.issues });
+    }
+
+    const webhookUrl = process.env.HST_INFO_SESSION_WEBHOOK_URL;
+    if (!webhookUrl) {
+      console.warn("[hst-info-session] HST_INFO_SESSION_WEBHOOK_URL is not set; registration accepted locally only.");
+      return res.status(200).json({ ok: true, configured: false });
+    }
+
+    try {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        return res.status(502).json({ error: "Webhook submission failed", details: text || response.statusText });
+      }
+      return res.status(200).json({ ok: true, configured: true });
+    } catch (error) {
+      console.error("[hst-info-session] webhook error:", error);
+      return res.status(502).json({ error: "Webhook submission failed" });
+    }
+  });
+
+  const saleEstimateRequestSchema = z.object({
+    listingKey: z.string().min(1),
+    listingId: z.string().optional().nullable(),
+    mlsNumber: z.string().optional().nullable(),
+    boardListingId: z.string().optional().nullable(),
+    board: z.string().optional().nullable(),
+    sourceBoard: z.string().optional().nullable(),
+    province: z.string().optional().nullable(),
+    estimatePriceCents: z.number().int().positive(),
+    listPriceCents: z.number().int().positive().optional().nullable(),
+    currency: z.string().length(3).default("CAD"),
+    estimateContext: z.record(z.any()).optional().nullable(),
+    confirmedOutOfRange: z.boolean().optional(),
+  });
+
+  app.get("/api/sale-estimates/:listingKey", isAuthenticated, async (req: any, res) => {
+    try {
+      const listingKey = decodeURIComponent(req.params.listingKey);
+      await logUserActivity(req, {
+        userId: req.session.userId,
+        sessionId: req.sessionID,
+        eventName: "estimate_prompt_viewed",
+        listingKey,
+        component: "sale_price_prompt",
+      });
+      res.json(await getCurrentSaleEstimate(req.session.userId, listingKey));
+    } catch (error) {
+      console.error("Error fetching sale estimate:", error);
+      res.status(500).json({ error: "Failed to fetch sale estimate" });
+    }
+  });
+
+  app.post("/api/sale-estimates", isAuthenticated, async (req: any, res) => {
+    try {
+      const parsed = saleEstimateRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid sale estimate", details: parsed.error.issues });
+      const result = await upsertSaleEstimate(req, { ...parsed.data, userId: req.session.userId });
+      if (!result.ok) return res.status(result.status).json({ error: result.error, requiresConfirmation: result.requiresConfirmation || false });
+      res.json(result.estimate);
+    } catch (error) {
+      console.error("Error saving sale estimate:", error);
+      res.status(500).json({ error: "Failed to save sale estimate" });
+    }
+  });
+
+  app.get("/api/sale-estimates/:listingKey/aggregate", async (req: any, res) => {
+    try {
+      const listingKey = decodeURIComponent(req.params.listingKey);
+      const userId = req.session?.userId || null;
+      const [mine] = userId
+        ? await db.select().from(propertySaleEstimates).where(and(eq(propertySaleEstimates.userId, userId), eq(propertySaleEstimates.listingKey, listingKey))).limit(1)
+        : [];
+      const [resolution] = await db.select().from(listingSaleResolutions).where(eq(listingSaleResolutions.listingKey, listingKey)).limit(1);
+      if (!mine && resolution?.resolutionStatus !== "resolved") {
+        return res.json({ visible: false, estimateCount: null, medianEstimatePriceCents: null });
+      }
+      const [aggregate] = await db.select({
+        estimateCount: sql<number>`COUNT(*)::int`,
+        medianEstimatePriceCents: sql<number>`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${propertySaleEstimates.estimatePriceCents})::bigint`,
+      }).from(propertySaleEstimates).where(eq(propertySaleEstimates.listingKey, listingKey));
+      res.json({ visible: true, ...aggregate });
+    } catch (error) {
+      console.error("Error fetching sale estimate aggregate:", error);
+      res.status(500).json({ error: "Failed to fetch aggregate estimates" });
+    }
+  });
+
+  app.post("/api/admin/sale-resolutions/manual", isAdmin, async (req: any, res) => {
+    try {
+      const parsed = z.object({
+        listingKey: z.string().min(1),
+        actualSalePriceCents: z.number().int().positive().nullable().optional(),
+        soldDate: z.string().optional().nullable(),
+        sourceName: z.string().min(1),
+        sourceConfidence: z.number().min(0).max(1).optional().nullable(),
+        unavailable: z.boolean().optional(),
+      }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid manual resolution", details: parsed.error.issues });
+      await manuallyResolveSoldPrice(req, {
+        ...parsed.data,
+        actualSalePriceCents: parsed.data.actualSalePriceCents || null,
+        soldDate: parsed.data.soldDate ? new Date(parsed.data.soldDate) : null,
+      });
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error manually resolving sale price:", error);
+      res.status(500).json({ error: "Failed to resolve sale price" });
+    }
+  });
+
+  app.get("/api/admin/sale-resolutions/unresolved", isAdmin, async (_req, res) => {
+    try {
+      const rows = await db.select().from(listingSaleResolutions)
+        .where(sql`${listingSaleResolutions.resolutionStatus} IN ('pending', 'not_started', 'error', 'unavailable')`)
+        .orderBy(sql`${listingSaleResolutions.updatedAt} DESC`)
+        .limit(100);
+      res.json(rows);
+    } catch (error) {
+      console.error("Error fetching unresolved sale resolutions:", error);
+      res.status(500).json({ error: "Failed to fetch unresolved sale resolutions" });
+    }
+  });
+
+  app.post("/api/admin/sale-resolutions/recalculate/:userId", isAdmin, async (req, res) => {
+    try {
+      res.json(await recalculateEstimatorMetrics(req.params.userId));
+    } catch (error) {
+      console.error("Error recalculating estimator metrics:", error);
+      res.status(500).json({ error: "Failed to recalculate estimator metrics" });
+    }
+  });
+
+  app.post("/api/admin/ddf/mark-absent", isAdmin, async (req, res) => {
+    try {
+      const parsed = z.object({ listingKeys: z.array(z.string().min(1)).min(1), reason: z.string().optional() }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid listing keys", details: parsed.error.issues });
+      res.json(await markListingsAbsent(req, parsed.data.listingKeys, parsed.data.reason || "missing_from_feed", { force: true }));
+    } catch (error) {
+      console.error("Error marking listings absent:", error);
+      res.status(500).json({ error: "Failed to mark listings absent" });
+    }
+  });
+
+  app.post("/api/admin/sale-resolutions/lookup/:listingKey", isAdmin, async (req, res) => {
+    try {
+      res.json(await lookupSoldPriceForListing(req, decodeURIComponent(req.params.listingKey)));
+    } catch (error) {
+      console.error("Error looking up sold price:", error);
+      res.status(500).json({ error: "Failed to lookup sold price" });
+    }
+  });
+
+  app.post("/api/admin/sale-resolutions/process-due", isAdmin, async (req, res) => {
+    try {
+      res.json(await processDueSalePriceLookups(req, Math.min(Number(req.query.limit) || 50, 100)));
+    } catch (error) {
+      console.error("Error processing due sale price lookups:", error);
+      res.status(500).json({ error: "Failed to process due lookups" });
+    }
+  });
+
+  app.post("/api/admin/user-inference/rebuild/:userId", isAdmin, async (req, res) => {
+    try {
+      await rebuildUserInferenceProfile(req.params.userId);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error rebuilding user inference profile:", error);
+      res.status(500).json({ error: "Failed to rebuild user inference profile" });
+    }
+  });
+
+  app.post("/api/admin/quality/recompute", isAdmin, async (req, res) => {
+    try {
+      const limit = Math.max(1, Math.min(50000, Number(req.body?.limit) || 5000));
+      const onlyMissing = Boolean(req.body?.onlyMissing);
+      const rows = await db.execute(sql`
+        SELECT a.id, a.user_id, a.results_json, a.inputs_json
+        FROM analyses a
+        ${onlyMissing ? sql`LEFT JOIN analysis_quality_scores q ON q.analysis_id = a.id WHERE q.analysis_id IS NULL AND a.user_id IS NOT NULL AND a.results_json IS NOT NULL` : sql`WHERE a.user_id IS NOT NULL AND a.results_json IS NOT NULL`}
+        ORDER BY a.created_at DESC
+        LIMIT ${limit}
+      `);
+      let processed = 0;
+      let nowIneligible = 0;
+      for (const row of rows.rows as any[]) {
+        const inputsJson = row.inputs_json || {};
+        const resultsJson = row.results_json || {};
+        const quality = computeAnalysisQualityScore({
+          timeSpentSeconds: Number(inputsJson.timeSpentSeconds || inputsJson.timeOnAnalysisSeconds || 0),
+          meaningfulInputChanges: Number(inputsJson.meaningfulInputChanges || inputsJson.inputChangeCount || 0),
+          openedComparableSections: Number(inputsJson.openedComparableSections || 0),
+          savedNotes: Boolean(inputsJson.notes || inputsJson.userNotes),
+          exportedOrSaved: true,
+          hasFinancingAssumptions: inputsJson.downPaymentPercent != null || inputsJson.interestRate != null,
+          hasRentAssumptions: inputsJson.monthlyRent != null || inputsJson.rentPerUnit != null,
+          hasExpenseAssumptions: inputsJson.operatingExpenses != null || inputsJson.propertyTax != null,
+          hasRenovationOrCapexAssumptions: inputsJson.renovationBudget != null || inputsJson.capexReservePercent != null,
+          comparableReferenceCount: Array.isArray(inputsJson.comparables) ? inputsJson.comparables.length : 0,
+          metrics: resultsJson,
+        });
+        if (!quality.leaderboardEligible) nowIneligible++;
+        await db.execute(sql`
+          INSERT INTO analysis_quality_scores
+            (analysis_id, user_id, listing_key, quality_score, confidence_score,
+             plausibility_score, interaction_depth_score, data_completeness_score,
+             uniqueness_score, deal_viability_score, spam_risk_score,
+             leaderboard_eligible, exclusion_reason)
+          VALUES
+            (${row.id}, ${row.user_id}, ${inputsJson.mlsNumber || inputsJson.listingMlsNumber || null},
+             ${quality.qualityScore}, ${quality.confidenceScore},
+             ${quality.plausibilityScore}, ${quality.interactionDepthScore},
+             ${quality.dataCompletenessScore}, ${quality.uniquenessScore},
+             ${quality.dealViabilityScore}, ${quality.spamRiskScore},
+             ${quality.leaderboardEligible}, ${quality.exclusionReason})
+          ON CONFLICT (analysis_id) DO UPDATE SET
+            quality_score = EXCLUDED.quality_score,
+            confidence_score = EXCLUDED.confidence_score,
+            plausibility_score = EXCLUDED.plausibility_score,
+            interaction_depth_score = EXCLUDED.interaction_depth_score,
+            data_completeness_score = EXCLUDED.data_completeness_score,
+            uniqueness_score = EXCLUDED.uniqueness_score,
+            deal_viability_score = EXCLUDED.deal_viability_score,
+            spam_risk_score = EXCLUDED.spam_risk_score,
+            leaderboard_eligible = EXCLUDED.leaderboard_eligible,
+            exclusion_reason = EXCLUDED.exclusion_reason
+        `);
+        processed++;
+      }
+      res.json({ processed, nowIneligible, scanned: (rows.rows as any[]).length });
+    } catch (err: any) {
+      console.error("[quality-recompute] failed:", err);
+      res.status(500).json({ error: err?.message || "Failed to recompute quality scores" });
+    }
+  });
+
+  app.post("/api/admin/leaderboard/rebuild-rollups", isAdmin, async (req, res) => {
+    try {
+      const periodType = (req.body?.periodType || "monthly") as "daily" | "weekly" | "monthly" | "all_time";
+      res.json(await buildUserDealActivityRollups(periodType));
+    } catch (error) {
+      console.error("Error rebuilding leaderboard rollups:", error);
+      res.status(500).json({ error: "Failed to rebuild leaderboard rollups" });
+    }
+  });
+
+  app.get("/api/admin/monthly-winner-email/preview", isAdmin, async (req, res) => {
+    try {
+      const { getLastMonthWinners } = await import("./monthlyWinnerEmail");
+      const limit = Math.max(1, Math.min(10, Number(req.query.limit) || 3));
+      const winners = await getLastMonthWinners(limit);
+      res.json({ winners });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to load winners" });
+    }
+  });
+
+  app.post("/api/admin/monthly-winner-email/run", isAdmin, async (req, res) => {
+    try {
+      const { sendMonthlyWinnerEmails } = await import("./monthlyWinnerEmail");
+      const dryRun = req.body?.dryRun !== false;
+      const limit = req.body?.limit ? Math.max(1, Math.min(10, Number(req.body.limit))) : undefined;
+      const result = await sendMonthlyWinnerEmails({ dryRun, limit });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to run monthly winner email" });
+    }
+  });
+
+  app.post("/api/admin/leaderboard/finalize-month", isAdmin, async (req, res) => {
+    try {
+      const anchor = req.body?.anchor ? new Date(req.body.anchor) : undefined;
+      res.json(await finalizeLeaderboardSnapshot({ periodType: "monthly", anchor, force: Boolean(req.body?.force) }));
+    } catch (error) {
+      console.error("Error finalizing leaderboard snapshot:", error);
+      res.status(500).json({ error: "Failed to finalize leaderboard snapshot" });
+    }
+  });
+
+  app.get("/api/admin/leaderboard/snapshots", isAdmin, async (_req, res) => {
+    try {
+      const rows = await db.select({
+        periodId: leaderboardPeriods.id,
+        periodType: leaderboardPeriods.periodType,
+        periodStartDate: leaderboardPeriods.periodStartDate,
+        periodEndDate: leaderboardPeriods.periodEndDate,
+        status: leaderboardPeriods.status,
+        finalizedAt: leaderboardPeriods.finalizedAt,
+        snapshotId: leaderboardSnapshots.id,
+        category: leaderboardSnapshots.category,
+        generatedAt: leaderboardSnapshots.generatedAt,
+        entryCount: sql<number>`COUNT(${leaderboardSnapshotEntries.id})::int`,
+      })
+        .from(leaderboardPeriods)
+        .leftJoin(leaderboardSnapshots, eq(leaderboardSnapshots.leaderboardPeriodId, leaderboardPeriods.id))
+        .leftJoin(leaderboardSnapshotEntries, eq(leaderboardSnapshotEntries.leaderboardSnapshotId, leaderboardSnapshots.id))
+        .groupBy(
+          leaderboardPeriods.id,
+          leaderboardPeriods.periodType,
+          leaderboardPeriods.periodStartDate,
+          leaderboardPeriods.periodEndDate,
+          leaderboardPeriods.status,
+          leaderboardPeriods.finalizedAt,
+          leaderboardSnapshots.id,
+          leaderboardSnapshots.category,
+          leaderboardSnapshots.generatedAt,
+        )
+        .orderBy(desc(leaderboardPeriods.periodStartDate));
+      res.json(rows);
+    } catch (error) {
+      console.error("Error fetching leaderboard snapshots:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard snapshots" });
+    }
+  });
+
+  app.post("/api/admin/market-intelligence/rebuild", isAdmin, async (req, res) => {
+    try {
+      const anchor = req.body?.anchor ? new Date(req.body.anchor) : new Date();
+      res.json(await rebuildMarketIntelligence(anchor));
+    } catch (error) {
+      console.error("Error rebuilding market intelligence:", error);
+      res.status(500).json({ error: "Failed to rebuild market intelligence" });
+    }
+  });
+
+  app.post("/api/admin/market-report/recalculate-metrics", isAdmin, async (req, res) => {
+    try {
+      const anchor = req.body?.anchor ? new Date(req.body.anchor) : new Date();
+      await buildMarketSentimentRollups("monthly", anchor);
+      res.json(await buildMarketReportMetrics(anchor));
+    } catch (error) {
+      console.error("Error recalculating market report metrics:", error);
+      res.status(500).json({ error: "Failed to recalculate market report metrics" });
+    }
+  });
+
+  app.get("/api/admin/market-intelligence/health", isAdmin, async (_req, res) => {
+    try {
+      const [counts] = (await db.execute(sql`
+        SELECT
+          (SELECT COUNT(*)::int FROM user_deal_activity_rollups) AS deal_rollups,
+          (SELECT COUNT(*)::int FROM market_sentiment_events) AS sentiment_events,
+          (SELECT COUNT(*)::int FROM market_sentiment_rollups) AS sentiment_rollups,
+          (SELECT COUNT(*)::int FROM market_report_metrics) AS market_report_metrics,
+          (SELECT COUNT(*)::int FROM analysis_underwriting_comparisons) AS comparisons
+      `)).rows as any[];
+      const highRawLowEligible = await db.select().from(userDealActivityRollups)
+        .where(sql`${userDealActivityRollups.totalDealsAnalyzed} >= 10 AND ${userDealActivityRollups.eligibleDealsAnalyzed} < (${userDealActivityRollups.totalDealsAnalyzed} / 2)`)
+        .orderBy(desc(userDealActivityRollups.totalDealsAnalyzed))
+        .limit(25);
+      res.json({ counts, highRawLowEligible });
+    } catch (error) {
+      console.error("Error fetching market intelligence health:", error);
+      res.status(500).json({ error: "Failed to fetch market intelligence health" });
+    }
+  });
+
+  // ─── Multiplex Feasibility Engine ─────────────────────────────────────────
+  // Computes a confidence-scored multiplex development screening for any address.
+  // Ontario-first, Toronto-priority. See server/multiplexFeasibility.ts for docs.
+  app.post("/api/multiplex-feasibility", async (req, res) => {
+    try {
+      const { computeMultiplexFeasibility } = await import("./multiplexFeasibility");
+      const input = req.body;
+
+      // Basic guard — require at least city or address
+      if (!input?.address && !input?.city && !input?.province) {
+        return res.status(400).json({ error: "Provide at least address, city, or province" });
+      }
+
+      // Sanitize numeric inputs
+      if (input.lotFrontage) input.lotFrontage = parseFloat(input.lotFrontage) || undefined;
+      if (input.lotDepth) input.lotDepth = parseFloat(input.lotDepth) || undefined;
+      if (input.lotArea) input.lotArea = parseFloat(input.lotArea) || undefined;
+
+      const result = computeMultiplexFeasibility(input);
+      res.json(result);
+    } catch (err) {
+      console.error("Multiplex feasibility error:", err);
+      res.status(500).json({ error: "Failed to compute feasibility" });
+    }
+  });
+
+  // ── US Listings ingest endpoint ───────────────────────────────────────
+  // Auth: shared secret in `X-Ingest-Token` header (env: US_LISTINGS_INGEST_TOKEN)
+  // Body: { listings: InsertUsListing[] }  — batches of up to 1000
+  // Behavior: idempotent upsert keyed on (source, source_id)
+  const nullableNumber = z.union([z.number(), z.string()]).optional().nullable()
+    .transform((value) => {
+      if (value === null || value === undefined || value === "") return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    });
+  const nullableString = z.union([z.string(), z.number()]).optional().nullable()
+    .transform((value) => value === null || value === undefined ? null : String(value));
+  const nullableDate = z.union([z.string(), z.date()]).optional().nullable()
+    .transform((value) => {
+      if (!value) return null;
+      const date = value instanceof Date ? value : new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    });
+  const homeHarvestListingSchema = z.object({
+    source: nullableString.default("homeharvest"),
+    sourceId: nullableString,
+    source_id: nullableString,
+    id: nullableString,
+    property_id: nullableString,
+    mls: nullableString,
+    mlsNumber: nullableString,
+    mls_number: nullableString,
+    sourceUrl: nullableString,
+    source_url: nullableString,
+    property_url: nullableString,
+    formattedAddress: nullableString,
+    formatted_address: nullableString,
+    full_address: nullableString,
+    streetAddress: nullableString,
+    street_address: nullableString,
+    city: nullableString,
+    state: nullableString,
+    postalCode: nullableString,
+    postal_code: nullableString,
+    zip_code: nullableString,
+    county: nullableString,
+    lat: nullableNumber,
+    latitude: nullableNumber,
+    lng: nullableNumber,
+    lon: nullableNumber,
+    longitude: nullableNumber,
+    propertyType: nullableString,
+    property_type: nullableString,
+    beds: nullableNumber,
+    bedrooms: nullableNumber,
+    baths: nullableNumber,
+    bathrooms: nullableNumber,
+    sqft: nullableNumber,
+    living_area: nullableNumber,
+    lotSqft: nullableNumber,
+    lot_sqft: nullableNumber,
+    lot_size: nullableNumber,
+    yearBuilt: nullableNumber,
+    year_built: nullableNumber,
+    listPrice: nullableNumber,
+    list_price: nullableNumber,
+    price: nullableNumber,
+    daysOnMarket: nullableNumber,
+    days_on_market: nullableNumber,
+    listDate: nullableDate,
+    list_date: nullableDate,
+    status: nullableString,
+    isActive: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    statusConfidence: nullableString,
+    status_confidence: nullableString,
+    scrapedAt: nullableDate,
+    scraped_at: nullableDate,
+    firstSeenAt: nullableDate,
+    first_seen_at: nullableDate,
+    lastSeenAt: nullableDate,
+    last_seen_at: nullableDate,
+    lastCheckedAt: nullableDate,
+    last_checked_at: nullableDate,
+    soldDetectedAt: nullableDate,
+    sold_detected_at: nullableDate,
+    offMarketDetectedAt: nullableDate,
+    off_market_detected_at: nullableDate,
+    raw: z.unknown().optional(),
+  }).passthrough().transform((listing, ctx) => {
+    const raw = { ...listing };
+    const source = listing.source || "homeharvest";
+    const sourceId = listing.sourceId || listing.source_id || listing.id || listing.property_id || listing.mlsNumber || listing.mls_number || listing.mls;
+    const streetAddress = listing.streetAddress || listing.street_address;
+    const city = listing.city;
+    const state = listing.state;
+    const postalCode = listing.postalCode || listing.postal_code || listing.zip_code;
+    const formattedAddress = listing.formattedAddress || listing.formatted_address || listing.full_address || [streetAddress, city, state, postalCode].filter(Boolean).join(", ");
+    if (!sourceId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "sourceId is required; accepted aliases: source_id, id, property_id, mls, mlsNumber" });
+    }
+    if (!formattedAddress) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "formattedAddress is required or derivable from street/city/state/postalCode" });
+    }
+    const status = listing.status;
+    const normalizedStatus = (status || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const isSold = ["sold", "closed", "recently_sold"].includes(normalizedStatus);
+    const isOffMarket = ["off_market", "off_market_unknown", "inactive", "delisted"].includes(normalizedStatus);
+    // PENDING / CONTINGENT / under-contract rows are technically still listed
+    // but the buyer cannot transact on them — for the default product surface
+    // (search, map, /listings/us) we treat them as inactive inventory. Investors
+    // can still pull them via `?isActive=false` or `?isActive=all`.
+    const isUnderContract = ["pending", "pending_sale", "under_contract", "contingent"].includes(normalizedStatus);
+    // Status is authoritative: a sold / off-market / under-contract `status`
+    // forces isActive=false even if the client/scraper sent isActive=true.
+    // The client-provided active flag is only honoured when status doesn't
+    // already mark the row terminal or unavailable.
+    const isActive = isSold || isOffMarket || isUnderContract
+      ? false
+      : (listing.isActive ?? listing.is_active ?? true);
+    const now = new Date();
+    const scrapedAt = listing.scrapedAt || listing.scraped_at || now;
+    return {
+      source,
+      sourceId: sourceId || "",
+      sourceUrl: listing.sourceUrl || listing.source_url || listing.property_url,
+      formattedAddress: formattedAddress || "",
+      streetAddress,
+      city,
+      state,
+      postalCode,
+      county: listing.county,
+      lat: listing.lat ?? listing.latitude,
+      lng: listing.lng ?? listing.lon ?? listing.longitude,
+      propertyType: listing.propertyType || listing.property_type,
+      beds: listing.beds ?? listing.bedrooms,
+      baths: listing.baths ?? listing.bathrooms,
+      sqft: Math.round(listing.sqft ?? listing.living_area ?? 0) || null,
+      lotSqft: Math.round(listing.lotSqft ?? listing.lot_sqft ?? listing.lot_size ?? 0) || null,
+      yearBuilt: Math.round(listing.yearBuilt ?? listing.year_built ?? 0) || null,
+      listPrice: Math.round(listing.listPrice ?? listing.list_price ?? listing.price ?? 0) || null,
+      daysOnMarket: Math.round(listing.daysOnMarket ?? listing.days_on_market ?? 0) || null,
+      listDate: listing.listDate || listing.list_date,
+      status,
+      isActive,
+      statusConfidence: listing.statusConfidence || listing.status_confidence || (isSold || isOffMarket ? "high" : "high"),
+      scrapedAt,
+      // Freshness semantics (do not change without updating /listings/us badges):
+      //   firstSeenAt   — original first observation; payload may seed it on
+      //                   first insert, but the upsert SET clause below never
+      //                   overwrites it on update.
+      //   lastSeenAt    — bumped on every successful source observation.
+      //                   Always derived from scrapedAt (payload.scrapedAt if
+      //                   present, else now). Payload-provided lastSeenAt is
+      //                   intentionally ignored: scrapers historically send
+      //                   stale values copied from the source row, which
+      //                   poisoned the freshness badges in prod.
+      //   lastCheckedAt — bumped on every ingest/check attempt, always now.
+      //                   Payload-provided lastCheckedAt is ignored for the
+      //                   same reason.
+      firstSeenAt: listing.firstSeenAt || listing.first_seen_at || scrapedAt,
+      lastSeenAt: scrapedAt,
+      lastCheckedAt: now,
+      soldDetectedAt: listing.soldDetectedAt || listing.sold_detected_at || (isSold ? now : null),
+      offMarketDetectedAt: listing.offMarketDetectedAt || listing.off_market_detected_at || (isOffMarket ? now : null),
+      raw: listing.raw ?? raw,
+    };
+  });
+  const ingestBatchSchema = z.object({
+    listings: z.array(homeHarvestListingSchema.pipe(insertUsListingSchema)).min(1).max(1000),
+  });
+
+  app.post("/api/ingest/us-listings", async (req, res) => {
+    try {
+      const expected = process.env.US_LISTINGS_INGEST_TOKEN;
+      if (!expected) {
+        return res.status(503).json({ error: "Ingest endpoint not configured (missing token)" });
+      }
+      const provided = req.header("x-ingest-token");
+      if (!provided || provided !== expected) {
+        return res.status(401).json({ error: "Invalid or missing ingest token" });
+      }
+
+      const parsed = ingestBatchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      }
+
+      const rows = parsed.data.listings;
+      const now = new Date();
+      const uniqueSources = Array.from(new Set(rows.map((row) => row.source)));
+      const uniqueSourceIds = Array.from(new Set(rows.map((row) => row.sourceId)));
+      const existingRows = uniqueSources.length && uniqueSourceIds.length
+        ? await db.select().from(usListings).where(and(
+          inArray(usListings.source, uniqueSources),
+          inArray(usListings.sourceId, uniqueSourceIds),
+        ))
+        : [];
+      // Scope to the (source, sourceId) tuples actually present in the payload.
+      // The pre-fetch above uses two independent IN clauses (source IN [...]
+      // AND sourceId IN [...]) which over-fetches when a batch mixes sources;
+      // post-filtering here guarantees we only diff against rows that match a
+      // payload tuple. Today Clyde sends single-source ("homeharvest") batches
+      // so the over-fetch is harmless, but this keeps the diff correct under
+      // future multi-source ingests.
+      const payloadKeys = new Set(rows.map((r) => `${r.source}:${r.sourceId}`));
+      const existingByKey = new Map(
+        existingRows
+          .filter((row) => payloadKeys.has(`${row.source}:${row.sourceId}`))
+          .map((row) => [`${row.source}:${row.sourceId}`, row])
+      );
+
+      const result = await db
+        .insert(usListings)
+        .values(rows.map((r) => ({
+          ...r,
+          firstSeenAt: r.firstSeenAt ?? now,
+          lastSeenAt: r.lastSeenAt ?? now,
+          lastCheckedAt: r.lastCheckedAt ?? now,
+          updatedAt: now,
+        })))
+        .onConflictDoUpdate({
+          target: [usListings.source, usListings.sourceId],
+          set: {
+            sourceUrl: sql`excluded.source_url`,
+            formattedAddress: sql`excluded.formatted_address`,
+            streetAddress: sql`excluded.street_address`,
+            city: sql`excluded.city`,
+            state: sql`excluded.state`,
+            postalCode: sql`excluded.postal_code`,
+            county: sql`excluded.county`,
+            lat: sql`excluded.lat`,
+            lng: sql`excluded.lng`,
+            propertyType: sql`excluded.property_type`,
+            beds: sql`excluded.beds`,
+            baths: sql`excluded.baths`,
+            sqft: sql`excluded.sqft`,
+            lotSqft: sql`excluded.lot_sqft`,
+            yearBuilt: sql`excluded.year_built`,
+            listPrice: sql`excluded.list_price`,
+            estRent: sql`excluded.est_rent`,
+            estTaxes: sql`excluded.est_taxes`,
+            estHoa: sql`excluded.est_hoa`,
+            daysOnMarket: sql`excluded.days_on_market`,
+            listDate: sql`excluded.list_date`,
+            status: sql`excluded.status`,
+            isActive: sql`excluded.is_active`,
+            statusConfidence: sql`excluded.status_confidence`,
+            motivatedSellerSignals: sql`excluded.motivated_seller_signals`,
+            raw: sql`excluded.raw`,
+            scrapedAt: sql`excluded.scraped_at`,
+            lastSeenAt: sql`excluded.last_seen_at`,
+            lastCheckedAt: sql`excluded.last_checked_at`,
+            soldDetectedAt: sql`COALESCE(excluded.sold_detected_at, ${usListings.soldDetectedAt})`,
+            offMarketDetectedAt: sql`COALESCE(excluded.off_market_detected_at, ${usListings.offMarketDetectedAt})`,
+            delistedAt: sql`excluded.delisted_at`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        })
+        .returning({ id: usListings.id, source: usListings.source, sourceId: usListings.sourceId });
+
+      const currentRows = uniqueSources.length && uniqueSourceIds.length
+        ? await db.select().from(usListings).where(and(
+          inArray(usListings.source, uniqueSources),
+          inArray(usListings.sourceId, uniqueSourceIds),
+        ))
+        : [];
+      const changedRows = currentRows.flatMap((row) => {
+        const previous = existingByKey.get(`${row.source}:${row.sourceId}`);
+        if (!previous) return [];
+        if (previous.listPrice === row.listPrice && previous.status === row.status) return [];
+        return [{ previous, current: row }];
+      });
+
+      // Append-only price history. Two correctness rules:
+      //   1. Derive `oldPrice` from the pre-upsert snapshot (`existingByKey`)
+      //      and `newPrice` from the validated payload row — NOT from a
+      //      post-upsert re-read. A re-read can see another writer's value
+      //      that landed between our upsert and our select, which would
+      //      mis-attribute the transition.
+      //   2. Insertion is guarded by a partial unique index on
+      //      (listing_id, scraped_at, new_price); concurrent retries of the
+      //      same scrape collapse to one row via ON CONFLICT DO NOTHING.
+      const idByKey = new Map(result.map((r) => [`${r.source}:${r.sourceId}`, r.id]));
+      const priceHistoryRows = rows.flatMap((r) => {
+        const key = `${r.source}:${r.sourceId}`;
+        const previous = existingByKey.get(key);
+        const listingId = idByKey.get(key);
+        if (!previous || !listingId) return [];
+        if (previous.listPrice == null || r.listPrice == null) return [];
+        if (previous.listPrice === r.listPrice) return [];
+        const changeAmount = r.listPrice - previous.listPrice;
+        const changePercent = previous.listPrice !== 0
+          ? Number(((changeAmount / previous.listPrice) * 100).toFixed(4))
+          : null;
+        return [{
+          listingId,
+          source: r.source,
+          sourceId: r.sourceId,
+          oldPrice: previous.listPrice,
+          newPrice: r.listPrice,
+          changeAmount,
+          changePercent,
+          scrapedAt: r.scrapedAt,
+        }];
+      });
+      if (priceHistoryRows.length > 0) {
+        // No `target` here on purpose: the dedupe index is PARTIAL
+        // (WHERE scraped_at IS NOT NULL) and Postgres requires the ON CONFLICT
+        // clause to repeat the predicate to match a partial index. Drizzle's
+        // `target` shorthand doesn't emit that predicate, so we use the bare
+        // `onConflictDoNothing()` which catches any unique-constraint
+        // violation on the table — and only one unique index exists.
+        await db
+          .insert(usListingPriceHistory)
+          .values(priceHistoryRows)
+          .onConflictDoNothing()
+          .catch((error) => {
+            console.error("[/api/ingest/us-listings] price-history insert error:", error);
+          });
+      }
+
+      await Promise.all([
+        queueSavedSearchMatchNotifications(currentRows).catch((error) => {
+          console.error("[/api/ingest/us-listings] saved-search notifications error:", error);
+        }),
+        queueUsListingChangeNotifications(changedRows).catch((error) => {
+          console.error("[/api/ingest/us-listings] listing-change notifications error:", error);
+        }),
+      ]);
+
+      return res.status(200).json({
+        ok: true,
+        received: rows.length,
+        upserted: result.length,
+        serverTime: now.toISOString(),
+      });
+    } catch (err: any) {
+      console.error("[/api/ingest/us-listings] error:", err);
+      return res.status(500).json({ error: "Ingest failed", message: err?.message ?? String(err) });
+    }
+  });
+
+  const reconcileUsListingsSchema = z.object({
+    source: z.string().trim().default("homeharvest"),
+    market: z.object({
+      city: z.string().trim().min(1),
+      state: z.string().trim().min(1),
+    }),
+    scrapeCompletedAt: z.union([z.string(), z.date()]).optional().transform((value) => {
+      if (!value) return new Date();
+      const date = value instanceof Date ? value : new Date(value);
+      return Number.isNaN(date.getTime()) ? new Date() : date;
+    }),
+    activeSourceIds: z.array(z.union([z.string(), z.number()]).transform(String)),
+    scrapeSucceeded: z.boolean().optional().default(true),
+  });
+
+  app.post("/api/ingest/us-listings/reconcile", async (req, res) => {
+    try {
+      const expected = process.env.US_LISTINGS_INGEST_TOKEN;
+      if (!expected) {
+        return res.status(503).json({ error: "Ingest endpoint not configured (missing token)" });
+      }
+      const provided = req.header("x-ingest-token");
+      if (!provided || provided !== expected) {
+        return res.status(401).json({ error: "Invalid or missing ingest token" });
+      }
+
+      const parsed = reconcileUsListingsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      }
+      const { source, market, activeSourceIds, scrapeCompletedAt, scrapeSucceeded } = parsed.data;
+      const normalizedActiveSourceIds = Array.from(new Set(activeSourceIds.filter(Boolean)));
+      if (!scrapeSucceeded || normalizedActiveSourceIds.length === 0) {
+        return res.status(400).json({
+          error: "Reconcile skipped",
+          message: "Only reconcile after a successful scrape with at least one activeSourceId",
+        });
+      }
+
+      const now = new Date();
+      const staleRows = await db
+        .update(usListings)
+        .set({
+          status: "off_market_unknown",
+          isActive: false,
+          offMarketDetectedAt: now,
+          statusConfidence: "medium",
+          lastCheckedAt: scrapeCompletedAt,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(usListings.source, source),
+          ilike(usListings.city, market.city),
+          ilike(usListings.state, market.state),
+          eq(usListings.isActive, true),
+          notInArray(usListings.sourceId, normalizedActiveSourceIds),
+        ))
+        .returning({ id: usListings.id, sourceId: usListings.sourceId });
+
+      return res.json({
+        ok: true,
+        source,
+        market,
+        activeSourceIds: normalizedActiveSourceIds.length,
+        markedOffMarket: staleRows.length,
+        serverTime: now.toISOString(),
+      });
+    } catch (err: any) {
+      console.error("[/api/ingest/us-listings/reconcile] error:", err);
+      return res.status(500).json({ error: "Reconcile failed", message: err?.message ?? String(err) });
+    }
+  });
+
+  // `isActive` accepts "true" | "false" | "all". Default is "true" so any caller
+  // that doesn't explicitly opt in to sold/off-market inventory gets active-only.
+  const isActiveFilter = z.enum(["true", "false", "all"]).default("true");
+
+  const usListingsQuerySchema = z.object({
+    city: z.string().trim().optional(),
+    state: z.string().trim().optional(),
+    minPrice: z.coerce.number().optional(),
+    maxPrice: z.coerce.number().optional(),
+    beds: z.coerce.number().optional(),
+    baths: z.coerce.number().optional(),
+    propertyType: z.string().trim().optional(),
+    status: z.string().trim().optional(),
+    isActive: isActiveFilter,
+    source: z.string().trim().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    offset: z.coerce.number().int().min(0).default(0),
+  });
+
+  const usListingsMapQuerySchema = usListingsQuerySchema.extend({
+    limit: z.coerce.number().int().min(1).max(1000).default(500),
+    north: z.coerce.number().min(-90).max(90).optional(),
+    south: z.coerce.number().min(-90).max(90).optional(),
+    east: z.coerce.number().min(-180).max(180).optional(),
+    west: z.coerce.number().min(-180).max(180).optional(),
+    isActive: isActiveFilter,
+  });
+
+  type PriceChangeStats = {
+    lastPriceChangeAt: string | null;
+    lastPriceChangeAmount: number | null;
+    lastPriceChangePercent: number | null;
+    originalListPrice: number | null;
+    priceCutCount: number;
+  };
+
+  async function fetchPriceChangeStats(listingIds: string[]): Promise<Map<string, PriceChangeStats>> {
+    const result = new Map<string, PriceChangeStats>();
+    if (!listingIds.length) return result;
+    const rows = await db
+      .select({
+        listingId: usListingPriceHistory.listingId,
+        lastChangeAt: sql<string>`MAX(${usListingPriceHistory.detectedAt})`,
+        priceCutCount: sql<number>`COUNT(*) FILTER (WHERE ${usListingPriceHistory.changeAmount} < 0)`,
+        // `id DESC` is a deterministic tiebreaker when two history rows share
+        // the same detected_at timestamp (rare but possible under concurrent
+        // ingest of distinct scrapes that complete in the same microsecond).
+        lastChangeAmount: sql<number | null>`(array_agg(${usListingPriceHistory.changeAmount} ORDER BY ${usListingPriceHistory.detectedAt} DESC, ${usListingPriceHistory.id} DESC))[1]`,
+        lastChangePercent: sql<number | null>`(array_agg(${usListingPriceHistory.changePercent} ORDER BY ${usListingPriceHistory.detectedAt} DESC, ${usListingPriceHistory.id} DESC))[1]`,
+        originalListPrice: sql<number | null>`(array_agg(${usListingPriceHistory.oldPrice} ORDER BY ${usListingPriceHistory.detectedAt} ASC, ${usListingPriceHistory.id} ASC))[1]`,
+      })
+      .from(usListingPriceHistory)
+      .where(inArray(usListingPriceHistory.listingId, listingIds))
+      .groupBy(usListingPriceHistory.listingId);
+    for (const r of rows) {
+      result.set(r.listingId, {
+        lastPriceChangeAt: r.lastChangeAt ?? null,
+        lastPriceChangeAmount: r.lastChangeAmount == null ? null : Number(r.lastChangeAmount),
+        lastPriceChangePercent: r.lastChangePercent == null ? null : Number(r.lastChangePercent),
+        originalListPrice: r.originalListPrice == null ? null : Number(r.originalListPrice),
+        priceCutCount: Number(r.priceCutCount ?? 0),
+      });
+    }
+    return result;
+  }
+
+  function mergePriceStats<T extends { id: string; listPrice?: number | null }>(
+    listing: T,
+    stats: Map<string, PriceChangeStats>,
+  ) {
+    const s = stats.get(listing.id);
+    return {
+      ...listing,
+      lastPriceChangeAt: s?.lastPriceChangeAt ?? null,
+      lastPriceChangeAmount: s?.lastPriceChangeAmount ?? null,
+      lastPriceChangePercent: s?.lastPriceChangePercent ?? null,
+      // If a listing has never changed price, "original" === current.
+      originalListPrice: s?.originalListPrice ?? listing.listPrice ?? null,
+      priceCutCount: s?.priceCutCount ?? 0,
+    };
+  }
+
+  function buildUsListingsConditions(filters: z.infer<typeof usListingsQuerySchema>) {
+    return [
+      filters.city ? ilike(usListings.city, `%${filters.city}%`) : undefined,
+      filters.state ? ilike(usListings.state, filters.state) : undefined,
+      filters.minPrice !== undefined ? gte(usListings.listPrice, filters.minPrice) : undefined,
+      filters.maxPrice !== undefined ? lte(usListings.listPrice, filters.maxPrice) : undefined,
+      filters.beds !== undefined ? gte(usListings.beds, filters.beds) : undefined,
+      filters.baths !== undefined ? gte(usListings.baths, filters.baths) : undefined,
+      filters.propertyType ? ilike(usListings.propertyType, `%${filters.propertyType}%`) : undefined,
+      filters.status ? ilike(usListings.status, filters.status) : undefined,
+      filters.isActive === "all" ? undefined : eq(usListings.isActive, filters.isActive === "true"),
+      filters.source ? eq(usListings.source, filters.source) : undefined,
+    ].filter(Boolean);
+  }
+
+  app.get("/api/us-listings", async (req, res) => {
+    try {
+      const parsed = usListingsQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid filters", details: parsed.error.flatten() });
+      }
+      const filters = parsed.data;
+      const conditions = buildUsListingsConditions(filters);
+      const where = conditions.length ? and(...conditions as any[]) : undefined;
+      const [totalRow] = await db
+        .select({ count: count() })
+        .from(usListings)
+        .where(where);
+      const listings = await db
+        .select()
+        .from(usListings)
+        .where(where)
+        .orderBy(desc(usListings.scrapedAt), desc(usListings.createdAt))
+        .limit(filters.limit)
+        .offset(filters.offset);
+      const priceStats = await fetchPriceChangeStats(listings.map((l) => l.id));
+      res.json({
+        listings: listings.map((l) => mergePriceStats(l, priceStats)),
+        total: totalRow?.count ?? 0,
+        limit: filters.limit,
+        offset: filters.offset,
+      });
+    } catch (err: any) {
+      console.error("[/api/us-listings] error:", err);
+      res.status(500).json({ error: "Failed to fetch US listings", message: err?.message ?? String(err) });
+    }
+  });
+
+  app.get("/api/us-listings/map", async (req, res) => {
+    try {
+      const parsed = usListingsMapQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid filters", details: parsed.error.flatten() });
+      }
+      const filters = parsed.data;
+      const boundsAreValid = (
+        filters.north !== undefined &&
+        filters.south !== undefined &&
+        filters.east !== undefined &&
+        filters.west !== undefined &&
+        filters.north >= filters.south
+      );
+      const conditions = [
+        ...buildUsListingsConditions(filters),
+        sql`${usListings.lat} IS NOT NULL`,
+        sql`${usListings.lng} IS NOT NULL`,
+        boundsAreValid ? lte(usListings.lat, filters.north!) : undefined,
+        boundsAreValid ? gte(usListings.lat, filters.south!) : undefined,
+        boundsAreValid ? lte(usListings.lng, filters.east!) : undefined,
+        boundsAreValid ? gte(usListings.lng, filters.west!) : undefined,
+      ].filter(Boolean);
+      const where = conditions.length ? and(...conditions as any[]) : undefined;
+      const [totalRow] = await db
+        .select({ count: count() })
+        .from(usListings)
+        .where(where);
+      const listings = await db
+        .select({
+          id: usListings.id,
+          source: usListings.source,
+          sourceId: usListings.sourceId,
+          formattedAddress: usListings.formattedAddress,
+          sourceUrl: usListings.sourceUrl,
+          city: usListings.city,
+          state: usListings.state,
+          lat: usListings.lat,
+          lng: usListings.lng,
+          propertyType: usListings.propertyType,
+          beds: usListings.beds,
+          baths: usListings.baths,
+          sqft: usListings.sqft,
+          lotSqft: usListings.lotSqft,
+          yearBuilt: usListings.yearBuilt,
+          listPrice: usListings.listPrice,
+          daysOnMarket: usListings.daysOnMarket,
+          status: usListings.status,
+          isActive: usListings.isActive,
+          statusConfidence: usListings.statusConfidence,
+          lastSeenAt: usListings.lastSeenAt,
+        })
+        .from(usListings)
+        .where(where)
+        .orderBy(desc(usListings.lastSeenAt), desc(usListings.scrapedAt))
+        .limit(filters.limit)
+        .offset(filters.offset);
+      const priceStats = await fetchPriceChangeStats(listings.map((l) => l.id));
+      res.json({
+        listings: listings.map((l) => mergePriceStats(l, priceStats)),
+        total: totalRow?.count ?? 0,
+        limit: filters.limit,
+        offset: filters.offset,
+      });
+    } catch (err: any) {
+      console.error("[/api/us-listings/map] error:", err);
+      res.status(500).json({ error: "Failed to fetch US listings map data", message: err?.message ?? String(err) });
+    }
+  });
+
+  app.get("/api/us-listings/status", async (_req, res) => {
+    try {
+      const [summary] = await db.select({
+        total: count(),
+        active: sql<number>`COUNT(*) FILTER (WHERE ${usListings.isActive} = true)`,
+        sold: sql<number>`COUNT(*) FILTER (WHERE lower(coalesce(${usListings.status}, '')) IN ('sold', 'closed', 'recently_sold'))`,
+        offMarketUnknown: sql<number>`COUNT(*) FILTER (WHERE ${usListings.status} = 'off_market_unknown')`,
+        withCoords: sql<number>`COUNT(*) FILTER (WHERE ${usListings.lat} IS NOT NULL AND ${usListings.lng} IS NOT NULL)`,
+        activeWithCoords: sql<number>`COUNT(*) FILTER (WHERE ${usListings.isActive} = true AND ${usListings.lat} IS NOT NULL AND ${usListings.lng} IS NOT NULL)`,
+        latestFirstSeenAt: sql<Date | null>`MAX(${usListings.firstSeenAt})`,
+        latestLastSeenAt: sql<Date | null>`MAX(${usListings.lastSeenAt})`,
+        latestUpdatedAt: sql<Date | null>`MAX(${usListings.updatedAt})`,
+        latestSyncTime: sql<Date | null>`MAX(COALESCE(${usListings.lastCheckedAt}, ${usListings.updatedAt}, ${usListings.scrapedAt}))`,
+      }).from(usListings);
+      const byMarket = await db
+        .select({
+          city: usListings.city,
+          state: usListings.state,
+          total: count(),
+          active: sql<number>`COUNT(*) FILTER (WHERE ${usListings.isActive} = true)`,
+          sold: sql<number>`COUNT(*) FILTER (WHERE lower(coalesce(${usListings.status}, '')) IN ('sold', 'closed', 'recently_sold'))`,
+          offMarketUnknown: sql<number>`COUNT(*) FILTER (WHERE ${usListings.status} = 'off_market_unknown')`,
+          latestLastSeenAt: sql<Date | null>`MAX(${usListings.lastSeenAt})`,
+        })
+        .from(usListings)
+        .groupBy(usListings.city, usListings.state)
+        .orderBy(desc(sql`COUNT(*)`))
+        .limit(100);
+      res.json({ ...summary, byMarket });
+    } catch (err: any) {
+      console.error("[/api/us-listings/status] error:", err);
+      res.status(500).json({ error: "Failed to fetch US listings status", message: err?.message ?? String(err) });
+    }
+  });
+
+  // ── US Rents ingest endpoint ──────────────────────────────────────────
+  // Auth: same shared secret (`US_LISTINGS_INGEST_TOKEN`) — one token covers
+  //   all first-party scraper inputs from the openclaw pipeline.
+  // Body: { rents: InsertUsRent[] }  — batches of up to 1000
+  // Behavior: idempotent upsert keyed on (source, source_id)
+  const ingestRentsBatchSchema = z.object({
+    rents: z.array(insertUsRentSchema).min(1).max(1000),
+  });
+
+  app.post("/api/ingest/us-rents", async (req, res) => {
+    try {
+      // Prefer dedicated rents token; fall back to shared listings token so the
+      // existing scraper keeps working until US_RENTS_INGEST_TOKEN is provisioned.
+      const expected = process.env.US_RENTS_INGEST_TOKEN || process.env.US_LISTINGS_INGEST_TOKEN;
+      if (!expected) {
+        return res.status(503).json({ error: "Ingest endpoint not configured (missing token)" });
+      }
+      const provided = req.header("x-ingest-token");
+      if (!provided || provided !== expected) {
+        return res.status(401).json({ error: "Invalid or missing ingest token" });
+      }
+
+      const parsed = ingestRentsBatchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      }
+
+      const rows = parsed.data.rents;
+      const now = new Date();
+
+      const result = await db
+        .insert(usRents)
+        .values(rows.map((r) => ({ ...r, updatedAt: now })))
+        .onConflictDoUpdate({
+          target: [usRents.source, usRents.sourceId],
+          set: {
+            listingUrl: sql`excluded.listing_url`,
+            address: sql`excluded.address`,
+            city: sql`excluded.city`,
+            state: sql`excluded.state`,
+            zipCode: sql`excluded.zip_code`,
+            county: sql`excluded.county`,
+            lat: sql`excluded.lat`,
+            lng: sql`excluded.lng`,
+            propertyType: sql`excluded.property_type`,
+            bedrooms: sql`excluded.bedrooms`,
+            bathrooms: sql`excluded.bathrooms`,
+            sqft: sql`excluded.sqft`,
+            monthlyRent: sql`excluded.monthly_rent`,
+            availableDate: sql`excluded.available_date`,
+            leaseTerms: sql`excluded.lease_terms`,
+            petsAllowed: sql`excluded.pets_allowed`,
+            utilitiesIncluded: sql`excluded.utilities_included`,
+            furnished: sql`excluded.furnished`,
+            parkingSpots: sql`excluded.parking_spots`,
+            laundry: sql`excluded.laundry`,
+            amenities: sql`excluded.amenities`,
+            status: sql`excluded.status`,
+            raw: sql`excluded.raw`,
+            scrapedAt: sql`excluded.scraped_at`,
+            delistedAt: sql`excluded.delisted_at`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        })
+        .returning({ id: usRents.id, source: usRents.source, sourceId: usRents.sourceId });
+
+      return res.status(200).json({
+        ok: true,
+        received: rows.length,
+        upserted: result.length,
+        serverTime: now.toISOString(),
+      });
+    } catch (err: any) {
+      console.error("[/api/ingest/us-rents] error:", err);
+      return res.status(500).json({ error: "Ingest failed", message: err?.message ?? String(err) });
+    }
+  });
+
+  app.post("/api/leads", async (req, res) => {
+    try {
+      const validatedData = createLeadRequestSchema.parse(req.body);
+      
+      const lead = await storage.createLead(validatedData.lead);
+
+      const property = await storage.createProperty({
+        ...validatedData.property,
+        leadId: lead.id,
+      });
+
+      const rawBody = req.body as any;
+      const inputsData = (rawBody?.analysis?.inputsJson || {}) as Record<string, any>;
+      const propertyData = (rawBody?.property || {}) as Record<string, any>;
+      const analysis = await storage.createAnalysis({
+        countryMode: validatedData.analysis.countryMode,
+        strategyType: validatedData.analysis.strategyType,
+        inputsJson: validatedData.analysis.inputsJson,
+        resultsJson: validatedData.analysis.resultsJson,
+        leadId: lead.id,
+        propertyId: property.id,
+        userId: (req.session as any)?.userId || null,
+        sessionId: rawBody?.sessionId || null,
+        address: propertyData.formattedAddress || null,
+        city: propertyData.city || null,
+        province: propertyData.region || null,
+        rentInputs: inputsData.monthlyRent != null ? {
+          monthlyRent: inputsData.monthlyRent,
+          rentPerUnit: inputsData.rentPerUnit,
+          numberOfUnits: inputsData.numberOfUnits,
+          additionalIncome: inputsData.additionalIncome,
+        } : null,
+        vacancyRate: inputsData.vacancyRate != null ? Number(inputsData.vacancyRate) : null,
+        expenseAssumptions: inputsData.operatingExpenses != null || inputsData.propertyTax != null || inputsData.insurance != null ? {
+          operatingExpenses: inputsData.operatingExpenses,
+          propertyTax: inputsData.propertyTax,
+          insurance: inputsData.insurance,
+          maintenance: inputsData.maintenance,
+          managementFee: inputsData.managementFee,
+          utilities: inputsData.utilities,
+        } : null,
+      });
+
+      // Format phone to E.164 format for GHL
+      const formatPhoneE164 = (phone: string): string => {
+        const cleaned = phone.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Split name into firstName and lastName for GHL
+      const nameParts = lead.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // GHL webhook is sent after auto-enrollment below so userId and deal count are available
+
+      // Backup to Google Sheets
+      sendToGoogleSheets({
+        email: lead.email,
+        firstName,
+        lastName,
+        phone: lead.phone,
+        source: "Deal Analyzer",
+        tags: ["deal_analyzer", property.region || "unknown_region"],
+      }).catch(err => console.error("Google Sheets backup error:", err));
+
+      // Send email notification only for the first lead from this email
+      const existingLeadCount = await storage.getLeadCountByEmail(lead.email);
+      if (existingLeadCount <= 1) {
+        sendLeadNotification({
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          address: property.formattedAddress,
+          strategy: analysis.strategyType,
+          source: lead.leadSource || 'Deal Analyzer',
+        }).catch(err => console.error("Email notification error:", err));
+      }
+
+      // Notify realtors who have claimed this market
+      if (property.city && property.region) {
+        (async () => {
+          try {
+            const activeClaims = await storage.getActiveClaimsForMarket(property.city!, property.region!);
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN
+              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+              : process.env.REPL_SLUG
+                ? `https://${process.env.REPL_SLUG}.replit.app`
+                : "https://realist.ca";
+
+            for (const claim of activeClaims) {
+              await storage.createRealtorLeadNotification({
+                realtorClaimId: claim.id,
+                realtorUserId: claim.userId,
+                leadId: lead.id,
+                propertyId: property.id,
+                analysisId: analysis.id,
+                dealAddress: property.formattedAddress,
+                dealCity: property.city,
+                dealRegion: property.region,
+                dealStrategy: analysis.strategyType,
+                status: "new",
+                notifiedAt: new Date(),
+              });
+
+              // Send email alert to the realtor
+              try {
+                const [realtorUser] = await db.select().from(users).where(eq(users.id, claim.userId));
+                if (realtorUser) {
+                  const realtorName = `${realtorUser.firstName || ''} ${realtorUser.lastName || ''}`.trim() || realtorUser.email;
+                  const { sendRealtorLeadAlert } = await import("./resend");
+                  sendRealtorLeadAlert({
+                    realtorEmail: realtorUser.email,
+                    realtorName,
+                    leadName: lead.name,
+                    dealAddress: property.formattedAddress || undefined,
+                    dealCity: property.city || undefined,
+                    dealStrategy: analysis.strategyType,
+                    claimUrl: `${baseUrl}/partner/network`,
+                  }).catch(err => console.error("Realtor lead alert email error:", err));
+                }
+              } catch (emailErr) {
+                console.error("Realtor alert email lookup error:", emailErr);
+              }
+            }
+            if (activeClaims.length > 0) {
+              console.log(`Notified ${activeClaims.length} realtor(s) for market: ${property.city}, ${property.region}`);
+            }
+          } catch (notifyErr) {
+            console.error("Realtor notification error:", notifyErr);
+          }
+        })();
+      }
+
+      let userId: string | null = null;
+      try {
+        const enrollment = await autoEnrollLeadAsUser({
+          email: lead.email,
+          firstName,
+          lastName,
+          phone: lead.phone,
+          leadSource: lead.leadSource || "Deal Analyzer",
+        });
+        userId = enrollment.userId;
+
+        if (userId) {
+          await storage.linkAnalysisToUser(analysis.id, userId);
+
+          const sessionId = rawBody?.sessionId;
+          if (sessionId) {
+            const backfilled = await db.execute(sql`
+              UPDATE analyses SET user_id = ${userId}
+              WHERE session_id = ${sessionId} AND user_id IS NULL
+            `);
+            if (backfilled.rowCount && backfilled.rowCount > 0) {
+              console.log(`[lead-enroll] Backfilled ${backfilled.rowCount} analyses for session ${sessionId} → user ${userId}`);
+            }
+          }
+        }
+      } catch (userError) {
+        console.error("Auto-enroll user error:", userError);
+      }
+
+      // Send GHL webhook with full analysis data and deal count
+      const analysisResults = (analysis.resultsJson || {}) as Record<string, any>;
+      const analysisInputs = (analysis.inputsJson || {}) as Record<string, any>;
+      const userDealCount = userId
+        ? await db.select({ count: count(analyses.id) }).from(analyses).where(eq(analyses.userId, userId)).then(r => Number(r[0]?.count || 0))
+        : 1;
+      sendWebhook(lead.id, {
+        email: lead.email,
+        firstName,
+        lastName,
+        phone: formatPhoneE164(lead.phone),
+        fullName: lead.name,
+        consent: lead.consent,
+        leadSource: lead.leadSource,
+        formTag: "deal_analyzer",
+        propertyAddress: property.formattedAddress,
+        propertyCity: property.city,
+        propertyRegion: property.region,
+        propertyCountry: property.country,
+        analysisStrategy: analysis.strategyType,
+        analysisCountryMode: analysis.countryMode,
+        capRate: analysisResults.capRate || "",
+        cashOnCash: analysisResults.cashOnCash || "",
+        dscr: analysisResults.dscr || "",
+        purchasePrice: analysisInputs.purchasePrice || "",
+        totalDealsAnalyzed: userDealCount,
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Webhook error:", err));
+
+      res.json({
+        success: true,
+        data: {
+          leadId: lead.id,
+          propertyId: property.id,
+          analysisId: analysis.id,
+          userId,
+        },
+      });
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          success: false, 
+          error: "Validation error", 
+          details: error.errors 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: "Failed to create lead" 
+        });
+      }
+    }
+  });
+
+  // MLI Select Quote Request endpoint
+  app.post("/api/leads/mli-quote", async (req, res) => {
+    try {
+      const { name, email, phone, location, inputs, results } = req.body;
+
+      if (!name || !email || !phone) {
+        res.status(400).json({ error: "Name, email, and phone are required" });
+        return;
+      }
+
+      // Create the lead
+      const lead = await storage.createLead({
+        name,
+        email,
+        phone,
+        consent: true,
+        leadSource: "MLI Select Calculator",
+      });
+
+      // Send email notification to nick@bldfinancial.ca
+      sendMLIQuoteNotification({
+        name,
+        email,
+        phone,
+        location: location || inputs?.location,
+        totalPoints: results?.totalPoints,
+        tier: results?.tier,
+        dscr: results?.base?.dscr,
+        equityRequired: results?.base?.equityRequired,
+        noi: results?.base?.noi,
+        purchasePrice: inputs?.purchasePrice,
+        loanAmount: inputs?.loanAmount || (inputs?.purchasePrice ? inputs.purchasePrice * (inputs.ltv || 75) / 100 : undefined),
+        interestRate: inputs?.interestRate,
+        stressTestResults: results ? { base: results.base, bear: results.bear, bull: results.bull } : undefined,
+      }).catch(err => console.error("MLI quote notification error:", err));
+
+      // Also send to GHL webhook
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName,
+        phone: formatPhoneE164(phone),
+        fullName: name,
+        consent: true,
+        leadSource: "MLI Select Calculator",
+        formTag: "mli_select_quote",
+        mliPoints: results?.totalPoints,
+        mliTier: results?.tier,
+        dscr: results?.base?.dscr,
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Webhook error:", err));
+
+      // Backup to Google Sheets
+      sendToGoogleSheets({
+        email,
+        firstName,
+        lastName,
+        phone,
+        source: "MLI Select Calculator",
+        tags: ["mli_select", location || "unknown_location"],
+      }).catch(err => console.error("Google Sheets backup error:", err));
+
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName,
+        phone,
+        leadSource: "MLI Select Calculator",
+      }).catch(err => console.error("Auto-enroll user error:", err));
+
+      res.json({ success: true, data: { leadId: lead.id } });
+    } catch (error) {
+      console.error("Error creating MLI quote request:", error);
+      res.status(500).json({ error: "Failed to submit quote request" });
+    }
+  });
+
+  // Lead engagement endpoint with tagging for cashback, mortgage consultation, and local expert
+  app.post("/api/leads/engage", async (req, res) => {
+    try {
+      const { name, email, phone, consent, formType, formTag, tags, dealInfo, province, city } = req.body;
+
+      if (!name || !email || !phone) {
+        res.status(400).json({ error: "Name, email, and phone are required" });
+        return;
+      }
+
+      // Create the lead
+      const lead = await storage.createLead({
+        name,
+        email,
+        phone,
+        consent: consent || false,
+        leadSource: formType || "Deal Engagement",
+      });
+
+      // Format phone to E.164 format for GHL
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Split name into firstName and lastName for GHL
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Build tags array
+      const allTags = Array.isArray(tags) ? tags : tags ? [tags] : [];
+      
+      // Add province tag if provided
+      if (province) {
+        allTags.push(`LEAD_${province}`);
+      }
+
+      // Send to webhook with tags
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName,
+        phone: formatPhoneE164(phone),
+        fullName: name,
+        consent: consent || false,
+        leadSource: formType || "Deal Engagement",
+        formTag: formTag || "engagement",
+        tags: allTags,
+        formType,
+        province,
+        city,
+        dealInfo: dealInfo || {},
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Webhook error:", err));
+
+      // Backup to Google Sheets
+      sendToGoogleSheets({
+        email,
+        firstName,
+        lastName,
+        phone,
+        source: formType || "Deal Engagement",
+        tags: allTags,
+      }).catch(err => console.error("Google Sheets backup error:", err));
+
+      // Send email notification only for the first lead from this email
+      const engagementLeadCount = await storage.getLeadCountByEmail(email);
+      if (engagementLeadCount <= 1) {
+        sendLeadNotification({
+          name,
+          email,
+          phone,
+          strategy: formType,
+          source: formTag || formType || 'Deal Engagement',
+        }).catch(err => console.error("Email notification error:", err));
+      }
+
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName,
+        phone,
+        leadSource: formType || "Deal Engagement",
+      }).catch(err => console.error("Auto-enroll user error:", err));
+
+      res.json({ success: true, data: { leadId: lead.id } });
+    } catch (error) {
+      console.error("Error creating engagement lead:", error);
+      res.status(500).json({ error: "Failed to submit request" });
+    }
+  });
+
+  // Test endpoint for Google Sheets webhook
+  app.post("/api/sheets/ping", async (req, res) => {
+    try {
+      const url = process.env.SHEETS_WEBHOOK_URL!;
+      const secret = process.env.WEBHOOK_SECRET!;
+      if (!url || !secret) throw new Error("Missing env vars");
+
+      const payload = {
+        event_id: crypto.randomUUID(),
+        event_ts: new Date().toISOString(),
+        event_type: "user_created",
+        email: `test+${Date.now()}@example.com`,
+        first_name: "Dan",
+        last_name: "Test",
+        source_primary: "realist",
+        source_detail: "ping",
+        tags: ["test"]
+      };
+
+      const body = JSON.stringify(payload);
+      const sig = crypto.createHmac("sha256", secret).update(body).digest("hex");
+      const webhookUrl = url.includes("?") ? `${url}&sig=${sig}` : `${url}?sig=${sig}`;
+
+      const r = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      });
+
+      const text = await r.text();
+      res.status(r.status).send(text);
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get("/api/admin/leads", isAdmin, async (req, res) => {
+    try {
+      const leads = await storage.getAllLeads();
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  app.get("/api/admin/stats", isAdmin, async (req, res) => {
+    try {
+      const [totalLeads, todayLeads, totalAnalyses] = await Promise.all([
+        storage.getLeadsCount(),
+        storage.getTodayLeadsCount(),
+        storage.getAnalysisCount(),
+      ]);
+
+      res.json({
+        totalLeads,
+        todayLeads,
+        totalAnalyses,
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Get all market expert applications (admin only)
+  app.get("/api/admin/applications", isAdmin, async (req, res) => {
+    try {
+      const applications = await storage.getAllMarketExpertApplications();
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching applications:", error);
+      res.status(500).json({ error: "Failed to fetch applications" });
+    }
+  });
+
+  // Zod schemas for admin endpoints
+  const updateApplicationStatusSchema = z.object({
+    status: z.enum(["approved", "rejected", "pending"]),
+  });
+
+  const updateUserRoleSchema = z.object({
+    role: z.enum(["investor", "partner", "admin"]),
+  });
+
+  // Approve or reject a market expert application (admin only)
+  app.patch("/api/admin/applications/:id", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const parsed = updateApplicationStatusSchema.safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid status", details: parsed.error.errors });
+      }
+      
+      const { status } = parsed.data;
+      const updates: { status: string; approvedAt?: Date } = { status };
+      if (status === "approved") {
+        updates.approvedAt = new Date();
+      }
+      
+      const application = await storage.updateMarketExpertApplication(id, updates);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      
+      res.json(application);
+    } catch (error) {
+      console.error("Error updating application:", error);
+      res.status(500).json({ error: "Failed to update application" });
+    }
+  });
+
+  // Get all users (admin only)
+  app.get("/api/admin/users", isAdmin, async (req, res) => {
+    try {
+      const allUsers = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        createdAt: users.createdAt,
+      }).from(users).orderBy(users.createdAt);
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Update user role (admin only)
+  app.patch("/api/admin/users/:id/role", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const parsed = updateUserRoleSchema.safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid role", details: parsed.error.errors });
+      }
+      
+      const { role } = parsed.data;
+      const [updated] = await db.update(users)
+        .set({ role, updatedAt: new Date() })
+        .where(eq(users.id, id))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({ id: updated.id, email: updated.email, role: updated.role });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ error: "Failed to update user role" });
+    }
+  });
+
+  app.post("/api/admin/import-csv-users", isAdmin, async (req, res) => {
+    try {
+      const { users: csvUsers, sendEmails } = req.body;
+      if (!Array.isArray(csvUsers) || csvUsers.length === 0) {
+        return res.status(400).json({ error: "No users provided" });
+      }
+      const results = { imported: 0, existing: 0, failed: 0, details: [] as string[] };
+
+      for (const row of csvUsers) {
+        try {
+          const email = (row.email || "").toLowerCase().trim();
+          if (!email) { results.failed++; continue; }
+
+          const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+          if (existing) {
+            results.existing++;
+            continue;
+          }
+
+          const [newUser] = await db.insert(users).values({
+            email,
+            firstName: row.first_name || row.firstName || null,
+            lastName: row.last_name || row.lastName || null,
+            phone: row.phone || null,
+            role: row.role || "user",
+          }).returning();
+
+          const rawToken = crypto.randomBytes(32).toString("hex");
+          const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          await db.insert(passwordResetTokens).values({
+            userId: newUser.id,
+            token: tokenHash,
+            expiresAt,
+          });
+
+          if (sendEmails !== false) {
+            const baseUrl = process.env.REPLIT_DEV_DOMAIN
+              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+              : process.env.REPL_SLUG
+                ? `https://${process.env.REPL_SLUG}.replit.app`
+                : "https://realist.ca";
+            sendWelcomeAccountEmail({
+              toEmail: email,
+              firstName: row.first_name || row.firstName || "there",
+              setupLink: `${baseUrl}/set-password?token=${rawToken}`,
+              leadSource: "Account Recovery",
+            }).catch(err => console.error(`Welcome email error for ${email}:`, err));
+          }
+
+          results.imported++;
+          results.details.push(email);
+        } catch (err: any) {
+          if (err?.code === "23505") { results.existing++; }
+          else { results.failed++; console.error(`Import failed for ${row.email}:`, err); }
+        }
+      }
+
+      console.log(`CSV import: ${results.imported} imported, ${results.existing} existing, ${results.failed} failed`);
+      res.json({ success: true, ...results });
+    } catch (error) {
+      console.error("Error importing CSV users:", error);
+      res.status(500).json({ error: "Failed to import users" });
+    }
+  });
+
+  app.post("/api/admin/import-csv-leads", isAdmin, async (req, res) => {
+    try {
+      const { leads: csvLeads } = req.body;
+      if (!Array.isArray(csvLeads) || csvLeads.length === 0) {
+        return res.status(400).json({ error: "No leads provided" });
+      }
+      const results = { imported: 0, duplicate: 0, failed: 0 };
+
+      for (const row of csvLeads) {
+        try {
+          const email = (row.email || "").trim();
+          if (!email) { results.failed++; continue; }
+
+          await storage.createLead({
+            name: row.name || "",
+            email,
+            phone: row.phone || "",
+            consent: row.consent === "true" || row.consent === true,
+            leadSource: row.lead_source || row.leadSource || "Import",
+          });
+          results.imported++;
+        } catch (err: any) {
+          if (err?.code === "23505") { results.duplicate++; }
+          else { results.failed++; }
+        }
+      }
+
+      console.log(`CSV lead import: ${results.imported} imported, ${results.duplicate} duplicate, ${results.failed} failed`);
+      res.json({ success: true, ...results });
+    } catch (error) {
+      console.error("Error importing CSV leads:", error);
+      res.status(500).json({ error: "Failed to import leads" });
+    }
+  });
+
+  app.post("/api/admin/backfill-lead-accounts", isAdmin, async (req, res) => {
+    try {
+      const leadRows = await storage.getAllLeads();
+      const results = { created: 0, existing: 0, failed: 0, emails: [] as string[] };
+
+      for (const lead of leadRows) {
+        try {
+          const nameParts = (lead.name || "").trim().split(' ');
+          const enrollment = await autoEnrollLeadAsUser({
+            email: lead.email,
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            phone: lead.phone || undefined,
+            leadSource: lead.leadSource || "Backfill",
+          });
+          if (enrollment.isNew) {
+            results.created++;
+            results.emails.push(lead.email);
+          } else {
+            results.existing++;
+          }
+        } catch (err) {
+          results.failed++;
+          console.error(`Backfill failed for ${lead.email}:`, err);
+        }
+      }
+
+      console.log(`Backfill complete: ${results.created} created, ${results.existing} existing, ${results.failed} failed`);
+      res.json({ success: true, ...results });
+    } catch (error) {
+      console.error("Error backfilling lead accounts:", error);
+      res.status(500).json({ error: "Failed to backfill accounts" });
+    }
+  });
+
+  app.post("/api/admin/city-reports/generate", isAdmin, async (req, res) => {
+    try {
+      const { city, province, month } = req.body;
+      if (!city || !province) return res.status(400).json({ error: "city and province required" });
+      const now = new Date();
+      const targetMonth = month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const { generateCityReport } = await import("./cityReportGenerator");
+      const result = await generateCityReport(city, province, targetMonth);
+      res.json(result);
+    } catch (error) {
+      console.error("Error generating city report:", error);
+      res.status(500).json({ error: "Failed to generate report" });
+    }
+  });
+
+  app.post("/api/admin/city-reports/generate-all", isAdmin, async (req, res) => {
+    try {
+      const now = new Date();
+      const targetMonth = req.body.month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const { TOP_30_CITIES, generateCityReport } = await import("./cityReportGenerator");
+      const results = { published: 0, existing: 0, failed: 0, details: [] as string[] };
+      for (const entry of TOP_30_CITIES) {
+        try {
+          const result = await generateCityReport(entry.city, entry.province, targetMonth);
+          if (result.created) { results.published++; } else { results.existing++; }
+          results.details.push(`${entry.city}: ${result.message}`);
+        } catch (err: any) {
+          results.failed++;
+          results.details.push(`${entry.city}: FAILED — ${err.message}`);
+        }
+      }
+      res.json(results);
+    } catch (error) {
+      console.error("Error generating all city reports:", error);
+      res.status(500).json({ error: "Failed to generate reports" });
+    }
+  });
+
+  app.get("/api/admin/city-reports/schedule", isAdmin, async (req, res) => {
+    try {
+      const now = new Date();
+      const year = parseInt(req.query.year as string) || now.getFullYear();
+      const month = parseInt(req.query.month as string) || (now.getMonth() + 1);
+      const { getCityScheduleForMonth } = await import("./cityReportGenerator");
+      const schedule = getCityScheduleForMonth(year, month);
+      res.json({ year, month, daysInMonth: new Date(year, month, 0).getDate(), schedule });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get schedule" });
+    }
+  });
+
+  app.post("/api/admin/send-welcome-emails", isAdmin, async (req, res) => {
+    try {
+      const usersWithoutPasswords = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+      }).from(users).where(sql`${users.passwordHash} IS NULL`);
+
+      const results = { sent: 0, failed: 0, emails: [] as string[] };
+
+      for (const user of usersWithoutPasswords) {
+        try {
+          await db.update(passwordResetTokens)
+            .set({ usedAt: new Date() })
+            .where(and(
+              eq(passwordResetTokens.userId, user.id),
+              sql`${passwordResetTokens.usedAt} IS NULL`
+            ));
+
+          const rawToken = crypto.randomBytes(32).toString("hex");
+          const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          await db.insert(passwordResetTokens).values({
+            userId: user.id,
+            token: tokenHash,
+            expiresAt,
+          });
+
+          const baseUrl = process.env.REPLIT_DEV_DOMAIN
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : process.env.REPL_SLUG
+              ? `https://${process.env.REPL_SLUG}.replit.app`
+              : "https://realist.ca";
+
+          await sendWelcomeAccountEmail({
+            toEmail: user.email,
+            firstName: user.firstName || "there",
+            setupLink: `${baseUrl}/set-password?token=${rawToken}`,
+            leadSource: "Account Recovery",
+          });
+
+          results.sent++;
+          results.emails.push(user.email);
+
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (err) {
+          results.failed++;
+          console.error(`Welcome email failed for ${user.email}:`, err);
+        }
+      }
+
+      console.log(`Welcome email blast: ${results.sent} sent, ${results.failed} failed`);
+      res.json({ success: true, ...results });
+    } catch (error) {
+      console.error("Error sending welcome emails:", error);
+      res.status(500).json({ error: "Failed to send welcome emails" });
+    }
+  });
+
+  app.get("/api/admin/leaderboard-health", isAdmin, async (_req, res) => {
+    try {
+      const dbIdentityResult = await db.execute(sql`
+        SELECT current_database() AS db_name, current_schema() AS schema_name
+      `);
+      const [dbIdentity] = dbIdentityResult.rows as any[];
+
+      const summaryResult = await db.execute(sql`
+        SELECT
+          (SELECT COUNT(*)::int FROM users) AS users_count,
+          (SELECT COUNT(*)::int FROM leads) AS leads_count,
+          (SELECT COUNT(*)::int FROM properties) AS properties_count,
+          (SELECT COUNT(*)::int FROM analyses) AS analyses_count,
+          (SELECT COUNT(*)::int FROM analyses WHERE results_json IS NOT NULL) AS analyses_with_results_count,
+          (SELECT COUNT(*)::int FROM analyses WHERE user_id IS NOT NULL AND results_json IS NOT NULL) AS linked_analyses_with_results_count,
+          (
+            SELECT COUNT(*)::int
+            FROM analyses a
+            JOIN users u ON u.id = a.user_id
+            WHERE a.user_id IS NOT NULL
+              AND a.results_json IS NOT NULL
+              AND LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.com'
+              AND NOT (
+                LOWER(COALESCE(u.first_name, '')) = 'test'
+                AND LOWER(COALESCE(u.last_name, '')) = 'user'
+              )
+          ) AS leaderboard_eligible_count,
+          (
+            SELECT COUNT(*)::int
+            FROM analyses a
+            JOIN users u ON u.id = a.user_id
+            WHERE a.user_id IS NOT NULL
+              AND a.results_json IS NOT NULL
+              AND (
+                LOWER(COALESCE(u.email, '')) LIKE '%@example.com'
+                OR (
+                  LOWER(COALESCE(u.first_name, '')) = 'test'
+                  AND LOWER(COALESCE(u.last_name, '')) = 'user'
+                )
+              )
+          ) AS excluded_test_analyses_count,
+          (SELECT COUNT(*)::int FROM analyses WHERE user_id IS NULL AND results_json IS NOT NULL) AS orphan_analyses_count,
+          (SELECT MIN(created_at) FROM analyses) AS oldest_analysis_at,
+          (SELECT MAX(created_at) FROM analyses) AS newest_analysis_at,
+          (
+            SELECT MAX(a.created_at)
+            FROM analyses a
+            JOIN users u ON u.id = a.user_id
+            WHERE a.user_id IS NOT NULL
+              AND a.results_json IS NOT NULL
+              AND LOWER(COALESCE(u.email, '')) NOT LIKE '%@example.com'
+              AND NOT (
+                LOWER(COALESCE(u.first_name, '')) = 'test'
+                AND LOWER(COALESCE(u.last_name, '')) = 'user'
+              )
+          ) AS newest_leaderboard_eligible_analysis_at
+      `);
+      const [summary] = summaryResult.rows as any[];
+
+      const eligibleTopResult = await db.execute(sql`
+        SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) AS rows
+        FROM (
+          SELECT
+            u.email,
+            u.first_name AS "firstName",
+            u.last_name AS "lastName",
+            COUNT(a.id)::int AS "dealCount"
+          FROM analyses a
+          JOIN users u ON u.id = a.user_id
+          WHERE a.user_id IS NOT NULL
+            AND a.results_json IS NOT NULL
+            AND ${leaderboardEligibleUserFilter}
+          GROUP BY u.email, u.first_name, u.last_name
+          ORDER BY COUNT(a.id) DESC, u.email ASC
+          LIMIT 10
+        ) t
+      `);
+      const [eligibleTop] = eligibleTopResult.rows as any[];
+
+      const allTopResult = await db.execute(sql`
+        SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) AS rows
+        FROM (
+          SELECT
+            u.email,
+            u.first_name AS "firstName",
+            u.last_name AS "lastName",
+            COUNT(a.id)::int AS "dealCount"
+          FROM analyses a
+          JOIN users u ON u.id = a.user_id
+          WHERE a.user_id IS NOT NULL
+            AND a.results_json IS NOT NULL
+          GROUP BY u.email, u.first_name, u.last_name
+          ORDER BY COUNT(a.id) DESC, u.email ASC
+          LIMIT 10
+        ) t
+      `);
+      const [allTop] = allTopResult.rows as any[];
+
+      const orphanMatchesResult = await db.execute(sql`
+        SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) AS rows
+        FROM (
+          SELECT
+            a.id,
+            a.session_id AS "sessionId",
+            l.email AS "leadEmail",
+            u.id AS "matchedUserId",
+            u.email AS "matchedUserEmail",
+            a.created_at AS "createdAt"
+          FROM analyses a
+          LEFT JOIN leads l ON l.id = a.lead_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(l.email)
+          WHERE a.user_id IS NULL
+          ORDER BY a.created_at DESC
+          LIMIT 20
+        ) t
+      `);
+      const [orphanMatches] = orphanMatchesResult.rows as any[];
+
+      res.json({
+        database: dbIdentity,
+        summary,
+        topEligibleLeaderboardUsers: eligibleTop?.rows || [],
+        topAllLeaderboardUsers: allTop?.rows || [],
+        orphanAnalyses: orphanMatches?.rows || [],
+      });
+    } catch (error) {
+      console.error("Error fetching leaderboard health:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard health" });
+    }
+  });
+
+  // ============================================
+  // MORTGAGE RATES API ROUTES
+  // ============================================
+
+  app.get("/api/mortgage-rates", async (req, res) => {
+    try {
+      const { getAllCurrentRates } = await import("./rateScraper");
+      const rates = await getAllCurrentRates();
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching mortgage rates:", error);
+      res.status(500).json({ error: "Failed to fetch rates" });
+    }
+  });
+
+  app.get("/api/mortgage-rates/history", async (req, res) => {
+    try {
+      const { getRateHistory } = await import("./rateScraper");
+      const rates = await getRateHistory(
+        req.query.rateType as string | undefined,
+        req.query.term as string | undefined,
+      );
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching rate history:", error);
+      res.status(500).json({ error: "Failed to fetch rate history" });
+    }
+  });
+
+  app.post("/api/admin/mortgage-rates/scrape", isAdmin, async (req, res) => {
+    try {
+      const { runRateScrape } = await import("./rateScraper");
+      const result = await runRateScrape();
+      res.json(result);
+    } catch (error) {
+      console.error("Error running rate scrape:", error);
+      res.status(500).json({ error: "Failed to scrape rates" });
+    }
+  });
+
+  app.post("/api/admin/mortgage-rates", isAdmin, async (req, res) => {
+    try {
+      const { rateType, term, rate, provider, source, category, isInsured } = req.body;
+      if (!rateType || !term || !rate || !provider) {
+        return res.status(400).json({ error: "rateType, term, rate, provider required" });
+      }
+      const { mortgageRates: ratesTable } = await import("@shared/schema");
+      const [result] = await db.insert(ratesTable).values({
+        rateType, term, rate: parseFloat(rate), provider,
+        source: source || "manual",
+        category: category || "custom",
+        isInsured: isInsured ?? false,
+        lastUpdated: new Date(),
+      }).returning();
+      res.json(result);
+    } catch (error) {
+      console.error("Error adding rate:", error);
+      res.status(500).json({ error: "Failed to add rate" });
+    }
+  });
+
+  app.get("/api/rates/mortgage", async (req, res) => {
+    try {
+      const { getAllCurrentRates } = await import("./rateScraper");
+      const rates = await getAllCurrentRates();
+      const termYears = req.query.termYears as string || "5";
+      const type = req.query.type as string || "fixed";
+      const termLabel = `${termYears}-year`;
+
+      const matching = rates.filter((r: any) => {
+        if (type === "variable") {
+          return r.rateType === "variable" && r.term === "5-year" && r.category === "best";
+        }
+        return r.rateType === "fixed" && r.term === termLabel && r.category === "best";
+      });
+
+      if (matching.length === 0) {
+        const fallback = rates.filter((r: any) => {
+          if (type === "variable") {
+            return r.rateType === "variable" && ["best", "big-bank", "posted"].includes(r.category) && ["5-year", "prime"].includes(r.term);
+          }
+          return r.rateType === "fixed" && r.term === termLabel && ["best", "big-bank", "posted"].includes(r.category);
+        });
+        if (fallback.length > 0) {
+          const best = fallback.reduce((a: any, b: any) => a.rate < b.rate ? a : b);
+          return res.json({ bestRate: best.rate, source: best.source, timestamp: best.lastUpdated, count: fallback.length });
+        }
+        return res.json({ bestRate: null, source: null, timestamp: null, count: 0 });
+      }
+
+      const best = matching.reduce((a: any, b: any) => a.rate < b.rate ? a : b);
+      res.json({ bestRate: best.rate, source: best.source, timestamp: best.lastUpdated, count: matching.length });
+    } catch (error) {
+      console.error("Error fetching rate:", error);
+      res.status(500).json({ error: "Failed to fetch rate" });
+    }
+  });
+
+  app.get("/api/rate-forecast/latest", async (req, res) => {
+    try {
+      const { rateForecasts } = await import("@shared/schema");
+      const forecasts = await db.select().from(rateForecasts).orderBy(sql`created_at DESC`).limit(1);
+      if (forecasts.length === 0) {
+        return res.json(null);
+      }
+      const f = forecasts[0];
+      res.json({
+        ...f,
+        path: JSON.parse(f.pathJson),
+        assumptions: f.assumptionsJson ? JSON.parse(f.assumptionsJson) : null,
+      });
+    } catch (error) {
+      console.error("Error fetching forecast:", error);
+      res.json(null);
+    }
+  });
+
+  // ============================================
+  // RENOQUOTE API ROUTES
+  // ============================================
+
+  const createRenoQuoteSchema = z.object({
+    persona: z.enum(["homeowner", "investor", "multiplex"]),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    region: z.string().optional(),
+    country: z.string().default("canada"),
+    postalCode: z.string().optional(),
+    propertyType: z.string().optional(),
+    existingSqft: z.number().nullable().optional(),
+    bedrooms: z.number().nullable().optional(),
+    bathrooms: z.number().nullable().optional(),
+    basementType: z.string().optional(),
+    basementHeight: z.number().nullable().optional(),
+    projectIntents: z.array(z.string()).optional(),
+    lineItems: z.array(renoQuoteLineItemSchema),
+    assumptions: renoQuoteAssumptionsSchema,
+    leadName: z.string().optional(),
+    leadEmail: z.string().email().optional(),
+    leadPhone: z.string().optional(),
+    leadConsent: z.boolean().default(false),
+  });
+
+  app.get("/api/reno-quotes/catalog", (req, res) => {
+    const persona = (req.query.persona as string) || "homeowner";
+    const validPersonas = ["homeowner", "investor", "multiplex"];
+    const selectedPersona = validPersonas.includes(persona) ? persona : "homeowner";
+    res.json(getLineItemCatalog(selectedPersona as "homeowner" | "investor" | "multiplex"));
+  });
+
+  app.post("/api/reno-quotes/calculate", (req, res) => {
+    try {
+      const parsed = createRenoQuoteSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.errors });
+      }
+      
+      const { lineItems, assumptions, persona, country, region, city, existingSqft } = parsed.data;
+      
+      const pricingResult = calculateRenoQuotePricing(
+        lineItems as RenoQuoteLineItem[],
+        assumptions as RenoQuoteAssumptions,
+        { country, region, city, existingSqft, persona }
+      );
+      
+      res.json(pricingResult);
+    } catch (error) {
+      console.error("Error calculating reno quote:", error);
+      res.status(500).json({ error: "Failed to calculate renovation estimate" });
+    }
+  });
+
+  app.post("/api/reno-quotes", async (req, res) => {
+    try {
+      const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+      if (!checkRateLimit(clientIp)) {
+        return res.status(429).json({ error: "Too many requests. Please try again later." });
+      }
+      
+      const parsed = createRenoQuoteSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.errors });
+      }
+      
+      const { lineItems, assumptions, leadName, leadEmail, leadPhone, leadConsent, ...propertyData } = parsed.data;
+      
+      const pricingResult = calculateRenoQuotePricing(
+        lineItems as RenoQuoteLineItem[],
+        assumptions as RenoQuoteAssumptions,
+        { 
+          country: propertyData.country, 
+          region: propertyData.region, 
+          city: propertyData.city, 
+          existingSqft: propertyData.existingSqft,
+          persona: propertyData.persona
+        }
+      );
+      
+      let leadId: string | undefined;
+      if (leadEmail && leadName) {
+        const lead = await storage.createLead({
+          name: leadName,
+          email: leadEmail,
+          phone: leadPhone || "",
+          consent: leadConsent,
+          leadSource: "RenoQuote Calculator",
+        });
+        leadId = lead.id;
+        
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          sendWebhook(leadId, {
+            source: "RenoQuote Calculator",
+            formTag: "reno_quote",
+            name: leadName,
+            email: leadEmail,
+            phone: leadPhone,
+            persona: propertyData.persona,
+            address: propertyData.address,
+            city: propertyData.city,
+            region: propertyData.region,
+            country: propertyData.country,
+            estimateLow: pricingResult.totalLow,
+            estimateBase: pricingResult.totalBase,
+            estimateHigh: pricingResult.totalHigh,
+          });
+        }
+
+        // Send email notification
+        sendRenoQuoteNotification({
+          name: leadName,
+          email: leadEmail,
+          phone: leadPhone,
+          address: propertyData.address,
+          projectType: propertyData.persona,
+          squareFootage: propertyData.existingSqft,
+          estimatedTotal: pricingResult.totalBase,
+        }).catch(err => console.error("Reno quote email error:", err));
+
+        const renoNameParts = leadName.trim().split(' ');
+        autoEnrollLeadAsUser({
+          email: leadEmail,
+          firstName: renoNameParts[0] || '',
+          lastName: renoNameParts.slice(1).join(' ') || '',
+          phone: leadPhone,
+          leadSource: "RenoQuote Calculator",
+        }).catch(err => console.error("Auto-enroll user error:", err));
+      }
+      
+      const renoQuote = await storage.createRenoQuote({
+        leadId,
+        persona: propertyData.persona,
+        address: propertyData.address,
+        city: propertyData.city,
+        region: propertyData.region,
+        country: propertyData.country,
+        postalCode: propertyData.postalCode,
+        propertyType: propertyData.propertyType,
+        existingSqft: propertyData.existingSqft,
+        bedrooms: propertyData.bedrooms,
+        bathrooms: propertyData.bathrooms,
+        basementType: propertyData.basementType,
+        basementHeight: propertyData.basementHeight,
+        projectIntents: propertyData.projectIntents,
+        lineItemsJson: lineItems,
+        assumptionsJson: assumptions,
+        pricingResultJson: pricingResult,
+        leadName,
+        leadEmail,
+        leadPhone,
+        leadConsent,
+      });
+      
+      res.json({ id: renoQuote.id, pricingResult });
+    } catch (error) {
+      console.error("Error creating reno quote:", error);
+      res.status(500).json({ error: "Failed to save renovation quote" });
+    }
+  });
+
+  app.get("/api/reno-quotes/:id", async (req, res) => {
+    try {
+      const quote = await storage.getRenoQuote(req.params.id);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      res.json(quote);
+    } catch (error) {
+      console.error("Error fetching reno quote:", error);
+      res.status(500).json({ error: "Failed to fetch quote" });
+    }
+  });
+
+  app.get("/api/admin/reno-quotes", isAdmin, async (req, res) => {
+    try {
+      const quotes = await storage.getAllRenoQuotes();
+      res.json(quotes);
+    } catch (error) {
+      console.error("Error fetching reno quotes:", error);
+      res.status(500).json({ error: "Failed to fetch quotes" });
+    }
+  });
+
+  app.get("/api/analyses/:id", async (req, res) => {
+    try {
+      const analysis = await storage.getAnalysis(req.params.id);
+      if (!analysis) {
+        res.status(404).json({ error: "Analysis not found" });
+        return;
+      }
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error fetching analysis:", error);
+      res.status(500).json({ error: "Failed to fetch analysis" });
+    }
+  });
+
+  app.post("/api/analyses", async (req, res) => {
+    try {
+      const { countryMode, strategyType, inputsJson, resultsJson, address, city, province, sessionId } = req.body;
+      if (!countryMode || !strategyType || !inputsJson) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      const userId = (req.session as any)?.userId || null;
+      const analysis = await storage.createAnalysis({
+        countryMode,
+        strategyType,
+        inputsJson,
+        resultsJson: resultsJson || null,
+        userId,
+        sessionId: sessionId || null,
+        address: address || null,
+        city: city || null,
+        province: province || null,
+        leadId: null,
+        propertyId: null,
+        rentInputs: inputsJson.monthlyRent != null ? {
+          monthlyRent: inputsJson.monthlyRent,
+          rentPerUnit: inputsJson.rentPerUnit,
+          numberOfUnits: inputsJson.numberOfUnits,
+          additionalIncome: inputsJson.additionalIncome,
+        } : null,
+        vacancyRate: inputsJson.vacancyRate != null ? Number(inputsJson.vacancyRate) : null,
+        expenseAssumptions: inputsJson.operatingExpenses != null || inputsJson.propertyTax != null ? {
+          operatingExpenses: inputsJson.operatingExpenses,
+          propertyTax: inputsJson.propertyTax,
+          insurance: inputsJson.insurance,
+          maintenance: inputsJson.maintenance,
+          managementFee: inputsJson.managementFee,
+          utilities: inputsJson.utilities,
+        } : null,
+      });
+
+      if (userId && sessionId) {
+        const backfilled = await db.execute(sql`
+          UPDATE analyses
+          SET user_id = ${userId}
+          WHERE session_id = ${sessionId}
+            AND user_id IS NULL
+        `);
+        if ((backfilled.rowCount ?? 0) > 0) {
+          console.log(`[analysis-save] Backfilled ${backfilled.rowCount} anonymous analyses for session ${sessionId} → user ${userId}`);
+        }
+      }
+
+      if (userId && resultsJson) {
+        const quality = computeAnalysisQualityScore({
+          timeSpentSeconds: Number(inputsJson.timeSpentSeconds || inputsJson.timeOnAnalysisSeconds || 0),
+          meaningfulInputChanges: Number(inputsJson.meaningfulInputChanges || inputsJson.inputChangeCount || 0),
+          openedComparableSections: Number(inputsJson.openedComparableSections || 0),
+          savedNotes: Boolean(inputsJson.notes || inputsJson.userNotes),
+          exportedOrSaved: true,
+          hasFinancingAssumptions: inputsJson.downPaymentPercent != null || inputsJson.interestRate != null,
+          hasRentAssumptions: inputsJson.monthlyRent != null || inputsJson.rentPerUnit != null,
+          hasExpenseAssumptions: inputsJson.operatingExpenses != null || inputsJson.propertyTax != null,
+          hasRenovationOrCapexAssumptions: inputsJson.renovationBudget != null || inputsJson.capexReservePercent != null,
+          comparableReferenceCount: Array.isArray(inputsJson.comparables) ? inputsJson.comparables.length : 0,
+          metrics: resultsJson,
+        });
+        await db.insert(analysisQualityScores).values({
+          analysisId: analysis.id,
+          userId,
+          listingKey: inputsJson.mlsNumber || inputsJson.listingMlsNumber || null,
+          qualityScore: quality.qualityScore,
+          confidenceScore: quality.confidenceScore,
+          plausibilityScore: quality.plausibilityScore,
+          interactionDepthScore: quality.interactionDepthScore,
+          dataCompletenessScore: quality.dataCompletenessScore,
+          uniquenessScore: quality.uniquenessScore,
+          dealViabilityScore: quality.dealViabilityScore,
+          spamRiskScore: quality.spamRiskScore,
+          leaderboardEligible: quality.leaderboardEligible,
+          exclusionReason: quality.exclusionReason,
+        }).onConflictDoNothing();
+        await recordUnderwritingComparison({
+          analysisId: analysis.id,
+          userId,
+          listingKey: inputsJson.mlsNumber || inputsJson.listingMlsNumber || null,
+          province,
+          city,
+          propertyType: inputsJson.propertyType || null,
+          strategyType,
+          userMetrics: resultsJson as Record<string, unknown>,
+          assumptions: inputsJson as Record<string, unknown>,
+        });
+        await logUserActivity(req, {
+          userId,
+          sessionId: sessionId || req.sessionID,
+          eventName: "analysis_completed",
+          analysisId: analysis.id,
+          listingKey: inputsJson.mlsNumber || inputsJson.listingMlsNumber || null,
+          component: "deal_analyzer",
+          metadata: { confidenceScore: quality.confidenceScore, leaderboardEligible: quality.leaderboardEligible },
+        });
+        await logUserActivity(req, {
+          userId,
+          sessionId: sessionId || req.sessionID,
+          eventName: "underwriting_completed",
+          analysisId: analysis.id,
+          listingKey: inputsJson.mlsNumber || inputsJson.listingMlsNumber || null,
+          component: "deal_analyzer",
+          metadata: { confidenceScore: quality.confidenceScore, city, province, strategyType },
+        });
+      }
+
+      res.json({ id: analysis.id });
+
+      sendDealAnalysisWebhookToGHL({
+        userId,
+        analysisId: analysis.id,
+        strategyType,
+        address,
+        city,
+        province,
+        resultsJson,
+        inputsJson,
+      }).catch(err => console.error("[ghl-analysis] webhook error:", err.message));
+    } catch (error) {
+      console.error("Error saving analysis:", error);
+      res.status(500).json({ error: "Failed to save analysis" });
+    }
+  });
+
+  app.get("/api/rates", async (req, res) => {
+    try {
+      const cached = await storage.getDataCache("interest_rates");
+      
+      if (cached) {
+        const cacheAge = Date.now() - new Date(cached.fetchedAt).getTime();
+        const maxAge = 24 * 60 * 60 * 1000;
+        
+        if (cacheAge < maxAge) {
+          res.json(cached.valueJson);
+          return;
+        }
+      }
+
+      const { getAllCurrentRates } = await import("./rateScraper");
+      const rows = await getAllCurrentRates();
+
+      const pickRate = (rateType: string, term: string, categories: string[]) => {
+        const matches = rows.filter((row: any) => row.rateType === rateType && row.term === term && categories.includes(row.category));
+        if (matches.length === 0) return null;
+        return matches.reduce((best: any, current: any) => current.rate < best.rate ? current : best).rate;
+      };
+
+      const derivedRates = {
+        conventional: {
+          "1_year_fixed": pickRate("fixed", "1-year", ["best", "big-bank"]) ?? 5.59,
+          "2_year_fixed": pickRate("fixed", "2-year", ["best", "big-bank"]) ?? 4.29,
+          "3_year_fixed": pickRate("fixed", "3-year", ["best", "big-bank"]) ?? 3.89,
+          "5_year_fixed": pickRate("fixed", "5-year", ["best", "big-bank", "posted"]) ?? 3.84,
+          "variable": pickRate("variable", "5-year", ["best", "big-bank"]) ?? pickRate("variable", "prime", ["posted"]) ?? 3.70,
+        },
+        cmhc_mli_select: {
+          base_spread: 1.10,
+          bond_yield_estimate: pickRate("variable", "bank-rate", ["policy"]) ?? 2.50,
+          effective_rate: (pickRate("fixed", "5-year", ["best", "big-bank", "posted"]) ?? 3.84) + 0.75,
+        },
+        usa: {
+          "30_year_fixed": 6.875,
+          "15_year_fixed": 6.125,
+          "arm_5_1": 6.50,
+        },
+        lastUpdated: new Date().toISOString(),
+        source: rows.length > 0 ? "Derived from current mortgage rate table" : "Fallback market estimates",
+      };
+
+      await storage.setDataCache({
+        key: "interest_rates",
+        valueJson: derivedRates,
+        source: rows.length > 0 ? "mortgage_rates" : "fallback",
+      });
+
+      res.json(derivedRates);
+    } catch (error) {
+      console.error("Error fetching rates:", error);
+      res.status(500).json({ error: "Failed to fetch rates" });
+    }
+  });
+
+  app.post("/api/admin/refresh-rates", async (req, res) => {
+    try {
+      const defaultRates = {
+        conventional: {
+          "1_year_fixed": 6.79,
+          "2_year_fixed": 6.24,
+          "3_year_fixed": 5.59,
+          "5_year_fixed": 5.34,
+          "variable": 5.90,
+        },
+        cmhc_mli_select: {
+          base_spread: 1.10,
+          bond_yield_estimate: 3.50,
+          effective_rate: 4.60,
+        },
+        usa: {
+          "30_year_fixed": 6.875,
+          "15_year_fixed": 6.125,
+          "arm_5_1": 6.50,
+        },
+        lastUpdated: new Date().toISOString(),
+        source: "Refreshed - for illustration only",
+      };
+
+      await storage.setDataCache({
+        key: "interest_rates",
+        valueJson: defaultRates,
+        source: "manual_refresh",
+      });
+
+      res.json({ success: true, data: defaultRates });
+    } catch (error) {
+      console.error("Error refreshing rates:", error);
+      res.status(500).json({ error: "Failed to refresh rates" });
+    }
+  });
+
+  app.get("/api/events", async (req, res) => {
+    try {
+      const hasToken = !!process.env.EVENTBRITE_TOKEN;
+      const nodeEnv = process.env.NODE_ENV || "unknown";
+      console.log(`Events API called. Token available: ${hasToken}, NODE_ENV: ${nodeEnv}`);
+      
+      const result = await getEvents();
+      
+      console.log(`Events API returning ${result.events?.length || 0} events from source: ${result.source}`);
+      
+      res.json({
+        ...result,
+        debug: {
+          tokenAvailable: hasToken,
+          nodeEnv: nodeEnv,
+          eventCount: result.events?.length || 0,
+          source: result.source,
+          timestamp: new Date().toISOString(),
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error("Error stack:", errorStack);
+      
+      res.status(500).json({ 
+        error: "Failed to fetch events",
+        debug: {
+          tokenAvailable: !!process.env.EVENTBRITE_TOKEN,
+          nodeEnv: process.env.NODE_ENV || "unknown",
+          errorMessage: errorMessage,
+          timestamp: new Date().toISOString(),
+        }
+      });
+    }
+  });
+
+  // Contact meetup host endpoint
+  const contactHostSchema = z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    phone: z.string().min(10),
+    message: z.string().min(10),
+    hostId: z.string(),
+    hostEmail: z.string().email(),
+    hostName: z.string(),
+    eventName: z.string(),
+    eventId: z.string(),
+    city: z.string(),
+  });
+
+  app.post("/api/events/contact-host", async (req, res) => {
+    try {
+      const data = contactHostSchema.parse(req.body);
+      
+      // Create a lead record for tracking
+      const lead = await storage.createLead({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        consent: true,
+        leadSource: `meetup_contact_${data.city.toLowerCase().replace(/\s+/g, '_')}`,
+      });
+
+      // Format phone to E.164 format
+      const formatPhoneE164 = (phone: string): string => {
+        const cleaned = phone.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Split name for CRM
+      const nameParts = data.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Send to GHL with meetup contact tags
+      await sendWebhook(lead.id, {
+        email: data.email,
+        firstName,
+        lastName,
+        phone: formatPhoneE164(data.phone),
+        fullName: data.name,
+        consent: true,
+        leadSource: "meetup_contact",
+        formTag: "meetup_contact",
+        tags: ["meetup_contact", `MEETUP_${data.city.toUpperCase().replace(/\s+/g, '_')}`],
+        customField: {
+          meetup_message: data.message,
+          meetup_event: data.eventName,
+          meetup_host: data.hostName,
+          meetup_host_email: data.hostEmail,
+        },
+      });
+
+      // Send email notification to admin
+      sendContactHostNotification({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        message: data.message,
+        eventTitle: data.eventName,
+        hostName: data.hostName,
+      }).catch(err => console.error("Contact host email error:", err));
+
+      const contactNameParts = data.name.trim().split(' ');
+      autoEnrollLeadAsUser({
+        email: data.email,
+        firstName: contactNameParts[0] || '',
+        lastName: contactNameParts.slice(1).join(' ') || '',
+        phone: data.phone,
+        leadSource: "Meetup Contact",
+      }).catch(err => console.error("Auto-enroll user error:", err));
+
+      console.log(`Meetup contact request: ${data.name} wants to contact ${data.hostName} (${data.hostEmail}) about ${data.eventName}`);
+
+      res.json({ success: true, message: "Message sent to host" });
+    } catch (error) {
+      console.error("Error processing contact host request:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to send message" });
+      }
+    }
+  });
+
+  // Market Expert Application endpoint
+  const expertApplicationSchema = z.object({
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    email: z.string().email(),
+    phone: z.string().min(10),
+    province: z.string().min(1),
+    city: z.string().min(1),
+    brokerageName: z.string().min(1),
+    licenseNumber: z.string().optional(),
+    yearsExperience: z.string().min(1),
+    specializations: z.string().optional(),
+    bio: z.string().min(50),
+    website: z.string().optional(),
+    consent: z.boolean(),
+  });
+
+  app.post("/api/expert-applications", async (req, res) => {
+    try {
+      const data = expertApplicationSchema.parse(req.body);
+      
+      // Create a lead record
+      const lead = await storage.createLead({
+        name: `${data.firstName} ${data.lastName}`,
+        email: data.email,
+        phone: data.phone,
+        consent: data.consent,
+        leadSource: "Market Expert Application",
+      });
+
+      // Format phone to E.164 format
+      const formatPhoneE164 = (phone: string): string => {
+        const cleaned = phone.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Send to GHL with expert application tags
+      await sendWebhook(lead.id, {
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: formatPhoneE164(data.phone),
+        fullName: `${data.firstName} ${data.lastName}`,
+        consent: data.consent,
+        leadSource: "Market Expert Application",
+        formTag: "expert_application",
+        tags: ["expert_application", `EXPERT_${data.province}`, "partner_application"],
+        customField: {
+          expert_province: data.province,
+          expert_city: data.city,
+          expert_brokerage: data.brokerageName,
+          expert_license: data.licenseNumber || "",
+          expert_experience: data.yearsExperience,
+          expert_specializations: data.specializations || "",
+          expert_bio: data.bio,
+          expert_website: data.website || "",
+        },
+      });
+
+      // Send email notification
+      sendExpertApplicationNotification({
+        name: `${data.firstName} ${data.lastName}`,
+        email: data.email,
+        phone: data.phone,
+        company: data.brokerageName,
+        expertise: data.specializations,
+        markets: [data.city, data.province],
+        website: data.website,
+        message: data.bio,
+      }).catch(err => console.error("Expert application email error:", err));
+
+      autoEnrollLeadAsUser({
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        leadSource: "Market Expert Application",
+      }).catch(err => console.error("Auto-enroll user error:", err));
+
+      console.log(`Market Expert Application received: ${data.firstName} ${data.lastName} from ${data.city}, ${data.province}`);
+
+      res.json({ success: true, leadId: lead.id });
+    } catch (error) {
+      console.error("Error processing expert application:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to submit application" });
+      }
+    }
+  });
+
+  app.post("/api/admin/clear-event-cache", async (req, res) => {
+    try {
+      clearEventCache();
+      res.json({ success: true, message: "Event cache cleared" });
+    } catch (error) {
+      console.error("Error clearing event cache:", error);
+      res.status(500).json({ error: "Failed to clear cache" });
+    }
+  });
+
+  // GET version for easy browser access
+  app.get("/api/admin/refresh-events", async (req, res) => {
+    try {
+      console.log("Force refresh events triggered via GET");
+      const result = await forceRefreshEvents();
+      res.json({ success: true, ...result, eventCount: result.events?.length || 0 });
+    } catch (error) {
+      console.error("Error refreshing events:", error);
+      res.status(500).json({ error: "Failed to refresh events" });
+    }
+  });
+
+  app.post("/api/admin/refresh-events", async (req, res) => {
+    try {
+      const result = await forceRefreshEvents();
+      res.json({ success: true, ...result, eventCount: result.events?.length || 0 });
+    } catch (error) {
+      console.error("Error refreshing events:", error);
+      res.status(500).json({ error: "Failed to refresh events" });
+    }
+  });
+
+  // Blog posts from Substack RSS feed
+  app.get("/api/blog/posts", async (req, res) => {
+    try {
+      const substackName = "padder";
+      const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=https://${substackName}.substack.com/feed`;
+      
+      const response = await fetch(rss2jsonUrl);
+      if (!response.ok) {
+        throw new Error(`RSS fetch failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching blog posts:", error);
+      res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.get("/api/blog/posts/db", async (req, res) => {
+    try {
+      const { category, limit } = req.query;
+      const posts = await storage.getBlogPosts({
+        status: "published",
+        category: category as string | undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+      });
+      res.json(posts);
+    } catch (error) {
+      console.error("Error fetching blog posts:", error);
+      res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.get("/api/blog/posts/admin/all", isAdmin, async (req, res) => {
+    try {
+      const posts = await storage.getBlogPosts();
+      res.json(posts);
+    } catch (error) {
+      console.error("Error fetching all blog posts:", error);
+      res.status(500).json({ error: "Failed to fetch blog posts" });
+    }
+  });
+
+  app.get("/api/blog/posts/db/:slug", async (req, res) => {
+    try {
+      const post = await storage.getBlogPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ error: "Post not found" });
+      if (post.status !== "published") return res.status(404).json({ error: "Post not found" });
+      res.json(post);
+    } catch (error) {
+      console.error("Error fetching blog post:", error);
+      res.status(500).json({ error: "Failed to fetch blog post" });
+    }
+  });
+
+  app.post("/api/blog/posts", isAdmin, async (req, res) => {
+    try {
+      const data = req.body;
+      if (!data.slug && data.title) {
+        data.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      }
+      if (data.content && !data.readTimeMinutes) {
+        const words = data.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+        data.readTimeMinutes = Math.max(1, Math.ceil(words / 200));
+      }
+      if (data.status === "published" && !data.publishedAt) {
+        data.publishedAt = new Date().toISOString();
+      }
+      const parsed = insertBlogPostSchema.parse(data);
+      const existing = await storage.getBlogPostBySlug(parsed.slug || "");
+      if (existing) return res.status(409).json({ error: "A post with this slug already exists" });
+      const post = await storage.createBlogPost(parsed);
+      res.status(201).json(post);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Validation failed", details: error.issues });
+      console.error("Error creating blog post:", error);
+      res.status(500).json({ error: "Failed to create blog post" });
+    }
+  });
+
+  app.patch("/api/blog/posts/:id", isAdmin, async (req, res) => {
+    try {
+      const data = req.body;
+      if (data.content && !data.readTimeMinutes) {
+        const words = data.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+        data.readTimeMinutes = Math.max(1, Math.ceil(words / 200));
+      }
+      if (data.status === "published" && !data.publishedAt) {
+        data.publishedAt = new Date().toISOString();
+      }
+      const parsed = insertBlogPostSchema.partial().parse(data);
+      if (parsed.slug) {
+        const existing = await storage.getBlogPostBySlug(parsed.slug);
+        if (existing && existing.id !== req.params.id) return res.status(409).json({ error: "A post with this slug already exists" });
+      }
+      const post = await storage.updateBlogPost(req.params.id, parsed);
+      if (!post) return res.status(404).json({ error: "Post not found" });
+      res.json(post);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Validation failed", details: error.issues });
+      console.error("Error updating blog post:", error);
+      res.status(500).json({ error: "Failed to update blog post" });
+    }
+  });
+
+  app.delete("/api/blog/posts/:id", isAdmin, async (req, res) => {
+    try {
+      await storage.deleteBlogPost(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting blog post:", error);
+      res.status(500).json({ error: "Failed to delete blog post" });
+    }
+  });
+
+  app.get("/api/guides/published", async (req, res) => {
+    try {
+      const { category } = req.query;
+      const allGuides = await storage.getGuides({
+        status: "published",
+        category: category as string | undefined,
+      });
+      res.json(allGuides);
+    } catch (error) {
+      console.error("Error fetching guides:", error);
+      res.status(500).json({ error: "Failed to fetch guides" });
+    }
+  });
+
+  app.get("/api/guides/admin/all", isAdmin, async (req, res) => {
+    try {
+      const allGuides = await storage.getGuides();
+      res.json(allGuides);
+    } catch (error) {
+      console.error("Error fetching all guides:", error);
+      res.status(500).json({ error: "Failed to fetch guides" });
+    }
+  });
+
+  app.get("/api/guides/by-slug/:slug", async (req, res) => {
+    try {
+      const guide = await storage.getGuideBySlug(req.params.slug);
+      if (!guide) return res.status(404).json({ error: "Guide not found" });
+      if (guide.status !== "published") return res.status(404).json({ error: "Guide not found" });
+      res.json(guide);
+    } catch (error) {
+      console.error("Error fetching guide:", error);
+      res.status(500).json({ error: "Failed to fetch guide" });
+    }
+  });
+
+  app.post("/api/guides", isAdmin, async (req, res) => {
+    try {
+      const data = req.body;
+      if (!data.slug && data.title) {
+        data.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      }
+      if (data.content && !data.readTimeMinutes) {
+        const words = data.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+        data.readTimeMinutes = Math.max(1, Math.ceil(words / 200));
+      }
+      if (data.status === "published" && !data.publishedAt) {
+        data.publishedAt = new Date().toISOString();
+      }
+      const parsed = insertGuideSchema.parse(data);
+      const existing = await storage.getGuideBySlug(parsed.slug || "");
+      if (existing) return res.status(409).json({ error: "A guide with this slug already exists" });
+      const guide = await storage.createGuide(parsed);
+      res.status(201).json(guide);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Validation failed", details: error.issues });
+      console.error("Error creating guide:", error);
+      res.status(500).json({ error: "Failed to create guide" });
+    }
+  });
+
+  app.patch("/api/guides/:id", isAdmin, async (req, res) => {
+    try {
+      const data = req.body;
+      if (data.content && !data.readTimeMinutes) {
+        const words = data.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+        data.readTimeMinutes = Math.max(1, Math.ceil(words / 200));
+      }
+      if (data.status === "published" && !data.publishedAt) {
+        data.publishedAt = new Date().toISOString();
+      }
+      const parsed = insertGuideSchema.partial().parse(data);
+      if (parsed.slug) {
+        const existing = await storage.getGuideBySlug(parsed.slug);
+        if (existing && existing.id !== req.params.id) return res.status(409).json({ error: "A guide with this slug already exists" });
+      }
+      const guide = await storage.updateGuide(req.params.id, parsed);
+      if (!guide) return res.status(404).json({ error: "Guide not found" });
+      res.json(guide);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Validation failed", details: error.issues });
+      console.error("Error updating guide:", error);
+      res.status(500).json({ error: "Failed to update guide" });
+    }
+  });
+
+  app.delete("/api/guides/:id", isAdmin, async (req, res) => {
+    try {
+      await storage.deleteGuide(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting guide:", error);
+      res.status(500).json({ error: "Failed to delete guide" });
+    }
+  });
+
+  // Saved Deals API for Compare Deals feature
+  app.post("/api/saved-deals", async (req, res) => {
+    try {
+      const validatedData = insertSavedDealSchema.parse(req.body);
+      const userId = req.session.userId as string | undefined;
+      const dealData = userId 
+        ? { ...validatedData, userId }
+        : validatedData;
+      const deal = await storage.createSavedDeal(dealData);
+      if (userId) {
+        upsertWatcherFromSavedDeal(userId, deal).catch((error) => {
+          console.error("Error upserting watcher from saved deal:", error);
+        });
+      }
+      res.json({ success: true, data: deal });
+    } catch (error) {
+      console.error("Error saving deal:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ success: false, error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ success: false, error: "Failed to save deal" });
+      }
+    }
+  });
+
+  app.post("/api/inspection-requests", async (req, res) => {
+    try {
+      const validatedData = insertInspectionRequestSchema.parse(req.body);
+      const userId = req.session.userId as string | undefined;
+      const [inspectionRequest] = await db.insert(inspectionRequests).values({
+        ...validatedData,
+        userId: userId || null,
+        sessionId: validatedData.sessionId || req.sessionID || null,
+        amountCents: validatedData.amountCents || 50000,
+        currency: (validatedData.currency || "cad").toLowerCase(),
+        checkoutStatus: "pending",
+        metadata: {
+          ...(validatedData.metadata as Record<string, unknown> | null || {}),
+          fulfillment: "paid_checkout_then_manual_assignment",
+          accountBackedState: "Authenticated requests are tied to users.id; anonymous requests keep session_id until signup.",
+        },
+      }).returning();
+
+      let checkoutUrl: string | null = null;
+      try {
+        const { getUncachableStripeClient } = await import("./stripeClient");
+        const stripe = await getUncachableStripeClient();
+        const checkoutInspectionType = validatedData.inspectionType || "standard_home_inspection";
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : process.env.REPLIT_DOMAINS
+            ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+            : "https://realist.ca";
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          customer_email: validatedData.contactEmail || undefined,
+          line_items: [{
+            price_data: {
+              currency: (validatedData.currency || "cad").toLowerCase(),
+              product_data: {
+                name: "Realist home inspection dispatch",
+                description: `${checkoutInspectionType.replace(/_/g, " ")} for ${validatedData.propertyAddress}`,
+              },
+              unit_amount: validatedData.amountCents || 50000,
+            },
+            quantity: 1,
+          }],
+          mode: "payment",
+          success_url: `${baseUrl}/tools/analyzer?inspection=success&requestId=${inspectionRequest.id}`,
+          cancel_url: `${baseUrl}/tools/analyzer?inspection=cancelled&requestId=${inspectionRequest.id}`,
+          metadata: {
+            product: "home_inspection_dispatch",
+            inspectionRequestId: inspectionRequest.id,
+            userId: userId || "",
+            listingId: validatedData.listingId || "",
+          },
+        });
+        checkoutUrl = session.url;
+      } catch (checkoutError) {
+        console.error("Error creating inspection checkout:", checkoutError);
+      }
+
+      await logUserActivity(req, {
+        userId: userId || null,
+        sessionId: validatedData.sessionId || req.sessionID || null,
+        eventName: "inspection.requested",
+        listingId: validatedData.listingId || null,
+        listingKey: validatedData.listingId || validatedData.propertyAddress,
+        sourcePage: req.headers.referer || null,
+        component: "inspection_request_placeholder",
+        metadata: {
+          city: validatedData.city,
+          province: validatedData.province,
+          inspectionType: validatedData.inspectionType,
+          amountCents: validatedData.amountCents || 50000,
+          status: inspectionRequest.status,
+        },
+      });
+
+      res.json({ success: true, data: inspectionRequest, checkoutUrl });
+    } catch (error) {
+      console.error("Error creating inspection request:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ success: false, error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ success: false, error: "Failed to create inspection request" });
+      }
+    }
+  });
+
+  app.get("/api/saved-deals", async (req, res) => {
+    try {
+      const sessionId = req.query.sessionId as string;
+      if (!sessionId) {
+        res.status(400).json({ error: "Session ID required" });
+        return;
+      }
+      const deals = await storage.getSavedDealsBySession(sessionId);
+      res.json(deals);
+    } catch (error) {
+      console.error("Error fetching saved deals:", error);
+      res.status(500).json({ error: "Failed to fetch saved deals" });
+    }
+  });
+
+  app.get("/api/user/saved-deals", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const deals = await storage.getSavedDealsByUser(userId);
+      res.json(deals);
+    } catch (error) {
+      console.error("Error fetching user saved deals:", error);
+      res.status(500).json({ error: "Failed to fetch saved deals" });
+    }
+  });
+
+  app.post("/api/user/discovery-signals/sync", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const payload = discoverySignalsSyncSchema.parse(req.body);
+
+      const records = [
+        ...payload.savedSearches.map((signal) => ({
+          userId,
+          signalType: "saved_search",
+          signalKey: signal.id,
+          payloadJson: signal,
+        })),
+        ...payload.savedListings.map((signal) => ({
+          userId,
+          signalType: "saved_listing",
+          signalKey: signal.listingId || signal.address || signal.id,
+          payloadJson: signal,
+        })),
+        ...payload.recentViewedListings.map((signal) => ({
+          userId,
+          signalType: "recent_viewed_listing",
+          signalKey: signal.listingId || signal.address || signal.id,
+          payloadJson: signal,
+        })),
+      ];
+
+      await storage.upsertDiscoverySignals(records);
+      await syncWatchersFromDiscoverySignals({
+        userId,
+        savedListings: payload.savedListings,
+        recentViewedListings: payload.recentViewedListings,
+      });
+      const mergedSignals = await storage.getDiscoverySignalsByUser(userId);
+
+      res.json({
+        savedSearches: mergedSignals
+          .filter((signal) => signal.signalType === "saved_search")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 25),
+        savedListings: mergedSignals
+          .filter((signal) => signal.signalType === "saved_listing")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 25),
+        recentViewedListings: mergedSignals
+          .filter((signal) => signal.signalType === "recent_viewed_listing")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 12),
+      });
+    } catch (error) {
+      console.error("Error syncing discovery signals:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid discovery signal payload", details: error.errors });
+        return;
+      }
+      res.status(500).json({ error: "Failed to sync discovery signals" });
+    }
+  });
+
+  app.get("/api/user/discovery-signals", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const mergedSignals = await storage.getDiscoverySignalsByUser(userId);
+
+      res.json({
+        savedSearches: mergedSignals
+          .filter((signal) => signal.signalType === "saved_search")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 25),
+        savedListings: mergedSignals
+          .filter((signal) => signal.signalType === "saved_listing")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 25),
+        recentViewedListings: mergedSignals
+          .filter((signal) => signal.signalType === "recent_viewed_listing")
+          .map((signal) => signal.payloadJson)
+          .slice(0, 12),
+      });
+    } catch (error) {
+      console.error("Error fetching discovery signals:", error);
+      res.status(500).json({ error: "Failed to fetch discovery signals" });
+    }
+  });
+
+  app.delete("/api/user/discovery-signals/:signalType/:signalKey", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const signalType = discoverySignalTypeSchema.parse(req.params.signalType);
+      const signalKey = decodeURIComponent(req.params.signalKey);
+
+      await storage.deleteDiscoverySignal(userId, signalType, signalKey);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting discovery signal:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid discovery signal type", details: error.errors });
+        return;
+      }
+      res.status(500).json({ error: "Failed to delete discovery signal" });
+    }
+  });
+
+  app.get("/api/user/investor-workspace", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const [mergedSignals, savedDeals, analysesByUser, profile, kyc] = await Promise.all([
+        storage.getDiscoverySignalsByUser(userId),
+        storage.getSavedDealsByUser(userId),
+        storage.getAnalysesByUser(userId),
+        storage.getInvestorProfile(userId),
+        storage.getInvestorKyc(userId),
+      ]);
+
+      const savedSearches = mergedSignals
+        .filter((signal) => signal.signalType === "saved_search")
+        .map((signal) => savedSearchSignalSchema.parse(signal.payloadJson))
+        .slice(0, 25);
+      const savedListings = mergedSignals
+        .filter((signal) => signal.signalType === "saved_listing")
+        .map((signal) => savedListingSignalSchema.parse(signal.payloadJson))
+        .slice(0, 25);
+      const recentViewedListings = mergedSignals
+        .filter((signal) => signal.signalType === "recent_viewed_listing")
+        .map((signal) => savedListingSignalSchema.parse(signal.payloadJson))
+        .slice(0, 12);
+
+      const dominantGeography = getTopSignalValue([
+        ...savedSearches.map((signal) => signal.geography),
+        ...savedListings.map((signal) => signal.city),
+        ...recentViewedListings.map((signal) => signal.city),
+        ...savedDeals.map((deal) => deal.city),
+        ...analysesByUser.map((analysis) => analysis.city),
+        profile?.city,
+      ]);
+
+      const dominantStrategy = getTopSignalValue([
+        ...savedSearches.map((signal) => signal.strategy),
+        ...savedListings.map((signal) => signal.strategy),
+        ...savedDeals.map((deal) => deal.strategyType),
+        ...analysesByUser.map((analysis) => analysis.strategyType),
+      ]);
+
+      const dominantPropertyType = getTopSignalValue([
+        ...savedSearches.map((signal) => signal.propertyType),
+        ...savedListings.map((signal) => signal.propertyType),
+      ]);
+
+      const budgetSignals = [
+        ...savedSearches.map((signal) => signal.budgetMax).filter((value): value is number => typeof value === "number" && Number.isFinite(value)),
+        ...savedListings.map((signal) => signal.price).filter((value): value is number => typeof value === "number" && Number.isFinite(value)),
+      ];
+      const targetBudget = budgetSignals.length
+        ? Math.round(budgetSignals.reduce((sum, value) => sum + value, 0) / budgetSignals.length)
+        : null;
+
+      const recommendationCandidates = [
+        savedSearches[0] && {
+          id: `resume-search-${savedSearches[0].id}`,
+          score: 100,
+          title: "Resume your highest-intent search",
+          reason: "You already saved a search, which is the clearest repeat-usage signal.",
+          href: buildDiscoveryHref({
+            query: savedSearches[0].query,
+            geography: savedSearches[0].geography,
+            strategy: savedSearches[0].strategy,
+            propertyType: savedSearches[0].propertyType,
+            budgetMax: savedSearches[0].budgetMax,
+          }),
+          cta: "Open saved search",
+        },
+        savedListings[0] && {
+          id: `analyze-shortlist-${savedListings[0].listingId || savedListings[0].id}`,
+          score: 92,
+          title: "Underwrite your top shortlisted property",
+          reason: "A saved listing is a stronger purchase signal than a casual view.",
+          href: buildAnalyzerHref(savedListings[0]),
+          cta: "Analyze shortlisted deal",
+        },
+        !savedListings[0] && recentViewedListings[0] && {
+          id: `revisit-recent-${recentViewedListings[0].listingId || recentViewedListings[0].id}`,
+          score: 84,
+          title: "Revisit the last property you viewed",
+          reason: "Recent listing views are the fastest path back into active discovery.",
+          href: buildAnalyzerHref(recentViewedListings[0]),
+          cta: "Review property",
+        },
+        dominantStrategy && dominantGeography && {
+          id: "strategy-expansion",
+          score: dominantStrategy === "multiplex" ? 82 : 74,
+          title: dominantStrategy === "multiplex"
+            ? "Search more multiplex opportunities"
+            : `Find more ${String(dominantStrategy).replace(/_/g, " ")} deals`,
+          reason: "This recommendation is ranked from repeated geography and strategy signals.",
+          href: buildDiscoveryHref({
+            geography: dominantGeography,
+            strategy: dominantStrategy,
+            propertyType: dominantPropertyType,
+            budgetMax: targetBudget,
+          }),
+          cta: "Explore matching deals",
+        },
+        analysesByUser[0] && {
+          id: `compare-last-analysis-${analysesByUser[0].id}`,
+          score: 68,
+          title: "Compare your next deal against recent analyses",
+          reason: "You already have underwriting history, so the next win is better comps and repeats.",
+          href: "/compare",
+          cta: "Compare deals",
+        },
+      ].filter(Boolean);
+
+      const recommendations = recommendationCandidates
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 4);
+
+      res.json({
+        discovery: {
+          savedSearches,
+          savedListings,
+          recentViewedListings,
+        },
+        savedDeals: savedDeals.slice(0, 25),
+        recentAnalyses: analysesByUser.slice(0, 8),
+        intentSummary: {
+          geography: dominantGeography,
+          strategy: dominantStrategy,
+          propertyType: dominantPropertyType,
+          targetBudget,
+          signalCounts: {
+            savedSearches: savedSearches.length,
+            savedListings: savedListings.length,
+            recentViewedListings: recentViewedListings.length,
+            savedDeals: savedDeals.length,
+            analyses: analysesByUser.length,
+          },
+        },
+        recommendations,
+        profileCompletion: {
+          hasProfile: Boolean(profile),
+          hasKyc: Boolean(kyc),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching investor workspace:", error);
+      if (error instanceof z.ZodError) {
+        res.status(500).json({ error: "Stored discovery signals failed validation", details: error.errors });
+        return;
+      }
+      res.status(500).json({ error: "Failed to fetch investor workspace" });
+    }
+  });
+
+  app.delete("/api/user/saved-deals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const deal = await storage.getSavedDeal(req.params.id);
+      
+      if (!deal) {
+        res.status(404).json({ error: "Deal not found" });
+        return;
+      }
+      
+      if (deal.userId !== userId) {
+        res.status(403).json({ error: "Not authorized to delete this deal" });
+        return;
+      }
+      
+      await storage.deleteSavedDeal(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting user saved deal:", error);
+      res.status(500).json({ error: "Failed to delete deal" });
+    }
+  });
+
+  app.get("/api/saved-deals/:id", async (req, res) => {
+    try {
+      const deal = await storage.getSavedDeal(req.params.id);
+      if (!deal) {
+        res.status(404).json({ error: "Deal not found" });
+        return;
+      }
+      res.json(deal);
+    } catch (error) {
+      console.error("Error fetching deal:", error);
+      res.status(500).json({ error: "Failed to fetch deal" });
+    }
+  });
+
+  app.delete("/api/saved-deals/:id", async (req, res) => {
+    try {
+      await storage.deleteSavedDeal(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting deal:", error);
+      res.status(500).json({ error: "Failed to delete deal" });
+    }
+  });
+
+  // Google Sheets export
+  app.post("/api/export/google-sheets", async (req, res) => {
+    try {
+      const { address, strategy, inputs, results } = req.body;
+      
+      if (!inputs || !results) {
+        res.status(400).json({ error: "Missing required data" });
+        return;
+      }
+
+      // Check if user has their own Google OAuth tokens
+      const userId = req.session?.userId;
+      let userTokens = null;
+      let exportedToUserAccount = false;
+      let userInfo: { name?: string; email?: string; phone?: string } = {};
+      
+      console.log("[Google Sheets Export] User ID:", userId || "anonymous");
+      
+      if (userId) {
+        // Fetch user info
+        const user = await authStorage.getUser(userId);
+        if (user) {
+          userInfo = {
+            name: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+            email: user.email || undefined,
+            phone: user.phone || undefined,
+          };
+        }
+        
+        const googleToken = await storage.getGoogleOAuthToken(userId);
+        console.log("[Google Sheets Export] Token found:", !!googleToken, googleToken?.googleEmail || "no email");
+        if (googleToken) {
+          userTokens = {
+            accessToken: googleToken.accessToken,
+            refreshToken: googleToken.refreshToken,
+            expiresAt: googleToken.expiresAt,
+          };
+          exportedToUserAccount = true;
+        }
+      }
+      
+      console.log("[Google Sheets Export] Exporting to:", exportedToUserAccount ? "user account" : "shared account");
+      console.log("[Google Sheets Export] User info:", userInfo);
+
+      let spreadsheetUrl: string;
+
+      try {
+        const exportResult = await exportToGoogleSheets({
+          address: address || "Property Analysis",
+          strategy: strategy || "buy_hold",
+          userInfo,
+          inputs,
+          results,
+        }, userTokens || undefined);
+
+        spreadsheetUrl = exportResult.spreadsheetUrl;
+
+        if (userId && userTokens && exportResult.refreshedTokens) {
+          const existingToken = await storage.getGoogleOAuthToken(userId);
+          await storage.upsertGoogleOAuthToken({
+            userId,
+            accessToken: exportResult.refreshedTokens.accessToken,
+            refreshToken: exportResult.refreshedTokens.refreshToken || userTokens.refreshToken || null,
+            tokenType: existingToken?.tokenType || "Bearer",
+            expiresAt: exportResult.refreshedTokens.expiresAt || null,
+            scope: existingToken?.scope || GOOGLE_SCOPES.join(" "),
+            googleEmail: existingToken?.googleEmail || null,
+          });
+        }
+      } catch (error) {
+        if (userId && userTokens && isGoogleReconnectRequiredError(error)) {
+          console.warn("[Google Sheets Export] Stored Google token is no longer valid; user needs to reconnect", error);
+          await storage.deleteGoogleOAuthToken(userId);
+          res.status(401).json({
+            error: "Google connection expired",
+            code: "GOOGLE_RECONNECT_REQUIRED",
+            message: "Your Google connection expired. Reconnect Google and try the export again.",
+          });
+          return;
+        }
+
+        throw error;
+      }
+
+      // Send email notification to danielfoch@gmail.com
+      try {
+        await sendNotificationEmail({
+          to: "danielfoch@gmail.com",
+          subject: `New Google Sheet Created: ${address || "Property Analysis"}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 24px; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">New Google Sheet Created</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Realist.ca Deal Analyzer Export</p>
+              </div>
+              
+              <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">Property Address</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${address || "Not specified"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">User Name</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${userInfo.name || "Not specified"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">User Email</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${userInfo.email || "Not specified"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">User Phone</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${userInfo.phone || "Not specified"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px; border-bottom: 1px solid #f3f4f6;">Strategy</td>
+                    <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f3f4f6; text-align: right;">${strategy || "buy_hold"}</td>
+                  </tr>
+                </table>
+                
+                <div style="margin-top: 20px; text-align: center;">
+                  <a href="${spreadsheetUrl}" style="display: inline-block; background: #22c55e; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">View Google Sheet</a>
+                </div>
+                
+                <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
+                  <p style="margin: 0; color: #6b7280; font-size: 12px;">
+                    Created on ${new Date().toLocaleString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              </div>
+              
+              <div style="text-align: center; padding: 16px;">
+                <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                  Realist.ca - Canada's #1 Real Estate Deal Analyzer
+                </p>
+              </div>
+            </div>
+          `,
+        });
+        console.log("[Google Sheets Export] Email notification sent to danielfoch@gmail.com");
+      } catch (emailError) {
+        console.error("[Google Sheets Export] Failed to send email notification:", emailError);
+        // Don't fail the whole request if email fails
+      }
+
+      res.json({ 
+        success: true, 
+        url: spreadsheetUrl,
+        exportedToUserAccount,
+      });
+    } catch (error) {
+      console.error("Error exporting to Google Sheets:", error);
+      res.status(500).json({ 
+        error: "Failed to export to Google Sheets",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Google OAuth for user-owned exports
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+  const GOOGLE_REDIRECT_URI = process.env.NODE_ENV === "production"
+    ? "https://realist.ca/api/google/callback"
+    : `https://${process.env.REPLIT_DEV_DOMAIN}/api/google/callback`;
+  const GOOGLE_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/userinfo.email",
+  ];
+  const GOOGLE_SHEETS_DEFAULT_RETURN_URL = "/investor";
+
+  const normalizeGoogleSheetsReturnUrl = (rawUrl?: string) => {
+    if (!rawUrl) {
+      return GOOGLE_SHEETS_DEFAULT_RETURN_URL;
+    }
+
+    try {
+      if (rawUrl.startsWith("/")) {
+        return rawUrl;
+      }
+
+      const parsed = new URL(rawUrl);
+      const allowedHosts = new Set(["realist.ca", "www.realist.ca"]);
+      if (allowedHosts.has(parsed.host)) {
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      }
+    } catch {
+      // Ignore malformed or off-site return URLs.
+    }
+
+    return GOOGLE_SHEETS_DEFAULT_RETURN_URL;
+  };
+
+  const withGoogleSheetsStatus = (url: string, key: string, value: string) =>
+    `${url}${url.includes("?") ? "&" : "?"}${key}=${encodeURIComponent(value)}`;
+
+  const isGoogleReconnectRequiredError = (error: unknown) => {
+    const candidate = error as {
+      status?: number;
+      message?: string;
+      response?: { status?: number; data?: { error?: string; error_description?: string } };
+      errors?: Array<{ reason?: string; message?: string }>;
+    };
+
+    const status = candidate?.status ?? candidate?.response?.status;
+    const message = [
+      candidate?.message,
+      candidate?.response?.data?.error,
+      candidate?.response?.data?.error_description,
+      ...(candidate?.errors?.map((entry) => `${entry.reason || ""} ${entry.message || ""}`.trim()) || []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      status === 401 ||
+      message.includes("invalid_grant") ||
+      message.includes("invalid credentials") ||
+      message.includes("unauthorized") ||
+      message.includes("reauth") ||
+      message.includes("token has been expired") ||
+      message.includes("access token")
+    );
+  };
+
+  // Check if Google OAuth is configured
+  app.get("/api/google/status", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        res.json({ connected: false, configured: !!GOOGLE_CLIENT_ID });
+        return;
+      }
+
+      const token = await storage.getGoogleOAuthToken(userId);
+      res.json({ 
+        connected: !!token, 
+        configured: !!GOOGLE_CLIENT_ID,
+        email: token?.googleEmail || null,
+      });
+    } catch (error) {
+      console.error("Error checking Google status:", error);
+      res.status(500).json({ error: "Failed to check Google status" });
+    }
+  });
+
+  // Start Google OAuth flow
+  app.get("/api/google/authorize", isAuthenticated, (req, res) => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      res.status(400).json({ error: "Google OAuth not configured" });
+      return;
+    }
+
+    console.log("[Google Sheets OAuth] Starting authorization flow");
+    console.log("[Google Sheets OAuth] Redirect URI:", GOOGLE_REDIRECT_URI);
+    console.log("[Google Sheets OAuth] NODE_ENV:", process.env.NODE_ENV);
+
+    const oauth2Client = new google.auth.OAuth2(
+      GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET,
+      GOOGLE_REDIRECT_URI
+    );
+
+    const state = crypto.randomBytes(32).toString("hex");
+    req.session.googleSheetsAuthState = state;
+    req.session.googleSheetsAuthReturnUrl = normalizeGoogleSheetsReturnUrl(
+      typeof req.query.returnUrl === "string" ? req.query.returnUrl : req.get("referer"),
+    );
+
+    req.session.save((err) => {
+      if (err) {
+        console.error("[Google Sheets OAuth] Failed to persist session before redirect", err);
+        res.status(500).json({ error: "Failed to start Google authorization" });
+        return;
+      }
+
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: "offline",
+        scope: GOOGLE_SCOPES,
+        prompt: "consent",
+        state,
+      });
+
+      console.log("[Google Sheets OAuth] Auth URL:", authUrl);
+      res.redirect(authUrl);
+    });
+  });
+
+  // Handle Google OAuth callback
+  app.get("/api/google/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      const sessionUserId = req.session?.userId;
+      const returnUrl = normalizeGoogleSheetsReturnUrl(req.session.googleSheetsAuthReturnUrl);
+      
+      // Validate session and state match to prevent CSRF attacks
+      if (!sessionUserId) {
+        console.error("Google OAuth callback: No session user ID");
+        res.redirect(withGoogleSheetsStatus(withGoogleSheetsStatus(GOOGLE_SHEETS_DEFAULT_RETURN_URL, "error", "google_auth_failed"), "reason", "no_session"));
+        return;
+      }
+      
+      if (!code || !state || typeof code !== "string" || typeof state !== "string") {
+        res.redirect(withGoogleSheetsStatus(returnUrl, "error", "google_auth_failed"));
+        return;
+      }
+      
+      if (state !== req.session.googleSheetsAuthState) {
+        console.error(`Google OAuth callback: State mismatch. State: ${state}, Session state: ${req.session.googleSheetsAuthState}`);
+        res.redirect(withGoogleSheetsStatus(withGoogleSheetsStatus(returnUrl, "error", "google_auth_failed"), "reason", "state_mismatch"));
+        return;
+      }
+
+      delete req.session.googleSheetsAuthState;
+
+      if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+        res.redirect(withGoogleSheetsStatus(returnUrl, "error", "google_not_configured"));
+        return;
+      }
+
+      const oauth2Client = new google.auth.OAuth2(
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET,
+        GOOGLE_REDIRECT_URI
+      );
+
+      const { tokens } = await oauth2Client.getToken(code);
+      oauth2Client.setCredentials(tokens);
+
+      // Get user email
+      const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+      const userInfo = await oauth2.userinfo.get();
+      const googleEmail = userInfo.data.email;
+      const existingToken = await storage.getGoogleOAuthToken(sessionUserId);
+
+      // Save tokens to database using verified session user ID
+      await storage.upsertGoogleOAuthToken({
+        userId: sessionUserId,
+        accessToken: tokens.access_token!,
+        refreshToken: tokens.refresh_token || existingToken?.refreshToken || null,
+        tokenType: tokens.token_type || "Bearer",
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+        scope: tokens.scope || GOOGLE_SCOPES.join(" "),
+        googleEmail,
+      });
+
+      console.log(`Google OAuth connected for user ${sessionUserId} (${googleEmail})`);
+      delete req.session.googleSheetsAuthReturnUrl;
+      res.redirect(withGoogleSheetsStatus(returnUrl, "google", "connected"));
+    } catch (error) {
+      console.error("Error in Google OAuth callback:", error);
+      res.redirect("/investor?error=google_auth_failed");
+    }
+  });
+
+  // Disconnect Google account
+  app.post("/api/google/disconnect", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
+
+      await storage.deleteGoogleOAuthToken(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error disconnecting Google:", error);
+      res.status(500).json({ error: "Failed to disconnect Google" });
+    }
+  });
+
+  // Podcast episodes from RSS feed
+  app.get("/api/podcast/episodes", async (req, res) => {
+    try {
+      const rssUrl = "https://www.omnycontent.com/d/playlist/d75d2ff4-a4dd-4a19-bcb1-ad35013dfc83/1d7b066c-9af2-431a-bea7-aecd01493da3/69cdac4f-3b2e-45b4-ae6f-aecd0152873d/podcast.rss";
+      
+      const response = await fetch(rssUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; Realist/1.0)',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`RSS fetch failed: ${response.status}`);
+      }
+      
+      const xmlText = await response.text();
+      
+      // Parse XML manually
+      const episodes: any[] = [];
+      const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+      let match;
+      
+      // Get feed image
+      const feedImageMatch = xmlText.match(/<image>[\s\S]*?<url>([^<]+)<\/url>[\s\S]*?<\/image>/);
+      const feedImage = feedImageMatch ? feedImageMatch[1] : "";
+      
+      while ((match = itemRegex.exec(xmlText)) !== null) {
+        const itemXml = match[1];
+        
+        const getTagContent = (tag: string) => {
+          const regex = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([^<]*)<\\/${tag}>`);
+          const m = itemXml.match(regex);
+          return m ? (m[1] || m[2] || "").trim() : "";
+        };
+        
+        const getAttr = (tag: string, attr: string) => {
+          const regex = new RegExp(`<${tag}[^>]*${attr}="([^"]*)"[^>]*/?>`);
+          const m = itemXml.match(regex);
+          return m ? m[1] : "";
+        };
+        
+        const title = getTagContent("title");
+        const description = getTagContent("description") || getTagContent("itunes:summary");
+        const pubDate = getTagContent("pubDate");
+        const link = getTagContent("link");
+        const duration = getTagContent("itunes:duration");
+        const audioUrl = getAttr("enclosure", "url") || link;
+        const imageUrl = getAttr("itunes:image", "href") || feedImage;
+        
+        episodes.push({
+          title,
+          description,
+          pubDate,
+          audioUrl,
+          duration,
+          link,
+          imageUrl,
+        });
+      }
+      
+      res.json(episodes.slice(0, 50)); // Limit to 50 episodes
+    } catch (error) {
+      console.error("Error fetching podcast episodes:", error);
+      res.status(500).json({ error: "Failed to fetch podcast episodes" });
+    }
+  });
+
+  // Podcast Q&A question submission
+  app.post("/api/podcast/question", async (req, res) => {
+    try {
+      const { firstName, lastName, email, question } = req.body;
+      
+      if (!firstName || !lastName || !email || !question) {
+        res.status(400).json({ error: "First name, last name, email, and question are required" });
+        return;
+      }
+
+      const fullName = `${firstName} ${lastName}`;
+
+      // Store in database (using full name for backwards compatibility)
+      const storedQuestion = await storage.createPodcastQuestion({ name: fullName, email, question });
+
+      // Send email notification via Resend
+      sendPodcastQuestionNotification({
+        name: fullName,
+        email,
+        question,
+      }).catch(err => console.error("Podcast question email error:", err));
+
+      // Format phone to E.164 format for GHL (no phone for podcast, use placeholder)
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        if (cleaned.length === 10) {
+          return '+1' + cleaned;
+        }
+        return '+' + cleaned;
+      };
+
+      // Send to GHL webhook with standardized format
+      sendWebhook(storedQuestion.id.toString(), {
+        email,
+        firstName,
+        lastName,
+        fullName,
+        phone: "",
+        formTag: "podcast_question",
+        leadSource: "Podcast Q&A",
+        question,
+        submittedAt: new Date().toISOString(),
+      }).catch(err => console.error("Webhook error:", err));
+
+      res.json({ success: true, data: storedQuestion });
+    } catch (error) {
+      console.error("Error submitting podcast question:", error);
+      res.status(500).json({ error: "Failed to submit question" });
+    }
+  });
+
+  // Get podcast questions (admin)
+  app.get("/api/podcast/questions", async (req, res) => {
+    try {
+      const questions = await storage.getPodcastQuestions();
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching podcast questions:", error);
+      res.status(500).json({ error: "Failed to fetch questions" });
+    }
+  });
+
+  // ============================================
+  // COACHING WAITLIST API ROUTES
+  // ============================================
+
+  // Submit coaching waitlist entry
+  app.post("/api/coaching-waitlist", async (req, res) => {
+    try {
+      const { fullName, email, phone, mainProblem } = req.body;
+      
+      if (!fullName || !email || !phone || !mainProblem) {
+        res.status(400).json({ error: "All fields are required" });
+        return;
+      }
+
+      const validatedData = insertCoachingWaitlistSchema.parse({
+        fullName,
+        email,
+        phone,
+        mainProblem,
+      });
+
+      const entry = await storage.createCoachingWaitlistEntry(validatedData);
+
+      // Send email notification
+      sendCoachingWaitlistNotification({
+        fullName,
+        email,
+        phone,
+        mainProblem,
+      }).catch(err => console.error("Coaching waitlist email error:", err));
+
+      // Send to GHL webhook
+      const nameParts = fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      sendWebhook(entry.id, {
+        email,
+        firstName,
+        lastName,
+        fullName,
+        phone,
+        formTag: "coaching_waitlist",
+        leadSource: "Coaching Waitlist",
+        mainProblem,
+        submittedAt: new Date().toISOString(),
+      }).catch(err => console.error("Webhook error:", err));
+
+      res.json({ success: true, data: entry });
+    } catch (error) {
+      console.error("Error submitting coaching waitlist:", error);
+      res.status(500).json({ error: "Failed to join waitlist" });
+    }
+  });
+
+  // Get coaching waitlist entries (admin)
+  app.get("/api/coaching-waitlist", isAdmin, async (req, res) => {
+    try {
+      const entries = await storage.getCoachingWaitlistEntries();
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching coaching waitlist:", error);
+      res.status(500).json({ error: "Failed to fetch waitlist" });
+    }
+  });
+
+  // Update coaching waitlist entry status (admin)
+  app.patch("/api/coaching-waitlist/:id", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, notes } = req.body;
+      
+      const updated = await storage.updateCoachingWaitlistEntry(id, { status, notes });
+      if (!updated) {
+        res.status(404).json({ error: "Entry not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating coaching waitlist entry:", error);
+      res.status(500).json({ error: "Failed to update entry" });
+    }
+  });
+
+  // ============================================
+  // INVESTOR PORTAL API ROUTES
+  // ============================================
+
+  // Get investor profile
+  app.get("/api/investor/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const profile = await storage.getInvestorProfile(userId);
+      res.json(profile || null);
+    } catch (error) {
+      console.error("Error fetching investor profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // Create investor profile (for signup flow)
+  app.post("/api/investor/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const existingProfile = await storage.getInvestorProfile(userId);
+      if (existingProfile) {
+        res.json(existingProfile);
+        return;
+      }
+      const profile = await storage.upsertInvestorProfile({ userId });
+      res.json(profile);
+    } catch (error) {
+      console.error("Error creating investor profile:", error);
+      res.status(500).json({ error: "Failed to create profile" });
+    }
+  });
+
+  // Update investor profile
+  app.put("/api/investor/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const validatedData = insertInvestorProfileSchema.parse({ ...req.body, userId });
+      const profile = await storage.upsertInvestorProfile(validatedData);
+      res.json(profile);
+    } catch (error) {
+      console.error("Error updating investor profile:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update profile" });
+      }
+    }
+  });
+
+  // Get investor KYC
+  app.get("/api/investor/kyc", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const kyc = await storage.getInvestorKyc(userId);
+      res.json(kyc || null);
+    } catch (error) {
+      console.error("Error fetching investor KYC:", error);
+      res.status(500).json({ error: "Failed to fetch KYC" });
+    }
+  });
+
+  // Update investor KYC
+  app.put("/api/investor/kyc", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const validatedData = insertInvestorKycSchema.parse({ ...req.body, userId });
+      const kyc = await storage.upsertInvestorKyc(validatedData);
+      res.json(kyc);
+    } catch (error) {
+      console.error("Error updating investor KYC:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update KYC" });
+      }
+    }
+  });
+
+  // Get portfolio properties
+  app.get("/api/investor/portfolio", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const properties = await storage.getPortfolioProperties(userId);
+      res.json(properties);
+    } catch (error) {
+      console.error("Error fetching portfolio:", error);
+      res.status(500).json({ error: "Failed to fetch portfolio" });
+    }
+  });
+
+  // Add portfolio property
+  app.post("/api/investor/portfolio", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const validatedData = insertPortfolioPropertySchema.parse({ ...req.body, userId });
+      const property = await storage.createPortfolioProperty(validatedData);
+      res.json(property);
+    } catch (error) {
+      console.error("Error adding portfolio property:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to add property" });
+      }
+    }
+  });
+
+  // Update portfolio property
+  app.put("/api/investor/portfolio/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const property = await storage.getPortfolioProperty(req.params.id);
+      if (!property || property.userId !== userId) {
+        res.status(404).json({ error: "Property not found" });
+        return;
+      }
+      const updated = await storage.updatePortfolioProperty(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating portfolio property:", error);
+      res.status(500).json({ error: "Failed to update property" });
+    }
+  });
+
+  // Delete portfolio property
+  app.delete("/api/investor/portfolio/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const property = await storage.getPortfolioProperty(req.params.id);
+      if (!property || property.userId !== userId) {
+        res.status(404).json({ error: "Property not found" });
+        return;
+      }
+      await storage.deletePortfolioProperty(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting portfolio property:", error);
+      res.status(500).json({ error: "Failed to delete property" });
+    }
+  });
+
+  // ============================================
+  // INDUSTRY PARTNER PORTAL API ROUTES
+  // ============================================
+
+  // Get partner profile
+  app.get("/api/partner/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const partner = await storage.getIndustryPartner(userId);
+      res.json(partner || null);
+    } catch (error) {
+      console.error("Error fetching partner profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // Update partner profile
+  app.put("/api/partner/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const validatedData = insertIndustryPartnerSchema.parse({ ...req.body, userId });
+      const partner = await storage.upsertIndustryPartner(validatedData);
+      res.json(partner);
+    } catch (error) {
+      console.error("Error updating partner profile:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update profile" });
+      }
+    }
+  });
+
+  // Get partner leads
+  app.get("/api/partner/leads", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const partner = await storage.getIndustryPartner(userId);
+      if (!partner) {
+        res.status(404).json({ error: "Partner profile not found" });
+        return;
+      }
+      const leads = await storage.getPartnerLeads(partner.id);
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching partner leads:", error);
+      res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  // Update partner lead status
+  app.put("/api/partner/leads/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const partner = await storage.getIndustryPartner(userId);
+      if (!partner) {
+        res.status(404).json({ error: "Partner profile not found" });
+        return;
+      }
+      const updated = await storage.updatePartnerLead(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating partner lead:", error);
+      res.status(500).json({ error: "Failed to update lead" });
+    }
+  });
+
+  // Public endpoint to get approved partners by area (for display on site)
+  app.get("/api/partners/public", async (req, res) => {
+    try {
+      const area = (req.query.area as string) || "";
+      const partners = await storage.getApprovedPartnersByArea(area);
+      // Return only public info
+      res.json(partners.map(p => ({
+        id: p.id,
+        partnerType: p.partnerType,
+        companyName: p.companyName,
+        bio: p.bio,
+        headshotUrl: p.headshotUrl,
+        serviceAreas: p.serviceAreas,
+        socialLinks: p.socialLinks,
+        publicEmail: p.publicEmail,
+      })));
+    } catch (error) {
+      console.error("Error fetching public partners:", error);
+      res.status(500).json({ error: "Failed to fetch partners" });
+    }
+  });
+
+  // ============================================
+  // REALTOR PARTNER NETWORK ROUTES
+  // ============================================
+
+  const claimMarketSchema = z.object({
+    marketCity: z.string().min(1, "Market city is required"),
+    marketRegion: z.string().min(1, "Market region is required"),
+    signedName: z.string().min(1, "Full legal name is required"),
+    signatureDataUrl: z.string().min(1, "Signature is required"),
+  });
+
+  app.post("/api/realtor-network/claim-market", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const parsed = claimMarketSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid request" });
+      }
+      const { marketCity, marketRegion, signedName, signatureDataUrl } = parsed.data;
+
+      const existingClaims = await storage.getRealtorMarketClaimsByUser(userId);
+      const alreadyClaimed = existingClaims.find(
+        c => c.marketCity.toLowerCase() === marketCity.toLowerCase() && 
+             c.marketRegion.toLowerCase() === marketRegion.toLowerCase() && 
+             c.status === "active"
+      );
+      if (alreadyClaimed) {
+        return res.status(400).json({ error: "You already have an active claim for this market" });
+      }
+
+      const partner = await storage.getIndustryPartner(userId);
+
+      const claim = await storage.createRealtorMarketClaim({
+        userId,
+        partnerId: partner?.id || null,
+        marketCity,
+        marketRegion,
+        status: "active",
+        referralFeePercent: 25,
+        referralAgreementSignedAt: new Date(),
+        referralAgreementSignature: signatureDataUrl,
+        referralAgreementSignedName: signedName,
+      });
+
+      res.json(claim);
+    } catch (error) {
+      console.error("Error claiming market:", error);
+      res.status(500).json({ error: "Failed to claim market" });
+    }
+  });
+
+  app.get("/api/realtor-network/my-claims", isAuthenticated, async (req: any, res) => {
+    try {
+      const claims = await storage.getRealtorMarketClaimsByUser(req.session.userId);
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching market claims:", error);
+      res.status(500).json({ error: "Failed to fetch market claims" });
+    }
+  });
+
+  app.get("/api/realtor-network/my-leads", isAuthenticated, async (req: any, res) => {
+    try {
+      const notifications = await storage.getPendingNotificationsForRealtor(req.session.userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching realtor lead notifications:", error);
+      res.status(500).json({ error: "Failed to fetch leads" });
+    }
+  });
+
+  app.post("/api/realtor-network/claim-lead/:notificationId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { notificationId } = req.params;
+
+      const notification = await storage.getRealtorLeadNotification(notificationId);
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      if (notification.realtorUserId !== userId) {
+        return res.status(403).json({ error: "Not your notification" });
+      }
+      if (notification.status === "claimed") {
+        return res.status(400).json({ error: "Lead already claimed" });
+      }
+
+      const lead = await storage.getLead(notification.leadId);
+      if (!lead) {
+        return res.status(404).json({ error: "Lead not found" });
+      }
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const partner = await storage.getIndustryPartner(userId);
+      const realtorName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      const realtorEmail = partner?.publicEmail || user.email;
+      const realtorPhone = partner?.phone || user.phone || undefined;
+      const realtorCompany = partner?.companyName || undefined;
+
+      let introResult;
+      try {
+        introResult = await sendRealtorIntroEmail({
+          leadName: lead.name,
+          leadEmail: lead.email,
+          realtorName,
+          realtorEmail,
+          realtorPhone,
+          realtorCompany,
+          dealAddress: notification.dealAddress || undefined,
+          dealCity: notification.dealCity || undefined,
+          dealStrategy: notification.dealStrategy || undefined,
+        });
+      } catch (emailErr) {
+        console.error("Failed to send intro email:", emailErr);
+        return res.status(500).json({ error: "Failed to send introduction email" });
+      }
+
+      await storage.updateRealtorLeadNotification(notificationId, {
+        status: "claimed",
+        claimedAt: new Date(),
+      });
+
+      const introduction = await storage.createRealtorIntroduction({
+        notificationId,
+        realtorUserId: userId,
+        leadName: lead.name,
+        leadEmail: lead.email,
+        realtorName,
+        realtorEmail,
+        realtorPhone: realtorPhone || null,
+        realtorCompany: realtorCompany || null,
+        introEmailSubject: introResult.subject,
+        introEmailHtml: introResult.html,
+        sentAt: new Date(),
+      });
+
+      res.json({ success: true, introduction });
+    } catch (error) {
+      console.error("Error claiming lead:", error);
+      res.status(500).json({ error: "Failed to claim lead" });
+    }
+  });
+
+  app.get("/api/realtor-network/introductions", isAuthenticated, async (req: any, res) => {
+    try {
+      const intros = await storage.getRealtorIntroductionsByRealtor(req.session.userId);
+      res.json(intros);
+    } catch (error) {
+      console.error("Error fetching introductions:", error);
+      res.status(500).json({ error: "Failed to fetch introductions" });
+    }
+  });
+
+  // ============================================
+  // PROFESSIONAL SUBSCRIPTION ROUTES
+  // ============================================
+
+  // Get current user's subscription
+  app.get("/api/subscription", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      let subscription = await storage.getProfessionalSubscription(userId);
+      
+      if (!subscription) {
+        subscription = await storage.upsertProfessionalSubscription({
+          userId,
+          tier: 'free',
+          monthlyPullLimit: 5,
+          pullsUsedThisMonth: 0,
+        });
+      }
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      res.status(500).json({ error: "Failed to fetch subscription" });
+    }
+  });
+
+  // Create new professional subscription with brokerage info
+  app.post("/api/subscription/create", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { brokerageName, brokerageCity, brokerageProvince, professionalType, certificationNumber, serviceArea } = req.body;
+      
+      const subscription = await storage.upsertProfessionalSubscription({
+        userId,
+        tier: 'free',
+        monthlyPullLimit: 5,
+        pullsUsedThisMonth: 0,
+        brokerageName: brokerageName || null,
+        brokerageCity: brokerageCity || null,
+        brokerageProvince: brokerageProvince || null,
+        professionalType: professionalType || null,
+        certificationNumber: certificationNumber || null,
+        serviceArea: serviceArea || null,
+        onboardingStatus: professionalType === "inspector" || professionalType === "contractor"
+          ? "pending_verification"
+          : "started",
+      });
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ error: "Failed to create subscription" });
+    }
+  });
+
+  // Update brokerage information
+  app.patch("/api/subscription/brokerage", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { brokerageName, brokerageCity, brokerageProvince } = req.body;
+      
+      const subscription = await storage.upsertProfessionalSubscription({
+        userId,
+        brokerageName,
+        brokerageCity,
+        brokerageProvince,
+      });
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error updating brokerage:", error);
+      res.status(500).json({ error: "Failed to update brokerage" });
+    }
+  });
+
+  // Check and increment pull usage
+  app.post("/api/subscription/use-pull", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const result = await storage.incrementPullUsage(userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error incrementing pull usage:", error);
+      res.status(500).json({ error: "Failed to update usage" });
+    }
+  });
+
+  // Get Stripe publishable key
+  app.get("/api/stripe/publishable-key", async (_req, res) => {
+    try {
+      const { getStripePublishableKey } = await import("./stripeClient");
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error) {
+      console.error("Error fetching Stripe key:", error);
+      res.status(500).json({ error: "Failed to fetch Stripe key" });
+    }
+  });
+
+  // Create checkout session for premium subscription ($10/mo)
+  app.post("/api/subscription/checkout", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      const { stripeService } = await import("./stripeService");
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      
+      let subscription = await storage.getProfessionalSubscription(userId);
+      let customerId = subscription?.stripeCustomerId;
+      
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(
+          req.user.claims.email || `${userId}@realist.ca`,
+          userId,
+          req.user.claims.name
+        );
+        customerId = customer.id;
+        await storage.upsertProfessionalSubscription({
+          userId,
+          tier: 'free',
+          stripeCustomerId: customerId,
+        });
+      }
+      
+      const priceId = process.env.STRIPE_PREMIUM_PRICE_ID || process.env.STRIPE_STARTER_PRICE_ID || 'price_premium';
+      
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: 'subscription',
+        success_url: `${baseUrl}/premium?success=true`,
+        cancel_url: `${baseUrl}/premium?canceled=true`,
+        metadata: { userId, tier: 'premium' },
+      });
+      
+      res.json({ sessionId: session.id, url: session.url });
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  // Claim premium via BRA (buyer representation agreement) - free for 3 months
+  app.post("/api/subscription/claim-bra-premium", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { signedName, signatureDataUrl } = req.body;
+
+      if (!signedName || !signatureDataUrl) {
+        res.status(400).json({ error: "Signed name and signature are required" });
+        return;
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(now);
+      expiresAt.setMonth(expiresAt.getMonth() + 3);
+
+      await storage.upsertProfessionalSubscription({
+        userId,
+        tier: 'premium',
+        premiumSource: 'bra',
+        braSignedAt: now,
+        braExpiresAt: expiresAt,
+        braSignedName: signedName,
+        braSignatureDataUrl: signatureDataUrl,
+        status: 'active',
+      });
+
+      res.json({ 
+        success: true, 
+        tier: 'premium',
+        premiumSource: 'bra',
+        braExpiresAt: expiresAt.toISOString(),
+        redirectTo: '/tools/buybox',
+      });
+    } catch (error) {
+      console.error("Error claiming BRA premium:", error);
+      res.status(500).json({ error: "Failed to activate premium" });
+    }
+  });
+
+  // Get premium status (enhanced subscription endpoint)
+  app.get("/api/subscription/status", async (req: any, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        res.json({ tier: 'free', isPremium: false });
+        return;
+      }
+
+      const subscription = await storage.getProfessionalSubscription(userId);
+      if (!subscription || subscription.tier === 'free') {
+        res.json({ tier: 'free', isPremium: false });
+        return;
+      }
+
+      // Check if BRA-based premium has expired
+      if (subscription.premiumSource === 'bra' && subscription.braExpiresAt) {
+        if (new Date() > new Date(subscription.braExpiresAt)) {
+          await storage.updateProfessionalSubscription(userId, {
+            tier: 'free',
+            status: 'expired',
+          });
+          res.json({ 
+            tier: 'free', 
+            isPremium: false, 
+            braExpired: true,
+            message: 'Your BRA-based premium has expired. Renew or subscribe to continue.',
+          });
+          return;
+        }
+      }
+
+      res.json({
+        tier: subscription.tier,
+        isPremium: subscription.tier === 'premium',
+        premiumSource: subscription.premiumSource,
+        braExpiresAt: subscription.braExpiresAt,
+        braSignedAt: subscription.braSignedAt,
+        hasBraSigned: !!subscription.braSignedAt,
+      });
+    } catch (error) {
+      console.error("Error fetching premium status:", error);
+      res.status(500).json({ error: "Failed to fetch status" });
+    }
+  });
+
+  // Experiment endpoints
+  app.post("/api/experiments/assign", async (req: any, res) => {
+    try {
+      const { visitorId, experimentKey } = req.body;
+      if (!visitorId || !experimentKey) {
+        res.status(400).json({ error: "visitorId and experimentKey required" });
+        return;
+      }
+
+      let assignment = await storage.getExperimentAssignment(visitorId, experimentKey);
+      if (!assignment) {
+        const variants = ['A', 'B', 'C'];
+        const variant = variants[Math.floor(Math.random() * variants.length)];
+        assignment = await storage.createExperimentAssignment({
+          visitorId,
+          userId: req.session?.userId || null,
+          experimentKey,
+          variant,
+        });
+      }
+
+      res.json({ variant: assignment.variant, experimentKey });
+    } catch (error) {
+      console.error("Error assigning experiment:", error);
+      res.status(500).json({ error: "Failed to assign experiment" });
+    }
+  });
+
+  app.post("/api/experiments/convert", async (req: any, res) => {
+    try {
+      const { visitorId, experimentKey } = req.body;
+      if (!visitorId || !experimentKey) {
+        res.status(400).json({ error: "visitorId and experimentKey required" });
+        return;
+      }
+      await storage.markExperimentConverted(visitorId, experimentKey);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error converting experiment:", error);
+      res.status(500).json({ error: "Failed to record conversion" });
+    }
+  });
+
+  app.get("/api/experiments/stats/:key", isAuthenticated, async (req: any, res) => {
+    try {
+      const stats = await storage.getExperimentStats(req.params.key);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching experiment stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  // Branding assets CRUD
+  app.get("/api/branding", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const branding = await storage.getBrandingAssets(userId);
+      res.json(branding || null);
+    } catch (error) {
+      console.error("Error fetching branding:", error);
+      res.status(500).json({ error: "Failed to fetch branding" });
+    }
+  });
+
+  app.put("/api/branding", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // Check premium status
+      const subscription = await storage.getProfessionalSubscription(userId);
+      const isPremium = subscription?.tier === 'premium' && subscription?.status === 'active';
+      if (!isPremium) {
+        res.status(403).json({ error: "Premium subscription required for custom branding" });
+        return;
+      }
+
+      const { companyName, primaryColor, secondaryColor, contactEmail, contactPhone, website, disclaimerText, logoUrl } = req.body;
+      const branding = await storage.upsertBrandingAssets({
+        userId,
+        companyName: companyName || null,
+        primaryColor: primaryColor || null,
+        secondaryColor: secondaryColor || null,
+        contactEmail: contactEmail || null,
+        contactPhone: contactPhone || null,
+        website: website || null,
+        disclaimerText: disclaimerText || null,
+        logoUrl: logoUrl || null,
+      });
+
+      res.json(branding);
+    } catch (error) {
+      console.error("Error updating branding:", error);
+      res.status(500).json({ error: "Failed to update branding" });
+    }
+  });
+
+  // Create customer portal session
+  app.post("/api/subscription/portal", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const subscription = await storage.getProfessionalSubscription(userId);
+      
+      if (!subscription?.stripeCustomerId) {
+        res.status(400).json({ error: "No subscription found" });
+        return;
+      }
+      
+      const { stripeService } = await import("./stripeService");
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const session = await stripeService.createCustomerPortalSession(
+        subscription.stripeCustomerId,
+        `${baseUrl}/professional/dashboard`
+      );
+      
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating portal session:", error);
+      res.status(500).json({ error: "Failed to create portal session" });
+    }
+  });
+
+
+  // ============================================
+  // CREA DDF API ROUTES
+  // ============================================
+
+  app.post("/api/ddf/listings", async (req: any, res) => {
+    try {
+      const { isDdfConfigured, searchDdfListings, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      const { isVacantLandLikeProperty } = await import("@shared/propertyEligibility");
+
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "CREA DDF not configured", available: false });
+        return;
+      }
+
+      const {
+        city,
+        stateOrProvince,
+        minPrice,
+        maxPrice,
+        minBeds,
+        maxBeds,
+        minUnits,
+        propertySubType,
+        excludeBusinessSales,
+        excludeParking,
+        excludeVacantLand,
+        pageNum,
+        resultsPerPage,
+        latitudeMin,
+        latitudeMax,
+        longitudeMin,
+        longitudeMax,
+      } = req.body;
+
+      const sanitizedCity = typeof city === "string" ? city.slice(0, 100) : undefined;
+      const sanitizedProvince = typeof stateOrProvince === "string" ? stateOrProvince.slice(0, 100) : undefined;
+      const sanitizedSubType = typeof propertySubType === "string" ? propertySubType.slice(0, 100) : undefined;
+      const top = Math.min(Math.max(Number(resultsPerPage) || 50, 1), 100);
+      const pg = Math.max(Number(pageNum) || 1, 1);
+      const skip = (pg - 1) * top;
+
+      const result = await searchDdfListings({
+        city: sanitizedCity || undefined,
+        stateOrProvince: sanitizedProvince || undefined,
+        minPrice: minPrice ? Math.max(0, Number(minPrice)) : undefined,
+        maxPrice: maxPrice ? Math.max(0, Number(maxPrice)) : undefined,
+        minBeds: minBeds ? Math.max(0, Number(minBeds)) : undefined,
+        maxBeds: maxBeds ? Math.max(0, Number(maxBeds)) : undefined,
+        minUnits: minUnits ? Math.max(1, Number(minUnits)) : undefined,
+        propertySubType: sanitizedSubType || undefined,
+        excludeBusinessSales: !!excludeBusinessSales,
+        excludeParking: !!excludeParking,
+        excludeVacantLand: excludeVacantLand !== false,
+        latitudeMin: latitudeMin ? Number(latitudeMin) : undefined,
+        latitudeMax: latitudeMax ? Number(latitudeMax) : undefined,
+        longitudeMin: longitudeMin ? Number(longitudeMin) : undefined,
+        longitudeMax: longitudeMax ? Number(longitudeMax) : undefined,
+        top,
+        skip,
+      });
+
+      const normalizedListings = result.listings
+        .map(normalizeDdfToRepliersFormat)
+        .filter((listing: any) => {
+          const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
+          return Number.isFinite(price) && price > 1 && !isVacantLandLikeProperty(listing);
+        });
+
+      await markListingsSeenFromActiveFeed(normalizedListings
+        .filter((listing: any) => listing.mlsNumber)
+        .map((listing: any) => ({
+          listingKey: listing.mlsNumber,
+          mlsNumber: listing.mlsNumber,
+          board: listing.board || listing.office?.board || null,
+          province: listing.address?.state || null,
+        })));
+
+      res.json({
+        listings: normalizedListings,
+        count: normalizedListings.length,
+        numPages: normalizedListings.length > 0 ? Math.ceil(normalizedListings.length / top) : 0,
+        page: result.page,
+        source: "crea_ddf",
+      });
+    } catch (error: any) {
+      console.error("DDF listings error:", error);
+      res.status(500).json({ error: "Failed to fetch DDF listings" });
+    }
+  });
+
+  app.get("/api/ddf/listing/:listingKey", async (req: any, res) => {
+    try {
+      const { isDdfConfigured, getDdfListing, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "CREA DDF not configured" });
+        return;
+      }
+
+      const listingKey = req.params.listingKey?.replace(/[^a-zA-Z0-9_-]/g, "");
+      if (!listingKey) {
+        res.status(400).json({ error: "Invalid listing key" });
+        return;
+      }
+
+      const listing = await getDdfListing(listingKey);
+      if (!listing) {
+        res.status(404).json({ error: "Listing not found" });
+        return;
+      }
+
+      res.json({ listing: normalizeDdfToRepliersFormat(listing), source: "crea_ddf" });
+    } catch (error: any) {
+      console.error("DDF listing error:", error);
+      res.status(500).json({ error: "Failed to fetch DDF listing" });
+    }
+  });
+
+  app.get("/api/ddf/mls/:mlsNumber", async (req: any, res) => {
+    try {
+      const { isDdfConfigured, searchDdfByMlsNumber, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "CREA DDF not configured", available: false });
+        return;
+      }
+
+      const mlsNumber = req.params.mlsNumber?.replace(/[^a-zA-Z0-9]/g, "");
+      if (!mlsNumber) {
+        res.status(400).json({ error: "Invalid MLS number" });
+        return;
+      }
+
+      const listing = await searchDdfByMlsNumber(mlsNumber);
+      if (!listing) {
+        res.status(404).json({ error: "No listing found for that MLS number" });
+        return;
+      }
+
+      const normalized = normalizeDdfToRepliersFormat(listing);
+
+      const parsedListing = {
+        listingId: normalized.mlsNumber || mlsNumber,
+        propertyId: listing.ListingKey || "",
+        address: [listing.StreetNumber, listing.StreetName, listing.StreetSuffix].filter(Boolean).join(" ") || listing.UnparsedAddress || "",
+        city: listing.City || "",
+        province: listing.StateOrProvince || "",
+        postalCode: listing.PostalCode || "",
+        country: "canada" as const,
+        price: listing.ListPrice || 0,
+        bedrooms: listing.BedroomsTotal || 0,
+        bathrooms: (listing.BathroomsTotalInteger || 0) + (listing.BathroomsPartial || 0),
+        squareFootage: listing.LivingArea || listing.BuildingAreaTotal || 0,
+        propertyType: listing.PropertySubType || listing.StructureType || "",
+        buildingType: listing.StructureType || listing.PropertySubType || "",
+        buildingStyle: (listing.ArchitecturalStyle || []).join(", "),
+        storeys: listing.Stories || 0,
+        landSize: "",
+        imageUrl: normalized.images?.[0] || "",
+        sourceUrl: `https://www.realtor.ca/real-estate/${listing.ListingKey}`,
+        numberOfUnits: listing.NumberOfUnitsTotal || 0,
+        totalActualRent: listing.TotalActualRent || 0,
+        taxAnnualAmount: listing.TaxAnnualAmount || 0,
+      };
+
+      res.json({ listing: parsedListing, source: "crea_ddf" });
+    } catch (error: any) {
+      console.error("DDF MLS search error:", error);
+      res.status(500).json({ error: "Failed to search by MLS number" });
+    }
+  });
+
+  let ddfStatusCache: { result: any; expiresAt: number } | null = null;
+
+  app.get("/api/ddf/status", async (_req: any, res) => {
+    try {
+      if (ddfStatusCache && Date.now() < ddfStatusCache.expiresAt) {
+        res.json(ddfStatusCache.result);
+        return;
+      }
+
+      const { isDdfConfigured, getDdfToken } = await import("./creaDdf");
+
+      if (!isDdfConfigured()) {
+        const result = { configured: false, authenticated: false };
+        ddfStatusCache = { result, expiresAt: Date.now() + 60000 };
+        res.json(result);
+        return;
+      }
+
+      try {
+        await getDdfToken();
+        const result = { configured: true, authenticated: true };
+        ddfStatusCache = { result, expiresAt: Date.now() + 300000 };
+        res.json(result);
+      } catch {
+        const result = { configured: true, authenticated: false };
+        ddfStatusCache = { result, expiresAt: Date.now() + 30000 };
+        res.json(result);
+      }
+    } catch {
+      res.json({ configured: false, authenticated: false });
+    }
+  });
+
+  // ============================================
+  // FIND DEALS - AI-powered deal search
+  // ============================================
+
+  const CITY_COORDS: Record<string, { lat: number; lng: number; province: string }> = {
+    "toronto": { lat: 43.65, lng: -79.38, province: "Ontario" },
+    "mississauga": { lat: 43.59, lng: -79.64, province: "Ontario" },
+    "brampton": { lat: 43.73, lng: -79.76, province: "Ontario" },
+    "hamilton": { lat: 43.26, lng: -79.87, province: "Ontario" },
+    "ottawa": { lat: 45.42, lng: -75.70, province: "Ontario" },
+    "london": { lat: 42.98, lng: -81.25, province: "Ontario" },
+    "kitchener": { lat: 43.45, lng: -80.49, province: "Ontario" },
+    "windsor": { lat: 42.32, lng: -83.04, province: "Ontario" },
+    "oshawa": { lat: 43.90, lng: -78.86, province: "Ontario" },
+    "barrie": { lat: 44.39, lng: -79.69, province: "Ontario" },
+    "guelph": { lat: 43.55, lng: -80.25, province: "Ontario" },
+    "kingston": { lat: 44.23, lng: -76.49, province: "Ontario" },
+    "thunder bay": { lat: 48.38, lng: -89.25, province: "Ontario" },
+    "sudbury": { lat: 46.49, lng: -81.00, province: "Ontario" },
+    "st. catharines": { lat: 43.16, lng: -79.24, province: "Ontario" },
+    "niagara falls": { lat: 43.09, lng: -79.08, province: "Ontario" },
+    "cambridge": { lat: 43.36, lng: -80.31, province: "Ontario" },
+    "waterloo": { lat: 43.47, lng: -80.52, province: "Ontario" },
+    "brantford": { lat: 43.14, lng: -80.27, province: "Ontario" },
+    "peterborough": { lat: 44.30, lng: -78.32, province: "Ontario" },
+    "markham": { lat: 43.88, lng: -79.26, province: "Ontario" },
+    "vaughan": { lat: 43.84, lng: -79.51, province: "Ontario" },
+    "richmond hill": { lat: 43.87, lng: -79.44, province: "Ontario" },
+    "oakville": { lat: 43.45, lng: -79.68, province: "Ontario" },
+    "burlington": { lat: 43.33, lng: -79.80, province: "Ontario" },
+    "ajax": { lat: 43.85, lng: -79.04, province: "Ontario" },
+    "whitby": { lat: 43.88, lng: -78.94, province: "Ontario" },
+    "pickering": { lat: 43.84, lng: -79.09, province: "Ontario" },
+    "montreal": { lat: 45.50, lng: -73.57, province: "Quebec" },
+    "quebec city": { lat: 46.81, lng: -71.21, province: "Quebec" },
+    "laval": { lat: 45.57, lng: -73.69, province: "Quebec" },
+    "gatineau": { lat: 45.48, lng: -75.70, province: "Quebec" },
+    "longueuil": { lat: 45.53, lng: -73.52, province: "Quebec" },
+    "sherbrooke": { lat: 45.40, lng: -71.89, province: "Quebec" },
+    "trois-rivieres": { lat: 46.35, lng: -72.55, province: "Quebec" },
+    "vancouver": { lat: 49.28, lng: -123.12, province: "British Columbia" },
+    "surrey": { lat: 49.19, lng: -122.85, province: "British Columbia" },
+    "burnaby": { lat: 49.25, lng: -122.95, province: "British Columbia" },
+    "victoria": { lat: 48.43, lng: -123.37, province: "British Columbia" },
+    "kelowna": { lat: 49.88, lng: -119.50, province: "British Columbia" },
+    "nanaimo": { lat: 49.17, lng: -123.94, province: "British Columbia" },
+    "kamloops": { lat: 50.67, lng: -120.33, province: "British Columbia" },
+    "richmond": { lat: 49.17, lng: -123.14, province: "British Columbia" },
+    "calgary": { lat: 51.05, lng: -114.07, province: "Alberta" },
+    "edmonton": { lat: 53.55, lng: -113.49, province: "Alberta" },
+    "red deer": { lat: 52.27, lng: -113.81, province: "Alberta" },
+    "lethbridge": { lat: 49.69, lng: -112.83, province: "Alberta" },
+    "medicine hat": { lat: 50.04, lng: -110.68, province: "Alberta" },
+    "grande prairie": { lat: 55.17, lng: -118.80, province: "Alberta" },
+    "winnipeg": { lat: 49.90, lng: -97.14, province: "Manitoba" },
+    "brandon": { lat: 49.84, lng: -99.95, province: "Manitoba" },
+    "saskatoon": { lat: 52.13, lng: -106.67, province: "Saskatchewan" },
+    "regina": { lat: 50.45, lng: -104.62, province: "Saskatchewan" },
+    "halifax": { lat: 44.65, lng: -63.57, province: "Nova Scotia" },
+    "dartmouth": { lat: 44.67, lng: -63.57, province: "Nova Scotia" },
+    "moncton": { lat: 46.09, lng: -64.77, province: "New Brunswick" },
+    "saint john": { lat: 45.27, lng: -66.06, province: "New Brunswick" },
+    "fredericton": { lat: 45.96, lng: -66.64, province: "New Brunswick" },
+    "st. john's": { lat: 47.56, lng: -52.71, province: "Newfoundland and Labrador" },
+    "charlottetown": { lat: 46.24, lng: -63.13, province: "Prince Edward Island" },
+  };
+
+  function parseNaturalLanguageQuery(query: string): {
+    city?: string;
+    province?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minBeds?: number;
+    propertyType?: string;
+    minCapRate?: number;
+  } {
+    const q = query.toLowerCase().trim();
+    const filters: any = {};
+
+    for (const [cityName, coords] of Object.entries(CITY_COORDS)) {
+      if (q.includes(cityName)) {
+        filters.city = cityName.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        if (cityName === "st. catharines") filters.city = "St. Catharines";
+        if (cityName === "st. john's") filters.city = "St. John's";
+        if (cityName === "trois-rivieres") filters.city = "Trois-Rivières";
+        if (cityName === "quebec city") filters.city = "Québec";
+        filters.province = coords.province;
+        break;
+      }
+    }
+
+    const underMatch = q.match(/under\s*\$?\s*([\d,.]+)\s*(k|m|million|thousand)?/i);
+    if (underMatch) {
+      let val = parseFloat(underMatch[1].replace(/,/g, ""));
+      if (underMatch[2]?.toLowerCase() === "k" || underMatch[2]?.toLowerCase() === "thousand") val *= 1000;
+      if (underMatch[2]?.toLowerCase() === "m" || underMatch[2]?.toLowerCase() === "million") val *= 1000000;
+      filters.maxPrice = val;
+    }
+
+    const overMatch = q.match(/over\s*\$?\s*([\d,.]+)\s*(k|m|million|thousand)?/i);
+    if (overMatch) {
+      let val = parseFloat(overMatch[1].replace(/,/g, ""));
+      if (overMatch[2]?.toLowerCase() === "k" || overMatch[2]?.toLowerCase() === "thousand") val *= 1000;
+      if (overMatch[2]?.toLowerCase() === "m" || overMatch[2]?.toLowerCase() === "million") val *= 1000000;
+      filters.minPrice = val;
+    }
+
+    const rangeMatch = q.match(/\$?\s*([\d,.]+)\s*(k|m)?\s*(-|to)\s*\$?\s*([\d,.]+)\s*(k|m)?/i);
+    if (rangeMatch) {
+      let min = parseFloat(rangeMatch[1].replace(/,/g, ""));
+      let max = parseFloat(rangeMatch[4].replace(/,/g, ""));
+      if (rangeMatch[2]?.toLowerCase() === "k") min *= 1000;
+      if (rangeMatch[2]?.toLowerCase() === "m") min *= 1000000;
+      if (rangeMatch[5]?.toLowerCase() === "k") max *= 1000;
+      if (rangeMatch[5]?.toLowerCase() === "m") max *= 1000000;
+      filters.minPrice = min;
+      filters.maxPrice = max;
+    }
+
+    const bedMatch = q.match(/(\d+)\s*(?:\+\s*)?(?:bed|br|bedroom)/i);
+    if (bedMatch) filters.minBeds = parseInt(bedMatch[1]);
+
+    const typeMap: Record<string, string> = {
+      "detached": "Detached", "house": "Detached", "houses": "Detached",
+      "semi": "Semi-Detached", "semi-detached": "Semi-Detached",
+      "townhouse": "Townhouse", "townhome": "Townhouse", "town house": "Townhouse",
+      "condo": "Condo", "condominium": "Condo", "apartment": "Condo",
+      "duplex": "Duplex", "triplex": "Triplex", "multiplex": "Multiplex",
+      "fourplex": "Multiplex", "multi-family": "Multiplex", "multifamily": "Multiplex",
+    };
+    for (const [keyword, type] of Object.entries(typeMap)) {
+      if (q.includes(keyword)) { filters.propertyType = type; break; }
+    }
+
+    const capMatch = q.match(/(\d+(?:\.\d+)?)\s*%?\s*(?:cap|yield)/i);
+    if (capMatch) filters.minCapRate = parseFloat(capMatch[1]);
+
+    return filters;
+  }
+
+  const findDealsCache = new Map<string, { data: any; expiresAt: number }>();
+
+  app.post("/api/find-deals", async (req: any, res) => {
+    try {
+      const { query, bounds } = req.body;
+      if (!query || typeof query !== "string") {
+        res.status(400).json({ error: "Query is required" });
+        return;
+      }
+
+      const cacheKey = `find-deals:${query.toLowerCase().trim()}`;
+      const cached = findDealsCache.get(cacheKey);
+      if (cached && Date.now() < cached.expiresAt) {
+        res.json(cached.data);
+        return;
+      }
+
+      const { isDdfConfigured, searchDdfListings, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      const { isVacantLandLikeProperty } = await import("@shared/propertyEligibility");
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "DDF not configured", available: false });
+        return;
+      }
+
+      const filters = parseNaturalLanguageQuery(query);
+
+      const cityKey = filters.city?.toLowerCase() || "";
+      const cityCoords = CITY_COORDS[cityKey] || null;
+
+      const searchParams: any = {
+        top: 100,
+        skip: 0,
+        excludeBusinessSales: true,
+        excludeParking: true,
+        excludeVacantLand: true,
+      };
+
+      if (filters.city) searchParams.city = filters.city;
+      if (filters.province) searchParams.stateOrProvince = filters.province;
+      if (filters.minPrice) searchParams.minPrice = filters.minPrice;
+      if (filters.maxPrice) searchParams.maxPrice = filters.maxPrice;
+      if (filters.minBeds) searchParams.minBeds = filters.minBeds;
+      if (filters.propertyType) searchParams.propertySubType = filters.propertyType;
+
+      if (!filters.city && bounds) {
+        searchParams.latitudeMin = bounds.south;
+        searchParams.latitudeMax = bounds.north;
+        searchParams.longitudeMin = bounds.west;
+        searchParams.longitudeMax = bounds.east;
+      }
+
+      const result = await searchDdfListings(searchParams);
+      const normalizedListings = result.listings
+        .map(normalizeDdfToRepliersFormat)
+        .filter((listing: any) => {
+          const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
+          return Number.isFinite(price) && price > 1 && !isVacantLandLikeProperty(listing);
+        });
+
+      const { getCmhcRent } = await import("../shared/cmhcRents");
+
+      const scoredListings = normalizedListings
+        .filter((l: any) => l.map?.latitude && l.map?.longitude)
+        .map((listing: any) => {
+          const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+          if (!(price > 1)) return null;
+          const beds = listing.details?.numBedrooms || 2;
+          const units = listing.numberOfUnitsTotal || 1;
+
+          let monthlyRent = 0;
+          let rentSource = "estimated";
+          if (listing.totalActualRent && listing.totalActualRent > 0) {
+            monthlyRent = listing.totalActualRent / 12;
+            rentSource = "actual";
+          } else {
+            const city = listing.address?.city || "";
+            const province = listing.address?.state || "";
+            const cmhc = getCmhcRent(Number(beds) || 2, city, province);
+            if (cmhc?.rent) {
+              monthlyRent = cmhc.rent * units;
+              rentSource = cmhc.source === "cmhc_city" || cmhc.source === "cmhc_province" ? "cmhc" : "estimated";
+            } else {
+              const baseFallback: Record<number, number> = { 0: 1200, 1: 1500, 2: 1800, 3: 2200, 4: 2600, 5: 3000 };
+              monthlyRent = (baseFallback[beds] || 1800) * units;
+              rentSource = "estimated";
+            }
+          }
+
+          const annualRent = monthlyRent * 12;
+          const vacancyLoss = annualRent * 0.05;
+          const opExpenses = annualRent * 0.35;
+          const noi = annualRent - vacancyLoss - opExpenses;
+          const capRate = price > 0 ? (noi / price) * 100 : 0;
+
+          const downPayment = price * 0.20;
+          const mortgageAmount = price * 0.80;
+          const annualMortgage = mortgageAmount * 0.055;
+          const cashFlow = noi - annualMortgage;
+          const cashOnCash = downPayment > 0 ? (cashFlow / downPayment) * 100 : 0;
+
+          let dealScore = 0;
+          dealScore += Math.min(capRate * 8, 40);
+          dealScore += Math.max(0, Math.min(cashOnCash * 3, 25));
+          const dom = parseInt(String(listing.daysOnMarket)) || 0;
+          if (dom > 60) dealScore += 10;
+          else if (dom > 30) dealScore += 5;
+          if (rentSource === "actual") dealScore += 10;
+          if (units >= 2) dealScore += 5;
+          if (units >= 4) dealScore += 5;
+          if (price > 0 && price < 500000) dealScore += 5;
+
+          dealScore = Math.min(Math.round(dealScore), 100);
+
+          const explanations: string[] = [];
+          if (capRate >= 6) explanations.push(`Strong ${capRate.toFixed(1)}% cap rate`);
+          else if (capRate >= 4) explanations.push(`Moderate ${capRate.toFixed(1)}% cap rate`);
+          else explanations.push(`Low ${capRate.toFixed(1)}% cap rate`);
+
+          if (cashOnCash > 5) explanations.push(`${cashOnCash.toFixed(1)}% cash-on-cash`);
+          if (dom > 60) explanations.push(`${dom} days on market — motivated seller potential`);
+          if (units >= 2) explanations.push(`${units}-unit property adds income diversity`);
+          if (rentSource === "actual") explanations.push("Verified actual rental income");
+
+          return {
+            id: listing.mlsNumber,
+            mlsNumber: listing.mlsNumber,
+            lat: listing.map.latitude,
+            lng: listing.map.longitude,
+            price,
+            cap_rate: Math.round(capRate * 10) / 10,
+            cash_on_cash: Math.round(cashOnCash * 10) / 10,
+            deal_score: dealScore,
+            final_score: dealScore,
+            explanation: explanations.join(". ") + ".",
+            address: listing.address,
+            details: listing.details,
+            images: listing.images,
+            daysOnMarket: dom,
+            monthlyRent: Math.round(monthlyRent),
+            rentSource,
+            listPrice: listing.listPrice,
+            taxes: listing.taxes,
+            numberOfUnitsTotal: units,
+          };
+        })
+        .filter((listing: any) => listing != null)
+        .sort((a: any, b: any) => b.final_score - a.final_score);
+
+      let responseBounds = null;
+      if (cityCoords) {
+        responseBounds = {
+          north: cityCoords.lat + 0.15,
+          south: cityCoords.lat - 0.15,
+          east: cityCoords.lng + 0.25,
+          west: cityCoords.lng - 0.25,
+          center: { lat: cityCoords.lat, lng: cityCoords.lng },
+        };
+      } else if (scoredListings.length > 0) {
+        const lats = scoredListings.map((l: any) => l.lat);
+        const lngs = scoredListings.map((l: any) => l.lng);
+        responseBounds = {
+          north: Math.max(...lats) + 0.02,
+          south: Math.min(...lats) - 0.02,
+          east: Math.max(...lngs) + 0.02,
+          west: Math.min(...lngs) - 0.02,
+          center: {
+            lat: (Math.max(...lats) + Math.min(...lats)) / 2,
+            lng: (Math.max(...lngs) + Math.min(...lngs)) / 2,
+          },
+        };
+      }
+
+      const responseData = {
+        listings: scoredListings,
+        bounds: responseBounds,
+        filters_applied: filters,
+        total: result.count || scoredListings.length,
+        query: query.trim(),
+      };
+
+      findDealsCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + 600000 });
+      if (findDealsCache.size > 100) {
+        const oldest = [...findDealsCache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+        for (let i = 0; i < 20; i++) findDealsCache.delete(oldest[i][0]);
+      }
+
+      res.json(responseData);
+    } catch (error: any) {
+      console.error("Find deals error:", error);
+      res.status(500).json({ error: "Failed to search for deals" });
+    }
+  });
+
+  // ============================================
+  // REPLIERS API PROXY ROUTES
+  // ============================================
+
+  app.post("/api/repliers/listings", async (req: any, res) => {
+    try {
+      const apiKey = process.env.REPLIERS_API_KEY;
+      if (!apiKey) {
+        res.status(500).json({ error: "Repliers API key not configured" });
+        return;
+      }
+
+      const {
+        map,
+        minPrice, maxPrice,
+        minBeds, maxBeds,
+        minBaths, maxBaths,
+        propertyType,
+        status,
+        pageNum,
+        resultsPerPage,
+        class: propClass,
+        type: listingType,
+        sortBy,
+        city,
+        area,
+      } = req.body;
+
+      const queryParams = new URLSearchParams();
+      if (minPrice) queryParams.set("minPrice", String(minPrice));
+      if (maxPrice) queryParams.set("maxPrice", String(maxPrice));
+      if (minBeds) queryParams.set("minBeds", String(minBeds));
+      if (maxBeds) queryParams.set("maxBeds", String(maxBeds));
+      if (minBaths) queryParams.set("minBaths", String(minBaths));
+      if (maxBaths) queryParams.set("maxBaths", String(maxBaths));
+      if (propertyType) queryParams.set("propertyType", propertyType);
+      if (status) queryParams.set("status", status);
+      if (propClass) queryParams.set("class", propClass);
+      if (listingType) queryParams.set("type", listingType);
+      if (sortBy) queryParams.set("sortBy", sortBy);
+      if (city) queryParams.set("city", city);
+      if (area) queryParams.set("area", area);
+      queryParams.set("pageNum", String(pageNum || 1));
+      queryParams.set("resultsPerPage", String(resultsPerPage || 50));
+
+      const body: Record<string, any> = {};
+      if (map) {
+        body.map = map;
+      }
+
+      const qs = queryParams.toString();
+      const url = `https://api.repliers.io/listings${qs ? `?${qs}` : ""}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "REPLIERS-API-KEY": apiKey,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Repliers API error:", response.status, errorText);
+        res.status(response.status).json({ error: "Repliers API error", details: errorText });
+        return;
+      }
+
+      const data = await response.json();
+      const filteredListings = Array.isArray(data.listings)
+        ? data.listings.filter((listing: any) => {
+            const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
+            return Number.isFinite(price) && price > 1;
+          })
+        : [];
+
+      res.json({
+        ...data,
+        listings: filteredListings,
+        count: filteredListings.length,
+        numPages: filteredListings.length > 0
+          ? Math.ceil(filteredListings.length / Math.max(Number(resultsPerPage) || 50, 1))
+          : 0,
+      });
+    } catch (error) {
+      console.error("Error proxying Repliers listings:", error);
+      res.status(500).json({ error: "Failed to fetch listings" });
+    }
+  });
+
+  app.get("/api/repliers/listings/:mlsNumber", async (req: any, res) => {
+    try {
+      const apiKey = process.env.REPLIERS_API_KEY;
+      if (!apiKey) {
+        res.status(500).json({ error: "Repliers API key not configured" });
+        return;
+      }
+
+      const { mlsNumber } = req.params;
+      const response = await fetch(`https://api.repliers.io/listings/${encodeURIComponent(mlsNumber)}`, {
+        method: "GET",
+        headers: {
+          "REPLIERS-API-KEY": apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Repliers API detail error:", response.status, errorText);
+        res.status(response.status).json({ error: "Repliers API error", details: errorText });
+        return;
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching listing detail:", error);
+      res.status(500).json({ error: "Failed to fetch listing detail" });
+    }
+  });
+
+  app.get("/api/repliers/listings/:mlsNumber/similar", async (req: any, res) => {
+    try {
+      const apiKey = process.env.REPLIERS_API_KEY;
+      if (!apiKey) {
+        res.status(500).json({ error: "Repliers API key not configured" });
+        return;
+      }
+
+      const { mlsNumber } = req.params;
+      const response = await fetch(`https://api.repliers.io/listings/${encodeURIComponent(mlsNumber)}/similar`, {
+        method: "GET",
+        headers: {
+          "REPLIERS-API-KEY": apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        res.status(response.status).json({ error: "Repliers API error", details: errorText });
+        return;
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching similar listings:", error);
+      res.status(500).json({ error: "Failed to fetch similar listings" });
+    }
+  });
+
+  // ============================================
+  // MARKET EXPERT ROUTES
+  // ============================================
+
+  // Get all approved market experts (public)
+  app.get("/api/market-experts", async (_req, res) => {
+    try {
+      const experts = await storage.getApprovedMarketExperts();
+      res.json(experts);
+    } catch (error) {
+      console.error("Error fetching market experts:", error);
+      res.status(500).json({ error: "Failed to fetch market experts" });
+    }
+  });
+
+  app.post("/api/market-expert/apply", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { marketRegion, marketCity, includeMeetupHost } = req.body;
+      
+      const existingApplication = await storage.getMarketExpertApplication(userId);
+      if (existingApplication && existingApplication.status === 'approved') {
+        res.status(400).json({ error: "You are already an approved expert" });
+        return;
+      }
+      
+      const monthlyFee = includeMeetupHost ? 1250 : 1000;
+      
+      const { stripeService } = await import("./stripeService");
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      
+      let subscription = await storage.getProfessionalSubscription(userId);
+      let customerId = subscription?.stripeCustomerId;
+      
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(
+          req.user.claims.email || `${userId}@realist.ca`,
+          userId,
+          req.user.claims.name
+        );
+        customerId = customer.id;
+        await storage.upsertProfessionalSubscription({
+          userId,
+          tier: 'free',
+          stripeCustomerId: customerId,
+        });
+      }
+      
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      
+      const expertPriceId = process.env.STRIPE_EXPERT_PRICE_ID;
+      const meetupPriceId = process.env.STRIPE_MEETUP_PRICE_ID;
+      
+      if (!expertPriceId) {
+        res.status(500).json({ error: "Expert pricing not configured" });
+        return;
+      }
+      
+      const lineItems: Array<{ price: string; quantity: number }> = [
+        { price: expertPriceId, quantity: 1 }
+      ];
+      
+      if (includeMeetupHost && meetupPriceId) {
+        lineItems.push({ price: meetupPriceId, quantity: 1 });
+      }
+      
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: 'subscription',
+        line_items: lineItems,
+        success_url: `${baseUrl}/professional/dashboard?expert=success`,
+        cancel_url: `${baseUrl}/professional/dashboard?expert=cancelled`,
+        metadata: {
+          userId,
+          marketRegion,
+          marketCity,
+          includeMeetupHost: includeMeetupHost ? 'true' : 'false',
+          type: 'featured_expert',
+        },
+      });
+      
+      if (!existingApplication) {
+        await storage.createMarketExpertApplication({
+          userId,
+          marketRegion,
+          marketCity,
+          includeMeetupHost,
+          monthlyFee,
+          referralFeePercent: 20,
+          status: 'pending_payment',
+        });
+      }
+      
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating expert checkout:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.get("/api/market-expert/application", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const application = await storage.getMarketExpertApplication(userId);
+      res.json(application || null);
+    } catch (error) {
+      console.error("Error fetching expert application:", error);
+      res.status(500).json({ error: "Failed to fetch application" });
+    }
+  });
+
+  // ============================================
+  // PLATFORM ANALYTICS (Public for checkout display)
+  // ============================================
+
+  app.get("/api/analytics/deals-count", async (_req, res) => {
+    try {
+      const last30Days = await storage.getRecentAnalysisCount(30);
+      res.json({ count: last30Days, period: "30 days" });
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  // ============================================
+  // BUYBOX MANDATE SYSTEM ROUTES
+  // ============================================
+
+  // Helper to coerce empty strings to null for optional number fields
+  const optionalNumber = z.preprocess(
+    (val) => (val === "" || val === undefined || val === null ? null : Number(val)),
+    z.number().nullable().optional()
+  );
+
+  // BuyBox submission schema with coercion for string-to-number fields
+  const buyBoxSubmissionSchema = z.object({
+    agreement: z.object({
+      signedName: z.string().min(1, "Signed name is required"),
+      signatureDataUrl: z.string().min(1, "Signature is required"),
+      termEndDate: z.string(),
+      holdoverDays: z.coerce.number().int().min(0).optional().default(60),
+      commissionPercent: z.coerce.number().min(0).max(100).optional().default(2.5),
+      agreedToTerms: z.boolean(),
+      extendedTermConsent: z.boolean(),
+    }),
+    mandate: z.object({
+      polygonGeoJson: z.any(),
+      centroidLat: optionalNumber,
+      centroidLng: optionalNumber,
+      areaName: z.string().optional().nullable(),
+      targetPrice: optionalNumber,
+      maxPrice: optionalNumber,
+      lotFrontage: optionalNumber,
+      lotFrontageUnit: z.string().optional().nullable(),
+      lotDepth: optionalNumber,
+      lotDepthUnit: z.string().optional().nullable(),
+      totalLotArea: optionalNumber,
+      totalLotAreaUnit: z.string().optional().nullable(),
+      zoningPlanningStatus: z.string().optional().nullable(),
+      buildingType: z.string().optional().nullable(),
+      occupancy: z.string().optional().nullable(),
+      targetClosingDate: z.string().optional().nullable(),
+      possessionDate: z.string().optional().nullable(),
+      offerConditions: z.array(z.string()).optional().nullable(),
+      additionalNotes: z.string().optional().nullable(),
+    }),
+  });
+
+  // Submit a new BuyBox mandate with agreement
+  app.post("/api/buybox/submit", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // Validate request body
+      const parseResult = buyBoxSubmissionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        res.status(400).json({ error: "Invalid submission data", details: parseResult.error.errors });
+        return;
+      }
+      
+      const { agreement, mandate } = parseResult.data;
+
+      if (!mandate.polygonGeoJson) {
+        res.status(400).json({ error: "Target area polygon is required" });
+        return;
+      }
+
+      // Generate agreement HTML
+      const agreementHtml = generateBuyBoxAgreementHtml({
+        signedName: agreement.signedName,
+        termEndDate: agreement.termEndDate,
+        holdoverDays: agreement.holdoverDays,
+        commissionPercent: agreement.commissionPercent,
+      });
+
+      // Create the agreement record
+      const agreementRecord = await storage.createBuyBoxAgreement({
+        userId,
+        agreementVersion: "1.0",
+        agreementHtml,
+        signedName: agreement.signedName,
+        signatureDataUrl: agreement.signatureDataUrl,
+        termStartDate: new Date(),
+        termEndDate: new Date(agreement.termEndDate),
+        holdoverDays: agreement.holdoverDays || 60,
+        commissionPercent: agreement.commissionPercent || 2.5,
+        ipAddress: req.ip || req.connection?.remoteAddress || null,
+        userAgent: req.headers["user-agent"] || null,
+        signedAt: new Date(),
+      });
+
+      // Normalize optional fields to avoid undefined being sent to database
+      const normalizedMandate = {
+        userId,
+        agreementId: agreementRecord.id,
+        status: "new" as const,
+        polygonGeoJson: mandate.polygonGeoJson,
+        centroidLat: mandate.centroidLat ?? null,
+        centroidLng: mandate.centroidLng ?? null,
+        areaName: mandate.areaName ?? null,
+        targetPrice: mandate.targetPrice ?? null,
+        maxPrice: mandate.maxPrice ?? null,
+        lotFrontage: mandate.lotFrontage ?? null,
+        lotFrontageUnit: mandate.lotFrontageUnit ?? null,
+        lotDepth: mandate.lotDepth ?? null,
+        lotDepthUnit: mandate.lotDepthUnit ?? null,
+        totalLotArea: mandate.totalLotArea ?? null,
+        totalLotAreaUnit: mandate.totalLotAreaUnit ?? null,
+        zoningPlanningStatus: mandate.zoningPlanningStatus ?? null,
+        buildingType: mandate.buildingType ?? null,
+        occupancy: mandate.occupancy ?? null,
+        targetClosingDate: mandate.targetClosingDate ? new Date(mandate.targetClosingDate) : null,
+        possessionDate: mandate.possessionDate ? new Date(mandate.possessionDate) : null,
+        offerConditions: mandate.offerConditions ?? null,
+        additionalNotes: mandate.additionalNotes ?? null,
+      };
+
+      // Create the mandate record
+      const mandateRecord = await storage.createBuyBoxMandate(normalizedMandate);
+
+      // Send email notification to admin
+      try {
+        const user = await authStorage.getUser(userId);
+        await sendNotificationEmail({
+          to: "danielfoch@gmail.com",
+          subject: `New BuyBox Mandate Submitted`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+              <h2 style="color: #22c55e;">New BuyBox Mandate</h2>
+              <p><strong>From:</strong> ${user?.firstName || ""} ${user?.lastName || ""} (${user?.email})</p>
+              <p><strong>Mandate ID:</strong> ${mandateRecord.id}</p>
+              <p><strong>Budget:</strong> ${mandate.targetPrice ? `$${mandate.targetPrice.toLocaleString()}` : "Not specified"} - ${mandate.maxPrice ? `$${mandate.maxPrice.toLocaleString()}` : "Not specified"}</p>
+              <p><strong>Building Type:</strong> ${mandate.buildingType || "Not specified"}</p>
+              <p><strong>Signed Name:</strong> ${agreement.signedName}</p>
+              <p><strong>Agreement Term:</strong> Ends ${new Date(agreement.termEndDate).toLocaleDateString()}</p>
+              <p><strong>Commission:</strong> ${agreement.commissionPercent}%</p>
+            </div>
+          `,
+        });
+      } catch (emailError) {
+        console.error("[BuyBox] Failed to send notification email:", emailError);
+      }
+
+      res.json({ 
+        success: true, 
+        mandateId: mandateRecord.id,
+        agreementId: agreementRecord.id,
+      });
+    } catch (error) {
+      console.error("Error submitting BuyBox:", error);
+      res.status(500).json({ error: "Failed to submit BuyBox mandate" });
+    }
+  });
+
+  app.post("/api/buybox/submit-services", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { mandate, polygon, centroid, services } = req.body;
+
+      if (!polygon || !services || !Array.isArray(services) || services.length === 0) {
+        res.status(400).json({ error: "Polygon and at least one service are required" });
+        return;
+      }
+
+      const CANONICAL_PRICING: Record<string, { pricePerUnit: number; minQty: number; maxQty: number }> = {
+        direct_mail: { pricePerUnit: 2.50, minQty: 100, maxQty: 5000 },
+        ai_phone_calls: { pricePerUnit: 1.00, minQty: 50, maxQty: 2000 },
+        voicemail_drops: { pricePerUnit: 0.15, minQty: 100, maxQty: 10000 },
+      };
+
+      let totalAmount = 0;
+      const validatedServices: { serviceId: string; qty: number; unitPrice: number; total: number }[] = [];
+
+      for (const svc of services) {
+        const pricing = CANONICAL_PRICING[svc.serviceId];
+        if (!pricing) {
+          res.status(400).json({ error: `Invalid service: ${svc.serviceId}` });
+          return;
+        }
+        const qty = Math.max(pricing.minQty, Math.min(pricing.maxQty, parseInt(svc.qty) || pricing.minQty));
+        const lineTotal = pricing.pricePerUnit * qty;
+        totalAmount += lineTotal;
+        validatedServices.push({
+          serviceId: svc.serviceId,
+          qty,
+          unitPrice: pricing.pricePerUnit,
+          total: lineTotal,
+        });
+      }
+
+      const normalizedMandate = {
+        userId,
+        agreementId: null,
+        status: "new" as const,
+        polygonGeoJson: polygon,
+        centroidLat: centroid?.lat ?? null,
+        centroidLng: centroid?.lng ?? null,
+        areaName: null,
+        targetPrice: mandate?.targetPrice ?? null,
+        maxPrice: mandate?.maxPrice ?? null,
+        lotFrontage: mandate?.lotFrontage ?? null,
+        lotFrontageUnit: mandate?.lotFrontageUnit ?? null,
+        lotDepth: mandate?.lotDepth ?? null,
+        lotDepthUnit: mandate?.lotDepthUnit ?? null,
+        totalLotArea: mandate?.totalLotArea ?? null,
+        totalLotAreaUnit: mandate?.totalLotAreaUnit ?? null,
+        zoningPlanningStatus: mandate?.zoningPlanningStatus ?? null,
+        buildingType: mandate?.buildingType ?? null,
+        occupancy: mandate?.occupancy ?? null,
+        targetClosingDate: mandate?.targetClosingDate ? new Date(mandate.targetClosingDate) : null,
+        possessionDate: mandate?.possessionDate ? new Date(mandate.possessionDate) : null,
+        offerConditions: mandate?.offerConditions ?? null,
+        additionalNotes: mandate?.additionalNotes ?? null,
+      };
+
+      const mandateRecord = await storage.createBuyBoxMandate(normalizedMandate);
+
+      try {
+        const user = await authStorage.getUser(userId);
+        const servicesSummary = services.map((s: any) =>
+          `<li>${s.serviceId.replace(/_/g, ' ')}: ${s.qty} units × $${s.unitPrice.toFixed(2)} = $${s.total.toFixed(2)}</li>`
+        ).join("");
+
+        await sendNotificationEmail({
+          to: "danielfoch@gmail.com",
+          subject: `New BuyBox Services Order — $${totalAmount?.toFixed(2) || '0.00'}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+              <h2 style="color: #22c55e;">New BuyBox Services Order</h2>
+              <p><strong>From:</strong> ${user?.firstName || ""} ${user?.lastName || ""} (${user?.email})</p>
+              <p><strong>Mandate ID:</strong> ${mandateRecord.id}</p>
+              <p><strong>Budget:</strong> ${mandate?.targetPrice ? `$${mandate.targetPrice.toLocaleString()}` : "N/A"} - ${mandate?.maxPrice ? `$${mandate.maxPrice.toLocaleString()}` : "N/A"}</p>
+              <p><strong>Building Type:</strong> ${mandate?.buildingType || "N/A"}</p>
+              <h3>Services Ordered:</h3>
+              <ul>${servicesSummary}</ul>
+              <p style="font-size: 18px; font-weight: bold; color: #22c55e;">Total: $${totalAmount?.toFixed(2) || '0.00'}</p>
+            </div>
+          `,
+        });
+      } catch (emailError) {
+        console.error("[BuyBox] Failed to send services notification email:", emailError);
+      }
+
+      res.json({
+        success: true,
+        mandateId: mandateRecord.id,
+        services: services.map((s: any) => s.serviceId),
+      });
+    } catch (error) {
+      console.error("Error submitting BuyBox services:", error);
+      res.status(500).json({ error: "Failed to submit BuyBox services order" });
+    }
+  });
+
+  // Get a specific BuyBox mandate (requires authentication and ownership/role check)
+  app.get("/api/buybox/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await authStorage.getUser(userId);
+      
+      const mandate = await storage.getBuyBoxMandate(req.params.id);
+      if (!mandate) {
+        res.status(404).json({ error: "Mandate not found" });
+        return;
+      }
+      
+      // Only mandate owner, admin, or realtor can view
+      if (mandate.userId !== userId && user?.role !== "admin" && user?.role !== "realtor") {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+      
+      res.json(mandate);
+    } catch (error) {
+      console.error("Error fetching BuyBox mandate:", error);
+      res.status(500).json({ error: "Failed to fetch mandate" });
+    }
+  });
+
+  // Get user's BuyBox mandates
+  app.get("/api/buybox/user/mandates", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const mandates = await storage.getBuyBoxMandatesByUser(userId);
+      res.json(mandates);
+    } catch (error) {
+      console.error("Error fetching user mandates:", error);
+      res.status(500).json({ error: "Failed to fetch mandates" });
+    }
+  });
+
+  // Get all BuyBox mandates (for realtors/admin)
+  app.get("/api/buybox/all/mandates", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await authStorage.getUser(req.session.userId);
+      // Only allow admin or realtor roles
+      if (!user || (user.role !== "admin" && user.role !== "realtor")) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+      const mandates = await storage.getAllBuyBoxMandates();
+      res.json(mandates);
+    } catch (error) {
+      console.error("Error fetching all mandates:", error);
+      res.status(500).json({ error: "Failed to fetch mandates" });
+    }
+  });
+
+  // Submit a realtor response to a mandate
+  app.post("/api/buybox/:id/respond", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await authStorage.getUser(userId);
+      
+      if (!user || (user.role !== "admin" && user.role !== "realtor")) {
+        res.status(403).json({ error: "Only realtors can respond to mandates" });
+        return;
+      }
+
+      const mandate = await storage.getBuyBoxMandate(req.params.id);
+      if (!mandate) {
+        res.status(404).json({ error: "Mandate not found" });
+        return;
+      }
+
+      const { message, propertyAddress, propertyLink } = req.body;
+      if (!message) {
+        res.status(400).json({ error: "Message is required" });
+        return;
+      }
+
+      const response = await storage.createBuyBoxResponse({
+        mandateId: mandate.id,
+        realtorId: userId,
+        message,
+        propertyAddress,
+        propertyLink,
+      });
+
+      // Create notification for mandate owner
+      await storage.createBuyBoxNotification({
+        userId: mandate.userId,
+        type: "realtor_response",
+        title: "New Response to Your BuyBox",
+        message: `A realtor has responded to your property search mandate.`,
+        mandateId: mandate.id,
+      });
+
+      res.json({ success: true, responseId: response.id });
+    } catch (error) {
+      console.error("Error submitting response:", error);
+      res.status(500).json({ error: "Failed to submit response" });
+    }
+  });
+
+  // Get responses for a mandate
+  app.get("/api/buybox/:id/responses", isAuthenticated, async (req: any, res) => {
+    try {
+      const mandate = await storage.getBuyBoxMandate(req.params.id);
+      if (!mandate) {
+        res.status(404).json({ error: "Mandate not found" });
+        return;
+      }
+
+      // Only mandate owner or realtors/admin can view responses
+      const userId = req.session.userId;
+      const user = await authStorage.getUser(userId);
+      if (mandate.userId !== userId && user?.role !== "admin" && user?.role !== "realtor") {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+
+      const responses = await storage.getBuyBoxResponsesByMandate(req.params.id);
+      res.json(responses);
+    } catch (error) {
+      console.error("Error fetching responses:", error);
+      res.status(500).json({ error: "Failed to fetch responses" });
+    }
+  });
+
+  // Get user's notifications
+  app.get("/api/buybox/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const notifications = await storage.getBuyBoxNotificationsByUser(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Mark notification as read
+  app.post("/api/buybox/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.markBuyBoxNotificationRead(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification read:", error);
+      res.status(500).json({ error: "Failed to mark notification read" });
+    }
+  });
+
+  // ============================================
+  // CO-INVESTING COMPLIANCE ROUTES
+  // ============================================
+
+  // Get compliance status for current user
+  app.get("/api/coinvest/compliance-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const profile = await storage.getCoInvestUserProfile(userId);
+      
+      const jurisdiction = profile?.selectedJurisdiction || profile?.region || null;
+      const isOntario = jurisdiction === "ON";
+      const braStatus = profile?.braStatus || "not_started";
+      const coinvestAckStatus = profile?.coinvestAckStatus || "not_started";
+      const isRepresented = braStatus === "signed" && coinvestAckStatus === "signed";
+      
+      // For Ontario: require both BRA and acknowledgment
+      // For other jurisdictions: allow access (for now)
+      const canAccess = !isOntario || isRepresented;
+      
+      res.json({
+        jurisdiction,
+        braStatus,
+        braSignedAt: profile?.braSignedAt || null,
+        coinvestAckStatus,
+        coinvestAckSignedAt: profile?.coinvestAckSignedAt || null,
+        isOntario,
+        isRepresented,
+        canAccess,
+      });
+    } catch (error) {
+      console.error("Error fetching compliance status:", error);
+      res.status(500).json({ error: "Failed to fetch compliance status" });
+    }
+  });
+
+  // Set user's jurisdiction
+  app.post("/api/coinvest/set-jurisdiction", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { jurisdiction } = req.body;
+      
+      if (!jurisdiction) {
+        res.status(400).json({ error: "Jurisdiction is required" });
+        return;
+      }
+      
+      // Ensure profile exists and update jurisdiction
+      await storage.upsertCoInvestUserProfile({
+        userId,
+        selectedJurisdiction: jurisdiction,
+      });
+      
+      // Update BRA status fields separately
+      await storage.updateCoInvestProfileBraStatus(userId, {
+        selectedJurisdiction: jurisdiction,
+      });
+      
+      // Log the event
+      await storage.createCoInvestComplianceLog({
+        userId,
+        eventType: "jurisdiction_changed",
+        metadata: { jurisdiction },
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+      });
+      
+      res.json({ success: true, jurisdiction });
+    } catch (error) {
+      console.error("Error setting jurisdiction:", error);
+      res.status(500).json({ error: "Failed to set jurisdiction" });
+    }
+  });
+
+  // Sign BRA for co-investing
+  app.post("/api/coinvest/sign-bra", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { signedName, signatureDataUrl } = req.body;
+      
+      if (!signedName || !signatureDataUrl) {
+        res.status(400).json({ error: "Signed name and signature are required" });
+        return;
+      }
+      
+      // Ensure profile exists
+      let profile = await storage.getCoInvestUserProfile(userId);
+      if (!profile) {
+        profile = await storage.upsertCoInvestUserProfile({ userId });
+      }
+      
+      // Generate a unique document ID
+      const braDocumentId = `coinvest-bra-${userId}-${Date.now()}`;
+      
+      // Update profile with BRA status
+      await storage.updateCoInvestProfileBraStatus(userId, {
+        braStatus: "signed",
+        braSignedAt: new Date(),
+        braDocumentId,
+        braJurisdiction: profile?.selectedJurisdiction || "ON",
+      });
+      
+      // Log the signing event
+      await storage.createCoInvestComplianceLog({
+        userId,
+        eventType: "bra_signed",
+        metadata: { signedName, braDocumentId },
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+      });
+      
+      // Also create a BuyBox agreement record for unified tracking
+      try {
+        const termEndDate = new Date();
+        termEndDate.setFullYear(termEndDate.getFullYear() + 1);
+        
+        await storage.createBuyBoxAgreement({
+          userId,
+          agreementVersion: "coinvest-1.0",
+          agreementHtml: `Co-Investing Buyer Representation Agreement signed by ${signedName}`,
+          signedName,
+          signatureDataUrl,
+          termStartDate: new Date(),
+          termEndDate,
+          holdoverDays: 60,
+          commissionPercent: 2.5,
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+          signedAt: new Date(),
+        });
+      } catch (buyboxError) {
+        console.error("Error creating buybox agreement record:", buyboxError);
+        // Continue - the co-invest record is the primary one
+      }
+      
+      res.json({ success: true, braDocumentId });
+    } catch (error) {
+      console.error("Error signing BRA:", error);
+      res.status(500).json({ error: "Failed to sign BRA" });
+    }
+  });
+
+  // Sign Co-Invest Acknowledgement
+  app.post("/api/coinvest/sign-acknowledgement", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { signedName } = req.body;
+      
+      if (!signedName) {
+        res.status(400).json({ error: "Signed name is required" });
+        return;
+      }
+      
+      // Ensure profile exists
+      let profile = await storage.getCoInvestUserProfile(userId);
+      if (!profile) {
+        res.status(400).json({ error: "Profile not found. Please complete BRA first." });
+        return;
+      }
+      
+      // Verify BRA is signed first
+      if (profile.braStatus !== "signed") {
+        res.status(400).json({ error: "BRA must be signed before acknowledgement" });
+        return;
+      }
+      
+      // Update profile with acknowledgement
+      await storage.updateCoInvestProfileBraStatus(userId, {
+        coinvestAckStatus: "signed",
+        coinvestAckSignedAt: new Date(),
+        coinvestAckVersion: "1.0",
+        coinvestAckSignedName: signedName,
+      });
+      
+      // Log the event
+      await storage.createCoInvestComplianceLog({
+        userId,
+        eventType: "ack_signed",
+        metadata: { signedName, version: "1.0" },
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error signing acknowledgement:", error);
+      res.status(500).json({ error: "Failed to sign acknowledgement" });
+    }
+  });
+
+  // Helper function to check if user can access co-invest features
+  async function canAccessCoInvest(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const profile = await storage.getCoInvestUserProfile(userId);
+    if (!profile) {
+      return { allowed: true }; // New users go through onboarding
+    }
+    
+    const jurisdiction = profile.selectedJurisdiction || profile.region;
+    const isOntario = jurisdiction === "ON";
+    
+    if (!isOntario) {
+      return { allowed: true };
+    }
+    
+    const braOk = profile.braStatus === "signed";
+    const ackOk = profile.coinvestAckStatus === "signed";
+    
+    if (!braOk) {
+      return { allowed: false, reason: "BRA not signed" };
+    }
+    if (!ackOk) {
+      return { allowed: false, reason: "Acknowledgement not signed" };
+    }
+    
+    return { allowed: true };
+  }
+
+  // ============================================
+  // CO-INVESTING ROUTES
+  // ============================================
+
+  // Get or create user's co-invest profile
+  app.get("/api/coinvesting/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      let profile = await storage.getCoInvestUserProfile(userId);
+      res.json({ profile: profile || null });
+    } catch (error) {
+      console.error("Error fetching co-invest profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.post("/api/coinvesting/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const profile = await storage.upsertCoInvestUserProfile({
+        ...req.body,
+        userId,
+      });
+      res.json({ profile });
+    } catch (error) {
+      console.error("Error updating co-invest profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  // List public groups
+  app.get("/api/coinvesting/groups", async (req, res) => {
+    try {
+      const groups = await storage.getPublicCoInvestGroups();
+      res.json({ groups });
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+      res.status(500).json({ error: "Failed to fetch groups" });
+    }
+  });
+
+  // Get user's own groups
+  app.get("/api/coinvesting/my-groups", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const ownedGroups = await storage.getCoInvestGroupsByOwner(userId);
+      const memberships = await storage.getCoInvestMembershipsByUser(userId);
+      res.json({ ownedGroups, memberships });
+    } catch (error) {
+      console.error("Error fetching user groups:", error);
+      res.status(500).json({ error: "Failed to fetch groups" });
+    }
+  });
+
+  // Create a new group - REQUIRES REPRESENTATION FOR ONTARIO
+  app.post("/api/coinvesting/groups", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Check compliance status for Ontario users
+      const accessCheck = await canAccessCoInvest(userId);
+      if (!accessCheck.allowed) {
+        await storage.createCoInvestComplianceLog({
+          userId,
+          eventType: "access_denied",
+          metadata: { action: "create_group", reason: accessCheck.reason },
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+        });
+        res.status(403).json({ 
+          error: "Representation required", 
+          reason: accessCheck.reason,
+          requiresRepresentation: true,
+        });
+        return;
+      }
+      
+      const group = await storage.createCoInvestGroup({
+        ...req.body,
+        ownerUserId: userId,
+      });
+      
+      // Auto-create owner membership
+      await storage.createCoInvestMembership({
+        groupId: group.id,
+        userId: userId,
+        role: "owner",
+        status: "approved",
+      });
+      
+      res.json({ group });
+    } catch (error) {
+      console.error("Error creating group:", error);
+      res.status(500).json({ error: "Failed to create group" });
+    }
+  });
+
+  // Get single group - with visibility and auth checks
+  app.get("/api/coinvesting/groups/:id", async (req: any, res) => {
+    try {
+      const group = await storage.getCoInvestGroup(req.params.id);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+      
+      const userId = req.user?.id;
+      const isOwner = userId && group.ownerUserId === userId;
+      
+      // Check visibility permissions
+      if (group.visibility !== "public" && !isOwner) {
+        // For private/unlisted groups, check if user is a member
+        if (userId) {
+          const membership = await storage.getUserMembershipInGroup(userId, group.id);
+          if (!membership) {
+            return res.status(403).json({ error: "Not authorized to view this group" });
+          }
+        } else {
+          return res.status(403).json({ error: "Not authorized to view this group" });
+        }
+      }
+      
+      const checklistResult = group.checklistResultId 
+        ? await storage.getCoInvestChecklistResult(group.checklistResultId)
+        : null;
+      
+      // Only return full membership list to owner or approved members
+      let memberships: any[] = [];
+      if (isOwner) {
+        memberships = await storage.getCoInvestMembershipsByGroup(group.id);
+      } else if (userId) {
+        const userMembership = await storage.getUserMembershipInGroup(userId, group.id);
+        if (userMembership?.status === "approved") {
+          // Approved members can see other approved members (not pending requests)
+          const allMemberships = await storage.getCoInvestMembershipsByGroup(group.id);
+          memberships = allMemberships.filter(m => m.status === "approved");
+        } else if (userMembership) {
+          // Non-approved members can only see their own membership
+          memberships = [userMembership];
+        }
+      }
+      // Anonymous users get empty memberships array (only see approved count if needed)
+      
+      res.json({ 
+        group, 
+        memberships,
+        checklistResult,
+        approvedMemberCount: (await storage.getCoInvestMembershipsByGroup(group.id))
+          .filter(m => m.status === "approved").length
+      });
+    } catch (error) {
+      console.error("Error fetching group:", error);
+      res.status(500).json({ error: "Failed to fetch group" });
+    }
+  });
+
+  // Update group
+  app.patch("/api/coinvesting/groups/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const group = await storage.getCoInvestGroup(req.params.id);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+      if (group.ownerUserId !== req.user.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      const updated = await storage.updateCoInvestGroup(req.params.id, req.body);
+      res.json({ group: updated });
+    } catch (error) {
+      console.error("Error updating group:", error);
+      res.status(500).json({ error: "Failed to update group" });
+    }
+  });
+
+  // Request to join group
+  // Request to join a group - REQUIRES REPRESENTATION FOR ONTARIO
+  app.post("/api/coinvesting/groups/:id/join", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const groupId = req.params.id;
+      
+      // Check compliance status for Ontario users
+      const accessCheck = await canAccessCoInvest(userId);
+      if (!accessCheck.allowed) {
+        await storage.createCoInvestComplianceLog({
+          userId,
+          eventType: "access_denied",
+          metadata: { action: "join_group", groupId, reason: accessCheck.reason },
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+        });
+        res.status(403).json({ 
+          error: "Representation required", 
+          reason: accessCheck.reason,
+          requiresRepresentation: true,
+        });
+        return;
+      }
+      
+      const group = await storage.getCoInvestGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+      
+      // Check if already a member
+      const existing = await storage.getUserMembershipInGroup(userId, groupId);
+      if (existing) {
+        return res.status(400).json({ error: "Already a member or pending" });
+      }
+      
+      const membership = await storage.createCoInvestMembership({
+        groupId,
+        userId,
+        role: "member",
+        status: "requested",
+        pledgedCapitalCad: req.body.pledgedCapitalCad,
+        skillsOffered: req.body.skillsOffered,
+        note: req.body.note,
+      });
+      
+      res.json({ membership });
+    } catch (error) {
+      console.error("Error joining group:", error);
+      res.status(500).json({ error: "Failed to join group" });
+    }
+  });
+
+  // Approve/reject membership
+  app.patch("/api/coinvesting/memberships/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const membership = await storage.getCoInvestMembership(req.params.id);
+      if (!membership) {
+        return res.status(404).json({ error: "Membership not found" });
+      }
+      
+      const group = await storage.getCoInvestGroup(membership.groupId);
+      if (!group || group.ownerUserId !== req.user.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      // Validate status value - only allow valid transitions
+      const validStatuses = ["approved", "rejected", "removed"];
+      if (!req.body.status || !validStatuses.includes(req.body.status)) {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+      
+      // Validate status transitions
+      if (membership.status === "approved" && req.body.status === "approved") {
+        return res.status(400).json({ error: "Member is already approved" });
+      }
+      
+      const updated = await storage.updateCoInvestMembership(req.params.id, {
+        status: req.body.status,
+      });
+      res.json({ membership: updated });
+    } catch (error) {
+      console.error("Error updating membership:", error);
+      res.status(500).json({ error: "Failed to update membership" });
+    }
+  });
+
+  // Save checklist result
+  app.post("/api/coinvesting/checklist", isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await storage.createCoInvestChecklistResult({
+        ...req.body,
+        userId: req.user.id,
+      });
+      res.json({ result });
+    } catch (error) {
+      console.error("Error saving checklist:", error);
+      res.status(500).json({ error: "Failed to save checklist" });
+    }
+  });
+
+  // Get messages for a group
+  app.get("/api/coinvesting/groups/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const groupId = req.params.id;
+      const userId = req.user.id;
+      
+      // Check membership
+      const membership = await storage.getUserMembershipInGroup(userId, groupId);
+      if (!membership || membership.status !== "approved") {
+        return res.status(403).json({ error: "Must be an approved member" });
+      }
+      
+      const messages = await storage.getCoInvestMessagesByGroup(groupId);
+      res.json({ messages });
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // Post a message
+  // Post message to group - REQUIRES REPRESENTATION FOR ONTARIO
+  app.post("/api/coinvesting/groups/:id/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const groupId = req.params.id;
+      const userId = req.user.id;
+      
+      // Check compliance status for Ontario users
+      const accessCheck = await canAccessCoInvest(userId);
+      if (!accessCheck.allowed) {
+        await storage.createCoInvestComplianceLog({
+          userId,
+          eventType: "access_denied",
+          metadata: { action: "post_message", groupId, reason: accessCheck.reason },
+          ipAddress: req.ip || null,
+          userAgent: req.headers["user-agent"] || null,
+        });
+        res.status(403).json({ 
+          error: "Representation required", 
+          reason: accessCheck.reason,
+          requiresRepresentation: true,
+        });
+        return;
+      }
+      
+      // Check membership
+      const membership = await storage.getUserMembershipInGroup(userId, groupId);
+      if (!membership || membership.status !== "approved") {
+        return res.status(403).json({ error: "Must be an approved member" });
+      }
+      
+      const message = await storage.createCoInvestMessage({
+        groupId,
+        userId,
+        message: req.body.message,
+      });
+      res.json({ message });
+    } catch (error) {
+      console.error("Error posting message:", error);
+      res.status(500).json({ error: "Failed to post message" });
+    }
+  });
+
+  // True Cost of Homeownership Calculator
+  const trueCostInputSchema = z.object({
+    homeValue: z.number().min(50000).max(50000000),
+    city: z.string().min(1),
+    isNewConstruction: z.boolean(),
+    buyerType: z.enum(buyerTypes),
+    homeType: z.enum(homeTypes),
+    squareFootage: z.number().min(200).max(20000).optional(),
+  });
+
+  app.get("/api/insights/new-construction-canada", async (req, res) => {
+    try {
+      const { getNewConstructionCanadaReport } = await import("./newConstructionReport");
+      let isAdminUser = false;
+      if (req.query.refresh === "1" && req.session.userId) {
+        const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, req.session.userId)).limit(1);
+        isAdminUser = u?.role === "admin";
+      }
+      const forceRefresh = req.query.refresh === "1" && isAdminUser;
+      const report = await getNewConstructionCanadaReport(forceRefresh);
+      res.json(report);
+    } catch (error) {
+      console.error("New construction report error:", error);
+      res.status(500).json({ error: "Failed to generate new construction report", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/robots.txt", async (_req, res) => {
+    const body = [
+      "User-agent: *",
+      "Allow: /",
+      "Disallow: /api/",
+      "Disallow: /admin",
+      "",
+      "Sitemap: https://realist.ca/sitemap.xml",
+      "Sitemap: https://realist.ca/sitemap-encyclopedia.xml",
+      "",
+    ].join("\n");
+    res.set("Content-Type", "text/plain; charset=utf-8");
+    res.set("X-Content-Type-Options", "nosniff");
+    res.send(body);
+  });
+
+  // Dynamic sitemap.xml — overrides static client/public/sitemap.xml
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const BASE = "https://realist.ca";
+      const today = new Date().toISOString().slice(0, 10);
+      const staticPages: Array<{ path: string; priority: number; changefreq: string; lastmod?: string }> = [
+        { path: "/", priority: 1.0, changefreq: "daily" },
+        { path: "/reports", priority: 0.9, changefreq: "weekly" },
+        { path: "/markets", priority: 0.85, changefreq: "weekly" },
+        { path: "/investing", priority: 0.85, changefreq: "weekly" },
+        { path: "/about", priority: 0.9, changefreq: "monthly" },
+        { path: "/about/contact", priority: 0.6, changefreq: "monthly" },
+        { path: "/about/shop", priority: 0.6, changefreq: "weekly" },
+        { path: "/tools", priority: 0.9, changefreq: "weekly" },
+        { path: "/tools/analyzer", priority: 0.95, changefreq: "weekly" },
+        { path: "/tools/buybox", priority: 0.7, changefreq: "weekly" },
+        { path: "/tools/coinvest", priority: 0.7, changefreq: "weekly" },
+        { path: "/tools/true-cost", priority: 0.8, changefreq: "monthly" },
+        { path: "/tools/rent-vs-buy", priority: 0.8, changefreq: "monthly" },
+        { path: "/tools/cap-rates", priority: 0.8, changefreq: "weekly" },
+        { path: "/tools/will-it-plex", priority: 0.7, changefreq: "monthly" },
+        { path: "/tools/fixed-vs-variable", priority: 0.7, changefreq: "weekly" },
+        { path: "/tools/land-claim-screener", priority: 0.7, changefreq: "monthly" },
+        { path: "/tools/motivated-deals", priority: 0.8, changefreq: "daily" },
+        { path: "/course", priority: 0.9, changefreq: "weekly" },
+        { path: "/community", priority: 0.8, changefreq: "weekly" },
+        { path: "/community/leaderboard", priority: 0.8, changefreq: "daily" },
+        { path: "/community/events", priority: 0.8, changefreq: "weekly" },
+        { path: "/community/network", priority: 0.7, changefreq: "weekly" },
+        { path: "/insights", priority: 0.9, changefreq: "weekly" },
+        { path: "/insights/market-report", priority: 0.9, changefreq: "weekly" },
+        { path: "/insights/motivated-report", priority: 0.85, changefreq: "daily" },
+        { path: "/insights/mortgage-rates", priority: 0.85, changefreq: "daily" },
+        { path: "/insights/building-permits", priority: 0.8, changefreq: "monthly" },
+        { path: "/insights/productivity-gap", priority: 0.7, changefreq: "monthly" },
+        { path: "/insights/new-construction-canada", priority: 0.85, changefreq: "weekly" },
+        { path: "/insights/gta-precon-pricing", priority: 0.85, changefreq: "weekly" },
+        { path: "/insights/cpi-march-2026", priority: 0.8, changefreq: "monthly" },
+        { path: "/insights/the-spread-that-ate-the-economy", priority: 0.8, changefreq: "monthly" },
+        { path: "/canada-housing-market", priority: 0.9, changefreq: "weekly" },
+        { path: "/toronto-housing-market", priority: 0.9, changefreq: "weekly" },
+        { path: "/toronto-condo-prices-dropping", priority: 0.85, changefreq: "weekly" },
+        { path: "/biggest-price-drops-gta", priority: 0.85, changefreq: "daily" },
+        { path: "/insights/podcast", priority: 0.8, changefreq: "weekly" },
+        { path: "/insights/blog", priority: 0.8, changefreq: "weekly" },
+        { path: "/insights/guides", priority: 0.8, changefreq: "weekly" },
+        { path: "/insights/encyclopedia", priority: 0.82, changefreq: "weekly" },
+        { path: "/join/realtors", priority: 0.7, changefreq: "monthly" },
+        { path: "/join/lenders", priority: 0.7, changefreq: "monthly" },
+      ];
+
+      const urls: string[] = staticPages.map(p =>
+        `  <url>\n    <loc>${BASE}${p.path}</loc>\n    <lastmod>${p.lastmod ?? today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority.toFixed(2)}</priority>\n  </url>`
+      );
+
+      try {
+        const { PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } = await import("@shared/programmaticSeo");
+        for (const market of PROGRAMMATIC_MARKETS) {
+          urls.push(`  <url>\n    <loc>${BASE}/markets/${market.slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.72</priority>\n  </url>`);
+        }
+        for (const strategy of PROGRAMMATIC_STRATEGIES) {
+          urls.push(`  <url>\n    <loc>${BASE}/investing/${strategy.slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.72</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip */ }
+
+      // Published blog posts
+      try {
+        const posts = await storage.getBlogPosts({ status: "published" });
+        for (const p of posts) {
+          const lastmod = (p.updatedAt || p.publishedAt || new Date()).toISOString().slice(0, 10);
+          const reportUrl = p.category === "market-analysis" ? `${BASE}/reports/${p.slug}` : `${BASE}/insights/blog/${p.slug}`;
+          urls.push(`  <url>\n    <loc>${reportUrl}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.70</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip if storage unavailable */ }
+
+      // SEO project landing pages — top movers (cap at 50 to stay focused)
+      try {
+        const { getProjectSummaries } = await import("./preconPricingReport");
+        const projects = getProjectSummaries()
+          .filter(p => p.cuts > 0 || p.raises > 0)
+          .sort((a, b) => Math.abs(b.avgDeltaPct) - Math.abs(a.avgDeltaPct))
+          .slice(0, 50);
+        for (const p of projects) {
+          urls.push(`  <url>\n    <loc>${BASE}/projects/${p.slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.65</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip */ }
+
+      // Published guides
+      try {
+        const gs = await storage.getGuides({ status: "published" });
+        for (const g of gs) {
+          const lastmod = (g.updatedAt || g.publishedAt || new Date()).toISOString().slice(0, 10);
+          urls.push(`  <url>\n    <loc>${BASE}/insights/guides/${g.slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.70</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip if storage unavailable */ }
+
+      // Static investor encyclopedia pages
+      try {
+        const { encyclopediaGuides } = await import("@shared/encyclopedia");
+        for (const guide of encyclopediaGuides) {
+          urls.push(`  <url>\n    <loc>${BASE}${guide.canonicalPath}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>${(guide.toolSpecSlug ? 0.74 : 0.68).toFixed(2)}</priority>\n  </url>`);
+        }
+      } catch (e) { /* skip if static content unavailable */ }
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+      const cleanXml = xml.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").trim() + "\n";
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(cleanXml);
+    } catch (err: any) {
+      console.error("[sitemap] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
+  app.get("/api/seo/precon-scope", async (req, res) => {
+    try {
+      const { getScopedPreconReport } = await import("./preconPricingReport");
+      const city = typeof req.query.city === "string" ? req.query.city : undefined;
+      const region = typeof req.query.region === "string" ? req.query.region : undefined;
+      const scopeLabel = typeof req.query.label === "string" ? req.query.label : (city || region || "Greater Toronto Area");
+      const report = getScopedPreconReport({ city, region, scopeLabel });
+      res.set("Cache-Control", "public, max-age=3600");
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate scoped report", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/seo/projects", async (_req, res) => {
+    try {
+      const { getProjectSummaries } = await import("./preconPricingReport");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.json(getProjectSummaries());
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load projects", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/seo/projects/:slug", async (req, res) => {
+    try {
+      const { getProjectDetail } = await import("./preconPricingReport");
+      const detail = getProjectDetail(req.params.slug);
+      if (!detail) return res.status(404).json({ error: "Project not found" });
+      res.set("Cache-Control", "public, max-age=3600");
+      res.json(detail);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load project", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/insights/gta-precon-pricing", async (_req, res) => {
+    try {
+      const { getPreconPricingReport } = await import("./preconPricingReport");
+      const report = getPreconPricingReport();
+      res.json(report);
+    } catch (error) {
+      console.error("GTA pre-construction pricing report error:", error);
+      res.status(500).json({ error: "Failed to generate pre-construction pricing report", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/insights/precon-vs-resale-1990s", (req, res) => {
+    res.set("Cache-Control", "private, no-store");
+    const expected = process.env.PRECON_REPORT_TOKEN;
+    if (!expected) {
+      return res.status(503).json({ error: "Report not configured" });
+    }
+    const provided = (req.query.key ?? "").toString();
+    const a = Buffer.from(provided);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return res.status(401).json({ error: "Invalid or missing access token" });
+    }
+    import("./preconResale1990sReport").then(({ getPreconResale1990sReport }) => {
+      res.json(getPreconResale1990sReport());
+    }).catch((error) => {
+      console.error("Precon 1990s report error:", error);
+      res.status(500).json({ error: "Failed to load report" });
+    });
+  });
+
+  app.get("/api/insights/cpi-march-2026", async (req, res) => {
+    try {
+      const { getCpiReport } = await import("./cpiReport");
+      let isAdminUser = false;
+      if (req.query.refresh === "1" && req.session.userId) {
+        const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, req.session.userId)).limit(1);
+        isAdminUser = u?.role === "admin";
+      }
+      const forceRefresh = req.query.refresh === "1" && isAdminUser;
+      const report = await getCpiReport(forceRefresh);
+      res.json(report);
+    } catch (error) {
+      console.error("CPI report error:", error);
+      res.status(500).json({ error: "Failed to generate CPI report", message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.post("/api/true-cost/calculate", async (req, res) => {
+    try {
+      const input = trueCostInputSchema.parse(req.body);
+      const breakdown = calculateTrueCost(input as TrueCostInput);
+      
+      // If user is authenticated, save inquiry and breakdown to database
+      const userId = req.session.userId;
+      if (userId) {
+        const [inquiry] = await db.insert(trueCostInquiries).values({
+          userId,
+          homeValue: input.homeValue,
+          city: input.city,
+          homeType: input.homeType,
+          buyerType: input.buyerType,
+          isNewConstruction: input.isNewConstruction,
+          squareFootage: input.squareFootage,
+        }).returning();
+        
+        await db.insert(trueCostBreakdowns).values({
+          inquiryId: inquiry.id,
+          breakdownJson: breakdown,
+        });
+        
+        return res.json({ ...breakdown, inquiryId: inquiry.id });
+      }
+      
+      res.json(breakdown);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("True cost calculation error:", error);
+      res.status(500).json({ error: "Failed to calculate costs" });
+    }
+  });
+
+  app.get("/api/true-cost/options", (req, res) => {
+    res.json({
+      cities: cities,
+      municipalities: Object.values(municipalities).map(m => ({
+        name: m.name,
+        region: m.region,
+        developmentCharge: m.developmentCharge,
+      })),
+      homeTypes: homeTypes,
+      buyerTypes: buyerTypes,
+    });
+  });
+
+  app.get("/api/true-cost/match-city", (req, res) => {
+    const input = req.query.q as string;
+    if (!input || input.length < 2) {
+      return res.json({ matches: [] });
+    }
+    const matched = matchMunicipality(input);
+    if (matched) {
+      return res.json({ 
+        matches: [{ name: matched.name, region: matched.region, developmentCharge: matched.developmentCharge }] 
+      });
+    }
+    // Return partial matches for autocomplete
+    const normalized = input.toLowerCase().trim();
+    const partialMatches = Object.values(municipalities)
+      .filter(m => 
+        m.name.toLowerCase().includes(normalized) || 
+        m.aliases.some(a => a.includes(normalized))
+      )
+      .slice(0, 5)
+      .map(m => ({ name: m.name, region: m.region, developmentCharge: m.developmentCharge }));
+    res.json({ matches: partialMatches });
+  });
+
+  app.get("/api/true-cost/breakdown/:inquiryId", async (req, res) => {
+    try {
+      const { inquiryId } = req.params;
+      
+      const [breakdown] = await db
+        .select()
+        .from(trueCostBreakdowns)
+        .where(eq(trueCostBreakdowns.inquiryId, inquiryId));
+      
+      if (!breakdown) {
+        return res.status(404).json({ error: "Breakdown not found" });
+      }
+      
+      res.json(breakdown.breakdownJson);
+    } catch (error) {
+      console.error("Error fetching breakdown:", error);
+      res.status(500).json({ error: "Failed to fetch breakdown" });
+    }
+  });
+
+  app.get("/api/true-cost/my-inquiries", async (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const inquiries = await db
+        .select()
+        .from(trueCostInquiries)
+        .where(eq(trueCostInquiries.userId, userId))
+        .orderBy(sql`${trueCostInquiries.createdAt} DESC`);
+      
+      res.json(inquiries);
+    } catch (error) {
+      console.error("Error fetching inquiries:", error);
+      res.status(500).json({ error: "Failed to fetch inquiries" });
+    }
+  });
+
+  // Realtor.ca listing parser endpoint
+  app.post("/api/listings/parse-realtor-ca", async (req, res) => {
+    try {
+      const { url, html: providedHtml } = req.body;
+      
+      let html: string;
+      let sourceUrl = "";
+      
+      if (providedHtml && typeof providedHtml === "string") {
+        // User provided HTML source directly
+        html = providedHtml;
+        // Try to extract URL from the HTML
+        const canonicalMatch = html.match(/<link[^>]+rel="canonical"[^>]+href="([^"]+)"/i);
+        if (canonicalMatch) {
+          sourceUrl = canonicalMatch[1];
+        }
+      } else if (url && typeof url === "string") {
+        const realtorCaPattern = /^https?:\/\/(www\.)?realtor\.ca\/(real-estate|immobilier)\/\d+/;
+        if (!realtorCaPattern.test(url)) {
+          return res.status(400).json({ error: "Please provide a valid realtor.ca listing URL" });
+        }
+        
+        sourceUrl = url;
+        
+        const puppeteerExtra = await import("puppeteer-extra");
+        const StealthPlugin = await import("puppeteer-extra-plugin-stealth");
+        puppeteerExtra.default.use(StealthPlugin.default());
+        
+        let browser;
+        try {
+          browser = await puppeteerExtra.default.launch({
+            executablePath: process.env.CHROMIUM_PATH || "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium",
+            headless: "new",
+            args: [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+              "--single-process",
+              "--disable-blink-features=AutomationControlled",
+            ],
+          });
+          const page = await browser.newPage();
+          await page.setViewport({ width: 1280, height: 800 });
+          
+          await page.goto(url, { waitUntil: "networkidle2", timeout: 25000 });
+          
+          await page.waitForFunction(() => {
+            return document.body.innerHTML.length > 10000;
+          }, { timeout: 15000 }).catch(() => {});
+          
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          html = await page.content();
+          
+          const hasListingData = html.includes('dataLayer') && (html.includes('property:') || html.includes('propertyType'))
+            || html.includes('__NEXT_DATA__')
+            || html.includes('listingData');
+          const isBlocked = (html.includes('_Incapsula_Resource') && !hasListingData) || html.length < 3000;
+          
+          if (isBlocked) {
+            return res.status(400).json({ 
+              error: "Realtor.ca blocked the automated request. Please use the quick paste method below instead — it only takes 30 seconds.",
+              blocked: true
+            });
+          }
+        } catch (browserError: any) {
+          console.error("Puppeteer error:", browserError.message);
+          return res.status(400).json({ 
+            error: "Could not load the listing page. Please try the paste method below instead.",
+            blocked: true
+          });
+        } finally {
+          if (browser) {
+            await browser.close().catch(() => {});
+          }
+        }
+      } else {
+        return res.status(400).json({ error: "URL or HTML source is required" });
+      }
+      
+      // Try multiple patterns to find property data
+      let propertyBlock = "";
+      
+      // Pattern 1: dataLayer.push with property block
+      const dataLayerMatch = html.match(/dataLayer\.push\(\{[\s\S]*?property:\s*\{([\s\S]*?)\}\s*\}\);/);
+      if (dataLayerMatch) {
+        propertyBlock = dataLayerMatch[1];
+      }
+      
+      // Pattern 2: Look for __NEXT_DATA__ JSON (newer realtor.ca format)
+      if (!propertyBlock) {
+        const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+        if (nextDataMatch) {
+          try {
+            const nextData = JSON.parse(nextDataMatch[1]);
+            const listing = nextData?.props?.pageProps?.listing || nextData?.props?.pageProps?.property;
+            if (listing) {
+              // Convert to property block format for extraction
+              propertyBlock = JSON.stringify(listing);
+            }
+          } catch (e) {
+            // JSON parse failed, continue to other patterns
+          }
+        }
+      }
+      
+      // Pattern 3: Look for listingData variable
+      if (!propertyBlock) {
+        const listingDataMatch = html.match(/listingData\s*=\s*(\{[\s\S]*?\});/);
+        if (listingDataMatch) {
+          propertyBlock = listingDataMatch[1];
+        }
+      }
+      
+      // Pattern 4: Look for window.__PRELOADED_STATE__
+      if (!propertyBlock) {
+        const preloadedMatch = html.match(/window\.__PRELOADED_STATE__\s*=\s*(\{[\s\S]*?\});/);
+        if (preloadedMatch) {
+          propertyBlock = preloadedMatch[1];
+        }
+      }
+      
+      if (!propertyBlock) {
+        // Check if it looks like a blocked page
+        if (html.includes("_Incapsula_Resource") || html.length < 1000) {
+          return res.status(400).json({ 
+            error: "The page source appears to be blocked or incomplete. Please make sure you copied the full page source after the page fully loaded.",
+            blocked: true
+          });
+        }
+        return res.status(400).json({ error: "Could not parse listing data. Please make sure you copied the full page source from a realtor.ca listing page." });
+      }
+      
+      // Extract property details using regex
+      const extractField = (fieldName: string): string => {
+        const match = propertyBlock.match(new RegExp(`${fieldName}:\\s*['"]([^'"]*?)['"]`));
+        return match ? match[1] : "";
+      };
+      
+      const price = extractField("price");
+      const bedrooms = extractField("bedrooms");
+      const bathrooms = extractField("bathrooms");
+      const propertyType = extractField("propertyType");
+      const buildingType = extractField("buildingType");
+      const city = extractField("city");
+      const province = extractField("province");
+      const interiorFloorSpace = extractField("interiorFloorSpace");
+      const listingId = extractField("listingID");
+      const propertyId = extractField("propertyID");
+      const storeys = extractField("storeys");
+      const buildingStyle = extractField("buildingStyle");
+      const landSize = extractField("landSize");
+      
+      // Extract address from title tag
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      let address = "";
+      if (titleMatch) {
+        // Title format: "For sale: 4295 HORSESHOE VALLEY ROAD W, Springwater, Ontario L9X1G1 - S12360403 | REALTOR.ca"
+        const titleText = titleMatch[1];
+        const addressMatch = titleText.match(/For sale:\s*([^-|]+)/i);
+        if (addressMatch) {
+          // Get the street address part before the city
+          const fullAddress = addressMatch[1].trim();
+          const parts = fullAddress.split(",");
+          if (parts.length > 0) {
+            address = parts[0].trim();
+          }
+        }
+      }
+      
+      // Extract postal code from title or meta
+      let postalCode = "";
+      if (titleMatch) {
+        const postalMatch = titleMatch[1].match(/([A-Z]\d[A-Z]\s?\d[A-Z]\d)/i);
+        if (postalMatch) {
+          postalCode = postalMatch[1].replace(/\s/g, "").toUpperCase();
+        }
+      }
+      
+      // Convert square meters to square feet if needed
+      let squareFootage = 0;
+      if (interiorFloorSpace) {
+        const sqmMatch = interiorFloorSpace.match(/([\d.]+)\s*m2/i);
+        if (sqmMatch) {
+          squareFootage = Math.round(parseFloat(sqmMatch[1]) * 10.764);
+        }
+        const sqftMatch = interiorFloorSpace.match(/([\d,]+)\s*(sq\.?\s*ft|sqft)/i);
+        if (sqftMatch) {
+          squareFootage = parseInt(sqftMatch[1].replace(/,/g, ""));
+        }
+      }
+      
+      // Extract first image URL
+      const imageMatch = html.match(/og:image"\s+content="([^"]+)"/);
+      const imageUrl = imageMatch ? imageMatch[1] : "";
+      
+      res.json({
+        success: true,
+        listing: {
+          listingId,
+          propertyId,
+          address,
+          city,
+          province,
+          postalCode,
+          country: "canada",
+          price: price ? parseFloat(price) : 0,
+          bedrooms: bedrooms ? parseInt(bedrooms) : 0,
+          bathrooms: bathrooms ? parseInt(bathrooms) : 0,
+          squareFootage,
+          propertyType,
+          buildingType,
+          buildingStyle,
+          storeys: storeys ? parseInt(storeys) : 0,
+          landSize,
+          imageUrl,
+          sourceUrl,
+        },
+      });
+    } catch (error) {
+      console.error("Error parsing realtor.ca listing:", error);
+      res.status(500).json({ error: "Failed to parse listing. Please try again." });
+    }
+  });
+
+  app.post("/api/listings/parse-zillow", async (req, res) => {
+    try {
+      const { url, html: providedHtml } = req.body;
+      
+      let html: string;
+      let sourceUrl = "";
+      
+      if (providedHtml && typeof providedHtml === "string") {
+        html = providedHtml;
+        const canonicalMatch = html.match(/<link[^>]+rel="canonical"[^>]+href="([^"]+)"/i);
+        if (canonicalMatch) {
+          sourceUrl = canonicalMatch[1];
+        }
+      } else if (url && typeof url === "string") {
+        const zillowPattern = /^https?:\/\/(www\.)?zillow\.com\/homedetails\//;
+        if (!zillowPattern.test(url)) {
+          return res.status(400).json({ error: "Please provide a valid Zillow listing URL (zillow.com/homedetails/...)" });
+        }
+        
+        sourceUrl = url;
+        
+        const puppeteerExtra = await import("puppeteer-extra");
+        const StealthPlugin = await import("puppeteer-extra-plugin-stealth");
+        puppeteerExtra.default.use(StealthPlugin.default());
+        
+        let browser;
+        try {
+          browser = await puppeteerExtra.default.launch({
+            executablePath: process.env.CHROMIUM_PATH || "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium",
+            headless: "new",
+            args: [
+              "--no-sandbox",
+              "--disable-setuid-sandbox",
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+              "--single-process",
+              "--disable-blink-features=AutomationControlled",
+            ],
+          });
+          const page = await browser.newPage();
+          await page.setViewport({ width: 1280, height: 800 });
+          await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          html = await page.content();
+        } catch (browserError: any) {
+          console.error("Zillow Puppeteer error:", browserError.message);
+          return res.status(400).json({ 
+            error: "Could not load the Zillow page. Please try the HTML paste method instead.",
+            blocked: true,
+          });
+        } finally {
+          if (browser) {
+            await browser.close().catch(() => {});
+          }
+        }
+        
+        if ((html.includes("captcha") || html.includes("px-captcha")) && html.length < 5000) {
+          return res.status(400).json({ 
+            error: "Zillow blocked the request. Please use the 'Advanced Import' option to paste the page HTML instead.",
+            blocked: true,
+          });
+        }
+      } else {
+        return res.status(400).json({ error: "URL or HTML source is required" });
+      }
+      
+      let listingData: any = null;
+      
+      const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+      if (nextDataMatch) {
+        try {
+          const nextData = JSON.parse(nextDataMatch[1]);
+          const propertyData = nextData?.props?.pageProps?.componentProps?.gdpClientCache;
+          if (propertyData) {
+            const cacheKey = Object.keys(propertyData)[0];
+            if (cacheKey) {
+              const parsed = JSON.parse(propertyData[cacheKey]);
+              listingData = parsed?.property;
+            }
+          }
+          if (!listingData) {
+            listingData = nextData?.props?.pageProps?.property;
+          }
+        } catch (e) {
+          // continue to other patterns
+        }
+      }
+      
+      if (!listingData) {
+        const ldJsonMatches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
+        for (const match of ldJsonMatches) {
+          try {
+            const jsonData = JSON.parse(match[1]);
+            if (jsonData["@type"] === "SingleFamilyResidence" || jsonData["@type"] === "Product" || jsonData["@type"] === "RealEstateListing") {
+              listingData = jsonData;
+              break;
+            }
+          } catch (e) {
+            // continue
+          }
+        }
+      }
+      
+      let address = "";
+      let city = "";
+      let state = "";
+      let zipCode = "";
+      let price = 0;
+      let bedrooms = 0;
+      let bathrooms = 0;
+      let squareFootage = 0;
+      let propertyType = "";
+      let yearBuilt = "";
+      let lotSize = "";
+      let imageUrl = "";
+      let zpid = "";
+      
+      if (listingData) {
+        address = listingData.streetAddress || listingData.address?.streetAddress || "";
+        city = listingData.city || listingData.address?.addressLocality || "";
+        state = listingData.state || listingData.address?.addressRegion || "";
+        zipCode = listingData.zipcode || listingData.address?.postalCode || "";
+        price = listingData.price || listingData.offers?.price || 0;
+        bedrooms = listingData.bedrooms || 0;
+        bathrooms = listingData.bathrooms || 0;
+        squareFootage = listingData.livingArea || listingData.floorSize?.value || 0;
+        propertyType = listingData.homeType || listingData["@type"] || "";
+        yearBuilt = listingData.yearBuilt || "";
+        lotSize = listingData.lotSize || listingData.lotAreaValue || "";
+        zpid = listingData.zpid || "";
+      }
+      
+      if (!address) {
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) {
+          const parts = titleMatch[1].split("|")[0].split("-")[0].trim().split(",");
+          if (parts.length > 0) address = parts[0].trim();
+          if (parts.length > 1) city = parts[1].trim();
+          if (parts.length > 2) {
+            const stateZip = parts[2].trim().split(" ");
+            state = stateZip[0] || "";
+            zipCode = stateZip[1] || "";
+          }
+        }
+      }
+      
+      if (!price) {
+        const priceMatch = html.match(/\$[\d,]+(?:\.\d{2})?/);
+        if (priceMatch) {
+          price = parseFloat(priceMatch[0].replace(/[$,]/g, ""));
+        }
+      }
+      
+      const metaPriceMatch = html.match(/property="product:price:amount"\s+content="([\d.]+)"/);
+      if (metaPriceMatch && !price) {
+        price = parseFloat(metaPriceMatch[1]);
+      }
+      
+      if (!bedrooms) {
+        const bedMatch = html.match(/(\d+)\s*(?:bed|bd)/i);
+        if (bedMatch) bedrooms = parseInt(bedMatch[1]);
+      }
+      if (!bathrooms) {
+        const bathMatch = html.match(/(\d+)\s*(?:bath|ba)/i);
+        if (bathMatch) bathrooms = parseInt(bathMatch[1]);
+      }
+      if (!squareFootage) {
+        const sqftMatch = html.match(/([\d,]+)\s*(?:sqft|sq\s*ft)/i);
+        if (sqftMatch) squareFootage = parseInt(sqftMatch[1].replace(/,/g, ""));
+      }
+      
+      const ogImageMatch = html.match(/og:image"\s+content="([^"]+)"/);
+      if (ogImageMatch) imageUrl = ogImageMatch[1];
+      
+      if (!address && !city) {
+        if (html.includes("captcha") || html.length < 2000) {
+          return res.status(400).json({
+            error: "The page source appears to be blocked. Please paste the full page source after the page fully loads.",
+            blocked: true,
+          });
+        }
+        return res.status(400).json({ error: "Could not parse listing data. Please make sure you copied the full page source from a Zillow listing page." });
+      }
+      
+      res.json({
+        success: true,
+        listing: {
+          listingId: zpid,
+          propertyId: zpid,
+          address,
+          city,
+          province: state,
+          postalCode: zipCode,
+          country: "usa",
+          price,
+          bedrooms,
+          bathrooms,
+          squareFootage,
+          propertyType,
+          buildingType: propertyType,
+          buildingStyle: "",
+          storeys: 0,
+          landSize: typeof lotSize === "number" ? `${lotSize} sqft` : lotSize,
+          yearBuilt,
+          imageUrl,
+          sourceUrl,
+        },
+      });
+    } catch (error) {
+      console.error("Error parsing Zillow listing:", error);
+      res.status(500).json({ error: "Failed to parse listing. Please try again." });
+    }
+  });
+
+  // ==========================================
+  // Will It Plex - Capstone Project API Routes
+  // ==========================================
+
+  // Get all projects for current user
+  app.get("/api/capstone/projects", async (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const projects = await db
+        .select()
+        .from(capstoneProjects)
+        .where(eq(capstoneProjects.userId, userId))
+        .orderBy(sql`${capstoneProjects.updatedAt} DESC`);
+      
+      // Fetch related data for each project
+      const projectsWithRelations = await Promise.all(
+        projects.map(async (project) => {
+          const [property] = await db
+            .select()
+            .from(capstoneProperties)
+            .where(eq(capstoneProperties.projectId, project.id));
+          
+          const [costModel] = await db
+            .select()
+            .from(capstoneCostModels)
+            .where(eq(capstoneCostModels.projectId, project.id));
+          
+          const [proforma] = await db
+            .select()
+            .from(capstoneProformas)
+            .where(eq(capstoneProformas.projectId, project.id));
+          
+          return {
+            ...project,
+            property: property || null,
+            costModel: costModel || null,
+            proforma: proforma || null,
+          };
+        })
+      );
+      
+      res.json(projectsWithRelations);
+    } catch (error) {
+      console.error("Error fetching capstone projects:", error);
+      res.status(500).json({ error: "Failed to fetch projects" });
+    }
+  });
+
+  // Get single project by ID
+  app.get("/api/capstone/projects/:id", async (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { id } = req.params;
+
+      const [project] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, userId)
+        ));
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const [property] = await db
+        .select()
+        .from(capstoneProperties)
+        .where(eq(capstoneProperties.projectId, id));
+      
+      const [costModel] = await db
+        .select()
+        .from(capstoneCostModels)
+        .where(eq(capstoneCostModels.projectId, id));
+      
+      const [proforma] = await db
+        .select()
+        .from(capstoneProformas)
+        .where(eq(capstoneProformas.projectId, id));
+      
+      res.json({
+        ...project,
+        property: property || null,
+        costModel: costModel || null,
+        proforma: proforma || null,
+      });
+    } catch (error) {
+      console.error("Error fetching capstone project:", error);
+      res.status(500).json({ error: "Failed to fetch project" });
+    }
+  });
+
+  // Create new project
+  app.post("/api/capstone/projects", async (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const [project] = await db
+        .insert(capstoneProjects)
+        .values({
+          userId,
+          status: "draft",
+          currentStep: 1,
+        })
+        .returning();
+      
+      res.json({ project });
+    } catch (error) {
+      console.error("Error creating capstone project:", error);
+      res.status(500).json({ error: "Failed to create project" });
+    }
+  });
+
+  // Update project
+  app.patch("/api/capstone/projects/:id", async (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { id } = req.params;
+      const { strategy, currentStep, status, completedAt, title } = req.body;
+
+      // Verify ownership
+      const [existing] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, userId)
+        ));
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      const updateData: any = { updatedAt: new Date() };
+      if (strategy !== undefined) updateData.strategy = strategy;
+      if (currentStep !== undefined) updateData.currentStep = currentStep;
+      if (status !== undefined) updateData.status = status;
+      if (completedAt !== undefined) updateData.completedAt = new Date(completedAt);
+      if (title !== undefined) updateData.title = title;
+      
+      const [updated] = await db
+        .update(capstoneProjects)
+        .set(updateData)
+        .where(eq(capstoneProjects.id, id))
+        .returning();
+      
+      res.json({ project: updated });
+    } catch (error) {
+      console.error("Error updating capstone project:", error);
+      res.status(500).json({ error: "Failed to update project" });
+    }
+  });
+
+  // Save property to project
+  app.post("/api/capstone/projects/:id/property", async (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { id } = req.params;
+
+      // Verify ownership
+      const [project] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, userId)
+        ));
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Delete existing property if any
+      await db
+        .delete(capstoneProperties)
+        .where(eq(capstoneProperties.projectId, id));
+      
+      // Insert new property
+      const [property] = await db
+        .insert(capstoneProperties)
+        .values({
+          projectId: id,
+          sourceUrl: req.body.sourceUrl,
+          listingId: req.body.listingId,
+          address: req.body.address,
+          city: req.body.city,
+          province: req.body.province,
+          postalCode: req.body.postalCode,
+          price: req.body.price,
+          annualTaxes: req.body.annualTaxes,
+          lotFrontage: req.body.lotFrontage,
+          lotDepth: req.body.lotDepth,
+          lotArea: req.body.lotArea,
+          bedrooms: req.body.bedrooms,
+          bathrooms: req.body.bathrooms,
+          squareFootage: req.body.squareFootage,
+          propertyType: req.body.propertyType,
+          buildingType: req.body.buildingType,
+          imageUrl: req.body.imageUrl,
+        })
+        .returning();
+      
+      // Update project title if not set
+      if (!project.title && req.body.address) {
+        await db
+          .update(capstoneProjects)
+          .set({ title: req.body.address, updatedAt: new Date() })
+          .where(eq(capstoneProjects.id, id));
+      }
+      
+      res.json({ property });
+    } catch (error) {
+      console.error("Error saving capstone property:", error);
+      res.status(500).json({ error: "Failed to save property" });
+    }
+  });
+
+  // Save cost model
+  app.post("/api/capstone/projects/:id/cost-model", async (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { id } = req.params;
+
+      // Verify ownership
+      const [project] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, userId)
+        ));
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Delete existing cost model if any
+      await db
+        .delete(capstoneCostModels)
+        .where(eq(capstoneCostModels.projectId, id));
+      
+      // Insert new cost model
+      const [costModel] = await db
+        .insert(capstoneCostModels)
+        .values({
+          projectId: id,
+          ...req.body,
+        })
+        .returning();
+      
+      res.json({ costModel });
+    } catch (error) {
+      console.error("Error saving capstone cost model:", error);
+      res.status(500).json({ error: "Failed to save cost model" });
+    }
+  });
+
+  // Save proforma/results
+  app.post("/api/capstone/projects/:id/proforma", async (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { id } = req.params;
+
+      // Verify ownership
+      const [project] = await db
+        .select()
+        .from(capstoneProjects)
+        .where(and(
+          eq(capstoneProjects.id, id),
+          eq(capstoneProjects.userId, userId)
+        ));
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Delete existing proforma if any
+      await db
+        .delete(capstoneProformas)
+        .where(eq(capstoneProformas.projectId, id));
+      
+      // Insert new proforma
+      const [proforma] = await db
+        .insert(capstoneProformas)
+        .values({
+          projectId: id,
+          ...req.body,
+        })
+        .returning();
+      
+      res.json({ proforma });
+    } catch (error) {
+      console.error("Error saving capstone proforma:", error);
+      res.status(500).json({ error: "Failed to save proforma" });
+    }
+  });
+
+  // ============================================
+  // RENT PULSE API ROUTES
+  // ============================================
+
+  const rentIngestItemSchema = z.object({
+    city: z.string().min(1),
+    province: z.string().min(1),
+    bedrooms: z.string().min(1),
+    medianRent: z.number().int().positive(),
+    averageRent: z.number().int().positive().optional(),
+    sampleSize: z.number().int().positive(),
+    minRent: z.number().int().positive().optional(),
+    maxRent: z.number().int().positive().optional(),
+    scrapedAt: z.string(),
+  });
+
+  const rentListingItemSchema = z.object({
+    externalId: z.string().optional(),
+    city: z.string().min(1),
+    province: z.string().min(1),
+    address: z.string().optional(),
+    bedrooms: z.string().min(1),
+    bathrooms: z.string().optional(),
+    rent: z.number().int().positive(),
+    squareFootage: z.number().int().positive().optional(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
+    sourceUrl: z.string().optional(),
+    sourcePlatform: z.string().optional(),
+    listingDate: z.string().optional(),
+    scrapedAt: z.string(),
+  });
+
+  const rentIngestSchema = z.object({
+    pulse: z.array(rentIngestItemSchema).optional(),
+    listings: z.array(rentListingItemSchema).optional(),
+  });
+
+  app.post("/api/rents/ingest", async (req, res) => {
+    try {
+      const apiKey = req.headers["x-api-key"] || req.headers["authorization"]?.replace("Bearer ", "");
+      const expectedKey = process.env.RENT_INGEST_KEY;
+      if (!expectedKey || apiKey !== expectedKey) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const parsed = rentIngestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.errors });
+      }
+
+      const { pulse, listings } = parsed.data;
+      let pulseInserted = 0;
+      let listingsInserted = 0;
+
+      if (pulse && pulse.length > 0) {
+        const rows = pulse.map(p => ({
+          city: p.city,
+          province: p.province,
+          bedrooms: p.bedrooms,
+          medianRent: p.medianRent,
+          averageRent: p.averageRent ?? null,
+          sampleSize: p.sampleSize,
+          minRent: p.minRent ?? null,
+          maxRent: p.maxRent ?? null,
+          scrapedAt: new Date(p.scrapedAt),
+        }));
+        await db.insert(rentPulse).values(rows);
+        pulseInserted = rows.length;
+      }
+
+      if (listings && listings.length > 0) {
+        const rows = listings.map(l => ({
+          externalId: l.externalId ?? null,
+          city: l.city,
+          province: l.province,
+          address: l.address ?? null,
+          bedrooms: l.bedrooms,
+          bathrooms: l.bathrooms ?? null,
+          rent: l.rent,
+          squareFootage: l.squareFootage ?? null,
+          lat: l.lat ?? null,
+          lng: l.lng ?? null,
+          sourceUrl: l.sourceUrl ?? null,
+          sourcePlatform: l.sourcePlatform ?? null,
+          listingDate: l.listingDate ? new Date(l.listingDate) : null,
+          scrapedAt: new Date(l.scrapedAt),
+        }));
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+          await db.insert(rentListings).values(rows.slice(i, i + BATCH_SIZE));
+        }
+        listingsInserted = rows.length;
+      }
+
+      res.json({ success: true, pulseInserted, listingsInserted });
+    } catch (error) {
+      console.error("Error ingesting rent data:", error);
+      res.status(500).json({ error: "Failed to ingest rent data" });
+    }
+  });
+
+  app.get("/api/rents/pulse", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const bedrooms = req.query.bedrooms as string | undefined;
+
+      let query = db
+        .select()
+        .from(rentPulse)
+        .orderBy(desc(rentPulse.scrapedAt))
+        .$dynamic();
+
+      const conditions = [];
+      if (city) conditions.push(eq(rentPulse.city, city));
+      if (province) conditions.push(eq(rentPulse.province, province));
+      if (bedrooms) conditions.push(eq(rentPulse.bedrooms, bedrooms));
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      const results = await query.limit(500);
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching rent pulse:", error);
+      res.status(500).json({ error: "Failed to fetch rent data" });
+    }
+  });
+
+  app.get("/api/rents/cities", async (_req, res) => {
+    try {
+      const results = await db
+        .selectDistinct({ city: rentPulse.city, province: rentPulse.province })
+        .from(rentPulse)
+        .orderBy(rentPulse.province, rentPulse.city);
+
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching rent cities:", error);
+      res.status(500).json({ error: "Failed to fetch cities" });
+    }
+  });
+
+  app.get("/api/platform-stats", async (req, res) => {
+    try {
+      const [dealStats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)::numeric, 1)`,
+          avgCashOnCash: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'cashOnCash')::numeric ELSE NULL END)::numeric, 1)`,
+          avgDscr: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'dscr') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'dscr')::numeric ELSE NULL END)::numeric, 2)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL`);
+
+      const [analystCount] = await db
+        .select({ total: count(users.id) })
+        .from(users);
+
+      const [cityCount] = await db
+        .select({ total: sql<number>`COUNT(DISTINCT ${analyses.city})` })
+        .from(analyses)
+        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`);
+
+      res.json({
+        totalDeals: Number(dealStats?.totalDeals || 0),
+        communityMembers: Number(analystCount?.total || 0),
+        marketsCovered: Number(cityCount?.total || 0),
+        avgCapRate: dealStats?.avgCapRate != null ? Number(dealStats.avgCapRate) : null,
+        avgCashOnCash: dealStats?.avgCashOnCash != null ? Number(dealStats.avgCashOnCash) : null,
+        avgDscr: dealStats?.avgDscr != null ? Number(dealStats.avgDscr) : null,
+      });
+    } catch (error: any) {
+      console.error("Error fetching platform stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
+  app.get("/api/broadcast-stats", async (_req, res) => {
+    try {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+
+      const [dealStats, cityStats, userStats] = await Promise.all([
+        db.select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)::numeric, 2)`,
+          avgCashOnCash: sql<number>`ROUND(AVG(CASE WHEN (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'cashOnCash')::numeric ELSE NULL END)::numeric, 1)`,
+        })
+          .from(analyses)
+          .where(sql`${analyses.createdAt} >= ${weekAgo.toISOString()}`),
+
+        db.select({
+          city: analyses.city,
+          cnt: count(analyses.id),
+        })
+          .from(analyses)
+          .where(sql`${analyses.createdAt} >= ${weekAgo.toISOString()} AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
+          .groupBy(analyses.city)
+          .orderBy(desc(count(analyses.id)))
+          .limit(1),
+
+        db.select({
+          totalUsers: count(users.id),
+        }).from(users),
+      ]);
+
+      const deals = dealStats[0] || {};
+      const topCity = cityStats[0];
+
+      res.json({
+        success: true,
+        data: {
+          deals_analyzed: Number(deals.totalDeals) || 0,
+          avg_cap_rate: Number(deals.avgCapRate) || 0,
+          avg_cash_on_cash: Number(deals.avgCashOnCash) || 0,
+          top_market: topCity?.city || "Canada",
+          top_property_type: "Multiplex",
+          total_users: Number(userStats[0]?.totalUsers) || 0,
+          period_start: weekAgo.toISOString().split("T")[0],
+        },
+      });
+    } catch (err: any) {
+      console.error("Broadcast stats error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get("/api/leaderboard", async (req, res) => {
+    try {
+      const period = req.query.period as string;
+      const cityFilter = req.query.city as string | undefined;
+      const provinceFilter = req.query.province as string | undefined;
+      const strategyFilter = req.query.strategy as string | undefined;
+      const category = req.query.category as string | undefined;
+      const limit = Math.min(Number(req.query.limit) || 10, 50);
+      let dateFilter = sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL`;
+      let aggregateDateFilter = sql`${analyses.resultsJson} IS NOT NULL`;
+
+      if (period === 'monthly') {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const monthStr = startOfMonth.toISOString();
+        dateFilter = sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${monthStr}`;
+        aggregateDateFilter = sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${monthStr}`;
+      } else if (period === 'weekly') {
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - dayOfWeek);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const weekStr = startOfWeek.toISOString();
+        dateFilter = sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`;
+        aggregateDateFilter = sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`;
+      }
+
+      if (cityFilter) {
+        dateFilter = sql`${dateFilter} AND LOWER(${analyses.city}) = LOWER(${cityFilter})`;
+        aggregateDateFilter = sql`${aggregateDateFilter} AND LOWER(${analyses.city}) = LOWER(${cityFilter})`;
+      }
+      if (provinceFilter) {
+        dateFilter = sql`${dateFilter} AND LOWER(${analyses.province}) = LOWER(${provinceFilter})`;
+        aggregateDateFilter = sql`${aggregateDateFilter} AND LOWER(${analyses.province}) = LOWER(${provinceFilter})`;
+      }
+      if (strategyFilter) {
+        dateFilter = sql`${dateFilter} AND LOWER(${analyses.strategyType}) = LOWER(${strategyFilter})`;
+        aggregateDateFilter = sql`${aggregateDateFilter} AND LOWER(${analyses.strategyType}) = LOWER(${strategyFilter})`;
+      }
+
+      const safeAvg = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
+      const live = await getLiveLeaderboardEntries({
+        period,
+        city: cityFilter,
+        province: provinceFilter,
+        strategy: strategyFilter,
+        category,
+        limit,
+        offset: 0,
+        sort: String(req.query.sort || "score"),
+        direction: req.query.direction === "asc" ? "asc" : "desc",
+      });
+      const leaderboard = live.rows;
+
+      const [aggregates] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgDscr: safeAvg('dscr', 0, 20),
+          avgCashOnCash: safeAvg('cashOnCash', -100, 200),
+          avgCapRate: safeAvg('capRate', -20, 100),
+          avgAnalysisConfidenceScore: sql<number>`AVG(COALESCE(${analysisQualityScores.confidenceScore}::numeric, 0.65))`,
+          avgOfferRatio: sql<number>`AVG(
+            CASE WHEN (${analyses.inputsJson}->>'purchasePrice') ~ '^[0-9]+(\\.[0-9]+)?$'
+                  AND (${analyses.inputsJson}->>'listingPrice') ~ '^[0-9]+(\\.[0-9]+)?$'
+                  AND (${analyses.inputsJson}->>'purchasePrice')::numeric > 0 
+                  AND (${analyses.inputsJson}->>'listingPrice')::numeric > 0
+            THEN (${analyses.inputsJson}->>'purchasePrice')::numeric / (${analyses.inputsJson}->>'listingPrice')::numeric
+            ELSE NULL END
+          )`,
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .leftJoin(analysisQualityScores, eq(analysisQualityScores.analysisId, analyses.id))
+        .where(sql`${aggregateDateFilter} AND ${analyses.userId} IS NOT NULL AND ${leaderboardEligibleUserFilter}`);
+
+      const [diagnostics] = await db
+        .select({
+          eligibleUserCount: sql<number>`COUNT(DISTINCT ${analyses.userId})`,
+          newestEligibleAnalysisAt: sql<string>`MAX(${analyses.createdAt})`,
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${dateFilter} AND ${leaderboardEligibleUserFilter}`);
+
+      const totalDeals = Number(aggregates?.totalDeals || 0);
+      const eligibleUserCount = Number(diagnostics?.eligibleUserCount || 0);
+      const newestEligibleAnalysisAt = diagnostics?.newestEligibleAnalysisAt || null;
+      const suspiciousData = totalDeals < 10 || eligibleUserCount < 3;
+
+      if (shouldUseLiveLeaderboardFallback(totalDeals, eligibleUserCount)) {
+        try {
+          const fallback = await fetchLiveLeaderboardFallback(req.originalUrl);
+          return res.json({
+            ...fallback,
+            diagnostics: {
+              ...(fallback as any)?.diagnostics,
+              source: "live-fallback",
+              localDatabase: "heliumdb",
+              localTotalDeals: totalDeals,
+              localEligibleUserCount: eligibleUserCount,
+              localNewestEligibleAnalysisAt: newestEligibleAnalysisAt,
+            },
+          });
+        } catch (fallbackError) {
+          console.error("Leaderboard live fallback failed:", fallbackError);
+        }
+      }
+
+      res.json({
+        analysts: leaderboard,
+        aggregates: {
+          totalDeals,
+          avgDscr: aggregates?.avgDscr != null ? Math.round(Number(aggregates.avgDscr) * 100) / 100 : null,
+          avgCashOnCash: aggregates?.avgCashOnCash != null ? Math.round(Number(aggregates.avgCashOnCash) * 100) / 100 : null,
+          avgCapRate: aggregates?.avgCapRate != null ? Math.round(Number(aggregates.avgCapRate) * 100) / 100 : null,
+          avgAnalysisConfidenceScore: aggregates?.avgAnalysisConfidenceScore != null ? Math.round(Number(aggregates.avgAnalysisConfidenceScore) * 100) / 100 : null,
+          avgOfferRatio: aggregates?.avgOfferRatio != null ? Math.round(Number(aggregates.avgOfferRatio) * 100) : null,
+        },
+        diagnostics: {
+          eligibleUserCount,
+          newestEligibleAnalysisAt,
+          suspiciousData,
+        },
+        totalCount: live.totalCount,
+      });
+    } catch (error) {
+      console.error("Error fetching leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/leaderboard/full", async (req, res) => {
+    try {
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const pageSize = Math.min(Math.max(Number(req.query.pageSize) || 25, 10), 100);
+      const result = await getLiveLeaderboardEntries({
+        period: String(req.query.period || "all-time"),
+        city: req.query.city as string | undefined,
+        province: req.query.province as string | undefined,
+        strategy: req.query.strategy as string | undefined,
+        category: req.query.category as string | undefined,
+        sort: String(req.query.sort || "score"),
+        direction: req.query.direction === "asc" ? "asc" : "desc",
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+      });
+
+      if (shouldUseLiveLeaderboardFallback(result.rows.reduce((sum, row) => sum + row.monthlyDealsAnalyzed, 0), result.totalCount)) {
+        try {
+          const fallback = await fetchLiveLeaderboardFallback(req.originalUrl);
+          return res.json(fallback);
+        } catch (fallbackError) {
+          console.error("Full leaderboard live fallback failed:", fallbackError);
+        }
+      }
+
+      res.json({
+        entries: result.rows,
+        page,
+        pageSize,
+        totalCount: result.totalCount,
+        totalPages: Math.ceil(result.totalCount / pageSize),
+      });
+    } catch (error) {
+      console.error("Error fetching full leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch full leaderboard" });
+    }
+  });
+
+  app.get("/api/leaderboard/history", async (_req, res) => {
+    try {
+      const rows = await getLeaderboardHistory();
+      res.json({ rows });
+    } catch (error) {
+      console.error("Error fetching leaderboard history:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard history" });
+    }
+  });
+
+  app.get("/api/leaderboard/charts", async (_req, res) => {
+    try {
+      const rows = await getLeaderboardHistory() as any[];
+      const months = Array.from(new Set(rows.map((row) => new Date(row.period_start_date).toISOString().slice(0, 7))));
+      const hasEnoughHistory = months.length >= 2;
+      res.json({
+        hasEnoughHistory,
+        months,
+        entries: rows.map((row) => ({
+          month: new Date(row.period_start_date).toISOString().slice(0, 7),
+          userId: row.user_id,
+          name: row.name,
+          rank: Number(row.rank),
+          previousRank: row.previous_rank == null ? null : Number(row.previous_rank),
+          rankChange: row.rank_change == null ? null : Number(row.rank_change),
+          score: Number(row.score || 0),
+          weightedScore: Number(row.weighted_score || 0),
+          totalDealsAnalyzed: Number(row.total_deals_analyzed || 0),
+          monthlyDealsAnalyzed: Number(row.monthly_deals_analyzed || 0),
+          eligibleAnalysesCount: Number(row.eligible_analyses_count || 0),
+          averageConfidenceScore: row.average_confidence_score == null ? null : Number(row.average_confidence_score),
+          marketOracleScore: row.market_oracle_score == null ? null : Number(row.market_oracle_score),
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching leaderboard charts:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard charts" });
+    }
+  });
+
+  app.get("/api/weekly-stats", async (req, res) => {
+    try {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const weekStr = startOfWeek.toISOString();
+
+      const safeAvgW = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
+      const [weeklyStats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: safeAvgW('capRate', -20, 100),
+          avgCashOnCash: safeAvgW('cashOnCash', -100, 200),
+          avgDscr: safeAvgW('dscr', 0, 20),
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`);
+
+      const weeklyDeals = Number(weeklyStats?.totalDeals || 0);
+      const isWeekly = weeklyDeals > 0;
+
+      const dateFilter = isWeekly
+        ? sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr}`
+        : sql`${analyses.resultsJson} IS NOT NULL`;
+
+      const [stats] = isWeekly
+        ? [weeklyStats]
+        : await db
+            .select({
+              totalDeals: count(analyses.id),
+              avgCapRate: safeAvgW('capRate', -20, 100),
+              avgCashOnCash: safeAvgW('cashOnCash', -100, 200),
+              avgDscr: safeAvgW('dscr', 0, 20),
+            })
+            .from(analyses)
+            .where(dateFilter);
+
+      const cityResult = await db
+        .select({
+          city: analyses.city,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${dateFilter} AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
+        .groupBy(analyses.city)
+        .orderBy(desc(count(analyses.id)))
+        .limit(1);
+
+      const latestMonth = await db
+        .select({ month: cityYieldHistory.month })
+        .from(cityYieldHistory)
+        .where(sql`${cityYieldHistory.listingCount} > 0`)
+        .orderBy(desc(cityYieldHistory.month))
+        .limit(1);
+
+      let ddfStats: {
+        totalListings: number;
+        avgCapRate: number | null;
+        avgPrice: number | null;
+        avgRent: number | null;
+        citiesTracked: number;
+        hotCity: string | null;
+        hotCityYield: number | null;
+      } = { totalListings: 0, avgCapRate: null, avgPrice: null, avgRent: null, citiesTracked: 0, hotCity: null, hotCityYield: null };
+
+      if (latestMonth.length > 0) {
+        const m = latestMonth[0].month;
+        const [ddfAgg] = await db
+          .select({
+            totalListings: sql<number>`COALESCE(SUM(${cityYieldHistory.listingCount}), 0)`,
+            avgCapRate: sql<number>`ROUND(AVG(CASE WHEN ${cityYieldHistory.avgGrossYield} IS NOT NULL THEN ${cityYieldHistory.avgGrossYield} END)::numeric, 2)`,
+            avgPrice: sql<number>`ROUND(AVG(CASE WHEN ${cityYieldHistory.avgListPrice} IS NOT NULL THEN ${cityYieldHistory.avgListPrice} END)::numeric, 0)`,
+            avgRent: sql<number>`ROUND(AVG(CASE WHEN ${cityYieldHistory.avgRentPerUnit} IS NOT NULL THEN ${cityYieldHistory.avgRentPerUnit} END)::numeric, 0)`,
+            citiesTracked: sql<number>`COUNT(CASE WHEN ${cityYieldHistory.listingCount} > 0 THEN 1 END)`,
+          })
+          .from(cityYieldHistory)
+          .where(eq(cityYieldHistory.month, m));
+
+        const [hotCity] = await db
+          .select({
+            city: cityYieldHistory.city,
+            yield: cityYieldHistory.avgGrossYield,
+          })
+          .from(cityYieldHistory)
+          .where(and(eq(cityYieldHistory.month, m), sql`${cityYieldHistory.listingCount} >= 500 AND ${cityYieldHistory.avgGrossYield} IS NOT NULL AND ${cityYieldHistory.avgGrossYield} < 15`))
+          .orderBy(desc(cityYieldHistory.avgGrossYield))
+          .limit(1);
+
+        ddfStats = {
+          totalListings: Number(ddfAgg?.totalListings || 0),
+          avgCapRate: ddfAgg?.avgCapRate != null ? Number(ddfAgg.avgCapRate) : null,
+          avgPrice: ddfAgg?.avgPrice != null ? Number(ddfAgg.avgPrice) : null,
+          avgRent: ddfAgg?.avgRent != null ? Number(ddfAgg.avgRent) : null,
+          citiesTracked: Number(ddfAgg?.citiesTracked || 0),
+          hotCity: hotCity?.city || null,
+          hotCityYield: hotCity?.yield != null ? Math.round(Number(hotCity.yield) * 100) / 100 : null,
+        };
+      }
+
+      const userAvgCap = stats?.avgCapRate != null ? Number(stats.avgCapRate) : null;
+      const ddfAvgCap = ddfStats.avgCapRate;
+      const blendedCapRate = userAvgCap != null && ddfAvgCap != null
+        ? Math.round(((userAvgCap + ddfAvgCap) / 2) * 100) / 100
+        : userAvgCap ?? ddfAvgCap;
+
+      const totalDeals = Number(stats?.totalDeals || 0);
+      const bestCity = cityResult.length > 0 ? cityResult[0].city : (ddfStats.hotCity || null);
+
+      if (shouldUseLiveLeaderboardFallback(totalDeals, 0)) {
+        try {
+          const fallback = await fetchLiveLeaderboardFallback(req.originalUrl);
+          return res.json({
+            ...fallback,
+            diagnostics: {
+              source: "live-fallback",
+              localDatabase: "heliumdb",
+              localTotalDeals: totalDeals,
+            },
+          });
+        } catch (fallbackError) {
+          console.error("Weekly stats live fallback failed:", fallbackError);
+        }
+      }
+
+      res.json({
+        totalDeals,
+        avgCapRate: blendedCapRate,
+        avgCashOnCash: stats?.avgCashOnCash != null ? Math.round(Number(stats.avgCashOnCash) * 100) / 100 : null,
+        avgDscr: stats?.avgDscr != null ? Math.round(Number(stats.avgDscr) * 100) / 100 : null,
+        mostActiveCity: bestCity,
+        mostActiveCityDeals: cityResult.length > 0 ? Number(cityResult[0].dealCount) : 0,
+        period: isWeekly ? "weekly" : "all-time",
+        ddf: {
+          totalListings: ddfStats.totalListings,
+          avgCapRate: ddfStats.avgCapRate,
+          avgPrice: ddfStats.avgPrice,
+          avgRent: ddfStats.avgRent,
+          citiesTracked: ddfStats.citiesTracked,
+          hotCity: ddfStats.hotCity,
+          hotCityYield: ddfStats.hotCityYield,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching weekly stats:", error);
+      res.status(500).json({ error: "Failed to fetch weekly stats" });
+    }
+  });
+
+  app.get("/api/user/stats", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const userId = req.session.userId;
+
+      const safeAvgU = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
+      const [userStats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: safeAvgU('capRate', -20, 100),
+          avgCashOnCash: safeAvgU('cashOnCash', -100, 200),
+          avgDscr: safeAvgU('dscr', 0, 20),
+          firstAnalysis: sql<string>`MIN(${analyses.createdAt})`,
+          lastAnalysis: sql<string>`MAX(${analyses.createdAt})`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL`);
+
+      const totalDeals = Number(userStats?.totalDeals || 0);
+
+      const badges: { id: string; name: string; description: string; icon: string; earnedAt: string | null }[] = [];
+      const badgeDefs = [
+        { id: "analyst", name: "Analyst", description: "Analyzed 10 deals", icon: "search", threshold: 10 },
+        { id: "power-user", name: "Power User", description: "Analyzed 50 deals", icon: "zap", threshold: 50 },
+        { id: "deal-hunter", name: "Deal Hunter", description: "Analyzed 100 deals", icon: "target", threshold: 100 },
+        { id: "veteran", name: "Veteran", description: "Analyzed 250 deals", icon: "shield", threshold: 250 },
+        { id: "legend", name: "Legend", description: "Analyzed 500 deals", icon: "crown", threshold: 500 },
+      ];
+
+      for (const def of badgeDefs) {
+        if (totalDeals >= def.threshold) {
+          const [nthDeal] = await db
+            .select({ createdAt: analyses.createdAt })
+            .from(analyses)
+            .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL`)
+            .orderBy(analyses.createdAt)
+            .limit(1)
+            .offset(def.threshold - 1);
+
+          badges.push({
+            id: def.id,
+            name: def.name,
+            description: def.description,
+            icon: def.icon,
+            earnedAt: nthDeal?.createdAt ? new Date(nthDeal.createdAt).toISOString() : null,
+          });
+        }
+      }
+
+      const allTimeRanking = await db
+        .select({
+          userId: analyses.userId,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${leaderboardEligibleUserFilter}`)
+        .groupBy(analyses.userId)
+        .orderBy(desc(count(analyses.id)));
+
+      let rank: number | null = null;
+      const rankIndex = allTimeRanking.findIndex(r => r.userId === userId);
+      if (rankIndex >= 0) {
+        rank = rankIndex + 1;
+      }
+
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const weekStr = startOfWeek.toISOString();
+      const prevWeekStart = new Date(startOfWeek);
+      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+      const prevWeekStr = prevWeekStart.toISOString();
+
+      const prevWeekRanking = await db
+        .select({
+          userId: analyses.userId,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} < ${weekStr} AND ${leaderboardEligibleUserFilter}`)
+        .groupBy(analyses.userId)
+        .orderBy(desc(count(analyses.id)));
+
+      let prevRank: number | null = null;
+      const prevRankIndex = prevWeekRanking.findIndex(r => r.userId === userId);
+      if (prevRankIndex >= 0) {
+        prevRank = prevRankIndex + 1;
+      }
+
+      let rankChange: number | null = null;
+      if (rank != null && prevRank != null) {
+        rankChange = prevRank - rank;
+      }
+
+      const topCity = await db
+        .select({
+          city: analyses.city,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.city} IS NOT NULL AND ${analyses.city} != ''`)
+        .groupBy(analyses.city)
+        .orderBy(desc(count(analyses.id)))
+        .limit(1);
+
+      res.json({
+        totalDeals,
+        avgCapRate: userStats?.avgCapRate != null ? Math.round(Number(userStats.avgCapRate) * 100) / 100 : null,
+        avgCashOnCash: userStats?.avgCashOnCash != null ? Math.round(Number(userStats.avgCashOnCash) * 100) / 100 : null,
+        avgDscr: userStats?.avgDscr != null ? Math.round(Number(userStats.avgDscr) * 100) / 100 : null,
+        rank,
+        rankChange,
+        totalUsers: allTimeRanking.length,
+        badges,
+        nextBadge: badgeDefs.find(b => totalDeals < b.threshold) || null,
+        topCity: topCity.length > 0 ? topCity[0].city : null,
+        topCityDeals: topCity.length > 0 ? Number(topCity[0].dealCount) : 0,
+        firstAnalysis: userStats?.firstAnalysis || null,
+        lastAnalysis: userStats?.lastAnalysis || null,
+      });
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      res.status(500).json({ error: "Failed to fetch user stats" });
+    }
+  });
+
+  const userPerfCache = new Map<string, { data: any; expiresAt: number }>();
+
+  app.get("/api/user-performance", async (req: any, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const userId = req.session.userId;
+
+      const cacheKey = `perf:${userId}`;
+      const cached = userPerfCache.get(cacheKey);
+      if (cached && Date.now() < cached.expiresAt) {
+        res.json(cached.data);
+        return;
+      }
+
+      const [userStats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+          avgCashOnCash: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'cashOnCash')::numeric ELSE NULL END)`,
+          avgIrr: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'irr') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'irr')::numeric ELSE NULL END)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL`);
+
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const weekStr = startOfWeek.toISOString();
+
+      const [platformStats] = await db
+        .select({
+          totalDeals: count(analyses.id),
+          avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+          avgCashOnCash: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'cashOnCash')::numeric ELSE NULL END)`,
+          avgIrr: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'irr') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'irr')::numeric ELSE NULL END)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL`);
+
+      const weeklyRanking = await db
+        .select({
+          uId: analyses.userId,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr} AND ${leaderboardEligibleUserFilter}`)
+        .groupBy(analyses.userId)
+        .orderBy(desc(count(analyses.id)));
+
+      const allTimeRanking = await db
+        .select({
+          uId: analyses.userId,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${leaderboardEligibleUserFilter}`)
+        .groupBy(analyses.userId)
+        .orderBy(desc(count(analyses.id)));
+
+      const weeklyRank = weeklyRanking.findIndex(r => r.uId === userId) + 1 || null;
+      const allTimeRank = allTimeRanking.findIndex(r => r.uId === userId) + 1 || null;
+
+      const safeAvgP = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
+      const weeklyTop3 = await db
+        .select({
+          uId: analyses.userId,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          dealCount: count(analyses.id),
+          avgCapRate: safeAvgP('capRate', -20, 100),
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${weekStr} AND ${leaderboardEligibleUserFilter}`)
+        .groupBy(analyses.userId, users.firstName, users.lastName)
+        .orderBy(desc(count(analyses.id)))
+        .limit(3);
+
+      const allTimeTop3 = await db
+        .select({
+          uId: analyses.userId,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          dealCount: count(analyses.id),
+          avgCapRate: safeAvgP('capRate', -20, 100),
+        })
+        .from(analyses)
+        .innerJoin(users, eq(analyses.userId, users.id))
+        .where(sql`${analyses.userId} IS NOT NULL AND ${analyses.resultsJson} IS NOT NULL AND ${leaderboardEligibleUserFilter}`)
+        .groupBy(analyses.userId, users.firstName, users.lastName)
+        .orderBy(desc(count(analyses.id)))
+        .limit(3);
+
+      const totalDeals = Number(userStats?.totalDeals || 0);
+      const badgeDefs = [
+        { threshold: 10, name: "Analyst" },
+        { threshold: 50, name: "Power User" },
+        { threshold: 100, name: "Deal Hunter" },
+        { threshold: 250, name: "Veteran" },
+        { threshold: 500, name: "Legend" },
+      ];
+      const currentBadge = badgeDefs.filter(b => totalDeals >= b.threshold).pop() || null;
+      const nextBadge = badgeDefs.find(b => totalDeals < b.threshold) || null;
+      const dealsToNext = nextBadge ? nextBadge.threshold - totalDeals : 0;
+
+      const monthlyBreakdown = await db
+        .select({
+          month: sql<string>`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`,
+          avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+          dealCount: count(analyses.id),
+        })
+        .from(analyses)
+        .where(sql`${analyses.userId} = ${userId} AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= NOW() - INTERVAL '6 months'`)
+        .groupBy(sql`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`)
+        .orderBy(sql`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`);
+
+      const platformMonthlyBreakdown = await db
+        .select({
+          month: sql<string>`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`,
+          avgCapRate: sql<number>`AVG(CASE WHEN (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${analyses.resultsJson}->>'capRate')::numeric ELSE NULL END)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= NOW() - INTERVAL '6 months'`)
+        .groupBy(sql`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`)
+        .orderBy(sql`TO_CHAR(${analyses.createdAt}, 'YYYY-MM')`);
+
+      const r = (v: any) => v != null ? Math.round(Number(v) * 100) / 100 : null;
+      const formatTop = (rows: any[]) => rows.map((row, i) => ({
+        rank: i + 1,
+        name: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
+        dealCount: Number(row.dealCount),
+        avgCapRate: r(row.avgCapRate),
+      }));
+
+      const responseData = {
+        user: {
+          deals_analyzed: totalDeals,
+          avg_cap_rate: r(userStats?.avgCapRate),
+          avg_cash_on_cash: r(userStats?.avgCashOnCash),
+          avg_irr: r(userStats?.avgIrr),
+          rank_weekly: weeklyRank,
+          rank_all_time: allTimeRank,
+          total_weekly_users: weeklyRanking.length,
+          total_all_time_users: allTimeRanking.length,
+        },
+        platform: {
+          avg_cap_rate: r(platformStats?.avgCapRate),
+          avg_cash_on_cash: r(platformStats?.avgCashOnCash),
+          avg_irr: r(platformStats?.avgIrr),
+          total_deals_analyzed: Number(platformStats?.totalDeals || 0),
+        },
+        leaderboard: {
+          weekly_top_3: formatTop(weeklyTop3),
+          all_time_top_3: formatTop(allTimeTop3),
+        },
+        gamification: {
+          current_badge: currentBadge,
+          next_badge: nextBadge,
+          deals_to_next: dealsToNext,
+          progress_percent: nextBadge ? Math.round((totalDeals / nextBadge.threshold) * 100) : 100,
+        },
+        trend: {
+          user_monthly: monthlyBreakdown.map(m => ({
+            month: m.month,
+            avgCapRate: r(m.avgCapRate),
+            dealCount: Number(m.dealCount),
+          })),
+          platform_monthly: platformMonthlyBreakdown.map(m => ({
+            month: m.month,
+            avgCapRate: r(m.avgCapRate),
+          })),
+        },
+      };
+
+      userPerfCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + 300000 });
+      if (userPerfCache.size > 500) {
+        const oldest = [...userPerfCache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+        for (let i = 0; i < 50; i++) userPerfCache.delete(oldest[i][0]);
+      }
+
+      res.json(responseData);
+    } catch (error) {
+      console.error("Error fetching user performance:", error);
+      res.status(500).json({ error: "Failed to fetch user performance" });
+    }
+  });
+
+  app.get("/api/leaderboard/top-cities", async (req, res) => {
+    try {
+      const period = req.query.period as string | undefined;
+      let dateFilter = sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`;
+
+      if (period === 'weekly') {
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - dayOfWeek);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const weekStr = startOfWeek.toISOString();
+        dateFilter = sql`${dateFilter} AND ${analyses.createdAt} >= ${weekStr}`;
+      } else if (period === 'monthly') {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const monthStr = startOfMonth.toISOString();
+        dateFilter = sql`${dateFilter} AND ${analyses.createdAt} >= ${monthStr}`;
+      }
+
+      const safeAvgC = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`results_json->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`results_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`results_json->>'${field}'`)})::numeric ELSE NULL END)`;
+      const safeAvgI = (field: string, lo: number, hi: number) =>
+        sql<number>`AVG(CASE WHEN (${sql.raw(`inputs_json->>'${field}'`)}) ~ '^[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`inputs_json->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`inputs_json->>'${field}'`)})::numeric ELSE NULL END)`;
+
+      const results = await db
+        .select({
+          city: analyses.city,
+          province: analyses.province,
+          dealCount: count(analyses.id),
+          avgCashOnCash: safeAvgC('cashOnCash', -100, 200),
+          avgCapRate: safeAvgC('capRate', -20, 100),
+          avgDscr: safeAvgC('dscr', 0, 20),
+          avgPurchasePrice: safeAvgI('purchasePrice', 0, 100000000),
+        })
+        .from(analyses)
+        .where(dateFilter)
+        .groupBy(analyses.city, analyses.province)
+        .orderBy(desc(count(analyses.id)))
+        .limit(25);
+
+      const topCities = results.map((row, index) => ({
+        rank: index + 1,
+        city: row.city,
+        province: row.province,
+        dealCount: Number(row.dealCount),
+        avgCashOnCash: row.avgCashOnCash != null ? Math.round(Number(row.avgCashOnCash) * 100) / 100 : null,
+        avgCapRate: row.avgCapRate != null ? Math.round(Number(row.avgCapRate) * 100) / 100 : null,
+        avgDscr: row.avgDscr != null ? Math.round(Number(row.avgDscr) * 100) / 100 : null,
+        avgPurchasePrice: row.avgPurchasePrice != null ? Math.round(Number(row.avgPurchasePrice)) : null,
+      }));
+
+      res.json(topCities);
+    } catch (error) {
+      console.error("Error fetching top cities:", error);
+      res.status(500).json({ error: "Failed to fetch top cities" });
+    }
+  });
+
+  // ============================================
+  // PARTNER JOIN / MATCHING ROUTES
+  // ============================================
+
+  app.post("/api/join/realtor", async (req, res) => {
+    try {
+      const { realtorApplications } = await import("@shared/schema");
+      const { insertRealtorApplicationSchema } = await import("@shared/schema");
+      const parsed = insertRealtorApplicationSchema.parse(req.body);
+      const [application] = await db.insert(realtorApplications).values(parsed).returning();
+
+      appendLead("RealtorApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
+
+      try {
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...parsed,
+              formTag: "realtor_application",
+              source: "realist.ca",
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      try {
+        const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
+        if (sheetsUrl) {
+          fetch(sheetsUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "realtor_application",
+              ...parsed,
+              timestamp: new Date().toISOString(),
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      res.json({ success: true, id: application.id });
+    } catch (error: any) {
+      console.error("Error creating realtor application:", error);
+      res.status(400).json({ error: error.message || "Failed to submit application" });
+    }
+  });
+
+  app.post("/api/join/lender", async (req, res) => {
+    try {
+      const { lenderApplications } = await import("@shared/schema");
+      const { insertLenderApplicationSchema } = await import("@shared/schema");
+      const parsed = insertLenderApplicationSchema.parse(req.body);
+      const [application] = await db.insert(lenderApplications).values(parsed).returning();
+
+      appendLead("LenderApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
+
+      try {
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...parsed,
+              formTag: "lender_application",
+              source: "realist.ca",
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      try {
+        const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
+        if (sheetsUrl) {
+          fetch(sheetsUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "lender_application",
+              ...parsed,
+              timestamp: new Date().toISOString(),
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      res.json({ success: true, id: application.id });
+    } catch (error: any) {
+      console.error("Error creating lender application:", error);
+      res.status(400).json({ error: error.message || "Failed to submit application" });
+    }
+  });
+
+  app.post("/api/deal-match", async (req, res) => {
+    try {
+      const { dealMatchRequests } = await import("@shared/schema");
+      const { insertDealMatchRequestSchema } = await import("@shared/schema");
+      const parsed = insertDealMatchRequestSchema.parse({
+        ...req.body,
+        userId: req.session?.userId || null,
+      });
+      const [match] = await db.insert(dealMatchRequests).values(parsed).returning();
+
+      appendLead("DealMatch", { ...parsed, matchId: match.id, source: "realist.ca" });
+
+      try {
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...parsed,
+              formTag: "deal_match_request",
+              source: "realist.ca",
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      res.json({ success: true, id: match.id });
+    } catch (error: any) {
+      console.error("Error creating deal match request:", error);
+      res.status(400).json({ error: error.message || "Failed to submit match request" });
+    }
+  });
+
+  // ============================================
+  // MARKET REPORT ROUTES
+  // ============================================
+
+  const MAJOR_CANADIAN_CITIES = [
+    { city: "Toronto", province: "ON" },
+    { city: "Vancouver", province: "BC" },
+    { city: "Calgary", province: "AB" },
+    { city: "Edmonton", province: "AB" },
+    { city: "Ottawa", province: "ON" },
+    { city: "Montreal", province: "QC" },
+    { city: "Winnipeg", province: "MB" },
+    { city: "Hamilton", province: "ON" },
+    { city: "Kitchener", province: "ON" },
+    { city: "London", province: "ON" },
+    { city: "Halifax", province: "NS" },
+    { city: "Victoria", province: "BC" },
+    { city: "Oshawa", province: "ON" },
+    { city: "Windsor", province: "ON" },
+    { city: "Saskatoon", province: "SK" },
+    { city: "Regina", province: "SK" },
+    { city: "St. Catharines", province: "ON" },
+    { city: "Barrie", province: "ON" },
+    { city: "Kelowna", province: "BC" },
+    { city: "Guelph", province: "ON" },
+    { city: "Moncton", province: "NB" },
+    { city: "Brantford", province: "ON" },
+    { city: "Fredericton", province: "NB" },
+    { city: "Saint John", province: "NB" },
+    { city: "Sudbury", province: "ON" },
+    { city: "Kingston", province: "ON" },
+    { city: "Waterloo", province: "ON" },
+    { city: "Cambridge", province: "ON" },
+    { city: "Mississauga", province: "ON" },
+    { city: "Brampton", province: "ON" },
+  ];
+
+  app.post("/api/market-report/compute-snapshot", isAdmin, async (_req, res) => {
+    try {
+      const result = await computeMonthlySnapshot();
+      res.json({ success: true, month: result.month, snapshotCount: result.count });
+    } catch (error) {
+      console.error("Error computing market snapshot:", error);
+      res.status(500).json({ error: "Failed to compute market snapshot" });
+    }
+  });
+
+  app.get("/api/market-report/latest", async (_req, res) => {
+    try {
+      const snapshots = await storage.getLatestMarketSnapshots();
+      const months = await storage.getMarketSnapshotMonths();
+      res.json({ snapshots, months, reportMonth: months[0] || null });
+    } catch (error) {
+      console.error("Error fetching market report:", error);
+      res.status(500).json({ error: "Failed to fetch market report" });
+    }
+  });
+
+  app.get("/api/market-report/metrics", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const rows = await db.select().from(marketReportMetrics)
+        .where(sql`
+          (${city || null}::text IS NULL OR LOWER(${marketReportMetrics.city}) = LOWER(${city || null}))
+          AND (${province || null}::text IS NULL OR LOWER(${marketReportMetrics.province}) = LOWER(${province || null}))
+        `)
+        .orderBy(sql`${marketReportMetrics.periodStartDate} ASC, ${marketReportMetrics.metricSource} ASC`);
+      res.json({ metrics: rows });
+    } catch (error) {
+      console.error("Error fetching market report metrics:", error);
+      res.status(500).json({ error: "Failed to fetch market report metrics" });
+    }
+  });
+
+  app.get("/api/market-sentiment/rollups", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const rows = await db.select().from(marketSentimentRollups)
+        .where(sql`
+          (${city || null}::text IS NULL OR LOWER(${marketSentimentRollups.city}) = LOWER(${city || null}))
+          AND (${province || null}::text IS NULL OR LOWER(${marketSentimentRollups.province}) = LOWER(${province || null}))
+        `)
+        .orderBy(sql`${marketSentimentRollups.periodStartDate} ASC`);
+      res.json({ rollups: rows });
+    } catch (error) {
+      console.error("Error fetching market sentiment rollups:", error);
+      res.status(500).json({ error: "Failed to fetch market sentiment rollups" });
+    }
+  });
+
+  app.get("/api/market-report/history", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const snapshots = await storage.getMarketSnapshots(city, province);
+      res.json(snapshots);
+    } catch (error) {
+      console.error("Error fetching market history:", error);
+      res.status(500).json({ error: "Failed to fetch market history" });
+    }
+  });
+
+  app.get("/api/market-report/all", async (_req, res) => {
+    try {
+      const snapshots = await storage.getMarketSnapshots();
+      const months = await storage.getMarketSnapshotMonths();
+      res.json({ snapshots, months });
+    } catch (error) {
+      console.error("Error fetching all market data:", error);
+      res.status(500).json({ error: "Failed to fetch market data" });
+    }
+  });
+
+  app.get("/api/yield-history", async (req, res) => {
+    try {
+      const city = req.query.city as string | undefined;
+      const province = req.query.province as string | undefined;
+      const data = await storage.getCityYieldHistory(city, province);
+      const months = await storage.getAllCityYieldHistoryMonths();
+      res.json({ data, months });
+    } catch (error) {
+      console.error("Error fetching yield history:", error);
+      res.status(500).json({ error: "Failed to fetch yield history" });
+    }
+  });
+
+  app.post("/api/yield-history/compare", async (req, res) => {
+    try {
+      const { cities } = req.body;
+      if (!Array.isArray(cities) || cities.length === 0 || cities.length > 10) {
+        return res.status(400).json({ error: "cities array required (1-10 items)" });
+      }
+      const validCities = cities
+        .filter((c: any) => typeof c?.city === "string" && typeof c?.province === "string" && c.city.length > 0 && c.province.length > 0)
+        .map((c: any) => ({ city: String(c.city).trim(), province: String(c.province).trim() }));
+      if (validCities.length === 0) {
+        return res.status(400).json({ error: "No valid city entries" });
+      }
+      const data = await storage.getMultiCityYieldHistory(validCities);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching yield comparison:", error);
+      res.status(500).json({ error: "Failed to fetch yield comparison" });
+    }
+  });
+
+  app.get("/api/yield-history/areas", async (req, res) => {
+    try {
+      const areaType = req.query.areaType as string | undefined;
+      const province = req.query.province as string | undefined;
+      const areaKey = req.query.areaKey as string | undefined;
+      const data = await storage.getAreaYieldHistory(areaType, province, areaKey);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching area yield history:", error);
+      res.status(500).json({ error: "Failed to fetch area yield history" });
+    }
+  });
+
+  app.post("/api/ddf-crawl/trigger", isAdmin, async (_req, res) => {
+    try {
+      const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
+      res.json({ status: "started", message: "DDF yield crawl initiated in background" });
+      runDdfYieldCrawl().then(result => {
+        console.log("[ddf-crawler] Manual trigger complete:", result);
+      }).catch(err => {
+        console.error("[ddf-crawler] Manual trigger failed:", err);
+      });
+    } catch (error) {
+      console.error("Error triggering DDF crawl:", error);
+      res.status(500).json({ error: "Failed to trigger crawl" });
+    }
+  });
+
+  app.get("/api/ddf-crawl/status", isAdmin, async (_req, res) => {
+    try {
+      const months = await storage.getAllCityYieldHistoryMonths();
+      const latestMonth = months[0];
+      let cityCounts: any[] = [];
+      if (latestMonth) {
+        const data = await storage.getCityYieldHistory(undefined, undefined);
+        cityCounts = data
+          .filter(d => d.month === latestMonth)
+          .map(d => ({
+            city: d.city,
+            province: d.province,
+            listings: d.listingCount,
+            avgGrossYield: d.avgGrossYield,
+          }));
+      }
+      res.json({ months, latestMonth, cities: cityCounts });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch crawl status" });
+    }
+  });
+
+  async function computeMonthlySnapshot(targetMonth?: string) {
+    const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
+    const now = new Date();
+    const month = targetMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const [year, m] = month.split("-").map(Number);
+    const monthStart = new Date(year, m - 1, 1);
+    const monthEnd = new Date(year, m, 1);
+
+    const safeAvgR = (source: string, field: string, lo: number, hi: number) =>
+      sql<number>`AVG(CASE WHEN (${sql.raw(`${source}->>'${field}'`)}) ~ '^-?[0-9]+(\\.[0-9]+)?$' AND (${sql.raw(`${source}->>'${field}'`)})::numeric BETWEEN ${lo} AND ${hi} THEN (${sql.raw(`${source}->>'${field}'`)})::numeric ELSE NULL END)`;
+
+    const monthResults = await db
+      .select({
+        city: analyses.city,
+        province: analyses.province,
+        dealCount: count(analyses.id),
+        avgCapRate: safeAvgR('results_json', 'capRate', -20, 100),
+        avgCashOnCash: safeAvgR('results_json', 'cashOnCash', -100, 200),
+        avgDscr: safeAvgR('results_json', 'dscr', 0, 20),
+        avgPurchasePrice: safeAvgR('inputs_json', 'purchasePrice', 0, 100000000),
+        avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+        avgRentPerUnit: safeAvgR('results_json', 'effectiveMonthlyIncome', 0, 1000000),
+      })
+      .from(analyses)
+      .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= ${monthStart} AND ${analyses.createdAt} < ${monthEnd}`)
+      .groupBy(analyses.city, analyses.province);
+
+    const allTimeResults = await db
+      .select({
+        city: analyses.city,
+        province: analyses.province,
+        dealCount: count(analyses.id),
+        avgCapRate: safeAvgR('results_json', 'capRate', -20, 100),
+        avgCashOnCash: safeAvgR('results_json', 'cashOnCash', -100, 200),
+        avgDscr: safeAvgR('results_json', 'dscr', 0, 20),
+        avgPurchasePrice: safeAvgR('inputs_json', 'purchasePrice', 0, 100000000),
+        avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+        avgRentPerUnit: safeAvgR('results_json', 'effectiveMonthlyIncome', 0, 1000000),
+      })
+      .from(analyses)
+      .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
+      .groupBy(analyses.city, analyses.province);
+
+    const monthMap = new Map(monthResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+    const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+
+    let count_saved = 0;
+    for (const { city, province } of MAJOR_CANADIAN_CITIES) {
+      const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
+      const current = monthMap.get(key);
+      const allTime = allTimeMap.get(key);
+      const data = current || allTime;
+      const cmhcRents = CMHC_CITY_RENTS[city];
+
+      await storage.upsertMarketSnapshot({
+        city,
+        province,
+        month,
+        dealCount: data ? Number(data.dealCount) : 0,
+        avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
+        avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
+        avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
+        avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
+        avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
+        medianCapRate: null,
+        medianPurchasePrice: null,
+        avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
+        cmhcOneBed: cmhcRents?.oneBed ?? null,
+        cmhcTwoBed: cmhcRents?.twoBed ?? null,
+      });
+      count_saved++;
+    }
+    return { month, count: count_saved };
+  }
+
+  // Run on server start if current month not yet snapshotted
+  (async () => {
+    try {
+      const months = await storage.getMarketSnapshotMonths();
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      if (!months.includes(currentMonth)) {
+        console.log("[market-report] Computing initial snapshot for", currentMonth);
+        await computeMonthlySnapshot(currentMonth);
+        console.log("[market-report] Initial snapshot computed for", currentMonth);
+      } else {
+        console.log("[market-report] Snapshot already exists for", currentMonth);
+      }
+    } catch (error) {
+      console.error("[market-report] Failed to compute initial snapshot:", error);
+    }
+  })();
+
+  // Cron: check every hour, auto-compute snapshots + DDF yield crawl on the 1st of each month
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const months = await storage.getMarketSnapshotMonths();
+      if (!months.includes(currentMonth)) {
+        console.log("[market-report] Monthly cron: computing snapshot for", currentMonth);
+        await computeMonthlySnapshot(currentMonth);
+        await rebuildMarketIntelligence(now);
+        console.log("[market-report] Monthly cron: snapshot complete for", currentMonth);
+      }
+
+      if (now.getDate() === 1 && now.getHours() >= 2) {
+        await finalizeLeaderboardSnapshot({ periodType: "monthly" }).catch((error) => {
+          console.error("[leaderboard] Monthly finalize failed:", error);
+        });
+      }
+
+      const yieldMonths = await storage.getAllCityYieldHistoryMonths();
+      if (!yieldMonths.includes(currentMonth)) {
+        console.log("[ddf-crawler] Monthly cron: starting yield crawl for", currentMonth);
+        const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
+        runDdfYieldCrawl(currentMonth).then(result => {
+          console.log("[ddf-crawler] Monthly cron complete:", result);
+        }).catch(err => {
+          console.error("[ddf-crawler] Monthly cron failed:", err);
+        });
+      }
+    } catch (error) {
+      console.error("[market-report] Monthly cron failed:", error);
+    }
+  }, 60 * 60 * 1000);
+
+  // DDF yield crawl: run every 24 hours to keep listing data fresh
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      console.log("[ddf-crawler] Daily refresh: starting yield crawl for", currentMonth);
+      const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
+      runDdfYieldCrawl(currentMonth).then(result => {
+        console.log("[ddf-crawler] Daily refresh complete:", result);
+      }).catch(err => {
+        console.error("[ddf-crawler] Daily refresh failed:", err);
+      });
+    } catch (error) {
+      console.error("[ddf-crawler] Daily refresh error:", error);
+    }
+  }, 24 * 60 * 60 * 1000);
+
+  // Daily city report cron: check every hour, publish one city report per day
+  let lastCityReportDate = "";
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      if (todayStr === lastCityReportDate) return;
+
+      const hour = now.getHours();
+      if (hour < 8) return;
+
+      console.log("[city-report] Daily cron: checking for today's report...");
+      const { runDailyCityReport } = await import("./cityReportGenerator");
+      const result = await runDailyCityReport();
+      console.log(`[city-report] Daily cron result: ${result.action} — ${result.details}`);
+      lastCityReportDate = todayStr;
+    } catch (error) {
+      console.error("[city-report] Daily cron failed:", error);
+    }
+  }, 60 * 60 * 1000);
+
+  // Startup: generate today's city report if not yet published
+  (async () => {
+    try {
+      const now = new Date();
+      if (now.getHours() >= 8) {
+        const { runDailyCityReport } = await import("./cityReportGenerator");
+        const result = await runDailyCityReport();
+        console.log(`[city-report] Startup check: ${result.action} — ${result.details}`);
+      }
+    } catch (error) {
+      console.error("[city-report] Startup check failed:", error);
+    }
+  })();
+
+  // Monthly distress report: check every 6 hours on 2nd-5th of month, generate snapshot + blog report
+  let distressReportMonth = "";
+  const runDistressReportIfNeeded = async () => {
+    try {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      if (distressReportMonth === currentMonth) return;
+
+      const existing = await db.select().from(distressSnapshots)
+        .where(and(eq(distressSnapshots.month, currentMonth), sql`city IS NULL`))
+        .limit(1);
+      if (existing.length > 0) {
+        distressReportMonth = currentMonth;
+        return;
+      }
+
+      const dayOfMonth = now.getDate();
+      if (dayOfMonth < 2) return;
+
+      console.log("[distress-report] Monthly cron: starting distress report...");
+      const { runMonthlyDistressReport } = await import("./distressReportGenerator");
+      const result = await runMonthlyDistressReport();
+      console.log(`[distress-report] Monthly cron result: ${result.action} — ${result.details}`);
+      if (result.action === "published" || result.action === "exists") {
+        distressReportMonth = currentMonth;
+      }
+    } catch (error) {
+      console.error("[distress-report] Monthly cron failed:", error);
+    }
+  };
+  setInterval(runDistressReportIfNeeded, 6 * 60 * 60 * 1000);
+  runDistressReportIfNeeded();
+
+  // Weekly mortgage rate scrape: check every 6 hours, run if >7 days since last update
+  (async () => {
+    try {
+      const { runRateScrape, getAllCurrentRates } = await import("./rateScraper");
+      const existing = await getAllCurrentRates();
+      if (existing.length === 0) {
+        console.log("[rate-scraper] No rates in DB, running initial scrape...");
+        const result = await runRateScrape();
+        console.log(`[rate-scraper] Initial scrape: ${result.updated} rates from ${result.sources.join(", ")}`);
+      } else {
+        const oldest = existing.reduce((min, r) => {
+          const t = new Date(r.lastUpdated).getTime();
+          return t < min ? t : min;
+        }, Date.now());
+        const daysSinceUpdate = (Date.now() - oldest) / (1000 * 60 * 60 * 24);
+        if (daysSinceUpdate > 7) {
+          console.log("[rate-scraper] Rates older than 7 days, refreshing...");
+          const result = await runRateScrape();
+          console.log(`[rate-scraper] Refresh: ${result.updated} rates updated`);
+        } else {
+          console.log(`[rate-scraper] Rates are ${daysSinceUpdate.toFixed(1)} days old, skipping`);
+        }
+      }
+    } catch (error) {
+      console.error("[rate-scraper] Startup check failed:", error);
+    }
+  })();
+
+  setInterval(async () => {
+    try {
+      const { getAllCurrentRates, runRateScrape } = await import("./rateScraper");
+      const rates = await getAllCurrentRates();
+      if (rates.length === 0) return;
+      const oldest = rates.reduce((min, r) => {
+        const t = new Date(r.lastUpdated).getTime();
+        return t < min ? t : min;
+      }, Date.now());
+      const daysSinceUpdate = (Date.now() - oldest) / (1000 * 60 * 60 * 24);
+      if (daysSinceUpdate > 7) {
+        console.log("[rate-scraper] Weekly cron: refreshing rates...");
+        const result = await runRateScrape();
+        console.log(`[rate-scraper] Weekly cron: ${result.updated} rates updated`);
+      }
+    } catch (error) {
+      console.error("[rate-scraper] Weekly cron failed:", error);
+    }
+  }, 6 * 60 * 60 * 1000);
+
+  // ============================================
+  // COMMUNITY UNDERWRITING ROUTES
+  // ============================================
+
+  app.post("/api/community/notes", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const parsed = insertUnderwritingNoteSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) return res.status(400).json({ error: "Invalid data", details: parsed.error.issues });
+
+      const todayCount = await storage.getUserNotesCountForListingToday(userId, parsed.data.listingMlsNumber);
+      if (todayCount >= 3) return res.status(429).json({ error: "Rate limit: max 3 notes per listing per day" });
+
+      const note = await storage.createUnderwritingNote(parsed.data);
+
+      await storage.createContributionEvent({
+        userId,
+        type: "note",
+        points: 5,
+        targetType: "underwriting_note",
+        targetId: note.id,
+      });
+
+      await recomputeListingAggregate(parsed.data.listingMlsNumber);
+
+      res.json(note);
+    } catch (error) {
+      console.error("Error creating underwriting note:", error);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
+  app.get("/api/community/notes/:mlsNumber", async (req, res) => {
+    try {
+      const notes = await storage.getUnderwritingNotesByListing(req.params.mlsNumber);
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+      res.status(500).json({ error: "Failed to fetch notes" });
+    }
+  });
+
+  const analysisConsentSchema = z.object({
+    useForProductImprovement: z.boolean().default(false),
+    useForAiTraining: z.boolean().default(false),
+    useForAnonymizedMarketDataset: z.boolean().default(false),
+    allowCommercialDataLicensing: z.boolean().default(false),
+  });
+
+  const communityAnalysisSchema = insertPropertyAnalysisSchema.extend({
+    listingMlsNumber: z.string().min(1),
+    title: z.string().max(180).optional().nullable(),
+    summary: z.string().max(2000).optional().nullable(),
+    userNotes: z.string().max(COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH).optional().nullable(),
+    aiAnalysisText: z.string().max(COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH).optional().nullable(),
+    userAnalysisText: z.string().max(COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH).optional().nullable(),
+    visibility: z.enum(["public", "private"]).default(COMMUNITY_FLAGS.ENABLE_PUBLIC_ANALYSIS_DEFAULT ? "public" : "private"),
+    dataUseConsent: analysisConsentSchema,
+    assumptions: z.record(z.any()).default({}),
+    calculatedMetrics: z.record(z.any()).default({}),
+    aiAssumptions: z.record(z.any()).optional().nullable(),
+    finalAssumptions: z.record(z.any()).optional().nullable(),
+    listingSnapshot: z.record(z.any()).optional().nullable(),
+    sourceContext: z.record(z.any()).optional().nullable(),
+  });
+
+  const listingCommentCreateSchema = insertListingCommentSchema.extend({
+    listingMlsNumber: z.string().min(1),
+    body: z.string().min(1).max(COMMUNITY_DEFAULTS.COMMENT_MAX_LENGTH),
+    visibility: z.enum(["public", "private"]).default("public"),
+    parentCommentId: z.string().optional().nullable(),
+    referencedAnalysisId: z.string().optional().nullable(),
+    metadataJson: z.record(z.any()).optional().nullable(),
+  });
+
+  const listingCommentUpdateSchema = z.object({
+    body: z.string().min(1).max(COMMUNITY_DEFAULTS.COMMENT_MAX_LENGTH).optional(),
+    visibility: z.enum(["public", "private"]).optional(),
+  });
+
+  function flattenObject(input: Record<string, any>, prefix = ""): Array<{ field: string; value: any }> {
+    return Object.entries(input || {}).flatMap(([key, value]) => {
+      const field = prefix ? `${prefix}.${key}` : key;
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        return flattenObject(value, field);
+      }
+      return [{ field, value }];
+    });
+  }
+
+  function buildAssumptionChanges(aiAssumptions: Record<string, any> | null | undefined, finalAssumptions: Record<string, any> | null | undefined) {
+    const aiEntries = new Map(flattenObject(aiAssumptions || {}).map((item) => [item.field, item.value]));
+    return flattenObject(finalAssumptions || {})
+      .filter((item) => JSON.stringify(aiEntries.get(item.field)) !== JSON.stringify(item.value))
+      .map((item) => ({
+        fieldName: item.field,
+        aiValue: aiEntries.get(item.field) ?? null,
+        userValue: item.value ?? null,
+        deltaValue: {
+          previous: aiEntries.get(item.field) ?? null,
+          next: item.value ?? null,
+        },
+      }));
+  }
+
+  function getAnalysisMetricNumber(source: Record<string, any> | null | undefined, keys: string[]): number | null {
+    for (const key of keys) {
+      const value = source?.[key];
+      if (typeof value === "number" && Number.isFinite(value)) return value;
+    }
+    return null;
+  }
+
+  async function buildCommunityContext(mlsNumber: string, userId?: string | null) {
+    const [aggregate, publicAnalyses, publicComments, myAnalyses, privateNotes] = await Promise.all([
+      storage.getListingAggregate(mlsNumber),
+      storage.listPublicPropertyAnalysesByListing(mlsNumber),
+      storage.listPublicListingCommentsByListing(mlsNumber, "most_helpful"),
+      userId ? storage.listUserPropertyAnalysesByListing(mlsNumber, userId) : Promise.resolve([]),
+      userId ? storage.listPrivateListingNotesByListing(mlsNumber, userId) : Promise.resolve([]),
+    ]);
+
+    return {
+      aggregate,
+      publicAnalyses: publicAnalyses.slice(0, 5),
+      myAnalyses: myAnalyses.slice(0, 5),
+      publicComments: publicComments.slice(0, 5).map((comment) => ({
+        id: comment.id,
+        body: comment.body,
+        createdAt: comment.createdAt,
+        metadataJson: comment.metadataJson || null,
+      })),
+      privateNotes: privateNotes.slice(0, 5),
+    };
+  }
+
+  app.post("/api/community/analyses", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!COMMUNITY_FLAGS.ENABLE_COMMUNITY_ANALYSIS) return res.status(404).json({ error: "Community analysis disabled" });
+      const userId = req.session.userId;
+      const beforeAggregate = req.body?.listingMlsNumber ? await storage.getListingAggregate(req.body.listingMlsNumber) : undefined;
+      const parsed = communityAnalysisSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) return res.status(400).json({ error: "Invalid analysis data", details: parsed.error.issues });
+
+      const data = parsed.data;
+      const analysis = await storage.createPropertyAnalysis({
+        ...data,
+        title: data.title ? sanitizeUserText(data.title, 180) : null,
+        summary: data.summary ? sanitizeUserText(data.summary, 2000) : null,
+        userNotes: data.userNotes ? sanitizeUserText(data.userNotes, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : null,
+        aiAnalysisText: data.aiAnalysisText ? sanitizeUserText(data.aiAnalysisText, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : null,
+        userAnalysisText: data.userAnalysisText ? sanitizeUserText(data.userAnalysisText, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : null,
+        sentiment: data.sentiment || computeConsensusLabel({
+          medianMonthlyCashFlow: getAnalysisMetricNumber(data.calculatedMetrics, ["monthlyCashFlow", "monthly_cash_flow"]),
+          medianCashOnCash: getAnalysisMetricNumber(data.calculatedMetrics, ["cashOnCash", "cash_on_cash"]),
+          medianDscr: getAnalysisMetricNumber(data.calculatedMetrics, ["dscr"]),
+        }),
+      });
+
+      const quality = computeAnalysisQualityScore({
+        timeSpentSeconds: Number((data.sourceContext as any)?.timeSpentSeconds || (data.sourceContext as any)?.timeOnAnalysisSeconds || 0),
+        meaningfulInputChanges: Number((data.sourceContext as any)?.meaningfulInputChanges || buildAssumptionChanges(data.aiAssumptions as Record<string, any> | undefined, (data.finalAssumptions || data.assumptions) as Record<string, any>).length),
+        openedComparableSections: Number((data.sourceContext as any)?.openedComparableSections || 0),
+        savedNotes: Boolean(data.userNotes || data.userAnalysisText),
+        exportedOrSaved: true,
+        hasFinancingAssumptions: Boolean((data.assumptions as any)?.downPaymentPercent || (data.assumptions as any)?.interestRate),
+        hasRentAssumptions: Boolean((data.assumptions as any)?.monthlyRent || (data.assumptions as any)?.rentPerUnit),
+        hasExpenseAssumptions: Boolean((data.assumptions as any)?.expenseRatio || (data.assumptions as any)?.propertyTax),
+        hasRenovationOrCapexAssumptions: Boolean((data.assumptions as any)?.renovationBudget || (data.assumptions as any)?.capexReservePercent),
+        comparableReferenceCount: Array.isArray((data.sourceContext as any)?.comparables) ? (data.sourceContext as any).comparables.length : 0,
+        metrics: data.calculatedMetrics,
+      });
+      await db.insert(analysisQualityScores).values({
+        propertyAnalysisId: analysis.id,
+        userId,
+        listingKey: analysis.listingMlsNumber,
+        qualityScore: quality.qualityScore,
+        confidenceScore: quality.confidenceScore,
+        plausibilityScore: quality.plausibilityScore,
+        interactionDepthScore: quality.interactionDepthScore,
+        dataCompletenessScore: quality.dataCompletenessScore,
+        uniquenessScore: quality.uniquenessScore,
+        dealViabilityScore: quality.dealViabilityScore,
+        spamRiskScore: quality.spamRiskScore,
+        leaderboardEligible: quality.leaderboardEligible,
+        exclusionReason: quality.exclusionReason,
+      }).onConflictDoNothing();
+      await recordUnderwritingComparison({
+        propertyAnalysisId: analysis.id,
+        userId,
+        listingKey: analysis.listingMlsNumber,
+        province: analysis.province,
+        city: analysis.city,
+        propertyType: analysis.propertyType,
+        strategyType: (analysis.assumptions as any)?.strategyType || null,
+        userMetrics: analysis.calculatedMetrics as Record<string, unknown>,
+        assumptions: (analysis.finalAssumptions || analysis.assumptions) as Record<string, unknown>,
+      });
+
+      const assumptionChanges = buildAssumptionChanges(data.aiAssumptions as Record<string, any> | undefined, (data.finalAssumptions || data.assumptions) as Record<string, any>);
+      if (assumptionChanges.length) {
+        await storage.createAnalysisAssumptionChanges(assumptionChanges.map((change) => ({
+          analysisId: analysis.id,
+          ...change,
+        })));
+      }
+
+      await Promise.all([
+        storage.createAnalysisConsentEvent({
+          userId,
+          analysisId: analysis.id,
+          visibility: analysis.visibility,
+          ...data.dataUseConsent,
+          consentTextVersion: COMMUNITY_DEFAULTS.CONSENT_TEXT_VERSION,
+        }),
+        storage.createAnalysisEvent({
+          analysisId: analysis.id,
+          listingMlsNumber: analysis.listingMlsNumber,
+          userId,
+          eventType: "created",
+          visibility: analysis.visibility,
+          metadata: {
+            propertyType: analysis.propertyType,
+            market: analysis.market,
+          },
+        }),
+        storage.createUnderwritingAssumptionSnapshot({
+          analysisId: analysis.id,
+          snapshotType: "final",
+          assumptions: data.finalAssumptions || data.assumptions,
+        }),
+      ]);
+
+      if (data.aiAssumptions) {
+        await storage.createUnderwritingAssumptionSnapshot({
+          analysisId: analysis.id,
+          snapshotType: "ai",
+          assumptions: data.aiAssumptions,
+        });
+      }
+
+      await storage.upsertListingWatcher({
+        userId,
+        listingMlsNumber: analysis.listingMlsNumber,
+        sourceType: "analysis",
+        sourceId: analysis.id,
+        lastSeenAt: new Date(),
+      });
+
+      await recomputeListingAggregate(analysis.listingMlsNumber);
+      const afterAggregate = await storage.getListingAggregate(analysis.listingMlsNumber);
+      queueAnalysisNotification({
+        kind: "analysis_created",
+        analysis,
+        actorUserId: userId,
+        beforeAggregate,
+        afterAggregate,
+      }).catch((error) => {
+        console.error("Error queueing analysis-created notification:", error);
+      });
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error creating community analysis:", error);
+      res.status(500).json({ error: "Failed to save analysis" });
+    }
+  });
+
+  app.patch("/api/community/analyses/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const existing = await storage.getPropertyAnalysis(req.params.id);
+      const beforeAggregate = existing ? await storage.getListingAggregate(existing.listingMlsNumber) : undefined;
+      const parsed = communityAnalysisSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid analysis update", details: parsed.error.issues });
+      if (!existing || existing.userId !== userId) return res.status(404).json({ error: "Analysis not found" });
+
+      const updated = await storage.updatePropertyAnalysis(req.params.id, userId, {
+        ...parsed.data,
+        title: parsed.data.title != null ? sanitizeUserText(parsed.data.title, 180) : existing.title,
+        summary: parsed.data.summary != null ? sanitizeUserText(parsed.data.summary, 2000) : existing.summary,
+        userNotes: parsed.data.userNotes != null ? sanitizeUserText(parsed.data.userNotes, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : existing.userNotes,
+        userAnalysisText: parsed.data.userAnalysisText != null ? sanitizeUserText(parsed.data.userAnalysisText, COMMUNITY_DEFAULTS.ANALYSIS_TEXT_MAX_LENGTH) : existing.userAnalysisText,
+      });
+      if (!updated) return res.status(404).json({ error: "Analysis not found" });
+
+      if (parsed.data.dataUseConsent) {
+        await storage.createAnalysisConsentEvent({
+          userId,
+          analysisId: updated.id,
+          visibility: updated.visibility,
+          ...parsed.data.dataUseConsent,
+          consentTextVersion: COMMUNITY_DEFAULTS.CONSENT_TEXT_VERSION,
+        });
+      }
+
+      await storage.createAnalysisEvent({
+        analysisId: updated.id,
+        listingMlsNumber: updated.listingMlsNumber,
+        userId,
+        eventType: "updated",
+        visibility: updated.visibility,
+        metadata: { fields: Object.keys(parsed.data) },
+      });
+
+      await recomputeListingAggregate(updated.listingMlsNumber);
+      const afterAggregate = await storage.getListingAggregate(updated.listingMlsNumber);
+      queueAnalysisNotification({
+        kind: "analysis_updated",
+        analysis: updated,
+        actorUserId: userId,
+        beforeAggregate,
+        afterAggregate,
+      }).catch((error) => {
+        console.error("Error queueing analysis-updated notification:", error);
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating community analysis:", error);
+      res.status(500).json({ error: "Failed to update analysis" });
+    }
+  });
+
+  app.get("/api/community/analyses/:mlsNumber", async (req, res) => {
+    try {
+      const sort = (req.query.sort as string) || "newest";
+      const analyses = await storage.listPublicPropertyAnalysesByListing(req.params.mlsNumber);
+      const sorted = [...analyses].sort((a, b) => {
+        const metricsA = (a.calculatedMetrics || {}) as Record<string, any>;
+        const metricsB = (b.calculatedMetrics || {}) as Record<string, any>;
+        if (sort === "highest_cap_rate") return (metricsB.capRate || 0) - (metricsA.capRate || 0);
+        if (sort === "most_bullish") return ((metricsB.monthlyCashFlow || 0) + (metricsB.cashOnCash || 0)) - ((metricsA.monthlyCashFlow || 0) + (metricsA.cashOnCash || 0));
+        if (sort === "most_bearish") return ((metricsA.monthlyCashFlow || 0) + (metricsA.cashOnCash || 0)) - ((metricsB.monthlyCashFlow || 0) + (metricsB.cashOnCash || 0));
+        if (sort === "most_conservative") return (metricsA.projectedRent || metricsA.monthlyRent || 0) - (metricsB.projectedRent || metricsB.monthlyRent || 0);
+        if (sort === "most_useful") return (b.usefulCount || 0) - (a.usefulCount || 0);
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      res.json(sorted);
+    } catch (error) {
+      console.error("Error fetching public analyses:", error);
+      res.status(500).json({ error: "Failed to fetch analyses" });
+    }
+  });
+
+  app.get("/api/community/my-analyses/:mlsNumber", isAuthenticated, async (req: any, res) => {
+    try {
+      const analyses = await storage.listUserPropertyAnalysesByListing(req.params.mlsNumber, req.session.userId);
+      res.json(analyses);
+    } catch (error) {
+      console.error("Error fetching user analyses:", error);
+      res.status(500).json({ error: "Failed to fetch your analyses" });
+    }
+  });
+
+  app.post("/api/community/my-analysis-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const parsed = z.object({
+        mlsNumbers: z.array(z.string().min(1)).max(250),
+      }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid listing batch", details: parsed.error.issues });
+
+      const rows = await db.select().from(propertyAnalyses).where(and(
+        eq(propertyAnalyses.userId, userId),
+        inArray(propertyAnalyses.listingMlsNumber, parsed.data.mlsNumbers),
+        sql`${propertyAnalyses.isDeleted} = false`,
+        sql`${propertyAnalyses.isAnonymized} = false`,
+      ));
+
+      const medianValue = (values: Array<number | null | undefined>) => {
+        const normalized = values
+          .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+          .sort((a, b) => a - b);
+        if (!normalized.length) return null;
+        const middle = Math.floor(normalized.length / 2);
+        return normalized.length % 2 === 1
+          ? normalized[middle]
+          : (normalized[middle - 1] + normalized[middle]) / 2;
+      };
+
+      const grouped = rows.reduce<Record<string, any[]>>((acc, row) => {
+        acc[row.listingMlsNumber] = acc[row.listingMlsNumber] || [];
+        acc[row.listingMlsNumber].push(row);
+        return acc;
+      }, {});
+
+      const response = Object.fromEntries(Object.entries(grouped).map(([mlsNumber, analyses]) => {
+        const metrics = analyses.map((analysis) => (analysis.calculatedMetrics || {}) as Record<string, any>);
+        return [mlsNumber, {
+          analysisCount: analyses.length,
+          medianCapRate: medianValue(metrics.map((metric) => getAnalysisMetricNumber(metric, ["capRate", "cap_rate"]))),
+          medianCashOnCash: medianValue(metrics.map((metric) => getAnalysisMetricNumber(metric, ["cashOnCash", "cash_on_cash"]))),
+          medianMonthlyCashFlow: medianValue(metrics.map((metric) => getAnalysisMetricNumber(metric, ["monthlyCashFlow", "monthly_cash_flow"]))),
+          medianIrr: medianValue(metrics.map((metric) => getAnalysisMetricNumber(metric, ["irr"]))),
+        }];
+      }));
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching my analysis metrics:", error);
+      res.status(500).json({ error: "Failed to fetch your analysis metrics" });
+    }
+  });
+
+  app.post("/api/community/analyses/:id/duplicate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const source = await storage.getPropertyAnalysis(req.params.id);
+      if (!source || source.isDeleted) return res.status(404).json({ error: "Analysis not found" });
+      if (source.visibility !== "public" && source.userId !== userId) return res.status(403).json({ error: "Not authorized to duplicate this analysis" });
+
+      const duplicate = await storage.createPropertyAnalysis({
+        listingMlsNumber: source.listingMlsNumber,
+        propertyId: source.propertyId,
+        userId,
+        parentAnalysisId: source.parentAnalysisId || source.id,
+        sourceAnalysisId: source.id,
+        visibility: COMMUNITY_FLAGS.ENABLE_PUBLIC_ANALYSIS_DEFAULT ? "public" : "private",
+        title: source.title ? `${source.title} copy` : null,
+        summary: source.summary,
+        userNotes: source.userNotes,
+        aiAnalysisText: source.aiAnalysisText,
+        userAnalysisText: source.userAnalysisText,
+        sentiment: source.sentiment,
+        city: source.city,
+        province: source.province,
+        market: source.market,
+        neighbourhood: source.neighbourhood,
+        propertyType: source.propertyType,
+        listingPrice: source.listingPrice,
+        listingSnapshot: (source.listingSnapshot || null) as any,
+        sourceContext: (source.sourceContext || null) as any,
+        assumptions: (source.assumptions || {}) as any,
+        calculatedMetrics: (source.calculatedMetrics || {}) as any,
+        aiAssumptions: (source.aiAssumptions || null) as any,
+        finalAssumptions: (source.finalAssumptions || null) as any,
+        dataUseConsent: (source.dataUseConsent || null) as any,
+        modelVersion: source.modelVersion,
+        promptVersion: source.promptVersion,
+      });
+
+      await storage.createAnalysisEvent({
+        analysisId: duplicate.id,
+        listingMlsNumber: duplicate.listingMlsNumber,
+        userId,
+        eventType: "duplicated",
+        visibility: duplicate.visibility,
+        metadata: { sourceAnalysisId: source.id },
+      });
+
+      await recomputeListingAggregate(duplicate.listingMlsNumber);
+      res.json(duplicate);
+    } catch (error) {
+      console.error("Error duplicating analysis:", error);
+      res.status(500).json({ error: "Failed to duplicate analysis" });
+    }
+  });
+
+  app.post("/api/community/analyses/:id/feedback", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const parsed = z.object({
+        feedbackType: z.enum(["useful", "not_useful", "disagree", "report"]),
+        comment: z.string().max(500).optional(),
+      }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid feedback", details: parsed.error.issues });
+      const analysis = await storage.getPropertyAnalysis(req.params.id);
+      if (!analysis || analysis.isDeleted) return res.status(404).json({ error: "Analysis not found" });
+      if (analysis.visibility !== "public" && analysis.userId !== userId) return res.status(403).json({ error: "Not authorized" });
+      const existing = await storage.getAnalysisFeedbackByUser(analysis.id, userId, parsed.data.feedbackType);
+      if (existing) return res.json(existing);
+
+      const feedback = await storage.createAnalysisFeedback({
+        analysisId: analysis.id,
+        userId,
+        feedbackType: parsed.data.feedbackType,
+        comment: parsed.data.comment ? sanitizeUserText(parsed.data.comment, 500) : null,
+      });
+      await storage.createAnalysisEvent({
+        analysisId: analysis.id,
+        listingMlsNumber: analysis.listingMlsNumber,
+        userId,
+        eventType: `feedback:${parsed.data.feedbackType}`,
+        visibility: analysis.visibility,
+        metadata: { comment: feedback.comment || null },
+      });
+      res.json(feedback);
+    } catch (error) {
+      console.error("Error submitting analysis feedback:", error);
+      res.status(500).json({ error: "Failed to submit feedback" });
+    }
+  });
+
+  app.get("/api/community/ai-context/:mlsNumber", async (req: any, res) => {
+    try {
+      if (!COMMUNITY_FLAGS.ENABLE_COMMUNITY_CONTEXT_FOR_AI_ANALYSIS) {
+        return res.json({ enabled: false, context: null });
+      }
+      const userId = req.session?.userId || null;
+      const context = await buildCommunityContext(req.params.mlsNumber, userId);
+      res.json({ enabled: true, context });
+    } catch (error) {
+      console.error("Error building AI community context:", error);
+      res.status(500).json({ error: "Failed to build community context" });
+    }
+  });
+
+  app.post("/api/community/comments", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!COMMUNITY_FLAGS.ENABLE_LISTING_COMMENTS) return res.status(404).json({ error: "Listing comments disabled" });
+      const userId = req.session.userId;
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+      const beforeAggregate = req.body?.listingMlsNumber ? await storage.getListingAggregate(req.body.listingMlsNumber) : undefined;
+
+      const parsed = listingCommentCreateSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) return res.status(400).json({ error: "Invalid data", details: parsed.error.issues });
+      if (parsed.data.visibility === "private" && !COMMUNITY_FLAGS.ENABLE_PRIVATE_LISTING_NOTES) {
+        return res.status(400).json({ error: "Private notes disabled" });
+      }
+
+      if (parsed.data.referencedAnalysisId) {
+        const analysis = await storage.getPropertyAnalysis(parsed.data.referencedAnalysisId);
+        if (!analysis || analysis.listingMlsNumber !== parsed.data.listingMlsNumber) {
+          return res.status(400).json({ error: "Referenced analysis not found for this listing" });
+        }
+        if (analysis.visibility !== "public" && analysis.userId !== userId) {
+          return res.status(403).json({ error: "Cannot reference a private analysis you do not own" });
+        }
+      }
+
+      const comment = await storage.createListingComment(parsed.data);
+      await storage.upsertListingWatcher({
+        userId,
+        listingMlsNumber: comment.listingMlsNumber,
+        sourceType: parsed.data.visibility === "private" ? "manual_follow" : "comment",
+        sourceId: comment.id,
+        lastSeenAt: new Date(),
+      });
+
+      await storage.createContributionEvent({
+        userId,
+        type: parsed.data.visibility === "private" ? "private_note" : "comment",
+        points: parsed.data.visibility === "private" ? 0 : 1,
+        targetType: "listing_comment",
+        targetId: comment.id,
+      });
+
+      if (comment.parentCommentId) {
+        const parent = await storage.getListingComment(comment.parentCommentId);
+        if (parent) {
+          await storage.updateListingComment(parent.id, parent.userId, {
+            replyCount: (parent.replyCount || 0) + 1,
+          });
+        }
+      }
+
+      await recomputeListingAggregate(parsed.data.listingMlsNumber);
+      const [matchingAnalysis] = comment.referencedAnalysisId
+        ? await db.select().from(propertyAnalyses).where(eq(propertyAnalyses.id, comment.referencedAnalysisId)).limit(1)
+        : [null];
+      const afterAggregate = await storage.getListingAggregate(parsed.data.listingMlsNumber);
+      const parentComment = comment.parentCommentId ? await storage.getListingComment(comment.parentCommentId) : null;
+      queueCommentNotification({
+        comment,
+        actorUserId: userId,
+        listingAddress: matchingAnalysis?.title || parsed.data.listingMlsNumber,
+        listingCity: matchingAnalysis?.city || null,
+        parentComment,
+        beforeAggregate,
+        afterAggregate,
+      }).catch((error) => {
+        console.error("Error queueing comment notification:", error);
+      });
+
+      res.json(comment);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
+  app.get("/api/community/comments/:mlsNumber", async (req, res) => {
+    try {
+      const sortBy = ((req.query.sort as string) || "pinned") as "newest" | "oldest" | "most_helpful" | "pinned";
+      const comments = await storage.listPublicListingCommentsByListing(req.params.mlsNumber, sortBy);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  });
+
+  app.get("/api/community/private-notes/:mlsNumber", isAuthenticated, async (req: any, res) => {
+    try {
+      const notes = await storage.listPrivateListingNotesByListing(req.params.mlsNumber, req.session.userId);
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching private notes:", error);
+      res.status(500).json({ error: "Failed to fetch private notes" });
+    }
+  });
+
+  app.patch("/api/community/comments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const parsed = listingCommentUpdateSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid comment update", details: parsed.error.issues });
+      const updated = await storage.updateListingComment(req.params.id, req.session.userId, parsed.data as any);
+      if (!updated) return res.status(404).json({ error: "Comment not found" });
+      await recomputeListingAggregate(updated.listingMlsNumber);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      res.status(500).json({ error: "Failed to update comment" });
+    }
+  });
+
+  app.delete("/api/community/comments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const deleted = await storage.softDeleteListingComment(req.params.id, req.session.userId);
+      if (!deleted) return res.status(404).json({ error: "Comment not found" });
+      await recomputeListingAggregate(deleted.listingMlsNumber);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ error: "Failed to delete comment" });
+    }
+  });
+
+  app.post("/api/community/comments/:id/helpful", isAuthenticated, async (req: any, res) => {
+    try {
+      const applied = await storage.markCommentHelpful(req.params.id, req.session.userId);
+      const comment = await storage.getListingComment(req.params.id);
+      if (comment) await recomputeListingAggregate(comment.listingMlsNumber);
+      res.json({ applied });
+    } catch (error) {
+      console.error("Error marking comment helpful:", error);
+      res.status(500).json({ error: "Failed to mark comment helpful" });
+    }
+  });
+
+  app.post("/api/community/comments/:id/report", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!COMMUNITY_FLAGS.ENABLE_COMMENT_REPORTING) return res.status(404).json({ error: "Comment reporting disabled" });
+      const applied = await storage.reportComment(req.params.id, req.session.userId);
+      const comment = await storage.getListingComment(req.params.id);
+      if (comment) await recomputeListingAggregate(comment.listingMlsNumber);
+      res.json({ applied });
+    } catch (error) {
+      console.error("Error reporting comment:", error);
+      res.status(500).json({ error: "Failed to report comment" });
+    }
+  });
+
+  app.get("/api/community/comment-count/:mlsNumber", async (req, res) => {
+    try {
+      const aggregate = await storage.getListingAggregate(req.params.mlsNumber);
+      res.json({
+        publicCommentCount: aggregate?.publicCommentCount || aggregate?.commentCount || 0,
+        latestPublicCommentAt: aggregate?.latestPublicCommentAt || null,
+      });
+    } catch (error) {
+      console.error("Error fetching comment count:", error);
+      res.status(500).json({ error: "Failed to fetch comment count" });
+    }
+  });
+
+  app.post("/api/community/vote", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) return res.status(401).json({ error: "Authentication required" });
+
+      const parsed = insertVoteSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) return res.status(400).json({ error: "Invalid data", details: parsed.error.issues });
+
+      const existingVote = await storage.getVote(userId, parsed.data.targetType, parsed.data.targetId);
+      const oldValue = existingVote?.value || 0;
+      const newValue = parsed.data.value;
+
+      const vote = await storage.upsertVote(parsed.data);
+
+      const delta = newValue - oldValue;
+      if (delta !== 0) {
+        let targetAuthorId: string | null = null;
+
+        if (parsed.data.targetType === "underwriting_note") {
+          await storage.updateUnderwritingNoteScore(parsed.data.targetId, delta);
+          const allNotes = await db.select({ userId: underwritingNotes.userId }).from(underwritingNotes).where(eq(underwritingNotes.id, parsed.data.targetId));
+          targetAuthorId = allNotes[0]?.userId || null;
+        } else if (parsed.data.targetType === "listing_comment") {
+          await storage.updateListingCommentScore(parsed.data.targetId, delta);
+          const allComments = await db.select({ userId: listingComments.userId }).from(listingComments).where(eq(listingComments.id, parsed.data.targetId));
+          targetAuthorId = allComments[0]?.userId || null;
+        }
+
+        if (targetAuthorId && targetAuthorId !== userId) {
+          if (newValue === 1 && oldValue !== 1) {
+            await storage.createContributionEvent({
+              userId: targetAuthorId,
+              type: "upvote_received",
+              points: 2,
+              targetType: parsed.data.targetType,
+              targetId: parsed.data.targetId,
+            });
+          } else if (newValue === -1 && oldValue !== -1) {
+            await storage.createContributionEvent({
+              userId: targetAuthorId,
+              type: "downvote_received",
+              points: -1,
+              targetType: parsed.data.targetType,
+              targetId: parsed.data.targetId,
+            });
+          }
+        }
+      }
+
+      res.json(vote);
+    } catch (error) {
+      console.error("Error voting:", error);
+      res.status(500).json({ error: "Failed to vote" });
+    }
+  });
+
+  app.get("/api/community/aggregate/:mlsNumber", async (req, res) => {
+    try {
+      const aggregate = await storage.getListingAggregate(req.params.mlsNumber);
+      res.json(aggregate || null);
+    } catch (error) {
+      console.error("Error fetching aggregate:", error);
+      res.status(500).json({ error: "Failed to fetch aggregate" });
+    }
+  });
+
+  app.post("/api/community/aggregates", async (req, res) => {
+    try {
+      const { mlsNumbers } = req.body;
+      if (!Array.isArray(mlsNumbers) || mlsNumbers.length === 0) {
+        return res.json([]);
+      }
+      const aggregates = await storage.getListingAggregatesBatch(mlsNumbers.slice(0, 100));
+      res.json(aggregates);
+    } catch (error) {
+      console.error("Error fetching aggregates:", error);
+      res.status(500).json({ error: "Failed to fetch aggregates" });
+    }
+  });
+
+  app.get("/api/leaderboard/contributions", async (req, res) => {
+    try {
+      const period = (req.query.period as string) === 'monthly' ? 'monthly' : 'all-time';
+      const limit = Math.min(Number(req.query.limit) || 20, 50);
+      const leaderboard = await storage.getContributionLeaderboard(period, limit);
+      res.json(leaderboard.map((row, index) => ({
+        rank: index + 1,
+        userId: row.userId,
+        name: [row.firstName, row.lastName].filter(Boolean).join(" ") || "Anonymous",
+        totalPoints: Number(row.totalPoints),
+        role: row.role || "investor",
+        profileImageUrl: row.profileImageUrl || null,
+      })));
+    } catch (error) {
+      console.error("Error fetching contribution leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  async function recomputeListingAggregate(mlsNumber: string) {
+    try {
+      const notes = await storage.getUnderwritingNotesByListing(mlsNumber);
+      const comments = await storage.listPublicListingCommentsByListing(mlsNumber, "pinned");
+      const [allAnalyses, publicAnalyses, privateNotes] = await Promise.all([
+        db.select().from(propertyAnalyses)
+          .where(and(
+            eq(propertyAnalyses.listingMlsNumber, mlsNumber),
+            eq(propertyAnalyses.isDeleted, false),
+          )),
+        storage.listPublicPropertyAnalysesByListing(mlsNumber),
+        db.select().from(listingComments)
+          .where(and(
+            eq(listingComments.listingMlsNumber, mlsNumber),
+            eq(listingComments.visibility, "private"),
+            eq(listingComments.status, "active"),
+          )),
+      ]);
+
+      let communityCapRate: number | null = null;
+      let rentsUsedJson: any = null;
+      if (notes.length > 0) {
+        const bestNote = notes[0];
+        if (bestNote.rentsJson) {
+          rentsUsedJson = bestNote.rentsJson;
+        }
+      }
+
+      const publicMetrics = publicAnalyses.map((analysis: any) => {
+        const metrics = (analysis.calculatedMetrics || {}) as Record<string, any>;
+        const assumptions = (analysis.assumptions || {}) as Record<string, any>;
+        return {
+          capRate: getAnalysisMetricNumber(metrics, ["capRate", "cap_rate"]),
+          cashOnCash: getAnalysisMetricNumber(metrics, ["cashOnCash", "cash_on_cash"]),
+          projectedRent: getAnalysisMetricNumber(metrics, ["projectedRent", "monthlyRent", "monthly_rent"]),
+          noi: getAnalysisMetricNumber(metrics, ["annualNoi", "noi", "annual_noi"]),
+          monthlyCashFlow: getAnalysisMetricNumber(metrics, ["monthlyCashFlow", "monthly_cash_flow"]),
+          expenseRatio: getAnalysisMetricNumber(assumptions, ["expenseRatio", "expense_ratio"]),
+          dscr: getAnalysisMetricNumber(metrics, ["dscr"]),
+          sentiment: analysis.sentiment,
+        };
+      });
+
+      const summary = summarizeCommunityMetrics(
+        allAnalyses.length,
+        publicAnalyses.map((analysis: any) => analysis.userId).filter(Boolean),
+        publicMetrics,
+      );
+      communityCapRate = summary.medianCapRate;
+      const latestPublicComment = comments[0];
+      const latestPublicAnalysisAt = publicAnalyses.length ? publicAnalyses.reduce((latest: Date | null, analysis: any) => {
+        const createdAt = new Date(analysis.createdAt);
+        return !latest || createdAt > latest ? createdAt : latest;
+      }, null) : null;
+      await storage.upsertListingAggregate({
+        listingMlsNumber: mlsNumber,
+        communityCapRate,
+        rentsUsedJson,
+        analysisCount: summary.publicAnalysisCount,
+        commentCount: comments.length,
+        totalAnalysisCount: summary.totalAnalysisCount,
+        publicAnalysisCount: summary.publicAnalysisCount,
+        uniquePublicUserCount: summary.uniquePublicUserCount,
+        publicCommentCount: comments.length,
+        uniquePublicCommentUserCount: new Set(comments.map((comment: any) => comment.userId)).size,
+        latestPublicCommentAt: latestPublicComment?.createdAt || null,
+        latestPublicAnalysisAt,
+        latestCommentPreview: truncateText(latestPublicComment?.body || null, 120),
+        latestCommentAt: latestPublicComment?.createdAt || null,
+        medianCapRate: summary.medianCapRate,
+        medianCashOnCash: summary.medianCashOnCash,
+        medianProjectedRent: summary.medianProjectedRent,
+        medianNoi: summary.medianNoi,
+        medianMonthlyCashFlow: summary.medianMonthlyCashFlow,
+        medianExpenseRatio: summary.medianExpenseRatio,
+        bullishCount: summary.bullishCount,
+        neutralCount: summary.neutralCount,
+        bearishCount: summary.bearishCount,
+        consensusLabel: summary.consensusLabel,
+        confidenceScore: summary.confidenceScore,
+        latestPrivateNoteAt: privateNotes.length ? privateNotes[0].createdAt : null,
+        pinnedCommentCount: comments.filter((comment: any) => comment.isPinned).length,
+        reportedCommentCount: comments.reduce((sum: number, comment: any) => sum + (comment.reportCount || 0), 0),
+        lastAnalysisAt: latestPublicAnalysisAt,
+      });
+      await storage.createCommunityMetricSnapshot({
+        listingMlsNumber: mlsNumber,
+        aggregateJson: {
+          summary,
+          latestPublicCommentAt: latestPublicComment?.createdAt || null,
+          latestPublicAnalysisAt,
+        },
+      });
+    } catch (error) {
+      console.error("Error recomputing listing aggregate:", error);
+    }
+  }
+
+  // ─── Distress Deals Browser ─────────────────────
+  const SEARCH_TERMS_BY_CATEGORY: Record<string, string[]> = {
+    foreclosure_pos: [
+      "power of sale",
+      "foreclosure",
+      "bank owned",
+      "court ordered sale",
+      "judicial sale",
+      "mortgagee sale",
+      "receivership",
+      "reprise de finance",
+      "estate sale",
+    ],
+    motivated: [
+      "motivated",
+      "priced to sell",
+      "must sell",
+      "price reduced",
+      "immediate possession",
+      "fixer upper",
+      "handyman special",
+      "bring an offer",
+    ],
+    vtb: [
+      "vendor take back",
+      "vtb",
+      "seller financing",
+      "owner financing",
+      "vendor financing",
+      "financement vendeur",
+    ],
+  };
+
+  // ─── Multiplex Masterclass Lead + Checkout ─────────────────────
+  app.post("/api/masterclass/lead", async (req, res) => {
+    try {
+      const { name, email, phone, intent, consent } = req.body;
+
+      if (!name || !email || !phone) {
+        res.status(400).json({ error: "Name, email, and phone are required" });
+        return;
+      }
+
+      const lead = await storage.createLead({
+        name,
+        email,
+        phone,
+        consent: consent || false,
+        leadSource: "Multiplex Masterclass Sales Page",
+      });
+
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) return '+' + cleaned;
+        if (cleaned.length === 10) return '+1' + cleaned;
+        return '+' + cleaned;
+      };
+
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const tags = ["multiplex_masterclass", "masterclass_inquiry"];
+      if (intent) tags.push(`intent_${intent}`);
+
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName,
+        fullName: name,
+        phone: formatPhoneE164(phone),
+        consent: consent || false,
+        leadSource: "Multiplex Masterclass Sales Page",
+        formTag: "multiplex_masterclass",
+        tags,
+        intent: intent || "",
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Masterclass webhook error:", err));
+
+      sendToGoogleSheets({
+        email,
+        firstName,
+        lastName,
+        phone,
+        source: "Multiplex Masterclass Sales Page",
+        tags,
+      }).catch(err => console.error("Google Sheets error:", err));
+
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName: lastName || undefined,
+        phone,
+        leadSource: "Multiplex Masterclass Sales Page",
+      }).catch(err => console.error("Auto-enroll error:", err));
+
+      res.json({ success: true, leadId: lead.id });
+    } catch (error: any) {
+      console.error("Masterclass lead error:", error);
+      res.status(500).json({ error: "Submission failed" });
+    }
+  });
+
+  app.post("/api/masterclass/checkout", async (req, res) => {
+    try {
+      const { email, name } = req.body;
+      if (!email) {
+        res.status(400).json({ error: "Email is required" });
+        return;
+      }
+
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.REPL_SLUG
+          ? `https://${process.env.REPL_SLUG}.replit.app`
+          : "https://realist.ca";
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: "cad",
+            product_data: {
+              name: "Multiplex Masterclass Canada",
+              description: "Complete program: financing, zoning, construction, coaching, and community access.",
+            },
+            unit_amount: 49900,
+          },
+          quantity: 1,
+        }],
+        mode: "payment",
+        success_url: `${baseUrl}/masterclass?success=true`,
+        cancel_url: `${baseUrl}/masterclass?canceled=true`,
+        metadata: {
+          product: "multiplex_masterclass",
+          customerName: name || "",
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Masterclass checkout error:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.post("/api/multiplex-fit", async (req, res) => {
+    try {
+      const { name, email, phone, consent, assessmentData, fitScore, fitTier, recommendation } = req.body;
+
+      if (!name || !email || !phone) {
+        res.status(400).json({ error: "Name, email, and phone are required" });
+        return;
+      }
+
+      const lead = await storage.createLead({
+        name,
+        email,
+        phone,
+        consent: consent || false,
+        leadSource: "Multiplex Investor Fit Assessment",
+      });
+
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) return '+' + cleaned;
+        if (cleaned.length === 10) return '+1' + cleaned;
+        return '+' + cleaned;
+      };
+
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const tags = ["multiplexmasterclass", `fit_${fitTier}`, `rec_${recommendation}`];
+      if (assessmentData?.province) tags.push(`LEAD_${assessmentData.province}`);
+      if (assessmentData?.goal) tags.push(`goal_${assessmentData.goal.replace(/\s+/g, "_").toLowerCase()}`);
+      if (assessmentData?.capital) tags.push(`capital_${assessmentData.capital.replace(/[^a-z0-9]/gi, "_").toLowerCase()}`);
+
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName,
+        fullName: name,
+        phone: formatPhoneE164(phone),
+        consent: consent || false,
+        leadSource: "Multiplex Investor Fit Assessment",
+        formTag: "multiplexmasterclass",
+        tags,
+        fitScore,
+        fitTier,
+        recommendation,
+        province: assessmentData?.province || "",
+        city: assessmentData?.city || "",
+        investingLocally: assessmentData?.investingLocally || "",
+        goal: assessmentData?.goal || "",
+        capital: assessmentData?.capital || "",
+        experience: assessmentData?.experience || "",
+        contractorComfort: assessmentData?.contractorComfort || "",
+        delayTolerance: assessmentData?.delayTolerance || "",
+        geographicFlexibility: assessmentData?.geographicFlexibility || "",
+        helpPreference: assessmentData?.helpPreference || "",
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Multiplex fit webhook error:", err));
+
+      sendToGoogleSheets({
+        name,
+        email,
+        phone,
+        source: "Multiplex Investor Fit Assessment",
+        notes: `Score: ${fitScore}, Tier: ${fitTier}, Rec: ${recommendation}, Province: ${assessmentData?.province}, City: ${assessmentData?.city}, Goal: ${assessmentData?.goal}, Capital: ${assessmentData?.capital}`,
+      }).catch(err => console.error("Google Sheets error:", err));
+
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName: lastName || undefined,
+        phone,
+        leadSource: "Multiplex Investor Fit Assessment",
+      }).catch(err => console.error("Auto-enroll error:", err));
+
+      res.json({ success: true, leadId: lead.id });
+    } catch (error: any) {
+      console.error("Multiplex fit submission error:", error);
+      res.status(500).json({ error: "Submission failed" });
+    }
+  });
+
+  let distressScanInProgress = false;
+
+  async function runDistressScan(): Promise<{ listings: any[]; totalDdfScanned: number }> {
+    const { scoreDistress, isQualifiedDistressResult } = await import("@shared/distressScoring");
+    const { searchDdfByRemarks, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+
+    const allCategoryKeys = Object.keys(SEARCH_TERMS_BY_CATEGORY);
+    const searchTerms: string[] = [];
+    for (const cat of allCategoryKeys) {
+      searchTerms.push(...(SEARCH_TERMS_BY_CATEGORY[cat] || []));
+    }
+    const uniqueTerms = [...new Set(searchTerms)];
+
+    const allListings = new Map<string, any>();
+    let totalDdfScanned = 0;
+
+    const CONCURRENCY = 2;
+    const TERM_TIMEOUT = 60000;
+    for (let c = 0; c < uniqueTerms.length; c += CONCURRENCY) {
+      const termChunk = uniqueTerms.slice(c, c + CONCURRENCY);
+      const results = await Promise.allSettled(
+        termChunk.map(term => {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), TERM_TIMEOUT);
+          return searchDdfByRemarks({
+            searchTerms: [term],
+            top: 200,
+            signal: controller.signal,
+          }).finally(() => clearTimeout(timer));
+        })
+      );
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        if (r.status === "fulfilled") {
+          totalDdfScanned += r.value.count;
+          for (const raw of r.value.listings) {
+            const key = raw.ListingKey || raw.ListingId || "";
+            if (key && !allListings.has(key)) {
+              allListings.set(key, raw);
+            }
+          }
+          console.log(`[distress-scan] "${termChunk[i]}": ${r.value.count} matches, ${r.value.listings.length} fetched`);
+        } else {
+          console.error(`[distress-scan] "${termChunk[i]}" error:`, (r.reason as any)?.message || r.reason);
+        }
+      }
+    }
+    console.log(`[distress-scan] Total: ${allListings.size} unique listings from ${uniqueTerms.length} searches`);
+
+    const allScored = Array.from(allListings.values()).map(raw => {
+      const normalized = normalizeDdfToRepliersFormat(raw);
+      const remarks = raw.PublicRemarks || "";
+      const listingProvince = raw.StateOrProvince || "";
+      const distress = scoreDistress(remarks, listingProvince);
+      return { ...normalized, distress, rawRemarks: remarks };
+    }).filter((listing) => isQualifiedDistressResult(listing.distress));
+
+    allScored.sort((a, b) => b.distress.distressScore - a.distress.distressScore);
+
+    const cacheKey = `distress-v6:qualified`;
+    const cacheData = { listings: allScored, totalDdfScanned };
+
+    await db.insert(dataCache).values({
+      key: cacheKey,
+      valueJson: cacheData,
+      source: "distress-deals",
+    }).onConflictDoUpdate({
+      target: dataCache.key,
+      set: { valueJson: cacheData, fetchedAt: new Date(), source: "distress-deals" },
+    });
+
+    return cacheData;
+  }
+
+  function triggerBackgroundScan() {
+    if (distressScanInProgress) return;
+    distressScanInProgress = true;
+    console.log("[distress-scan] Starting background scan...");
+    runDistressScan()
+      .then(data => console.log(`[distress-scan] Background scan complete: ${data.listings.length} listings cached`))
+      .catch(err => console.error("[distress-scan] Background scan failed:", err.message))
+      .finally(() => { distressScanInProgress = false; });
+  }
+
+  app.get("/api/distress-deals", async (req, res) => {
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+    try {
+      const { isDdfConfigured } = await import("./creaDdf");
+
+      if (!isDdfConfigured()) {
+        res.status(503).json({ error: "DDF not configured" });
+        return;
+      }
+
+      const categories = (req.query.categories as string || "").split(",").filter(Boolean);
+      const excludeKeywords = (req.query.excludeKeywords as string || "").split(",").filter(Boolean);
+      const minScore = req.query.minScore ? Number(req.query.minScore) : 1;
+
+      const { isQualifiedDistressResult } = await import("@shared/distressScoring");
+      const cacheKey = `distress-v6:qualified`;
+
+      function applyFilters(listings: any[]) {
+        let filtered = listings.filter((l: any) =>
+          (l.distress?.distressScore || 0) >= minScore && isQualifiedDistressResult(l.distress)
+        );
+        if (categories.length > 0) {
+          filtered = filtered.filter((l: any) =>
+            categories.some((cat: string) => l.distress?.categoriesTriggered?.[cat])
+          );
+        }
+        if (excludeKeywords.length > 0) {
+          const lowerExclude = excludeKeywords.map((k: string) => k.toLowerCase().trim());
+          filtered = filtered.filter((l: any) => {
+            const remark = (l.rawRemarks || "").toLowerCase();
+            return !lowerExclude.some((kw: string) => remark.includes(kw));
+          });
+        }
+        return filtered;
+      }
+
+      const [cachedRow] = await db.select().from(dataCache)
+        .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '24 hours'`));
+      if (cachedRow) {
+        const cachedData = cachedRow.valueJson as any;
+        const filteredListings = applyFilters(cachedData.listings as any[]);
+        res.json({
+          listings: filteredListings,
+          totalCount: filteredListings.length,
+          totalDdfScanned: cachedData.totalDdfScanned || 0,
+        });
+        return;
+      }
+
+      const [staleRow] = await db.select().from(dataCache)
+        .where(eq(dataCache.key, cacheKey));
+      if (staleRow) {
+        const staleData = staleRow.valueJson as any;
+        const filteredListings = applyFilters(staleData.listings as any[]);
+        console.log(`[distress-deals] Serving stale cache (${filteredListings.length} listings) while refreshing`);
+        triggerBackgroundScan();
+        res.json({
+          listings: filteredListings,
+          totalCount: filteredListings.length,
+          totalDdfScanned: staleData.totalDdfScanned || 0,
+          stale: true,
+        });
+        return;
+      }
+
+      triggerBackgroundScan();
+      res.json({
+        listings: [],
+        totalCount: 0,
+        totalDdfScanned: 0,
+        warming: true,
+        message: "Scanning DDF listings now. Data will appear automatically.",
+      });
+    } catch (error: any) {
+      console.error("[distress-deals] Error:", error.message);
+      res.status(500).json({ error: "Failed to fetch distress deals" });
+    }
+  });
+
+  // ─── Distress Deals Pre-Warm ─────────────────────
+  async function prewarmDistressDeals() {
+    const { isDdfConfigured } = await import("./creaDdf");
+    if (!isDdfConfigured()) {
+      console.log("[distress-prewarm] DDF not configured, skipping");
+      return;
+    }
+    const cacheKey = `distress-v6:qualified`;
+    const [existing] = await db.select().from(dataCache)
+      .where(and(eq(dataCache.key, cacheKey), sql`fetched_at > NOW() - INTERVAL '12 hours'`));
+    if (existing) {
+      console.log("[distress-prewarm] Cache fresh, skipping");
+      return;
+    }
+    if (distressScanInProgress) {
+      console.log("[distress-prewarm] Scan already in progress, skipping");
+      return;
+    }
+    distressScanInProgress = true;
+    console.log("[distress-prewarm] Warming all distress deals...");
+    try {
+      const data = await runDistressScan();
+      console.log(`[distress-prewarm] Warmed ${data.listings.length} listings`);
+    } catch (err: any) {
+      console.error(`[distress-prewarm] Failed:`, err.message);
+    } finally {
+      distressScanInProgress = false;
+    }
+  }
+
+  setTimeout(() => prewarmDistressDeals(), 15000);
+  setInterval(() => prewarmDistressDeals(), 12 * 60 * 60 * 1000);
+
+  // ─── New Construction Report Pre-Warm ─────────────────────
+  async function prewarmNewConstructionReport() {
+    const { isDdfConfigured } = await import("./creaDdf");
+    if (!isDdfConfigured()) {
+      console.log("[new-construction-prewarm] DDF not configured, skipping");
+      return;
+    }
+    try {
+      console.log("[new-construction-prewarm] Warming new construction report...");
+      const { getNewConstructionCanadaReport } = await import("./newConstructionReport");
+      const report = await getNewConstructionCanadaReport();
+      console.log(`[new-construction-prewarm] Warmed ${report.totalListings} listings`);
+    } catch (err: any) {
+      console.error(`[new-construction-prewarm] Failed:`, err.message);
+    }
+  }
+
+  setTimeout(() => prewarmNewConstructionReport(), 20000);
+  setInterval(() => prewarmNewConstructionReport(), 6 * 60 * 60 * 1000);
+
+  // ─── Distress Report API ─────────────────────
+  app.get("/api/distress-snapshots", async (req, res) => {
+    try {
+      const month = req.query.month as string | undefined;
+      const province = req.query.province as string | undefined;
+
+      let query = db.select().from(distressSnapshots);
+      const conditions = [];
+      if (month) conditions.push(eq(distressSnapshots.month, month));
+      if (province) conditions.push(eq(distressSnapshots.province, province));
+
+      const rows = conditions.length
+        ? await query.where(and(...conditions)).orderBy(desc(distressSnapshots.month))
+        : await query.orderBy(desc(distressSnapshots.month));
+
+      res.json(rows);
+    } catch (error: any) {
+      console.error("[distress-snapshots] Error:", error.message);
+      res.status(500).json({ error: "Failed to fetch distress snapshots" });
+    }
+  });
+
+  app.get("/api/distress-snapshots/months", async (_req, res) => {
+    try {
+      const rows = await db.selectDistinct({ month: distressSnapshots.month })
+        .from(distressSnapshots)
+        .orderBy(desc(distressSnapshots.month));
+      res.json(rows.map(r => r.month));
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch months" });
+    }
+  });
+
+  app.get("/api/distress-inventory", async (req, res) => {
+    try {
+      const month = req.query.month as string | undefined;
+      const groupBy = (req.query.groupBy as string | undefined) || "province";
+      const province = req.query.province as string | undefined;
+
+      const conditions = [];
+      if (month) conditions.push(eq(ddfListingSnapshots.snapshotMonth, month));
+      if (province) conditions.push(eq(ddfListingSnapshots.province, province));
+
+      if (groupBy === "city") {
+        const rows = await db
+          .select({
+            province: ddfListingSnapshots.province,
+            city: ddfListingSnapshots.city,
+            totalListings: sql<number>`count(*)::int`,
+          })
+          .from(ddfListingSnapshots)
+          .where(conditions.length ? and(...conditions) : undefined)
+          .groupBy(ddfListingSnapshots.province, ddfListingSnapshots.city)
+          .orderBy(desc(sql`count(*)::int`));
+        res.json(rows);
+        return;
+      }
+
+      const rows = await db
+        .select({
+          province: ddfListingSnapshots.province,
+          totalListings: sql<number>`count(*)::int`,
+        })
+        .from(ddfListingSnapshots)
+        .where(conditions.length ? and(...conditions) : undefined)
+        .groupBy(ddfListingSnapshots.province)
+        .orderBy(desc(sql`count(*)::int`));
+
+      res.json(rows);
+    } catch (error: any) {
+      console.error("[distress-inventory] Error:", error.message);
+      res.status(500).json({ error: "Failed to fetch distress inventory totals" });
+    }
+  });
+
+  app.get("/api/email/unsubscribe", async (req, res) => {
+    try {
+      const uid = req.query.uid as string;
+      const token = req.query.token as string;
+      if (!uid || !token) {
+        res.status(400).send("Invalid unsubscribe link");
+        return;
+      }
+      const { verifyUnsubscribeToken } = await import("./weeklyDigest");
+      if (!verifyUnsubscribeToken(uid, token)) {
+        res.status(403).send("Invalid unsubscribe link");
+        return;
+      }
+      await db.update(users).set({ emailDigestOptIn: false }).where(eq(users.id, uid));
+      res.send(`
+        <html><head><title>Unsubscribed</title><style>body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f9fafb;}
+        .card{background:white;padding:40px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);text-align:center;max-width:400px;}
+        h2{color:#111827;margin:0 0 8px;}p{color:#6b7280;margin:0 0 16px;}a{color:#2563eb;}</style></head>
+        <body><div class="card"><h2>Unsubscribed</h2><p>You've been unsubscribed from the Realist.ca weekly digest.</p><a href="https://realist.ca">Back to Realist.ca</a></div></body></html>
+      `);
+    } catch (error: any) {
+      res.status(500).send("Something went wrong");
+    }
+  });
+
+  app.post("/api/email/resubscribe", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      await db.update(users).set({ emailDigestOptIn: true }).where(eq(users.id, userId));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to resubscribe" });
+    }
+  });
+
+  app.get("/api/course/enrollment", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const [enrollment] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, userId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (!enrollment) {
+        return res.json({ enrolled: false });
+      }
+
+      const now = new Date();
+      const accessExpired = enrollment.expiresAt && new Date(enrollment.expiresAt) < now;
+
+      res.json({
+        enrolled: !accessExpired,
+        enrolledAt: enrollment.enrolledAt,
+        expiresAt: enrollment.expiresAt,
+        accessExpired: !!accessExpired,
+        accessType: enrollment.stripeSessionId ? "paid" : "trial",
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to check enrollment" });
+    }
+  });
+
+  app.get("/api/course/modules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const [enrollment] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, userId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (!enrollment) {
+        return res.status(403).json({ error: "Not enrolled" });
+      }
+
+      const accessExpired = enrollment.expiresAt && new Date(enrollment.expiresAt) < new Date();
+      if (accessExpired) {
+        return res.status(403).json({ error: "Access expired", expired: true });
+      }
+
+      const modules = await db
+        .select()
+        .from(courseModules)
+        .orderBy(courseModules.sortOrder);
+
+      const lessons = await db
+        .select()
+        .from(courseLessons)
+        .orderBy(courseLessons.sortOrder);
+
+      const progress = await db
+        .select()
+        .from(courseProgress)
+        .where(eq(courseProgress.userId, userId));
+
+      const completedLessonIds = new Set(progress.map(p => p.lessonId));
+
+      const result = modules.map(mod => ({
+        ...mod,
+        lessons: lessons
+          .filter(l => l.moduleId === mod.id)
+          .map(l => ({
+            ...l,
+            completed: completedLessonIds.has(l.id),
+          })),
+      }));
+
+      const totalLessons = lessons.length;
+      const completedCount = progress.length;
+
+      res.json({ modules: result, progress: { completed: completedCount, total: totalLessons } });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch course" });
+    }
+  });
+
+  app.get("/api/course/lessons/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const [enrollment] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, userId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (!enrollment) {
+        return res.status(403).json({ error: "Not enrolled" });
+      }
+
+      const [lesson] = await db
+        .select()
+        .from(courseLessons)
+        .where(eq(courseLessons.id, req.params.id));
+
+      if (!lesson) return res.status(404).json({ error: "Lesson not found" });
+
+      const [prog] = await db
+        .select()
+        .from(courseProgress)
+        .where(and(
+          eq(courseProgress.userId, userId),
+          eq(courseProgress.lessonId, lesson.id)
+        ))
+        .limit(1);
+
+      res.json({ ...lesson, completed: !!prog });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch lesson" });
+    }
+  });
+
+  app.post("/api/course/progress/:lessonId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const lessonId = req.params.lessonId;
+
+      const [enrollment] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, userId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (!enrollment) return res.status(403).json({ error: "Not enrolled" });
+
+      const [lesson] = await db
+        .select()
+        .from(courseLessons)
+        .where(eq(courseLessons.id, lessonId))
+        .limit(1);
+
+      if (!lesson) return res.status(404).json({ error: "Lesson not found" });
+
+      const [existing] = await db
+        .select()
+        .from(courseProgress)
+        .where(and(
+          eq(courseProgress.userId, userId),
+          eq(courseProgress.lessonId, lessonId)
+        ))
+        .limit(1);
+
+      if (existing) {
+        await db.delete(courseProgress).where(eq(courseProgress.id, existing.id));
+        return res.json({ completed: false });
+      }
+
+      await db.insert(courseProgress).values({ userId, lessonId });
+      res.json({ completed: true });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to update progress" });
+    }
+  });
+
+  app.patch("/api/admin/course/lessons/:id", isAdmin, async (req: any, res) => {
+    try {
+      const { videoUrl, description, videoDuration, title } = req.body;
+      const updates: any = {};
+      if (videoUrl !== undefined) updates.videoUrl = videoUrl;
+      if (description !== undefined) updates.description = description;
+      if (videoDuration !== undefined) updates.videoDuration = videoDuration;
+      if (title !== undefined) updates.title = title;
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No fields to update" });
+      }
+
+      const [updated] = await db
+        .update(courseLessons)
+        .set(updates)
+        .where(eq(courseLessons.id, req.params.id))
+        .returning();
+
+      if (!updated) return res.status(404).json({ error: "Lesson not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to update lesson" });
+    }
+  });
+
+  app.post("/api/admin/course/enroll", isAdmin, async (req: any, res) => {
+    try {
+      const { userId, email, durationMonths } = req.body;
+      let targetUserId = userId;
+
+      if (!targetUserId && email) {
+        const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+        if (!user) return res.status(404).json({ error: "User not found" });
+        targetUserId = user.id;
+      }
+
+      if (!targetUserId) return res.status(400).json({ error: "userId or email required" });
+
+      const months = durationMonths || 12;
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + months);
+
+      const [existing] = await db
+        .select()
+        .from(courseEnrollments)
+        .where(and(
+          eq(courseEnrollments.userId, targetUserId),
+          eq(courseEnrollments.courseId, "multiplex_masterclass")
+        ))
+        .limit(1);
+
+      if (existing) {
+        const existingExpired = existing.expiresAt && new Date(existing.expiresAt) < new Date();
+        if (!existingExpired) {
+          return res.json({ message: "Already enrolled and active", enrollment: existing });
+        }
+        const [updated] = await db.update(courseEnrollments)
+          .set({ expiresAt, enrolledAt: new Date() })
+          .where(eq(courseEnrollments.id, existing.id))
+          .returning();
+        return res.json({ message: `Re-enrolled for ${months} months`, enrollment: updated });
+      }
+
+      const [enrollment] = await db.insert(courseEnrollments).values({
+        userId: targetUserId,
+        courseId: "multiplex_masterclass",
+        expiresAt,
+      }).returning();
+
+      res.json({ message: `Enrolled for ${months} months (expires ${expiresAt.toISOString().split('T')[0]})`, enrollment });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to enroll" });
+    }
+  });
+
+  app.post("/api/admin/course/grant-trial", isAdmin, async (req: any, res) => {
+    try {
+      const { emails, durationMonths } = req.body;
+      if (!emails || !Array.isArray(emails) || emails.length === 0) {
+        return res.status(400).json({ error: "emails array required" });
+      }
+
+      const months = durationMonths || 1;
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + months);
+
+      const results: { email: string; status: string }[] = [];
+
+      for (const email of emails) {
+        try {
+          const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase().trim())).limit(1);
+          if (!user) {
+            results.push({ email, status: "no_account" });
+            continue;
+          }
+
+          const [existing] = await db.select().from(courseEnrollments)
+            .where(and(eq(courseEnrollments.userId, user.id), eq(courseEnrollments.courseId, "multiplex_masterclass")))
+            .limit(1);
+
+          if (existing) {
+            const existingExpired = existing.expiresAt && new Date(existing.expiresAt) < new Date();
+            if (!existingExpired) {
+              results.push({ email, status: "already_active" });
+              continue;
+            }
+            await db.update(courseEnrollments)
+              .set({ expiresAt, enrolledAt: new Date() })
+              .where(eq(courseEnrollments.id, existing.id));
+            results.push({ email, status: "reactivated" });
+          } else {
+            await db.insert(courseEnrollments).values({
+              userId: user.id,
+              courseId: "multiplex_masterclass",
+              expiresAt,
+            });
+            results.push({ email, status: "granted" });
+          }
+        } catch (err) {
+          results.push({ email, status: "error" });
+        }
+      }
+
+      const granted = results.filter(r => r.status === "granted" || r.status === "reactivated").length;
+      res.json({
+        message: `Granted ${months}-month trial to ${granted}/${emails.length} users`,
+        expiresAt: expiresAt.toISOString().split("T")[0],
+        results,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to grant trials" });
+    }
+  });
+
+  app.post("/api/admin/weekly-digest/send", isAdmin, async (req, res) => {
+    try {
+      const { sendWeeklyDigest } = await import("./weeklyDigest");
+      const result = await sendWeeklyDigest();
+      res.json(result);
+    } catch (error: any) {
+      console.error("[weekly-digest] Admin trigger failed:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/distress-report/generate", isAdmin, async (req, res) => {
+    try {
+      const now = new Date();
+      const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const month = (req.body.month as string) || defaultMonth;
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        res.status(400).json({ error: "Invalid month format. Use YYYY-MM." });
+        return;
+      }
+      const { captureDistressSnapshots, generateDistressReport } = await import("./distressReportGenerator");
+      console.log(`[distress-report] Admin triggered for ${month}`);
+      const snapResult = await captureDistressSnapshots(month);
+      const reportResult = await generateDistressReport(month);
+      res.json({ ...reportResult, snapshots: snapResult });
+    } catch (error: any) {
+      console.error("[distress-report] Admin trigger failed:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ─── Indigenous Land Claim Screener ─────────────────────
+  const { screenLocation, getFeatureGeoJSON } = await import("./landClaimScreener");
+  const { importAllLayers, checkAndImportIfEmpty } = await import("./indigenousDataImporter");
+
+  checkAndImportIfEmpty().catch(err => console.error("[indigenous-import] Startup check failed:", err.message));
+
+  const { checkAndSeedWatchOverlays, seedWatchOverlays } = await import("./watchOverlaySeeder");
+  checkAndSeedWatchOverlays().catch(err => console.error("[watch-overlays] Startup seed failed:", err.message));
+
+  app.post("/api/land-claim-screener/register", async (req: any, res) => {
+    try {
+      const registerSchema = z.object({
+        firstName: z.string().min(1).max(100),
+        lastName: z.string().max(100).optional(),
+        email: z.string().email().max(200),
+        phone: z.string().min(1).max(30),
+        address: z.string().min(1).max(500),
+      });
+      const parsed = registerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+        return;
+      }
+      const { firstName, lastName, email, phone, address } = parsed.data;
+      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+
+      const formatPhoneE164 = (phoneNumber: string): string => {
+        const cleaned = phoneNumber.replace(/\D/g, '');
+        if (cleaned.startsWith('1') && cleaned.length === 11) return '+' + cleaned;
+        if (cleaned.length === 10) return '+1' + cleaned;
+        return '+' + cleaned;
+      };
+
+      const lead = await storage.createLead({
+        name: fullName,
+        email,
+        phone,
+        consent: true,
+        leadSource: "Land Claim Screener",
+      });
+
+      sendWebhook(lead.id, {
+        email,
+        firstName,
+        lastName: lastName || "",
+        fullName,
+        phone: formatPhoneE164(phone),
+        companyName: address,
+        leadSource: "Land Claim Screener",
+        formTag: "land_claim_screener",
+        tags: ["land_claim_screener"],
+        notes: `Address to screen: ${address}`,
+        createdAt: lead.createdAt,
+      }).catch(err => console.error("Webhook error:", err));
+
+      sendToGoogleSheets({
+        name: fullName,
+        email,
+        phone,
+        source: "Land Claim Screener",
+        notes: `Address to screen: ${address}`,
+      }).catch(err => console.error("Google Sheets error:", err));
+
+      autoEnrollLeadAsUser({
+        email,
+        firstName,
+        lastName: lastName || undefined,
+      }).catch(err => console.error("Auto-enroll error:", err));
+
+      res.json({ success: true, leadId: lead.id });
+    } catch (error: any) {
+      console.error("Screener registration error:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  app.post("/api/land-claim-screener/screen", async (req: any, res) => {
+    try {
+      const screenSchema = z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        bufferMeters: z.number().min(0).max(5000).default(0),
+        address: z.string().max(500).optional(),
+      });
+      const parsed = screenSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+        return;
+      }
+      const { lat, lng, bufferMeters, address } = parsed.data;
+
+      const result = await screenLocation(lat, lng, bufferMeters);
+
+      const userId = req.session?.userId || null;
+      const screening = await storage.createScreening({
+        userId,
+        searchedAddress: address || null,
+        lat,
+        lng,
+        screeningMethod: "point_plus_buffer",
+        bufferMeters,
+        resultStatus: result.status,
+        completenessStatus: result.completeness,
+        summaryJson: JSON.stringify({ summary: result.summary, hitsCount: result.hitsCount }),
+      });
+
+      for (const hit of result.hits) {
+        await storage.createScreeningHit({
+          screeningId: screening.id,
+          featureId: hit.featureId,
+          hitType: hit.hitType,
+          distanceMeters: hit.distanceMeters,
+          notes: `${hit.layerName}: ${hit.featureName}`,
+        });
+      }
+
+      res.json({ ...result, screeningId: screening.id });
+    } catch (error: any) {
+      console.error("Error running screening:", error);
+      res.status(500).json({ error: "Screening failed" });
+    }
+  });
+
+  app.get("/api/land-claim-screener/features", async (_req, res) => {
+    try {
+      const geojson = await getFeatureGeoJSON();
+      res.json(geojson);
+    } catch (error: any) {
+      console.error("Error fetching features:", error);
+      res.status(500).json({ error: "Failed to load features" });
+    }
+  });
+
+  app.get("/api/land-claim-screener/layers", async (_req, res) => {
+    try {
+      const layers = await storage.getIndigenousLayers();
+      res.json(layers.filter(l => l.active));
+    } catch (error: any) {
+      console.error("Error fetching layers:", error);
+      res.status(500).json({ error: "Failed to load layers" });
+    }
+  });
+
+  app.get("/api/land-claim-screener/history", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const screeningsResult = await storage.getScreeningsByUser(userId);
+      res.json(screeningsResult);
+    } catch (error: any) {
+      console.error("Error fetching screening history:", error);
+      res.status(500).json({ error: "Failed to load history" });
+    }
+  });
+
+  app.post("/api/admin/indigenous/import", isAdmin, async (_req, res) => {
+    try {
+      const result = await importAllLayers();
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error importing indigenous data:", error);
+      res.status(500).json({ error: "Import failed: " + error.message });
+    }
+  });
+
+  app.get("/api/admin/indigenous/layers", isAdmin, async (_req, res) => {
+    try {
+      const layers = await storage.getIndigenousLayers();
+      res.json(layers);
+    } catch (error: any) {
+      console.error("Error fetching admin layers:", error);
+      res.status(500).json({ error: "Failed to load layers" });
+    }
+  });
+
+  app.post("/api/admin/watch-overlays", isAdmin, async (req, res) => {
+    try {
+      const createSchema = z.object({
+        slug: z.string().min(1).max(200),
+        overlayName: z.string().min(1).max(500),
+        overlayGroup: z.string().default("high_sensitivity"),
+        jurisdiction: z.string().optional(),
+        nationName: z.string().optional(),
+        legalContextType: z.string().optional(),
+        sourceSummary: z.string().optional(),
+        sourceUrl: z.string().optional(),
+        sourceDate: z.string().optional(),
+        geometryMethod: z.string().optional(),
+        geometryConfidence: z.enum(["high", "medium", "low"]).optional(),
+        authorityLevel: z.string().optional(),
+        disclaimerText: z.string().optional(),
+        statusLabel: z.string().optional(),
+        active: z.boolean().default(true),
+        createdBy: z.string().optional(),
+        digitizationNotes: z.string().optional(),
+        geojson: z.any().optional(),
+      });
+      const parsed = createSchema.parse(req.body);
+      const { geojson, ...overlayData } = parsed;
+      const overlay = await storage.createWatchOverlay(overlayData as any);
+      if (geojson) {
+        await db.execute(sql`
+          UPDATE watch_overlays
+          SET geojson = ${JSON.stringify(geojson)}::jsonb
+          WHERE id = ${overlay.id}
+        `);
+      }
+      res.json(overlay);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+        return;
+      }
+      res.status(500).json({ error: "Failed to create overlay" });
+    }
+  });
+
+  app.get("/api/admin/watch-overlays", isAdmin, async (_req, res) => {
+    try {
+      const overlays = await storage.getWatchOverlays();
+      res.json(overlays);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to load watch overlays" });
+    }
+  });
+
+  app.put("/api/admin/watch-overlays/:id", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { geojson, ...updates } = req.body;
+      const updated = await storage.updateWatchOverlay(id, updates);
+      if (!updated) {
+        res.status(404).json({ error: "Overlay not found" });
+        return;
+      }
+      if (geojson) {
+        await db.execute(sql`
+          UPDATE watch_overlays
+          SET geojson = ${JSON.stringify(geojson)}::jsonb
+          WHERE id = ${id}
+        `);
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to update overlay" });
+    }
+  });
+
+  app.delete("/api/admin/watch-overlays/:id", isAdmin, async (req, res) => {
+    try {
+      await storage.deleteWatchOverlay(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to delete overlay" });
+    }
+  });
+
+  app.post("/api/admin/watch-overlays/seed", isAdmin, async (_req, res) => {
+    try {
+      const result = await seedWatchOverlays();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to seed overlays" });
+    }
+  });
+
+  app.get("/api/land-claim-screener/watch-overlays", async (_req, res) => {
+    try {
+      const overlays = await storage.getWatchOverlays();
+      res.json(overlays.filter(o => o.active));
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to load watch overlays" });
+    }
+  });
+
+  // ===== GEOGRAPHIES & METRICS API =====
+
+  app.get("/api/geographies", async (req, res) => {
+    try {
+      const { city, province, type, q } = req.query;
+      if (q && typeof q === "string") {
+        const results = await storage.searchGeographies(q);
+        return res.json(results);
+      }
+      const results = await storage.getGeographies({
+        city: city as string,
+        province: province as string,
+        type: type as string,
+      });
+      res.json(results);
+    } catch (err) {
+      console.error("[geographies] Error:", err);
+      res.status(500).json({ error: "Failed to fetch geographies" });
+    }
+  });
+
+  app.get("/api/geographies/map-data", async (req, res) => {
+    try {
+      const results = await db.execute(sql`
+        SELECT g.id, g.name, g.province, g.centroid_lat, g.centroid_lng,
+          (SELECT m.value FROM metrics m WHERE m.geography_id = g.id AND m.metric_type = 'rent' ORDER BY m.date DESC LIMIT 1) as rent,
+          (SELECT m.value FROM metrics m WHERE m.geography_id = g.id AND m.metric_type = 'vacancy_rate' ORDER BY m.date DESC LIMIT 1) as vacancy_rate,
+          (SELECT m.value FROM metrics m WHERE m.geography_id = g.id AND m.metric_type = 'income' ORDER BY m.date DESC LIMIT 1) as income,
+          (SELECT m.value FROM metrics m WHERE m.geography_id = g.id AND m.metric_type = 'homeownership_rate' ORDER BY m.date DESC LIMIT 1) as homeownership_rate,
+          (SELECT a.investor_score FROM area_scores a WHERE a.geography_id = g.id ORDER BY a.date DESC LIMIT 1) as investor_score
+        FROM geographies g
+        WHERE g.centroid_lat IS NOT NULL AND g.centroid_lng IS NOT NULL
+        ORDER BY g.name
+      `);
+      res.json(results.rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch map data" });
+    }
+  });
+
+  app.get("/api/geographies/:id/trends", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const metrics = await storage.getMetrics({ geographyId: id });
+      const scores = await storage.getAreaScores(id);
+      const geo = await storage.getGeography(id);
+      if (!geo) return res.status(404).json({ error: "Geography not found" });
+      res.json({ geography: geo, metrics, scores });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch trends" });
+    }
+  });
+
+  app.get("/api/geographies/:id", async (req, res) => {
+    try {
+      const geo = await storage.getGeography(req.params.id);
+      if (!geo) return res.status(404).json({ error: "Geography not found" });
+      res.json(geo);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch geography" });
+    }
+  });
+
+  app.get("/api/metrics", async (req, res) => {
+    try {
+      const { geography_id, metric_type, start, end } = req.query;
+      const results = await storage.getMetrics({
+        geographyId: geography_id as string,
+        metricType: metric_type as string,
+        startDate: start as string,
+        endDate: end as string,
+      });
+      res.json(results);
+    } catch (err) {
+      console.error("[metrics] Error:", err);
+      res.status(500).json({ error: "Failed to fetch metrics" });
+    }
+  });
+
+  app.get("/api/metrics/types", async (_req, res) => {
+    try {
+      const types = await storage.getMetricTypes();
+      res.json(types);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch metric types" });
+    }
+  });
+
+  app.get("/api/area-scores", async (req, res) => {
+    try {
+      const { geography_id, start, end } = req.query;
+      if (!geography_id) return res.status(400).json({ error: "geography_id required" });
+      const results = await storage.getAreaScores(
+        geography_id as string,
+        start as string,
+        end as string
+      );
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch area scores" });
+    }
+  });
+
+  app.get("/api/area-scores/latest", async (req, res) => {
+    try {
+      const { ids } = req.query;
+      const geographyIds = ids ? (ids as string).split(",") : undefined;
+      const results = await storage.getLatestAreaScores(geographyIds);
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch latest area scores" });
+    }
+  });
+
+  app.post("/api/saved-reports", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      const token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+      const report = await storage.createSavedReport({
+        ...req.body,
+        userId: req.session.userId,
+        shareToken: token,
+      });
+      res.json(report);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to save report" });
+    }
+  });
+
+  app.get("/api/saved-reports/:id", async (req, res) => {
+    try {
+      const report = await storage.getSavedReport(req.params.id);
+      if (!report) return res.status(404).json({ error: "Report not found" });
+      if (report.userId && req.session?.userId !== report.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      res.json(report);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
+  app.get("/api/saved-reports/share/:token", async (req, res) => {
+    try {
+      const report = await storage.getSavedReportByToken(req.params.token);
+      if (!report) return res.status(404).json({ error: "Report not found" });
+      res.json(report);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
+  return httpServer;
+}
+
+// Helper function to generate agreement HTML
+function generateBuyBoxAgreementHtml(data: {
+  signedName: string;
+  termEndDate: string;
+  holdoverDays: number;
+  commissionPercent: number;
+}): string {
+  return `
+    <html>
+    <head><title>Buyer Representation Agreement</title></head>
+    <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+      <h1>Buyer Representation & BuyBox Terms</h1>
+      <p><strong>Version:</strong> 1.0</p>
+      <p><strong>Date Signed:</strong> ${new Date().toLocaleDateString()}</p>
+      
+      <h2>Parties</h2>
+      <p><strong>Buyer:</strong> ${data.signedName}</p>
+      <p><strong>Brokerage:</strong> Valery Real Estate Inc.</p>
+      <p><strong>Agent:</strong> Daniel Foch (and referrals/assigns)</p>
+      
+      <h2>Term</h2>
+      <p>This agreement begins on ${new Date().toLocaleDateString()} and expires on ${new Date(data.termEndDate).toLocaleDateString()}.</p>
+      
+      <h2>Holdover Period</h2>
+      <p>${data.holdoverDays} days after agreement expiry.</p>
+      
+      <h2>Commission</h2>
+      <p>Agreed commission rate: ${data.commissionPercent}%</p>
+      
+      <h2>Legal Notice</h2>
+      <p>This document is not legal advice. Consult with a licensed real estate lawyer for professional guidance.</p>
+    </body>
+    </html>
+  `;
+}

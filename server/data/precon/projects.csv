@@ -1,0 +1,84 @@
+project_name,developer_name,city,region,building_category,floorplans_total,floorplans_raised,floorplans_cut,floorplans_flat,avg_delta_pct,max_raise_pct,max_cut_pct,city_source
+6080 Yonge Condos,"Tridel, Arkfield",Toronto,Toronto,mid_rise,13,0,0,13,0.0,,,raw
+8 Elm on Yonge Condos,"Capital Developments, Reserve Properties",Toronto,Toronto,high_rise,18,0,0,18,0.0,,,raw
+8 Temple Condos,Curated Properties,Toronto,Toronto,mid_rise,26,0,3,23,-0.28,,-4.19,raw
+Akra Living Condos,Curated Properties,Toronto,Toronto,high_rise,16,2,4,10,-0.51,0.8,-4.26,raw
+Aqualuna at Bayside Condos,"Tridel, Hines",Toronto,Toronto,high_rise,5,0,5,0,-2.88,,-3.67,raw
+Auberge On The Park Condos,"Tridel, Rowntree Enterprises",Toronto,Toronto,high_rise,5,0,5,0,-7.41,,-10.79,raw
+Canary House Condos,"Dream, Kilmer Group",Toronto,Toronto,mid_rise,21,0,0,21,0.0,,,raw
+Daniels FirstHome™ Keelesdale 2,"The Daniels Corporation, Diamondcorp, Kilmer Group",Toronto,Toronto,low_rise,4,3,0,1,1.65,2.61,,raw
+Edenbridge on the Kingsway Condos,"Tridel, First Capital Realty",Toronto,Toronto,mid_rise,4,0,0,4,0.0,,,raw
+Evermore at West Village Condos,Tridel,Toronto,Toronto,high_rise,5,0,0,5,0.0,,,raw
+JOYA Condos,"Greybrook Realty Partners, Altree Developments, Marlin Spring Developments",Toronto,Toronto,mid_rise,15,1,0,14,0.11,1.63,,raw
+KSquare Condos,Kingdom,Toronto,Toronto,high_rise,2,0,2,0,-3.51,,-4.57,raw
+Line 5 Condos,"Reserve Properties, Westdale Properties",Toronto,Toronto,high_rise,12,0,0,12,0.0,,,raw
+Line 5 South Tower Condos,"Reserve Properties, Westdale Properties",Toronto,Toronto,high_rise,11,0,0,11,0.0,,,raw
+MRKT Alexandra Park Condos,Tridel,Toronto,Toronto,mid_rise,7,0,6,1,-5.91,,-12.6,raw
+Olive Residences Condos,Capital Developments,Toronto,Toronto,high_rise,1,0,0,1,0.0,,,raw
+Park Road Condos,Capital Developments,Toronto,Toronto,high_rise,11,0,0,11,0.0,,,raw
+Q Tower Condos,"Lifetime Developments, Diamondcorp",Toronto,Toronto,high_rise,19,13,1,5,3.96,16.74,-0.18,raw
+Queen Church Condos,"Tridel, Bazis Inc",Toronto,Toronto,high_rise,10,0,0,10,0.0,,,raw
+Raglan House Condos,"Camrost-Felcorp, Trolleybus Urban Development Inc",Toronto,Toronto,high_rise,11,0,0,11,0.0,,,raw
+The Dupont Condos,Tridel,Toronto,Toronto,mid_rise,9,0,0,9,0.0,,,raw
+The Frederick Condos,Camrost-Felcorp,Toronto,Toronto,high_rise,22,0,0,22,0.0,,,raw
+The Winston Collection Towns,Insoho Developments,Toronto,Toronto,low_rise,2,0,2,0,-4.79,,-5.08,raw
+Tridel at The Well Condos,Tridel,Toronto,Toronto,mid_rise,9,0,0,9,0.0,,,raw
+Untitled North Tower Condos,"Reserve Properties, Westdale Properties",Toronto,Toronto,high_rise,16,1,0,15,0.01,0.15,,raw
+Untitled Toronto Condos,"Reserve Properties, Westdale Properties",Toronto,Toronto,high_rise,18,1,0,17,0.01,0.14,,raw
+Westbend Residences Condos,Mattamy Homes,Toronto,Toronto,mid_rise,4,0,3,1,-6.38,,-9.4,raw
+Westerly 2 Condos,"Tridel, Hollyburn Properties",Toronto,Toronto,high_rise,4,0,0,4,0.0,,,raw
+Westerly Condos,Tridel,Toronto,Toronto,high_rise,5,0,0,5,0.0,,,raw
+The Willows Towns,"Damac Properties, Marlin Spring Developments",Clarington,Durham,low_rise,27,0,27,0,-8.42,,-20.35,raw
+Park & Lake,"Graywood Developments Ltd, Falconcrest Homes",Oshawa,Durham,low_rise,12,0,0,12,0.0,,,raw
+Clarehaven Estates,Geranium,Pickering,Durham,low_rise,4,0,0,4,0.0,,,raw
+Greenwood Seaton Towns by OPUS Homes,OPUS Homes,Pickering,Durham,low_rise,3,3,0,0,0.58,0.61,,raw
+Pickering City Centre Tower 2 Condos,"CentreCourt, Cowie Capital Partners Inc, Salthill Capital",Pickering,Durham,high_rise,1,0,0,1,0.0,,,raw
+Seaton Whitevale Phase 5,Mattamy Homes,Pickering,Durham,low_rise,2,0,0,2,0.0,,,raw
+Seaton Whitevale Phase 6,Mattamy Homes,Pickering,Durham,low_rise,15,5,1,9,0.08,1.15,-4.02,raw
+Seatonville by Fieldgate Homes,Fieldgate Homes,Pickering,Durham,low_rise,2,0,0,2,0.0,,,raw
+Brooklin Towns,Madison Group,Whitby,Durham,low_rise,1,0,0,1,0.0,,,raw
+Station No. 3 Condos,Brookfield Residential Ontario,Whitby,Durham,low_rise,9,0,0,9,0.0,,,raw
+Whitby Meadows by Fieldgate Homes,Fieldgate Homes,Whitby,Durham,low_rise,3,0,0,3,0.0,,,raw
+Creekside Condos,"Sutherland Development Group, York Trafalgar Homes",Milton,Halton,low_rise,7,0,7,0,-21.29,,-23.5,raw
+Creekview Collective Towns,Branthaven Homes,Milton,Halton,low_rise,12,9,0,3,3.42,11.55,,raw
+Hawthorne East Village Phase 4,Mattamy Homes,Milton,Halton,low_rise,8,0,7,1,-1.43,,-4.96,raw
+Hawthorne East Village Phase 6,Mattamy Homes,Milton,Halton,low_rise,11,0,0,11,0.0,,,raw
+Hawthorne East Village Phase 8,Mattamy Homes,Milton,Halton,low_rise,4,0,4,0,-1.29,,-1.37,raw
+Mile & Creek Condos Phase 3,Mattamy Homes,Milton,Halton,high_rise,5,0,1,4,-0.1,,-0.5,raw
+The Laurels Condos,Mattamy Homes,Milton,Halton,mid_rise,14,0,0,14,0.0,,,raw
+Claystone Condos,Graywood Developments Ltd,Oakville,Halton,mid_rise,16,6,10,0,-4.23,2.52,-9.29,raw
+Distrikt Trailside 2.0 Condos,Distrikt Developments,Oakville,Halton,mid_rise,14,0,12,2,-6.11,,-13.13,raw
+Distrikt Trailside Condos,Distrikt Developments,Oakville,Halton,mid_rise,18,0,18,0,-7.52,,-15.6,raw
+Glen Abbey Encore by Hallett Homes,Hallett Homes,Oakville,Halton,low_rise,1,0,1,0,-6.33,,-6.33,raw
+Joshua Creek Montage – Single Family Homes by Primont Homes,Primont Homes,Oakville,Halton,low_rise,2,0,2,0,-7.3,,-7.83,raw
+Joshua Creek Montage – Townhomes by Primont Homes,Primont Homes,Oakville,Halton,low_rise,3,0,2,1,-3.39,,-5.61,raw
+Lifestyle Towns,Fernbrook Homes,Oakville,Halton,low_rise,15,3,0,12,0.39,2.11,,raw
+OakBrook Towns,Crystal Homes,Oakville,Halton,low_rise,8,0,0,8,0.0,,,raw
+The Greenwich Condos at Oakvillage,Branthaven Homes,Oakville,Halton,high_rise,11,0,11,0,-6.67,,-11.35,raw
+Daniels MPV,"The Daniels Corporation, Choice Properties REIT",Brampton,Peel,high_rise,1,0,1,0,-17.2,,-17.2,raw
+Maya Urban Towns,LIV Communities,Brampton,Peel,low_rise,7,1,0,6,0.75,5.26,,raw
+SouthCal by ARISTA Homes,Arista Homes,Brampton,Peel,low_rise,16,3,0,13,0.22,1.22,,fsa_inferred (trreb_region_fsa_mapping)
+SouthCal by OPUS Homes,OPUS Homes,Brampton,Peel,low_rise,7,0,0,7,0.0,,,fsa_inferred (trreb_region_fsa_mapping)
+Union by Mattamy Homes,Mattamy Homes,Brampton,Peel,low_rise,6,2,0,4,0.48,1.92,,raw
+Caledon Trails,"Laurier Homes, Yorkwood Homes",Caledon,Peel,low_rise,15,0,0,15,0.0,,,raw
+Exchange District Condos – Phase 2 (EX2),Camrost-Felcorp,Mississauga,Peel,high_rise,30,0,0,30,0.0,,,raw
+Exchange District Condos – Phase 3 (EX3),Camrost-Felcorp,Mississauga,Peel,high_rise,3,0,0,3,0.0,,,raw
+Harbourwalk at Lakeview Village Condos,Tridel,Mississauga,Peel,high_rise,7,0,0,7,0.0,,,raw
+Kindred Condos,The Daniels Corporation,Mississauga,Peel,high_rise,9,6,0,3,1.83,3.73,,raw
+The Kith Condos,The Daniels Corporation,Mississauga,Peel,mid_rise,8,5,3,0,0.37,4.89,-6.86,raw
+Simcoe Landing by CountryWide Homes,CountryWide Homes,Georgina,York,low_rise,7,0,7,0,-9.84,,-14.73,raw
+Joy Station Condos,Liberty Development Corporation,Markham,York,high_rise,17,0,0,17,0.0,,,raw
+Royal Bayview Condos,Tridel,Markham,York,mid_rise,8,0,0,8,0.0,,,raw
+Springwater Phase 3,Mattamy Homes,Markham,York,low_rise,18,0,13,5,-4.16,,-7.3,raw
+Union Village Phase 2B,"Minto, Metropia",Markham,York,low_rise,6,1,4,1,-0.1,3.91,-1.29,raw
+Glenwood Collection at The Towns on Bayview,Primont Homes,Richmond Hill,York,low_rise,4,0,0,4,0.0,,,raw
+High Point Urban Towns,Laurier Homes,Richmond Hill,York,low_rise,3,2,0,1,0.54,1.61,,raw
+Ivylea Towns,"Greybrook Realty Partners, Marlin Spring Developments",Richmond Hill,York,low_rise,5,1,0,4,0.02,0.09,,raw
+Richmond Hill Town Manors,Altona Group,Richmond Hill,York,low_rise,6,3,0,3,1.06,3.24,,raw
+Skylands Towns,Times Group Corporation,Richmond Hill,York,low_rise,13,0,13,0,-8.2,,-12.23,raw
+Boulevard at The Thornhill Condos,"The Daniels Corporation, Baif Developments",Vaughan,York,high_rise,1,0,0,1,0.0,,,raw
+Kleinburg Hills,CountryWide Homes,Vaughan,York,low_rise,3,0,0,3,0.0,,,raw
+The Beverley at the Thornhill Condos,"The Daniels Corporation, Baif Developments",Vaughan,York,mid_rise,2,0,0,2,0.0,,,raw
+75 James Condos,"The Hi-Rise Group, Fengate, Liuna",Hamilton,Hamilton,high_rise,3,1,1,1,-0.14,0.19,-0.62,raw
+Cachet Binbrook Towns,Cachet Homes,Hamilton,Hamilton,low_rise,21,0,21,0,-7.87,,-10.53,raw
+Mount Hope Phase 6 by Cachet Homes,Cachet Homes,Hamilton,Hamilton,low_rise,9,0,9,0,-14.46,,-16.22,raw

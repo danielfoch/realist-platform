@@ -1,0 +1,98 @@
+Upgrade the Realist.ca platform to support historical data storage, time-series analysis, and market report generation.
+
+GOAL:
+Store all map layer data historically and allow users to generate charts and reports by neighbourhood over time.
+
+DATABASE:
+Implement PostgreSQL with PostGIS.
+
+Create tables:
+
+1. geographies
+- id (primary key)
+- name
+- type (DA, CT, neighbourhood)
+- city
+- province
+- geometry (polygon)
+
+2. metrics
+- id
+- geography_id (foreign key)
+- metric_type (income, crime_rate, vacancy_rate, rent, price, etc.)
+- value (numeric)
+- date (YYYY-MM or YYYY)
+- source
+- created_at
+
+3. area_scores
+- geography_id
+- date
+- investor_score
+- livability_score
+- growth_score
+
+INGESTION PIPELINE:
+- Build ETL pipelines for:
+  - StatCan census data (income, homeownership, demographics)
+  - CMHC rental data (vacancy, rent)
+  - Crime data (local police APIs)
+  - DDF listing data (price, DOM, etc.)
+
+- Normalize all data into:
+  geography_id + metric_type + date + value
+
+- Create scheduled jobs:
+  - Daily (crime, listings)
+  - Monthly (rent updates)
+  - Annual (StatCan, CMHC)
+
+API:
+Create endpoints:
+
+- GET /api/metrics?geography_id=&metric_type=&start=&end=
+- GET /api/area-scores?geography_id=&date=
+- GET /api/geographies?bounds=
+
+FRONTEND:
+
+Add “Market Report Builder” tool:
+
+Features:
+- Select geography (dropdown or draw on map)
+- Select date range
+- Select metrics (multi-select)
+
+Charts:
+- Line chart (time series)
+- Indexed chart (base = 100)
+- Compare vs city average
+
+Use a charting library (Recharts or Chart.js)
+
+INSIGHTS PANEL:
+- Auto-generate summary stats:
+  - % change over period
+  - CAGR
+  - highs/lows
+
+EXPORT:
+- Add “Export Report” button
+- Generate clean PDF with:
+  - Charts
+  - Key metrics
+  - Area summary
+
+MAP INTEGRATION:
+- When clicking a neighbourhood:
+  - Show mini trend charts in sidebar
+  - Show latest metrics + trend arrows
+
+PERFORMANCE:
+- Index metrics table by geography_id + date
+- Cache frequent queries
+- Precompute area_scores daily
+
+EXTRA:
+- Allow users to save reports
+- Generate shareable links

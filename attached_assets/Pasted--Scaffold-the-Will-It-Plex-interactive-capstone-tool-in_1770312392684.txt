@@ -1,0 +1,74 @@
+// Scaffold the "Will It Plex?" interactive capstone tool in Realist (Replit app)
+// Stack: Node.js + Express (TypeScript), PostgreSQL (Drizzle), React frontend
+// Users choose between two strategy streams: (a) Buy & Hold (101), (b) Multiplex Masterclass
+// All actions get saved as a step-by-step "project" for export or grading in curriculum
+
+//// 1. 🔎 Property Scraper Input (Shared Step 1)
+- Input field: Paste in a realtor.ca link
+- Use existing built-in scraper to fetch:
+  → Address, Price, Lot frontage/depth, Annual taxes, Listing type
+- Display parsed data in a Property Summary card
+- Store as project.baseParcel in DB
+
+//// 2. 🧭 Strategy Picker
+- Radio toggle: "Buy & Hold (101)" or "Multiplex Masterclass"
+- Store selection as project.strategy
+
+//// 3a. 📈 Buy & Hold Path (101 Stream)
+- Step 1: Prompt user to search Kijiji or realtor.ca for rent comps, input est. monthly rent
+- Step 2: Show editable Mortgage Calculator (existing code): down payment %, interest, amortization
+- Step 3: Auto-calculate:
+  → DSCR (NOI ÷ annual debt)
+  → Cap Rate
+  → Cash on Cash Return (net income ÷ cash invested)
+- Step 4: Add “Export to Google Sheet” (use same flow as main page)
+- Done.
+
+//// 3b. 🏗️ Multiplex Stream (Masterclass Path)
+- Step 1: User visits [City of Toronto Zoning Lookup](https://map.toronto.ca/maps/zoning/)
+- Prompt user to input:
+  → Zoning Code
+  → Lot Coverage Ratio (e.g. 50% or 30%)
+  → Max Stories (1–4)
+  → Max Units (1–6 + optional garden suite toggle)
+- Render a mini visual/diorama:
+  → Box drawing of lot dimensions (frontage × depth)
+  → Overlay the proposed structure massing in GFA
+- Step 2: Auto-calculate estimated buildable GFA:
+  → `lotArea × lotCoverage × maxStories`
+- Step 3: Prompt for or auto-fill Construction Cost per SF (start at $500/SF slider)
+  → User adjusts via slider to test sensitivity
+- Step 4: MLI Select Calculator (already exists):
+  → Pre-fill with 100 points, then allow sliders for:
+     → Accessibility (0–30 pts): increases cost
+     → Affordability (0–50 pts): lowers rent
+     → Energy Efficiency (0–20 pts): increases cost
+  → Connect this to construction cost and final financing terms
+- Step 5: Output Investment Metrics:
+  → Yield on Cost
+  → DSCR (at stabilized rent)
+  → Cash on Cash Return
+
+//// 4. 🧠 Backend (Drizzle + Express)
+- Tables: projects, properties, cost_models, proformas
+- Save each step as user progresses (with timestamps)
+- Final step: allow user to export their project (JSON or Google Sheet)
+
+//// 5. 🖥️ UI Pages
+- Route: /will-it-plex
+- Stepper UI (Material UI / shadcn):
+  → Step 1: Scrape property
+  → Step 2: Choose stream
+  → Step 3+: Stream-dependent workflow
+  → Final step: results + export
+- Show progress bar with milestone checkmarks
+- Add option to “Start New Capstone” or revisit previous one
+
+//// 6. 🔐 Auth & Save Logic
+- Only authenticated users can submit capstones
+- Save draft state to session
+- Users can return and continue where they left off
+
+//// 7. 📤 Export & Showcase
+- Each capstone is exportable (Google Sheets & JSON)
+- Add route for mentors/admins to view submitted projects by user ID

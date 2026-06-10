@@ -1,0 +1,51 @@
+date,series_id,product,short_name,rate_pct,source_url
+2026-03-25,V80691311,Prime rate,prime_rate_pct,4.45,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691311,Prime rate,prime_rate_pct,4.45,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691311,Prime rate,prime_rate_pct,4.45,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691311,Prime rate,prime_rate_pct,4.45,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691311,Prime rate,prime_rate_pct,4.45,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-03-25,V80691333,Conventional mortgage 1-year,mortgage_1y_pct,5.49,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691333,Conventional mortgage 1-year,mortgage_1y_pct,5.49,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691333,Conventional mortgage 1-year,mortgage_1y_pct,5.49,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691333,Conventional mortgage 1-year,mortgage_1y_pct,5.49,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691333,Conventional mortgage 1-year,mortgage_1y_pct,5.49,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-03-25,V80691334,Conventional mortgage 3-year,mortgage_3y_pct,6.05,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691334,Conventional mortgage 3-year,mortgage_3y_pct,6.05,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691334,Conventional mortgage 3-year,mortgage_3y_pct,6.05,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691334,Conventional mortgage 3-year,mortgage_3y_pct,6.05,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691334,Conventional mortgage 3-year,mortgage_3y_pct,6.05,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-03-25,V80691335,Conventional mortgage 5-year,mortgage_5y_pct,6.09,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691335,Conventional mortgage 5-year,mortgage_5y_pct,6.09,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691335,Conventional mortgage 5-year,mortgage_5y_pct,6.09,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691335,Conventional mortgage 5-year,mortgage_5y_pct,6.09,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691335,Conventional mortgage 5-year,mortgage_5y_pct,6.09,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-03-25,V80691339,GIC 1-year,gic_1y_pct,2.45,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691339,GIC 1-year,gic_1y_pct,2.7,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691339,GIC 1-year,gic_1y_pct,2.7,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691339,GIC 1-year,gic_1y_pct,2.7,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691339,GIC 1-year,gic_1y_pct,2.7,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-03-25,V80691340,GIC 3-year,gic_3y_pct,2.52,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691340,GIC 3-year,gic_3y_pct,2.75,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691340,GIC 3-year,gic_3y_pct,2.75,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691340,GIC 3-year,gic_3y_pct,2.75,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691340,GIC 3-year,gic_3y_pct,2.75,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-03-25,V80691341,GIC 5-year,gic_5y_pct,2.75,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691341,GIC 5-year,gic_5y_pct,2.75,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691341,GIC 5-year,gic_5y_pct,2.75,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691341,GIC 5-year,gic_5y_pct,2.75,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691341,GIC 5-year,gic_5y_pct,2.75,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-03-25,V80691336,5-year personal fixed term,personal_fixed_5y_pct,2.65,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691336,5-year personal fixed term,personal_fixed_5y_pct,2.65,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691336,5-year personal fixed term,personal_fixed_5y_pct,2.65,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691336,5-year personal fixed term,personal_fixed_5y_pct,2.65,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691336,5-year personal fixed term,personal_fixed_5y_pct,2.65,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-03-25,V80691337,"Daily interest savings > $100,000",daily_interest_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691337,"Daily interest savings > $100,000",daily_interest_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691337,"Daily interest savings > $100,000",daily_interest_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691337,"Daily interest savings > $100,000",daily_interest_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691337,"Daily interest savings > $100,000",daily_interest_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-03-25,V80691338,Non-chequable savings deposits,non_chequable_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-01,V80691338,Non-chequable savings deposits,non_chequable_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-08,V80691338,Non-chequable savings deposits,non_chequable_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-15,V80691338,Non-chequable savings deposits,non_chequable_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/
+2026-04-22,V80691338,Non-chequable savings deposits,non_chequable_savings_pct,0.01,https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/

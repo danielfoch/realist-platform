@@ -1,6 +1,9 @@
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'ts-jest',
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.idx.json' }],
+  },
   testEnvironment: 'node',
   roots: ['<rootDir>/test'],
   collectCoverageFrom: ['src/**/*.ts', '!src/test-ddf-connection.ts'],

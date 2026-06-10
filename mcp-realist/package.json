@@ -1,0 +1,45 @@
+{
+  "name": "@realist/mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server + CLI for Realist.ca — underwrite Canadian real estate deals from Claude Desktop, Codex CLI, Cursor, or any MCP-compatible AI agent.",
+  "type": "module",
+  "bin": {
+    "realist-mcp": "dist/index.js",
+    "realist": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "cli": "tsx src/cli.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "codex",
+    "real-estate",
+    "underwriting",
+    "realist"
+  ],
+  "author": "Realist.ca",
+  "license": "MIT",
+  "homepage": "https://realist.ca",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "@types/node": "^20.0.0"
+  }
+}

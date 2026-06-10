@@ -1,0 +1,3772 @@
+import { sql, relations } from "drizzle-orm";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, uniqueIndex, index, customType } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Re-export auth models (required for Replit Auth)
+export * from "./models/auth";
+
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  consent: boolean("consent").default(false),
+  leadSource: text("lead_source").default("Deal Analyzer"),
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  utmContent: text("utm_content"),
+  utmTerm: text("utm_term"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const leadsRelations = relations(leads, ({ many }) => ({
+  properties: many(properties),
+  analyses: many(analyses),
+  webhookLogs: many(webhookLogs),
+}));
+
+export const properties = pgTable("properties", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  formattedAddress: text("formatted_address").notNull(),
+  streetAddress: text("street_address"),
+  city: text("city"),
+  region: text("region"),
+  country: text("country").notNull(),
+  postalCode: text("postal_code"),
+  lat: real("lat"),
+  lng: real("lng"),
+  placeId: text("place_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const propertiesRelations = relations(properties, ({ one, many }) => ({
+  lead: one(leads, {
+    fields: [properties.leadId],
+    references: [leads.id],
+  }),
+  analyses: many(analyses),
+}));
+
+export const analyses = pgTable("analyses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  propertyId: varchar("property_id").references(() => properties.id),
+  userId: varchar("user_id"),
+  sessionId: varchar("session_id"),
+  countryMode: text("country_mode").notNull(),
+  strategyType: text("strategy_type").notNull(),
+  address: text("address"),
+  city: text("city"),
+  province: text("province"),
+  rentInputs: jsonb("rent_inputs"),
+  vacancyRate: real("vacancy_rate"),
+  expenseAssumptions: jsonb("expense_assumptions"),
+  inputsJson: jsonb("inputs_json").notNull(),
+  resultsJson: jsonb("results_json"),
+  shareToken: varchar("share_token").unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const analysesRelations = relations(analyses, ({ one }) => ({
+  lead: one(leads, {
+    fields: [analyses.leadId],
+    references: [leads.id],
+  }),
+  property: one(properties, {
+    fields: [analyses.propertyId],
+    references: [properties.id],
+  }),
+}));
+
+export const webhookLogs = pgTable("webhook_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  endpoint: text("endpoint").notNull(),
+  payloadJson: jsonb("payload_json").notNull(),
+  status: text("status").notNull(),
+  response: text("response"),
+  attempts: integer("attempts").default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const webhookLogsRelations = relations(webhookLogs, ({ one }) => ({
+  lead: one(leads, {
+    fields: [webhookLogs.leadId],
+    references: [leads.id],
+  }),
+}));
+
+export const dataCache = pgTable("data_cache", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),
+  valueJson: jsonb("value_json").notNull(),
+  source: text("source"),
+  fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+});
+
+export const savedDeals = pgTable("saved_deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  address: text("address"),
+  city: text("city"),
+  province: text("province"),
+  countryMode: text("country_mode").notNull(),
+  strategyType: text("strategy_type").notNull(),
+  mlsNumber: text("mls_number"),
+  inputsJson: jsonb("inputs_json").notNull(),
+  resultsJson: jsonb("results_json").notNull(),
+  shareWithCommunity: boolean("share_with_community").default(true).notNull(),
+  sessionId: varchar("session_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const inspectionRequests = pgTable("inspection_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id"),
+  propertyAddress: text("property_address").notNull(),
+  city: text("city"),
+  province: text("province"),
+  listingId: text("listing_id"),
+  inspectionType: text("inspection_type").default("standard_home_inspection").notNull(),
+  preferredTimes: text("preferred_times"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  notes: text("notes"),
+  amountCents: integer("amount_cents").default(50000).notNull(),
+  currency: varchar("currency", { length: 3 }).default("cad").notNull(),
+  status: text("status").default("requested").notNull(),
+  checkoutStatus: text("checkout_status").default("not_started").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const inspectionRequestsRelations = relations(inspectionRequests, ({ one }) => ({
+  user: one(users, {
+    fields: [inspectionRequests.userId],
+    references: [users.id],
+  }),
+}));
+
+export const realistEvents = pgTable("realist_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  shortDescription: text("short_description"),
+  longDescription: text("long_description"),
+  headerImageUrl: text("header_image_url"),
+  eventType: text("event_type").notNull().default("IN_PERSON"),
+  status: text("status").notNull().default("DRAFT"),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at"),
+  timezone: text("timezone").notNull().default("America/Toronto"),
+  venueName: text("venue_name"),
+  venueAddress: text("venue_address"),
+  onlineUrl: text("online_url"),
+  agendaSections: jsonb("agenda_sections").$type<Array<{ title: string; description?: string; time?: string }>>().default([]),
+  capacity: integer("capacity"),
+  refundPolicy: text("refund_policy"),
+  seoTitle: text("seo_title"),
+  seoDescription: text("seo_description"),
+  createdByEmail: text("created_by_email").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const realistEventSpeakers = pgTable("realist_event_speakers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  title: text("title"),
+  company: text("company"),
+  bio: text("bio"),
+  imageUrl: text("image_url"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const realistEventTicketTypes = pgTable("realist_event_ticket_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  priceCents: integer("price_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("cad").notNull(),
+  quantityTotal: integer("quantity_total"),
+  quantitySold: integer("quantity_sold").default(0).notNull(),
+  salesStartAt: timestamp("sales_start_at"),
+  salesEndAt: timestamp("sales_end_at"),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const realistEventOrders = pgTable("realist_event_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id).notNull(),
+  ticketTypeId: varchar("ticket_type_id").references(() => realistEventTicketTypes.id).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  email: text("email").notNull(),
+  name: text("name"),
+  quantity: integer("quantity").default(1).notNull(),
+  amountPaidCents: integer("amount_paid_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("cad").notNull(),
+  stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull().unique(),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  status: text("status").notNull().default("PAID"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const realistEventAttendees = pgTable("realist_event_attendees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id).notNull(),
+  ticketTypeId: varchar("ticket_type_id").references(() => realistEventTicketTypes.id).notNull(),
+  orderId: varchar("order_id").references(() => realistEventOrders.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  email: text("email").notNull(),
+  name: text("name"),
+  checkedInAt: timestamp("checked_in_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const realistEventsRelations = relations(realistEvents, ({ many }) => ({
+  speakers: many(realistEventSpeakers),
+  ticketTypes: many(realistEventTicketTypes),
+  orders: many(realistEventOrders),
+  attendees: many(realistEventAttendees),
+}));
+
+export const realistEventSpeakersRelations = relations(realistEventSpeakers, ({ one }) => ({
+  event: one(realistEvents, {
+    fields: [realistEventSpeakers.eventId],
+    references: [realistEvents.id],
+  }),
+}));
+
+export const realistEventTicketTypesRelations = relations(realistEventTicketTypes, ({ one, many }) => ({
+  event: one(realistEvents, {
+    fields: [realistEventTicketTypes.eventId],
+    references: [realistEvents.id],
+  }),
+  orders: many(realistEventOrders),
+  attendees: many(realistEventAttendees),
+}));
+
+export const realistEventOrdersRelations = relations(realistEventOrders, ({ one, many }) => ({
+  event: one(realistEvents, {
+    fields: [realistEventOrders.eventId],
+    references: [realistEvents.id],
+  }),
+  ticketType: one(realistEventTicketTypes, {
+    fields: [realistEventOrders.ticketTypeId],
+    references: [realistEventTicketTypes.id],
+  }),
+  user: one(users, {
+    fields: [realistEventOrders.userId],
+    references: [users.id],
+  }),
+  attendees: many(realistEventAttendees),
+}));
+
+export const realistEventAttendeesRelations = relations(realistEventAttendees, ({ one }) => ({
+  event: one(realistEvents, {
+    fields: [realistEventAttendees.eventId],
+    references: [realistEvents.id],
+  }),
+  ticketType: one(realistEventTicketTypes, {
+    fields: [realistEventAttendees.ticketTypeId],
+    references: [realistEventTicketTypes.id],
+  }),
+  order: one(realistEventOrders, {
+    fields: [realistEventAttendees.orderId],
+    references: [realistEventOrders.id],
+  }),
+  user: one(users, {
+    fields: [realistEventAttendees.userId],
+    references: [users.id],
+  }),
+}));
+
+export const discoverySignals = pgTable(
+  "discovery_signals",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    signalType: text("signal_type").notNull(),
+    signalKey: text("signal_key").notNull(),
+    payloadJson: jsonb("payload_json").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userSignalUnique: uniqueIndex("discovery_signals_user_signal_unique").on(
+      table.userId,
+      table.signalType,
+      table.signalKey,
+    ),
+  }),
+);
+
+export const listingWatchers = pgTable(
+  "listing_watchers",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    listingMlsNumber: text("listing_mls_number").notNull(),
+    sourceType: text("source_type").notNull(),
+    sourceId: varchar("source_id"),
+    watchAnalysisUpdates: boolean("watch_analysis_updates").default(true).notNull(),
+    watchCommentUpdates: boolean("watch_comment_updates").default(true).notNull(),
+    watchPriceUpdates: boolean("watch_price_updates").default(true).notNull(),
+    watchStatusUpdates: boolean("watch_status_updates").default(true).notNull(),
+    watchConsensusUpdates: boolean("watch_consensus_updates").default(true).notNull(),
+    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userListingSourceUnique: uniqueIndex("listing_watchers_user_listing_source_idx").on(
+      table.userId,
+      table.listingMlsNumber,
+      table.sourceType,
+      table.sourceId,
+    ),
+  }),
+);
+
+export const notificationEvents = pgTable("notification_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: text("event_type").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  listingMlsNumber: text("listing_mls_number"),
+  analysisId: varchar("analysis_id"),
+  commentId: varchar("comment_id"),
+  market: text("market"),
+  city: text("city"),
+  payloadJson: jsonb("payload_json").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const notificationQueue = pgTable(
+  "notification_queue",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    recipientUserId: varchar("recipient_user_id").references(() => users.id).notNull(),
+    notificationEventId: varchar("notification_event_id").references(() => notificationEvents.id).notNull(),
+    channel: text("channel").notNull(),
+    templateKey: text("template_key").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    status: text("status").default("pending").notNull(),
+    scheduledFor: timestamp("scheduled_for").defaultNow().notNull(),
+    sentAt: timestamp("sent_at"),
+    failureReason: text("failure_reason"),
+    payloadJson: jsonb("payload_json").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    dedupeUnique: uniqueIndex("notification_queue_dedupe_idx").on(table.dedupeKey),
+  }),
+);
+
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  marketingEmailEnabled: boolean("marketing_email_enabled").default(true).notNull(),
+  productUpdatesEnabled: boolean("product_updates_enabled").default(true).notNull(),
+  listingWatchAlertsEnabled: boolean("listing_watch_alerts_enabled").default(true).notNull(),
+  marketAlertsEnabled: boolean("market_alerts_enabled").default(true).notNull(),
+  communityAlertsEnabled: boolean("community_alerts_enabled").default(true).notNull(),
+  digestEnabled: boolean("digest_enabled").default(true).notNull(),
+  quietHoursStart: text("quiet_hours_start"),
+  quietHoursEnd: text("quiet_hours_end"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const savedDealsRelations = relations(savedDeals, ({ one }) => ({
+  user: one(users, {
+    fields: [savedDeals.userId],
+    references: [users.id],
+  }),
+}));
+
+export const discoverySignalsRelations = relations(discoverySignals, ({ one }) => ({
+  user: one(users, {
+    fields: [discoverySignals.userId],
+    references: [users.id],
+  }),
+}));
+
+export const listingWatchersRelations = relations(listingWatchers, ({ one }) => ({
+  user: one(users, {
+    fields: [listingWatchers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationEventsRelations = relations(notificationEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationEvents.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationQueueRelations = relations(notificationQueue, ({ one }) => ({
+  recipient: one(users, {
+    fields: [notificationQueue.recipientUserId],
+    references: [users.id],
+  }),
+  event: one(notificationEvents, {
+    fields: [notificationQueue.notificationEventId],
+    references: [notificationEvents.id],
+  }),
+}));
+
+export const notificationPreferencesRelations = relations(notificationPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationPreferences.userId],
+    references: [users.id],
+  }),
+}));
+
+export const podcastQuestions = pgTable("podcast_questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  question: text("question").notNull(),
+  answered: boolean("answered").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const coachingWaitlist = pgTable("coaching_waitlist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  mainProblem: text("main_problem").notNull(),
+  status: text("status").default("pending"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const propertyManagers = pgTable("property_managers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  companyName: text("company_name").notNull(),
+  contactName: text("contact_name"),
+  email: text("email"),
+  phone: text("phone"),
+  website: text("website"),
+  calendlyUrl: text("calendly_url"),
+  province: text("province").notNull(),
+  provinceCode: text("province_code").notNull(),
+  city: text("city"),
+  bio: text("bio"),
+  isApproved: boolean("is_approved").default(false),
+  isFeatured: boolean("is_featured").default(false),
+  subscriptionTier: text("subscription_tier"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at"),
+});
+
+export const propertyManagersRelations = relations(propertyManagers, ({ one }) => ({
+  user: one(users, {
+    fields: [propertyManagers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const usListings = pgTable("us_listings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  source: text("source").notNull(),
+  sourceId: text("source_id").notNull(),
+  sourceUrl: text("source_url"),
+  formattedAddress: text("formatted_address").notNull(),
+  streetAddress: text("street_address"),
+  city: text("city"),
+  state: text("state"),
+  postalCode: text("postal_code"),
+  county: text("county"),
+  lat: real("lat"),
+  lng: real("lng"),
+  propertyType: text("property_type"),
+  beds: real("beds"),
+  baths: real("baths"),
+  sqft: integer("sqft"),
+  lotSqft: integer("lot_sqft"),
+  yearBuilt: integer("year_built"),
+  listPrice: integer("list_price"),
+  estRent: integer("est_rent"),
+  estTaxes: integer("est_taxes"),
+  estHoa: integer("est_hoa"),
+  daysOnMarket: integer("days_on_market"),
+  listDate: timestamp("list_date"),
+  status: text("status"),
+  isActive: boolean("is_active").default(true).notNull(),
+  statusConfidence: text("status_confidence"),
+  motivatedSellerSignals: text("motivated_seller_signals").array(),
+  raw: jsonb("raw"),
+  scrapedAt: timestamp("scraped_at").notNull(),
+  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+  lastCheckedAt: timestamp("last_checked_at"),
+  soldDetectedAt: timestamp("sold_detected_at"),
+  offMarketDetectedAt: timestamp("off_market_detected_at"),
+  delistedAt: timestamp("delisted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueSourceListing: uniqueIndex("us_listings_source_source_id_idx").on(table.source, table.sourceId),
+}));
+
+export const insertUsListingSchema = createInsertSchema(usListings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  scrapedAt: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
+  listDate: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+  firstSeenAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? undefined : (typeof v === "string" ? new Date(v) : v)),
+  lastSeenAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? undefined : (typeof v === "string" ? new Date(v) : v)),
+  lastCheckedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+  soldDetectedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+  offMarketDetectedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+  delistedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+});
+
+export type InsertUsListing = z.infer<typeof insertUsListingSchema>;
+export type UsListing = typeof usListings.$inferSelect;
+
+// Append-only price history. One row per observed list_price change for a
+// (source, source_id) listing. Powers "Price reduced 5% — 3 days ago" badges,
+// the originalListPrice / priceCutCount aggregates, and back-tested
+// price-reduction analysis. Ingest writes a row only when the new list_price
+// differs from the row currently stored in us_listings (see ingest path).
+export const usListingPriceHistory = pgTable("us_listing_price_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingId: varchar("listing_id").notNull().references(() => usListings.id, { onDelete: "cascade" }),
+  source: text("source").notNull(),
+  sourceId: text("source_id").notNull(),
+  oldPrice: integer("old_price"),
+  newPrice: integer("new_price"),
+  changeAmount: integer("change_amount"),
+  changePercent: real("change_percent"),
+  detectedAt: timestamp("detected_at").defaultNow().notNull(),
+  scrapedAt: timestamp("scraped_at"),
+}, (table) => ({
+  listingIdx: index("us_listing_price_history_listing_idx").on(table.listingId, table.detectedAt),
+  sourceIdx: index("us_listing_price_history_source_idx").on(table.source, table.sourceId, table.detectedAt),
+  // Dedupe key: two concurrent ingests of the same scrape (same listing,
+  // same scraped_at, same new_price) MUST collapse to one row. Partial
+  // index because scrapedAt is nullable (manual / non-scrape ingests
+  // bypass the dedupe and that's intentional).
+  dedupeIdx: uniqueIndex("us_listing_price_history_dedupe_idx")
+    .on(table.listingId, table.scrapedAt, table.newPrice)
+    .where(sql`scraped_at IS NOT NULL`),
+}));
+
+export const insertUsListingPriceHistorySchema = createInsertSchema(usListingPriceHistory).omit({
+  id: true,
+  detectedAt: true,
+});
+export type InsertUsListingPriceHistory = z.infer<typeof insertUsListingPriceHistorySchema>;
+export type UsListingPriceHistory = typeof usListingPriceHistory.$inferSelect;
+
+export const usRents = pgTable("us_rents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  source: text("source").notNull(),
+  sourceId: text("source_id").notNull(),
+  listingUrl: text("listing_url"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  county: text("county"),
+  lat: real("lat"),
+  lng: real("lng"),
+  propertyType: text("property_type"),
+  bedrooms: real("bedrooms"),
+  bathrooms: real("bathrooms"),
+  sqft: integer("sqft"),
+  monthlyRent: integer("monthly_rent"),
+  availableDate: timestamp("available_date"),
+  leaseTerms: text("lease_terms"),
+  petsAllowed: boolean("pets_allowed"),
+  utilitiesIncluded: text("utilities_included").array(),
+  furnished: boolean("furnished"),
+  parkingSpots: integer("parking_spots"),
+  laundry: text("laundry"),
+  amenities: text("amenities").array(),
+  status: text("status"),
+  raw: jsonb("raw"),
+  scrapedAt: timestamp("scraped_at").notNull(),
+  delistedAt: timestamp("delisted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueSourceRent: uniqueIndex("us_rents_source_source_id_idx").on(table.source, table.sourceId),
+}));
+
+export const insertUsRentSchema = createInsertSchema(usRents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  scrapedAt: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
+  availableDate: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+  delistedAt: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v == null ? null : (typeof v === "string" ? new Date(v) : v)),
+});
+
+export type InsertUsRent = z.infer<typeof insertUsRentSchema>;
+export type UsRent = typeof usRents.$inferSelect;
+
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPropertySchema = createInsertSchema(properties).omit({
+  id: true,
+  createdAt: true,
+  leadId: true,
+});
+
+export const insertAnalysisSchema = createInsertSchema(analyses).omit({
+  id: true,
+  createdAt: true,
+  leadId: true,
+  propertyId: true,
+});
+
+export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDataCacheSchema = createInsertSchema(dataCache).omit({
+  id: true,
+  fetchedAt: true,
+});
+
+export const insertSavedDealSchema = createInsertSchema(savedDeals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertInspectionRequestSchema = createInsertSchema(inspectionRequests).omit({
+  id: true,
+  userId: true,
+  status: true,
+  checkoutStatus: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRealistEventSchema = createInsertSchema(realistEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRealistEventSpeakerSchema = createInsertSchema(realistEventSpeakers).omit({
+  id: true,
+});
+
+export const insertRealistEventTicketTypeSchema = createInsertSchema(realistEventTicketTypes).omit({
+  id: true,
+  quantitySold: true,
+});
+
+export const insertDiscoverySignalSchema = createInsertSchema(discoverySignals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertListingWatcherSchema = createInsertSchema(listingWatchers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNotificationEventSchema = createInsertSchema(notificationEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertNotificationQueueSchema = createInsertSchema(notificationQueue).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+});
+
+export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPodcastQuestionSchema = createInsertSchema(podcastQuestions).omit({
+  id: true,
+  createdAt: true,
+  answered: true,
+});
+
+export const insertCoachingWaitlistSchema = createInsertSchema(coachingWaitlist).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+  notes: true,
+});
+
+export const insertPropertyManagerSchema = createInsertSchema(propertyManagers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Lead = typeof leads.$inferSelect;
+
+export type InsertProperty = z.infer<typeof insertPropertySchema>;
+export type Property = typeof properties.$inferSelect;
+
+export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
+export type Analysis = typeof analyses.$inferSelect;
+
+export type InsertWebhookLog = z.infer<typeof insertWebhookLogSchema>;
+export type WebhookLog = typeof webhookLogs.$inferSelect;
+
+export type InsertDataCache = z.infer<typeof insertDataCacheSchema>;
+export type DataCache = typeof dataCache.$inferSelect;
+
+export type InsertSavedDeal = z.infer<typeof insertSavedDealSchema>;
+export type SavedDeal = typeof savedDeals.$inferSelect;
+export type InsertInspectionRequest = z.infer<typeof insertInspectionRequestSchema>;
+export type InspectionRequest = typeof inspectionRequests.$inferSelect;
+
+export type InsertRealistEvent = z.infer<typeof insertRealistEventSchema>;
+export type RealistEvent = typeof realistEvents.$inferSelect;
+export type InsertRealistEventSpeaker = z.infer<typeof insertRealistEventSpeakerSchema>;
+export type RealistEventSpeaker = typeof realistEventSpeakers.$inferSelect;
+export type InsertRealistEventTicketType = z.infer<typeof insertRealistEventTicketTypeSchema>;
+export type RealistEventTicketType = typeof realistEventTicketTypes.$inferSelect;
+export type RealistEventOrder = typeof realistEventOrders.$inferSelect;
+export type RealistEventAttendee = typeof realistEventAttendees.$inferSelect;
+
+export type InsertDiscoverySignal = z.infer<typeof insertDiscoverySignalSchema>;
+export type DiscoverySignal = typeof discoverySignals.$inferSelect;
+
+export type InsertListingWatcher = z.infer<typeof insertListingWatcherSchema>;
+export type ListingWatcher = typeof listingWatchers.$inferSelect;
+
+export type InsertNotificationEvent = z.infer<typeof insertNotificationEventSchema>;
+export type NotificationEvent = typeof notificationEvents.$inferSelect;
+
+export type InsertNotificationQueue = z.infer<typeof insertNotificationQueueSchema>;
+export type NotificationQueue = typeof notificationQueue.$inferSelect;
+
+export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+
+export type InsertPodcastQuestion = z.infer<typeof insertPodcastQuestionSchema>;
+export type PodcastQuestion = typeof podcastQuestions.$inferSelect;
+
+export type InsertPropertyManager = z.infer<typeof insertPropertyManagerSchema>;
+export type PropertyManager = typeof propertyManagers.$inferSelect;
+
+export type InsertCoachingWaitlist = z.infer<typeof insertCoachingWaitlistSchema>;
+export type CoachingWaitlist = typeof coachingWaitlist.$inferSelect;
+
+export const strategyTypes = [
+  "buy_hold",
+  "flip",
+  "brrr",
+  "airbnb",
+  "land_assembly",
+  "multiplex",
+] as const;
+
+export type StrategyType = (typeof strategyTypes)[number];
+
+export const buyHoldInputsSchema = z.object({
+  purchasePrice: z.number().min(0),
+  closingCosts: z.number().min(0).default(0),
+  downPaymentPercent: z.number().min(0).max(100).default(20),
+  interestRate: z.number().min(0).max(100).default(5),
+  amortizationYears: z.number().min(1).max(40).default(25),
+  loanTermYears: z.number().min(1).max(40).default(5),
+  monthlyRent: z.number().min(0),
+  vacancyPercent: z.number().min(0).max(100).default(5),
+  propertyTax: z.number().min(0).default(0),
+  insurance: z.number().min(0).default(0),
+  utilities: z.number().min(0).default(0),
+  maintenancePercent: z.number().min(0).max(100).default(5),
+  managementPercent: z.number().min(0).max(100).default(0),
+  capexReservePercent: z.number().min(0).max(100).default(5),
+  otherExpenses: z.number().min(0).default(0),
+  rentGrowthPercent: z.number().default(0),
+  expenseInflationPercent: z.number().default(2),
+  appreciationPercent: z.number().default(2),
+  holdingPeriodYears: z.number().min(1).max(50).default(10),
+  sellingCostsPercent: z.number().min(0).max(20).default(5),
+  isCmhcMliSelect: z.boolean().default(false),
+  cmhcMliPoints: z.number().min(0).max(100).default(0),
+});
+
+export type BuyHoldInputs = z.infer<typeof buyHoldInputsSchema>;
+
+export const analysisResultsSchema = z.object({
+  capRate: z.number(),
+  cashOnCash: z.number(),
+  dscr: z.number(),
+  irr: z.number().nullable(),
+  monthlyNoi: z.number(),
+  monthlyCashFlow: z.number(),
+  annualNoi: z.number(),
+  annualCashFlow: z.number(),
+  totalCashInvested: z.number(),
+  loanAmount: z.number(),
+  monthlyMortgagePayment: z.number(),
+  grossMonthlyIncome: z.number(),
+  effectiveMonthlyIncome: z.number(),
+  monthlyExpenses: z.number(),
+  yearlyProjections: z.array(z.object({
+    year: z.number(),
+    grossRent: z.number(),
+    vacancyLoss: z.number(),
+    effectiveIncome: z.number(),
+    expenses: z.object({
+      propertyTax: z.number(),
+      insurance: z.number(),
+      utilities: z.number(),
+      maintenance: z.number(),
+      management: z.number(),
+      capexReserve: z.number(),
+      other: z.number(),
+      total: z.number(),
+    }),
+    noi: z.number(),
+    debtService: z.number(),
+    cashFlow: z.number(),
+    propertyValue: z.number(),
+    loanBalance: z.number(),
+    equity: z.number(),
+    cumulativeCashFlow: z.number(),
+    principalPaidThisYear: z.number(),
+    cumulativePrincipalPaid: z.number(),
+    capitalAppreciation: z.number(),
+    totalReturn: z.number(),
+  })),
+  expenseBreakdown: z.object({
+    propertyTax: z.number(),
+    insurance: z.number(),
+    utilities: z.number(),
+    maintenance: z.number(),
+    management: z.number(),
+    capexReserve: z.number(),
+    other: z.number(),
+  }),
+});
+
+export type AnalysisResults = z.infer<typeof analysisResultsSchema>;
+
+// ============================================
+// INVESTOR PORTAL SCHEMAS
+// ============================================
+
+import { users } from "./models/auth";
+
+export const investorProfiles = pgTable("investor_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  phone: text("phone"),
+  city: text("city"),
+  province: text("province"),
+  country: text("country").default("canada"),
+  bio: text("bio"),
+  investmentGoals: text("investment_goals"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const investorKyc = pgTable("investor_kyc", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  isAccreditedInvestor: boolean("is_accredited_investor").default(false),
+  estimatedNetWorth: text("estimated_net_worth"),
+  annualIncome: text("annual_income"),
+  investmentExperience: text("investment_experience"),
+  riskTolerance: text("risk_tolerance"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const portfolioProperties = pgTable("portfolio_properties", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  address: text("address"),
+  city: text("city"),
+  province: text("province"),
+  country: text("country").default("canada"),
+  purchasePrice: real("purchase_price"),
+  purchaseDate: timestamp("purchase_date"),
+  currentValue: real("current_value"),
+  monthlyRent: real("monthly_rent"),
+  monthlyExpenses: real("monthly_expenses"),
+  strategyType: text("strategy_type"),
+  inputsJson: jsonb("inputs_json"),
+  resultsJson: jsonb("results_json"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ============================================
+// INDUSTRY PARTNER PORTAL SCHEMAS
+// ============================================
+
+export const partnerTypes = ["realtor", "mortgage_broker", "lawyer", "accountant", "property_manager", "contractor", "appraiser", "inspector", "other"] as const;
+export type PartnerType = (typeof partnerTypes)[number];
+
+export const industryPartners = pgTable("industry_partners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  partnerType: text("partner_type").notNull(),
+  companyName: text("company_name"),
+  licenseNumber: text("license_number"),
+  phone: text("phone"),
+  publicEmail: text("public_email"),
+  bio: text("bio"),
+  headshotUrl: text("headshot_url"),
+  serviceAreas: text("service_areas").array(),
+  socialLinks: jsonb("social_links"),
+  isApproved: boolean("is_approved").default(false),
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const partnerLeads = pgTable("partner_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  partnerId: varchar("partner_id").references(() => industryPartners.id).notNull(),
+  leadId: varchar("lead_id").references(() => leads.id).notNull(),
+  status: text("status").default("new"),
+  notes: text("notes"),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+  contactedAt: timestamp("contacted_at"),
+  closedAt: timestamp("closed_at"),
+});
+
+// Relations
+export const investorProfilesRelations = relations(investorProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [investorProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export const investorKycRelations = relations(investorKyc, ({ one }) => ({
+  user: one(users, {
+    fields: [investorKyc.userId],
+    references: [users.id],
+  }),
+}));
+
+export const portfolioPropertiesRelations = relations(portfolioProperties, ({ one }) => ({
+  user: one(users, {
+    fields: [portfolioProperties.userId],
+    references: [users.id],
+  }),
+}));
+
+export const industryPartnersRelations = relations(industryPartners, ({ one, many }) => ({
+  user: one(users, {
+    fields: [industryPartners.userId],
+    references: [users.id],
+  }),
+  partnerLeads: many(partnerLeads),
+}));
+
+export const partnerLeadsRelations = relations(partnerLeads, ({ one }) => ({
+  partner: one(industryPartners, {
+    fields: [partnerLeads.partnerId],
+    references: [industryPartners.id],
+  }),
+  lead: one(leads, {
+    fields: [partnerLeads.leadId],
+    references: [leads.id],
+  }),
+}));
+
+// Insert schemas
+export const insertInvestorProfileSchema = createInsertSchema(investorProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvestorKycSchema = createInsertSchema(investorKyc).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPortfolioPropertySchema = createInsertSchema(portfolioProperties).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertIndustryPartnerSchema = createInsertSchema(industryPartners).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isApproved: true,
+});
+
+export const insertPartnerLeadSchema = createInsertSchema(partnerLeads).omit({
+  id: true,
+  assignedAt: true,
+});
+
+export const realtorApplications = pgTable("realtor_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  brokerage: text("brokerage"),
+  markets: text("markets").array(),
+  assetTypes: text("asset_types").array(),
+  dealTypes: text("deal_types").array(),
+  avgDealSize: text("avg_deal_size"),
+  referralFee: text("referral_fee"),
+  referralAgreement: boolean("referral_agreement").default(false),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const lenderApplications = pgTable("lender_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  company: text("company"),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  lendingTypes: text("lending_types").array(),
+  targetMarkets: text("target_markets").array(),
+  loanSizeMin: text("loan_size_min"),
+  loanSizeMax: text("loan_size_max"),
+  preferredDscr: text("preferred_dscr"),
+  preferredLtv: text("preferred_ltv"),
+  turnaroundTime: text("turnaround_time"),
+  referralAgreement: boolean("referral_agreement").default(false),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const dealMatchRequests = pgTable("deal_match_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  matchTypes: text("match_types").array(),
+  city: text("city"),
+  province: text("province"),
+  dealSummary: jsonb("deal_summary"),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRealtorApplicationSchema = createInsertSchema(realtorApplications).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
+export const insertLenderApplicationSchema = createInsertSchema(lenderApplications).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
+export const insertDealMatchRequestSchema = createInsertSchema(dealMatchRequests).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
+// Types
+export type InsertInvestorProfile = z.infer<typeof insertInvestorProfileSchema>;
+export type InvestorProfile = typeof investorProfiles.$inferSelect;
+
+export type InsertInvestorKyc = z.infer<typeof insertInvestorKycSchema>;
+export type InvestorKyc = typeof investorKyc.$inferSelect;
+
+export type InsertPortfolioProperty = z.infer<typeof insertPortfolioPropertySchema>;
+export type PortfolioProperty = typeof portfolioProperties.$inferSelect;
+
+export type InsertIndustryPartner = z.infer<typeof insertIndustryPartnerSchema>;
+export type IndustryPartner = typeof industryPartners.$inferSelect;
+
+export type InsertPartnerLead = z.infer<typeof insertPartnerLeadSchema>;
+export type PartnerLead = typeof partnerLeads.$inferSelect;
+
+// User role type for the extended user
+export type UserRole = "investor" | "partner" | "admin";
+
+// ============================================
+// PROFESSIONAL SUBSCRIPTIONS & BILLING
+// ============================================
+
+export const subscriptionTiers = ["free", "premium"] as const;
+export type SubscriptionTier = (typeof subscriptionTiers)[number];
+
+export const premiumSources = ["stripe", "bra"] as const;
+export type PremiumSource = (typeof premiumSources)[number];
+
+export const professionalSubscriptions = pgTable("professional_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  tier: text("tier").default("free").notNull(),
+  premiumSource: text("premium_source"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  monthlyPullLimit: integer("monthly_pull_limit").default(5),
+  pullsUsedThisMonth: integer("pulls_used_this_month").default(0),
+  periodStart: timestamp("period_start").defaultNow(),
+  periodEnd: timestamp("period_end"),
+  status: text("status").default("active"),
+  braSignedAt: timestamp("bra_signed_at"),
+  braExpiresAt: timestamp("bra_expires_at"),
+  braSignatureDataUrl: text("bra_signature_data_url"),
+  braSignedName: text("bra_signed_name"),
+  brokerageName: text("brokerage_name"),
+  brokerageCity: text("brokerage_city"),
+  brokerageProvince: text("brokerage_province"),
+  professionalType: text("professional_type"),
+  certificationNumber: text("certification_number"),
+  serviceArea: text("service_area"),
+  onboardingStatus: text("onboarding_status").default("started"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const brandingAssets = pgTable("branding_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  logoUrl: text("logo_url"),
+  companyName: text("company_name"),
+  primaryColor: text("primary_color"),
+  secondaryColor: text("secondary_color"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  website: text("website"),
+  disclaimerText: text("disclaimer_text"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const marketExpertApplications = pgTable("market_expert_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  marketRegion: text("market_region").notNull(),
+  marketCity: text("market_city"),
+  packageType: text("package_type").default("featured_expert"),
+  includeMeetupHost: boolean("include_meetup_host").default(false),
+  monthlyFee: real("monthly_fee").default(1000),
+  referralFeePercent: real("referral_fee_percent").default(20),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  status: text("status").default("pending"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const verificationTokens = pgTable("verification_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  token: text("token").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const platformAnalytics = pgTable("platform_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: timestamp("date").notNull(),
+  region: text("region"),
+  city: text("city"),
+  analysisCount: integer("analysis_count").default(0),
+  uniqueUsers: integer("unique_users").default(0),
+  leadsCaptured: integer("leads_captured").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations for new tables
+export const professionalSubscriptionsRelations = relations(professionalSubscriptions, ({ one }) => ({
+  user: one(users, {
+    fields: [professionalSubscriptions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const brandingAssetsRelations = relations(brandingAssets, ({ one }) => ({
+  user: one(users, {
+    fields: [brandingAssets.userId],
+    references: [users.id],
+  }),
+}));
+
+export const marketExpertApplicationsRelations = relations(marketExpertApplications, ({ one }) => ({
+  user: one(users, {
+    fields: [marketExpertApplications.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schemas for new tables
+export const insertProfessionalSubscriptionSchema = createInsertSchema(professionalSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBrandingAssetsSchema = createInsertSchema(brandingAssets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMarketExpertApplicationSchema = createInsertSchema(marketExpertApplications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvedAt: true,
+});
+
+export const insertVerificationTokenSchema = createInsertSchema(verificationTokens).omit({
+  id: true,
+  createdAt: true,
+  verifiedAt: true,
+});
+
+// Types for new tables
+export type InsertProfessionalSubscription = z.infer<typeof insertProfessionalSubscriptionSchema>;
+export type ProfessionalSubscription = typeof professionalSubscriptions.$inferSelect;
+
+export type InsertBrandingAssets = z.infer<typeof insertBrandingAssetsSchema>;
+export type BrandingAssets = typeof brandingAssets.$inferSelect;
+
+export type InsertMarketExpertApplication = z.infer<typeof insertMarketExpertApplicationSchema>;
+export type MarketExpertApplication = typeof marketExpertApplications.$inferSelect;
+
+// ============================================
+// A/B/C EXPERIMENT ASSIGNMENTS
+// ============================================
+
+export const experimentVariants = ["A", "B", "C"] as const;
+export type ExperimentVariant = (typeof experimentVariants)[number];
+
+export const experimentAssignments = pgTable("experiment_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  visitorId: varchar("visitor_id").notNull(),
+  userId: varchar("user_id"),
+  experimentKey: text("experiment_key").notNull(),
+  variant: text("variant").notNull(),
+  convertedAt: timestamp("converted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertExperimentAssignmentSchema = createInsertSchema(experimentAssignments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertExperimentAssignment = z.infer<typeof insertExperimentAssignmentSchema>;
+export type ExperimentAssignment = typeof experimentAssignments.$inferSelect;
+
+export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSchema>;
+export type VerificationToken = typeof verificationTokens.$inferSelect;
+
+export type PlatformAnalytics = typeof platformAnalytics.$inferSelect;
+
+// ============================================
+// GOOGLE OAUTH TOKENS (For user-owned exports)
+// ============================================
+
+export const googleOAuthTokens = pgTable("google_oauth_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  tokenType: text("token_type").default("Bearer"),
+  expiresAt: timestamp("expires_at"),
+  scope: text("scope"),
+  googleEmail: text("google_email"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const googleOAuthTokensRelations = relations(googleOAuthTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [googleOAuthTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertGoogleOAuthTokenSchema = createInsertSchema(googleOAuthTokens).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGoogleOAuthToken = z.infer<typeof insertGoogleOAuthTokenSchema>;
+export type GoogleOAuthToken = typeof googleOAuthTokens.$inferSelect;
+
+// ============================================
+// RENOQUOTE CALCULATOR SCHEMA
+// ============================================
+
+export const renoQuotePersonas = ["homeowner", "investor", "multiplex"] as const;
+export type RenoQuotePersona = (typeof renoQuotePersonas)[number];
+
+export const renoQuotePropertyTypes = [
+  "condo", "detached", "semi", "townhouse", "duplex", "triplex", "fourplex", "multifamily"
+] as const;
+export type RenoQuotePropertyType = (typeof renoQuotePropertyTypes)[number];
+
+export const renoQuoteProjectIntents = [
+  "cosmetic", "moderate", "full_gut", "add_unit", "legalize_unit", 
+  "add_bathroom", "add_kitchen", "underpinning", "extension"
+] as const;
+export type RenoQuoteProjectIntent = (typeof renoQuoteProjectIntents)[number];
+
+export const renoQuoteQualityLevels = ["basic", "mid", "high"] as const;
+export type RenoQuoteQualityLevel = (typeof renoQuoteQualityLevels)[number];
+
+export const renoQuoteComplexityLevels = ["easy", "standard", "complex"] as const;
+export type RenoQuoteComplexityLevel = (typeof renoQuoteComplexityLevels)[number];
+
+export const renoQuoteLineItemSchema = z.object({
+  id: z.string(),
+  itemType: z.string(),
+  label: z.string(),
+  quantity: z.number().min(0),
+  unit: z.enum(["sqft", "linear_ft", "each", "room"]),
+  qualityLevel: z.enum(renoQuoteQualityLevels),
+  complexity: z.enum(renoQuoteComplexityLevels),
+  isDiy: z.boolean().default(false),
+  baseUnitCost: z.number().optional(),
+});
+
+export type RenoQuoteLineItem = z.infer<typeof renoQuoteLineItemSchema>;
+
+export const renoQuoteAssumptionsSchema = z.object({
+  contingencyPercent: z.number().min(0).max(50).default(15),
+  overheadProfitPercent: z.number().min(0).max(50).default(15),
+  laborMaterialSplit: z.object({
+    labor: z.number().default(55),
+    material: z.number().default(45),
+  }),
+  isRushTimeline: z.boolean().default(false),
+  regionalMultiplier: z.number().default(1),
+});
+
+export type RenoQuoteAssumptions = z.infer<typeof renoQuoteAssumptionsSchema>;
+
+export const renoQuotePricingResultSchema = z.object({
+  totalLow: z.number(),
+  totalBase: z.number(),
+  totalHigh: z.number(),
+  costPerSqft: z.object({
+    low: z.number().nullable(),
+    base: z.number().nullable(),
+    high: z.number().nullable(),
+  }),
+  timelineWeeks: z.object({
+    low: z.number(),
+    base: z.number(),
+    high: z.number(),
+  }),
+  lineItemBreakdown: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    quantity: z.number(),
+    unit: z.string(),
+    unitCostLow: z.number(),
+    unitCostBase: z.number(),
+    unitCostHigh: z.number(),
+    subtotalLow: z.number(),
+    subtotalBase: z.number(),
+    subtotalHigh: z.number(),
+  })),
+  contingencyAmount: z.object({
+    low: z.number(),
+    base: z.number(),
+    high: z.number(),
+  }),
+  overheadAmount: z.object({
+    low: z.number(),
+    base: z.number(),
+    high: z.number(),
+  }),
+  topCostDrivers: z.array(z.object({
+    label: z.string(),
+    percentage: z.number(),
+    amount: z.number(),
+  })),
+});
+
+export type RenoQuotePricingResult = z.infer<typeof renoQuotePricingResultSchema>;
+
+export const renoQuotes = pgTable("reno_quotes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  
+  persona: text("persona").notNull(),
+  
+  address: text("address"),
+  city: text("city"),
+  region: text("region"),
+  country: text("country").default("canada"),
+  postalCode: text("postal_code"),
+  
+  propertyType: text("property_type"),
+  existingSqft: real("existing_sqft"),
+  bedrooms: integer("bedrooms"),
+  bathrooms: integer("bathrooms"),
+  basementType: text("basement_type"),
+  basementHeight: real("basement_height"),
+  projectIntents: text("project_intents").array(),
+  
+  lineItemsJson: jsonb("line_items_json").notNull(),
+  assumptionsJson: jsonb("assumptions_json").notNull(),
+  pricingResultJson: jsonb("pricing_result_json"),
+  
+  leadName: text("lead_name"),
+  leadEmail: text("lead_email"),
+  leadPhone: text("lead_phone"),
+  leadConsent: boolean("lead_consent").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const renoQuotesRelations = relations(renoQuotes, ({ one }) => ({
+  lead: one(leads, {
+    fields: [renoQuotes.leadId],
+    references: [leads.id],
+  }),
+}));
+
+export const insertRenoQuoteSchema = createInsertSchema(renoQuotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRenoQuote = z.infer<typeof insertRenoQuoteSchema>;
+export type RenoQuote = typeof renoQuotes.$inferSelect;
+
+// ============================================
+// BUYBOX MANDATE SYSTEM
+// ============================================
+
+export const buyBoxMandateStatuses = [
+  "new",
+  "contacted", 
+  "showing_searching",
+  "offer_submitted",
+  "under_contract",
+  "closed",
+  "not_proceeding"
+] as const;
+export type BuyBoxMandateStatus = (typeof buyBoxMandateStatuses)[number];
+
+export const buyBoxBuildingTypes = [
+  "detached",
+  "semi",
+  "townhouse", 
+  "condo",
+  "multiplex",
+  "land",
+  "commercial",
+  "other"
+] as const;
+export type BuyBoxBuildingType = (typeof buyBoxBuildingTypes)[number];
+
+export const buyBoxOccupancyTypes = [
+  "vacant",
+  "tenanted",
+  "owner_occupied"
+] as const;
+export type BuyBoxOccupancyType = (typeof buyBoxOccupancyTypes)[number];
+
+// BuyBox Agreement (e-signed buyer representation)
+export const buyBoxAgreements = pgTable("buybox_agreements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  agreementVersion: varchar("agreement_version").notNull().default("1.0"),
+  agreementHtml: text("agreement_html").notNull(),
+  signedName: text("signed_name").notNull(),
+  signatureDataUrl: text("signature_data_url").notNull(),
+  termStartDate: timestamp("term_start_date").notNull(),
+  termEndDate: timestamp("term_end_date").notNull(),
+  holdoverDays: integer("holdover_days").default(60),
+  commissionPercent: real("commission_percent").default(2.5),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  signedAt: timestamp("signed_at").notNull(),
+  pdfUrl: text("pdf_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const buyBoxAgreementsRelations = relations(buyBoxAgreements, ({ one, many }) => ({
+  user: one(users, {
+    fields: [buyBoxAgreements.userId],
+    references: [users.id],
+  }),
+  mandates: many(buyBoxMandates),
+}));
+
+// BuyBox Mandate (the property search criteria)
+export const buyBoxMandates = pgTable("buybox_mandates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  agreementId: varchar("agreement_id").references(() => buyBoxAgreements.id).notNull(),
+  status: text("status").default("new").notNull(),
+  
+  // Polygon data
+  polygonGeoJson: jsonb("polygon_geo_json").notNull(),
+  centroidLat: real("centroid_lat"),
+  centroidLng: real("centroid_lng"),
+  areaName: text("area_name"),
+  
+  // Optional mandate details
+  targetPrice: integer("target_price"),
+  maxPrice: integer("max_price"),
+  lotFrontage: real("lot_frontage"),
+  lotFrontageUnit: text("lot_frontage_unit").default("ft"),
+  lotDepth: real("lot_depth"),
+  lotDepthUnit: text("lot_depth_unit").default("ft"),
+  totalLotArea: real("total_lot_area"),
+  totalLotAreaUnit: text("total_lot_area_unit").default("sqft"),
+  zoningPlanningStatus: text("zoning_planning_status"),
+  buildingType: text("building_type"),
+  occupancy: text("occupancy"),
+  targetClosingDate: timestamp("target_closing_date"),
+  possessionDate: timestamp("possession_date"),
+  offerConditions: text("offer_conditions").array(),
+  additionalNotes: text("additional_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const buyBoxMandatesRelations = relations(buyBoxMandates, ({ one, many }) => ({
+  user: one(users, {
+    fields: [buyBoxMandates.userId],
+    references: [users.id],
+  }),
+  agreement: one(buyBoxAgreements, {
+    fields: [buyBoxMandates.agreementId],
+    references: [buyBoxAgreements.id],
+  }),
+  responses: many(buyBoxResponses),
+}));
+
+// Realtor responses to mandates
+export const buyBoxResponses = pgTable("buybox_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mandateId: varchar("mandate_id").references(() => buyBoxMandates.id).notNull(),
+  realtorId: varchar("realtor_id").references(() => users.id).notNull(),
+  message: text("message").notNull(),
+  propertyAddress: text("property_address"),
+  propertyLink: text("property_link"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const buyBoxResponsesRelations = relations(buyBoxResponses, ({ one }) => ({
+  mandate: one(buyBoxMandates, {
+    fields: [buyBoxResponses.mandateId],
+    references: [buyBoxMandates.id],
+  }),
+  realtor: one(users, {
+    fields: [buyBoxResponses.realtorId],
+    references: [users.id],
+  }),
+}));
+
+// BuyBox notifications
+export const buyBoxNotifications = pgTable("buybox_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  mandateId: varchar("mandate_id").references(() => buyBoxMandates.id),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const buyBoxNotificationsRelations = relations(buyBoxNotifications, ({ one }) => ({
+  user: one(users, {
+    fields: [buyBoxNotifications.userId],
+    references: [users.id],
+  }),
+  mandate: one(buyBoxMandates, {
+    fields: [buyBoxNotifications.mandateId],
+    references: [buyBoxMandates.id],
+  }),
+}));
+
+// Admin config for BuyBox defaults
+export const buyBoxConfig = pgTable("buybox_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key").notNull().unique(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Insert schemas
+export const insertBuyBoxAgreementSchema = createInsertSchema(buyBoxAgreements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBuyBoxMandateSchema = createInsertSchema(buyBoxMandates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBuyBoxResponseSchema = createInsertSchema(buyBoxResponses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBuyBoxNotificationSchema = createInsertSchema(buyBoxNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type InsertBuyBoxAgreement = z.infer<typeof insertBuyBoxAgreementSchema>;
+export type BuyBoxAgreement = typeof buyBoxAgreements.$inferSelect;
+
+export type InsertBuyBoxMandate = z.infer<typeof insertBuyBoxMandateSchema>;
+export type BuyBoxMandate = typeof buyBoxMandates.$inferSelect;
+
+export type InsertBuyBoxResponse = z.infer<typeof insertBuyBoxResponseSchema>;
+export type BuyBoxResponse = typeof buyBoxResponses.$inferSelect;
+
+export type InsertBuyBoxNotification = z.infer<typeof insertBuyBoxNotificationSchema>;
+export type BuyBoxNotification = typeof buyBoxNotifications.$inferSelect;
+
+// Validation schemas for BuyBox forms
+export const buyBoxMandateFormSchema = z.object({
+  polygonGeoJson: z.any(),
+  areaName: z.string().optional(),
+  targetPrice: z.number().min(0).optional(),
+  maxPrice: z.number().min(0).optional(),
+  lotFrontage: z.number().min(0).optional(),
+  lotFrontageUnit: z.enum(["ft", "m"]).default("ft"),
+  lotDepth: z.number().min(0).optional(),
+  lotDepthUnit: z.enum(["ft", "m"]).default("ft"),
+  totalLotArea: z.number().min(0).optional(),
+  totalLotAreaUnit: z.enum(["sqft", "sqm", "acres"]).default("sqft"),
+  zoningPlanningStatus: z.string().optional(),
+  buildingType: z.enum(buyBoxBuildingTypes).optional(),
+  occupancy: z.enum(buyBoxOccupancyTypes).optional(),
+  targetClosingDate: z.string().optional(),
+  possessionDate: z.string().optional(),
+  offerConditions: z.array(z.string()).optional(),
+  additionalNotes: z.string().optional(),
+});
+
+export type BuyBoxMandateFormData = z.infer<typeof buyBoxMandateFormSchema>;
+
+export const buyBoxAgreementFormSchema = z.object({
+  termEndDate: z.string(),
+  holdoverDays: z.number().min(0).max(180).default(60),
+  commissionPercent: z.number().min(0).max(10).default(2.5),
+  signedName: z.string().min(1, "Legal name is required"),
+  signatureDataUrl: z.string().min(1, "Signature is required"),
+  agreedToTerms: z.boolean().refine(val => val === true, "You must agree to the terms"),
+});
+
+export type BuyBoxAgreementFormData = z.infer<typeof buyBoxAgreementFormSchema>;
+
+// ============================================
+// CO-INVESTING SCHEMAS
+// ============================================
+
+export const coInvestSkillsList = [
+  "contractor",
+  "property_manager", 
+  "realtor",
+  "mortgage_broker",
+  "accountant",
+  "designer",
+  "project_manager",
+  "analyst",
+  "legal",
+  "insurance",
+  "handyman",
+  "marketing",
+  "other"
+] as const;
+
+export type CoInvestSkill = (typeof coInvestSkillsList)[number];
+
+export const coInvestInvestorTypes = ["owner_occupier", "investor", "builder", "agent", "other"] as const;
+export const coInvestTimeHorizons = ["0_3m", "3_6m", "6_12m", "12m_plus"] as const;
+export const coInvestRiskTolerances = ["low", "medium", "high"] as const;
+export const coInvestContactPreferences = ["in_app", "email"] as const;
+
+export const coInvestGroupStatuses = ["forming", "under_contract", "closed", "paused"] as const;
+export const coInvestOwnershipStructures = ["tic", "joint_tenancy"] as const;
+export const coInvestJurisdictions = ["ON", "BC", "AB", "QC", "NS", "NB", "MB", "SK", "PE", "NL", "YT", "NT", "NU", "US", "other"] as const;
+export const coInvestPropertyTypes = ["single_family", "condo", "duplex", "triplex", "fourplex", "small_multifamily_5_19", "20_plus", "land_development", "mixed_use", "other"] as const;
+export const coInvestStrategies = ["buy_hold", "brrr", "flip", "airbnb", "student", "other"] as const;
+export const coInvestVisibilities = ["public", "members_only", "unlisted"] as const;
+export const coInvestMembershipStatuses = ["requested", "approved", "rejected", "left"] as const;
+export const coInvestMemberRoles = ["owner", "member"] as const;
+export const coInvestChecklistTiers = ["simple_coownership", "borderline", "likely_complex"] as const;
+
+// BRA (Buyer Representation Agreement) status types
+export const braStatusTypes = ["not_started", "pending", "signed", "declined"] as const;
+export const coinvestAckStatusTypes = ["not_started", "signed"] as const;
+export const complianceEventTypes = ["gate_shown", "bra_started", "bra_signed", "ack_signed", "access_denied", "jurisdiction_changed"] as const;
+
+// Extended user profile for co-investing
+export const coInvestUserProfiles = pgTable("coinvest_user_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  displayName: text("display_name"),
+  location: text("location"),
+  city: text("city"),
+  region: text("region"),
+  country: text("country").default("canada"),
+  investorType: text("investor_type"),
+  skills: text("skills").array(),
+  certifications: text("certifications").array(),
+  capitalMinCad: real("capital_min_cad"),
+  capitalMaxCad: real("capital_max_cad"),
+  timeHorizon: text("time_horizon"),
+  riskTolerance: text("risk_tolerance"),
+  contactPreference: text("contact_preference").default("in_app"),
+  disclaimerAcceptedAt: timestamp("disclaimer_accepted_at"),
+  
+  // BRA (Buyer Representation Agreement) fields for Ontario
+  braStatus: text("bra_status").default("not_started"),
+  braSignedAt: timestamp("bra_signed_at"),
+  braDocumentId: varchar("bra_document_id"),
+  braJurisdiction: varchar("bra_jurisdiction"),
+  
+  // Co-Invest Acknowledgement fields
+  coinvestAckStatus: text("coinvest_ack_status").default("not_started"),
+  coinvestAckSignedAt: timestamp("coinvest_ack_signed_at"),
+  coinvestAckVersion: varchar("coinvest_ack_version"),
+  coinvestAckSignedName: text("coinvest_ack_signed_name"),
+  coinvestAckSignatureDataUrl: text("coinvest_ack_signature_data_url"),
+  
+  // Representation details
+  representationBrokerage: text("representation_brokerage").default("Valery Real Estate Inc."),
+  representationAgent: text("representation_agent").default("Daniel Foch"),
+  
+  // User's selected jurisdiction (for gating)
+  selectedJurisdiction: varchar("selected_jurisdiction"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Compliance audit log for Co-Investing
+export const coInvestComplianceLogs = pgTable("coinvest_compliance_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  eventType: text("event_type").notNull(),
+  metadata: jsonb("metadata"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const coInvestComplianceLogsRelations = relations(coInvestComplianceLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [coInvestComplianceLogs.userId],
+    references: [users.id],
+  }),
+}));
+
+// Co-invest groups (opportunities)
+export const coInvestGroups = pgTable("coinvest_groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerUserId: varchar("owner_user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status").default("forming").notNull(),
+  ownershipStructure: text("ownership_structure").notNull(),
+  jurisdiction: text("jurisdiction").notNull(),
+  propertyAddress: text("property_address"),
+  propertyCity: text("property_city"),
+  propertyRegion: text("property_region"),
+  propertyCountry: text("property_country").default("canada"),
+  propertyType: text("property_type"),
+  unitsCount: integer("units_count"),
+  targetStrategy: text("target_strategy"),
+  targetCloseDate: timestamp("target_close_date"),
+  capitalTargetCad: real("capital_target_cad"),
+  minCommitmentCad: real("min_commitment_cad"),
+  targetGroupSize: integer("target_group_size"),
+  skillsNeeded: text("skills_needed").array(),
+  visibility: text("visibility").default("public").notNull(),
+  requiresAccredited: boolean("requires_accredited").default(false),
+  checklistResultId: varchar("checklist_result_id"),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  analysisSnapshot: jsonb("analysis_snapshot"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Group memberships
+export const coInvestMemberships = pgTable("coinvest_memberships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").references(() => coInvestGroups.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  role: text("role").default("member").notNull(),
+  pledgedCapitalCad: real("pledged_capital_cad"),
+  skillsOffered: text("skills_offered").array(),
+  note: text("note"),
+  status: text("status").default("requested").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Checklist results (complexity scoring)
+export const coInvestChecklistResults = pgTable("coinvest_checklist_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").references(() => coInvestGroups.id),
+  userId: varchar("user_id").references(() => users.id),
+  inputs: jsonb("inputs").notNull(),
+  score: integer("score").notNull(),
+  tier: text("tier").notNull(),
+  flags: text("flags").array(),
+  recommendations: text("recommendations").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Group messages (chat-lite)
+export const coInvestMessages = pgTable("coinvest_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").references(() => coInvestGroups.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations
+export const coInvestUserProfilesRelations = relations(coInvestUserProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [coInvestUserProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export const coInvestGroupsRelations = relations(coInvestGroups, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [coInvestGroups.ownerUserId],
+    references: [users.id],
+  }),
+  analysis: one(analyses, {
+    fields: [coInvestGroups.analysisId],
+    references: [analyses.id],
+  }),
+  memberships: many(coInvestMemberships),
+  messages: many(coInvestMessages),
+  checklistResult: one(coInvestChecklistResults, {
+    fields: [coInvestGroups.checklistResultId],
+    references: [coInvestChecklistResults.id],
+  }),
+}));
+
+export const coInvestMembershipsRelations = relations(coInvestMemberships, ({ one }) => ({
+  group: one(coInvestGroups, {
+    fields: [coInvestMemberships.groupId],
+    references: [coInvestGroups.id],
+  }),
+  user: one(users, {
+    fields: [coInvestMemberships.userId],
+    references: [users.id],
+  }),
+}));
+
+export const coInvestChecklistResultsRelations = relations(coInvestChecklistResults, ({ one }) => ({
+  group: one(coInvestGroups, {
+    fields: [coInvestChecklistResults.groupId],
+    references: [coInvestGroups.id],
+  }),
+  user: one(users, {
+    fields: [coInvestChecklistResults.userId],
+    references: [users.id],
+  }),
+}));
+
+export const coInvestMessagesRelations = relations(coInvestMessages, ({ one }) => ({
+  group: one(coInvestGroups, {
+    fields: [coInvestMessages.groupId],
+    references: [coInvestGroups.id],
+  }),
+  user: one(users, {
+    fields: [coInvestMessages.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schemas
+export const insertCoInvestUserProfileSchema = createInsertSchema(coInvestUserProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCoInvestGroupSchema = createInsertSchema(coInvestGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCoInvestMembershipSchema = createInsertSchema(coInvestMemberships).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCoInvestChecklistResultSchema = createInsertSchema(coInvestChecklistResults).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCoInvestMessageSchema = createInsertSchema(coInvestMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCoInvestComplianceLogSchema = createInsertSchema(coInvestComplianceLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type InsertCoInvestUserProfile = z.infer<typeof insertCoInvestUserProfileSchema>;
+export type CoInvestUserProfile = typeof coInvestUserProfiles.$inferSelect;
+
+export type InsertCoInvestComplianceLog = z.infer<typeof insertCoInvestComplianceLogSchema>;
+export type CoInvestComplianceLog = typeof coInvestComplianceLogs.$inferSelect;
+
+export type BraStatus = (typeof braStatusTypes)[number];
+export type CoinvestAckStatus = (typeof coinvestAckStatusTypes)[number];
+export type ComplianceEventType = (typeof complianceEventTypes)[number];
+
+export type InsertCoInvestGroup = z.infer<typeof insertCoInvestGroupSchema>;
+export type CoInvestGroup = typeof coInvestGroups.$inferSelect;
+
+export type InsertCoInvestMembership = z.infer<typeof insertCoInvestMembershipSchema>;
+export type CoInvestMembership = typeof coInvestMemberships.$inferSelect;
+
+export type InsertCoInvestChecklistResult = z.infer<typeof insertCoInvestChecklistResultSchema>;
+export type CoInvestChecklistResult = typeof coInvestChecklistResults.$inferSelect;
+
+export type InsertCoInvestMessage = z.infer<typeof insertCoInvestMessageSchema>;
+export type CoInvestMessage = typeof coInvestMessages.$inferSelect;
+
+// Checklist input validation
+export const coInvestChecklistInputSchema = z.object({
+  numberOfProperties: z.number().min(1).default(1),
+  propertyType: z.string().optional(),
+  unitsCount: z.number().min(0).default(0),
+  groupSize: z.number().min(1).default(2),
+  marketingToPublic: z.boolean().default(false),
+  passiveInvestors: z.boolean().default(false),
+  profitSharingPromised: z.boolean().default(false),
+  managerCentralized: z.boolean().default(false),
+  multiplePropertiesOrPortfolioPlan: z.boolean().default(false),
+  relianceOnSponsorEfforts: z.boolean().default(false),
+  sophisticatedStructure: z.boolean().default(false),
+  renovationDevelopmentIntensity: z.enum(["light", "moderate", "heavy"]).default("light"),
+});
+
+export type CoInvestChecklistInput = z.infer<typeof coInvestChecklistInputSchema>;
+
+// Group creation wizard form schema
+export const coInvestGroupFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  ownershipStructure: z.enum(["tic", "joint_tenancy"]),
+  jurisdiction: z.string().min(1, "Jurisdiction is required"),
+  visibility: z.enum(["public", "members_only", "unlisted"]).default("public"),
+  propertyAddress: z.string().optional(),
+  propertyCity: z.string().optional(),
+  propertyRegion: z.string().optional(),
+  propertyCountry: z.string().default("canada"),
+  propertyType: z.string().optional(),
+  unitsCount: z.number().min(0).optional(),
+  targetStrategy: z.string().optional(),
+  targetCloseDate: z.string().optional(),
+  capitalTargetCad: z.number().min(0).optional(),
+  minCommitmentCad: z.number().min(0).optional(),
+  targetGroupSize: z.number().min(2).max(50).optional(),
+  skillsNeeded: z.array(z.string()).optional(),
+  requiresAccredited: z.boolean().default(false),
+});
+
+export type CoInvestGroupFormData = z.infer<typeof coInvestGroupFormSchema>;
+
+// True Cost of Homeownership tables
+export const trueCostInquiries = pgTable("true_cost_inquiries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  homeValue: integer("home_value").notNull(),
+  city: text("city").notNull(),
+  homeType: text("home_type").notNull(),
+  buyerType: text("buyer_type").notNull(),
+  isNewConstruction: boolean("is_new_construction").default(false),
+  squareFootage: integer("square_footage"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const trueCostInquiriesRelations = relations(trueCostInquiries, ({ one }) => ({
+  user: one(users, {
+    fields: [trueCostInquiries.userId],
+    references: [users.id],
+  }),
+}));
+
+export const trueCostBreakdowns = pgTable("true_cost_breakdowns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  inquiryId: varchar("inquiry_id").references(() => trueCostInquiries.id).notNull(),
+  breakdownJson: jsonb("breakdown_json").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const trueCostBreakdownsRelations = relations(trueCostBreakdowns, ({ one }) => ({
+  inquiry: one(trueCostInquiries, {
+    fields: [trueCostBreakdowns.inquiryId],
+    references: [trueCostInquiries.id],
+  }),
+}));
+
+export const insertTrueCostInquirySchema = createInsertSchema(trueCostInquiries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrueCostInquiry = z.infer<typeof insertTrueCostInquirySchema>;
+export type TrueCostInquiry = typeof trueCostInquiries.$inferSelect;
+export type TrueCostBreakdown = typeof trueCostBreakdowns.$inferSelect;
+
+// Will It Plex - Capstone Projects
+export const capstoneProjects = pgTable("capstone_projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  title: text("title"),
+  strategy: text("strategy"), // "buy_and_hold" or "multiplex"
+  currentStep: integer("current_step").default(1),
+  status: text("status").default("draft"), // "draft", "in_progress", "completed"
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const capstoneProjectsRelations = relations(capstoneProjects, ({ one, many }) => ({
+  user: one(users, {
+    fields: [capstoneProjects.userId],
+    references: [users.id],
+  }),
+  property: one(capstoneProperties),
+  costModel: one(capstoneCostModels),
+  proforma: one(capstoneProformas),
+}));
+
+export const capstoneProperties = pgTable("capstone_properties", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").references(() => capstoneProjects.id).notNull(),
+  sourceUrl: text("source_url"),
+  listingId: text("listing_id"),
+  address: text("address"),
+  city: text("city"),
+  province: text("province"),
+  postalCode: text("postal_code"),
+  price: integer("price"),
+  annualTaxes: integer("annual_taxes"),
+  lotFrontage: real("lot_frontage"),
+  lotDepth: real("lot_depth"),
+  lotArea: real("lot_area"),
+  bedrooms: integer("bedrooms"),
+  bathrooms: integer("bathrooms"),
+  squareFootage: integer("square_footage"),
+  propertyType: text("property_type"),
+  buildingType: text("building_type"),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const capstonePropertiesRelations = relations(capstoneProperties, ({ one }) => ({
+  project: one(capstoneProjects, {
+    fields: [capstoneProperties.projectId],
+    references: [capstoneProjects.id],
+  }),
+}));
+
+export const capstoneCostModels = pgTable("capstone_cost_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").references(() => capstoneProjects.id).notNull(),
+  // Buy & Hold inputs
+  monthlyRent: integer("monthly_rent"),
+  downPaymentPercent: real("down_payment_percent"),
+  interestRate: real("interest_rate"),
+  amortizationYears: integer("amortization_years"),
+  // Multiplex inputs
+  zoningCode: text("zoning_code"),
+  lotCoverageRatio: real("lot_coverage_ratio"),
+  maxStories: integer("max_stories"),
+  maxUnits: integer("max_units"),
+  hasGardenSuite: boolean("has_garden_suite").default(false),
+  constructionCostPerSqft: integer("construction_cost_per_sqft"),
+  // MLI Select points
+  mliAccessibilityPoints: integer("mli_accessibility_points").default(0),
+  mliAffordabilityPoints: integer("mli_affordability_points").default(0),
+  mliEnergyPoints: integer("mli_energy_points").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const capstoneCostModelsRelations = relations(capstoneCostModels, ({ one }) => ({
+  project: one(capstoneProjects, {
+    fields: [capstoneCostModels.projectId],
+    references: [capstoneProjects.id],
+  }),
+}));
+
+export const capstoneProformas = pgTable("capstone_proformas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").references(() => capstoneProjects.id).notNull(),
+  // Calculated metrics
+  buildableGfa: real("buildable_gfa"),
+  totalConstructionCost: integer("total_construction_cost"),
+  totalProjectCost: integer("total_project_cost"),
+  noi: integer("noi"),
+  dscr: real("dscr"),
+  capRate: real("cap_rate"),
+  cashOnCashReturn: real("cash_on_cash_return"),
+  yieldOnCost: real("yield_on_cost"),
+  // Full results JSON
+  resultsJson: jsonb("results_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const capstoneProformasRelations = relations(capstoneProformas, ({ one }) => ({
+  project: one(capstoneProjects, {
+    fields: [capstoneProformas.projectId],
+    references: [capstoneProjects.id],
+  }),
+}));
+
+// Insert schemas
+export const insertCapstoneProjectSchema = createInsertSchema(capstoneProjects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCapstonePropertySchema = createInsertSchema(capstoneProperties).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCapstoneCostModelSchema = createInsertSchema(capstoneCostModels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCapstoneProformaSchema = createInsertSchema(capstoneProformas).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types
+export type InsertCapstoneProject = z.infer<typeof insertCapstoneProjectSchema>;
+export type CapstoneProject = typeof capstoneProjects.$inferSelect;
+export type InsertCapstoneProperty = z.infer<typeof insertCapstonePropertySchema>;
+export type CapstoneProperty = typeof capstoneProperties.$inferSelect;
+export type InsertCapstoneCostModel = z.infer<typeof insertCapstoneCostModelSchema>;
+export type CapstoneCostModel = typeof capstoneCostModels.$inferSelect;
+export type InsertCapstoneProforma = z.infer<typeof insertCapstoneProformaSchema>;
+export type CapstoneProforma = typeof capstoneProformas.$inferSelect;
+
+// ============================================
+// Rent Pulse — aggregated median rents per city
+// ============================================
+export const rentPulse = pgTable("rent_pulse", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  city: text("city").notNull(),
+  province: text("province").notNull(),
+  bedrooms: text("bedrooms").notNull(),
+  medianRent: integer("median_rent").notNull(),
+  averageRent: integer("average_rent"),
+  sampleSize: integer("sample_size").notNull(),
+  minRent: integer("min_rent"),
+  maxRent: integer("max_rent"),
+  scrapedAt: timestamp("scraped_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ============================================
+// Rent Listings — individual scraped listings
+// ============================================
+export const rentListings = pgTable("rent_listings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  externalId: text("external_id"),
+  city: text("city").notNull(),
+  province: text("province").notNull(),
+  address: text("address"),
+  bedrooms: text("bedrooms").notNull(),
+  bathrooms: text("bathrooms"),
+  rent: integer("rent").notNull(),
+  squareFootage: integer("square_footage"),
+  lat: real("lat"),
+  lng: real("lng"),
+  sourceUrl: text("source_url"),
+  sourcePlatform: text("source_platform"),
+  listingDate: timestamp("listing_date"),
+  scrapedAt: timestamp("scraped_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRentPulseSchema = createInsertSchema(rentPulse).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRentListingSchema = createInsertSchema(rentListings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRentPulse = z.infer<typeof insertRentPulseSchema>;
+export type RentPulse = typeof rentPulse.$inferSelect;
+export type InsertRentListing = z.infer<typeof insertRentListingSchema>;
+export type RentListing = typeof rentListings.$inferSelect;
+
+// ============================================
+// REALTOR PARTNER NETWORK
+// ============================================
+
+export const realtorMarketClaims = pgTable("realtor_market_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  partnerId: varchar("partner_id").references(() => industryPartners.id),
+  marketCity: text("market_city").notNull(),
+  marketRegion: text("market_region").notNull(),
+  status: text("status").default("active").notNull(),
+  referralFeePercent: real("referral_fee_percent").default(25).notNull(),
+  referralAgreementSignedAt: timestamp("referral_agreement_signed_at"),
+  referralAgreementSignature: text("referral_agreement_signature"),
+  referralAgreementSignedName: text("referral_agreement_signed_name"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  monthlyFee: real("monthly_fee").default(49.99),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const realtorLeadNotifications = pgTable("realtor_lead_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  realtorClaimId: varchar("realtor_claim_id").references(() => realtorMarketClaims.id).notNull(),
+  realtorUserId: varchar("realtor_user_id").references(() => users.id).notNull(),
+  leadId: varchar("lead_id").references(() => leads.id).notNull(),
+  propertyId: varchar("property_id").references(() => properties.id),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  dealAddress: text("deal_address"),
+  dealCity: text("deal_city"),
+  dealRegion: text("deal_region"),
+  dealStrategy: text("deal_strategy"),
+  status: text("status").default("new").notNull(),
+  notifiedAt: timestamp("notified_at").defaultNow().notNull(),
+  viewedAt: timestamp("viewed_at"),
+  claimedAt: timestamp("claimed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const realtorIntroductions = pgTable("realtor_introductions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  notificationId: varchar("notification_id").references(() => realtorLeadNotifications.id).notNull(),
+  realtorUserId: varchar("realtor_user_id").references(() => users.id).notNull(),
+  leadName: text("lead_name").notNull(),
+  leadEmail: text("lead_email").notNull(),
+  realtorName: text("realtor_name").notNull(),
+  realtorEmail: text("realtor_email").notNull(),
+  realtorPhone: text("realtor_phone"),
+  realtorCompany: text("realtor_company"),
+  introEmailSubject: text("intro_email_subject").notNull(),
+  introEmailHtml: text("intro_email_html").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const realtorMarketClaimsRelations = relations(realtorMarketClaims, ({ one, many }) => ({
+  user: one(users, { fields: [realtorMarketClaims.userId], references: [users.id] }),
+  partner: one(industryPartners, { fields: [realtorMarketClaims.partnerId], references: [industryPartners.id] }),
+  notifications: many(realtorLeadNotifications),
+}));
+
+export const realtorLeadNotificationsRelations = relations(realtorLeadNotifications, ({ one }) => ({
+  claim: one(realtorMarketClaims, { fields: [realtorLeadNotifications.realtorClaimId], references: [realtorMarketClaims.id] }),
+  lead: one(leads, { fields: [realtorLeadNotifications.leadId], references: [leads.id] }),
+  realtorUser: one(users, { fields: [realtorLeadNotifications.realtorUserId], references: [users.id] }),
+}));
+
+export const realtorIntroductionsRelations = relations(realtorIntroductions, ({ one }) => ({
+  notification: one(realtorLeadNotifications, { fields: [realtorIntroductions.notificationId], references: [realtorLeadNotifications.id] }),
+  realtorUser: one(users, { fields: [realtorIntroductions.realtorUserId], references: [users.id] }),
+}));
+
+export const insertRealtorMarketClaimSchema = createInsertSchema(realtorMarketClaims).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRealtorLeadNotificationSchema = createInsertSchema(realtorLeadNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRealtorIntroductionSchema = createInsertSchema(realtorIntroductions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRealtorMarketClaim = z.infer<typeof insertRealtorMarketClaimSchema>;
+export type RealtorMarketClaim = typeof realtorMarketClaims.$inferSelect;
+export type InsertRealtorLeadNotification = z.infer<typeof insertRealtorLeadNotificationSchema>;
+export type RealtorLeadNotification = typeof realtorLeadNotifications.$inferSelect;
+export type InsertRealtorIntroduction = z.infer<typeof insertRealtorIntroductionSchema>;
+export type RealtorIntroduction = typeof realtorIntroductions.$inferSelect;
+
+// ============================================
+// COMMUNITY UNDERWRITING TABLES
+// ============================================
+
+export const underwritingNotes = pgTable("underwriting_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  unitCount: integer("unit_count"),
+  rentsJson: jsonb("rents_json"),
+  vacancy: real("vacancy"),
+  expenseRatio: real("expense_ratio"),
+  noteText: text("note_text"),
+  score: integer("score").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const listingComments = pgTable("listing_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  parentCommentId: varchar("parent_comment_id"),
+  referencedAnalysisId: varchar("referenced_analysis_id"),
+  body: text("body").notNull(),
+  visibility: text("visibility").default("public").notNull(),
+  status: text("status").default("active").notNull(),
+  score: integer("score").default(0),
+  helpfulCount: integer("helpful_count").default(0),
+  replyCount: integer("reply_count").default(0),
+  reportCount: integer("report_count").default(0),
+  isPinned: boolean("is_pinned").default(false).notNull(),
+  userDisplaySnapshot: text("user_display_snapshot"),
+  metadataJson: jsonb("metadata_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  editedAt: timestamp("edited_at"),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const propertyAnalyses = pgTable("property_analyses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  propertyId: varchar("property_id").references(() => properties.id),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  parentAnalysisId: varchar("parent_analysis_id"),
+  sourceAnalysisId: varchar("source_analysis_id"),
+  visibility: text("visibility").default("public").notNull(),
+  title: text("title"),
+  summary: text("summary"),
+  userNotes: text("user_notes"),
+  aiAnalysisText: text("ai_analysis_text"),
+  userAnalysisText: text("user_analysis_text"),
+  sentiment: text("sentiment"),
+  city: text("city"),
+  province: text("province"),
+  market: text("market"),
+  neighbourhood: text("neighbourhood"),
+  propertyType: text("property_type"),
+  listingPrice: real("listing_price"),
+  listingSnapshot: jsonb("listing_snapshot"),
+  sourceContext: jsonb("source_context"),
+  assumptions: jsonb("assumptions"),
+  calculatedMetrics: jsonb("calculated_metrics"),
+  aiAssumptions: jsonb("ai_assumptions"),
+  finalAssumptions: jsonb("final_assumptions"),
+  dataUseConsent: jsonb("data_use_consent"),
+  modelVersion: text("model_version"),
+  promptVersion: text("prompt_version"),
+  isDeleted: boolean("is_deleted").default(false).notNull(),
+  isAnonymized: boolean("is_anonymized").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const analysisAssumptionChanges = pgTable("analysis_assumption_changes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  fieldName: text("field_name").notNull(),
+  aiValue: jsonb("ai_value"),
+  userValue: jsonb("user_value"),
+  deltaValue: jsonb("delta_value"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const analysisFeedback = pgTable("analysis_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  feedbackType: text("feedback_type").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const analysisConsentEvents = pgTable("analysis_consent_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  visibility: text("visibility").notNull(),
+  useForProductImprovement: boolean("use_for_product_improvement").default(false).notNull(),
+  useForAiTraining: boolean("use_for_ai_training").default(false).notNull(),
+  useForAnonymizedMarketDataset: boolean("use_for_anonymized_market_dataset").default(false).notNull(),
+  allowCommercialDataLicensing: boolean("allow_commercial_data_licensing").default(false).notNull(),
+  consentTextVersion: text("consent_text_version").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const analysisEvents = pgTable("analysis_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  eventType: text("event_type").notNull(),
+  visibility: text("visibility"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const underwritingAssumptionSnapshots = pgTable("underwriting_assumption_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  snapshotType: text("snapshot_type").notNull(),
+  assumptions: jsonb("assumptions").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const aiPromptVersions = pgTable("ai_prompt_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  version: text("version").notNull(),
+  promptTemplate: text("prompt_template"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const aiOutputVersions = pgTable("ai_output_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id).notNull(),
+  promptVersion: text("prompt_version"),
+  modelVersion: text("model_version"),
+  outputText: text("output_text"),
+  outputJson: jsonb("output_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const communityMetricSnapshots = pgTable("community_metric_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  aggregateJson: jsonb("aggregate_json").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const votes = pgTable("votes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: varchar("target_id").notNull(),
+  value: integer("value").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueUserTarget: uniqueIndex("votes_user_target_idx").on(table.userId, table.targetType, table.targetId),
+}));
+
+export const contributionEvents = pgTable("contribution_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  points: integer("points").notNull(),
+  targetType: text("target_type"),
+  targetId: varchar("target_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const listingAnalysisAggregates = pgTable("listing_analysis_aggregates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingMlsNumber: text("listing_mls_number").notNull().unique(),
+  communityCapRate: real("community_cap_rate"),
+  rentsUsedJson: jsonb("rents_used_json"),
+  analysisCount: integer("analysis_count").default(0),
+  commentCount: integer("comment_count").default(0),
+  totalAnalysisCount: integer("total_analysis_count").default(0),
+  publicAnalysisCount: integer("public_analysis_count").default(0),
+  uniquePublicUserCount: integer("unique_public_user_count").default(0),
+  publicCommentCount: integer("public_comment_count").default(0),
+  uniquePublicCommentUserCount: integer("unique_public_comment_user_count").default(0),
+  latestPublicCommentAt: timestamp("latest_public_comment_at"),
+  latestPublicAnalysisAt: timestamp("latest_public_analysis_at"),
+  latestCommentPreview: text("latest_comment_preview"),
+  latestCommentAt: timestamp("latest_comment_at"),
+  medianCapRate: real("median_cap_rate"),
+  medianCashOnCash: real("median_cash_on_cash"),
+  medianProjectedRent: real("median_projected_rent"),
+  medianNoi: real("median_noi"),
+  medianMonthlyCashFlow: real("median_monthly_cash_flow"),
+  medianExpenseRatio: real("median_expense_ratio"),
+  bullishCount: integer("bullish_count").default(0),
+  neutralCount: integer("neutral_count").default(0),
+  bearishCount: integer("bearish_count").default(0),
+  consensusLabel: text("consensus_label"),
+  confidenceScore: real("confidence_score"),
+  latestPrivateNoteAt: timestamp("latest_private_note_at"),
+  pinnedCommentCount: integer("pinned_comment_count").default(0),
+  reportedCommentCount: integer("reported_comment_count").default(0),
+  lastAnalysisAt: timestamp("last_analysis_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const propertySaleEstimates = pgTable("property_sale_estimates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key").notNull(),
+  mlsNumber: text("mls_number"),
+  boardListingId: text("board_listing_id"),
+  board: text("board"),
+  sourceBoard: text("source_board"),
+  province: text("province"),
+  estimatePriceCents: bigint("estimate_price_cents", { mode: "number" }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("CAD").notNull(),
+  estimateContext: jsonb("estimate_context"),
+  status: text("status").default("active").notNull(),
+  lockedAt: timestamp("locked_at"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userListingUnique: uniqueIndex("property_sale_estimates_user_listing_idx").on(table.userId, table.listingKey),
+}));
+
+export const propertySaleEstimateRevisions = pgTable("property_sale_estimate_revisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  estimateId: varchar("estimate_id").references(() => propertySaleEstimates.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingKey: text("listing_key").notNull(),
+  previousEstimatePriceCents: bigint("previous_estimate_price_cents", { mode: "number" }),
+  estimatePriceCents: bigint("estimate_price_cents", { mode: "number" }).notNull(),
+  revisionReason: text("revision_reason").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const listingSaleResolutions = pgTable("listing_sale_resolutions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key").notNull().unique(),
+  mlsNumber: text("mls_number"),
+  boardListingId: text("board_listing_id"),
+  board: text("board"),
+  province: text("province"),
+  ddfLastSeenAt: timestamp("ddf_last_seen_at"),
+  ddfAbsentSince: timestamp("ddf_absent_since"),
+  absenceDetectionCount: integer("absence_detection_count").default(0).notNull(),
+  absenceReason: text("absence_reason").default("still_active").notNull(),
+  resolutionStatus: text("resolution_status").default("not_started").notNull(),
+  actualSalePriceCents: bigint("actual_sale_price_cents", { mode: "number" }),
+  soldDate: timestamp("sold_date"),
+  sourceType: text("source_type").default("unavailable").notNull(),
+  sourceName: text("source_name"),
+  sourceUrl: text("source_url"),
+  sourceConfidence: numeric("source_confidence", { precision: 5, scale: 4 }),
+  lookupAttemptCount: integer("lookup_attempt_count").default(0).notNull(),
+  lastLookupAttemptAt: timestamp("last_lookup_attempt_at"),
+  nextLookupAttemptAt: timestamp("next_lookup_attempt_at"),
+  errorMessage: text("error_message"),
+  excludeFromMetrics: boolean("exclude_from_metrics").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const userSaleEstimatorMetrics = pgTable("user_sale_estimator_metrics", {
+  userId: varchar("user_id").primaryKey().references(() => users.id),
+  eligibleEstimateCount: integer("eligible_estimate_count").default(0).notNull(),
+  resolvedEstimateCount: integer("resolved_estimate_count").default(0).notNull(),
+  unavailableEstimateCount: integer("unavailable_estimate_count").default(0).notNull(),
+  medianAbsolutePercentageError: real("median_absolute_percentage_error"),
+  meanAbsolutePercentageError: real("mean_absolute_percentage_error"),
+  trimmedMeanAbsolutePercentageError: real("trimmed_mean_absolute_percentage_error"),
+  rootMeanSquaredErrorCents: bigint("root_mean_squared_error_cents", { mode: "number" }),
+  biasPercentage: real("bias_percentage"),
+  reliabilityMultiplier: real("reliability_multiplier").default(0).notNull(),
+  oracleScore: real("oracle_score").default(0).notNull(),
+  lastRecalculatedAt: timestamp("last_recalculated_at").defaultNow().notNull(),
+});
+
+export const userActivityEvents = pgTable("user_activity_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id"),
+  eventName: text("event_name").notNull(),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key"),
+  analysisId: varchar("analysis_id"),
+  eventTimestamp: timestamp("event_timestamp").defaultNow().notNull(),
+  sourcePage: text("source_page"),
+  component: text("component"),
+  metadata: jsonb("metadata"),
+  hashedIp: text("hashed_ip"),
+  userAgentHash: text("user_agent_hash"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userInferenceProfiles = pgTable("user_inference_profiles", {
+  userId: varchar("user_id").primaryKey().references(() => users.id),
+  preferredMarkets: jsonb("preferred_markets"),
+  preferredPropertyTypes: jsonb("preferred_property_types"),
+  medianTimeOnListingCard: real("median_time_on_listing_card"),
+  estimateSubmissionRate: real("estimate_submission_rate"),
+  estimatorAccuracyFeatures: jsonb("estimator_accuracy_features"),
+  underwritingAssumptionPatterns: jsonb("underwriting_assumption_patterns"),
+  analysisQualityFeatures: jsonb("analysis_quality_features"),
+  antiSpamFeatures: jsonb("anti_spam_features"),
+  lastFeatureBuildAt: timestamp("last_feature_build_at"),
+});
+
+export const analysisQualityScores = pgTable("analysis_quality_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  propertyAnalysisId: varchar("property_analysis_id").references(() => propertyAnalyses.id),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key"),
+  qualityScore: real("quality_score").notNull(),
+  confidenceScore: real("confidence_score").notNull(),
+  plausibilityScore: real("plausibility_score").notNull(),
+  interactionDepthScore: real("interaction_depth_score").notNull(),
+  dataCompletenessScore: real("data_completeness_score").notNull(),
+  uniquenessScore: real("uniqueness_score").notNull(),
+  dealViabilityScore: real("deal_viability_score").notNull(),
+  spamRiskScore: real("spam_risk_score").notNull(),
+  leaderboardEligible: boolean("leaderboard_eligible").default(false).notNull(),
+  exclusionReason: text("exclusion_reason"),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, (table) => ({
+  analysisUnique: uniqueIndex("analysis_quality_scores_analysis_idx").on(table.analysisId),
+  propertyAnalysisUnique: uniqueIndex("analysis_quality_scores_property_analysis_idx").on(table.propertyAnalysisId),
+}));
+
+export const leaderboardPeriods = pgTable("leaderboard_periods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  periodType: text("period_type").notNull(),
+  periodStartDate: timestamp("period_start_date").notNull(),
+  periodEndDate: timestamp("period_end_date").notNull(),
+  status: text("status").default("open").notNull(),
+  finalizedAt: timestamp("finalized_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  periodUnique: uniqueIndex("leaderboard_periods_type_start_idx").on(table.periodType, table.periodStartDate),
+}));
+
+export const leaderboardSnapshots = pgTable("leaderboard_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leaderboardPeriodId: varchar("leaderboard_period_id").references(() => leaderboardPeriods.id).notNull(),
+  category: text("category").default("overall").notNull(),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  snapshotVersion: text("snapshot_version").default("leaderboard-v1").notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => ({
+  snapshotUnique: uniqueIndex("leaderboard_snapshots_period_category_idx").on(table.leaderboardPeriodId, table.category, table.snapshotVersion),
+}));
+
+export const leaderboardSnapshotEntries = pgTable("leaderboard_snapshot_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leaderboardSnapshotId: varchar("leaderboard_snapshot_id").references(() => leaderboardSnapshots.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  rank: integer("rank").notNull(),
+  previousRank: integer("previous_rank"),
+  rankChange: integer("rank_change"),
+  score: real("score").notNull(),
+  weightedScore: real("weighted_score").notNull(),
+  totalDealsAnalyzed: integer("total_deals_analyzed").default(0).notNull(),
+  monthlyDealsAnalyzed: integer("monthly_deals_analyzed").default(0).notNull(),
+  eligibleAnalysesCount: integer("eligible_analyses_count").default(0).notNull(),
+  excludedAnalysesCount: integer("excluded_analyses_count").default(0).notNull(),
+  averageConfidenceScore: real("average_confidence_score"),
+  marketOracleScore: real("market_oracle_score"),
+  salePredictionMedianError: real("sale_prediction_median_error"),
+  eligibleSalePredictionsCount: integer("eligible_sale_predictions_count").default(0).notNull(),
+  autoUnderwrittenAvgYield: real("auto_underwritten_avg_yield"),
+  userUnderwrittenAvgYield: real("user_underwritten_avg_yield"),
+  userVsAutoYieldDelta: real("user_vs_auto_yield_delta"),
+  kpis: jsonb("kpis"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  snapshotUserUnique: uniqueIndex("leaderboard_snapshot_entries_snapshot_user_idx").on(table.leaderboardSnapshotId, table.userId),
+}));
+
+export const userDealActivityRollups = pgTable("user_deal_activity_rollups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  periodType: text("period_type").notNull(),
+  periodStartDate: timestamp("period_start_date").notNull(),
+  periodEndDate: timestamp("period_end_date").notNull(),
+  totalDealsAnalyzed: integer("total_deals_analyzed").default(0).notNull(),
+  eligibleDealsAnalyzed: integer("eligible_deals_analyzed").default(0).notNull(),
+  excludedOrLowConfidenceDeals: integer("excluded_or_low_confidence_deals").default(0).notNull(),
+  uniqueListingsAnalyzed: integer("unique_listings_analyzed").default(0).notNull(),
+  uniqueMarketsAnalyzed: integer("unique_markets_analyzed").default(0).notNull(),
+  averageAnalysisConfidenceScore: real("average_analysis_confidence_score"),
+  medianTimePerAnalysisSeconds: real("median_time_per_analysis_seconds"),
+  totalListingCardsOpened: integer("total_listing_cards_opened").default(0).notNull(),
+  totalUnderwritingSessions: integer("total_underwriting_sessions").default(0).notNull(),
+  totalSavedOrExportedAnalyses: integer("total_saved_or_exported_analyses").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  rollupUnique: uniqueIndex("user_deal_activity_rollups_user_period_idx").on(table.userId, table.periodType, table.periodStartDate),
+}));
+
+export const marketSentimentEvents = pgTable("market_sentiment_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: varchar("session_id"),
+  listingId: varchar("listing_id"),
+  listingKey: text("listing_key"),
+  analysisId: varchar("analysis_id"),
+  eventName: text("event_name").notNull(),
+  eventTimestamp: timestamp("event_timestamp").defaultNow().notNull(),
+  province: text("province"),
+  city: text("city"),
+  neighborhood: text("neighborhood"),
+  propertyType: text("property_type"),
+  priceBand: text("price_band"),
+  strategyType: text("strategy_type"),
+  source: text("source").notNull(),
+  sentimentScore: real("sentiment_score"),
+  confidenceScore: real("confidence_score"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const marketSentimentRollups = pgTable("market_sentiment_rollups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  periodType: text("period_type").notNull(),
+  periodStartDate: timestamp("period_start_date").notNull(),
+  periodEndDate: timestamp("period_end_date").notNull(),
+  province: text("province"),
+  city: text("city"),
+  neighborhood: text("neighborhood"),
+  propertyType: text("property_type"),
+  strategyType: text("strategy_type"),
+  totalListingViews: integer("total_listing_views").default(0).notNull(),
+  uniqueUsers: integer("unique_users").default(0).notNull(),
+  totalUnderwrites: integer("total_underwrites").default(0).notNull(),
+  eligibleUnderwrites: integer("eligible_underwrites").default(0).notNull(),
+  watchlistCount: integer("watchlist_count").default(0).notNull(),
+  bullishCount: integer("bullish_count").default(0).notNull(),
+  bearishCount: integer("bearish_count").default(0).notNull(),
+  passCount: integer("pass_count").default(0).notNull(),
+  offerCandidateCount: integer("offer_candidate_count").default(0).notNull(),
+  averageSentimentScore: real("average_sentiment_score"),
+  medianUserEstimatedSaleToListRatio: real("median_user_estimated_sale_to_list_ratio"),
+  averageUserEstimatedSaleToListRatio: real("average_user_estimated_sale_to_list_ratio"),
+  medianUserVsListDelta: real("median_user_vs_list_delta"),
+  medianUserVsAutoModelDelta: real("median_user_vs_auto_model_delta"),
+  averageAnalysisConfidenceScore: real("average_analysis_confidence_score"),
+  sampleSize: integer("sample_size").default(0).notNull(),
+  provisional: boolean("provisional").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  sentimentRollupUnique: uniqueIndex("market_sentiment_rollups_period_market_idx").on(
+    table.periodType,
+    table.periodStartDate,
+    table.province,
+    table.city,
+    table.neighborhood,
+    table.propertyType,
+    table.strategyType,
+  ),
+}));
+
+export const marketReportMetrics = pgTable("market_report_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  periodType: text("period_type").default("monthly").notNull(),
+  periodStartDate: timestamp("period_start_date").notNull(),
+  periodEndDate: timestamp("period_end_date").notNull(),
+  province: text("province"),
+  city: text("city"),
+  neighborhood: text("neighborhood"),
+  propertyType: text("property_type"),
+  strategyType: text("strategy_type"),
+  metricSource: text("metric_source").notNull(),
+  listingCount: integer("listing_count").default(0).notNull(),
+  analysisCount: integer("analysis_count").default(0).notNull(),
+  eligibleAnalysisCount: integer("eligible_analysis_count").default(0).notNull(),
+  uniqueUserCount: integer("unique_user_count"),
+  averageYield: real("average_yield"),
+  medianYield: real("median_yield"),
+  averageCapRate: real("average_cap_rate"),
+  medianCapRate: real("median_cap_rate"),
+  averageCashOnCashReturn: real("average_cash_on_cash_return"),
+  medianCashOnCashReturn: real("median_cash_on_cash_return"),
+  averageDscr: real("average_dscr"),
+  medianDscr: real("median_dscr"),
+  averageMonthlyCashflowCents: bigint("average_monthly_cashflow_cents", { mode: "number" }),
+  medianMonthlyCashflowCents: bigint("median_monthly_cashflow_cents", { mode: "number" }),
+  averagePriceCents: bigint("average_price_cents", { mode: "number" }),
+  medianPriceCents: bigint("median_price_cents", { mode: "number" }),
+  averageRentCents: bigint("average_rent_cents", { mode: "number" }),
+  medianRentCents: bigint("median_rent_cents", { mode: "number" }),
+  averageRentToPriceRatio: real("average_rent_to_price_ratio"),
+  medianRentToPriceRatio: real("median_rent_to_price_ratio"),
+  averageSentimentScore: real("average_sentiment_score"),
+  bullishShare: real("bullish_share"),
+  bearishShare: real("bearish_share"),
+  watchlistRate: real("watchlist_rate"),
+  offerCandidateRate: real("offer_candidate_rate"),
+  averageSalePredictionToListRatio: real("average_sale_prediction_to_list_ratio"),
+  sampleSize: integer("sample_size").default(0).notNull(),
+  provisional: boolean("provisional").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  marketReportMetricUnique: uniqueIndex("market_report_metrics_period_market_source_idx").on(
+    table.periodStartDate,
+    table.province,
+    table.city,
+    table.neighborhood,
+    table.propertyType,
+    table.strategyType,
+    table.metricSource,
+  ),
+}));
+
+export const analysisUnderwritingComparisons = pgTable("analysis_underwriting_comparisons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  propertyAnalysisId: varchar("property_analysis_id").references(() => propertyAnalyses.id),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingKey: text("listing_key"),
+  province: text("province"),
+  city: text("city"),
+  propertyType: text("property_type"),
+  strategyType: text("strategy_type"),
+  autoYield: real("auto_yield"),
+  userYield: real("user_yield"),
+  yieldDelta: real("yield_delta"),
+  autoCapRate: real("auto_cap_rate"),
+  userCapRate: real("user_cap_rate"),
+  capRateDelta: real("cap_rate_delta"),
+  autoCashflowCents: bigint("auto_cashflow_cents", { mode: "number" }),
+  userCashflowCents: bigint("user_cashflow_cents", { mode: "number" }),
+  cashflowDeltaCents: bigint("cashflow_delta_cents", { mode: "number" }),
+  autoRentAssumptionCents: bigint("auto_rent_assumption_cents", { mode: "number" }),
+  userRentAssumptionCents: bigint("user_rent_assumption_cents", { mode: "number" }),
+  rentDeltaCents: bigint("rent_delta_cents", { mode: "number" }),
+  autoExpenseAssumption: jsonb("auto_expense_assumption"),
+  userExpenseAssumption: jsonb("user_expense_assumption"),
+  expenseDelta: jsonb("expense_delta"),
+  autoFinancingAssumption: jsonb("auto_financing_assumption"),
+  userFinancingAssumption: jsonb("user_financing_assumption"),
+  financingDelta: jsonb("financing_delta"),
+  userChangedMajorAssumptions: boolean("user_changed_major_assumptions").default(false).notNull(),
+  userMoreBullishThanAuto: boolean("user_more_bullish_than_auto").default(false).notNull(),
+  userMoreBearishThanAuto: boolean("user_more_bearish_than_auto").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  analysisComparisonUnique: uniqueIndex("analysis_underwriting_comparisons_analysis_idx").on(table.analysisId),
+  propertyAnalysisComparisonUnique: uniqueIndex("analysis_underwriting_comparisons_property_analysis_idx").on(table.propertyAnalysisId),
+}));
+
+export const underwritingNotesRelations = relations(underwritingNotes, ({ one }) => ({
+  user: one(users, { fields: [underwritingNotes.userId], references: [users.id] }),
+}));
+
+export const listingCommentsRelations = relations(listingComments, ({ one }) => ({
+  user: one(users, { fields: [listingComments.userId], references: [users.id] }),
+}));
+
+export const propertyAnalysesRelations = relations(propertyAnalyses, ({ one }) => ({
+  user: one(users, { fields: [propertyAnalyses.userId], references: [users.id] }),
+  property: one(properties, { fields: [propertyAnalyses.propertyId], references: [properties.id] }),
+}));
+
+export const votesRelations = relations(votes, ({ one }) => ({
+  user: one(users, { fields: [votes.userId], references: [users.id] }),
+}));
+
+export const contributionEventsRelations = relations(contributionEvents, ({ one }) => ({
+  user: one(users, { fields: [contributionEvents.userId], references: [users.id] }),
+}));
+
+export const insertUnderwritingNoteSchema = createInsertSchema(underwritingNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  score: true,
+});
+
+export const insertListingCommentSchema = createInsertSchema(listingComments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  editedAt: true,
+  deletedAt: true,
+  score: true,
+  helpfulCount: true,
+  replyCount: true,
+  reportCount: true,
+});
+
+export const insertPropertyAnalysisSchema = createInsertSchema(propertyAnalyses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isDeleted: true,
+  isAnonymized: true,
+});
+
+export const insertAnalysisAssumptionChangeSchema = createInsertSchema(analysisAssumptionChanges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnalysisFeedbackSchema = createInsertSchema(analysisFeedback).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnalysisConsentEventSchema = createInsertSchema(analysisConsentEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnalysisEventSchema = createInsertSchema(analysisEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUnderwritingAssumptionSnapshotSchema = createInsertSchema(underwritingAssumptionSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAiPromptVersionSchema = createInsertSchema(aiPromptVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAiOutputVersionSchema = createInsertSchema(aiOutputVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCommunityMetricSnapshotSchema = createInsertSchema(communityMetricSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertVoteSchema = createInsertSchema(votes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertContributionEventSchema = createInsertSchema(contributionEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertListingAnalysisAggregateSchema = createInsertSchema(listingAnalysisAggregates).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const insertPropertySaleEstimateSchema = createInsertSchema(propertySaleEstimates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPropertySaleEstimateRevisionSchema = createInsertSchema(propertySaleEstimateRevisions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertListingSaleResolutionSchema = createInsertSchema(listingSaleResolutions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserActivityEventSchema = createInsertSchema(userActivityEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnalysisQualityScoreSchema = createInsertSchema(analysisQualityScores).omit({
+  id: true,
+  computedAt: true,
+});
+
+export const insertLeaderboardPeriodSchema = createInsertSchema(leaderboardPeriods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeaderboardSnapshotSchema = createInsertSchema(leaderboardSnapshots).omit({
+  id: true,
+  generatedAt: true,
+});
+
+export const insertLeaderboardSnapshotEntrySchema = createInsertSchema(leaderboardSnapshotEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserDealActivityRollupSchema = createInsertSchema(userDealActivityRollups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMarketSentimentEventSchema = createInsertSchema(marketSentimentEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMarketSentimentRollupSchema = createInsertSchema(marketSentimentRollups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMarketReportMetricSchema = createInsertSchema(marketReportMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAnalysisUnderwritingComparisonSchema = createInsertSchema(analysisUnderwritingComparisons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUnderwritingNote = z.infer<typeof insertUnderwritingNoteSchema>;
+export type UnderwritingNote = typeof underwritingNotes.$inferSelect;
+
+export type InsertListingComment = z.infer<typeof insertListingCommentSchema>;
+export type ListingComment = typeof listingComments.$inferSelect;
+
+export type InsertPropertyAnalysis = z.infer<typeof insertPropertyAnalysisSchema>;
+export type PropertyAnalysis = typeof propertyAnalyses.$inferSelect;
+
+export type InsertAnalysisAssumptionChange = z.infer<typeof insertAnalysisAssumptionChangeSchema>;
+export type AnalysisAssumptionChange = typeof analysisAssumptionChanges.$inferSelect;
+
+export type InsertAnalysisFeedback = z.infer<typeof insertAnalysisFeedbackSchema>;
+export type AnalysisFeedback = typeof analysisFeedback.$inferSelect;
+
+export type InsertAnalysisConsentEvent = z.infer<typeof insertAnalysisConsentEventSchema>;
+export type AnalysisConsentEvent = typeof analysisConsentEvents.$inferSelect;
+
+export type InsertAnalysisEvent = z.infer<typeof insertAnalysisEventSchema>;
+export type AnalysisEvent = typeof analysisEvents.$inferSelect;
+
+export type InsertUnderwritingAssumptionSnapshot = z.infer<typeof insertUnderwritingAssumptionSnapshotSchema>;
+export type UnderwritingAssumptionSnapshot = typeof underwritingAssumptionSnapshots.$inferSelect;
+
+export type InsertAiPromptVersion = z.infer<typeof insertAiPromptVersionSchema>;
+export type AiPromptVersion = typeof aiPromptVersions.$inferSelect;
+
+export type InsertAiOutputVersion = z.infer<typeof insertAiOutputVersionSchema>;
+export type AiOutputVersion = typeof aiOutputVersions.$inferSelect;
+
+export type InsertCommunityMetricSnapshot = z.infer<typeof insertCommunityMetricSnapshotSchema>;
+export type CommunityMetricSnapshot = typeof communityMetricSnapshots.$inferSelect;
+
+export type InsertVote = z.infer<typeof insertVoteSchema>;
+export type Vote = typeof votes.$inferSelect;
+
+export type InsertContributionEvent = z.infer<typeof insertContributionEventSchema>;
+export type ContributionEvent = typeof contributionEvents.$inferSelect;
+
+export type InsertListingAnalysisAggregate = z.infer<typeof insertListingAnalysisAggregateSchema>;
+export type ListingAnalysisAggregate = typeof listingAnalysisAggregates.$inferSelect;
+
+export type InsertPropertySaleEstimate = z.infer<typeof insertPropertySaleEstimateSchema>;
+export type PropertySaleEstimate = typeof propertySaleEstimates.$inferSelect;
+export type PropertySaleEstimateRevision = typeof propertySaleEstimateRevisions.$inferSelect;
+export type ListingSaleResolution = typeof listingSaleResolutions.$inferSelect;
+export type UserSaleEstimatorMetrics = typeof userSaleEstimatorMetrics.$inferSelect;
+export type UserActivityEvent = typeof userActivityEvents.$inferSelect;
+export type UserInferenceProfile = typeof userInferenceProfiles.$inferSelect;
+export type AnalysisQualityScore = typeof analysisQualityScores.$inferSelect;
+export type LeaderboardPeriod = typeof leaderboardPeriods.$inferSelect;
+export type LeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
+export type LeaderboardSnapshotEntry = typeof leaderboardSnapshotEntries.$inferSelect;
+export type UserDealActivityRollup = typeof userDealActivityRollups.$inferSelect;
+export type MarketSentimentEvent = typeof marketSentimentEvents.$inferSelect;
+export type MarketSentimentRollup = typeof marketSentimentRollups.$inferSelect;
+export type MarketReportMetric = typeof marketReportMetrics.$inferSelect;
+export type AnalysisUnderwritingComparison = typeof analysisUnderwritingComparisons.$inferSelect;
+
+export const marketSnapshots = pgTable("market_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  city: text("city").notNull(),
+  province: text("province").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  dealCount: integer("deal_count").default(0).notNull(),
+  avgCapRate: real("avg_cap_rate"),
+  avgCashOnCash: real("avg_cash_on_cash"),
+  avgDscr: real("avg_dscr"),
+  avgPurchasePrice: real("avg_purchase_price"),
+  avgRentPerUnit: real("avg_rent_per_unit"),
+  medianCapRate: real("median_cap_rate"),
+  medianPurchasePrice: real("median_purchase_price"),
+  avgVacancyRate: real("avg_vacancy_rate"),
+  cmhcOneBed: real("cmhc_one_bed"),
+  cmhcTwoBed: real("cmhc_two_bed"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS market_snapshots_city_month_idx ON market_snapshots(city, province, month)`
+]);
+
+export const insertMarketSnapshotSchema = createInsertSchema(marketSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMarketSnapshot = z.infer<typeof insertMarketSnapshotSchema>;
+export type MarketSnapshot = typeof marketSnapshots.$inferSelect;
+
+export const ddfListingSnapshots = pgTable("ddf_listing_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingKey: varchar("listing_key").notNull(),
+  mlsNumber: varchar("mls_number"),
+  city: text("city"),
+  province: text("province"),
+  postalCode: varchar("postal_code"),
+  listPrice: real("list_price"),
+  bedroomsTotal: integer("bedrooms_total"),
+  bathroomsTotal: integer("bathrooms_total"),
+  numberOfUnits: integer("number_of_units"),
+  livingArea: real("living_area"),
+  yearBuilt: integer("year_built"),
+  propertySubType: text("property_sub_type"),
+  structureType: text("structure_type"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  totalActualRent: real("total_actual_rent"),
+  taxAnnualAmount: real("tax_annual_amount"),
+  associationFee: real("association_fee"),
+  estimatedMonthlyRent: real("estimated_monthly_rent"),
+  grossYield: real("gross_yield"),
+  estimatedExpenses: real("estimated_expenses"),
+  estimatedNoi: real("estimated_noi"),
+  netYield: real("net_yield"),
+  daysOnMarket: integer("days_on_market"),
+  rentSource: text("rent_source"),
+  rawJson: jsonb("raw_json"),
+  snapshotMonth: varchar("snapshot_month", { length: 7 }).notNull(),
+  capturedAt: timestamp("captured_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE INDEX IF NOT EXISTS ddf_snapshots_city_month_idx ON ddf_listing_snapshots(city, snapshot_month)`,
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS ddf_snapshots_listing_month_idx ON ddf_listing_snapshots(listing_key, snapshot_month)`,
+]);
+
+export const insertDdfListingSnapshotSchema = createInsertSchema(ddfListingSnapshots).omit({
+  id: true,
+  capturedAt: true,
+});
+export type InsertDdfListingSnapshot = z.infer<typeof insertDdfListingSnapshotSchema>;
+export type DdfListingSnapshot = typeof ddfListingSnapshots.$inferSelect;
+
+export const cityYieldHistory = pgTable("city_yield_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  city: text("city").notNull(),
+  province: text("province").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  listingCount: integer("listing_count").default(0).notNull(),
+  avgGrossYield: real("avg_gross_yield"),
+  medianGrossYield: real("median_gross_yield"),
+  avgNetYield: real("avg_net_yield"),
+  avgListPrice: real("avg_list_price"),
+  medianListPrice: real("median_list_price"),
+  avgRentPerUnit: real("avg_rent_per_unit"),
+  avgDaysOnMarket: real("avg_days_on_market"),
+  avgPricePerSqft: real("avg_price_per_sqft"),
+  inventoryCount: integer("inventory_count").default(0),
+  avgBedsPerListing: real("avg_beds_per_listing"),
+  yieldTrend: real("yield_trend"),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS city_yield_history_city_month_idx ON city_yield_history(city, province, month)`,
+]);
+
+export const insertCityYieldHistorySchema = createInsertSchema(cityYieldHistory).omit({
+  id: true,
+  computedAt: true,
+});
+export type InsertCityYieldHistory = z.infer<typeof insertCityYieldHistorySchema>;
+export type CityYieldHistory = typeof cityYieldHistory.$inferSelect;
+
+export const areaYieldHistory = pgTable("area_yield_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  areaType: text("area_type").notNull(),
+  areaKey: text("area_key").notNull(),
+  areaName: text("area_name").notNull(),
+  city: text("city"),
+  province: text("province").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  listingCount: integer("listing_count").default(0).notNull(),
+  avgGrossYield: real("avg_gross_yield"),
+  medianGrossYield: real("median_gross_yield"),
+  avgNetYield: real("avg_net_yield"),
+  avgListPrice: real("avg_list_price"),
+  medianListPrice: real("median_list_price"),
+  avgRentPerUnit: real("avg_rent_per_unit"),
+  avgDaysOnMarket: real("avg_days_on_market"),
+  avgPricePerSqft: real("avg_price_per_sqft"),
+  inventoryCount: integer("inventory_count").default(0),
+  avgBedsPerListing: real("avg_beds_per_listing"),
+  yieldTrend: real("yield_trend"),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS area_yield_history_area_month_idx ON area_yield_history(area_type, area_key, province, month)`,
+  sql`CREATE INDEX IF NOT EXISTS area_yield_history_lookup_idx ON area_yield_history(area_type, province, month)`,
+]);
+
+export const insertAreaYieldHistorySchema = createInsertSchema(areaYieldHistory).omit({
+  id: true,
+  computedAt: true,
+});
+export type InsertAreaYieldHistory = z.infer<typeof insertAreaYieldHistorySchema>;
+export type AreaYieldHistory = typeof areaYieldHistory.$inferSelect;
+
+export const propertyInvestmentMetrics = pgTable("property_investment_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  propertyId: text("property_id").notNull(),
+  sourceListingId: text("source_listing_id"),
+  calculationVersion: text("calculation_version").notNull(),
+  grossYield: real("gross_yield"),
+  capRate: real("cap_rate"),
+  cashOnCashReturn: real("cash_on_cash_return"),
+  irr: real("irr"),
+  noi: real("noi"),
+  annualGrossRent: real("annual_gross_rent"),
+  annualOperatingExpenses: real("annual_operating_expenses"),
+  monthlyCashFlow: real("monthly_cash_flow"),
+  dscr: real("dscr"),
+  expenseRatio: real("expense_ratio"),
+  rentAssumptionSource: text("rent_assumption_source"),
+  expenseAssumptionSource: text("expense_assumption_source"),
+  financingAssumptionSource: text("financing_assumption_source"),
+  exitAssumptionSource: text("exit_assumption_source"),
+  assumptionsComplete: boolean("assumptions_complete").notNull().default(false),
+  capRateConfidence: text("cap_rate_confidence"),
+  irrConfidence: text("irr_confidence"),
+  calculationWarnings: jsonb("calculation_warnings"),
+  assumptionsJson: jsonb("assumptions_json"),
+  calculatedAt: timestamp("calculated_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS property_investment_metrics_property_idx ON property_investment_metrics(property_id)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_listing_idx ON property_investment_metrics(source_listing_id)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_gross_yield_idx ON property_investment_metrics(gross_yield)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_cap_rate_idx ON property_investment_metrics(cap_rate)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_cash_on_cash_idx ON property_investment_metrics(cash_on_cash_return)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_irr_idx ON property_investment_metrics(irr)`,
+  sql`CREATE INDEX IF NOT EXISTS property_investment_metrics_monthly_cf_idx ON property_investment_metrics(monthly_cash_flow)`,
+]);
+
+export const insertPropertyInvestmentMetricsSchema = createInsertSchema(propertyInvestmentMetrics).omit({
+  id: true,
+  calculatedAt: true,
+  updatedAt: true,
+});
+export type InsertPropertyInvestmentMetrics = z.infer<typeof insertPropertyInvestmentMetricsSchema>;
+export type PropertyInvestmentMetrics = typeof propertyInvestmentMetrics.$inferSelect;
+
+export const blogPosts = pgTable("blog_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  excerpt: text("excerpt").notNull(),
+  content: text("content").notNull(),
+  coverImage: text("cover_image"),
+  authorId: varchar("author_id").references(() => users.id),
+  authorName: text("author_name").notNull().default("Realist Team"),
+  category: text("category").notNull().default("market-analysis"),
+  tags: text("tags").array().default(sql`'{}'::text[]`),
+  status: text("status").notNull().default("draft"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  readTimeMinutes: integer("read_time_minutes"),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const blogPostsRelations = relations(blogPosts, ({ one }) => ({
+  author: one(users, {
+    fields: [blogPosts.authorId],
+    references: [users.id],
+  }),
+}));
+
+export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
+export type BlogPost = typeof blogPosts.$inferSelect;
+
+export const guides = pgTable("guides", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  excerpt: text("excerpt").notNull(),
+  content: text("content").notNull(),
+  coverImage: text("cover_image"),
+  icon: text("icon").default("BookOpen"),
+  category: text("category").notNull().default("getting-started"),
+  difficulty: text("difficulty").notNull().default("beginner"),
+  authorName: text("author_name").notNull().default("Realist Team"),
+  status: text("status").notNull().default("draft"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  readTimeMinutes: integer("read_time_minutes"),
+  sortOrder: integer("sort_order").default(0),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGuideSchema = createInsertSchema(guides).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGuide = z.infer<typeof insertGuideSchema>;
+export type Guide = typeof guides.$inferSelect;
+
+export const mortgageRates = pgTable("mortgage_rates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rateType: text("rate_type").notNull(),
+  term: text("term").notNull(),
+  rate: real("rate").notNull(),
+  provider: text("provider").notNull(),
+  source: text("source").notNull(),
+  category: text("category").notNull().default("posted"),
+  province: text("province"),
+  isInsured: boolean("is_insured").default(false),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS mortgage_rates_type_term_provider_idx ON mortgage_rates(rate_type, term, provider, category)`,
+]);
+
+export const mortgageRateHistory = pgTable("mortgage_rate_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rateType: text("rate_type").notNull(),
+  term: text("term").notNull(),
+  rate: real("rate").notNull(),
+  provider: text("provider").notNull(),
+  source: text("source").notNull(),
+  category: text("category").notNull().default("posted"),
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+});
+
+export const insertMortgageRateSchema = createInsertSchema(mortgageRates).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertMortgageRate = z.infer<typeof insertMortgageRateSchema>;
+export type MortgageRate = typeof mortgageRates.$inferSelect;
+export type MortgageRateHistory = typeof mortgageRateHistory.$inferSelect;
+
+export const rateForecasts = pgTable("rate_forecasts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastType: text("forecast_type").notNull().default("ca10y_simple"),
+  termMonths: integer("term_months").notNull().default(300),
+  pathJson: text("path_json").notNull(),
+  assumptionsJson: text("assumptions_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRateForecastSchema = createInsertSchema(rateForecasts).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertRateForecast = z.infer<typeof insertRateForecastSchema>;
+export type RateForecast = typeof rateForecasts.$inferSelect;
+
+export const indigenousLayers = pgTable("indigenous_layers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  layerName: text("layer_name").notNull(),
+  layerGroup: text("layer_group").notNull().default("historic_treaty"),
+  jurisdiction: text("jurisdiction").default("federal"),
+  sourceName: text("source_name").notNull(),
+  sourceUrl: text("source_url"),
+  sourceDatasetId: text("source_dataset_id"),
+  licence: text("licence"),
+  updateFrequency: text("update_frequency"),
+  active: boolean("active").default(true).notNull(),
+  featureCount: integer("feature_count").default(0),
+  lastCheckedAt: timestamp("last_checked_at"),
+  lastImportedAt: timestamp("last_imported_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertIndigenousLayerSchema = createInsertSchema(indigenousLayers).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertIndigenousLayer = z.infer<typeof insertIndigenousLayerSchema>;
+export type IndigenousLayer = typeof indigenousLayers.$inferSelect;
+
+export const indigenousFeatures = pgTable("indigenous_features", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  layerId: varchar("layer_id").notNull(),
+  featureExternalId: text("feature_external_id"),
+  featureName: text("feature_name"),
+  nationName: text("nation_name"),
+  treatyName: text("treaty_name"),
+  agreementName: text("agreement_name"),
+  claimName: text("claim_name"),
+  province: text("province"),
+  category: text("category"),
+  status: text("status"),
+  metadataJson: text("metadata_json"),
+  bbox: text("bbox"),
+  geojson: jsonb("geojson"),
+  centroidLat: real("centroid_lat"),
+  centroidLng: real("centroid_lng"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertIndigenousFeatureSchema = createInsertSchema(indigenousFeatures).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertIndigenousFeature = z.infer<typeof insertIndigenousFeatureSchema>;
+export type IndigenousFeature = typeof indigenousFeatures.$inferSelect;
+
+export const watchOverlays = pgTable("watch_overlays", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  overlayName: text("overlay_name").notNull(),
+  overlayGroup: text("overlay_group").notNull().default("high_sensitivity"),
+  jurisdiction: text("jurisdiction").default("provincial"),
+  nationName: text("nation_name"),
+  legalContextType: text("legal_context_type"),
+  sourceSummary: text("source_summary"),
+  sourceUrl: text("source_url"),
+  sourceDate: text("source_date"),
+  geometryMethod: text("geometry_method"),
+  geometryConfidence: text("geometry_confidence"),
+  authorityLevel: text("authority_level"),
+  disclaimerText: text("disclaimer_text"),
+  statusLabel: text("status_label"),
+  active: boolean("active").default(true).notNull(),
+  metadataJson: text("metadata_json"),
+  createdBy: text("created_by"),
+  digitizationNotes: text("digitization_notes"),
+  reviewedBy: text("reviewed_by"),
+  reviewStatus: text("review_status"),
+  geojson: jsonb("geojson"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertWatchOverlaySchema = createInsertSchema(watchOverlays).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertWatchOverlay = z.infer<typeof insertWatchOverlaySchema>;
+export type WatchOverlay = typeof watchOverlays.$inferSelect;
+
+export const screenings = pgTable("screenings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  searchedAddress: text("searched_address"),
+  normalizedAddress: text("normalized_address"),
+  lat: real("lat").notNull(),
+  lng: real("lng").notNull(),
+  screeningMethod: text("screening_method").notNull().default("point_plus_buffer"),
+  bufferMeters: integer("buffer_meters").default(0),
+  resultStatus: text("result_status").notNull(),
+  completenessStatus: text("completeness_status").default("basic"),
+  summaryJson: text("summary_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertScreeningSchema = createInsertSchema(screenings).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertScreening = z.infer<typeof insertScreeningSchema>;
+export type Screening = typeof screenings.$inferSelect;
+
+export const screeningHits = pgTable("screening_hits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  screeningId: varchar("screening_id").notNull(),
+  featureId: varchar("feature_id").notNull(),
+  hitType: text("hit_type").notNull(),
+  distanceMeters: real("distance_meters"),
+  overlapArea: real("overlap_area"),
+  notes: text("notes"),
+});
+
+export const insertScreeningHitSchema = createInsertSchema(screeningHits).omit({
+  id: true,
+});
+export type InsertScreeningHit = z.infer<typeof insertScreeningHitSchema>;
+export type ScreeningHit = typeof screeningHits.$inferSelect;
+
+export const distressSnapshots = pgTable("distress_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  month: varchar("month", { length: 7 }).notNull(),
+  province: text("province").notNull(),
+  city: text("city"),
+  totalListings: integer("total_listings").default(0).notNull(),
+  foreclosurePosCount: integer("foreclosure_pos_count").default(0).notNull(),
+  motivatedCount: integer("motivated_count").default(0).notNull(),
+  vtbCount: integer("vtb_count").default(0).notNull(),
+  avgDistressScore: real("avg_distress_score"),
+  maxDistressScore: real("max_distress_score"),
+  avgListPrice: real("avg_list_price"),
+  medianListPrice: real("median_list_price"),
+  highConfidenceCount: integer("high_confidence_count").default(0).notNull(),
+  mediumConfidenceCount: integer("medium_confidence_count").default(0).notNull(),
+  lowConfidenceCount: integer("low_confidence_count").default(0).notNull(),
+  avgDaysOnMarket: real("avg_days_on_market"),
+  propertyTypesJson: jsonb("property_types_json"),
+  topCitiesJson: jsonb("top_cities_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS distress_snapshots_month_prov_city_idx ON distress_snapshots(month, province, city)`
+]);
+
+export const insertDistressSnapshotSchema = createInsertSchema(distressSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertDistressSnapshot = z.infer<typeof insertDistressSnapshotSchema>;
+export type DistressSnapshot = typeof distressSnapshots.$inferSelect;
+
+export const geographies = pgTable("geographies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  city: text("city"),
+  province: text("province"),
+  geometry: jsonb("geometry"),
+  centroidLat: real("centroid_lat"),
+  centroidLng: real("centroid_lng"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertGeographySchema = createInsertSchema(geographies).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertGeography = z.infer<typeof insertGeographySchema>;
+export type Geography = typeof geographies.$inferSelect;
+
+export const metrics = pgTable("metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  geographyId: varchar("geography_id").references(() => geographies.id).notNull(),
+  metricType: text("metric_type").notNull(),
+  value: real("value").notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  source: text("source"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  sql`CREATE INDEX IF NOT EXISTS metrics_geo_date_idx ON metrics(geography_id, date)`,
+  sql`CREATE INDEX IF NOT EXISTS metrics_type_idx ON metrics(metric_type)`
+]);
+
+export const insertMetricSchema = createInsertSchema(metrics).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertMetric = z.infer<typeof insertMetricSchema>;
+export type Metric = typeof metrics.$inferSelect;
+
+export const areaScores = pgTable("area_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  geographyId: varchar("geography_id").references(() => geographies.id).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  investorScore: real("investor_score"),
+  livabilityScore: real("livability_score"),
+  growthScore: real("growth_score"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("area_scores_geo_date_idx").on(table.geographyId, table.date),
+]);
+
+export const insertAreaScoreSchema = createInsertSchema(areaScores).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAreaScore = z.infer<typeof insertAreaScoreSchema>;
+export type AreaScore = typeof areaScores.$inferSelect;
+
+export const courseModules = pgTable("course_modules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCourseModuleSchema = createInsertSchema(courseModules).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertCourseModule = z.infer<typeof insertCourseModuleSchema>;
+export type CourseModule = typeof courseModules.$inferSelect;
+
+export const courseLessons = pgTable("course_lessons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  moduleId: varchar("module_id").references(() => courseModules.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  videoUrl: text("video_url"),
+  videoDuration: text("video_duration"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCourseLessonSchema = createInsertSchema(courseLessons).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertCourseLesson = z.infer<typeof insertCourseLessonSchema>;
+export type CourseLesson = typeof courseLessons.$inferSelect;
+
+export const courseEnrollments = pgTable("course_enrollments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  courseId: varchar("course_id").notNull().default("multiplex_masterclass"),
+  stripeSessionId: varchar("stripe_session_id"),
+  enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"),
+});
+
+export const insertCourseEnrollmentSchema = createInsertSchema(courseEnrollments).omit({
+  id: true,
+  enrolledAt: true,
+});
+export type InsertCourseEnrollment = z.infer<typeof insertCourseEnrollmentSchema>;
+export type CourseEnrollment = typeof courseEnrollments.$inferSelect;
+
+export const courseProgress = pgTable("course_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  lessonId: varchar("lesson_id").references(() => courseLessons.id).notNull(),
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
+});
+
+export const insertCourseProgressSchema = createInsertSchema(courseProgress).omit({
+  id: true,
+  completedAt: true,
+});
+export type InsertCourseProgress = z.infer<typeof insertCourseProgressSchema>;
+export type CourseProgress = typeof courseProgress.$inferSelect;
+
+export const savedReports = pgTable("saved_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  title: text("title").notNull(),
+  geographyIds: text("geography_ids").array(),
+  metricTypes: text("metric_types").array(),
+  startDate: varchar("start_date", { length: 10 }),
+  endDate: varchar("end_date", { length: 10 }),
+  configJson: jsonb("config_json"),
+  shareToken: varchar("share_token"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSavedReportSchema = createInsertSchema(savedReports).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSavedReport = z.infer<typeof insertSavedReportSchema>;
+export type SavedReport = typeof savedReports.$inferSelect;
+
+// ============================================================================
+// API KEYS — for MCP server / CLI plugin authentication
+// ============================================================================
+export const apiKeys = pgTable("api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  keyPrefix: varchar("key_prefix", { length: 16 }).notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  scopes: text("scopes").array().default(sql`ARRAY[]::text[]`),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
+  id: true,
+  keyPrefix: true,
+  keyHash: true,
+  lastUsedAt: true,
+  revokedAt: true,
+  createdAt: true,
+});
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type ApiKey = typeof apiKeys.$inferSelect;

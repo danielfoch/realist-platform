@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Block admin pages
+Disallow: /api/
+Disallow: /admin
+
+# Sitemap location
+Sitemap: https://realist.ca/sitemap.xml

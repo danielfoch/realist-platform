@@ -1,11 +1,44 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en-CA">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+    <meta http-equiv="refresh" content="0; url=https://realist.ca" />
     <title>Realist</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        background: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+      }
+      .logo { font-size: 28px; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.02em; }
+      .sub { font-size: 14px; color: #666; }
+      .spinner {
+        margin-top: 24px;
+        width: 28px; height: 28px;
+        border: 3px solid #eee;
+        border-top-color: #ef4444;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
-    <noscript>JavaScript is required to run Realist.</noscript>
+    <div class="logo">Realist</div>
+    <div class="sub">Loading…</div>
+    <div class="spinner"></div>
+    <script>
+      window.location.replace("https://realist.ca");
+    </script>
   </body>
 </html>

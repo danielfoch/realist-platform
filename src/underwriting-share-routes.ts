@@ -1,0 +1,1648 @@
+import crypto from 'crypto';
+import { Router, Request, Response } from 'express';
+import { db as defaultDb } from './db';
+import { authenticateOptional, authenticateToken, AuthRequest } from './auth-middleware';
+
+export type QualifiedShareAction = 'unique_open' | 'challenge' | 'fork' | 'signup' | 'saved_version';
+
+type DatabaseAdapter = {
+  query: (text: string, params?: readonly unknown[]) => Promise<{ rows: any[]; rowCount?: number | null }>;
+};
+
+interface QualifiedActionPolicy {
+  creditAmount: number;
+  dailyShareCap: number;
+  dailyRecipientCap: number;
+}
+
+const ACTION_POLICIES: Record<QualifiedShareAction, QualifiedActionPolicy> = {
+  unique_open: { creditAmount: 1, dailyShareCap: 5, dailyRecipientCap: 1 },
+  challenge: { creditAmount: 2, dailyShareCap: 8, dailyRecipientCap: 2 },
+  fork: { creditAmount: 3, dailyShareCap: 8, dailyRecipientCap: 2 },
+  signup: { creditAmount: 5, dailyShareCap: 5, dailyRecipientCap: 1 },
+  saved_version: { creditAmount: 4, dailyShareCap: 8, dailyRecipientCap: 2 },
+};
+
+const QUALIFIED_ACTIONS: QualifiedShareAction[] = [
+  'unique_open',
+  'challenge',
+  'fork',
+  'signup',
+  'saved_version',
+];
+
+function randomToken() {
+  return crypto.randomBytes(18).toString('base64url');
+}
+
+function randomRecipientKey() {
+  return crypto.randomBytes(12).toString('base64url');
+}
+
+export async function createUnderwritingShare(database: DatabaseAdapter, input: {
+  analysisId: number | string;
+  inviterUserId: number | null;
+  source?: string;
+  parentShareId?: number | null;
+  parentShareActionId?: number | null;
+  parentShareDepth?: number | null;
+}) {
+  const token = randomToken();
+  const source = hasNonEmptyString(input.source) ? input.source.trim().slice(0, 64) : 'analysis';
+  const parentShareId = input.parentShareId || null;
+  const parentShareActionId = input.parentShareActionId || null;
+  const shareDepth = parentShareId ? Number(input.parentShareDepth || 0) + 1 : 0;
+
+  const created = await database.query(
+    `INSERT INTO underwriting_shares (
+       analysis_id, inviter_user_id, token, status, source, parent_share_id, parent_share_action_id, share_depth
+     ) VALUES ($1, $2, $3, 'active', $4, $5, $6, $7)
+     RETURNING id, token, share_depth`,
+    [input.analysisId, input.inviterUserId, token, source, parentShareId, parentShareActionId, shareDepth],
+  );
+
+  const row = created.rows[0];
+  return {
+    id: row.id,
+    token: row.token,
+    shareDepth: Number(row.share_depth || shareDepth),
+    shareUrl: `/underwriting/${row.token}`,
+    cta: 'Challenge my underwriting.',
+    rewardPolicy: getRewardPolicySnapshot(),
+  };
+}
+
+function sha256(value: string) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function getClientIp(req: Request) {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
+    return forwardedFor.split(',')[0]?.trim() || req.ip || 'unknown';
+  }
+  return req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+export function getRecipientHash(req: Request, explicitRecipient?: string) {
+  const visitor = typeof explicitRecipient === 'string' && explicitRecipient.trim()
+    ? explicitRecipient.trim().toLowerCase()
+    : `${getClientIp(req)}:${req.headers['user-agent'] || 'unknown'}`;
+
+  return sha256(visitor);
+}
+
+export function getExplicitRecipientHash(recipientKey: string) {
+  return sha256(recipientKey.trim().toLowerCase());
+}
+
+export async function resolveShareRecipientHash(database: DatabaseAdapter, input: {
+  shareId: number;
+  req: Request;
+  explicitRecipient?: unknown;
+}) {
+  const visitorFingerprintHash = getRecipientHash(input.req);
+
+  if (!hasNonEmptyString(input.explicitRecipient)) {
+    return {
+      recipientHash: visitorFingerprintHash,
+      trackingSource: 'visitor_fingerprint' as const,
+      explicitRecipientAccepted: false,
+    };
+  }
+
+  const explicitRecipientHash = getExplicitRecipientHash(String(input.explicitRecipient));
+  const recipient = await database.query(
+    `SELECT id
+     FROM underwriting_share_recipients
+     WHERE share_id = $1 AND recipient_hash = $2
+     LIMIT 1`,
+    [input.shareId, explicitRecipientHash],
+  );
+
+  if (recipient.rows[0]) {
+    return {
+      recipientHash: explicitRecipientHash,
+      trackingSource: 'recipient_link' as const,
+      explicitRecipientAccepted: true,
+    };
+  }
+
+  return {
+    recipientHash: visitorFingerprintHash,
+    trackingSource: 'visitor_fingerprint' as const,
+    explicitRecipientAccepted: false,
+  };
+}
+
+function getRecipientLabelHash(label: unknown) {
+  return hasNonEmptyString(label) ? sha256(String(label).trim().toLowerCase()) : null;
+}
+
+export async function createUnderwritingShareRecipientLinks(database: DatabaseAdapter, input: {
+  shareId: number;
+  token: string;
+  createdByUserId: number;
+  recipients: Array<string | { label?: string; source?: string }>;
+  source?: string;
+}) {
+  const recipientInputs = input.recipients.slice(0, 25);
+  const links = [];
+  const seenRecipientLabelHashes = new Set<string>();
+  const requestedLabelHashes = recipientInputs
+    .map((recipientInput) => getRecipientLabelHash(typeof recipientInput === 'string' ? recipientInput : recipientInput.label))
+    .filter((labelHash): labelHash is string => Boolean(labelHash));
+  const existingRecipientLabelHashes = new Set<string>();
+
+  if (requestedLabelHashes.length > 0) {
+    const existingRecipients = await database.query(
+      `SELECT recipient_label_hash
+       FROM underwriting_share_recipients
+       WHERE share_id = $1
+         AND recipient_label_hash = ANY($2::char(64)[])`,
+      [input.shareId, requestedLabelHashes],
+    );
+
+    for (const row of existingRecipients.rows) {
+      if (hasNonEmptyString(row.recipient_label_hash)) {
+        existingRecipientLabelHashes.add(String(row.recipient_label_hash).trim());
+      }
+    }
+  }
+
+  for (const recipientInput of recipientInputs) {
+    const label = typeof recipientInput === 'string' ? recipientInput : recipientInput.label;
+    const labelHash = getRecipientLabelHash(label);
+
+    if (labelHash) {
+      if (seenRecipientLabelHashes.has(labelHash) || existingRecipientLabelHashes.has(labelHash)) {
+        continue;
+      }
+      seenRecipientLabelHashes.add(labelHash);
+    }
+
+    const source = typeof recipientInput === 'object' && recipientInput.source
+      ? recipientInput.source
+      : input.source || 'manual';
+    const recipientKey = randomRecipientKey();
+    const recipientHash = getExplicitRecipientHash(recipientKey);
+
+    const result = await database.query(
+      `INSERT INTO underwriting_share_recipients (
+         share_id, recipient_hash, recipient_label_hash, source, created_by_user_id
+       ) VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT DO NOTHING
+       RETURNING id, created_at`,
+      [input.shareId, recipientHash, labelHash, String(source).slice(0, 64), input.createdByUserId],
+    );
+
+    if (!result.rows[0]) {
+      continue;
+    }
+
+    links.push({
+      id: result.rows[0].id,
+      recipientKey,
+      recipientHash,
+      shareUrl: `/underwriting/${input.token}?recipient=${recipientKey}`,
+      cta: 'Challenge my underwriting.',
+      createdAt: result.rows[0].created_at || null,
+      qualifiedActionsRequired: ['unique_open', 'challenge', 'fork', 'signup', 'saved_version'] as QualifiedShareAction[],
+    });
+  }
+
+  return links;
+}
+
+export function getActionPolicy(action: QualifiedShareAction) {
+  return ACTION_POLICIES[action];
+}
+
+export function getRewardPolicySnapshot() {
+  return Object.fromEntries(
+    QUALIFIED_ACTIONS.map((action) => [action, ACTION_POLICIES[action]]),
+  ) as Record<QualifiedShareAction, QualifiedActionPolicy>;
+}
+
+export function getPublicShareRewardLadder() {
+  const labels: Record<QualifiedShareAction, string> = {
+    unique_open: 'Unique open',
+    challenge: 'Meaningful challenge',
+    fork: 'Forked assumptions',
+    signup: 'New account signup',
+    saved_version: 'Saved version',
+  };
+  const qualifiesWhen: Record<QualifiedShareAction, string> = {
+    unique_open: 'A unique tracked recipient opens an issued recipient-specific share link; generic raw opens are tracked but do not earn credits.',
+    challenge: 'The recipient challenges at least one field or leaves a substantive note.',
+    fork: 'An authenticated recipient forks the deal assumptions into their own version.',
+    signup: 'A recipient creates an account from the underwriting flow.',
+    saved_version: 'An authenticated recipient saves a changed version of the underwriting.',
+  };
+
+  return QUALIFIED_ACTIONS.map((action) => ({
+    action,
+    label: labels[action],
+    creditType: 'google_sheets_export',
+    creditAmount: ACTION_POLICIES[action].creditAmount,
+    dailyShareCap: ACTION_POLICIES[action].dailyShareCap,
+    dailyRecipientCap: ACTION_POLICIES[action].dailyRecipientCap,
+    qualifiesWhen: qualifiesWhen[action],
+  }));
+}
+
+export type ChallengePrompt = {
+  field: string;
+  label: string;
+  currentValue: unknown;
+  challengeQuestion: string;
+  payloadHint: string;
+};
+
+const CHALLENGE_PROMPT_DEFINITIONS: Array<{
+  field: string;
+  label: string;
+  aliases: string[];
+  challengeQuestion: string;
+  payloadHint: string;
+}> = [
+  {
+    field: 'monthlyRent',
+    label: 'Market rent',
+    aliases: ['monthlyRent', 'estimatedMonthlyRent', 'estimated_monthly_rent', 'rent', 'monthly_rent'],
+    challengeQuestion: 'Is the rent too optimistic or too conservative for this unit and neighbourhood?',
+    payloadHint: 'Send metadata.challengedFields=["monthlyRent"] with metadata.inputs.monthlyRent set to your rent assumption.',
+  },
+  {
+    field: 'vacancyRate',
+    label: 'Vacancy rate',
+    aliases: ['vacancyRate', 'vacancy_rate', 'vacancy'],
+    challengeQuestion: 'Would you underwrite more vacancy or downtime before the next tenant?',
+    payloadHint: 'Send metadata.challengedFields=["vacancyRate"] with metadata.inputs.vacancyRate set to your vacancy assumption.',
+  },
+  {
+    field: 'operatingExpenses',
+    label: 'Operating expenses',
+    aliases: ['operatingExpenses', 'operating_expenses', 'expenses', 'monthlyExpenses', 'monthly_expenses'],
+    challengeQuestion: 'Which expense line is missing or understated?',
+    payloadHint: 'Send metadata.challengedFields=["operatingExpenses"] with metadata.inputs or metadata.metrics containing the changed expense assumption.',
+  },
+  {
+    field: 'capRate',
+    label: 'Cap rate',
+    aliases: ['capRate', 'cap_rate', 'estimatedCapRate', 'estimated_cap_rate'],
+    challengeQuestion: 'What cap rate would you use if rates, repairs, or resale risk move against the deal?',
+    payloadHint: 'Send metadata.challengedFields=["capRate"] with metadata.metrics.capRate set to your challenged cap rate.',
+  },
+  {
+    field: 'cashFlow',
+    label: 'Monthly cash flow',
+    aliases: ['cashFlow', 'cash_flow', 'monthlyCashFlow', 'monthly_cash_flow'],
+    challengeQuestion: 'Does this cash-flow estimate survive a real mortgage quote and conservative expenses?',
+    payloadHint: 'Send metadata.challengedFields=["cashFlow"] with metadata.metrics.cashFlow set to your challenged cash flow.',
+  },
+];
+
+function getValueByAliases(sources: Array<Record<string, unknown> | null | undefined>, aliases: string[]) {
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') {
+      continue;
+    }
+
+    for (const alias of aliases) {
+      const value = source[alias];
+      if (value !== undefined && value !== null && value !== '') {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function getChallengePromptPack(analysis: {
+  propertyAddress?: unknown;
+  metrics?: Record<string, unknown> | null;
+  inputs?: Record<string, unknown> | null;
+  verdictCheck?: unknown;
+}) {
+  const sources = [analysis.inputs, analysis.metrics];
+  const prompts = CHALLENGE_PROMPT_DEFINITIONS
+    .map((definition) => ({
+      field: definition.field,
+      label: definition.label,
+      currentValue: getValueByAliases(sources, definition.aliases),
+      challengeQuestion: definition.challengeQuestion,
+      payloadHint: definition.payloadHint,
+    }))
+    .filter((prompt) => prompt.currentValue !== null) as ChallengePrompt[];
+
+  const fallbackPrompts: ChallengePrompt[] = prompts.length > 0 ? [] : [
+    {
+      field: 'notes',
+      label: 'Overall underwriting note',
+      currentValue: analysis.verdictCheck || 'No verdict saved',
+      challengeQuestion: 'What single assumption would most change your verdict on this deal?',
+      payloadHint: 'Send metadata.challengedFields=["notes"] with metadata.comment or metadata.notes explaining the challenged assumption.',
+    },
+  ];
+
+  return {
+    headline: 'Challenge one assumption, then save or fork your version.',
+    cta: 'Challenge my underwriting.',
+    sharePrompt: 'Challenge my underwriting — rent, vacancy, expenses, exit cap, or cash flow: what would you change?',
+    qualifiedActionReminder: 'Credits require a qualified challenge, fork, signup, or saved version; raw share clicks do not earn credits.',
+    requiredActionEndpoint: 'POST /api/underwriting-shares/:token/actions',
+    requiredPayload: {
+      action: 'challenge',
+      metadata: {
+        challengedFields: ['monthlyRent'],
+        comment: 'Explain which assumption you disagree with and why.',
+      },
+    },
+    prompts: prompts.length > 0 ? prompts : fallbackPrompts,
+  };
+}
+
+
+export function getRecipientChallengeCoach(analysis: {
+  propertyAddress?: unknown;
+  metrics?: Record<string, unknown> | null;
+  inputs?: Record<string, unknown> | null;
+  verdictCheck?: unknown;
+}) {
+  const promptPack = getChallengePromptPack(analysis);
+  const firstPrompt = promptPack.prompts[0];
+  const challengedField = firstPrompt?.field || 'notes';
+
+  return {
+    headline: 'Your challenge must change or question an assumption to qualify.',
+    cta: 'Challenge my underwriting.',
+    primaryPrompt: firstPrompt || null,
+    steps: [
+      'Pick one assumption you disagree with.',
+      'Send the challenged field plus a note, changed input, or changed metric.',
+      'Save or fork your version if you want the owner to compare both versions side by side.',
+    ],
+    qualifiedActions: ['challenge', 'fork', 'saved_version', 'signup'] as Exclude<QualifiedShareAction, 'unique_open'>[],
+    exampleChallengePayload: {
+      action: 'challenge',
+      metadata: {
+        challengedFields: [challengedField],
+        comment: firstPrompt
+          ? `I would change ${firstPrompt.label} because local comps or financing assumptions look different.`
+          : 'I would change this underwriting assumption based on local comps or financing risk.',
+      },
+    },
+    exampleSavedVersionPayload: {
+      action: 'saved_version',
+      metadata: {
+        challengedFields: [challengedField],
+        inputs: challengedField === 'notes' ? {} : { [challengedField]: 'your changed assumption' },
+        notes: 'Saved after challenging the original underwriting assumptions.',
+      },
+    },
+    creditDisclaimer: 'Opening a raw share link alone is not enough for premium credits; credits require qualified recipient actions within anti-abuse caps.',
+  };
+}
+
+function isQualifiedShareAction(action: string): action is QualifiedShareAction {
+  return Object.prototype.hasOwnProperty.call(ACTION_POLICIES, action);
+}
+
+function hasObjectKeys(value: unknown) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0);
+}
+
+function hasNonEmptyString(value: unknown, minLength = 1) {
+  return typeof value === 'string' && value.trim().length >= minLength;
+}
+
+export function hasMeaningfulChallengePayload(action: QualifiedShareAction, metadata: unknown) {
+  if (action === 'unique_open' || action === 'signup') {
+    return true;
+  }
+
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return false;
+  }
+
+  const payload = metadata as Record<string, unknown>;
+  const challengedFields = payload.challengedFields;
+  const challengedFieldCount = Array.isArray(challengedFields)
+    ? challengedFields.filter((field) => hasNonEmptyString(field)).length
+    : 0;
+
+  return (
+    challengedFieldCount > 0
+    || hasObjectKeys(payload.assumptions)
+    || hasObjectKeys(payload.inputs)
+    || hasObjectKeys(payload.metrics)
+    || hasNonEmptyString(payload.comment, 10)
+    || hasNonEmptyString(payload.notes, 10)
+  );
+}
+
+async function countDailyShareActions(database: DatabaseAdapter, shareId: number, action: QualifiedShareAction) {
+  const result = await database.query(
+    `SELECT COUNT(*)::int AS count
+     FROM underwriting_share_actions
+     WHERE share_id = $1 AND action = $2 AND qualified = true AND created_at >= CURRENT_DATE`,
+    [shareId, action],
+  );
+
+  return Number(result.rows[0]?.count || 0);
+}
+
+async function countDailyRecipientActions(database: DatabaseAdapter, recipientHash: string, action: QualifiedShareAction) {
+  const result = await database.query(
+    `SELECT COUNT(*)::int AS count
+     FROM underwriting_share_actions
+     WHERE recipient_hash = $1 AND action = $2 AND qualified = true AND created_at >= CURRENT_DATE`,
+    [recipientHash, action],
+  );
+
+  return Number(result.rows[0]?.count || 0);
+}
+
+async function findExistingAction(database: DatabaseAdapter, shareId: number, recipientHash: string, action: QualifiedShareAction) {
+  const result = await database.query(
+    `SELECT id, qualified, credit_amount
+     FROM underwriting_share_actions
+     WHERE share_id = $1 AND recipient_hash = $2 AND action = $3
+     LIMIT 1`,
+    [shareId, recipientHash, action],
+  );
+
+  return result.rows[0] || null;
+}
+
+function isSelfQualifiedAction(input: {
+  inviterUserId: number | null;
+  actorUserId?: number | null;
+}) {
+  return Boolean(input.inviterUserId && input.actorUserId && input.inviterUserId === input.actorUserId);
+}
+
+function canAwardCreditForAction(input: {
+  action: QualifiedShareAction;
+  inviterUserId: number | null;
+  actorUserId?: number | null;
+  metadata?: Record<string, unknown>;
+}) {
+  if (isSelfQualifiedAction(input)) {
+    return false;
+  }
+
+  if (input.action !== 'unique_open') {
+    return true;
+  }
+
+  return input.metadata?.trackingSource === 'recipient_link'
+    && input.metadata?.explicitRecipientAccepted === true;
+}
+
+function getUnqualifiedCreditReason(input: {
+  action: QualifiedShareAction;
+  inviterUserId: number | null;
+  actorUserId?: number | null;
+  metadata?: Record<string, unknown>;
+}) {
+  if (isSelfQualifiedAction(input)) {
+    return 'inviter_self_action_not_credit_eligible';
+  }
+
+  if (input.action === 'unique_open' && !canAwardCreditForAction(input)) {
+    return 'unique_open_credit_requires_issued_recipient_link';
+  }
+
+  return null;
+}
+
+export async function recordQualifiedShareAction(database: DatabaseAdapter, input: {
+  shareId: number;
+  inviterUserId: number | null;
+  actorUserId?: number | null;
+  action: QualifiedShareAction;
+  recipientHash: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const existing = await findExistingAction(database, input.shareId, input.recipientHash, input.action);
+  if (existing) {
+    return {
+      status: 'duplicate' as const,
+      qualified: Boolean(existing.qualified),
+      creditAmount: Number(existing.credit_amount || 0),
+    };
+  }
+
+  const policy = ACTION_POLICIES[input.action];
+  const creditEligible = canAwardCreditForAction(input);
+  const [shareActionCount, recipientActionCount] = creditEligible
+    ? await Promise.all([
+        countDailyShareActions(database, input.shareId, input.action),
+        countDailyRecipientActions(database, input.recipientHash, input.action),
+      ])
+    : [0, 0];
+
+  const withinCaps = shareActionCount < policy.dailyShareCap && recipientActionCount < policy.dailyRecipientCap;
+  const qualified = creditEligible && withinCaps;
+  const creditAmount = qualified ? policy.creditAmount : 0;
+  const status = qualified ? 'qualified' : creditEligible ? 'capped' : 'unqualified';
+  const creditQualificationReason = getUnqualifiedCreditReason(input);
+  const metadata = creditQualificationReason
+    ? { ...(input.metadata || {}), creditQualificationReason }
+    : input.metadata || {};
+
+  const result = await database.query(
+    `INSERT INTO underwriting_share_actions (
+       share_id, action, recipient_hash, qualified, credit_type, credit_amount, metadata
+     ) VALUES ($1, $2, $3, $4, 'google_sheets_export', $5, $6)
+     RETURNING id`,
+    [input.shareId, input.action, input.recipientHash, qualified, creditAmount, metadata],
+  );
+
+  const actionId = result.rows[0]?.id;
+
+  if (qualified && input.inviterUserId && creditAmount > 0) {
+    await database.query(
+      `INSERT INTO premium_credit_ledger (
+         user_id, share_id, share_action_id, credit_type, credit_amount, reason
+       ) VALUES ($1, $2, $3, 'google_sheets_export', $4, $5)`,
+      [input.inviterUserId, input.shareId, actionId, creditAmount, `Qualified underwriting share action: ${input.action}`],
+    );
+  }
+
+  await database.query(
+    `UPDATE underwriting_shares
+     SET qualified_action_count = qualified_action_count + $2,
+         credit_awarded = credit_awarded + $3,
+         last_qualified_action_at = CASE WHEN $2 = 1 THEN NOW() ELSE last_qualified_action_at END,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [input.shareId, qualified ? 1 : 0, creditAmount],
+  );
+
+  return { status, qualified, creditAmount, actionId, creditQualificationReason };
+}
+
+type ShareActionSummary = Record<QualifiedShareAction, {
+  totalCount: number;
+  qualifiedCount: number;
+  cappedCount: number;
+  creditAwarded: number;
+  dailyQualifiedCount: number;
+  dailyRemainingShareCap: number;
+  lastActionAt: string | null;
+}>;
+
+type RecipientInviteFunnelSegment = {
+  source: string;
+  invitedCount: number;
+  openedCount: number;
+  challengedCount: number;
+  versionedCount: number;
+  signupCount: number;
+  creditAwarded: number;
+  openRate: number;
+  challengeRate: number;
+  versionRate: number;
+  signupRate: number;
+};
+
+type RecipientInviteFollowUp = {
+  recipientLinkId: number;
+  source: string;
+  status: 'unopened' | 'opened' | 'challenged' | 'versioned' | 'account_loop_complete';
+  nextQualifiedAction: QualifiedShareAction;
+  suggestedCopy: string;
+  creditAwarded: number;
+  createdAt: string | null;
+  lastOpenedAt: string | null;
+  guardrail: string;
+};
+
+function getConversionRate(numerator: number, denominator: number) {
+  return denominator > 0 ? Number((numerator / denominator).toFixed(4)) : 0;
+}
+
+export function getShareGrowthNudge(byAction: ShareActionSummary) {
+  const opens = byAction.unique_open.qualifiedCount;
+  const challenges = byAction.challenge.qualifiedCount;
+  const forks = byAction.fork.qualifiedCount;
+  const savedVersions = byAction.saved_version.qualifiedCount;
+  const signups = byAction.signup.qualifiedCount;
+
+  if (opens === 0) {
+    return {
+      stage: 'get_first_qualified_open',
+      headline: 'Share the underwriting link with one specific investor or realtor.',
+      suggestedCopy: 'Challenge my underwriting — tell me which assumption you disagree with.',
+    };
+  }
+
+  if (challenges === 0) {
+    return {
+      stage: 'convert_opens_to_challenges',
+      headline: 'Qualified opens are landing. Ask recipients to challenge one assumption.',
+      suggestedCopy: 'Challenge my underwriting — rent, vacancy, expenses, or exit cap: what would you change?',
+    };
+  }
+
+  if (forks + savedVersions === 0) {
+    return {
+      stage: 'convert_challenges_to_versions',
+      headline: 'Challenges are coming in. Push recipients to fork or save their version next.',
+      suggestedCopy: 'Challenge my underwriting and save your version — I want to compare your assumptions side by side.',
+    };
+  }
+
+  if (signups === 0) {
+    return {
+      stage: 'convert_versions_to_accounts',
+      headline: 'Version activity is working. Invite challengers to create an account so the loop can continue.',
+      suggestedCopy: 'Challenge my underwriting, save your version, and share it onward for Google Sheets export credits.',
+    };
+  }
+
+  return {
+    stage: 'amplify_working_loop',
+    headline: 'The underwriting loop is working. Re-share the strongest challenged version.',
+    suggestedCopy: 'Challenge my underwriting — this version already has investor feedback. What did we miss?',
+  };
+}
+
+export function getQualifiedShareRewardBrief(byAction: ShareActionSummary) {
+  const earnedCredits = Object.values(byAction).reduce(
+    (total, actionSummary) => total + actionSummary.creditAwarded,
+    0,
+  );
+  const remainingCreditsToday = Object.values(byAction).reduce(
+    (total, actionSummary) => total + actionSummary.dailyRemainingShareCap,
+    0,
+  );
+  const qualifiedActions = QUALIFIED_ACTIONS.filter((action) => byAction[action].qualifiedCount > 0);
+  const bestNextReward = QUALIFIED_ACTIONS
+    .filter((action) => byAction[action].dailyRemainingShareCap > 0)
+    .sort((left, right) => ACTION_POLICIES[right].creditAmount - ACTION_POLICIES[left].creditAmount)[0] || null;
+
+  return {
+    headline: 'Earn Google Sheets export credits when recipients take qualified underwriting actions.',
+    cta: 'Challenge my underwriting.',
+    earnedCredits,
+    remainingCreditsToday,
+    qualifiedActions,
+    bestNextReward: bestNextReward ? {
+      action: bestNextReward,
+      creditAmount: ACTION_POLICIES[bestNextReward].creditAmount,
+      remainingToday: byAction[bestNextReward].dailyRemainingShareCap,
+    } : null,
+    sharePrompt: 'Challenge my underwriting — fork the assumptions you disagree with, save your version, and share it onward.',
+    antiAbuseGuardrail: 'Credits are never granted for raw clicks alone. Unique-open credits require issued recipient links; other rewards require challenges, forks, signups, or saved versions within daily caps.',
+  };
+}
+
+export function getShareConversionInsights(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const { byAction, invitedRecipientCount, unopenedRecipientCount } = input;
+  const opens = byAction.unique_open.qualifiedCount;
+  const challenges = byAction.challenge.qualifiedCount;
+  const forkOrSavedVersions = byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount;
+  const signups = byAction.signup.qualifiedCount;
+  const openedInvites = Math.max(invitedRecipientCount - unopenedRecipientCount, 0);
+  const unopenedInviteRate = getConversionRate(unopenedRecipientCount, invitedRecipientCount);
+  const openToChallenge = getConversionRate(challenges, opens);
+  const challengeToVersion = getConversionRate(forkOrSavedVersions, challenges);
+  const versionToSignup = getConversionRate(signups, forkOrSavedVersions);
+
+  let bottleneck: 'recipient_distribution' | 'open_to_challenge' | 'challenge_to_version' | 'version_to_signup' | 'amplify_loop';
+  let nextQualifiedAction: QualifiedShareAction;
+  let ownerAction: string;
+
+  if (opens === 0 || (invitedRecipientCount > 0 && openedInvites === 0)) {
+    bottleneck = 'recipient_distribution';
+    nextQualifiedAction = 'unique_open';
+    ownerAction = 'Send recipient-specific links to a short list and ask each person for one underwriting disagreement.';
+  } else if (openToChallenge < 0.35) {
+    bottleneck = 'open_to_challenge';
+    nextQualifiedAction = 'challenge';
+    ownerAction = 'Follow up with opened recipients using the “Challenge my underwriting” CTA and name 2-3 assumptions they can dispute.';
+  } else if (challengeToVersion < 0.5) {
+    bottleneck = 'challenge_to_version';
+    nextQualifiedAction = 'saved_version';
+    ownerAction = 'Ask challengers to save or fork their changed assumptions so both versions can be compared.';
+  } else if (versionToSignup < 0.4) {
+    bottleneck = 'version_to_signup';
+    nextQualifiedAction = 'signup';
+    ownerAction = 'Prompt version creators to create an account so they can keep the version and share it onward.';
+  } else {
+    bottleneck = 'amplify_loop';
+    nextQualifiedAction = 'fork';
+    ownerAction = 'Re-share the strongest challenged version to a new qualified recipient segment.';
+  }
+
+  const remainingCreditsToday = Object.values(byAction).reduce(
+    (remaining, actionSummary) => remaining + actionSummary.dailyRemainingShareCap,
+    0,
+  );
+
+  return {
+    bottleneck,
+    nextQualifiedAction,
+    ownerAction,
+    healthScore: Math.min(100, Math.round(
+      (Math.min(opens, 5) * 8)
+      + (Math.min(challenges, 4) * 10)
+      + (Math.min(forkOrSavedVersions, 3) * 12)
+      + (Math.min(signups, 2) * 12),
+    )),
+    openedInvites,
+    unopenedInviteRate,
+    remainingCreditsToday,
+    creditGuardrail: 'Credits are only awarded for issued-recipient opens, challenges, forks, signups, and saved versions within anti-abuse caps — never raw share clicks alone.',
+  };
+}
+
+export function getShareConversionCards(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const { byAction, invitedRecipientCount, unopenedRecipientCount } = input;
+  const openedInvites = Math.max(invitedRecipientCount - unopenedRecipientCount, 0);
+  const forkOrSavedVersions = byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount;
+  const cardDefinitions: Array<{
+    key: string;
+    title: string;
+    qualifiedAction: QualifiedShareAction;
+    currentCount: number;
+    targetCount: number;
+    helper: string;
+    qualifiedRequirement: string;
+  }> = [
+    {
+      key: 'recipient_open',
+      title: 'Get a tracked recipient to open',
+      qualifiedAction: 'unique_open',
+      currentCount: byAction.unique_open.qualifiedCount,
+      targetCount: Math.max(1, Math.min(invitedRecipientCount || 1, 5)),
+      helper: unopenedRecipientCount > 0
+        ? `${unopenedRecipientCount} recipient-specific invite${unopenedRecipientCount === 1 ? '' : 's'} still need a first open.`
+        : 'Send a recipient-specific link before asking for the challenge.',
+      qualifiedRequirement: 'A unique tracked recipient opens an issued share link within daily caps.',
+    },
+    {
+      key: 'assumption_challenge',
+      title: 'Turn opens into assumption challenges',
+      qualifiedAction: 'challenge',
+      currentCount: byAction.challenge.qualifiedCount,
+      targetCount: Math.max(1, Math.ceil(Math.max(byAction.unique_open.qualifiedCount, openedInvites) * 0.35)),
+      helper: 'Ask them to name the rent, vacancy, expense, cap-rate, or cash-flow assumption they disagree with.',
+      qualifiedRequirement: 'A challenge must include a challenged field, changed input/metric, or a substantive note.',
+    },
+    {
+      key: 'saved_version',
+      title: 'Get a forked or saved version',
+      qualifiedAction: 'saved_version',
+      currentCount: forkOrSavedVersions,
+      targetCount: Math.max(1, Math.ceil(byAction.challenge.qualifiedCount * 0.5)),
+      helper: 'Push challengers to save the changed assumptions so both versions can be compared.',
+      qualifiedRequirement: 'Forks and saved versions require meaningful changed assumptions before credits qualify.',
+    },
+    {
+      key: 'account_loop',
+      title: 'Convert version creators into account holders',
+      qualifiedAction: 'signup',
+      currentCount: byAction.signup.qualifiedCount,
+      targetCount: Math.max(1, Math.ceil(forkOrSavedVersions * 0.4)),
+      helper: 'Prompt version creators to create an account so they can keep and share their version onward.',
+      qualifiedRequirement: 'Signup credits require a recipient account action tied to the underwriting flow.',
+    },
+  ];
+
+  return cardDefinitions.map((card) => {
+    const actionSummary = byAction[card.qualifiedAction];
+    const completed = card.currentCount >= card.targetCount && card.targetCount > 0;
+    const capped = actionSummary.dailyRemainingShareCap <= 0;
+
+    return {
+      ...card,
+      cta: 'Challenge my underwriting.',
+      status: completed ? 'completed' : capped ? 'capped' : 'active',
+      progressRate: getConversionRate(card.currentCount, card.targetCount),
+      creditType: 'google_sheets_export',
+      creditReward: ACTION_POLICIES[card.qualifiedAction].creditAmount,
+      dailyRemainingForAction: actionSummary.dailyRemainingShareCap,
+      guardrail: 'No credits for raw share clicks or link creation alone; only qualified tracked actions within caps count.',
+    };
+  });
+}
+
+export function getShareRewardEligibilitySummary(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const requirements: Record<QualifiedShareAction, string[]> = {
+    unique_open: [
+      'Create an issued recipient-specific share link first.',
+      'Recipient must open with the issued recipient key accepted.',
+      'Raw/generic link opens are tracked as unqualified and earn 0 credits.',
+    ],
+    challenge: [
+      'Recipient must challenge at least one assumption or field.',
+      'Payload needs challengedFields, changed assumptions/inputs/metrics, or a 10+ character note/comment.',
+      'Duplicate challenges by the same recipient on the same share do not earn again.',
+    ],
+    fork: [
+      'Recipient must fork changed assumptions from the underwriting flow.',
+      'Payload needs changed assumptions/inputs/metrics or a substantive note.',
+      'Authenticated forks can create an onward “Challenge my underwriting.” share.',
+    ],
+    signup: [
+      'Recipient signup must be tied to this underwriting flow.',
+      'Same recipient/share/action can qualify once; daily caps still apply.',
+    ],
+    saved_version: [
+      'Recipient must save a changed version of the underwriting.',
+      'Payload needs challenged fields, changed inputs/metrics, assumptions, notes, or comment.',
+      'Authenticated saved versions can create an onward “Challenge my underwriting.” share.',
+    ],
+  };
+
+  const actionEligibility = Object.fromEntries(QUALIFIED_ACTIONS.map((action) => {
+    const summary = input.byAction[action];
+    const dailyRemaining = summary.dailyRemainingShareCap;
+    const hasRecipientLinkPrerequisite = action !== 'unique_open' || input.invitedRecipientCount > 0;
+    const canEarnToday = dailyRemaining > 0 && hasRecipientLinkPrerequisite;
+    const blockedReason = dailyRemaining <= 0
+      ? 'daily_share_cap_reached'
+      : !hasRecipientLinkPrerequisite
+        ? 'issued_recipient_link_required_for_unique_open_credit'
+        : null;
+
+    return [action, {
+      action,
+      creditType: 'google_sheets_export',
+      creditAmount: ACTION_POLICIES[action].creditAmount,
+      canEarnToday,
+      blockedReason,
+      dailyRemainingForShare: dailyRemaining,
+      dailyShareCap: ACTION_POLICIES[action].dailyShareCap,
+      dailyRecipientCap: ACTION_POLICIES[action].dailyRecipientCap,
+      requirements: requirements[action],
+      guardrail: 'Do not grant credits for raw share clicks alone; credits require a qualified tracked action and daily cap availability.',
+    }];
+  })) as Record<QualifiedShareAction, {
+    action: QualifiedShareAction;
+    creditType: 'google_sheets_export';
+    creditAmount: number;
+    canEarnToday: boolean;
+    blockedReason: string | null;
+    dailyRemainingForShare: number;
+    dailyShareCap: number;
+    dailyRecipientCap: number;
+    requirements: string[];
+    guardrail: string;
+  }>;
+
+  return {
+    cta: 'Challenge my underwriting.',
+    actionEligibility,
+    qualifiedCreditRule: 'Award Google Sheets export credits only after unique issued-recipient opens, meaningful challenges, forks, signups, or saved versions pass duplicate checks and daily caps.',
+    rawClickPolicy: 'Generic opens/raw clicks are useful analytics but are unqualified for credits.',
+    recipientLinkCoverage: {
+      invitedRecipientCount: input.invitedRecipientCount,
+      unopenedRecipientCount: input.unopenedRecipientCount,
+      needsRecipientLinksForOpenCredits: input.invitedRecipientCount === 0,
+    },
+  };
+}
+
+export function getQualifiedShareAssist(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const insights = getShareConversionInsights(input);
+  const rewardBrief = getQualifiedShareRewardBrief(input.byAction);
+  const unopenedInvites = Math.max(input.unopenedRecipientCount, 0);
+  const remainingQualifiedSlots = input.byAction[insights.nextQualifiedAction].dailyRemainingShareCap;
+  const bestNextCredit = ACTION_POLICIES[insights.nextQualifiedAction].creditAmount;
+
+  const requestByAction: Record<QualifiedShareAction, string> = {
+    unique_open: 'Open the link and challenge one assumption you think is too optimistic.',
+    challenge: 'Challenge one assumption — rent, vacancy, expenses, exit cap, or monthly cash flow.',
+    fork: 'Fork the assumptions you disagree with so we can compare versions side by side.',
+    signup: 'Create an account from your challenged version so you can save it and share it onward.',
+    saved_version: 'Save your changed version so the original and challenged underwriting can be compared.',
+  };
+
+  const suggestedRecipients = insights.bottleneck === 'recipient_distribution'
+    ? [
+        'One investor who knows the neighbourhood rents',
+        'One realtor who has sold a comparable property nearby',
+        'One lender or mortgage broker who can sanity-check financing assumptions',
+      ]
+    : [
+        'Recipients who already opened but have not challenged the deal',
+        'Recipients who challenged but have not saved or forked a version',
+        'The strongest challenger who can share their saved version onward',
+      ];
+
+  return {
+    cta: 'Challenge my underwriting.',
+    stage: insights.bottleneck,
+    nextQualifiedAction: insights.nextQualifiedAction,
+    ownerAction: insights.ownerAction,
+    suggestedRecipients,
+    suggestedMessage: `Challenge my underwriting — ${requestByAction[insights.nextQualifiedAction]}`,
+    rewardAngle: remainingQualifiedSlots > 0
+      ? `This can earn ${bestNextCredit} Google Sheets export credit${bestNextCredit === 1 ? '' : 's'} per qualified ${insights.nextQualifiedAction.replace('_', ' ')} today.`
+      : `Today's qualified ${insights.nextQualifiedAction.replace('_', ' ')} credit cap is already reached; keep collecting feedback without awarding more credits.`,
+    followUpTrigger: unopenedInvites > 0
+      ? `${unopenedInvites} recipient-specific invite${unopenedInvites === 1 ? '' : 's'} have not opened yet.`
+      : 'No unopened recipient-specific invites are waiting; focus on the next qualified action.',
+    dailyRemainingForNextAction: remainingQualifiedSlots,
+    earnedCredits: rewardBrief.earnedCredits,
+    antiAbuseChecklist: [
+      'Use recipient-specific links because unique-open credits require issued recipient keys.',
+      'Do not award credits for raw clicks or link creation alone.',
+      'Require changed assumptions, challenged fields, notes, or saved versions before challenge/fork credits qualify.',
+      'Respect daily share and recipient caps before adding Google Sheets export credits.',
+    ],
+  };
+}
+
+export function getQualifiedRecipientInvitePlan(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const remainingOpenCredits = input.byAction.unique_open.dailyRemainingShareCap;
+  const unopenedInvites = Math.max(input.unopenedRecipientCount, 0);
+  const needsMoreRecipientLinks = input.invitedRecipientCount === 0 || (unopenedInvites === 0 && remainingOpenCredits > 0);
+  const recommendedNewLinks = needsMoreRecipientLinks
+    ? Math.min(Math.max(remainingOpenCredits, 1), 5)
+    : 0;
+  const openedWithoutChallenge = Math.max(
+    input.byAction.unique_open.qualifiedCount - input.byAction.challenge.qualifiedCount,
+    0,
+  );
+  const challengedWithoutVersion = Math.max(
+    input.byAction.challenge.qualifiedCount - input.byAction.fork.qualifiedCount - input.byAction.saved_version.qualifiedCount,
+    0,
+  );
+
+  const recipientPersonas = [
+    {
+      persona: 'neighbourhood rent skeptic',
+      why: 'They can challenge whether the rent assumption survives current local comps.',
+      requestedChallenge: 'Tell me the rent you would actually underwrite and why.',
+    },
+    {
+      persona: 'active listing or buyer agent',
+      why: 'They can dispute days-on-market, resale risk, concessions, and achievable exit cap.',
+      requestedChallenge: 'Which resale or exit assumption would you haircut first?',
+    },
+    {
+      persona: 'lender or mortgage broker',
+      why: 'They can sanity-check financing, DSCR, rate, amortization, and cash-flow assumptions.',
+      requestedChallenge: 'What financing term would break this underwriting?',
+    },
+    {
+      persona: 'operator or property manager',
+      why: 'They can identify vacancy, repair, utility, maintenance, or turnover misses.',
+      requestedChallenge: 'Which operating expense or vacancy assumption is too light?',
+    },
+  ];
+
+  return {
+    cta: 'Challenge my underwriting.',
+    recommendedNewRecipientLinks: recommendedNewLinks,
+    remainingUniqueOpenCreditsToday: remainingOpenCredits,
+    openedWithoutChallenge,
+    challengedWithoutVersion,
+    recipientPersonas,
+    inviteCopy: 'Challenge my underwriting — pick one assumption you disagree with, change it, and save or fork your version.',
+    followUpCopy: openedWithoutChallenge > 0
+      ? 'You opened this underwriting — can you challenge one rent, vacancy, expense, financing, or exit assumption?'
+      : 'Challenge my underwriting and save your version so we can compare assumptions side by side.',
+    qualificationRule: 'Use issued recipient-specific links; credits require unique opens, challenges, forks, signups, or saved versions within daily caps. Raw share clicks and link creation do not earn credits.',
+    nextOwnerStep: needsMoreRecipientLinks
+      ? `Create ${recommendedNewLinks} recipient-specific link${recommendedNewLinks === 1 ? '' : 's'} before asking for more opens.`
+      : unopenedInvites > 0
+        ? `Wait for or follow up with ${unopenedInvites} unopened recipient-specific invite${unopenedInvites === 1 ? '' : 's'}; do not create duplicate links for the same person.`
+        : 'Push opened recipients toward a qualified challenge, saved version, or fork before sharing wider.',
+  };
+}
+
+export function getQualifiedShareDigest(input: {
+  byAction: ShareActionSummary;
+  invitedRecipientCount: number;
+  unopenedRecipientCount: number;
+}) {
+  const insights = getShareConversionInsights(input);
+  const rewardBrief = getQualifiedShareRewardBrief(input.byAction);
+  const invitePlan = getQualifiedRecipientInvitePlan(input);
+  const openedWithoutChallenge = Math.max(
+    input.byAction.unique_open.qualifiedCount - input.byAction.challenge.qualifiedCount,
+    0,
+  );
+  const challengedWithoutVersion = Math.max(
+    input.byAction.challenge.qualifiedCount - input.byAction.fork.qualifiedCount - input.byAction.saved_version.qualifiedCount,
+    0,
+  );
+
+  const ownerCopyByAction: Record<QualifiedShareAction, string> = {
+    unique_open: 'Challenge my underwriting — open this tracked link and tell me which assumption you would change first.',
+    challenge: 'Challenge my underwriting — rent, vacancy, expenses, exit cap, or cash flow: what would you change?',
+    fork: 'Challenge my underwriting — fork the assumptions you disagree with so we can compare versions side by side.',
+    signup: 'Challenge my underwriting — save your version in an account so you can share it onward.',
+    saved_version: 'Challenge my underwriting — save your changed version so we can compare assumptions side by side.',
+  };
+
+  const blockers: string[] = [];
+  if (input.invitedRecipientCount === 0) {
+    blockers.push('No issued recipient-specific links exist, so unique-open credits cannot qualify yet.');
+  }
+  if (input.unopenedRecipientCount > 0) {
+    blockers.push(`${input.unopenedRecipientCount} issued recipient link${input.unopenedRecipientCount === 1 ? '' : 's'} still need a first open.`);
+  }
+  if (openedWithoutChallenge > 0) {
+    blockers.push(`${openedWithoutChallenge} qualified opener${openedWithoutChallenge === 1 ? '' : 's'} still need to challenge an assumption.`);
+  }
+  if (challengedWithoutVersion > 0) {
+    blockers.push(`${challengedWithoutVersion} challenge${challengedWithoutVersion === 1 ? '' : 's'} still need a saved or forked version.`);
+  }
+  if (input.byAction[insights.nextQualifiedAction].dailyRemainingShareCap <= 0) {
+    blockers.push(`Today's ${insights.nextQualifiedAction.replace('_', ' ')} credit cap is reached for this share.`);
+  }
+
+  return {
+    cta: 'Challenge my underwriting.',
+    headline: insights.bottleneck === 'amplify_loop'
+      ? 'The viral underwriting loop is working — amplify the strongest challenged version.'
+      : `Next best qualified action: ${insights.nextQualifiedAction.replace('_', ' ')}.`,
+    nextQualifiedAction: insights.nextQualifiedAction,
+    ownerAction: insights.ownerAction,
+    suggestedCopy: ownerCopyByAction[insights.nextQualifiedAction],
+    recommendedNewRecipientLinks: invitePlan.recommendedNewRecipientLinks,
+    openedWithoutChallenge,
+    challengedWithoutVersion,
+    earnedGoogleSheetsExportCredits: rewardBrief.earnedCredits,
+    remainingGoogleSheetsExportCreditsToday: rewardBrief.remainingCreditsToday,
+    blockers,
+    antiAbuse: [
+      'Never grant credits for raw share clicks, generic opens, or link creation alone.',
+      'Use issued recipient-specific links for unique-open credit qualification.',
+      'Require changed assumptions, challenged fields, notes, forks, signups, or saved versions before awarding premium credits.',
+      'Apply duplicate checks plus daily share and recipient caps before ledger entries.',
+    ],
+  };
+}
+
+export async function getRecipientInviteFunnel(database: DatabaseAdapter, shareId: number): Promise<RecipientInviteFunnelSegment[]> {
+  const result = await database.query(
+    `SELECT r.source,
+            COUNT(DISTINCT r.id)::int AS invited_count,
+            COUNT(DISTINCT r.id) FILTER (WHERE r.last_opened_at IS NOT NULL)::int AS opened_count,
+            COUNT(DISTINCT r.recipient_hash) FILTER (WHERE a.action = 'challenge' AND a.qualified = true)::int AS challenged_count,
+            COUNT(DISTINCT r.recipient_hash) FILTER (WHERE a.action IN ('fork', 'saved_version') AND a.qualified = true)::int AS versioned_count,
+            COUNT(DISTINCT r.recipient_hash) FILTER (WHERE a.action = 'signup' AND a.qualified = true)::int AS signup_count,
+            COALESCE(SUM(a.credit_amount) FILTER (WHERE a.qualified = true), 0)::int AS credit_awarded
+     FROM underwriting_share_recipients r
+     LEFT JOIN underwriting_share_actions a
+       ON a.share_id = r.share_id AND a.recipient_hash = r.recipient_hash
+     WHERE r.share_id = $1
+     GROUP BY r.source
+     ORDER BY invited_count DESC, r.source ASC`,
+    [shareId],
+  );
+
+  return result.rows.map((row) => {
+    const invitedCount = Number(row.invited_count || 0);
+    const openedCount = Number(row.opened_count || 0);
+    const challengedCount = Number(row.challenged_count || 0);
+    const versionedCount = Number(row.versioned_count || 0);
+    const signupCount = Number(row.signup_count || 0);
+
+    return {
+      source: row.source || 'manual',
+      invitedCount,
+      openedCount,
+      challengedCount,
+      versionedCount,
+      signupCount,
+      creditAwarded: Number(row.credit_awarded || 0),
+      openRate: getConversionRate(openedCount, invitedCount),
+      challengeRate: getConversionRate(challengedCount, openedCount),
+      versionRate: getConversionRate(versionedCount, challengedCount),
+      signupRate: getConversionRate(signupCount, versionedCount),
+    };
+  });
+}
+
+export async function getRecipientInviteFollowUps(
+  database: DatabaseAdapter,
+  shareId: number,
+  limit = 25,
+): Promise<RecipientInviteFollowUp[]> {
+  const result = await database.query(
+    `SELECT r.id,
+            r.source,
+            r.created_at,
+            r.last_opened_at,
+            COALESCE(BOOL_OR(a.action = 'challenge' AND a.qualified = true), false) AS has_challenge,
+            COALESCE(BOOL_OR(a.action IN ('fork', 'saved_version') AND a.qualified = true), false) AS has_version,
+            COALESCE(BOOL_OR(a.action = 'signup' AND a.qualified = true), false) AS has_signup,
+            COALESCE(SUM(a.credit_amount) FILTER (WHERE a.qualified = true), 0)::int AS credit_awarded
+     FROM underwriting_share_recipients r
+     LEFT JOIN underwriting_share_actions a
+       ON a.share_id = r.share_id AND a.recipient_hash = r.recipient_hash
+     WHERE r.share_id = $1
+     GROUP BY r.id, r.source, r.created_at, r.last_opened_at
+     ORDER BY
+       CASE
+         WHEN r.last_opened_at IS NULL THEN 0
+         WHEN COALESCE(BOOL_OR(a.action = 'challenge' AND a.qualified = true), false) = false THEN 1
+         WHEN COALESCE(BOOL_OR(a.action IN ('fork', 'saved_version') AND a.qualified = true), false) = false THEN 2
+         WHEN COALESCE(BOOL_OR(a.action = 'signup' AND a.qualified = true), false) = false THEN 3
+         ELSE 4
+       END ASC,
+       r.created_at DESC
+     LIMIT $2`,
+    [shareId, limit],
+  );
+
+  return result.rows.map((row) => {
+    const opened = Boolean(row.last_opened_at);
+    const hasChallenge = Boolean(row.has_challenge);
+    const hasVersion = Boolean(row.has_version);
+    const hasSignup = Boolean(row.has_signup);
+
+    let status: RecipientInviteFollowUp['status'] = 'account_loop_complete';
+    let nextQualifiedAction: QualifiedShareAction = 'fork';
+    let suggestedCopy = 'Challenge my underwriting — share the strongest saved version onward to another qualified recipient.';
+
+    if (!opened) {
+      status = 'unopened';
+      nextQualifiedAction = 'unique_open';
+      suggestedCopy = 'Challenge my underwriting — open this tracked link and tell me which assumption you would change first.';
+    } else if (!hasChallenge) {
+      status = 'opened';
+      nextQualifiedAction = 'challenge';
+      suggestedCopy = 'Challenge my underwriting — rent, vacancy, expenses, exit cap, or cash flow: what would you change?';
+    } else if (!hasVersion) {
+      status = 'challenged';
+      nextQualifiedAction = 'saved_version';
+      suggestedCopy = 'Challenge my underwriting — save or fork your changed assumptions so we can compare versions.';
+    } else if (!hasSignup) {
+      status = 'versioned';
+      nextQualifiedAction = 'signup';
+      suggestedCopy = 'Challenge my underwriting — create an account from your saved version so you can keep it and share onward.';
+    }
+
+    return {
+      recipientLinkId: Number(row.id),
+      source: row.source || 'manual',
+      status,
+      nextQualifiedAction,
+      suggestedCopy,
+      creditAwarded: Number(row.credit_awarded || 0),
+      createdAt: row.created_at || null,
+      lastOpenedAt: row.last_opened_at || null,
+      guardrail: 'Follow up for the next qualified action only; never award credits for raw clicks, duplicate actions, or link creation alone.',
+    };
+  });
+}
+
+export async function getShareActionSummary(database: DatabaseAdapter, shareId: number, recentLimit = 10) {
+  const summaryResult = await database.query(
+    `SELECT action,
+            COUNT(*)::int AS total_count,
+            COUNT(*) FILTER (WHERE qualified = true)::int AS qualified_count,
+            COUNT(*) FILTER (WHERE qualified = false)::int AS capped_count,
+            COUNT(*) FILTER (WHERE qualified = true AND created_at >= CURRENT_DATE)::int AS daily_qualified_count,
+            COALESCE(SUM(credit_amount), 0)::int AS credit_awarded,
+            MAX(created_at) AS last_action_at
+     FROM underwriting_share_actions
+     WHERE share_id = $1
+     GROUP BY action`,
+    [shareId],
+  );
+
+  const byAction = Object.fromEntries(
+    QUALIFIED_ACTIONS.map((action) => [
+      action,
+      {
+        totalCount: 0,
+        qualifiedCount: 0,
+        cappedCount: 0,
+        creditAwarded: 0,
+        dailyQualifiedCount: 0,
+        dailyRemainingShareCap: ACTION_POLICIES[action].dailyShareCap,
+        lastActionAt: null as string | null,
+      },
+    ]),
+  ) as ShareActionSummary;
+
+  for (const row of summaryResult.rows) {
+    if (!isQualifiedShareAction(row.action)) {
+      continue;
+    }
+
+    const dailyQualifiedCount = Number(row.daily_qualified_count || 0);
+    byAction[row.action] = {
+      totalCount: Number(row.total_count || 0),
+      qualifiedCount: Number(row.qualified_count || 0),
+      cappedCount: Number(row.capped_count || 0),
+      creditAwarded: Number(row.credit_awarded || 0),
+      dailyQualifiedCount,
+      dailyRemainingShareCap: Math.max(ACTION_POLICIES[row.action].dailyShareCap - dailyQualifiedCount, 0),
+      lastActionAt: row.last_action_at || null,
+    };
+  }
+
+  const recipientResult = await database.query(
+    `SELECT COUNT(DISTINCT recipient_hash)::int AS unique_recipient_count,
+            COUNT(DISTINCT recipient_hash) FILTER (WHERE qualified = true)::int AS qualified_recipient_count
+     FROM underwriting_share_actions
+     WHERE share_id = $1`,
+    [shareId],
+  );
+
+  const recentResult = await database.query(
+    `SELECT id, action, qualified, credit_type, credit_amount, metadata, created_at
+     FROM underwriting_share_actions
+     WHERE share_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [shareId, recentLimit],
+  );
+
+  const inviteResult = await database.query(
+    `SELECT COUNT(*)::int AS invited_recipient_count,
+            COUNT(*) FILTER (WHERE last_opened_at IS NULL)::int AS unopened_recipient_count
+     FROM underwriting_share_recipients
+     WHERE share_id = $1`,
+    [shareId],
+  );
+
+  const inviteFunnel = await getRecipientInviteFunnel(database, shareId);
+  const inviteFollowUps = await getRecipientInviteFollowUps(database, shareId);
+
+  const totals = Object.values(byAction).reduce(
+    (runningTotals, actionSummary) => ({
+      totalCount: runningTotals.totalCount + actionSummary.totalCount,
+      qualifiedCount: runningTotals.qualifiedCount + actionSummary.qualifiedCount,
+      cappedCount: runningTotals.cappedCount + actionSummary.cappedCount,
+      creditAwarded: runningTotals.creditAwarded + actionSummary.creditAwarded,
+    }),
+    { totalCount: 0, qualifiedCount: 0, cappedCount: 0, creditAwarded: 0 },
+  );
+
+  const uniqueRecipientCount = Number(recipientResult.rows[0]?.unique_recipient_count || 0);
+  const qualifiedRecipientCount = Number(recipientResult.rows[0]?.qualified_recipient_count || 0);
+  const invitedRecipientCount = Number(inviteResult.rows[0]?.invited_recipient_count || 0);
+  const unopenedRecipientCount = Number(inviteResult.rows[0]?.unopened_recipient_count || 0);
+
+  return {
+    byAction,
+    totals,
+    uniqueRecipientCount,
+    qualifiedRecipientCount,
+    invitedRecipientCount,
+    unopenedRecipientCount,
+    inviteFunnel,
+    inviteFollowUps,
+    conversionRates: {
+      openToChallenge: getConversionRate(byAction.challenge.qualifiedCount, byAction.unique_open.qualifiedCount),
+      challengeToForkOrSavedVersion: getConversionRate(
+        byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount,
+        byAction.challenge.qualifiedCount,
+      ),
+      forkOrSavedVersionToSignup: getConversionRate(
+        byAction.signup.qualifiedCount,
+        byAction.fork.qualifiedCount + byAction.saved_version.qualifiedCount,
+      ),
+    },
+    growthNudge: getShareGrowthNudge(byAction),
+    conversionInsights: getShareConversionInsights({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    qualifiedShareAssist: getQualifiedShareAssist({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    qualifiedRecipientInvitePlan: getQualifiedRecipientInvitePlan({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    rewardEligibility: getShareRewardEligibilitySummary({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    conversionCards: getShareConversionCards({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    rewardBrief: getQualifiedShareRewardBrief(byAction),
+    qualifiedShareDigest: getQualifiedShareDigest({ byAction, invitedRecipientCount, unopenedRecipientCount }),
+    recentActions: recentResult.rows.map((row) => ({
+      id: row.id,
+      action: row.action,
+      qualified: Boolean(row.qualified),
+      creditType: row.credit_type,
+      creditAmount: Number(row.credit_amount || 0),
+      metadata: row.metadata || {},
+      createdAt: row.created_at,
+    })),
+  };
+}
+
+export function createUnderwritingShareRouter(database: DatabaseAdapter = defaultDb): Router {
+  const router = Router();
+
+  router.post('/analyses/:id/share', authenticateOptional, async (req: AuthRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.userId || null;
+      const result = await database.query(
+        `SELECT id, user_id FROM deal_analyses WHERE id = $1 AND ($2::int IS NULL OR user_id = $2)`,
+        [id, userId],
+      );
+
+      if (!result.rows[0]) {
+        res.status(404).json({ error: 'Analysis not found' });
+        return;
+      }
+
+      const created = await createUnderwritingShare(database, {
+        analysisId: id,
+        inviterUserId: userId,
+        source: req.body?.source || 'analysis',
+      });
+
+      res.json({
+        success: true,
+        shareId: created.id,
+        token: created.token,
+        shareUrl: created.shareUrl,
+        cta: created.cta,
+        shareDepth: created.shareDepth,
+        rewardPolicy: created.rewardPolicy,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.get('/underwriting-shares/:token', async (req: Request, res: Response) => {
+    try {
+      const result = await database.query(
+        `SELECT s.id, s.token, s.status, s.analysis_id, s.inviter_user_id,
+                a.property_address, a.metrics, a.inputs, a.verdict_check, a.notes, a.city, a.province
+         FROM underwriting_shares s
+         JOIN deal_analyses a ON a.id = s.analysis_id
+         WHERE s.token = $1`,
+        [req.params.token],
+      );
+
+      const row = result.rows[0];
+      if (!row || row.status !== 'active') {
+        res.status(404).json({ error: 'Share not found' });
+        return;
+      }
+
+      const recipientTracking = await resolveShareRecipientHash(database, {
+        shareId: row.id,
+        req,
+        explicitRecipient: req.query.recipient,
+      });
+      const open = await recordQualifiedShareAction(database, {
+        shareId: row.id,
+        inviterUserId: row.inviter_user_id,
+        action: 'unique_open',
+        recipientHash: recipientTracking.recipientHash,
+        metadata: {
+          referrer: req.headers.referer || null,
+          trackingSource: recipientTracking.trackingSource,
+          explicitRecipientAccepted: recipientTracking.explicitRecipientAccepted,
+        },
+      });
+
+      if (recipientTracking.explicitRecipientAccepted) {
+        await database.query(
+          `UPDATE underwriting_share_recipients
+           SET last_opened_at = NOW()
+           WHERE share_id = $1 AND recipient_hash = $2`,
+          [row.id, recipientTracking.recipientHash],
+        );
+      }
+
+      res.json({
+        token: row.token,
+        cta: 'Challenge my underwriting.',
+        rewardPolicy: getRewardPolicySnapshot(),
+        rewardLadder: getPublicShareRewardLadder(),
+        creditGuardrail: 'Credits only unlock for qualified unique opens, challenges, forks, signups, or saved versions within daily caps — never raw share clicks alone.',
+        recipientTracking: {
+          source: recipientTracking.trackingSource,
+          explicitRecipientAccepted: recipientTracking.explicitRecipientAccepted,
+        },
+        analysis: {
+          id: row.analysis_id,
+          propertyAddress: row.property_address,
+          city: row.city,
+          province: row.province,
+          metrics: row.metrics || {},
+          inputs: row.inputs || {},
+          verdictCheck: row.verdict_check,
+          notes: row.notes,
+        },
+        challengePromptPack: getChallengePromptPack({
+          propertyAddress: row.property_address,
+          metrics: row.metrics || {},
+          inputs: row.inputs || {},
+          verdictCheck: row.verdict_check,
+        }),
+        recipientChallengeCoach: getRecipientChallengeCoach({
+          propertyAddress: row.property_address,
+          metrics: row.metrics || {},
+          inputs: row.inputs || {},
+          verdictCheck: row.verdict_check,
+        }),
+        visitorQualification: open,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/underwriting-shares/:token/recipients', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const recipients = Array.isArray(req.body?.recipients) ? req.body.recipients : [];
+      if (recipients.length === 0 || recipients.length > 25) {
+        res.status(400).json({ error: 'Provide 1-25 recipient labels or objects to generate tracked share links' });
+        return;
+      }
+
+      const shareResult = await database.query(
+        `SELECT id, token, status FROM underwriting_shares WHERE token = $1 AND inviter_user_id = $2`,
+        [req.params.token, req.userId],
+      );
+      const share = shareResult.rows[0];
+      if (!share || share.status !== 'active') {
+        res.status(404).json({ error: 'Share not found' });
+        return;
+      }
+
+      const links = await createUnderwritingShareRecipientLinks(database, {
+        shareId: share.id,
+        token: share.token,
+        createdByUserId: req.userId!,
+        recipients,
+        source: req.body?.source || 'manual',
+      });
+
+      res.json({
+        success: true,
+        cta: 'Challenge my underwriting.',
+        links,
+        rewardPolicy: getRewardPolicySnapshot(),
+        creditGuardrail: 'Creating recipient links never awards credits. Credits require qualified opens, challenges, forks, signups, or saved versions within caps.',
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/underwriting-shares/:token/actions', authenticateOptional, async (req: AuthRequest, res: Response) => {
+    try {
+      const { action, recipient, metadata } = req.body || {};
+      if (!isQualifiedShareAction(action) || action === 'unique_open') {
+        res.status(400).json({ error: 'A qualified action is required: challenge, fork, signup, saved_version' });
+        return;
+      }
+
+      if (!hasMeaningfulChallengePayload(action, metadata)) {
+        res.status(400).json({
+          error: 'Challenge/fork actions need changed assumptions, challenged fields, metrics, inputs, notes, or a comment before credits can qualify',
+        });
+        return;
+      }
+
+      const shareResult = await database.query(
+        `SELECT id, inviter_user_id, analysis_id, status, share_depth FROM underwriting_shares WHERE token = $1`,
+        [req.params.token],
+      );
+      const share = shareResult.rows[0];
+      if (!share || share.status !== 'active') {
+        res.status(404).json({ error: 'Share not found' });
+        return;
+      }
+
+      const recipientTracking = await resolveShareRecipientHash(database, {
+        shareId: share.id,
+        req,
+        explicitRecipient: recipient,
+      });
+      const recorded = await recordQualifiedShareAction(database, {
+        shareId: share.id,
+        inviterUserId: share.inviter_user_id,
+        actorUserId: req.userId || null,
+        action,
+        recipientHash: recipientTracking.recipientHash,
+        metadata: {
+          ...(metadata || {}),
+          userId: req.userId || null,
+          trackingSource: recipientTracking.trackingSource,
+          explicitRecipientAccepted: recipientTracking.explicitRecipientAccepted,
+        },
+      });
+
+      let savedAnalysisId: number | null = null;
+      let onwardShare: Awaited<ReturnType<typeof createUnderwritingShare>> | null = null;
+
+      if (recorded.status === 'qualified' && (action === 'fork' || action === 'saved_version') && req.userId) {
+        const source = await database.query(`SELECT * FROM deal_analyses WHERE id = $1`, [share.analysis_id]);
+        const sourceAnalysis = source.rows[0];
+        if (sourceAnalysis) {
+          const saved = await database.query(
+            `INSERT INTO deal_analyses (
+               property_address, user_id, metrics, inputs, verdict_check, listing_id, city, province,
+               property_type, bedrooms, bathrooms, sqft, year_built, matched_listing, notes
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+             RETURNING id`,
+            [
+              sourceAnalysis.property_address,
+              req.userId,
+              metadata?.metrics || sourceAnalysis.metrics,
+              metadata?.inputs || sourceAnalysis.inputs,
+              metadata?.verdictCheck || sourceAnalysis.verdict_check,
+              sourceAnalysis.listing_id,
+              sourceAnalysis.city,
+              sourceAnalysis.province,
+              sourceAnalysis.property_type,
+              sourceAnalysis.bedrooms,
+              sourceAnalysis.bathrooms,
+              sourceAnalysis.sqft,
+              sourceAnalysis.year_built,
+              sourceAnalysis.matched_listing,
+              metadata?.notes || `Forked via “Challenge my underwriting.” share ${req.params.token}`,
+            ],
+          );
+          savedAnalysisId = saved.rows[0]?.id || null;
+
+          if (savedAnalysisId) {
+            onwardShare = await createUnderwritingShare(database, {
+              analysisId: savedAnalysisId,
+              inviterUserId: req.userId,
+              source: `challenger_${action}`,
+              parentShareId: share.id,
+              parentShareActionId: recorded.actionId || null,
+              parentShareDepth: Number(share.share_depth || 0),
+            });
+
+            if (recorded.actionId) {
+              await database.query(
+                `UPDATE underwriting_share_actions
+                 SET metadata = metadata || $2::jsonb
+                 WHERE id = $1`,
+                [recorded.actionId, { savedAnalysisId, onwardShareId: onwardShare.id, onwardShareToken: onwardShare.token }],
+              );
+            }
+          }
+        }
+      }
+
+      res.json({ success: true, ...recorded, savedAnalysisId, onwardShare });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.get('/underwriting-shares/:token/status', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const result = await database.query(
+        `SELECT id, token, status, qualified_action_count, credit_awarded, last_qualified_action_at,
+                parent_share_id, parent_share_action_id, share_depth
+         FROM underwriting_shares
+         WHERE token = $1 AND inviter_user_id = $2`,
+        [req.params.token, req.userId],
+      );
+
+      if (!result.rows[0]) {
+        res.status(404).json({ error: 'Share not found' });
+        return;
+      }
+
+      const share = result.rows[0];
+      const actionSummary = await getShareActionSummary(database, share.id);
+
+      res.json({
+        ...share,
+        cta: 'Challenge my underwriting.',
+        shareUrl: `/underwriting/${share.token}`,
+        rewardPolicy: getRewardPolicySnapshot(),
+        actionSummary,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  return router;
+}
+
+export default createUnderwritingShareRouter;

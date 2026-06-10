@@ -8,6 +8,7 @@ import { body, validationResult } from 'express-validator';
 import axios from 'axios';
 import { spawn } from 'child_process';
 import { db } from './db';
+import { appendLead } from '../server/leadsSheet';
 
 export interface LeadSubmission {
   full_name: string;
@@ -81,6 +82,19 @@ export function createLeadRouter(): Router {
         if (!savedLead) {
           throw new Error('Failed to save lead');
         }
+
+        // Pipe to owner's Google Sheet (replaces GHL as primary destination).
+        appendLead('PartnershipInquiries', {
+          leadId: savedLead.id,
+          fullName: lead.full_name,
+          email: lead.email,
+          phone: lead.phone || '',
+          company: lead.company || '',
+          role: lead.role || '',
+          inquiryType: lead.inquiry_type,
+          message: lead.message || '',
+          source: lead.source || 'website',
+        });
 
         // Sync to GoHighLevel CRM if API key is configured
         let ghlContactId = null;

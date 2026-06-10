@@ -1,0 +1,3031 @@
+{
+  "name": "Realist.ca Investor Encyclopedia",
+  "version": "2026-05-21-batch-2",
+  "description": "Searchable, investor-heavy encyclopedia guide pack plus calculator/tool specifications for Realist.ca.",
+  "guideCount": 149,
+  "toolSpecCount": 28,
+  "paths": {
+    "guides": "docs/content/realist-encyclopedia/guides.json",
+    "tools": "docs/content/realist-encyclopedia/tool-specs.json"
+  },
+  "categories": [
+    "Analysis",
+    "Development",
+    "Financing",
+    "Legal",
+    "Markets",
+    "Operations",
+    "Strategy",
+    "Structures",
+    "Tax"
+  ],
+  "searchIndex": [
+    {
+      "slug": "capital-stack",
+      "title": "Capital Stack",
+      "summary": "Capital Stack: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "capital-stack",
+        "mezzanine-debt",
+        "preferred-equity",
+        "joint-venture",
+        "waterfall-structure"
+      ],
+      "toolSpecSlug": "capital-stack-calculator"
+    },
+    {
+      "slug": "a-lender-vs-b-lender",
+      "title": "A Lender vs B Lender",
+      "summary": "A Lender vs B Lender: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "private-mortgage",
+        "mortgage-stress-test",
+        "dscr",
+        "ltv"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "ltv",
+      "title": "LTV",
+      "summary": "LTV: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "dscr",
+        "debt-service",
+        "cmhc-insurance",
+        "refinance-risk"
+      ],
+      "toolSpecSlug": "ltv-calculator"
+    },
+    {
+      "slug": "dscr",
+      "title": "DSCR",
+      "summary": "DSCR: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "noi",
+        "debt-service",
+        "break-even-occupancy",
+        "refinance-risk"
+      ],
+      "toolSpecSlug": "dscr-calculator"
+    },
+    {
+      "slug": "gds-vs-tds",
+      "title": "GDS/TDS",
+      "summary": "GDS/TDS: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "mortgage-stress-test",
+        "a-lender-vs-b-lender",
+        "cmhc-insurance"
+      ],
+      "toolSpecSlug": "gds-vs-tds-calculator"
+    },
+    {
+      "slug": "mortgage-stress-test",
+      "title": "Mortgage Stress Test",
+      "summary": "Mortgage Stress Test: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "gds-vs-tds",
+        "a-lender-vs-b-lender",
+        "debt-service"
+      ],
+      "toolSpecSlug": "mortgage-stress-test-calculator"
+    },
+    {
+      "slug": "private-mortgage",
+      "title": "Private Mortgage",
+      "summary": "Private Mortgage: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "bridge-loan",
+        "a-lender-vs-b-lender",
+        "ltv"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "vtb",
+      "title": "VTB",
+      "summary": "VTB: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "capital-stack",
+        "bridge-loan",
+        "joint-venture"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "bridge-loan",
+      "title": "Bridge Loan",
+      "summary": "Bridge Loan: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "private-mortgage",
+        "refinance-risk",
+        "capex"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "mezzanine-debt",
+      "title": "Mezzanine Debt",
+      "summary": "Mezzanine Debt: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "capital-stack",
+        "preferred-equity",
+        "waterfall-structure"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "preferred-equity",
+      "title": "Preferred Equity",
+      "summary": "Preferred Equity: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "capital-stack",
+        "waterfall-structure",
+        "gp-vs-lp"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "power-of-sale-vs-foreclosure",
+      "title": "Power Of Sale vs Foreclosure",
+      "summary": "Power Of Sale vs Foreclosure: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "private-mortgage",
+        "refinance-risk",
+        "appraisal"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "cap-rate",
+      "title": "Cap Rate",
+      "summary": "Cap Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "noi",
+        "stabilized-cap-rate",
+        "going-in-cap-rate",
+        "exit-cap"
+      ],
+      "toolSpecSlug": "cap-rate-calculator"
+    },
+    {
+      "slug": "stabilized-cap-rate",
+      "title": "Stabilized Cap Rate",
+      "summary": "Stabilized Cap Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "stabilized-yield-vs-cap-rate",
+        "yield-on-cost",
+        "cap-rate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "going-in-cap-rate",
+      "title": "Going-In Cap Rate",
+      "summary": "Going-In Cap Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cap-rate",
+        "pro-forma",
+        "value-add"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "cash-on-cash",
+      "title": "Cash-On-Cash",
+      "summary": "Cash-On-Cash: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "debt-service",
+        "noi",
+        "ltv"
+      ],
+      "toolSpecSlug": "cash-on-cash-calculator"
+    },
+    {
+      "slug": "irr",
+      "title": "IRR",
+      "summary": "IRR: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "equity-multiple",
+        "exit-cap",
+        "waterfall-structure"
+      ],
+      "toolSpecSlug": "irr-calculator"
+    },
+    {
+      "slug": "noi",
+      "title": "NOI",
+      "summary": "NOI: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "cap-rate",
+        "operating-expense-ratio",
+        "pro-forma",
+        "t12"
+      ],
+      "toolSpecSlug": "noi-calculator"
+    },
+    {
+      "slug": "grm",
+      "title": "GRM",
+      "summary": "GRM: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "noi",
+        "cap-rate",
+        "price-per-door"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "price-per-door",
+      "title": "Price Per Door",
+      "summary": "Price Per Door: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "grm",
+        "noi",
+        "market-rent-vs-in-place-rent"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "debt-service",
+      "title": "Debt Service",
+      "summary": "Debt Service: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "dscr",
+        "cash-on-cash",
+        "ltv"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "operating-expense-ratio",
+      "title": "Operating Expense Ratio",
+      "summary": "Operating Expense Ratio: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "noi",
+        "t12",
+        "replacement-reserve"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "vacancy-allowance",
+      "title": "Vacancy Allowance",
+      "summary": "Vacancy Allowance: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "vacancy-rate",
+        "noi",
+        "break-even-occupancy"
+      ],
+      "toolSpecSlug": "vacancy-allowance-calculator"
+    },
+    {
+      "slug": "replacement-reserve",
+      "title": "Replacement Reserve",
+      "summary": "Replacement Reserve: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "capex",
+        "noi",
+        "operating-expense-ratio"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "break-even-occupancy",
+      "title": "Break-Even Occupancy",
+      "summary": "Break-Even Occupancy: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "dscr",
+        "vacancy-allowance",
+        "debt-service"
+      ],
+      "toolSpecSlug": "break-even-occupancy-calculator"
+    },
+    {
+      "slug": "yield-on-cost",
+      "title": "Yield On Cost",
+      "summary": "Yield On Cost: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "stabilized-yield-vs-cap-rate",
+        "value-add",
+        "forced-appreciation"
+      ],
+      "toolSpecSlug": "yield-on-cost-calculator"
+    },
+    {
+      "slug": "return-on-equity",
+      "title": "Return On Equity",
+      "summary": "Return On Equity: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cash-on-cash",
+        "refinance-risk",
+        "equity-multiple"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "equity-multiple",
+      "title": "Equity Multiple",
+      "summary": "Equity Multiple: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "irr",
+        "cash-on-cash",
+        "waterfall-structure"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "levered-vs-unlevered-return",
+      "title": "Levered vs Unlevered Return",
+      "summary": "Levered vs Unlevered Return: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "negative-vs-positive-leverage",
+        "ltv",
+        "cap-rate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "stabilized-yield-vs-cap-rate",
+      "title": "Stabilized Yield vs Cap Rate",
+      "summary": "Stabilized Yield vs Cap Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "yield-on-cost",
+        "stabilized-cap-rate",
+        "forced-appreciation"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "pro-forma",
+      "title": "Pro Forma",
+      "summary": "Pro Forma: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "t12",
+        "rent-roll",
+        "sensitivity-analysis"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "rent-roll",
+      "title": "Rent Roll",
+      "summary": "Rent Roll: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "market-rent-vs-in-place-rent",
+        "loss-to-lease",
+        "bad-debt-allowance"
+      ],
+      "toolSpecSlug": "rent-roll-calculator"
+    },
+    {
+      "slug": "t12",
+      "title": "T12",
+      "summary": "T12: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "noi",
+        "operating-expense-ratio",
+        "pro-forma"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "net-effective-rent",
+      "title": "Net Effective Rent",
+      "summary": "Net Effective Rent: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "market-rent-vs-in-place-rent",
+        "loss-to-lease",
+        "rent-roll"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "market-rent-vs-in-place-rent",
+      "title": "Market Rent vs In-Place Rent",
+      "summary": "Market Rent vs In-Place Rent: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "loss-to-lease",
+        "rent-roll",
+        "value-add"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "loss-to-lease",
+      "title": "Loss To Lease",
+      "summary": "Loss To Lease: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "market-rent-vs-in-place-rent",
+        "rent-roll",
+        "forced-appreciation"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "bad-debt-allowance",
+      "title": "Bad Debt Allowance",
+      "summary": "Bad Debt Allowance: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "vacancy-allowance",
+        "rent-roll",
+        "noi"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "capex",
+      "title": "Capex",
+      "summary": "Capex: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "replacement-reserve",
+        "value-add",
+        "bridge-loan"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "property-tax-reassessment",
+      "title": "Property Tax Reassessment",
+      "summary": "Property Tax Reassessment: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "assessment-vs-market-value",
+        "mpac",
+        "noi"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "sensitivity-analysis",
+      "title": "Sensitivity Analysis",
+      "summary": "Sensitivity Analysis: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "exit-cap",
+        "refinance-risk",
+        "vacancy-allowance"
+      ],
+      "toolSpecSlug": "sensitivity-analysis-calculator"
+    },
+    {
+      "slug": "exit-cap",
+      "title": "Exit Cap",
+      "summary": "Exit Cap: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "irr",
+        "cap-rate",
+        "sensitivity-analysis"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "refinance-risk",
+      "title": "Refinance Risk",
+      "summary": "Refinance Risk: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "ltv",
+        "dscr",
+        "debt-service",
+        "sensitivity-analysis"
+      ],
+      "toolSpecSlug": "refinance-risk-calculator"
+    },
+    {
+      "slug": "negative-vs-positive-leverage",
+      "title": "negative/positive leverage",
+      "summary": "negative/positive leverage: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cap-rate",
+        "debt-service",
+        "levered-vs-unlevered-return"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "forced-appreciation",
+      "title": "Forced Appreciation",
+      "summary": "Forced Appreciation: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Strategy",
+      "tags": [
+        "strategy",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "noi",
+        "yield-on-cost",
+        "value-add"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "brrrr",
+      "title": "BRRRR",
+      "summary": "BRRRR: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Strategy",
+      "tags": [
+        "strategy",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "forced-appreciation",
+        "refinance-risk",
+        "ltv"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "house-hacking",
+      "title": "House Hacking",
+      "summary": "House Hacking: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Strategy",
+      "tags": [
+        "strategy",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "gds-vs-tds",
+        "mortgage-stress-test",
+        "cmhc-insurance"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "value-add",
+      "title": "Value-Add",
+      "summary": "Value-Add: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Strategy",
+      "tags": [
+        "strategy",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "forced-appreciation",
+        "yield-on-cost",
+        "capex"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "land-assembly",
+      "title": "Land Assembly",
+      "summary": "Land Assembly: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "infill-development",
+        "assessment-vs-market-value",
+        "land-transfer-tax"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "infill-development",
+      "title": "Infill Development",
+      "summary": "Infill Development: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "land-assembly",
+        "housing-starts",
+        "completions"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "syndication",
+      "title": "Syndication",
+      "summary": "Syndication: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "gp-vs-lp",
+        "waterfall-structure",
+        "limited-partnership"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "joint-venture",
+      "title": "Joint Venture",
+      "summary": "Joint Venture: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "jv",
+        "capital-stack",
+        "gp-vs-lp"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "jv",
+      "title": "JV (Joint Venture)",
+      "summary": "JV (Joint Venture): a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "joint-venture",
+        "capital-stack",
+        "waterfall-structure"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "limited-partnership",
+      "title": "Limited Partnership",
+      "summary": "Limited Partnership: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "gp-vs-lp",
+        "syndication",
+        "waterfall-structure"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "gp-vs-lp",
+      "title": "Gp vs Lp",
+      "summary": "Gp vs Lp: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "limited-partnership",
+        "waterfall-structure",
+        "preferred-equity"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "waterfall-structure",
+      "title": "Waterfall Structure",
+      "summary": "Waterfall Structure: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "gp-vs-lp",
+        "preferred-equity",
+        "irr",
+        "equity-multiple"
+      ],
+      "toolSpecSlug": "waterfall-structure-calculator"
+    },
+    {
+      "slug": "reit",
+      "title": "REIT",
+      "summary": "REIT: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cap-rate",
+        "noi",
+        "equity-multiple"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "snlr",
+      "title": "SNLR",
+      "summary": "SNLR: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Markets",
+      "tags": [
+        "markets",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "months-of-inventory",
+        "absorption-rate",
+        "crea-hpi"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "months-of-inventory",
+      "title": "Months Of Inventory",
+      "summary": "Months Of Inventory: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Markets",
+      "tags": [
+        "markets",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "snlr",
+        "absorption-rate",
+        "benchmark-vs-average-vs-median-price"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "absorption-rate",
+      "title": "Absorption Rate",
+      "summary": "Absorption Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Markets",
+      "tags": [
+        "markets",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "months-of-inventory",
+        "vacancy-rate",
+        "housing-starts"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "housing-starts",
+      "title": "Housing Starts",
+      "summary": "Housing Starts: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Markets",
+      "tags": [
+        "markets",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "completions",
+        "vacancy-rate",
+        "infill-development"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "completions",
+      "title": "Completions",
+      "summary": "Completions: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Markets",
+      "tags": [
+        "markets",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "housing-starts",
+        "vacancy-rate",
+        "market-rent-vs-in-place-rent"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "vacancy-rate",
+      "title": "Vacancy Rate",
+      "summary": "Vacancy Rate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Markets",
+      "tags": [
+        "markets",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "vacancy-allowance",
+        "net-effective-rent",
+        "housing-starts"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "crea-hpi",
+      "title": "CREA HPI",
+      "summary": "CREA HPI: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Markets",
+      "tags": [
+        "markets",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "benchmark-vs-average-vs-median-price",
+        "snlr",
+        "months-of-inventory"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "benchmark-vs-average-vs-median-price",
+      "title": "benchmark vs average/median price",
+      "summary": "benchmark vs average/median price: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Markets",
+      "tags": [
+        "markets",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "crea-hpi",
+        "snlr",
+        "appraisal"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "cmhc-insurance",
+      "title": "Cmhc Insurance",
+      "summary": "Cmhc Insurance: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "mli-select",
+        "mortgage-stress-test",
+        "ltv"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "mli-select",
+      "title": "Mli Select",
+      "summary": "Mli Select: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cmhc-insurance",
+        "dscr",
+        "noi"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "hst-new-residential-rental-rebate",
+      "title": "Hst New Residential Rental Rebate",
+      "summary": "Hst New Residential Rental Rebate: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "infill-development",
+        "land-transfer-tax",
+        "pre"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "pre",
+      "title": "PRE",
+      "summary": "PRE: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "vacancy-tax",
+        "hst-new-residential-rental-rebate",
+        "assessment-vs-market-value"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "vacancy-tax",
+      "title": "Vacancy Tax",
+      "summary": "Vacancy Tax: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "pre",
+        "rent-control",
+        "vacancy-rate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "land-transfer-tax",
+      "title": "Land Transfer Tax",
+      "summary": "Land Transfer Tax: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "land-assembly",
+        "assessment-vs-market-value",
+        "hst-new-residential-rental-rebate"
+      ],
+      "toolSpecSlug": "land-transfer-tax-calculator"
+    },
+    {
+      "slug": "rent-control",
+      "title": "Rent Control",
+      "summary": "Rent Control: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "market-rent-vs-in-place-rent",
+        "loss-to-lease",
+        "noi"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "appraisal",
+      "title": "Appraisal",
+      "summary": "Appraisal: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "ltv",
+        "assessment-vs-market-value",
+        "cap-rate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "assessment-vs-market-value",
+      "title": "Assessment vs Market Value",
+      "summary": "Assessment vs Market Value: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "mpac",
+        "property-tax-reassessment",
+        "appraisal"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "mpac",
+      "title": "MPAC",
+      "summary": "MPAC: a practical Canadian real estate investor guide to definition, deal math, underwriting use, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "assessment-vs-market-value",
+        "property-tax-reassessment",
+        "land-transfer-tax"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "assignment-sale",
+      "title": "Assignment Sale",
+      "summary": "Assignment Sale: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "gst-hst-on-assignment",
+        "anti-flipping-tax",
+        "agreement-of-purchase-and-sale",
+        "vacant-possession"
+      ],
+      "toolSpecSlug": "preconstruction-closing-cost-estimator"
+    },
+    {
+      "slug": "agreement-of-purchase-and-sale",
+      "title": "Agreement of Purchase and Sale",
+      "summary": "Agreement of Purchase and Sale: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "due-diligence-condition",
+        "financing-condition",
+        "inspection-condition",
+        "chattel-vs-fixture"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "due-diligence-condition",
+      "title": "Due Diligence Condition",
+      "summary": "Due Diligence Condition: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "financing-condition",
+        "inspection-condition",
+        "phase-1-esa",
+        "status-certificate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "financing-condition",
+      "title": "Financing Condition",
+      "summary": "Financing Condition: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "a-lender-vs-b-lender",
+        "mortgage-stress-test",
+        "ltv",
+        "dscr"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "inspection-condition",
+      "title": "Inspection Condition",
+      "summary": "Inspection Condition: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "building-permit",
+        "fire-retrofit",
+        "capex",
+        "replacement-reserve"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "status-certificate",
+      "title": "Status Certificate",
+      "summary": "Status Certificate: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "status-certificate",
+        "condo-reserve-fund"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "title-insurance",
+      "title": "Title Insurance",
+      "summary": "Title Insurance: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "easement",
+        "encroachment",
+        "vacant-possession",
+        "chattel-vs-fixture"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "vacant-possession",
+      "title": "Vacant Possession",
+      "summary": "Vacant Possession: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "n12",
+        "n13",
+        "cash-for-keys",
+        "illegal-eviction"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "chattel-vs-fixture",
+      "title": "Chattel vs Fixture",
+      "summary": "Chattel vs Fixture: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "agreement-of-purchase-and-sale",
+        "inspection-condition",
+        "title-insurance",
+        "vacant-possession"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "easement",
+      "title": "Easement",
+      "summary": "Easement: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "title-insurance",
+        "encroachment",
+        "highest-and-best-use",
+        "zoning-by-law"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "encroachment",
+      "title": "Encroachment",
+      "summary": "Encroachment: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "title-insurance",
+        "easement",
+        "building-permit",
+        "minor-variance"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "right-of-first-refusal",
+      "title": "Right of First Refusal",
+      "summary": "Right of First Refusal: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "right-of-first-refusal",
+        "co-ownership-agreement",
+        "joint-venture",
+        "agreement-of-purchase-and-sale"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "zoning-by-law",
+      "title": "Zoning By-law",
+      "summary": "Zoning By-law: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "official-plan",
+        "minor-variance",
+        "committee-of-adjustment",
+        "legal-non-conforming-use"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "official-plan",
+      "title": "Official Plan",
+      "summary": "Official Plan: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "zoning-by-law",
+        "site-plan-approval",
+        "development-charges",
+        "highest-and-best-use"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "minor-variance",
+      "title": "Minor Variance",
+      "summary": "Minor Variance: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "committee-of-adjustment",
+        "zoning-by-law",
+        "encroachment",
+        "secondary-suite"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "committee-of-adjustment",
+      "title": "Committee of Adjustment",
+      "summary": "Committee of Adjustment: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "minor-variance",
+        "zoning-by-law",
+        "site-plan-approval"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "site-plan-approval",
+      "title": "Site Plan Approval",
+      "summary": "Site Plan Approval: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "official-plan",
+        "zoning-by-law",
+        "development-charges",
+        "parkland-dedication"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "development-charges",
+      "title": "Development Charges",
+      "summary": "Development Charges: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "site-plan-approval",
+        "building-permit",
+        "parkland-dedication",
+        "cmhc-rental-construction-financing-initiative"
+      ],
+      "toolSpecSlug": "development-charge-estimator"
+    },
+    {
+      "slug": "parkland-dedication",
+      "title": "Parkland Dedication",
+      "summary": "Parkland Dedication: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "development-charges",
+        "site-plan-approval",
+        "official-plan",
+        "infill-development"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "building-permit",
+      "title": "Building Permit",
+      "summary": "Building Permit: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "building-permit",
+        "development-charges",
+        "fire-retrofit",
+        "secondary-suite"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "legal-non-conforming-use",
+      "title": "Legal Non-Conforming Use",
+      "summary": "Legal Non-Conforming Use: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "zoning-by-law",
+        "official-plan",
+        "highest-and-best-use",
+        "secondary-suite"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "secondary-suite",
+      "title": "Secondary Suite",
+      "summary": "Secondary Suite: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "additional-residential-unit",
+        "building-permit",
+        "fire-retrofit",
+        "rent-control"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "additional-residential-unit",
+      "title": "Additional Residential Unit",
+      "summary": "Additional Residential Unit: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "secondary-suite",
+        "zoning-by-law",
+        "building-permit",
+        "cmhc-insurance"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "heritage-designation",
+      "title": "Heritage Designation",
+      "summary": "Heritage Designation: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "highest-and-best-use",
+        "building-permit",
+        "replacement-cost-approach",
+        "official-plan"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "floodplain",
+      "title": "Floodplain",
+      "summary": "Floodplain: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "replacement-cost-approach",
+        "phase-1-esa",
+        "highest-and-best-use"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "brownfield",
+      "title": "Brownfield",
+      "summary": "Brownfield: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "phase-1-esa",
+        "phase-2-esa",
+        "highest-and-best-use",
+        "development-charges"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "phase-1-esa",
+      "title": "Phase 1 ESA",
+      "summary": "Phase 1 ESA: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "phase-2-esa",
+        "brownfield",
+        "due-diligence-condition",
+        "environmental-risk-checklist"
+      ],
+      "toolSpecSlug": "environmental-risk-checklist"
+    },
+    {
+      "slug": "phase-2-esa",
+      "title": "Phase 2 ESA",
+      "summary": "Phase 2 ESA: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "phase-1-esa",
+        "brownfield",
+        "due-diligence-condition",
+        "environmental-risk-checklist"
+      ],
+      "toolSpecSlug": "environmental-risk-checklist"
+    },
+    {
+      "slug": "fire-retrofit",
+      "title": "Fire Retrofit",
+      "summary": "Fire Retrofit: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Development",
+      "tags": [
+        "development",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "building-permit",
+        "secondary-suite",
+        "capex"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "cash-for-keys",
+      "title": "Cash for Keys",
+      "summary": "Cash for Keys: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Operations",
+      "tags": [
+        "operations",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "vacant-possession",
+        "n12",
+        "n13",
+        "illegal-eviction"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "n12",
+      "title": "N12",
+      "summary": "N12: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cash-for-keys",
+        "vacant-possession",
+        "ltb",
+        "illegal-eviction"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "n13",
+      "title": "N13",
+      "summary": "N13: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cash-for-keys",
+        "vacant-possession",
+        "ltb",
+        "n13"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "ltb",
+      "title": "LTB",
+      "summary": "LTB: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "n12",
+        "n13",
+        "above-guideline-increase",
+        "rent-deposit"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "above-guideline-increase",
+      "title": "Above Guideline Increase",
+      "summary": "Above Guideline Increase: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Operations",
+      "tags": [
+        "operations",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "ltb",
+        "rent-control",
+        "replacement-reserve",
+        "rent-increase-agi-scenario-tool"
+      ],
+      "toolSpecSlug": "rent-increase-agi-scenario-tool"
+    },
+    {
+      "slug": "rent-deposit",
+      "title": "Rent Deposit",
+      "summary": "Rent Deposit: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Operations",
+      "tags": [
+        "operations",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "key-money",
+        "ltb",
+        "gross-lease",
+        "vacancy-control"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "key-money",
+      "title": "Key Money",
+      "summary": "Key Money: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "rent-deposit",
+        "illegal-eviction",
+        "ltb",
+        "gross-lease"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "illegal-eviction",
+      "title": "Illegal Eviction",
+      "summary": "Illegal Eviction: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "ltb",
+        "n12",
+        "n13",
+        "cash-for-keys"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "vacancy-control",
+      "title": "Vacancy Control",
+      "summary": "Vacancy Control: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Markets",
+      "tags": [
+        "markets",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "rent-control",
+        "market-rent-vs-in-place-rent",
+        "loss-to-lease",
+        "vacancy-rate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "co-ownership-agreement",
+      "title": "Co-Ownership Agreement",
+      "summary": "Co-Ownership Agreement: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "tenancy-in-common",
+        "joint-venture",
+        "right-of-first-refusal",
+        "beneficial-ownership"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "tenancy-in-common",
+      "title": "Tenancy in Common",
+      "summary": "Tenancy in Common: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "co-ownership-agreement",
+        "bare-trust",
+        "beneficial-ownership",
+        "joint-venture"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "bare-trust",
+      "title": "Bare Trust",
+      "summary": "Bare Trust: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "beneficial-ownership",
+        "nominee-corporation",
+        "corporate-ownership",
+        "tenancy-in-common"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "beneficial-ownership",
+      "title": "Beneficial Ownership",
+      "summary": "Beneficial Ownership: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "bare-trust",
+        "nominee-corporation",
+        "corporate-ownership",
+        "co-ownership-agreement"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "nominee-corporation",
+      "title": "Nominee Corporation",
+      "summary": "Nominee Corporation: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "bare-trust",
+        "beneficial-ownership",
+        "corporate-ownership",
+        "land-transfer-tax"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "corporate-ownership",
+      "title": "Corporate Ownership",
+      "summary": "Corporate Ownership: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Structures",
+      "tags": [
+        "structures",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "active-vs-passive-income",
+        "cca",
+        "beneficial-ownership",
+        "land-transfer-tax-rebate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "hst-self-supply",
+      "title": "HST Self-Supply",
+      "summary": "HST Self-Supply: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "hst-new-residential-rental-rebate",
+        "gst-hst-on-assignment",
+        "preconstruction-closing-cost-estimator",
+        "capital-gain"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "cca",
+      "title": "CCA",
+      "summary": "CCA: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "recapture",
+        "terminal-loss",
+        "active-vs-passive-income",
+        "corporate-ownership"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "recapture",
+      "title": "Recapture",
+      "summary": "Recapture: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cca",
+        "terminal-loss",
+        "capital-gain",
+        "corporate-ownership"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "terminal-loss",
+      "title": "Terminal Loss",
+      "summary": "Terminal Loss: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cca",
+        "recapture",
+        "capital-gain",
+        "corporate-ownership"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "capital-gain",
+      "title": "Capital Gain",
+      "summary": "Capital Gain: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "anti-flipping-tax",
+        "recapture",
+        "terminal-loss",
+        "active-vs-passive-income"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "active-vs-passive-income",
+      "title": "Active vs Passive Income",
+      "summary": "Active vs Passive Income: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "corporate-ownership",
+        "cca",
+        "capital-gain",
+        "beneficial-ownership"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "land-transfer-tax-rebate",
+      "title": "Land Transfer Tax Rebate",
+      "summary": "Land Transfer Tax Rebate: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "land-transfer-tax",
+        "non-resident-speculation-tax",
+        "corporate-ownership",
+        "land-transfer-tax-calculator"
+      ],
+      "toolSpecSlug": "land-transfer-tax-rebate-calculator"
+    },
+    {
+      "slug": "non-resident-speculation-tax",
+      "title": "Non-Resident Speculation Tax",
+      "summary": "Non-Resident Speculation Tax: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "foreign-buyer-ban",
+        "land-transfer-tax",
+        "beneficial-ownership",
+        "land-transfer-tax-rebate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "foreign-buyer-ban",
+      "title": "Foreign Buyer Ban",
+      "summary": "Foreign Buyer Ban: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "non-resident-speculation-tax",
+        "beneficial-ownership",
+        "corporate-ownership",
+        "agreement-of-purchase-and-sale"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "anti-flipping-tax",
+      "title": "Anti-Flipping Tax",
+      "summary": "Anti-Flipping Tax: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "assignment-sale",
+        "capital-gain",
+        "gst-hst-on-assignment",
+        "corporate-ownership"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "gst-hst-on-assignment",
+      "title": "GST/HST on Assignment",
+      "summary": "GST/HST on Assignment: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Tax",
+      "tags": [
+        "tax",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "assignment-sale",
+        "hst-self-supply",
+        "anti-flipping-tax",
+        "preconstruction-closing-cost-estimator"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "appraisal-methods",
+      "title": "Appraisal Methods",
+      "summary": "Appraisal Methods: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "direct-capitalization",
+        "sales-comparison-approach",
+        "replacement-cost-approach",
+        "highest-and-best-use"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "direct-capitalization",
+      "title": "Direct Capitalization",
+      "summary": "Direct Capitalization: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cap-rate",
+        "noi",
+        "appraisal-methods",
+        "stabilized-cap-rate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "sales-comparison-approach",
+      "title": "Sales Comparison Approach",
+      "summary": "Sales Comparison Approach: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "appraisal-methods",
+        "after-repair-value-sales-comp-grid",
+        "benchmark-vs-average-vs-median-price",
+        "price-per-door"
+      ],
+      "toolSpecSlug": "after-repair-value-sales-comp-grid"
+    },
+    {
+      "slug": "replacement-cost-approach",
+      "title": "Replacement Cost Approach",
+      "summary": "Replacement Cost Approach: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "appraisal-methods",
+        "replacement-cost-approach",
+        "construction-draw-holdback-calculator"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "highest-and-best-use",
+      "title": "Highest and Best Use",
+      "summary": "Highest and Best Use: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "zoning-by-law",
+        "official-plan",
+        "appraisal-methods",
+        "legal-non-conforming-use"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "after-repair-value",
+      "title": "After-Repair Value",
+      "summary": "After-Repair Value: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Analysis",
+      "tags": [
+        "analysis",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "sales-comparison-approach",
+        "forced-appreciation",
+        "brrrr",
+        "capex"
+      ],
+      "toolSpecSlug": "after-repair-value-sales-comp-grid"
+    },
+    {
+      "slug": "cmhc-rental-construction-financing-initiative",
+      "title": "CMHC Rental Construction Financing Initiative",
+      "summary": "CMHC Rental Construction Financing Initiative: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "insured-construction-loan",
+        "takeout-financing",
+        "draw-schedule",
+        "mli-select"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "insured-construction-loan",
+      "title": "Insured Construction Loan",
+      "summary": "Insured Construction Loan: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "cmhc-rental-construction-financing-initiative",
+        "draw-schedule",
+        "takeout-financing",
+        "holdback"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "takeout-financing",
+      "title": "Takeout Financing",
+      "summary": "Takeout Financing: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "insured-construction-loan",
+        "draw-schedule",
+        "refinance-risk",
+        "dscr"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "draw-schedule",
+      "title": "Draw Schedule",
+      "summary": "Draw Schedule: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "advanced",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "insured-construction-loan",
+        "holdback",
+        "lien",
+        "construction-draw-holdback-calculator"
+      ],
+      "toolSpecSlug": "construction-draw-holdback-calculator"
+    },
+    {
+      "slug": "holdback",
+      "title": "Holdback",
+      "summary": "Holdback: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "lien",
+        "draw-schedule",
+        "construction-draw-holdback-calculator",
+        "building-permit"
+      ],
+      "toolSpecSlug": "construction-draw-holdback-calculator"
+    },
+    {
+      "slug": "lien",
+      "title": "Lien",
+      "summary": "Lien: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "holdback",
+        "draw-schedule",
+        "building-permit",
+        "title-insurance"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "tarion",
+      "title": "Tarion",
+      "summary": "Tarion: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Legal",
+      "tags": [
+        "legal",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "preconstruction-deposit-structure",
+        "occupancy-fee",
+        "interim-occupancy",
+        "building-permit"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "preconstruction-deposit-structure",
+      "title": "Preconstruction Deposit Structure",
+      "summary": "Preconstruction Deposit Structure: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "assignment-sale",
+        "occupancy-fee",
+        "interim-occupancy",
+        "preconstruction-closing-cost-estimator"
+      ],
+      "toolSpecSlug": "preconstruction-closing-cost-estimator"
+    },
+    {
+      "slug": "occupancy-fee",
+      "title": "Occupancy Fee",
+      "summary": "Occupancy Fee: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "interim-occupancy",
+        "preconstruction-deposit-structure",
+        "tarion",
+        "preconstruction-closing-cost-estimator"
+      ],
+      "toolSpecSlug": "preconstruction-closing-cost-estimator"
+    },
+    {
+      "slug": "interim-occupancy",
+      "title": "Interim Occupancy",
+      "summary": "Interim Occupancy: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Financing",
+      "tags": [
+        "financing",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting"
+      ],
+      "relatedTerms": [
+        "occupancy-fee",
+        "preconstruction-deposit-structure",
+        "tarion",
+        "status-certificate"
+      ],
+      "toolSpecSlug": null
+    },
+    {
+      "slug": "condo-reserve-fund",
+      "title": "Condo Reserve Fund",
+      "summary": "Condo Reserve Fund: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Operations",
+      "tags": [
+        "operations",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "reserve-fund-study",
+        "condo-reserve-fund",
+        "status-certificate",
+        "condo-fee-reserve-stress-test"
+      ],
+      "toolSpecSlug": "condo-fee-reserve-stress-test"
+    },
+    {
+      "slug": "reserve-fund-study",
+      "title": "Reserve Fund Study",
+      "summary": "Reserve Fund Study: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Operations",
+      "tags": [
+        "operations",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "condo-reserve-fund",
+        "status-certificate",
+        "replacement-reserve"
+      ],
+      "toolSpecSlug": "condo-fee-reserve-stress-test"
+    },
+    {
+      "slug": "gross-lease",
+      "title": "Gross Lease",
+      "summary": "Gross Lease: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Operations",
+      "tags": [
+        "operations",
+        "beginner",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "gross-lease",
+        "lease-comparison-gross-vs-net"
+      ],
+      "toolSpecSlug": "lease-comparison-gross-vs-net"
+    },
+    {
+      "slug": "property-management-agreement",
+      "title": "Property Management Agreement",
+      "summary": "Property Management Agreement: a practical Canadian real estate investor guide to underwriting use, deal risk, common traps, and Realist.ca implementation.",
+      "category": "Operations",
+      "tags": [
+        "operations",
+        "intermediate",
+        "canadian-real-estate",
+        "investor-underwriting",
+        "calculator"
+      ],
+      "relatedTerms": [
+        "property-management-fee-impact-calculator",
+        "property-management-agreement",
+        "replacement-reserve"
+      ],
+      "toolSpecSlug": "property-management-fee-impact-calculator"
+    }
+  ],
+  "toolIndex": [
+    {
+      "slug": "capital-stack-calculator",
+      "guideSlug": "capital-stack",
+      "title": "Capital Stack Calculator",
+      "category": "Financing",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "waterfall-structure-calculator",
+      "guideSlug": "waterfall-structure",
+      "title": "Waterfall Structure Calculator",
+      "category": "Structures",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "cap-rate-calculator",
+      "guideSlug": "cap-rate",
+      "title": "Cap Rate Calculator",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "dscr-calculator",
+      "guideSlug": "dscr",
+      "title": "DSCR Calculator",
+      "category": "Financing",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "cash-on-cash-calculator",
+      "guideSlug": "cash-on-cash",
+      "title": "Cash-On-Cash Calculator",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "irr-calculator",
+      "guideSlug": "irr",
+      "title": "IRR Calculator",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "noi-calculator",
+      "guideSlug": "noi",
+      "title": "NOI Calculator",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "ltv-calculator",
+      "guideSlug": "ltv",
+      "title": "LTV Calculator",
+      "category": "Financing",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "gds-vs-tds-calculator",
+      "guideSlug": "gds-vs-tds",
+      "title": "GDS/TDS Calculator",
+      "category": "Financing",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "mortgage-stress-test-calculator",
+      "guideSlug": "mortgage-stress-test",
+      "title": "Mortgage Stress Test Calculator",
+      "category": "Financing",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "vacancy-allowance-calculator",
+      "guideSlug": "vacancy-allowance",
+      "title": "Vacancy Allowance Calculator",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "break-even-occupancy-calculator",
+      "guideSlug": "break-even-occupancy",
+      "title": "Break-Even Occupancy Calculator",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "yield-on-cost-calculator",
+      "guideSlug": "yield-on-cost",
+      "title": "Yield On Cost Calculator",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "refinance-risk-calculator",
+      "guideSlug": "refinance-risk",
+      "title": "Refinance Risk Calculator",
+      "category": "Financing",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "sensitivity-analysis-calculator",
+      "guideSlug": "sensitivity-analysis",
+      "title": "Sensitivity Analysis Calculator",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "rent-roll-calculator",
+      "guideSlug": "rent-roll",
+      "title": "Rent Roll Analyzer",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "pro-forma-calculator",
+      "guideSlug": "pro-forma",
+      "title": "Pro Forma Builder",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "land-transfer-tax-calculator",
+      "guideSlug": "land-transfer-tax",
+      "title": "Land Transfer Tax Calculator",
+      "category": "Tax",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "development-charge-estimator",
+      "guideSlug": "development-charges",
+      "title": "Development Charge Estimator",
+      "category": "Development",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "land-transfer-tax-rebate-calculator",
+      "guideSlug": "land-transfer-tax-rebate",
+      "title": "Land Transfer Tax + Rebate Calculator",
+      "category": "Tax",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "rent-increase-agi-scenario-tool",
+      "guideSlug": "above-guideline-increase",
+      "title": "Rent Increase / AGI Scenario Tool",
+      "category": "Operations",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "condo-fee-reserve-stress-test",
+      "guideSlug": "condo-reserve-fund",
+      "title": "Condo Fee / Reserve Stress Test",
+      "category": "Operations",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "preconstruction-closing-cost-estimator",
+      "guideSlug": "preconstruction-deposit-structure",
+      "title": "Preconstruction Closing Cost Estimator",
+      "category": "Financing",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "construction-draw-holdback-calculator",
+      "guideSlug": "draw-schedule",
+      "title": "Construction Draw / Holdback Calculator",
+      "category": "Financing",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "after-repair-value-sales-comp-grid",
+      "guideSlug": "after-repair-value",
+      "title": "After-Repair Value / Sales Comp Grid",
+      "category": "Analysis",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "environmental-risk-checklist",
+      "guideSlug": "phase-1-esa",
+      "title": "Environmental Risk Checklist",
+      "category": "Development",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "lease-comparison-gross-vs-net",
+      "guideSlug": "gross-lease",
+      "title": "Lease Comparison: Gross vs Net",
+      "category": "Operations",
+      "status": "spec-ready"
+    },
+    {
+      "slug": "property-management-fee-impact-calculator",
+      "guideSlug": "property-management-agreement",
+      "title": "Property Management Fee Impact Calculator",
+      "category": "Operations",
+      "status": "spec-ready"
+    }
+  ],
+  "recommendedRoutes": [
+    "/insights/encyclopedia",
+    "/insights/encyclopedia/:slug",
+    "/tools/:toolSlug"
+  ],
+  "integrationStatus": "content-ready",
+  "batches": [
+    {
+      "name": "batch-1",
+      "guideCount": 74,
+      "toolSpecCount": 18,
+      "commit": "2226e6a"
+    },
+    {
+      "name": "batch-2",
+      "guideCount": 75,
+      "toolSpecCount": 10,
+      "date": "2026-05-21"
+    }
+  ]
+}
