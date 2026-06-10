@@ -1405,7 +1405,14 @@ export default function CapRates() {
   const [showMobileList, setShowMobileList] = useState(false);
   const [mapLayers, setMapLayers] = useState<MapLayer[]>(DEFAULT_LAYERS);
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | null>(null);
-  const [detailTab, setDetailTab] = useState<string>("overview");
+  const CAP_RATES_TAB_LS_KEY = "capRatesExplorer.activeTab";
+  const [detailTab, setDetailTab] = useState<string>(() => {
+    const stored = localStorage.getItem(CAP_RATES_TAB_LS_KEY);
+    return (stored && ["overview", "underwrite", "community"].includes(stored)) ? stored : "overview";
+  });
+  useEffect(() => {
+    localStorage.setItem(CAP_RATES_TAB_LS_KEY, detailTab);
+  }, [detailTab]);
   const [aggregatesMap, setAggregatesMap] = useState<Record<string, ListingAnalysisAggregate>>({});
   const listingRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const searchInProgress = useRef(false);

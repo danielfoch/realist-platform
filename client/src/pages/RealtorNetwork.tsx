@@ -47,11 +47,21 @@ function statusBadgeVariant(status: string): "default" | "secondary" | "outline"
   }
 }
 
+const REALTOR_NETWORK_TAB_LS_KEY = "realtorNetwork.activeTab";
+
 export default function RealtorNetwork() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const claimFormRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const stored = localStorage.getItem(REALTOR_NETWORK_TAB_LS_KEY);
+    return (stored && ["markets", "leads", "introductions"].includes(stored)) ? stored : "markets";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(REALTOR_NETWORK_TAB_LS_KEY, activeTab);
+  }, [activeTab]);
 
   const { data: claims, isLoading: claimsLoading } = useQuery<RealtorMarketClaim[]>({
     queryKey: ["/api/realtor-network/my-claims"],
@@ -128,7 +138,7 @@ export default function RealtorNetwork() {
           )}
 
           {hasClaims ? (
-            <Tabs defaultValue="markets" className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList data-testid="realtor-tabs">
                 <TabsTrigger value="markets" data-testid="tab-markets">My Markets</TabsTrigger>
                 <TabsTrigger value="leads" data-testid="tab-leads">My Leads</TabsTrigger>

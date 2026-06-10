@@ -661,9 +661,19 @@ function LeaderboardTrendCharts({ data }: { data?: LeaderboardChartsResponse }) 
   );
 }
 
+const LEADERBOARD_TAB_LS_KEY = "leaderboard.activeTab";
+
 export default function Leaderboard() {
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const stored = localStorage.getItem(LEADERBOARD_TAB_LS_KEY);
+    return (stored && ["deal-analysis", "community"].includes(stored)) ? stored : "deal-analysis";
+  });
   const [period, setPeriod] = useState<string>("all-time");
   const [cityFilter, setCityFilter] = useState<string>("");
+
+  useEffect(() => {
+    localStorage.setItem(LEADERBOARD_TAB_LS_KEY, activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     track({ event: "leaderboard_viewed", period });
@@ -759,7 +769,7 @@ export default function Leaderboard() {
               </div>
             ) : null}
 
-            <Tabs defaultValue="deal-analysis" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid w-full grid-cols-2" data-testid="tabs-leaderboard">
                 <TabsTrigger value="deal-analysis" data-testid="tab-deal-analysis">
                   <BarChart3 className="h-4 w-4 mr-2" />

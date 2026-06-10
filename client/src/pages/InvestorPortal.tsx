@@ -20,7 +20,7 @@ import { Link, useLocation } from "wouter";
 import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink, Settings, GitCompare, MoreHorizontal, Search, Compass, Bookmark, ArrowRight, Clock3, Target } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { GoogleConnectionCard } from "@/components/GoogleConnectionCard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { InvestorProfile, InvestorKyc, PortfolioProperty, SavedDeal } from "@shared/schema";
 import {
   removeRecentViewedListingSignal,
@@ -118,12 +118,22 @@ function buildAnalyzerHref(listing: SavedListingSignal): string {
   return `/tools/analyzer${params.toString() ? `?${params.toString()}` : ""}`;
 }
 
+const INVESTOR_PORTAL_TAB_LS_KEY = "investorPortal.activeTab";
+
 export default function InvestorPortal() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [addPropertyOpen, setAddPropertyOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const stored = localStorage.getItem(INVESTOR_PORTAL_TAB_LS_KEY);
+    return (stored && ["workspace", "saved-deals", "portfolio", "profile", "kyc", "settings"].includes(stored)) ? stored : "workspace";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(INVESTOR_PORTAL_TAB_LS_KEY, activeTab);
+  }, [activeTab]);
 
   const { data: profile, isLoading: profileLoading } = useQuery<InvestorProfile | null>({
     queryKey: ["/api/investor/profile"],
@@ -352,7 +362,7 @@ export default function InvestorPortal() {
             </Card>
           </div>
 
-          <Tabs defaultValue="workspace" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList data-testid="investor-tabs">
               <TabsTrigger value="workspace" data-testid="tab-workspace">Workspace</TabsTrigger>
               <TabsTrigger value="saved-deals" data-testid="tab-saved-deals">Analyses</TabsTrigger>
