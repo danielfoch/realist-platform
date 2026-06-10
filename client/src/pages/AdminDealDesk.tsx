@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -29,7 +30,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity } from "lucide-react";
+import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText } from "lucide-react";
 import { Link } from "wouter";
 
 type Opportunity = {
@@ -41,6 +42,7 @@ type Opportunity = {
     suggestedNextAction: string;
     source: string;
     lostReason: string | null;
+    adminNotes: string | null;
     createdAt: string;
     updatedAt: string;
   };
@@ -84,7 +86,7 @@ type ActivityEvent = {
 };
 
 const STATUSES = [
-  "new", "hot", "warm", "nurture", "contacted",
+  "new", "hot", "warm", "nurture", "contacted", "qualified",
   "booked_call", "preapproval_started", "buyer_agency_signed",
   "showing_booked", "offer_submitted", "closed", "lost",
 ];
@@ -123,6 +125,7 @@ export default function AdminDealDesk() {
   const [newStatus, setNewStatus] = useState("");
   const [newAssignedTo, setNewAssignedTo] = useState("");
   const [lostReason, setLostReason] = useState("");
+  const [adminNotes, setAdminNotes] = useState("");
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["/api/deal-desk/stats"],
@@ -141,17 +144,33 @@ export default function AdminDealDesk() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (payload: { id: string; status: string; assignedTo?: string; lostReason?: string }) =>
+    mutationFn: (payload: { id: string; status: string; assignedTo?: string; lostReason?: string; adminNotes?: string | null }) =>
       apiRequest("PATCH", `/api/deal-desk/opportunities/${payload.id}`, {
         status: payload.status,
         assignedTo: payload.assignedTo,
         lostReason: payload.lostReason,
+        adminNotes: payload.adminNotes,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/activity"] });
       setEditingOpp(null);
+      toast({ title: "Opportunity updated" });
+    },
+    onError: () => {
+      toast({ title: "Update failed", variant: "destructive" });
+    },
+  });
+
+  const inlineStatusMutation = useMutation({
+    mutationFn: (payload: { id: string; status: string }) =>
+      apiRequest("PATCH", `/api/deal-desk/opportunities/${payload.id}/status`, {
+        status: payload.status,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/stats"] });
       toast({ title: "Status updated" });
     },
     onError: () => {
@@ -164,6 +183,7 @@ export default function AdminDealDesk() {
     setNewStatus(opp.opportunity.status);
     setNewAssignedTo(opp.opportunity.assignedTo || "");
     setLostReason(opp.opportunity.lostReason || "");
+    setAdminNotes(opp.opportunity.adminNotes || "");
   }
 
   function saveEdit() {
@@ -173,6 +193,7 @@ export default function AdminDealDesk() {
       status: newStatus,
       assignedTo: newAssignedTo || undefined,
       lostReason: newStatus === "lost" ? lostReason : undefined,
+      adminNotes: adminNotes !== "" ? adminNotes : null,
     });
   }
 
@@ -337,6 +358,7 @@ export default function AdminDealDesk() {
                     <TableHead>Status</TableHead>
                     <TableHead>Next Action</TableHead>
                     <TableHead>Assigned</TableHead>
+                    <TableHead>Notes</TableHead>
                     <TableHead>Latest Activity</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead></TableHead>
@@ -357,12 +379,36 @@ export default function AdminDealDesk() {
                           {row.deal?.market && <div className="text-xs text-muted-foreground">{row.deal.market}</div>}
                         </TableCell>
                         <TableCell>{scoreBadge(row.opportunity.intentScore)}</TableCell>
-                        <TableCell>{statusBadge(row.opportunity.status)}</TableCell>
+                        <TableCell>
+                          <Select
+                            value={row.opportunity.status}
+                            onValueChange={(val) => inlineStatusMutation.mutate({ id: row.opportunity.id, status: val })}
+                          >
+                            <SelectTrigger className="h-7 w-36 text-xs" data-testid={`select-inline-status-${row.opportunity.id}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUSES.map(s => (
+                                <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell>
                           <div className="text-xs text-muted-foreground max-w-36">{row.opportunity.suggestedNextAction}</div>
                         </TableCell>
                         <TableCell>
                           <div className="text-xs">{row.opportunity.assignedTo ?? <span className="text-muted-foreground">Unassigned</span>}</div>
+                        </TableCell>
+                        <TableCell>
+                          {row.opportunity.adminNotes ? (
+                            <div className="text-xs text-muted-foreground max-w-32 truncate" title={row.opportunity.adminNotes} data-testid={`text-notes-${row.opportunity.id}`}>
+                              <FileText className="inline h-3 w-3 mr-1 shrink-0" />
+                              {row.opportunity.adminNotes}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {latestEvent ? (
@@ -379,7 +425,7 @@ export default function AdminDealDesk() {
                         </TableCell>
                         <TableCell>
                           <Button variant="outline" size="sm" onClick={() => openEdit(row)} data-testid={`button-edit-${row.opportunity.id}`}>
-                            Update
+                            Notes
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -498,6 +544,18 @@ export default function AdminDealDesk() {
                   />
                 </div>
               )}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1">
+                  <FileText className="h-3.5 w-3.5" /> Admin Notes
+                </label>
+                <Textarea
+                  value={adminNotes}
+                  onChange={e => setAdminNotes(e.target.value)}
+                  placeholder="Internal notes visible only to the team…"
+                  rows={4}
+                  data-testid="textarea-admin-notes"
+                />
+              </div>
             </div>
           )}
           <DialogFooter>

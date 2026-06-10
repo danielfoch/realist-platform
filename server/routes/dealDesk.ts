@@ -155,6 +155,37 @@ export function registerDealDeskRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/deal-desk/opportunities/:id/status", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const schema = z.object({ status: z.string().min(1) });
+      const { status } = schema.parse(req.body);
+      const adminUserId = (req as any).session?.userId || null;
+
+      const opportunity = await storage.updateOpportunityStatus(id, { status });
+      if (!opportunity) {
+        return res.status(404).json({ ok: false, error: "Not found" });
+      }
+
+      await logUserActivity(req, {
+        userId: adminUserId,
+        sessionId: (req as any).sessionID || null,
+        eventName: "crm_status_updated",
+        dealId: opportunity.dealId || null,
+        source: "deal_desk_admin",
+        metadata: { opportunityId: id, newStatus: status },
+      });
+
+      res.json({ ok: true, opportunity });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ ok: false, errors: err.errors });
+      }
+      console.error("Update opportunity status error:", err);
+      res.status(500).json({ ok: false });
+    }
+  });
+
   app.patch("/api/deal-desk/opportunities/:id", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
@@ -162,6 +193,7 @@ export function registerDealDeskRoutes(app: Express) {
         status: z.string().min(1),
         assignedTo: z.string().optional().nullable(),
         lostReason: z.string().optional().nullable(),
+        adminNotes: z.string().optional().nullable(),
       });
       const updates = schema.parse(req.body);
       const adminUserId = (req as any).session?.userId || null;
@@ -170,6 +202,7 @@ export function registerDealDeskRoutes(app: Express) {
         status: updates.status,
         assignedTo: updates.assignedTo ?? undefined,
         lostReason: updates.lostReason ?? undefined,
+        adminNotes: updates.adminNotes ?? undefined,
       });
       if (!opportunity) {
         return res.status(404).json({ ok: false, error: "Not found" });

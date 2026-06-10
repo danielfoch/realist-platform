@@ -3819,6 +3819,7 @@ export const opportunities = pgTable("opportunities", {
   suggestedNextAction: text("suggested_next_action").notNull(),
   source: text("source").default("deal_desk").notNull(),
   lostReason: text("lost_reason"),
+  adminNotes: text("admin_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

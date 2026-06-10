@@ -559,7 +559,7 @@ export interface IStorage {
   listDeals(): Promise<Deal[]>;
   createOpportunity(opp: InsertOpportunity): Promise<Opportunity>;
   listOpportunities(filters: { status?: string }): Promise<any[]>;
-  updateOpportunityStatus(id: string, updates: { status: string; assignedTo?: string; lostReason?: string }): Promise<Opportunity | undefined>;
+  updateOpportunityStatus(id: string, updates: { status: string; assignedTo?: string; lostReason?: string; adminNotes?: string }): Promise<Opportunity | undefined>;
   getDealDeskStats(): Promise<{
     hot: number; warm: number; new: number; lost: number; total: number;
     callsBooked: number; dealsAnalyzed: number;
@@ -2559,12 +2559,13 @@ export class DatabaseStorage implements IStorage {
     return base.orderBy(desc(opportunities.createdAt));
   }
 
-  async updateOpportunityStatus(id: string, updates: { status: string; assignedTo?: string; lostReason?: string }): Promise<Opportunity | undefined> {
+  async updateOpportunityStatus(id: string, updates: { status: string; assignedTo?: string; lostReason?: string; adminNotes?: string }): Promise<Opportunity | undefined> {
     const [updated] = await db.update(opportunities)
       .set({
         status: updates.status,
         ...(updates.assignedTo !== undefined ? { assignedTo: updates.assignedTo } : {}),
         ...(updates.lostReason !== undefined ? { lostReason: updates.lostReason } : {}),
+        ...(updates.adminNotes !== undefined ? { adminNotes: updates.adminNotes } : {}),
         updatedAt: new Date(),
       })
       .where(eq(opportunities.id, id))
