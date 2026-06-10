@@ -1,0 +1,15 @@
+node_modules/
+ios/App/Pods/
+android/.gradle/
+android/.idea/
+android/app/build/
+android/build/
+android/captures/
+android/local.properties
+android/key.properties
+android/*.jks
+*.jks
+*.keystore
+key.properties
+GoogleService-Info.plist
+google-services.json

@@ -19,16 +19,6 @@ interface Analysis {
   notes: string | null;
 }
 
-interface AnalysisListResponse {
-  success: boolean;
-  data: {
-    analyses: Analysis[];
-    total: number;
-    page: number;
-    limit: number;
-  };
-}
-
 const PAGE_SIZE = 20;
 
 function formatCurrency(value: number | null): string {

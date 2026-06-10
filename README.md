@@ -68,6 +68,14 @@ import { DealAnalyzerMatch } from './components/DealAnalyzerMatch';
 />
 ```
 
+## Documentation
+- `API_DOCUMENTATION.md`
+- `DEPLOYMENT.md`
+- `TROUBLESHOOTING.md`
+- `ENVIRONMENT_VARIABLES.md`
+- `INTEGRATION_CHECKLIST.md`
+- `REPLIT_SETUP.md`
+
 ## File Structure
 
 ```

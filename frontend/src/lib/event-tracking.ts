@@ -11,6 +11,7 @@
 
 type EventName =
   | 'page_view'
+  | 'homepage_cta_click'
   | 'signup_started'
   | 'signup_completed'
   | 'login'

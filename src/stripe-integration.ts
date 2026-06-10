@@ -3,7 +3,6 @@
  */
 
 import Stripe from 'stripe';
-import { db } from './db';
 import { getUserById, getUserByStripeCustomerId, updateUser, recordSubscriptionEvent, User } from './user-model';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
@@ -15,22 +14,6 @@ const STRIPE_PRICE_ENTERPRISE = process.env.STRIPE_PRICE_ENTERPRISE || 'price_en
 const stripe = new Stripe(STRIPE_SECRET_KEY || 'sk_test_dummy', {
   apiVersion: '2026-02-25.clover', // Use latest stable version
 });
-
-// Helper to check if Stripe is configured
-function isStripeConfigured(): boolean {
-  return Boolean(STRIPE_SECRET_KEY);
-}
-
-// Price configurations (in cents)
-const PRICE_CONFIG = {
-  premium: {
-    monthly: 2900, // $29/month
-    annual: 29000, // $290/year (2 months free)
-  },
-  enterprise: {
-    // Custom pricing - contact sales
-  },
-};
 
 /**
  * Create a Stripe Checkout session for subscription
@@ -49,7 +32,7 @@ export async function createCheckoutSession(
 
   // Determine price ID based on tier
   let priceId = STRIPE_PRICE_PREMIUM;
-  let mode: 'subscription' | 'payment' = 'subscription';
+  const mode: 'subscription' | 'payment' = 'subscription';
   let customPrice = null;
 
   if (tier === 'premium') {

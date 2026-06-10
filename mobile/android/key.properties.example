@@ -1,0 +1,4 @@
+storeFile=realist-release.jks
+storePassword=replace-with-keystore-password
+keyAlias=realist
+keyPassword=replace-with-key-password

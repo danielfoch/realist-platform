@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Realist</string>
+    <string name="title_activity_main">Realist</string>
+    <string name="package_name">ca.realist.app</string>
+    <string name="custom_url_scheme">ca.realist.app</string>
+</resources>

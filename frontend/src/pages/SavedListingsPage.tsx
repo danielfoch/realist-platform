@@ -2,12 +2,12 @@
  * Saved Listings Page — persistent bookmarks for authenticated investors
  */
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useToast } from '../hooks/use-toast';
-import { BookmarkIcon, Trash2, MapPin, Bed, Bath, Square } from 'lucide-react';
+import { BookmarkIcon, Trash2, Bed, Bath, Square } from 'lucide-react';
 import { Pagination } from '../components/Pagination';
 
 interface SavedListing {

@@ -21,6 +21,12 @@ import { trackEvent } from './event-tracking';
 export function createAuthRouter(): Router {
   const router = Router();
 
+  const sanitizeUser = <T extends { password_hash?: string }>(user: T): Omit<T, 'password_hash'> => {
+    const userData = { ...user };
+    delete userData.password_hash;
+    return userData;
+  };
+
   // Helper to validate request
   const validate = (req: Request, res: Response) => {
     const errors = validationResult(req);
@@ -167,11 +173,9 @@ export function createAuthRouter(): Router {
       }
 
       // Remove sensitive fields
-      const { password_hash, ...userData } = user;
-
       res.json({
         success: true,
-        data: userData,
+        data: sanitizeUser(user),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -208,10 +212,9 @@ export function createAuthRouter(): Router {
           return;
         }
 
-        const { password_hash, ...userData } = updatedUser;
         res.json({
           success: true,
-          data: userData,
+          data: sanitizeUser(updatedUser),
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -314,16 +317,22 @@ export function createAuthRouter(): Router {
       const user = req.user!;
 
       try {
-        // Stripe integration will be implemented separately
-        // For now, return mock response
+        const checkoutUrl = new URL('https://checkout.stripe.com/mock');
+        checkoutUrl.searchParams.set('tier', tier);
+        checkoutUrl.searchParams.set('user', String(user.id));
+        checkoutUrl.searchParams.set('success_url', success_url);
+        checkoutUrl.searchParams.set('cancel_url', cancel_url);
+
         res.json({
           success: true,
           data: {
             session_id: 'mock_stripe_session_id',
-            url: `https://checkout.stripe.com/mock?tier=${tier}&user=${user.id}`,
+            url: checkoutUrl.toString(),
             tier,
             price: tier === 'premium' ? 2900 : 0, // in cents, enterprise custom pricing
             message: 'Stripe integration pending',
+            success_url,
+            cancel_url,
           },
         });
       } catch (error) {

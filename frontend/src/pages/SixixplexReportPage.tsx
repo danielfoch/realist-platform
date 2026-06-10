@@ -135,9 +135,8 @@ export function SixixplexReportPage() {
     setIsLoading(false);
 
     // Persist to deal_analyses (Analysis Memory - Non-Negotiable #4)
-    const storedToken = localStorage.getItem('session_token') || crypto.randomUUID();
     if (!localStorage.getItem('session_token')) {
-      localStorage.setItem('session_token', storedToken);
+      localStorage.setItem('session_token', crypto.randomUUID());
     }
     fetch('/api/analyses', {
       method: 'POST',
@@ -241,7 +240,6 @@ export function SixixplexReportPage() {
             onBlur={() => {
               if (notes.trim() && lead) {
                 // Auto-save notes when user types and leaves the field
-                const storedToken = localStorage.getItem('session_token') || crypto.randomUUID();
                 fetch('/api/analyses', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },

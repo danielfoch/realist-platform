@@ -602,11 +602,14 @@ export function createContentRouter(database: DatabaseAdapter = defaultDb): Rout
       const result = await database.query(query, params);
       
       // Add yield estimates (rough calculation based on typical price-to-rent ratio)
-      const cityYields = result.rows.map(row => ({
-        ...row,
-        median_rent: row.median_rent / 100, // Convert from cents to dollars
-        yield_estimate: Math.round((row.median_rent * 12 / 300000) * 100) / 100 // Rough cap rate estimate
-      }));
+      const cityYields = result.rows.map(row => {
+        const medianRent = Number(row.median_rent) / 100;
+        return {
+          ...row,
+          median_rent: medianRent,
+          yield_estimate: Math.round(((medianRent * 12) / 300000) * 100) / 100,
+        };
+      });
       
       res.json({
         success: true,

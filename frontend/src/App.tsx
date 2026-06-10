@@ -5,6 +5,10 @@ import { RealtorAuthPage } from './pages/RealtorAuthPage'
 import { RealtorDashboard } from './pages/RealtorDashboard'
 import { BlogListPage, BlogPostPage } from './pages/BlogPage'
 import { GuidesListPage, GuidePage } from './pages/GuidesPage'
+import { JoinRealtorsPage } from './pages/JoinRealtorsPage'
+import { JoinLendersPage } from './pages/JoinLendersPage'
+import { JoinRealtorsSuccessPage } from './pages/JoinRealtorsSuccessPage'
+import { JoinLendersSuccessPage } from './pages/JoinLendersSuccessPage'
 import { CityYieldPage } from './pages/CityYieldPage'
 import { SixixplexPage } from './pages/SixixplexPage'
 import { SixixplexReportPage } from './pages/SixixplexReportPage'
@@ -28,6 +32,9 @@ function App() {
             <nav className="flex gap-4">
               <Link to="/properties" className="text-sm font-medium hover:text-primary">
                 Browse Listings
+              </Link>
+              <Link to="/join/realtors" className="text-sm font-medium hover:text-primary">
+                Partner Network
               </Link>
               <Link to="/insights/blog" className="text-sm font-medium hover:text-primary">
                 Blog
@@ -76,6 +83,12 @@ function App() {
             <Route path="/insights/guides" element={<GuidesListPage />} />
             <Route path="/insights/guides/:slug" element={<GuidePage />} />
             
+            {/* Partner Join Routes */}
+            <Route path="/join/realtors" element={<JoinRealtorsPage />} />
+            <Route path="/join/realtors/success" element={<JoinRealtorsSuccessPage />} />
+            <Route path="/join/lenders" element={<JoinLendersPage />} />
+            <Route path="/join/lenders/success" element={<JoinLendersSuccessPage />} />
+
             {/* City Yield Rankings */}
             <Route path="/insights/city-yields" element={<CityYieldPage />} />
             
