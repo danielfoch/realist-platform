@@ -27,25 +27,6 @@ interface SeedListing {
   monthlyRent: number;
 }
 
-// Realistic Canadian rental data (estimated market rents)
-const rentData: Record<string, number> = {
-  'Toronto': 2800,
-  'Vancouver': 3200,
-  'Montreal': 2200,
-  'Calgary': 2100,
-  'Edmonton': 1800,
-  'Ottawa': 2400,
-  'Winnipeg': 1600,
-  'Halifax': 2000,
-  'Hamilton': 2200,
-  'Kitchener': 2100,
-  'London': 1900,
-  'Victoria': 2700,
-  'Richmond Hill': 3000,
-  'Mississauga': 2600,
-  'Brampton': 2400,
-};
-
 const listings: SeedListing[] = [
   // Ontario - Toronto Area
   {

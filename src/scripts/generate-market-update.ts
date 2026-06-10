@@ -71,12 +71,6 @@ function getMonthYear(): string {
   return now.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
 }
 
-function getPreviousMonth(): string {
-  const now = new Date();
-  now.setMonth(now.getMonth() - 1);
-  return now.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
-}
-
 function slugify(text: string): string {
   return text
     .toLowerCase()

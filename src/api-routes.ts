@@ -264,8 +264,7 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   router.get('/listings/map', validateMapQuery, async (req: Request, res: Response) => {
     // Demo mode
     if (isDemoMode()) {
-      const { bounds, minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
-        bounds?: string;
+      const { minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
         minPrice?: number;
         maxPrice?: number;
         propertyType?: string;
@@ -656,16 +655,42 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
           
           if (mlsNumber) {
             listingQuery = await database.query(
-              'SELECT id, list_price, address_street, address_city, address_province FROM listings WHERE mls_number = $1',
+              `SELECT id, list_price, address_street, address_city, address_province, bedrooms
+               FROM listings
+               WHERE mls_number = $1`,
               [mlsNumber]
             );
           } else if (address && city) {
-            listingQuery = await database.query(
-              `SELECT id, list_price, address_street, address_city, address_province 
-               FROM listings 
-               WHERE LOWER(address_street) = LOWER($1) AND LOWER(address_city) = LOWER($2)`,
-              [address, city]
+            const addressParams: unknown[] = [address, city];
+            let addressQuery = `
+              SELECT id, list_price, address_street, address_city, address_province, bedrooms
+              FROM listings
+              WHERE LOWER(address_street) = LOWER($1)
+                AND LOWER(address_city) = LOWER($2)
+            `;
+
+            if (province) {
+              addressParams.push(province);
+              addressQuery += ` AND UPPER(address_province) = UPPER($${addressParams.length})`;
+            }
+
+            addressQuery += `
+              ORDER BY
+                CASE
+                  WHEN $${addressParams.length + 1}::integer IS NOT NULL AND bedrooms = $${addressParams.length + 1}::integer THEN 0
+                  WHEN $${addressParams.length + 1}::integer IS NOT NULL AND bedrooms IS NULL THEN 1
+                  ELSE 2
+                END,
+                id DESC
+              LIMIT 1
+            `;
+            addressParams.push(
+              bedrooms !== undefined && bedrooms !== null && bedrooms !== ''
+                ? Number(bedrooms)
+                : null
             );
+
+            listingQuery = await database.query(addressQuery, addressParams);
           } else {
             results.errors++;
             results.details.push({ address: address || 'unknown', status: 'error', error: 'No MLS number or address provided' });
@@ -682,7 +707,14 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
             continue;
           }
 
-          const listing = listingQuery.rows[0] as { id: number; list_price: number; address_street: string; address_city: string; address_province: string };
+          const listing = listingQuery.rows[0] as {
+            id: number;
+            list_price: number;
+            address_street: string;
+            address_city: string;
+            address_province: string;
+            bedrooms: number | null;
+          };
           const listPrice = Number(listing.list_price);
 
           if (!listPrice || listPrice <= 0) {
@@ -889,7 +921,9 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
         .sort((a: any, b: any) => b.estimatedCapRate - a.estimatedCapRate)
         .slice(0, 5);
 
-      const avgCapRate = cityYields.reduce((sum: number, c: any) => sum + c.estimatedCapRate, 0) / cityYields.length;
+      const avgCapRate = cityYields.length > 0
+        ? cityYields.reduce((sum: number, c: any) => sum + c.estimatedCapRate, 0) / cityYields.length
+        : 0;
 
       res.json({
         success: true,

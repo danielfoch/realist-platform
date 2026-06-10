@@ -13,7 +13,7 @@ const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
 
 // Simple email sending (in production, use SendGrid/AWS SES)
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
-  console.log(`[EMAIL] To: ${to}, Subject: ${subject}`);
+  console.log(`[EMAIL] To: ${to}, Subject: ${subject}, HTML length: ${html.length}`);
   // In production, integrate with email service
   return true;
 }
@@ -176,6 +176,7 @@ export function createInvestorLeadRouter(): Router {
               status: notifiedCount > 0 ? 'distributed' : 'new',
             },
             matched_realtors: notifiedCount,
+            crm_synced: Boolean(ghlContactId),
             message: notifiedCount > 0 
               ? `We've notified ${notifiedCount} realtor${notifiedCount > 1 ? 's' : ''} in your target area. They'll reach out soon!`
               : 'Thanks! We\'ll match you with a realtor as soon as one becomes available in your area.',
