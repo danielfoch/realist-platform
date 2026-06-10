@@ -418,7 +418,14 @@ export default function AdminDealDesk() {
               <Mail className="h-3 w-3 mr-1" />
               Email Queue
               {emailTriggers.filter(t => t.status === "pending").length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs px-1">{emailTriggers.filter(t => t.status === "pending").length}</Badge>
+                <Badge variant="secondary" className="ml-1 text-xs px-1" data-testid="badge-email-pending">
+                  {emailTriggers.filter(t => t.status === "pending").length} pending
+                </Badge>
+              )}
+              {emailTriggers.filter(t => t.status === "failed").length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs px-1" data-testid="badge-email-failed">
+                  {emailTriggers.filter(t => t.status === "failed").length} failed
+                </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="export" data-testid="tab-export">Export</TabsTrigger>
