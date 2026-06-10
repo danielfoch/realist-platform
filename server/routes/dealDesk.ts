@@ -419,12 +419,21 @@ export function registerDealDeskRoutes(app: Express) {
         process.env.DEAL_DESK_NOTIFY_EMAIL ||
         process.env.PODCAST_NOTIFY_EMAIL ||
         null;
+      const notifyEmails = notifyEmail
+        ? notifyEmail.split(",").map(e => e.trim()).filter(Boolean)
+        : [];
+      const envFallbackEmails = envFallback
+        ? envFallback.split(",").map(e => e.trim()).filter(Boolean)
+        : [];
       res.json({
         ok: true,
         settings: {
           notifyEmail: notifyEmail ?? null,
+          notifyEmails,
           envFallback,
+          envFallbackEmails,
           effectiveEmail: notifyEmail ?? envFallback ?? null,
+          effectiveEmails: notifyEmails.length ? notifyEmails : envFallbackEmails,
         },
       });
     } catch (err) {
@@ -435,19 +444,16 @@ export function registerDealDeskRoutes(app: Express) {
 
   app.put("/api/deal-desk/settings", isAdmin, async (req, res) => {
     const schema = z.object({
-      notifyEmail: z.string().email("Must be a valid email address").or(z.literal("")).optional().nullable(),
+      notifyEmails: z.array(z.string().email("Each entry must be a valid email address")).optional().nullable(),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" });
     }
     try {
-      const { notifyEmail } = parsed.data;
-      if (notifyEmail === null || notifyEmail === undefined || notifyEmail === "") {
-        await storage.setAppSetting("deal_desk_notify_email", "");
-      } else {
-        await storage.setAppSetting("deal_desk_notify_email", notifyEmail.trim());
-      }
+      const { notifyEmails } = parsed.data;
+      const value = (notifyEmails ?? []).map(e => e.trim()).filter(Boolean).join(",");
+      await storage.setAppSetting("deal_desk_notify_email", value);
       res.json({ ok: true });
     } catch (err) {
       console.error("Settings PUT error:", err);

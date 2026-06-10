@@ -181,18 +181,21 @@ export default function AdminDealDesk() {
 
   type DealDeskSettings = {
     notifyEmail: string | null;
+    notifyEmails: string[];
     envFallback: string | null;
+    envFallbackEmails: string[];
     effectiveEmail: string | null;
+    effectiveEmails: string[];
   };
 
   const { data: settingsData, refetch: refetchSettings } = useQuery<{ ok: boolean; settings: DealDeskSettings }>({
     queryKey: ["/api/deal-desk/settings"],
   });
-  const [notifyEmailInput, setNotifyEmailInput] = useState<string>("");
+  const [newEmailInput, setNewEmailInput] = useState<string>("");
   const settingsLoaded = settingsData?.settings;
 
   const saveSettingsMutation = useMutation({
-    mutationFn: (payload: { notifyEmail: string }) =>
+    mutationFn: (payload: { notifyEmails: string[] }) =>
       apiRequest("PUT", "/api/deal-desk/settings", payload),
     onSuccess: () => {
       refetchSettings();
@@ -876,59 +879,83 @@ export default function AdminDealDesk() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="space-y-1.5">
-                <p className="text-sm font-medium">Team notification email</p>
-                <p className="text-sm text-muted-foreground">
-                  All team alerts (hot leads, warm follow-ups, financing requests) go to this address.
-                  Overrides the <code className="bg-muted px-1 rounded text-xs">DEAL_DESK_NOTIFY_EMAIL</code> environment variable.
-                </p>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Notification recipients</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    All team alerts (hot leads, warm follow-ups, financing requests) are sent to every address below.
+                    Overrides the <code className="bg-muted px-1 rounded text-xs">DEAL_DESK_NOTIFY_EMAIL</code> environment variable.
+                  </p>
+                </div>
 
-                {settingsLoaded?.envFallback && !settingsLoaded?.notifyEmail && (
+                {settingsLoaded?.envFallbackEmails && settingsLoaded.envFallbackEmails.length > 0 && (!settingsLoaded.notifyEmails || settingsLoaded.notifyEmails.length === 0) && (
                   <div className="rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-                    Currently using env fallback: <strong>{settingsLoaded.envFallback}</strong>. Save an email below to override it.
+                    Using env fallback: <strong>{settingsLoaded.envFallbackEmails.join(", ")}</strong>. Add recipients below to override.
                   </div>
                 )}
-                {!settingsLoaded?.envFallback && !settingsLoaded?.notifyEmail && (
+                {(!settingsLoaded?.effectiveEmails || settingsLoaded.effectiveEmails.length === 0) && (
                   <div className="rounded bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-3 py-2 text-xs text-red-800 dark:text-red-300">
-                    No notification email is configured — team alerts will be dropped until one is set.
+                    No notification recipients configured — team alerts will be dropped until at least one is added.
                   </div>
                 )}
-                {settingsLoaded?.effectiveEmail && (
-                  <div className="rounded bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 px-3 py-2 text-xs text-green-800 dark:text-green-300">
-                    Active: <strong>{settingsLoaded.effectiveEmail}</strong>
-                    {settingsLoaded.notifyEmail ? " (set via admin)" : " (from environment variable)"}
+
+                {settingsLoaded && settingsLoaded.notifyEmails && settingsLoaded.notifyEmails.length > 0 && (
+                  <div className="space-y-1.5" data-testid="list-notify-emails">
+                    {settingsLoaded.notifyEmails.map((email, idx) => (
+                      <div key={email} className="flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2" data-testid={`row-notify-email-${idx}`}>
+                        <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-sm flex-1 truncate" data-testid={`text-notify-email-${idx}`}>{email}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          disabled={saveSettingsMutation.isPending}
+                          data-testid={`button-remove-email-${idx}`}
+                          onClick={() => {
+                            const updated = settingsLoaded.notifyEmails.filter((_, i) => i !== idx);
+                            saveSettingsMutation.mutate({ notifyEmails: updated });
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
 
                 <div className="flex gap-2 pt-1">
                   <Input
                     type="email"
-                    placeholder={settingsLoaded?.envFallback ?? "team@example.com"}
-                    value={notifyEmailInput}
-                    onChange={e => setNotifyEmailInput(e.target.value)}
+                    placeholder="Add recipient email…"
+                    value={newEmailInput}
+                    onChange={e => setNewEmailInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && newEmailInput.trim()) {
+                        const current = settingsLoaded?.notifyEmails ?? [];
+                        if (!current.includes(newEmailInput.trim())) {
+                          saveSettingsMutation.mutate({ notifyEmails: [...current, newEmailInput.trim()] });
+                        }
+                        setNewEmailInput("");
+                      }
+                    }}
                     className="max-w-sm"
                     data-testid="input-notify-email"
                   />
                   <Button
-                    onClick={() => saveSettingsMutation.mutate({ notifyEmail: notifyEmailInput })}
-                    disabled={saveSettingsMutation.isPending}
-                    data-testid="button-save-notify-email"
+                    onClick={() => {
+                      const trimmed = newEmailInput.trim();
+                      if (!trimmed) return;
+                      const current = settingsLoaded?.notifyEmails ?? [];
+                      if (!current.includes(trimmed)) {
+                        saveSettingsMutation.mutate({ notifyEmails: [...current, trimmed] });
+                      }
+                      setNewEmailInput("");
+                    }}
+                    disabled={saveSettingsMutation.isPending || !newEmailInput.trim()}
+                    data-testid="button-add-notify-email"
                   >
-                    {saveSettingsMutation.isPending ? "Saving…" : "Save"}
+                    {saveSettingsMutation.isPending ? "Saving…" : "Add"}
                   </Button>
-                  {settingsLoaded?.notifyEmail && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setNotifyEmailInput("");
-                        saveSettingsMutation.mutate({ notifyEmail: "" });
-                      }}
-                      disabled={saveSettingsMutation.isPending}
-                      data-testid="button-clear-notify-email"
-                    >
-                      Clear
-                    </Button>
-                  )}
                 </div>
               </div>
             </CardContent>
