@@ -1,0 +1,185 @@
+BUILD A NEW TOOL IN REALIST.CA: “Distress Deals Browser” (DDF MLS)
+
+Goal
+Create a separate tool/page on realist.ca that lets users browse MLS listings from the CREA DDF feed that are likely:
+1) Foreclosure / Power of Sale / Court-ordered / Bank-owned / Receivership
+2) Motivated Seller / Distressed sale language
+3) VTB / Vendor Take Back / Seller Financing
+
+This tool should feel like a mini “deal finder” with map + card browse, filters, and a “deal likelihood score” based on MLS description/remarks + listing metadata.
+
+Where it lives
+- New route: /tools/distress-deals
+- Add to “All Tools” page and main nav under Tools.
+- Tool name: “Distress Deals (Foreclosure / Motivated / VTB)”
+- Short subtitle: “Find power-of-sale, court-ordered, bank-owned, motivated sellers, and seller-financing opportunities.”
+
+Data source
+- Use existing DDF ingestion + database tables used elsewhere in realist.ca (do not re-scrape realtor.ca).
+- Query from the same normalized Listings table(s) you already populate from DDF (photos, geo, address, price, beds/baths, property type, remarks/public comments, listing office, listing date, status, etc.).
+- Ensure queries are fast: add indexes to remarks text (full-text search where supported) + city + province + status + last_updated + lat/lng.
+- Cache query results for 5–15 minutes (server-side) to reduce load.
+
+Core UX
+- Layout: left side filters, center map, right side scrollable cards (or map top, cards below on mobile).
+- Toggle switches at top:
+  [ ] Foreclosure / POS / Court-Ordered
+  [ ] Motivated Seller
+  [ ] VTB / Seller Financing
+  Users can enable one or multiple toggles simultaneously.
+- Show a “Distress Score” badge on each card (0–100) with a tooltip: “Score is derived from listing remarks + provincial sale terminology + signals like price reductions and DOM (if available in feed).”
+- Clicking a listing opens a detail modal/page with:
+  - full remarks (highlight matched terms)
+  - matched terms + which category they triggered
+  - a short explanation of provincial nuance (based on the listing’s province)
+  - contact CTA: “Request the full deal package” / “Talk to an agent” (hook into existing lead capture)
+
+Search/Filter controls
+- Province (multi-select), City, Postal prefix, Price range, Beds/Baths, Property type, Status (Active only default)
+- Days on market (if available), Listing date range
+- Keyword include/exclude (advanced)
+- “Include condos / exclude condos” toggle
+- “Exclude assignment / new build” toggle if your feed includes such signals (or filter via keywords)
+
+Detection logic
+Build a text classifier-like rules engine (not ML required) that:
+- Normalizes remarks:
+  - lowercase, strip punctuation, collapse whitespace
+  - handle common abbreviations (pos, vtb, reo, dom, “court ord.”)
+- Searches for terms (word-boundary aware) and assigns points per hit.
+- Some terms must be “strong signals” (high points), others “weak signals” (low points).
+- Output:
+  - categoriesTriggered: {foreclosure_pos: true/false, motivated: true/false, vtb: true/false}
+  - matchedTerms: array of {term, category, weight}
+  - distressScore: 0–100 (cap, then normalize)
+  - confidence: low/med/high based on number of strong terms and term diversity
+- Save these outputs on ingestion OR compute on-the-fly with caching. Prefer precompute nightly + incremental recompute on listing updates.
+
+Provincial nuance rules (IMPORTANT)
+Because terminology differs:
+- Ontario: “Power of Sale” is common; “foreclosure” can appear but POS is the usual mechanism. Treat “power of sale”, “under power of sale”, “mortgagee sale” as strong signals.
+- British Columbia: common terms include “court ordered sale”, “foreclosure”, “conduct of sale”, “judicial sale”. Weight those strongly. “Schedule A” / “as is where is” often appears too (medium).
+- Alberta: “judicial sale”, “foreclosure”, “court order” common. Weight strongly.
+- Quebec (French): include “reprise de finance”, “vente sous contrôle de justice”, “vente judiciaire”, “sous contrôle de justice”, “faillite”, “banque”. Weight strongly; also match “financement vendeur” for seller financing.
+- Atlantic provinces: “power of sale”, “foreclosure”, “bank owned” show up; weight moderately but still meaningful.
+- Always show a small disclaimer box: “Terminology varies by province; this tool flags likely candidates based on listing language and signals. Confirm with your lawyer/agent.”
+
+Keyword dictionaries (include these; allow easy edits)
+1) Foreclosure / POS / Court-Ordered / Bank-owned
+STRONG:
+- "power of sale"
+- "under power of sale"
+- "mortgagee sale" / "mortgagee's sale"
+- "bank owned" / "bank-owned"
+- "court ordered sale" / "court-ordered sale"
+- "judicial sale"
+- "foreclosure"
+- "sheriff sale" / "sheriff's sale"
+- "receiver" / "receivership" / "court appointed receiver"
+- "lender" + ("sale" OR "owned") (handle as pattern)
+- "repossessed" / "repossession" / "repo"
+- "REO" (if appears)
+- French (QC):
+  - "reprise de finance"
+  - "vente sous contrôle de justice"
+  - "vente judiciaire"
+  - "sous contrôle de justice"
+  - "banque" + ("reprise" OR "vente")
+MEDIUM:
+- "estate sale"
+- "probate" (if appears)
+- "bank sale"
+- "sold as is" / "as is where is" / "where is as is"
+- "schedule a" (common in lender sales)
+- "no representations or warranties"
+- "foreclosure proceedings"
+
+2) Motivated Seller
+STRONG:
+- "must sell"
+- "motivated seller"
+- "bring an offer" / "bring offers"
+- "any offer" / "all offers"
+- "priced to sell"
+- "quick close" / "quick closing"
+- "immediate possession"
+- "urgent sale" / "needs to sell"
+- "price reduced" / "reduced" / "drastically reduced"
+MEDIUM:
+- "seller relocating" / "relocation"
+- "divorce" / "separation"
+- "bankruptcy" / "insolvency" / French: "faillite"
+- "handyman special" / "contractor special" / "fixer upper" / "tlc"
+- "as is" (only medium because it’s common)
+- "offers anytime" (contextual)
+- "below market" / "under market"
+
+3) VTB / Seller Financing
+STRONG:
+- "vtb"
+- "vendor take back" / "vendor take-back"
+- "seller financing" / "seller-financing"
+- "owner financing" / "owner-financing"
+- "vendor financing"
+- "take back mortgage" / "take-back mortgage"
+- "seller will hold" / "vendor will hold" (pattern)
+- "carryback" / "carry-back"
+- French (QC):
+  - "financement vendeur"
+  - "vendeur finance"
+MEDIUM:
+- "second mortgage" + ("vtb" OR "vendor") (pattern)
+- "agreement for sale" (rare; treat as medium)
+- "terms available" (only if near financing words)
+
+Negative filters (reduce false positives)
+- If remarks contain “not a power of sale” or “no vtb” etc, subtract points:
+  - "no vtb"
+  - "vtb not available"
+  - "not a power of sale"
+  - "not foreclosure"
+Also add “Exclude keywords” UI.
+
+Scoring approach (simple + explainable)
+- Each matched STRONG term: +20
+- Each matched MEDIUM term: +8
+- Pattern match combos: +12
+- Cap raw score at 120 then normalize to 0–100.
+- Confidence:
+  - HIGH if >=2 strong hits OR strong hit + 2 medium from same category
+  - MED if raw score >=25
+  - LOW otherwise
+- Store matched terms so you can highlight them in UI.
+
+Implementation requirements
+- Backend:
+  - Add endpoint: GET /api/distress-deals with query params for filters + toggles + pagination + map bounds
+  - Return: listings[], totalCount, facets (optional), debugMatchedTerms (only when admin/debug=true)
+  - Use parameterized queries only; protect against injection.
+- Frontend:
+  - New page with map + cards.
+  - Add “Share link” that encodes filters in URL query string.
+  - Add “Saved search” (optional) if you already have user accounts; otherwise skip.
+- Performance:
+  - Must handle bounding-box map queries (lat/lng in view) to avoid loading entire province.
+  - Use pagination for cards.
+  - Debounce filter changes.
+- Compliance / disclaimers:
+  - Show disclaimer: “This is not legal advice. ‘Power of Sale’/foreclosure processes vary by province. Listings are flagged based on MLS remarks and signals; verify details with professionals.”
+  - Respect DDF/CREA display rules already used on site (brokerage attribution, MLS® trademark usage, etc.).
+
+QA checklist
+- Validate toggles work independently and together.
+- Verify Ontario POS terms pull relevant listings.
+- Verify BC “court ordered sale / conduct of sale” picks up candidates.
+- Verify QC French terms work (accent-insensitive matching).
+- Confirm negative keyword handling (e.g., “No VTB”).
+- Confirm pages load fast and map queries do not time out.
+
+Deliverables
+- New page /tools/distress-deals
+- New API endpoint
+- Term dictionaries + scoring logic
+- UI toggles + filters + detail modal with highlighted matches
+- Added nav + tools index entry
+- Tests for scoring function with sample remarks strings from different provinces

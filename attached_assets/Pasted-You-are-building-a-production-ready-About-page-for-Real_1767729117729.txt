@@ -1,0 +1,161 @@
+You are building a production-ready About page for Realist.ca.
+
+Context / Brand:
+- Realist.ca is a Canadian real estate investing education + media platform centered around a world-class deal analyzer tool and an investor community.
+- Tone: confident, modern, data-driven, credible, not hypey. “Institutional underwriting meets creator + community.”
+- Design: minimal, high-trust. Clean spacing. Subtle gradients allowed. Mobile-first. Fast load. Great typography hierarchy.
+- Page goal: build trust + convert visitors into (1) Analyzer users, (2) community members, and (3) partners/clients (brands + investors).
+
+Tech assumptions:
+- Use Next.js + React + TypeScript.
+- Use Tailwind for styling.
+- Create a single file page component (or a route file) that can be dropped into an existing project.
+- Use simple local data objects/arrays for logos + stats so I can edit later.
+- Include accessible components: proper headings, alt text, button labels, and good contrast.
+
+NAV (top):
+- Realist Logo (left)
+- Links: Analyzer, Events, Blog, Shop, About
+- Primary CTA button: “Book a Free Consult Call”
+- Secondary CTA: “Start Analyzing”
+
+HERO SECTION (trust-first):
+- H1: “About Realist.ca”
+- Subhead: “We’re building the most powerful real estate deal analyzer in the world — and a community that helps Canadians turn underwriting into real wealth.”
+- Add a row of “proof chips” with icons:
+  - “Canada’s #1 real estate podcast”
+  - “11,000+ in-person community members”
+  - “1,200+ on Skool”
+  - “6,000,000+ advertiser impressions delivered”
+- Add 2 CTAs:
+  - Primary: “Start Analyzing” → /analyzer
+  - Secondary: “Join the Community” → /community (or link to Skool)
+
+SOCIAL PROOF (platform following):
+Create a compact section titled “Reach & Audience” with big numbers and labels:
+- Podcast: 120k / month (Canada’s #1 real estate podcast)
+- YouTube: 22k
+- Instagram: 50k
+- X: 50k
+- TikTok: 40k
+Include a one-liner: “We help Canadian investors make smarter decisions — and we help partners reach an engaged audience.”
+
+COMMUNITY SECTION:
+Title: “A community of Canadian real estate investors”
+Copy requirements:
+- Mention we built:
+  - 11k strong in-person networking community on Meetup.com (link to Events page)
+  - 1,200 person community on Skool (link to Skool)
+- Include 2 buttons:
+  - “See Upcoming Events” → /events
+  - “Join Skool” → [SKOOL_LINK_PLACEHOLDER]
+Include a small note: “New? Start with the Deal Analyzer, then come meet the community.”
+
+MEET THE TEAM SECTION (bios for 3 people):
+Layout: three cards with initials circles, name, title, credibility bullets, and a “Connect” link.
+
+1) Daniel Foch
+- Title: Chief Real Estate Officer
+- Mention: real estate broker, analyst, Chief Real Estate Officer at Valery.ca
+- Mention: host of Canada’s #1 real estate podcast
+- Mention: helps investors build wealth through multiplex investing + underwriting
+- Include link to Valery.ca (placeholder)
+
+2) Nick Hill
+- Title: Mortgage & Finance Expert
+- Mention: co-host of Canada’s #1 real estate podcast
+- Mention: mortgage + finance expert at BLD Financial
+- Mention: creative financing strategies, CMHC programs, investment structuring
+- Include link to BLD Financial (placeholder)
+
+3) Jonathan Woo
+- Title: CEO
+- Bio emphasis: “brains and muscle behind the whole operation” (say it professionally)
+- Must include: huge tech + ops background, runs everything end-to-end
+- Include highlights from provided info:
+  - Market Strategy & Planning at Instacart (Strategic Ops / Market Strategy)
+  - Strategic Ops at Snapcommerce (Super.com)
+  - Capital One: Senior Business Analyst (Partnerships Modernization) with measurable outcomes (summarize without being too long)
+  - KPMG: Staff Accountant
+  - CPA Canada (CFE passed), CFA Level 1
+  - Ivey Business School (HBA)
+- Include LinkedIn link placeholder: [JONATHAN_LINKEDIN_PLACEHOLDER]
+- Include a line like: “Jonathan leads product, systems, automation, and execution across Realist — turning ideas into shipping software.”
+
+WHY REALIST SECTION:
+Create a 3-column feature grid with:
+- Sophisticated Analysis: “Institutional-style models: cap rate, IRR, cash-on-cash, DSCR, sensitivity tables, etc.”
+- Multi-Strategy Support: “Buy & hold, BRRR, flips, Airbnb, multiplex — with strategy-specific logic.”
+- Expert Insights + Community: “Built alongside Canada’s largest investor community.”
+
+WORK WITH US (two main headings + clear conversion paths):
+
+HEADING 1:
+Title: “If you’re a company or brand”
+Subtitle: “Partner with Realist to reach a highly engaged Canadian investor audience.”
+
+Include four partner offerings in cards with CTAs:
+A) Podcast Partner
+- Copy: “Download our Podcast Network Deck” and mention: “6,000,000+ impressions delivered for advertisers.”
+- CTA button downloads PDF: /assets/realist-podcast-network-deck.pdf (assume file exists)
+- Add “Past advertisers” logo strip:
+  - BMO ETFs, Troybilt, Sherwin Williams, Rentals.ca, Liv.Rent, Tencent, Muskoka Roasteries, Airbnb, EQ Bank, Blossom Social
+
+B) Sponsor an Event
+- Copy: “Sponsor an in-person event or meetup stop.”
+- Add “Past sponsors/partners” logo strip:
+  - CMHC, Foremost Financial, Dorr Capital, Peakhill Financial, BLD Financial, University of Toronto, ReHousing, Mddl, Valery Real Estate
+- IMPORTANT: implement this as editable arrays with fields:
+  - name, logoSrc (placeholder), websiteUrl
+- Add CTA: “Sponsor an Event” → /contact?topic=event-sponsorship
+
+C) Social Media Collaborations
+- Copy: “Co-create short-form + long-form content with our team.”
+- Mention examples: Alliance REIT, Liv.Rent, Chexy
+- CTA: /contact?topic=social-collab
+
+D) Research & Consulting
+- Copy: “We do research, underwriting frameworks, and market intelligence.”
+- Mention examples: Capital Developments, Metropia, Stafford Homes, Fitzrovia
+- CTA: /contact?topic=research
+
+HEADING 2:
+Title: “If you want to do a deal with us”
+Subtitle: “Brokerage, mortgage strategy, and investment partnership opportunities.”
+
+Include three buttons/cards:
+- “Talk to Dan (Broker)” → [DAN_CALENDAR_LINK_PLACEHOLDER]
+- “Talk to Nick (Mortgage)” → [NICK_CALENDAR_LINK_PLACEHOLDER]
+- “Explore Partnerships” → /contact?topic=partnerships
+
+Include a short disclaimer line:
+“Realist provides educational tools and introductions. Not legal, tax, or financial advice.”
+
+FINAL CTA SECTION:
+Title: “Ready to analyze your next deal?”
+Buttons:
+- Primary: “Start Analyzing” → /analyzer
+- Secondary: “Join the Community” → [SKOOL_LINK_PLACEHOLDER]
+Add a small line: “Prefer a 1:1? Book a free consult call.”
+
+FOOTER:
+- Realist.ca
+- Links: About, Privacy, Terms
+- Optional: tiny social icons (placeholders)
+
+Implementation details:
+- Use a single page component with well-structured sections.
+- Use arrays for:
+  - reachStats
+  - communityLinks
+  - teamMembers
+  - advertisers
+  - eventSponsors
+  - socialCollabExamples
+  - researchClients
+- Provide placeholders for any link I need to fill.
+- Add simple “LogoPlaceholder” component that renders either an image or a styled box with the company name if logo not provided.
+
+Output:
+- Provide the full code for the page (TSX) with Tailwind classes.
+- No extra commentary — just the code.

@@ -1,0 +1,164 @@
+Build a production-ready native iPhone app called “Realist Mobile” for Realist.ca.
+
+Tech requirements:
+- Use React Native with Expo.
+- Structure the app so it can be published to iOS through TestFlight and the App Store.
+- Do NOT build a thin webview wrapper of realist.ca.
+- Build a true mobile frontend that connects to the existing Realist backend/API.
+- Assume the existing Realist website, database, auth, and business logic remain the source of truth.
+- Create a clean API service layer so backend endpoints can be swapped in easily.
+- Use environment variables for API base URLs, auth keys, and feature flags.
+- Organize code for maintainability: /app, /components, /features, /services, /hooks, /store, /types, /theme.
+- Add placeholder/mock API adapters if real endpoints are not available yet.
+- Prepare the app for App Store submission and Apple review.
+
+Product goal:
+This app is a mobile-first companion to realist.ca for Canadian real estate investors, homebuyers, and real estate professionals. It should feel meaningfully native and useful on mobile, not like a website clone.
+
+Core v1 features:
+1. Authentication
+- Email/password login screen
+- Sign up screen
+- Forgot password flow
+- Profile screen
+- Logout
+- In-app “Delete Account” flow to satisfy Apple requirements
+- Session persistence
+
+2. Home dashboard
+- Personalized dashboard with:
+  - saved searches
+  - recent alerts
+  - favorited listings
+  - recently analyzed deals
+- clean card-based mobile UI
+- show placeholder data if backend is not connected
+
+3. Listings browse
+- Mobile-friendly browse screen
+- Search bar
+- Filters drawer/sheet for:
+  - city
+  - province
+  - price range
+  - property type
+  - beds/baths
+  - investment strategy tag if available
+- toggle between list view and map view
+- listing cards with image, address, price, key metrics, favorite button
+
+4. Map-first experience
+- Native-feeling map screen
+- Pins for listings
+- Bottom sheet with selected listing summary
+- Ability to favorite a listing from the bottom sheet
+- Smooth mobile UX
+
+5. Listing details
+- Photo gallery
+- Address
+- Price
+- Basic property data
+- Investment summary cards
+- Favorite/save
+- “Analyze Deal” CTA
+- “Open full web version” secondary action if needed
+
+6. Quick deal analyzer
+- A mobile-first deal analysis flow
+- Inputs:
+  - purchase price
+  - down payment
+  - interest rate
+  - amortization
+  - monthly rent
+  - taxes
+  - insurance
+  - maintenance
+  - vacancy
+- Outputs:
+  - monthly cash flow
+  - cap rate
+  - cash-on-cash return
+  - DSCR if possible
+- Keep calculations modular and reusable
+- Save analyses to user account or local state if backend is mocked
+
+7. Saved searches and alerts
+- Let users save filter combinations
+- Alerts screen listing recent matches / price drops / new listings
+- Prepare app for push notifications even if actual push backend is stubbed initially
+
+8. Favorites / watchlist
+- Dedicated favorites tab
+- Allow users to save listings and revisit them
+- Add sorting and simple notes field per saved listing if feasible
+
+9. Settings and legal
+- Settings screen
+- Privacy policy link
+- Terms link
+- Support link/email placeholder
+- Notification preferences
+- Delete account action
+- App version display
+
+Design requirements:
+- Make the UI feel premium, modern, and investor-oriented
+- clean, sharp, data-forward design
+- use a neutral professional palette
+- strong information hierarchy
+- card-based layout
+- native tab navigation
+- bottom sheets where appropriate
+- loading, empty, and error states for every main screen
+- responsive on modern iPhones
+- avoid clutter
+- no gimmicky styling
+
+Navigation:
+Use a native-feeling tab structure:
+- Home
+- Browse
+- Alerts
+- Favorites
+- Profile
+
+Implementation details:
+- Use Expo Router or an equivalent clean routing setup
+- Use TypeScript
+- Use a simple global store pattern for auth, favorites, filters, and saved searches
+- Create a mock backend mode with seed data so the app runs immediately
+- Add reusable types for Listing, Analysis, SavedSearch, Alert, UserProfile
+- Abstract API calls behind service modules
+- Add comments where real Realist API endpoints should be wired in
+- Add clear TODO markers for backend integration points
+
+Push readiness:
+- Prepare the codebase for push notifications
+- Create a notifications service abstraction
+- Add placeholder registration and permissions flow
+- Include local mock notifications in dev mode if practical
+
+App Store readiness:
+- Make the app substantial enough that it clearly exceeds a simple website wrapper
+- Add a proper onboarding screen explaining the value of Realist Mobile:
+  - find deals
+  - save searches
+  - track alerts
+  - analyze properties on the go
+- Add app icons / placeholder asset structure
+- Add a README section for:
+  - how to run in Replit
+  - how to preview with Expo Go
+  - how to configure env vars
+  - how to prepare for TestFlight and App Store submission
+
+Deliverables:
+- working Expo / React Native app
+- polished UI with mock data
+- clear file structure
+- environment variable support
+- README with deployment and App Store steps
+- no webview-only approach
+- no unfinished placeholder screens unless clearly marked and still functional

@@ -1,0 +1,406 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useToast } from "@/hooks/use-toast";
+import { Link2, Loader2, ExternalLink, Home, MapPin, Bed, Bath, Square, Building, ChevronDown, Code, Search, Hash } from "lucide-react";
+
+interface ParsedListing {
+  listingId: string;
+  propertyId: string;
+  address: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: "canada" | "usa";
+  price: number;
+  bedrooms: number;
+  bathrooms: number;
+  squareFootage: number;
+  propertyType: string;
+  buildingType: string;
+  buildingStyle: string;
+  storeys: number;
+  landSize: string;
+  imageUrl: string;
+  sourceUrl: string;
+}
+
+interface ListingImportProps {
+  onImport: (listing: ParsedListing) => void;
+}
+
+function detectSource(input: string): "realtor" | "zillow" | "unknown" {
+  if (input.includes("realtor.ca")) return "realtor";
+  if (input.includes("zillow.com") || input.includes("Zillow")) return "zillow";
+  return "unknown";
+}
+
+type ImportMode = "url" | "mls";
+
+export function ListingImport({ onImport }: ListingImportProps) {
+  const { toast } = useToast();
+  const [importMode, setImportMode] = useState<ImportMode>("url");
+  const [url, setUrl] = useState("");
+  const [mlsNumber, setMlsNumber] = useState("");
+  const [htmlSource, setHtmlSource] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [importedListing, setImportedListing] = useState<ParsedListing | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
+
+  const handleImport = async (useHtml = false) => {
+    if (isLoading) return;
+    const inputValue = useHtml ? htmlSource : url;
+    if (!inputValue.trim()) {
+      toast({
+        title: useHtml ? "HTML Source Required" : "URL Required",
+        description: useHtml 
+          ? "Please paste the page source from a listing site." 
+          : "Please paste a listing URL from realtor.ca or zillow.com.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const source = detectSource(inputValue);
+    let endpoint = "/api/listings/parse-realtor-ca";
+    if (source === "zillow") {
+      endpoint = "/api/listings/parse-zillow";
+    }
+
+    setIsLoading(true);
+    setLoadingMessage(useHtml ? "Parsing listing data..." : "Loading listing page...");
+    
+    const loadingTimer = !useHtml ? setTimeout(() => {
+      setLoadingMessage("Analyzing property details...");
+    }, 5000) : undefined;
+    const loadingTimer2 = !useHtml ? setTimeout(() => {
+      setLoadingMessage("Almost there...");
+    }, 15000) : undefined;
+    
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          url: useHtml ? undefined : url,
+          html: useHtml ? htmlSource : undefined,
+        }),
+        credentials: "include",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.blocked) {
+          setShowAdvanced(true);
+          toast({
+            title: "Direct import blocked",
+            description: "No worries — just use the quick paste method below. It takes 30 seconds and works every time.",
+          });
+          return;
+        }
+        throw new Error(data.error || "Failed to parse listing");
+      }
+
+      const listing = data.listing as ParsedListing;
+      setImportedListing(listing);
+      onImport(listing);
+
+      toast({
+        title: "Listing Imported",
+        description: `Successfully imported ${listing.address}, ${listing.city}`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to import listing";
+      toast({
+        title: "Import Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      if (loadingTimer) clearTimeout(loadingTimer);
+      if (loadingTimer2) clearTimeout(loadingTimer2);
+      setIsLoading(false);
+      setLoadingMessage("");
+    }
+  };
+
+  const handleMlsImport = async () => {
+    if (isLoading) return;
+    const cleaned = mlsNumber.trim();
+    if (!cleaned) {
+      toast({
+        title: "MLS # Required",
+        description: "Please enter an MLS number to search.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingMessage("Searching CREA DDF for MLS #" + cleaned + "...");
+
+    try {
+      const response = await fetch(`/api/ddf/mls/${encodeURIComponent(cleaned)}`, {
+        credentials: "include",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to find listing");
+      }
+
+      const listing = data.listing as ParsedListing;
+      setImportedListing(listing);
+      onImport(listing);
+
+      toast({
+        title: "Listing Found",
+        description: `Successfully imported ${listing.address}, ${listing.city} via MLS #${cleaned}`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to search MLS number";
+      toast({
+        title: "MLS Search Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage("");
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    const country = importedListing?.country;
+    return new Intl.NumberFormat(country === "usa" ? "en-US" : "en-CA", {
+      style: "currency",
+      currency: country === "usa" ? "USD" : "CAD",
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Button
+          variant={importMode === "url" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setImportMode("url")}
+          data-testid="button-import-mode-url"
+        >
+          <Link2 className="h-4 w-4 mr-1" />
+          URL Import
+        </Button>
+        <Button
+          variant={importMode === "mls" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setImportMode("mls")}
+          data-testid="button-import-mode-mls"
+        >
+          <Hash className="h-4 w-4 mr-1" />
+          MLS # Import
+        </Button>
+      </div>
+
+      {importMode === "url" && (
+        <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Paste realtor.ca or zillow.com listing URL..."
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="flex-1"
+              disabled={isLoading}
+              data-testid="input-listing-url"
+            />
+            <Button
+              onClick={() => handleImport(false)}
+              disabled={isLoading || !url.trim()}
+              data-testid="button-import-listing"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  Import
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-1" />
+                  Import
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {isLoading && loadingMessage && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2" data-testid="text-loading-message">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span>{loadingMessage}</span>
+            </div>
+          )}
+          
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="mt-2 text-xs text-muted-foreground">
+              <Code className="h-3 w-3 mr-1" />
+              {showAdvanced ? "Hide" : "Show"} advanced import (paste HTML source)
+              <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+            </Button>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-3 space-y-3">
+            <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground">
+              <p className="font-medium mb-1">If the URL import doesn't work:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Open the listing page in your browser</li>
+                <li>Right-click and select "View Page Source" (or press Ctrl+U)</li>
+                <li>Select all (Ctrl+A) and copy (Ctrl+C)</li>
+                <li>Paste the HTML below and click "Import from HTML"</li>
+              </ol>
+            </div>
+            <Textarea
+              placeholder="Paste the full HTML source code here..."
+              value={htmlSource}
+              onChange={(e) => setHtmlSource(e.target.value)}
+              className="min-h-[100px] font-mono text-xs"
+              disabled={isLoading}
+              data-testid="input-html-source"
+            />
+            <Button
+              onClick={() => handleImport(true)}
+              disabled={isLoading || !htmlSource.trim()}
+              variant="secondary"
+              className="w-full"
+              data-testid="button-import-html"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Code className="h-4 w-4 mr-2" />
+              )}
+              Import from HTML
+            </Button>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {importMode === "mls" && (
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter MLS # (e.g. W1234567)"
+              value={mlsNumber}
+              onChange={(e) => setMlsNumber(e.target.value)}
+              className="flex-1"
+              disabled={isLoading}
+              onKeyDown={(e) => { if (e.key === "Enter") handleMlsImport(); }}
+              data-testid="input-mls-number"
+            />
+            <Button
+              onClick={handleMlsImport}
+              disabled={isLoading || !mlsNumber.trim()}
+              data-testid="button-import-mls"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  Search
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-1" />
+                  Search
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {isLoading && loadingMessage && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2" data-testid="text-mls-loading-message">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span>{loadingMessage}</span>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Enter the MLS number from any Canadian listing to auto-fill property details from CREA DDF.
+          </p>
+        </div>
+      )}
+
+      {importedListing && (
+        <Card className="bg-accent/30 border-accent/50">
+          <CardContent className="p-4">
+            <div className="flex gap-4">
+              {importedListing.imageUrl && (
+                <img
+                  src={importedListing.imageUrl}
+                  alt={importedListing.address}
+                  className="w-24 h-24 object-cover rounded-md"
+                />
+              )}
+              <div className="flex-1 space-y-2">
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <div>
+                    <div className="font-semibold flex items-center gap-1">
+                      <Home className="h-4 w-4" />
+                      {importedListing.address}
+                    </div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {importedListing.city}, {importedListing.province} {importedListing.postalCode}
+                    </div>
+                  </div>
+                  {importedListing.sourceUrl && (
+                    <a
+                      href={importedListing.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline text-sm flex items-center gap-1"
+                    >
+                      View <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+                <div className="text-lg font-bold text-primary">
+                  {formatCurrency(importedListing.price)}
+                </div>
+                <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                  {importedListing.bedrooms > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Bed className="h-3 w-3" /> {importedListing.bedrooms} bed
+                    </span>
+                  )}
+                  {importedListing.bathrooms > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Bath className="h-3 w-3" /> {importedListing.bathrooms} bath
+                    </span>
+                  )}
+                  {importedListing.squareFootage > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Square className="h-3 w-3" /> {importedListing.squareFootage.toLocaleString()} sqft
+                    </span>
+                  )}
+                  {importedListing.buildingType && (
+                    <span className="flex items-center gap-1">
+                      <Building className="h-3 w-3" /> {importedListing.buildingType}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {importMode === "url" && (
+        <p className="text-xs text-muted-foreground">
+          Paste a realtor.ca or zillow.com property listing URL to auto-fill address, price, and property details.
+        </p>
+      )}
+    </div>
+  );
+}

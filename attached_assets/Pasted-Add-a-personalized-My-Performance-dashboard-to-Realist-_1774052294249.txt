@@ -1,0 +1,159 @@
+Add a personalized “My Performance” dashboard to Realist.ca and connect it to the CTA link: “Find out how you compare”.
+
+GOAL:
+When a user clicks the CTA in the email, they land on login (if not authenticated) and are then redirected to a dashboard showing their personal KPIs vs platform averages.
+
+---
+
+ROUTING:
+
+1. Create route:
+/my-performance
+
+2. If user NOT logged in:
+- Redirect to /login
+- After login → redirect back to /my-performance
+
+---
+
+BACKEND:
+
+Create endpoint:
+
+GET /api/user-performance
+
+Return:
+
+{
+  user: {
+    deals_analyzed: number,
+    avg_cap_rate: number,
+    avg_cash_on_cash: number,
+    avg_irr: number,
+    rank_weekly: number,
+    rank_all_time: number
+  },
+  platform: {
+    avg_cap_rate: number,
+    avg_cash_on_cash: number,
+    avg_irr: number,
+    total_deals_analyzed: number
+  },
+  leaderboard: {
+    weekly_top_3: [],
+    all_time_top_3: []
+  }
+}
+
+---
+
+DATA CALCULATION:
+
+USER METRICS:
+- deals_analyzed = count of deals by user
+- avg_cap_rate = avg of user deal analyses
+- avg_cash_on_cash = avg of user deal analyses
+- avg_irr = avg of user deal analyses
+
+PLATFORM METRICS:
+- avg_cap_rate = avg across all users (last 7 days)
+- avg_cash_on_cash = avg across all users
+- avg_irr = avg across all users
+
+RANKINGS:
+- rank_weekly = position based on deals analyzed in last 7 days
+- rank_all_time = position based on total deals analyzed
+
+---
+
+FRONTEND UI:
+
+Create clean dashboard with sections:
+
+1. HEADER:
+Title: “How You Compare”
+
+---
+
+2. KPI COMPARISON CARDS:
+
+For each metric show:
+
+Your Value vs Platform Average
+
+Example:
+Cap Rate:
+You: 6.2%
+Platform: 5.3%
+→ Show delta (+0.9%)
+
+Metrics:
+- Avg Cap Rate
+- Avg Cash-on-Cash
+- Avg IRR
+- Deals Analyzed
+
+---
+
+3. RANKING:
+
+- “You are ranked #X this week”
+- “All-time rank: #X”
+
+---
+
+4. LEADERBOARD SNAPSHOT:
+
+Show:
+Top 3 this week
+Top 3 all-time
+
+---
+
+5. PROGRESS / GAMIFICATION:
+
+- Progress bar to next rank tier
+- Example:
+“You need 12 more deals to reach Top 10”
+
+---
+
+6. CTA:
+
+Button:
+“Analyze More Deals”
+
+---
+
+EMAIL LINK INTEGRATION:
+
+Update CTA link in email:
+
+/my-performance?source=email
+
+---
+
+TRACKING:
+
+- Track visits to /my-performance
+- Track conversion:
+  visit → deal analyzed
+
+---
+
+PERFORMANCE:
+
+- Cache user stats for 5 minutes
+- Optimize queries with indexes on user_id
+
+---
+
+EXTRA (optional but recommended):
+
+Add mini chart:
+- User avg cap rate over time vs platform
+
+---
+
+PRIORITY:
+Make users feel competitive and slightly behind so they want to analyze more deals.

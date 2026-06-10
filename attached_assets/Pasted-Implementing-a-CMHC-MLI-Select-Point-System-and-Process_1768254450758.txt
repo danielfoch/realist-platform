@@ -1,0 +1,64 @@
+Implementing a CMHC MLI Select Point System and Process
+Data Source for Median Renter Income (Affordability Calculation)
+
+To calculate MLI Select affordability points, we need the median renter household income for the project’s location. Affordability is defined as units with rent at or below 30% of the local median renter income. For example, in Barrie the median renter income was about $58,900, so 30% of that is ~$17,670 per year (about $1,473 per month) – any unit at or below $1,473/month would count as “affordable” in that area. These median income figures vary by city and region (e.g. Brampton $67,700 median -> $1,693/mo at 30%), so having accurate local data is crucial.
+
+We have two approaches to get this data:
+
+CMHC API/Portal: The Canada Mortgage and Housing Corporation provides data via its Housing Market Information Portal, accessible programmatically (e.g. through the cmhc R package). This API can retrieve rental market data and potentially median renter incomes by geography if available. Using the API ensures up-to-date data each year, eliminating manual updates.
+
+Static Data Sheet: Alternatively, use the provided Median Income.xlsx sheet (which contains median renter incomes for Canada, provinces, and select metropolitan areas for 2019). The sheet includes pre-calculated “30% of median” values (annual and monthly) for each region. If using this static dataset, update it annually when new median income data becomes available (e.g. from census or CMHC reports) to keep the calculations accurate. The logic would then simply lookup the median income for the given city or region and compute 30%.
+
+Using either method, once we obtain the median income for the project’s location, we can determine the maximum affordable rent (30% of that median). Any unit with rent at or below that threshold counts toward the affordability percentage for MLI Select.
+
+MLI Select Point System – Affordability, Energy, and Accessibility
+
+CMHC’s MLI Select uses a points-based system to reward projects that commit to affordability, energy efficiency, and accessibility outcomes. The point system is divided into tiers (Level 1 = 50 points, Level 2 = 70 points, Level 3 = 100 points) for each of the three categories. Rather than partial points, the program works in tiers – meeting a threshold yields the full points for that level. Below is a breakdown of the point tiers in each category:
+
+Affordability (Rent Levels, 10-year commitment) – Percentage of units at or below 30% of median income:
+
+Existing Properties: 50 points = ≥ 40% of units affordable; 70 points = ≥ 60% of units; 100 points = ≥ 80% of units at 30% median rent.
+
+New Construction: 50 points = ≥ 10% of units affordable; 70 points = ≥ 15% of units; 100 points = ≥ 25% of units at 30% median rent.
+(Note: All affordability commitments must be maintained for at least 10 years. If the commitment is extended to 20+ years, CMHC awards an additional 30 points on top of the above scores.)*
+
+Energy Efficiency (GHG Reduction) – Improvement over baseline or code:
+
+Existing Buildings: 20 points for ≥15% energy use reduction; 35 points for ≥25% reduction; 50 points for ≥40% reduction in consumption or emissions (relative to pre-improvement baseline).
+
+New Construction: 20 points for ≥25% better energy performance than 2020 code (NECB Tier 1) or ≥20% better than building code (NBC Tier 1); 35 points for ≥50% better than NECB (or ≥40% better than NBC); 50 points for ≥60% better than NECB (or ≥70% better than NBC) standards.
+
+Accessibility – Proportion of units and design meeting accessibility standards:
+
+20 points (Level 1) typically requires baseline accessible design (e.g. all units 100% visitable and common areas barrier-free, plus some units or design features meeting accessibility standards). For instance, having at least 15% of units accessible or universal design, or a certain certification can qualify.
+
+30 points (Level 2) demands a greater commitment: e.g. ≥15% units fully accessible and 85%+ universal design, or 100% visitable + a higher certification level.
+(Accessibility criteria are detailed, involving CSA standard B651-23 definitions, universal design percentages, or Rick Hansen Foundation certifications, to ensure a meaningful level of accessibility in the project.)
+
+Each category’s points can be combined for a total score. A minimum of 50 points overall is required to qualify for MLI Select insurance. Projects focusing on a single category (e.g. only affordability) can still reach 50+ points if they hit the higher tier in that one area. Others may mix contributions from all three areas to accumulate points.
+
+Benefits at Each Tier: The incentives scale up with higher point tiers. For example, at the 50-point level, an existing property loan could get up to 85% Loan-to-Value and 40-year amortization, whereas at 70 points this improves to 95% LTV (or loan-to-cost for construction) and 45-year amortization. At the maximum 100-point tier, projects can unlock up to 95% financing with a 50-year amortization (and in some cases limited recourse debt) – significantly boosting cash flow and requiring much less equity. Premiums (insurance fees) also drop at higher tiers. In short, more points = more favorable loan terms. The system is designed such that committing to deeper affordability or greater energy/accessibility improvements directly yields better financing terms.
+
+Financing Scenarios: Land & Construction vs. MLI Select Takeout
+
+When implementing the solution, we need to handle two main financing scenarios for projects:
+
+Land & Construction Financing (Interim) – This covers the initial purchase of land and construction period. Borrowers have options to use CMHC-insured construction loans, conventional bank loans, or private financing for this phase. If they choose a CMHC-insured construction loan (e.g. through programs like the Apartment Construction Loan Program, ACLP), they benefit from low rates and high leverage, but approval is slow. CMHC’s underwriting for construction loans can add considerable lead time – often several months to over half a year for approval. In practice, it’s not unusual for a CMHC-backed construction financing to take 6–12 months from initial application to final go-ahead. By contrast, using conventional or private lenders for construction is typically faster (those lenders can approve and fund within weeks to a couple of months), albeit with higher interest costs or lower leverage.
+
+MLI Select Takeout (Permanent Financing) – Once construction is complete (or for an acquisition of an existing building), the borrower obtains a CMHC MLI Select-insured mortgage to “take out” the initial loan. This is the long-term financing that benefits from the MLI Select terms (high LTV, extended amortization, etc., as determined by the points score). For an existing property refinance or purchase, the process skips directly to this step – the borrower applies for MLI Select insurance on the mortgage. For a newly built project, the takeout loan is used to pay off the construction loan.
+
+Timeline Considerations: We should incorporate logic to adjust the project timeline based on financing choices. If the user indicates they will seek CMHC-insured construction financing, the timeline for project funding/groundbreaking should be extended (e.g. add an extra 6-12 months to account for CMHC review and approval). On the other hand, conventional/private construction loans would mean a shorter lead time, so the project can start sooner. The tool’s output or project plan should reflect this: for example, a notation like “CMHC construction financing selected: expect ~6-12 month approval process before construction start”. Once construction is done, obtaining the MLI Select takeout loan also involves an application and approval, but at that stage (with a completed or stabilized project) the timeline is more predictable – still a few months for underwriting, appraisal, and CMHC’s insurance approval. Overall, using CMHC at both stages (construction + takeout) yields the best terms but a longer timeline, whereas using private/conventional first then CMHC at takeout can shorten the development timeline with a slight trade-off in interim financing cost.
+
+Integration with Email, CRM, and Webhook
+
+Finally, once the calculations and scenarios are processed, the system will trigger follow-up actions to capture and use the results:
+
+Send an Email: Automatically send an email (e.g. to the user or to an internal team) summarizing the MLI Select analysis results. This email could include the points achieved, the financing tier they qualify for (50/70/100 points and the corresponding benefits), and next steps or a prompt to contact a representative. This ensures the user immediately gets a record of the outcome in their inbox.
+
+Add to CRM: Create or update a CRM record with the project details and user contact info. For example, log the lead into the CRM system (such as GoHighLevel) under an “MLI Select” pipeline or tag. Storing their info and results allows the sales/support team to follow up and track this opportunity. Key fields might include the project name, location, number of affordable units, point total, chosen financing route, etc.
+
+Trigger Webhook "MLISelect": Fire a webhook event labeled "MLISelect" that can be caught by the backend (in GoHighLevel or another integration platform). This webhook can notify other systems or kick off an automation workflow. For instance, the webhook could be configured in GHL to initiate a specific campaign or task sequence for MLI Select leads. The developer will handle the webhook processing on the backend, so here we just ensure it’s sent with all necessary payload data (e.g. the user’s info and summary of results).
+
+By implementing these integrations, we ensure that every user who completes the MLI Select calculator is promptly followed-up. The email provides immediate feedback, the CRM entry captures the lead for long-term nurturing, and the webhook allows flexible expansion (triggering any custom business logic in the backend). This closes the loop between the front-end tool and the business’s internal systems, enabling a seamless workflow once a user engages with the MLI Select tool.
+
+Sources:

@@ -1,0 +1,1091 @@
+// Google Sheets Integration - using Replit Connector or User OAuth tokens
+import { google } from 'googleapis';
+
+// Replit connector settings cache
+let connectionSettings: any;
+
+// Interface for user OAuth tokens
+interface UserOAuthTokens {
+  accessToken: string;
+  refreshToken?: string | null;
+  expiresAt?: Date | null;
+}
+
+export interface GoogleSheetsExportResult {
+  spreadsheetUrl: string;
+  refreshedTokens?: UserOAuthTokens;
+}
+
+async function getAccessToken() {
+  if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
+    return connectionSettings.settings.access_token;
+  }
+  
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME
+  const xReplitToken = process.env.REPL_IDENTITY 
+    ? 'repl ' + process.env.REPL_IDENTITY 
+    : process.env.WEB_REPL_RENEWAL 
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+    : null;
+
+  if (!xReplitToken) {
+    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+  }
+
+  connectionSettings = await fetch(
+    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-sheet',
+    {
+      headers: {
+        'Accept': 'application/json',
+        'X_REPLIT_TOKEN': xReplitToken
+      }
+    }
+  ).then(res => res.json()).then((data: any) => data.items?.[0]);
+
+  const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
+
+  if (!connectionSettings || !accessToken) {
+    throw new Error('Google Sheet not connected');
+  }
+  return accessToken;
+}
+
+export async function getUncachableGoogleSheetClient() {
+  const accessToken = await getAccessToken();
+
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({
+    access_token: accessToken
+  });
+
+  return google.sheets({ version: 'v4', auth: oauth2Client });
+}
+
+export async function getUncachableGoogleDriveClient() {
+  const accessToken = await getAccessToken();
+
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({
+    access_token: accessToken
+  });
+
+  return google.drive({ version: 'v3', auth: oauth2Client });
+}
+
+// Get a Google Drive client using user's own OAuth tokens
+async function getAuthorizedUserOAuthClient(tokens: UserOAuthTokens) {
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    throw new Error("Google OAuth not configured");
+  }
+
+  const oauth2Client = new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET
+  );
+
+  oauth2Client.setCredentials({
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken || undefined,
+    expiry_date: tokens.expiresAt ? tokens.expiresAt.getTime() : undefined,
+  });
+
+  const shouldRefresh =
+    Boolean(tokens.refreshToken) &&
+    (!tokens.expiresAt || tokens.expiresAt.getTime() <= Date.now() + 5 * 60 * 1000);
+
+  if (shouldRefresh) {
+    await oauth2Client.getAccessToken();
+  }
+
+  const credentials = oauth2Client.credentials;
+  const refreshedTokens: UserOAuthTokens = {
+    accessToken: credentials.access_token || tokens.accessToken,
+    refreshToken: credentials.refresh_token || tokens.refreshToken || null,
+    expiresAt:
+      typeof credentials.expiry_date === "number"
+        ? new Date(credentials.expiry_date)
+        : tokens.expiresAt || null,
+  };
+
+  return { oauth2Client, refreshedTokens };
+}
+
+// Get a Google Drive client using user's own OAuth tokens
+export async function getUserGoogleDriveClient(tokens: UserOAuthTokens) {
+  const { oauth2Client, refreshedTokens } = await getAuthorizedUserOAuthClient(tokens);
+
+  return {
+    drive: google.drive({ version: 'v3', auth: oauth2Client }),
+    refreshedTokens,
+  };
+}
+
+// Get a Google Sheets client using user's own OAuth tokens
+export async function getUserGoogleSheetClient(tokens: UserOAuthTokens) {
+  const { oauth2Client, refreshedTokens } = await getAuthorizedUserOAuthClient(tokens);
+
+  return {
+    sheets: google.sheets({ version: 'v4', auth: oauth2Client }),
+    refreshedTokens,
+  };
+}
+
+interface UserInfo {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
+interface ExportData {
+  address: string;
+  strategy: string;
+  userInfo?: UserInfo;
+  inputs: {
+    purchasePrice: number;
+    closingCosts: number;
+    downPaymentPercent: number;
+    interestRate: number;
+    amortizationYears: number;
+    loanTermYears: number;
+    monthlyRent: number;
+    vacancyPercent: number;
+    propertyTax: number;
+    insurance: number;
+    utilities: number;
+    maintenancePercent: number;
+    managementPercent: number;
+    capexReservePercent: number;
+    otherExpenses: number;
+    rentGrowthPercent: number;
+    expenseInflationPercent: number;
+    appreciationPercent: number;
+    holdingPeriodYears: number;
+    sellingCostsPercent: number;
+  };
+  results: {
+    capRate: number;
+    cashOnCash: number;
+    dscr: number;
+    irr: number | null;
+    monthlyNoi: number;
+    monthlyCashFlow: number;
+    annualNoi: number;
+    annualCashFlow: number;
+    totalCashInvested: number;
+    loanAmount: number;
+    monthlyMortgagePayment: number;
+    grossMonthlyIncome: number;
+    effectiveMonthlyIncome: number;
+    monthlyExpenses: number;
+    yearlyProjections: Array<{
+      year: number;
+      grossRent: number;
+      vacancyLoss: number;
+      effectiveIncome: number;
+      expenses: {
+        propertyTax: number;
+        insurance: number;
+        utilities: number;
+        maintenance: number;
+        management: number;
+        capexReserve: number;
+        other: number;
+        total: number;
+      };
+      noi: number;
+      debtService: number;
+      cashFlow: number;
+      propertyValue: number;
+      loanBalance: number;
+      equity: number;
+      cumulativeCashFlow: number;
+      principalPaidThisYear: number;
+      cumulativePrincipalPaid: number;
+      capitalAppreciation: number;
+      totalReturn: number;
+    }>;
+    expenseBreakdown: {
+      propertyTax: number;
+      insurance: number;
+      utilities: number;
+      maintenance: number;
+      management: number;
+      capexReserve: number;
+      other: number;
+    };
+  };
+}
+
+export async function exportToGoogleSheets(
+  data: ExportData,
+  userTokens?: UserOAuthTokens,
+): Promise<GoogleSheetsExportResult> {
+  // Use user's own tokens if provided, otherwise fall back to Replit connector
+  const userSheetsClient = userTokens
+    ? await getUserGoogleSheetClient(userTokens)
+    : null;
+  const sheets = userSheetsClient?.sheets ?? await getUncachableGoogleSheetClient();
+  
+  const title = `Realist Analysis - ${data.address || 'Property'} - ${new Date().toLocaleDateString()}`;
+  
+  const createResponse = await sheets.spreadsheets.create({
+    requestBody: {
+      properties: {
+        title,
+      },
+      sheets: [
+        { properties: { title: 'Projections', sheetId: 0 } },
+        { properties: { title: 'Inputs', sheetId: 1 } },
+        { properties: { title: 'Summary', sheetId: 2 } },
+      ],
+    },
+  });
+
+  const spreadsheetId = createResponse.data.spreadsheetId!;
+  const spreadsheetUrl = createResponse.data.spreadsheetUrl!;
+
+  const inputsData = [
+    ['Realist.ca Deal Analyzer'],
+    ['Free Real Estate Investment Calculator - realist.ca'],
+    [''],
+    ['PROPERTY INFO'],
+    ['Address', data.address || 'Not specified'],
+    ['Strategy', data.strategy.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Generated', new Date().toLocaleString()],
+    [''],
+    ['PURCHASE & FINANCING', '', 'EDIT VALUES'],
+    ['Purchase Price', data.inputs.purchasePrice, ''],
+    ['Closing Costs', data.inputs.closingCosts, ''],
+    ['Down Payment %', data.inputs.downPaymentPercent / 100, ''],
+    ['Interest Rate %', data.inputs.interestRate / 100, ''],
+    ['Amortization (Years)', data.inputs.amortizationYears, ''],
+    ['Loan Term (Years)', data.inputs.loanTermYears, ''],
+    [''],
+    ['INCOME'],
+    ['Monthly Rent', data.inputs.monthlyRent, ''],
+    ['Vacancy %', data.inputs.vacancyPercent / 100, ''],
+    [''],
+    ['OPERATING EXPENSES'],
+    ['Property Tax (Annual)', data.inputs.propertyTax, ''],
+    ['Insurance (Annual)', data.inputs.insurance, ''],
+    ['Utilities (Monthly)', data.inputs.utilities, ''],
+    ['Maintenance %', data.inputs.maintenancePercent / 100, ''],
+    ['Management %', data.inputs.managementPercent / 100, ''],
+    ['CapEx Reserve %', data.inputs.capexReservePercent / 100, ''],
+    ['Other Expenses (Annual)', data.inputs.otherExpenses, ''],
+    [''],
+    ['GROWTH ASSUMPTIONS'],
+    ['Rent Growth %', data.inputs.rentGrowthPercent / 100, ''],
+    ['Expense Inflation %', data.inputs.expenseInflationPercent / 100, ''],
+    ['Appreciation %', data.inputs.appreciationPercent / 100, ''],
+    ['Holding Period (Years)', data.inputs.holdingPeriodYears, ''],
+    ['Selling Costs %', data.inputs.sellingCostsPercent / 100, ''],
+    [''],
+    ['CALCULATED VALUES (Auto-updated)'],
+    ['Down Payment $', '=B10*B12'],
+    ['Loan Amount', '=B10-B38'],
+    ['Monthly Rate', '=B13/12'],
+    ['Num Payments', '=B14*12'],
+    ['Monthly Mortgage Payment', '=IF(B39=0,0,PMT(B40,B41,-B39))'],
+    ['Annual Debt Service', '=B42*12'],
+    [''],
+    ['Annual Gross Rent', '=B18*12'],
+    ['Vacancy Loss', '=B45*B19'],
+    ['Effective Gross Income', '=B45-B46'],
+    [''],
+    ['Annual Property Tax', '=B22'],
+    ['Annual Insurance', '=B23'],
+    ['Annual Utilities', '=B24*12'],
+    ['Annual Maintenance', '=B47*B25'],
+    ['Annual Management', '=B47*B26'],
+    ['Annual CapEx', '=B47*B27'],
+    ['Annual Other', '=B28'],
+    ['Total Operating Expenses', '=SUM(B49:B55)'],
+    [''],
+    ['Net Operating Income (NOI)', '=B47-B56'],
+    ['Annual Cash Flow', '=B58-B43'],
+    ['Monthly Cash Flow', '=B59/12'],
+    [''],
+    ['Total Cash Invested', '=B38+B11'],
+    ['Cap Rate', '=IF(B10=0,0,B58/B10)'],
+    ['Cash-on-Cash Return', '=IF(B62=0,0,B59/B62)'],
+    ['DSCR', '=IF(B43=0,0,B58/B43)'],
+  ];
+
+  const summaryData = [
+    ['Realist.ca Deal Analyzer'],
+    ['Free Real Estate Investment Calculator - realist.ca'],
+    [''],
+    ['PROPERTY'],
+    ['Address', data.address || 'Not specified'],
+    [''],
+    ['PREPARED FOR'],
+    ['Name', data.userInfo?.name || 'Not specified'],
+    ['Email', data.userInfo?.email || 'Not specified'],
+    ['Phone', data.userInfo?.phone || 'Not specified'],
+    [''],
+    ['INVESTMENT SUMMARY'],
+    ['All values auto-calculate from Inputs tab'],
+    [''],
+    ['KEY METRICS'],
+    ['Cap Rate', '=Inputs!B63'],
+    ['Cash-on-Cash Return', '=Inputs!B64'],
+    ['DSCR', '=Inputs!B65'],
+    ['Monthly Cash Flow', '=Inputs!B60'],
+    ['Annual Cash Flow', '=Inputs!B59'],
+    ['Net Operating Income', '=Inputs!B58'],
+    [''],
+    ['INVESTMENT BREAKDOWN'],
+    ['Purchase Price', '=Inputs!B10'],
+    ['Closing Costs', '=Inputs!B11'],
+    ['Down Payment', '=Inputs!B38'],
+    ['Total Cash Invested', '=Inputs!B62'],
+    ['Loan Amount', '=Inputs!B39'],
+    ['Monthly Mortgage Payment', '=Inputs!B42'],
+    [''],
+    ['INCOME'],
+    ['Monthly Rent', '=Inputs!B18'],
+    ['Annual Gross Rent', '=Inputs!B45'],
+    ['Less: Vacancy', '=Inputs!B46'],
+    ['Effective Gross Income', '=Inputs!B47'],
+    [''],
+    ['EXPENSES'],
+    ['Property Tax', '=Inputs!B49'],
+    ['Insurance', '=Inputs!B50'],
+    ['Utilities', '=Inputs!B51'],
+    ['Maintenance', '=Inputs!B52'],
+    ['Management', '=Inputs!B53'],
+    ['CapEx Reserve', '=Inputs!B54'],
+    ['Other', '=Inputs!B55'],
+    ['Total Operating Expenses', '=Inputs!B56'],
+  ];
+
+  const projectionsData = [
+    ['Realist.ca Deal Analyzer'],
+    ['Free Real Estate Investment Calculator - realist.ca'],
+    [''],
+    ['10-YEAR CASH FLOW PROFORMA'],
+    ['All values auto-calculate based on Inputs tab - change inputs to update projections'],
+    [''],
+    ['', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Year 7', 'Year 8', 'Year 9', 'Year 10'],
+    [''],
+    ['REVENUE'],
+    ['Gross Rent', 
+      '=Inputs!$B$45',
+      '=B10*(1+Inputs!$B$31)',
+      '=C10*(1+Inputs!$B$31)',
+      '=D10*(1+Inputs!$B$31)',
+      '=E10*(1+Inputs!$B$31)',
+      '=F10*(1+Inputs!$B$31)',
+      '=G10*(1+Inputs!$B$31)',
+      '=H10*(1+Inputs!$B$31)',
+      '=I10*(1+Inputs!$B$31)',
+      '=J10*(1+Inputs!$B$31)'
+    ],
+    ['Less: Vacancy',
+      '=-B10*Inputs!$B$19',
+      '=-C10*Inputs!$B$19',
+      '=-D10*Inputs!$B$19',
+      '=-E10*Inputs!$B$19',
+      '=-F10*Inputs!$B$19',
+      '=-G10*Inputs!$B$19',
+      '=-H10*Inputs!$B$19',
+      '=-I10*Inputs!$B$19',
+      '=-J10*Inputs!$B$19',
+      '=-K10*Inputs!$B$19'
+    ],
+    ['Effective Income',
+      '=B10+B11',
+      '=C10+C11',
+      '=D10+D11',
+      '=E10+E11',
+      '=F10+F11',
+      '=G10+G11',
+      '=H10+H11',
+      '=I10+I11',
+      '=J10+J11',
+      '=K10+K11'
+    ],
+    [''],
+    ['OPERATING EXPENSES'],
+    ['Property Tax',
+      '=-Inputs!$B$22',
+      '=-Inputs!$B$22*(1+Inputs!$B$32)',
+      '=-Inputs!$B$22*(1+Inputs!$B$32)^2',
+      '=-Inputs!$B$22*(1+Inputs!$B$32)^3',
+      '=-Inputs!$B$22*(1+Inputs!$B$32)^4',
+      '=-Inputs!$B$22*(1+Inputs!$B$32)^5',
+      '=-Inputs!$B$22*(1+Inputs!$B$32)^6',
+      '=-Inputs!$B$22*(1+Inputs!$B$32)^7',
+      '=-Inputs!$B$22*(1+Inputs!$B$32)^8',
+      '=-Inputs!$B$22*(1+Inputs!$B$32)^9'
+    ],
+    ['Insurance',
+      '=-Inputs!$B$23',
+      '=-Inputs!$B$23*(1+Inputs!$B$32)',
+      '=-Inputs!$B$23*(1+Inputs!$B$32)^2',
+      '=-Inputs!$B$23*(1+Inputs!$B$32)^3',
+      '=-Inputs!$B$23*(1+Inputs!$B$32)^4',
+      '=-Inputs!$B$23*(1+Inputs!$B$32)^5',
+      '=-Inputs!$B$23*(1+Inputs!$B$32)^6',
+      '=-Inputs!$B$23*(1+Inputs!$B$32)^7',
+      '=-Inputs!$B$23*(1+Inputs!$B$32)^8',
+      '=-Inputs!$B$23*(1+Inputs!$B$32)^9'
+    ],
+    ['Utilities',
+      '=-Inputs!$B$24*12',
+      '=-Inputs!$B$24*12*(1+Inputs!$B$32)',
+      '=-Inputs!$B$24*12*(1+Inputs!$B$32)^2',
+      '=-Inputs!$B$24*12*(1+Inputs!$B$32)^3',
+      '=-Inputs!$B$24*12*(1+Inputs!$B$32)^4',
+      '=-Inputs!$B$24*12*(1+Inputs!$B$32)^5',
+      '=-Inputs!$B$24*12*(1+Inputs!$B$32)^6',
+      '=-Inputs!$B$24*12*(1+Inputs!$B$32)^7',
+      '=-Inputs!$B$24*12*(1+Inputs!$B$32)^8',
+      '=-Inputs!$B$24*12*(1+Inputs!$B$32)^9'
+    ],
+    ['Maintenance',
+      '=-B12*Inputs!$B$25',
+      '=-C12*Inputs!$B$25',
+      '=-D12*Inputs!$B$25',
+      '=-E12*Inputs!$B$25',
+      '=-F12*Inputs!$B$25',
+      '=-G12*Inputs!$B$25',
+      '=-H12*Inputs!$B$25',
+      '=-I12*Inputs!$B$25',
+      '=-J12*Inputs!$B$25',
+      '=-K12*Inputs!$B$25'
+    ],
+    ['Management',
+      '=-B12*Inputs!$B$26',
+      '=-C12*Inputs!$B$26',
+      '=-D12*Inputs!$B$26',
+      '=-E12*Inputs!$B$26',
+      '=-F12*Inputs!$B$26',
+      '=-G12*Inputs!$B$26',
+      '=-H12*Inputs!$B$26',
+      '=-I12*Inputs!$B$26',
+      '=-J12*Inputs!$B$26',
+      '=-K12*Inputs!$B$26'
+    ],
+    ['CapEx Reserve',
+      '=-B12*Inputs!$B$27',
+      '=-C12*Inputs!$B$27',
+      '=-D12*Inputs!$B$27',
+      '=-E12*Inputs!$B$27',
+      '=-F12*Inputs!$B$27',
+      '=-G12*Inputs!$B$27',
+      '=-H12*Inputs!$B$27',
+      '=-I12*Inputs!$B$27',
+      '=-J12*Inputs!$B$27',
+      '=-K12*Inputs!$B$27'
+    ],
+    ['Other',
+      '=-Inputs!$B$28',
+      '=-Inputs!$B$28*(1+Inputs!$B$32)',
+      '=-Inputs!$B$28*(1+Inputs!$B$32)^2',
+      '=-Inputs!$B$28*(1+Inputs!$B$32)^3',
+      '=-Inputs!$B$28*(1+Inputs!$B$32)^4',
+      '=-Inputs!$B$28*(1+Inputs!$B$32)^5',
+      '=-Inputs!$B$28*(1+Inputs!$B$32)^6',
+      '=-Inputs!$B$28*(1+Inputs!$B$32)^7',
+      '=-Inputs!$B$28*(1+Inputs!$B$32)^8',
+      '=-Inputs!$B$28*(1+Inputs!$B$32)^9'
+    ],
+    ['Total Expenses',
+      '=SUM(B15:B21)',
+      '=SUM(C15:C21)',
+      '=SUM(D15:D21)',
+      '=SUM(E15:E21)',
+      '=SUM(F15:F21)',
+      '=SUM(G15:G21)',
+      '=SUM(H15:H21)',
+      '=SUM(I15:I21)',
+      '=SUM(J15:J21)',
+      '=SUM(K15:K21)'
+    ],
+    [''],
+    ['CASH FLOW'],
+    ['Net Operating Income',
+      '=B12+B22',
+      '=C12+C22',
+      '=D12+D22',
+      '=E12+E22',
+      '=F12+F22',
+      '=G12+G22',
+      '=H12+H22',
+      '=I12+I22',
+      '=J12+J22',
+      '=K12+K22'
+    ],
+    ['Less: Debt Service',
+      '=-Inputs!$B$43',
+      '=-Inputs!$B$43',
+      '=-Inputs!$B$43',
+      '=-Inputs!$B$43',
+      '=-Inputs!$B$43',
+      '=-Inputs!$B$43',
+      '=-Inputs!$B$43',
+      '=-Inputs!$B$43',
+      '=-Inputs!$B$43',
+      '=-Inputs!$B$43'
+    ],
+    ['Cash Flow',
+      '=B25+B26',
+      '=C25+C26',
+      '=D25+D26',
+      '=E25+E26',
+      '=F25+F26',
+      '=G25+G26',
+      '=H25+H26',
+      '=I25+I26',
+      '=J25+J26',
+      '=K25+K26'
+    ],
+    ['Cumulative Cash Flow',
+      '=B27',
+      '=B28+C27',
+      '=C28+D27',
+      '=D28+E27',
+      '=E28+F27',
+      '=F28+G27',
+      '=G28+H27',
+      '=H28+I27',
+      '=I28+J27',
+      '=J28+K27'
+    ],
+    [''],
+    ['EQUITY & VALUE'],
+    ['Property Value',
+      '=Inputs!$B$10*(1+Inputs!$B$33)',
+      '=Inputs!$B$10*(1+Inputs!$B$33)^2',
+      '=Inputs!$B$10*(1+Inputs!$B$33)^3',
+      '=Inputs!$B$10*(1+Inputs!$B$33)^4',
+      '=Inputs!$B$10*(1+Inputs!$B$33)^5',
+      '=Inputs!$B$10*(1+Inputs!$B$33)^6',
+      '=Inputs!$B$10*(1+Inputs!$B$33)^7',
+      '=Inputs!$B$10*(1+Inputs!$B$33)^8',
+      '=Inputs!$B$10*(1+Inputs!$B$33)^9',
+      '=Inputs!$B$10*(1+Inputs!$B$33)^10'
+    ],
+    ['Loan Balance',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,12,-Inputs!$B$42,Inputs!$B$39))',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,24,-Inputs!$B$42,Inputs!$B$39))',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,36,-Inputs!$B$42,Inputs!$B$39))',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,48,-Inputs!$B$42,Inputs!$B$39))',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,60,-Inputs!$B$42,Inputs!$B$39))',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,72,-Inputs!$B$42,Inputs!$B$39))',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,84,-Inputs!$B$42,Inputs!$B$39))',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,96,-Inputs!$B$42,Inputs!$B$39))',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,108,-Inputs!$B$42,Inputs!$B$39))',
+      '=IF(Inputs!$B$40=0,0,FV(Inputs!$B$40,120,-Inputs!$B$42,Inputs!$B$39))'
+    ],
+    ['Equity',
+      '=B31-B32',
+      '=C31-C32',
+      '=D31-D32',
+      '=E31-E32',
+      '=F31-F32',
+      '=G31-G32',
+      '=H31-H32',
+      '=I31-I32',
+      '=J31-J32',
+      '=K31-K32'
+    ],
+    ['Total Return (Equity + Cash)',
+      '=B33+B28',
+      '=C33+C28',
+      '=D33+D28',
+      '=E33+E28',
+      '=F33+F28',
+      '=G33+G28',
+      '=H33+H28',
+      '=I33+I28',
+      '=J33+J28',
+      '=K33+K28'
+    ],
+  ];
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: [
+        { range: 'Inputs!A1', values: inputsData },
+        { range: 'Summary!A1', values: summaryData },
+        { range: 'Projections!A1', values: projectionsData },
+      ],
+    },
+  });
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        // Projections sheet (sheetId: 0) - branded header styling
+        {
+          repeatCell: {
+            range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { bold: true, fontSize: 18, foregroundColor: { red: 1, green: 1, blue: 1 } },
+                backgroundColor: { red: 0.13, green: 0.55, blue: 0.13 },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat,backgroundColor)',
+          },
+        },
+        {
+          repeatCell: {
+            range: { sheetId: 0, startRowIndex: 1, endRowIndex: 2 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { italic: true, fontSize: 11, foregroundColor: { red: 0.4, green: 0.4, blue: 0.4 } },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat)',
+          },
+        },
+        // Inputs sheet (sheetId: 1) - branded header styling
+        {
+          repeatCell: {
+            range: { sheetId: 1, startRowIndex: 0, endRowIndex: 1 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { bold: true, fontSize: 18, foregroundColor: { red: 1, green: 1, blue: 1 } },
+                backgroundColor: { red: 0.13, green: 0.55, blue: 0.13 },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat,backgroundColor)',
+          },
+        },
+        {
+          repeatCell: {
+            range: { sheetId: 1, startRowIndex: 1, endRowIndex: 2 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { italic: true, fontSize: 11, foregroundColor: { red: 0.4, green: 0.4, blue: 0.4 } },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat)',
+          },
+        },
+        {
+          repeatCell: {
+            range: { sheetId: 1, startRowIndex: 8, endRowIndex: 9 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { bold: true },
+                backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat,backgroundColor)',
+          },
+        },
+        {
+          repeatCell: {
+            range: { sheetId: 1, startRowIndex: 9, endRowIndex: 35, startColumnIndex: 1, endColumnIndex: 2 },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 1, green: 0.95, blue: 0.8 },
+              },
+            },
+            fields: 'userEnteredFormat(backgroundColor)',
+          },
+        },
+        {
+          repeatCell: {
+            range: { sheetId: 1, startRowIndex: 36, endRowIndex: 65 },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 0.95, green: 0.95, blue: 0.95 },
+              },
+            },
+            fields: 'userEnteredFormat(backgroundColor)',
+          },
+        },
+        // Summary sheet (sheetId: 2) - branded header styling
+        {
+          repeatCell: {
+            range: { sheetId: 2, startRowIndex: 0, endRowIndex: 1 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { bold: true, fontSize: 18, foregroundColor: { red: 1, green: 1, blue: 1 } },
+                backgroundColor: { red: 0.13, green: 0.55, blue: 0.13 },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat,backgroundColor)',
+          },
+        },
+        {
+          repeatCell: {
+            range: { sheetId: 2, startRowIndex: 1, endRowIndex: 2 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { italic: true, fontSize: 11, foregroundColor: { red: 0.4, green: 0.4, blue: 0.4 } },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat)',
+          },
+        },
+        // Column widths
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 0, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 180 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 0, dimension: 'COLUMNS', startIndex: 1, endIndex: 11 },
+            properties: { pixelSize: 120 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 1, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 200 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 1, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 },
+            properties: { pixelSize: 150 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 2, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 200 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 2, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 },
+            properties: { pixelSize: 150 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          setBasicFilter: {
+            filter: {
+              range: { sheetId: 0, startRowIndex: 6, endRowIndex: 35, startColumnIndex: 0, endColumnIndex: 11 }
+            }
+          }
+        },
+      ],
+    },
+  });
+
+  // Make the spreadsheet publicly accessible (anyone with link can view)
+  try {
+    const userDriveClient = userTokens
+      ? await getUserGoogleDriveClient(userTokens)
+      : null;
+    const drive = userDriveClient?.drive ?? await getUncachableGoogleDriveClient();
+    
+    await drive.permissions.create({
+      fileId: spreadsheetId,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone',
+      },
+    });
+    console.log(`Sheet ${spreadsheetId} set to public access`);
+  } catch (permError) {
+    console.error('Failed to set public access on sheet:', permError);
+    // Continue anyway - sheet is still created, just private
+  }
+
+  return {
+    spreadsheetUrl,
+    refreshedTokens: userSheetsClient?.refreshedTokens,
+  };
+}
+
+// MLI Select Export Types
+interface MLIExportData {
+  projectName: string;
+  location: string;
+  userInfo?: UserInfo;
+  inputs: {
+    projectType: string;
+    totalUnits: number;
+    affordabilityTier: string;
+    extendedCommitment: boolean;
+    energyTier: string;
+    accessibilityTier: string;
+    marketRent: number;
+    rentGrowth: number;
+    otherIncome: number;
+    vacancyRate: number;
+    expenseRatio: number;
+    landCost: number;
+    hardCosts: number;
+    softCosts: number;
+    contingencyPercent: number;
+    financingFees: number;
+    constructionFinancing: string;
+    constructionRate: number;
+    takeoutRate: number;
+    ltv: number;
+  };
+  results: {
+    totalPoints: number;
+    tier: string;
+    totalProjectCost: number;
+    insurancePremium: number;
+    loanTermYears: number;
+    amortizationYears: number;
+    maxLTV: number;
+    premiumRate: number;
+    affordableUnits: number;
+    marketUnits: number;
+    medianIncome: number;
+    affordableRentThreshold: number;
+    base: {
+      egi: number;
+      vacancyLoss: number;
+      egiAfterVacancy: number;
+      opex: number;
+      noi: number;
+      loanAmount: number;
+      annualDebtService: number;
+      dscr: number;
+      cashFlow: number;
+      equityRequired: number;
+      ltv: number;
+    };
+    bear: {
+      noi: number;
+      dscr: number;
+      cashFlow: number;
+      equityRequired: number;
+    };
+    bull: {
+      noi: number;
+      dscr: number;
+      cashFlow: number;
+      equityRequired: number;
+    };
+  };
+}
+
+export async function exportMLIToGoogleSheets(data: MLIExportData, userTokens?: UserOAuthTokens): Promise<string> {
+  const userSheetsClient = userTokens
+    ? await getUserGoogleSheetClient(userTokens)
+    : null;
+  const sheets = userSheetsClient?.sheets ?? await getUncachableGoogleSheetClient();
+  
+  const title = `Realist MLI Select - ${data.projectName || data.location || 'Project'} - ${new Date().toLocaleDateString()}`;
+  
+  const createResponse = await sheets.spreadsheets.create({
+    requestBody: {
+      properties: { title },
+      sheets: [
+        { properties: { title: 'Summary', sheetId: 0 } },
+        { properties: { title: 'Inputs', sheetId: 1 } },
+        { properties: { title: 'Stress Test', sheetId: 2 } },
+      ],
+    },
+  });
+
+  const spreadsheetId = createResponse.data.spreadsheetId!;
+  const spreadsheetUrl = createResponse.data.spreadsheetUrl!;
+
+  const formatCurrency = (val: number) => `$${val.toLocaleString('en-CA', { maximumFractionDigits: 0 })}`;
+  const formatPercent = (val: number) => `${(val * 100).toFixed(2)}%`;
+
+  // Summary Sheet
+  const summaryData = [
+    ['REALIST.CA MLI SELECT ANALYSIS'],
+    ['CMHC Multi-unit Mortgage Loan Insurance Calculator'],
+    [''],
+    ['PROJECT OVERVIEW'],
+    ['Project Name', data.projectName || 'Not specified'],
+    ['Location', data.location],
+    ['Project Type', data.inputs.projectType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Total Units', data.inputs.totalUnits],
+    ['Generated', new Date().toLocaleString()],
+    [''],
+    ['MLI SELECT POINTS & TIER'],
+    ['Total Points', data.results.totalPoints],
+    ['Tier', data.results.tier.toUpperCase()],
+    ['Affordable Units', data.results.affordableUnits],
+    ['Market Units', data.results.marketUnits],
+    [''],
+    ['LOAN TERMS'],
+    ['Max LTV', formatPercent(data.results.maxLTV / 100)],
+    ['Insurance Premium Rate', formatPercent(data.results.premiumRate / 100)],
+    ['Loan Term', `${data.results.loanTermYears} years`],
+    ['Amortization', `${data.results.amortizationYears} years`],
+    [''],
+    ['FINANCING SUMMARY'],
+    ['Total Project Cost', formatCurrency(data.results.totalProjectCost)],
+    ['Insurance Premium', formatCurrency(data.results.insurancePremium)],
+    ['Loan Amount', formatCurrency(data.results.base.loanAmount)],
+    ['Equity Required', formatCurrency(data.results.base.equityRequired)],
+    ['LTV', formatPercent(data.results.base.ltv / 100)],
+    [''],
+    ['OPERATING PERFORMANCE (BASE CASE)'],
+    ['Effective Gross Income', formatCurrency(data.results.base.egi)],
+    ['Less: Vacancy', formatCurrency(data.results.base.vacancyLoss)],
+    ['EGI After Vacancy', formatCurrency(data.results.base.egiAfterVacancy)],
+    ['Operating Expenses', formatCurrency(data.results.base.opex)],
+    ['Net Operating Income (NOI)', formatCurrency(data.results.base.noi)],
+    ['Annual Debt Service', formatCurrency(data.results.base.annualDebtService)],
+    ['DSCR', `${data.results.base.dscr.toFixed(2)}x`],
+    ['Annual Cash Flow', formatCurrency(data.results.base.cashFlow)],
+    [''],
+    ['AFFORDABILITY DETAILS'],
+    ['Median Income (Location)', formatCurrency(data.results.medianIncome)],
+    ['Affordable Rent Threshold', formatCurrency(data.results.affordableRentThreshold)],
+  ];
+
+  // Inputs Sheet
+  const inputsData = [
+    ['MLI SELECT INPUTS'],
+    [''],
+    ['PROJECT DETAILS'],
+    ['Project Type', data.inputs.projectType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Location', data.location],
+    ['Total Units', data.inputs.totalUnits],
+    [''],
+    ['AFFORDABILITY & SUSTAINABILITY'],
+    ['Affordability Tier', data.inputs.affordabilityTier.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Extended Commitment (10yr)', data.inputs.extendedCommitment ? 'Yes' : 'No'],
+    ['Energy Tier', data.inputs.energyTier.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Accessibility Tier', data.inputs.accessibilityTier.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    [''],
+    ['REVENUE ASSUMPTIONS'],
+    ['Market Rent (per unit/mo)', formatCurrency(data.inputs.marketRent)],
+    ['Rent Growth %', formatPercent(data.inputs.rentGrowth / 100)],
+    ['Other Income (annual)', formatCurrency(data.inputs.otherIncome)],
+    ['Vacancy Rate', formatPercent(data.inputs.vacancyRate)],
+    ['Expense Ratio', formatPercent(data.inputs.expenseRatio)],
+    [''],
+    ['PROJECT COSTS'],
+    ['Land Cost', formatCurrency(data.inputs.landCost)],
+    ['Hard Costs', formatCurrency(data.inputs.hardCosts)],
+    ['Soft Costs', formatCurrency(data.inputs.softCosts)],
+    ['Contingency %', formatPercent(data.inputs.contingencyPercent / 100)],
+    ['Financing Fees', formatCurrency(data.inputs.financingFees)],
+    [''],
+    ['FINANCING'],
+    ['Construction Financing', data.inputs.constructionFinancing.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())],
+    ['Construction Rate', formatPercent(data.inputs.constructionRate)],
+    ['Takeout Rate', formatPercent(data.inputs.takeoutRate)],
+    ['LTV Target', formatPercent(data.inputs.ltv / 100)],
+  ];
+
+  // Stress Test Sheet
+  const stressTestData = [
+    ['MLI SELECT STRESS TEST'],
+    [''],
+    ['Scenario', 'Base Case', 'Bear Case', 'Bull Case'],
+    ['NOI', formatCurrency(data.results.base.noi), formatCurrency(data.results.bear.noi), formatCurrency(data.results.bull.noi)],
+    ['DSCR', `${data.results.base.dscr.toFixed(2)}x`, `${data.results.bear.dscr.toFixed(2)}x`, `${data.results.bull.dscr.toFixed(2)}x`],
+    ['Cash Flow', formatCurrency(data.results.base.cashFlow), formatCurrency(data.results.bear.cashFlow), formatCurrency(data.results.bull.cashFlow)],
+    ['Equity Required', formatCurrency(data.results.base.equityRequired), formatCurrency(data.results.bear.equityRequired), formatCurrency(data.results.bull.equityRequired)],
+    [''],
+    ['STRESS TEST ASSUMPTIONS'],
+    ['Bear Case:', 'Vacancy +3%, Expenses +5%, Interest +1%'],
+    ['Bull Case:', 'Rent +3%, Vacancy -1%, Expenses -2%'],
+  ];
+
+  // Write data to sheets
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: 'RAW',
+      data: [
+        { range: 'Summary!A1', values: summaryData },
+        { range: 'Inputs!A1', values: inputsData },
+        { range: 'Stress Test!A1', values: stressTestData },
+      ],
+    },
+  });
+
+  // Apply formatting
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        // Header formatting for Summary
+        {
+          repeatCell: {
+            range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 2 },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 0.0, green: 0.6, blue: 0.4 },
+                textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 }, fontSize: 14 },
+              },
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat)',
+          },
+        },
+        // Column widths
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 0, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 250 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 0, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 },
+            properties: { pixelSize: 180 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 1, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 250 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 1, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 },
+            properties: { pixelSize: 180 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: 2, dimension: 'COLUMNS', startIndex: 0, endIndex: 4 },
+            properties: { pixelSize: 150 },
+            fields: 'pixelSize',
+          },
+        },
+      ],
+    },
+  });
+
+  // Make public
+  try {
+    const userDriveClient = userTokens
+      ? await getUserGoogleDriveClient(userTokens)
+      : null;
+    const drive = userDriveClient?.drive ?? await getUncachableGoogleDriveClient();
+    
+    await drive.permissions.create({
+      fileId: spreadsheetId,
+      requestBody: { role: 'reader', type: 'anyone' },
+    });
+  } catch (permError) {
+    console.error('Failed to set public access on MLI sheet:', permError);
+  }
+
+  return spreadsheetUrl;
+}

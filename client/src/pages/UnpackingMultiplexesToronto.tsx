@@ -1,0 +1,452 @@
+import { Link } from "wouter";
+import { Navigation } from "@/components/Navigation";
+import { SEO } from "@/components/SEO";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  Ticket,
+  Users,
+  CheckCircle2,
+  Mic,
+  Utensils,
+  Car,
+  Building2,
+  TrendingUp,
+  Wrench,
+  HardHat,
+  ChevronLeft,
+  Sparkles,
+  Share2,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
+const EVENT_TITLE = "Unpacking Multiplexes Toronto";
+const EVENT_TAGLINE = "Toronto's Premier Multiplex Development Conference";
+const EVENT_HERO_IMAGE = "/events/unpacking-multiplexes-toronto-ai-hero.png";
+
+const VENUE = {
+  name: "The Terminal Theatre",
+  address: "Queens Quay Terminal, Third Floor, 207 Queens Quay West, Toronto, ON M5J 1A7",
+  lat: 43.639526,
+  lng: -79.379194,
+};
+
+const learnPoints = [
+  {
+    icon: Building2,
+    title: "Toronto Zoning & Policy Updates",
+    body: "Master Toronto's latest multiplex zoning bylaws, as-of-right permissions, and major street designations. Discover untapped development opportunities across the GTA.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Finance & Funding Strategies",
+    body: "Learn proven financing approaches for multiplex projects, including construction loans, CMHC MLI Select programs, and investor partnerships.",
+  },
+  {
+    icon: Wrench,
+    title: "Design & Construction Best Practices",
+    body: "Hear from award-winning architects and builders on cost-effective design, permitting shortcuts, and construction management for 2–4 unit developments.",
+  },
+  {
+    icon: HardHat,
+    title: "Development Lifecycle Deep Dives",
+    body: "From site acquisition to tenant placement — get expert guidance on every phase of multiplex development.",
+  },
+];
+
+const audience = [
+  "Real estate developers & investors",
+  "Architects & designers",
+  "Urban planners & policy experts",
+  "Construction professionals",
+  "Housing advocates",
+  "Anyone exploring multiplex investment opportunities",
+];
+
+const highlights = [
+  { icon: Mic, label: "Expert panel discussions with industry leaders" },
+  { icon: Users, label: "High-value networking with 100+ housing professionals" },
+  { icon: Utensils, label: "Complimentary food & refreshments" },
+  { icon: Sparkles, label: "Actionable takeaways you can implement immediately" },
+];
+
+const faqs = [
+  {
+    q: "Do I need to bring a printed ticket?",
+    a: "No — a digital ticket on your phone is fine. You'll receive a confirmation email from OvationTix after purchase that you can show at the door.",
+  },
+  {
+    q: "Will food and drinks be provided?",
+    a: "Yes. Complimentary food and refreshments are included with every ticket.",
+  },
+  {
+    q: "What's the best way to get to The Terminal Theatre?",
+    a: "The Terminal Theatre is on the third floor of Queens Quay Terminal at 207 Queens Quay West, right on Toronto's waterfront. The closest TTC station is Union (Line 1), a short walk or one stop on the 509/510 streetcar. Paid parking is available in the building.",
+  },
+  {
+    q: "Who should attend this event?",
+    a: "Active and aspiring multiplex developers, real estate investors, architects, planners, lenders, and anyone navigating Toronto's housing landscape will get the most value.",
+  },
+  {
+    q: "What is the refund policy?",
+    a: "No refunds. Tickets are transferable — contact the organizer if you need to change the name on a ticket.",
+  },
+];
+
+export default function UnpackingMultiplexesToronto() {
+  const { toast } = useToast();
+  const eventDate = new Date("2026-09-15T17:00:00-04:00");
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    const shareData = {
+      title: `${EVENT_TITLE} — Toronto`,
+      text: "Join us for Toronto's premier multiplex development conference.",
+      url,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast({ title: "Link copied", description: "Event link copied to clipboard." });
+      }
+    } catch {
+      /* user cancelled */
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <SEO
+        title="Unpacking Multiplexes — Toronto | Realist"
+        description="Toronto's premier multiplex development conference. Join developers, architects, planners and investors at The Terminal Theatre, Queens Quay Terminal on Tuesday, September 15, 2026."
+        ogImage={EVENT_HERO_IMAGE}
+      />
+      <Navigation />
+
+      {/* Hero */}
+      <section className="relative">
+        <div className="absolute inset-0 overflow-hidden">
+          <img
+            src={EVENT_HERO_IMAGE}
+            alt={EVENT_TITLE}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-background/95 via-background/85 to-background/70 dark:from-background/95 dark:via-background/90 dark:to-background/80" />
+        </div>
+
+        <div className="relative max-w-6xl mx-auto px-4 py-16 md:py-24">
+          <Link
+            href="/community/events"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6"
+            data-testid="link-back-events"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back to Events
+          </Link>
+
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <Badge className="bg-primary text-primary-foreground">Featured Event</Badge>
+            <Badge variant="outline">In Person</Badge>
+            <Badge variant="outline">5 hours</Badge>
+            <Badge variant="outline">All ages</Badge>
+          </div>
+
+          <h1
+            className="text-4xl md:text-6xl font-bold tracking-tight mb-3"
+            data-testid="text-event-title"
+          >
+            {EVENT_TITLE}
+          </h1>
+          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl">
+            {EVENT_TAGLINE}
+          </p>
+
+          <div className="grid sm:grid-cols-2 gap-3 max-w-2xl mb-8">
+            <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur px-4 py-3">
+              <Calendar className="h-5 w-5 text-primary shrink-0" />
+              <div>
+                <div className="text-xs text-muted-foreground">Date</div>
+                <div className="font-semibold" data-testid="text-event-date">
+                  Tuesday, September 15, 2026
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur px-4 py-3">
+              <Clock className="h-5 w-5 text-primary shrink-0" />
+              <div>
+                <div className="text-xs text-muted-foreground">Time</div>
+                <div className="font-semibold">5:00 PM – 10:00 PM EDT</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur px-4 py-3 sm:col-span-2">
+              <MapPin className="h-5 w-5 text-primary shrink-0" />
+              <div>
+                <div className="text-xs text-muted-foreground">Venue</div>
+                <div className="font-semibold">{VENUE.name}</div>
+                <div className="text-sm text-muted-foreground">{VENUE.address}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <a
+              href={TICKET_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="link-buy-tickets-hero"
+            >
+              <Button size="lg" className="gap-2" data-testid="button-buy-tickets-hero">
+                <Ticket className="h-5 w-5" />
+                Buy Tickets
+              </Button>
+            </a>
+            <Button
+              size="lg"
+              variant="outline"
+              className="gap-2"
+              onClick={handleShare}
+              data-testid="button-share-event"
+            >
+              <Share2 className="h-5 w-5" />
+              Share Event
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-4">
+            Hosted by The Canadian Real Estate Investor Podcast · Ticketing powered by OvationTix
+          </p>
+        </div>
+      </section>
+
+      {/* Overview */}
+      <section className="max-w-6xl mx-auto px-4 py-12 md:py-16">
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-4">Overview</h2>
+              <p className="text-lg text-muted-foreground leading-relaxed mb-4">
+                Join us for an evening as we dive into the world of multiplexing.
+              </p>
+              <p className="text-muted-foreground leading-relaxed">
+                Whether you're developing your first fourplex or managing a portfolio of
+                multi-unit residential properties, this conference delivers actionable
+                strategies to maximize returns and navigate Toronto's evolving housing
+                landscape. Connect with Toronto's leading developers, architects, urban
+                planners, and real estate investors for an evening of expert insights on
+                multiplex development, housing policy, and investment strategies.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-6">What You'll Learn</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {learnPoints.map((p) => {
+                  const Icon = p.icon;
+                  return (
+                    <Card key={p.title} className="hover-elevate">
+                      <CardContent className="p-5">
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+                            <Icon className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold mb-1">{p.title}</h3>
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {p.body}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-4">Who Should Attend</h2>
+              <ul className="grid sm:grid-cols-2 gap-2">
+                {audience.map((a) => (
+                  <li key={a} className="flex items-start gap-2 text-muted-foreground">
+                    <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <span>{a}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-4">Event Highlights</h2>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {highlights.map((h) => {
+                  const Icon = h.icon;
+                  return (
+                    <div
+                      key={h.label}
+                      className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/50 px-4 py-3"
+                    >
+                      <Icon className="h-5 w-5 text-primary shrink-0" />
+                      <span className="text-sm">{h.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-4">Frequently Asked Questions</h2>
+              <Accordion type="single" collapsible className="w-full">
+                {faqs.map((f, i) => (
+                  <AccordionItem key={f.q} value={`faq-${i}`}>
+                    <AccordionTrigger className="text-left" data-testid={`button-faq-${i}`}>
+                      {f.q}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground leading-relaxed">
+                      {f.a}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
+          </div>
+
+          {/* Sticky sidebar */}
+          <aside className="lg:col-span-1">
+            <div className="lg:sticky lg:top-24 space-y-4">
+              <Card className="border-primary/30">
+                <CardContent className="p-6 space-y-4">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                      Reserve your seat
+                    </div>
+                    <div className="text-2xl font-bold">Buy Tickets</div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Limited spots available. Secure your ticket through our ticketing
+                      partner.
+                    </p>
+                  </div>
+                  <a
+                    href={TICKET_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                    data-testid="link-buy-tickets-sidebar"
+                  >
+                    <Button
+                      className="w-full gap-2"
+                      size="lg"
+                      data-testid="button-buy-tickets-sidebar"
+                    >
+                      <Ticket className="h-5 w-5" />
+                      Buy Tickets
+                    </Button>
+                  </a>
+                  <div className="text-xs text-muted-foreground text-center">
+                    Ticketing handled by OvationTix
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6 space-y-3">
+                  <h3 className="font-semibold">Good to Know</h3>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />5 hours
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-primary" />
+                      All ages
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      In person
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Car className="h-4 w-4 text-primary" />
+                      Paid parking nearby
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Utensils className="h-4 w-4 text-primary" />
+                      Food & refreshments included
+                    </li>
+                  </ul>
+                  <div className="pt-2 border-t border-border/60 text-xs text-muted-foreground">
+                    Refund policy: No refunds. Tickets are transferable.
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="font-semibold mb-3">Location</h3>
+                  <div className="text-sm">
+                    <div className="font-medium">{VENUE.name}</div>
+                    <div className="text-muted-foreground mb-3">{VENUE.address}</div>
+                  </div>
+                  <div className="rounded-lg overflow-hidden border border-border/60 aspect-video bg-muted">
+                    <iframe
+                      title="Map of The Terminal Theatre"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${VENUE.lng - 0.005}%2C${VENUE.lat - 0.003}%2C${VENUE.lng + 0.005}%2C${VENUE.lat + 0.003}&layer=mapnik&marker=${VENUE.lat}%2C${VENUE.lng}`}
+                      className="w-full h-full border-0"
+                      loading="lazy"
+                    />
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${VENUE.lat},${VENUE.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block mt-3"
+                    data-testid="link-directions"
+                  >
+                    <Button variant="outline" className="w-full gap-2" size="sm">
+                      <MapPin className="h-4 w-4" />
+                      Get Directions
+                    </Button>
+                  </a>
+                </CardContent>
+              </Card>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      {/* Bottom CTA */}
+      <section className="border-t border-border/60 bg-card/40">
+        <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold mb-3">
+            Ready to unpack multiplexes?
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            Seats are limited. Reserve yours today and join Toronto's most active
+            community of multiplex developers and investors.
+          </p>
+          <a
+            href={TICKET_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="link-buy-tickets-footer"
+          >
+            <Button size="lg" className="gap-2" data-testid="button-buy-tickets-footer">
+              <Ticket className="h-5 w-5" />
+              Buy Tickets
+            </Button>
+          </a>
+        </div>
+      </section>
+    </div>
+  );
+}

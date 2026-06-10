@@ -1,0 +1,392 @@
+Here’s a strong **SEO-focused Replit prompt** tailored to Realist.ca and your specific use case (data-driven housing reports, tools, and AI features).
+
+This is designed to:
+
+* rank for high-intent housing queries
+* turn reports (like your pre-con one) into SEO landing pages
+* compound into a “Bloomberg Terminal for Real Estate” content moat
+
+---
+
+## REPLIT SEO PROMPT — REALIST.CA
+
+Build an SEO engine and content system for Realist.ca that programmatically generates high-ranking, data-driven real estate pages across Canada.
+
+---
+
+## Goal
+
+Turn Realist.ca into the **best indexed source for housing data insights in Canada** by combining:
+
+* structured data (DDF, pricing datasets, reports)
+* programmatic SEO pages
+* analyst-style reports
+* internal linking across markets, property types, and insights
+
+Focus on capturing:
+
+* investor intent
+* homebuyer research intent
+* media / analyst citation intent
+
+---
+
+## Core SEO strategy
+
+We are not building blog posts.
+
+We are building:
+👉 **data-backed landing pages that answer specific search queries better than anyone else**
+
+Each page should:
+
+* target a specific keyword cluster
+* include real data (charts, tables, metrics)
+* include a short narrative analysis
+* include internal links to related pages
+* be updated dynamically as data updates
+
+---
+
+## Page types to build
+
+### 1. Market pages (programmatic)
+
+Create pages for:
+
+* Canada
+* Province
+* CMA / Metro
+* City
+* Submarket (if data allows)
+
+Example URLs:
+
+* /canada-housing-market
+* /ontario-housing-market
+* /toronto-housing-market
+* /calgary-new-construction-market
+
+Each page includes:
+
+* current pricing trends
+* inventory levels
+* price change distribution
+* new construction insights
+* investor metrics if available
+
+---
+
+### 2. Query-driven pages
+
+Target high-intent SEO queries like:
+
+* “are condo prices dropping in Toronto”
+* “new construction price drops Canada”
+* “pre construction condos Toronto price cuts”
+* “is it a good time to buy pre construction Canada”
+* “Toronto condo inventory levels 2026”
+* “are builders lowering prices Ontario”
+
+Generate pages like:
+
+* /toronto-condo-prices-dropping
+* /canada-preconstruction-price-cuts
+* /ontario-new-build-prices
+
+Each page:
+
+* answers the query directly in first 2 paragraphs
+* includes supporting data and charts
+* includes citations to internal datasets (not external fluff)
+
+---
+
+### 3. Project-level pages (high leverage)
+
+Create pages for:
+
+* individual developments
+* builder portfolios
+
+Example:
+
+* /projects/q-tower-toronto
+* /projects/creekside-condos-milton
+
+Each page includes:
+
+* current pricing
+* price changes over time
+* comparison to resale
+* incentives (if detectable)
+* ranking vs other projects
+
+These pages can rank extremely well long-term.
+
+---
+
+### 4. “Best deals” / ranking pages
+
+Example:
+
+* /best-preconstruction-deals-toronto
+* /biggest-price-drops-gta
+* /undervalued-condos-canada
+
+These should:
+
+* be updated dynamically from your datasets
+* include sortable tables
+* include filters
+* include CTAs to tools (cndo.com, deal analyzer, etc.)
+
+---
+
+## Content generation rules
+
+Every page should include:
+
+### 1. SEO header structure
+
+* H1: exact keyword match
+* H2s: variations and related queries
+* H3s: supporting data sections
+
+### 2. Opening paragraph (VERY IMPORTANT)
+
+* answer the search query immediately
+* include keyword naturally
+* do not fluff
+
+Example:
+“Toronto condo prices are declining in 2026, with new construction sales at a 35-year low and inventory at record highs. Recent data shows price cuts outnumber increases across active developments.”
+
+---
+
+### 3. Data sections
+
+Each page must include:
+
+* charts (price trends, inventory, price changes)
+* tables (top movers, rankings)
+* key stats (cut:raise ratio, avg change, etc.)
+
+---
+
+### 4. Internal linking
+
+Automatically link to:
+
+* related cities
+* related reports
+* project pages
+* tools (deal analyzer, cndo.com, etc.)
+
+---
+
+### 5. CTA placement
+
+Include:
+
+* early soft CTA (tools, data)
+* mid-page CTA (analysis tools)
+* end CTA (signup, platform, etc.)
+
+---
+
+## Technical SEO requirements
+
+### 1. Metadata
+
+Auto-generate:
+
+* title tag (60 characters optimized)
+* meta description (155 characters)
+* OG tags
+* Twitter cards
+
+---
+
+### 2. Structured data
+
+Implement schema:
+
+* Article
+* Dataset
+* Product (for projects)
+* FAQ (for query pages)
+
+---
+
+### 3. URL structure
+
+Clean, keyword-based:
+
+* no query strings
+* lowercase
+* hyphen separated
+
+---
+
+### 4. Page speed
+
+* static generation where possible
+* lazy load charts
+* precompute datasets
+
+---
+
+### 5. Sitemap
+
+Auto-generate:
+
+* dynamic sitemap.xml
+* segmented by page type
+* update on new page creation
+
+---
+
+## Data integration
+
+Connect to:
+
+* Realist DDF data
+* your pre-con pricing datasets
+* future Realtor.ca snapshot pipeline
+* any Red Bricks or supplemental APIs
+
+Normalize into:
+
+* market-level metrics
+* project-level metrics
+* price-change metrics
+
+---
+
+## Content engine behavior
+
+When new data is ingested:
+
+1. Update existing pages
+2. Generate new pages for:
+
+   * new markets
+   * new projects
+   * new query opportunities
+3. Recompute rankings
+4. Update internal links
+
+---
+
+## Keyword expansion system
+
+Build a simple system that:
+
+1. Takes seed keywords like:
+
+   * “Toronto condos”
+   * “pre construction Canada”
+   * “price drops real estate”
+
+2. Expands into:
+
+   * question queries
+   * comparison queries
+   * intent queries
+
+3. Generates pages for:
+
+   * highest-value combinations
+
+---
+
+## Analytics + feedback loop
+
+Track:
+
+* impressions
+* clicks
+* rankings
+* time on page
+
+Use this to:
+
+* refine content
+* expand winning topics
+* kill low-performing pages
+
+---
+
+## Design requirements
+
+Pages should feel:
+
+* clean
+* data-heavy
+* credible
+* like a research terminal
+
+Not:
+
+* blog spam
+* generic SEO fluff
+
+---
+
+## Output
+
+Build:
+
+1. Page generator system
+2. SEO metadata generator
+3. Structured data injection
+4. Dynamic sitemap
+5. 10 sample pages using current datasets
+
+---
+
+## Tone
+
+Write like:
+
+* a smart analyst
+* slightly cynical
+* data-first
+* no hype
+
+Avoid:
+
+* salesy language
+* generic blog tone
+* filler content
+
+---
+
+## Priority MVP
+
+Ship first:
+
+1. Canada housing page
+2. Toronto housing page
+3. “Are condo prices dropping in Toronto” page
+4. “Biggest price drops GTA preconstruction” page
+5. 5 project pages
+
+Then expand programmatically.
+
+---
+
+## Optional (high leverage)
+
+* embed your YouTube videos on matching pages
+* auto-generate Substack posts from top pages
+* create shareable chart images for social
+* build a “market stress index”
+
+---
+
+If you want, I can:
+
+* give you the **exact keyword list to dominate first**
+* or wire this into your **YouTube → SEO → lead funnel** so every video auto-creates ranking pages

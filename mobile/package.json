@@ -1,23 +1,31 @@
 {
   "name": "realist-mobile",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Capacitor native wrapper for realist.ca.",
+  "description": "Native iOS + Android shell for realist.ca (Capacitor wrapper)",
   "scripts": {
     "sync": "cap sync",
     "open:ios": "cap open ios",
     "open:android": "cap open android",
+    "add:ios": "cap add ios",
+    "add:android": "cap add android",
     "run:ios": "cap run ios",
     "run:android": "cap run android",
-    "assets": "capacitor-assets generate"
+    "build:android": "cd android && ./gradlew assembleRelease",
+    "doctor": "cap doctor"
   },
   "dependencies": {
-    "@capacitor/android": "^6.2.1",
-    "@capacitor/core": "^6.2.1",
-    "@capacitor/ios": "^6.2.1"
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/browser": "^6.0.3",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/network": "^6.0.3",
+    "@capacitor/push-notifications": "^6.0.2",
+    "@capacitor/splash-screen": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.1"
   },
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^6.2.1"
+    "@capacitor/cli": "^6.1.2"
   }
 }

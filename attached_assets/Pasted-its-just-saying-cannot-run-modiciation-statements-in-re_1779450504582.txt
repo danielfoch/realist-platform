@@ -1,0 +1,55 @@
+its just saying cannot run modiciation statements in read only mode
+
+1 minute ago
+
+Planning ingest endpoint strategy (17 seconds)
+Ah — that confirms it. The workspace Database panel is also read-only for production, not just the agent's tool. Replit has locked down direct prod writes across both surfaces. The error you're seeing is the same gate that blocked me.
+
+That means the manual SQL path is closed. There's no UI in your workspace that can write to the production database. This isn't something I can unlock, and there's no support ticket needed — it's a deliberate platform policy now.
+
+So Path A (Clyde re-POSTs through ingest) isn't just "the better option" anymore — it's the only path that works. The good news: the freshly-deployed ingest code does exactly what the UPDATE would have done, just one row at a time through the upsert.
+
+Here's what to do — should take you 5 minutes total:
+
+Step 1: Grab the token from your Secrets panel
+
+Left sidebar → Secrets (lock icon) → click US_LISTINGS_INGEST_TOKEN → click the eye icon to reveal → copy the value.
+
+Step 2: Send it to Clyde
+
+Use a secure channel — 1Password share, Signal, Bitwarden Send, etc. Don't paste it in Slack/Discord/email plaintext.
+
+Step 3: Clyde re-POSTs the full HomeHarvest dataset
+
+He hits POST https://realist.ca/api/ingest/us-listings with:
+
+Header: X-Ingest-Token: <token> (and Content-Type: application/json)
+Body: { "listings": [...up to 1000 rows...] }
+Run ~100 batches to cover all 99,800 rows
+The endpoint upserts on (source, source_id) — every row he sends overwrites the existing is_active value using the new normalization. SOLD/PENDING/CONTINGENT all become is_active=false automatically. No data is lost; only the active flag and status fields update.
+
+He doesn't have to do anything new — same payload he already used for the initial seed, same endpoint, just with the token now.
+
+Step 4: Ping me when he's done one Austin batch
+
+I'll run the verification SELECT immediately and confirm the SOLD rows in Austin flipped to is_active=false. If Austin looks good, he proceeds with the rest of the country and the expected total: 55,201 lands at the end.
+
+One small thing to share with Clyde: the endpoint expects this shape (already documented but worth confirming he knows):
+
+{
+  "listings": [
+    {
+      "source": "homeharvest",
+      "sourceId": "1106027512",
+      "status": "SOLD",
+      "formattedAddress": "...",
+      "city": "Austin",
+      "state": "TX",
+      "...": "..."
+    }
+  ]
+}
+
+He doesn't need to send isActive at all — the server will derive it from status. If he does send it, the server now ignores it for sold/pending/under-contract rows (status wins).
+
+Once you've sent him the token and he's ready to fire the first batch, ping me and I'll verify in real time.

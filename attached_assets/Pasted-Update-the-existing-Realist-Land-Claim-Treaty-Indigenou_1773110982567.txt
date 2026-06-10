@@ -1,0 +1,219 @@
+Update the existing Realist “Land Claim / Treaty / Indigenous Rights Screener” tool to add a new layer group called:
+
+“High-Sensitivity / Active-Contestation Overlays”
+
+This is NOT a general treaty layer.
+This is a manually curated legal-watch / research layer for high-profile contested or recently changed Indigenous rights / title / tract matters that users may specifically want to screen against.
+
+Add these three priority overlays:
+
+1) Cowichan Title Lands / Tl’uqtinus (Richmond, BC)
+2) Musqueam Territory Watch Overlay (Metro Vancouver, BC)
+3) Haldimand Tract Watch Overlay (Grand River corridor, Ontario)
+
+IMPORTANT LEGAL / UX POSITIONING
+Do NOT present any of these as definitive proof that a property is legally “subject to a land claim.”
+Do NOT collapse them into one category.
+Each must have its own classification, source note, geometry confidence, and warning language.
+
+Create new classification types:
+- court_declared_title_area
+- rights_recognition_territory_watch
+- historic_tract_watch
+- manually_digitized_judgment_area
+- approximate_historic_boundary
+- descriptive_boundary_only
+- non-authoritative_reference_overlay
+
+TOP-LEVEL UX
+When a property hits one of these layers, show a yellow or red “Heightened Review” banner, not a simple yes/no result.
+
+Banner examples:
+- “This property falls within a high-sensitivity Indigenous rights / title watch area.”
+- “This result is based on a court decision, agreement text, or historic tract mapping and requires source-specific review.”
+- “Informational screening only. Legal, title, and Indigenous relations review recommended.”
+
+ADD THESE OVERLAYS
+
+A) COWICHAN TITLE LANDS / TL’UQTINUS OVERLAY
+Purpose:
+Flag properties in or near the Richmond-area lands implicated by Cowichan Tribes v. Canada, 2025 BCSC 1490.
+
+Data handling:
+- Build a dedicated overlay named:
+  “Cowichan Title Lands (Court / Judgment Watch Layer)”
+- If a precise machine-readable court polygon is unavailable, create a manually digitized polygon from the best publicly available authoritative map or briefing material.
+- Store provenance:
+  - source_type = court_decision_or_official_briefing
+  - geometry_method = manual_digitization
+  - authority_level = high_for_context_not_cadastral
+  - geometry_confidence = medium unless exact coordinates available
+- Add optional buffer warnings:
+  - inside overlay
+  - within 100m
+  - within 250m
+  - within 500m
+
+Cowichan layer result language:
+- “This property appears to fall within or near the Richmond-area lands addressed in Cowichan Tribes v. Canada, 2025 BCSC 1490.”
+- “This overlay may be based on manually digitized court-related mapping and is for screening only.”
+- “Review source documents and obtain legal/title advice before relying on this result.”
+
+B) MUSQUEAM TERRITORY WATCH OVERLAY
+Purpose:
+Create a special watch overlay for Musqueam territory references arising from the 2026 rights recognition agreement and related territorial descriptions.
+
+Critical handling rules:
+- DO NOT label this layer as a treaty
+- DO NOT label this layer as a finalized land claim boundary
+- DO NOT imply that private lands are automatically affected
+- DO NOT imply the agreement itself fixes exact parcel-level legal consequences
+
+Create two Musqueam sublayers:
+1. “Musqueam Territory (Descriptive Agreement Watch Layer)”
+2. “Musqueam Statement of Intent / Declaration Approximate Boundary”
+
+Geometry logic:
+- Source the descriptive territory text from the 2026 agreement and any publicly available Musqueam declaration / statement-of-intent mapping.
+- If the agreement itself lacks a map, do NOT fabricate a precise cadastral boundary.
+- Use one of:
+  - imported approximate SOI polygon if publicly available
+  - manually traced approximate territory from public map references
+  - descriptive boundary placeholder geometry if needed
+- Clearly mark geometry confidence:
+  - low if description-based
+  - medium if using public approximate boundary maps
+- Mark authority level:
+  - contextual / non-cadastral
+
+Musqueam layer result language:
+- “This property falls within an approximate Musqueam territory watch area derived from public declaration / agreement materials.”
+- “The 2026 rights recognition agreement is not itself a treaty or land claim agreement and does not by itself establish a parcel-level legal determination.”
+- “This overlay is approximate and for informational screening only.”
+
+C) HALDIMAND TRACT WATCH OVERLAY
+Purpose:
+Add a historic tract watch layer for the Haldimand Tract along the Grand River.
+
+Layer name:
+“Haldimand Tract (Historic / Litigation Watch Layer)”
+
+Geometry logic:
+- Import the best public tract geometry available from official or widely used historic tract mapping sources.
+- If multiple public tract versions exist, support:
+  - primary polygon
+  - alternate reference polygon(s)
+- Mark this as:
+  - historic_tract_watch
+  - approximate_historic_boundary
+- Add corridor search optimization because this tract is large.
+
+Haldimand result language:
+- “This property appears to fall within the historic Haldimand Tract reference area.”
+- “This is a historic/litigation watch overlay and not a parcel-level legal determination.”
+- “Users should review active Six Nations litigation materials and obtain legal/title advice.”
+
+DATABASE CHANGES
+Add fields to indigenous_features or create watch_overlays table with:
+- id
+- slug
+- overlay_name
+- overlay_group
+- jurisdiction
+- nation_name
+- legal_context_type
+- source_summary
+- source_url
+- source_date
+- geometry_method
+- geometry_confidence
+- authority_level
+- disclaimer_text
+- status_label
+- active
+- geometry
+- metadata_json
+
+Recommended values:
+legal_context_type:
+- court_decision
+- rights_recognition_agreement
+- historic_tract_litigation
+- declaration_boundary
+- statement_of_intent_boundary
+
+geometry_method:
+- imported_official_polygon
+- imported_public_reference_polygon
+- manual_digitization
+- descriptive_approximation
+
+geometry_confidence:
+- high
+- medium
+- low
+
+authority_level:
+- authoritative
+- semi-authoritative
+- contextual
+- non-cadastral_reference
+
+SEARCH / RESULT PRIORITY
+If any of these watch overlays are hit:
+- elevate result card above ordinary treaty layers
+- show “Heightened Review” badge
+- show source-specific disclaimer first
+- require source link display in the UI
+
+RESULT CARDS
+Each of the 3 overlays should show:
+- Overlay name
+- Why it matters
+- Source basis
+- Geometry confidence
+- Legal context type
+- Source link
+- Source date
+- Notes on whether the shape is approximate or manually digitized
+
+MAP UI
+- Add a separate toggle group:
+  “High-Sensitivity / Active Contestation”
+- Use distinct styling from ordinary treaty polygons
+- Suggested styles:
+  - Cowichan = red hatch
+  - Musqueam = amber hatch
+  - Haldimand = purple outline / translucent fill
+- Add legend entry:
+  “Approximate / research overlay — not cadastral or legal advice”
+
+ADMIN TOOLS
+Add admin controls to:
+- edit overlay metadata
+- replace polygon geometry
+- upload GeoJSON manually
+- mark a layer as superseded
+- attach multiple source URLs
+- change disclaimer copy without code changes
+
+SOURCE HANDLING RULES
+- Prefer official source geometry where available
+- If unavailable, allow manually curated research polygons
+- Every manually curated polygon must save:
+  - created_by
+  - created_at
+  - source_basis
+  - digitization_notes
+  - reviewed_by nullable
+  - review_status
+
+DO NOT
+- do not say “new land claim added”
+- do not say “this home is under claim”
+- do not imply parcel title has changed automatically
+- do not treat descriptive territory text as a precise parcel boundary
+- do not hide uncertainty
+
+SUCCESS CRITERIA
+A user entering an address in Richmond, Metro Vancouver, or the Grand River corridor can see whether the property falls within one of these high-sensitivity research overlays, understand exactly what type of overlay it is, how confident the geometry is, and what additional review may be needed.

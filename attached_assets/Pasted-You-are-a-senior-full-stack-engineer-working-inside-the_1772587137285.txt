@@ -1,0 +1,188 @@
+You are a senior full-stack engineer working inside the existing realist.ca Replit app.
+
+GOAL
+Build a “Fixed vs Variable Interest Rate” calculator tool and integrate it in 3 places:
+1) On the Mortgage Rates page (embedded section)
+2) Replace the existing “RenoQuote” button in the “Analyze Any Deal” area on the main homepage with a “Fixed vs Variable” button that deep-links to this tool (or opens modal)
+3) Add it as a button/card on the All Tools page
+
+This tool compares total interest cost for FIXED vs VARIABLE mortgages over:
+- First 5 years (with principal vs interest breakdown)
+- First 10 years (with principal vs interest breakdown)
+- Full 25-year amortization (with principal vs interest breakdown)
+
+It must:
+- Use the site’s existing rates database populated by the rate scraper (do not hardcode rates)
+- Provide a Base Case plus Best Case / Worst Case scenarios where VARIABLE rate path changes (fixed rate stays constant for the chosen term)
+- Include sliders controlling “rate path severity” (how much variable rises/falls)
+- Add a compact explanation above each table
+
+Also:
+Update the rate scraper (or add a companion job) to compute a simple “market-implied base case” variable-rate path using Canada 10-year bond yield as an input. Store this forecast in DB for the calculator to use as the default base case (user can override with sliders).
+
+IMPORTANT CONSTRAINTS
+- Keep existing site navigation minimal and consistent with current styling/components.
+- No breaking changes to other calculators.
+- All calculations must be deterministic and testable. Add unit tests for core amortization + scenario engine.
+- Handle missing rate data gracefully with clear UI messaging and fallbacks.
+
+------------------------------------------------------------
+FEATURE SPEC
+------------------------------------------------------------
+
+A) CALCULATOR INPUTS (UI)
+Create a new route/page and reusable component:
+- Route: /tools/fixed-vs-variable (or match your existing tools routing)
+- Component: FixedVsVariableCalculator
+
+Inputs:
+1) Purchase price (optional if you already input loan directly)
+2) Down payment (optional) OR Loan amount (principal). Support both; if both are provided, loan amount wins.
+3) Amortization years (default 25; allow 5–30)
+4) Payment frequency (monthly default; optionally bi-weekly / accelerated bi-weekly if you already support this elsewhere)
+5) Fixed term to compare (default 5 years; allow 1–5, but tables must still show 5/10/25 horizons)
+6) Current fixed rate (auto-filled from DB “best available” for selected term; user editable)
+7) Current variable rate (auto-filled from DB “best available”; user editable)
+8) Variable-rate path model (radio):
+   - “Market base case (from 10y yield)” (default if available)
+   - “Manual scenario sliders”
+9) Scenario sliders (when Manual or as an “adjustment overlay” even on market base case):
+   - “Rate change direction”: Rising vs Falling (toggle)
+   - “Severity (bps over 5 years)”: slider default 0, range 0–300 bps (or 0–500 bps if you prefer)
+   - “Speed”: slider (Front-loaded vs evenly distributed vs back-loaded) OR a simple 0–100 “front-load” control
+   - Optional: “Shock year”: choose year 1–5 where the largest move occurs (advanced; only if easy)
+
+Outputs (top summary cards):
+- Monthly payment (fixed vs variable at t=0)
+- Total interest paid (5y / 10y / 25y for each)
+- Interest difference (variable - fixed) for each horizon
+- Breakeven note: “Variable must average X% lower over first 5 years to match fixed total interest” (compute)
+
+B) DATA SOURCES
+Use existing rates DB tables populated by your “rent scraper” (rate scraper). Do not add third-party calls in the calculator.
+Implement a small server endpoint (or server action) for the UI:
+GET /api/rates/mortgage?termYears=5&type=fixed|variable
+Returns:
+- bestRate (lowest)
+- medianRate (optional)
+- timestamp / source count
+If your DB already stores multiple lenders/entries, pick “best available” as min.
+
+C) CALCULATION ENGINE (CORE LOGIC)
+Implement a shared library module:
+- /lib/mortgage/amortization.ts (or similar)
+
+Requirements:
+1) Fixed mortgage:
+   - Rate constant for selected term and for the full horizon if user assumes renewal at same rate OR (better) treat fixed as “5-year fixed then renew at same fixed” for 10y/25y comparisons.
+   - Implement it as: for 10y/25y, assume fixed renews at the SAME fixed rate unless you add a renewal slider. Keep it simple, document assumption.
+
+2) Variable mortgage:
+   - Interest rate changes over time per scenario path (monthly steps).
+   - Payment type assumption:
+     - Default: “Adjustable-rate mortgage (ARM-style)” where payment recalculates when rate changes to keep amortization on track.
+     - Optionally support “VRM constant payment” if you already do it, but default to adjustable for clarity.
+
+3) Output metrics per horizon:
+   For each horizon (5y, 10y, 25y):
+   - totalPaid
+   - totalInterestPaid
+   - totalPrincipalPaid
+   - endingBalance
+   - table rows by year: Year, Starting Balance, Payment, Interest Paid (year), Principal Paid (year), Ending Balance, Avg Rate (year)
+
+4) Scenario engine for variable:
+   - Represent rate path as an array of monthly rates for at least 25*12 months.
+   - Base case path:
+     - If “market base case” exists in DB, use that array (or yearly nodes interpolated to monthly).
+     - If missing, base case = constant variable rate.
+   - Best/Worst:
+     - If direction = rising: worst = +severity, best = -severity (or 0)
+     - If direction = falling: best = -severity, worst = +severity
+     - Apply severity over first 5 years primarily; for 10/25, keep rate at the final level after year 5 (simple) unless you have stored longer forecasts.
+
+5) Sliders mapping:
+   - Severity in bps translates to max delta over 5 years.
+   - Speed/front-load controls the curve. Implement a simple curve:
+     - evenly distributed: linear delta from month 1..60
+     - front-loaded: 60% of delta occurs in first 24 months
+     - back-loaded: 60% occurs in last 24 months
+   Make this deterministic and unit-testable.
+
+D) 10Y BOND YIELD “MARKET BASE CASE” FORECAST
+Update the rate scraper (or add a new job file) that:
+1) Pulls Canada 10-year bond yield from your existing data source (if you already store it). If not stored:
+   - Add a minimal fetch step from a reliable source already used in the app OR allow manual admin input (prefer: reuse existing macro data pipeline if present).
+2) Produce a simple implied variable-rate path:
+   - We are not building a true yield-curve model. Use a simple rule-based mapping:
+     - Base variable rate today = current variable from DB
+     - Expected change over next 5 years = k * (10y_yield - rolling_12m_avg_10y_yield)
+       where k default ~0.5–0.8, clamp to +/- 200 bps
+   - Convert expected change to a monthly path using the “even/front/back-loaded” profile (default evenly)
+3) Store forecast in DB:
+   - Table: rate_forecasts
+     columns: id, created_at, forecast_type ('ca10y_simple'), term_months, path_json (array of monthly rates), assumptions_json
+   - Also store the 10y yield value used and the avg used.
+
+If you cannot reliably fetch 10y yield in this repo, then:
+- implement the DB table + UI hooks,
+- and default forecast_type to null with graceful UI fallback to constant-rate base case.
+Do not block shipping the calculator on missing macro data.
+
+E) PAGE COPY (SHORT EXPLANATIONS ABOVE TABLES)
+Add concise explainer text above each horizon section:
+- 5 years: “Most Canadians renew within ~5 years. This shows your interest vs principal during the first term.”
+- 10 years: “A longer look that captures one renewal cycle. Assumes the fixed rate renews at the same rate.”
+- 25 years: “Full amortization cost. Variable results depend heavily on the rate path you choose.”
+
+Also add a 2–3 line note near scenario controls:
+“Fixed stays constant (by definition) for the selected term. Variable moves with the benchmark. Use the sliders to stress-test rate paths.”
+
+F) UI / TABLES
+Each horizon section should have:
+- Heading + short explanation
+- Tabs or columns for: Fixed | Variable Base | Variable Best | Variable Worst
+- A compact summary row (Total Interest, Total Principal, Ending Balance)
+- A table by year (year 1..horizonYears)
+
+Keep tables responsive:
+- On mobile: collapse to summary cards + expandable yearly rows.
+
+G) INTEGRATIONS
+1) Mortgage Rates page:
+- Add an embedded “Compare Fixed vs Variable” module with a button “Open full calculator” linking to /tools/fixed-vs-variable
+- It should auto-load the current best fixed/variable rates (selected term default 5y).
+
+2) Home page “Analyze Any Deal” area:
+- Remove/replace RenoQuote button with “Fixed vs Variable” button.
+- Clicking opens a modal with the calculator OR navigates to the calculator page (preferred: navigate for speed).
+
+3) All Tools page:
+- Add a card with icon + short desc.
+
+H) TESTS
+Add unit tests:
+- amortization fixed constant rate matches known values (use a known principal, rate, amortization)
+- variable path linear increase produces higher interest than constant path
+- scenario curve front-loaded vs back-loaded changes 5y interest in expected direction
+
+I) ERROR HANDLING
+- If DB returns no rates: show “Rates unavailable right now” and allow manual rate entry.
+- If forecast missing: label base case as “Current rate held constant” and allow sliders.
+
+DELIVERABLES
+- New page + route
+- New component(s)
+- New lib amortization/scenario modules
+- API endpoints for rates + forecast retrieval
+- DB migration for rate_forecasts (if needed)
+- Scraper/job update to compute/store forecast (best effort)
+- Integration edits on Mortgage Rates page, Home page, All Tools page
+- Tests passing
+- Short inline docs/comments for assumptions
+
+IMPLEMENT NOW using the existing stack and patterns in this repo. After implementation, provide:
+1) Files changed list
+2) How to run locally
+3) Any migrations to apply
+4) Quick QA checklist

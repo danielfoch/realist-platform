@@ -1,0 +1,8 @@
+date,mortgage_30y_rate_pct,source_series,source_url
+2026-03-12,6.11,MORTGAGE30US,https://fred.stlouisfed.org/series/MORTGAGE30US
+2026-03-19,6.22,MORTGAGE30US,https://fred.stlouisfed.org/series/MORTGAGE30US
+2026-03-26,6.38,MORTGAGE30US,https://fred.stlouisfed.org/series/MORTGAGE30US
+2026-04-02,6.46,MORTGAGE30US,https://fred.stlouisfed.org/series/MORTGAGE30US
+2026-04-09,6.37,MORTGAGE30US,https://fred.stlouisfed.org/series/MORTGAGE30US
+2026-04-16,6.3,MORTGAGE30US,https://fred.stlouisfed.org/series/MORTGAGE30US
+2026-04-23,6.23,MORTGAGE30US,https://fred.stlouisfed.org/series/MORTGAGE30US
