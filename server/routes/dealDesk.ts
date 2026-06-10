@@ -155,6 +155,38 @@ export function registerDealDeskRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/deal-desk/opportunities/bulk-status", isAdmin, async (req, res) => {
+    try {
+      const schema = z.object({
+        ids: z.array(z.string().min(1)).min(1),
+        status: z.string().min(1),
+      });
+      const { ids, status } = schema.parse(req.body);
+      const adminUserId = (req as any).session?.userId || null;
+
+      const updated = await Promise.all(
+        ids.map(id => storage.updateOpportunityStatus(id, { status }))
+      );
+
+      await logUserActivity(req, {
+        userId: adminUserId,
+        sessionId: (req as any).sessionID || null,
+        eventName: "crm_bulk_status_updated",
+        dealId: null,
+        source: "deal_desk_admin",
+        metadata: { ids, newStatus: status, count: ids.length },
+      });
+
+      res.json({ ok: true, updated: updated.filter(Boolean).length });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ ok: false, errors: err.errors });
+      }
+      console.error("Bulk update opportunity status error:", err);
+      res.status(500).json({ ok: false });
+    }
+  });
+
   app.patch("/api/deal-desk/opportunities/:id/status", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;

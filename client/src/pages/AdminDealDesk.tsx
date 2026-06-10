@@ -30,7 +30,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock, CheckSquare } from "lucide-react";
 import { Link } from "wouter";
 
 type Opportunity = {
@@ -138,6 +139,8 @@ export default function AdminDealDesk() {
   const [newAssignedTo, setNewAssignedTo] = useState("");
   const [lostReason, setLostReason] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<string>("");
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["/api/deal-desk/stats"],
@@ -193,6 +196,44 @@ export default function AdminDealDesk() {
       toast({ title: "Update failed", variant: "destructive" });
     },
   });
+
+  const bulkStatusMutation = useMutation({
+    mutationFn: (payload: { ids: string[]; status: string }) =>
+      apiRequest("PATCH", `/api/deal-desk/opportunities/bulk-status`, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/activity"] });
+      setSelectedIds(new Set());
+      setBulkStatus("");
+      toast({ title: `${variables.ids.length} opportunit${variables.ids.length === 1 ? "y" : "ies"} moved to "${variables.status}"` });
+    },
+    onError: () => {
+      toast({ title: "Bulk update failed", variant: "destructive" });
+    },
+  });
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === opportunities.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(opportunities.map(o => o.opportunity.id)));
+    }
+  }
+
+  function applyBulkStatus() {
+    if (!bulkStatus || selectedIds.size === 0) return;
+    bulkStatusMutation.mutate({ ids: Array.from(selectedIds), status: bulkStatus });
+  }
 
   function openEdit(opp: Opportunity) {
     setEditingOpp(opp);
@@ -371,10 +412,53 @@ export default function AdminDealDesk() {
               No opportunities yet. Submit a deal at <a href="/deal-desk" className="underline">/deal-desk</a>.
             </div>
           ) : (
+            <div className="space-y-2">
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 rounded-md border bg-muted/50 px-4 py-2" data-testid="bulk-action-bar">
+                  <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Select value={bulkStatus} onValueChange={setBulkStatus}>
+                      <SelectTrigger className="h-8 w-40 text-xs" data-testid="select-bulk-status">
+                        <SelectValue placeholder="Move to…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUSES.map(s => (
+                          <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      disabled={!bulkStatus || bulkStatusMutation.isPending}
+                      onClick={applyBulkStatus}
+                      data-testid="button-apply-bulk-status"
+                    >
+                      {bulkStatusMutation.isPending ? "Updating…" : "Apply"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedIds(new Set())}
+                      data-testid="button-clear-selection"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              )}
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={opportunities.length > 0 && selectedIds.size === opportunities.length}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Property</TableHead>
                     <TableHead>Score</TableHead>
@@ -390,8 +474,17 @@ export default function AdminDealDesk() {
                 <TableBody>
                   {opportunities.map((row) => {
                     const latestEvent = activityFeed.find(e => e.dealId === row.deal?.id);
+                    const isSelected = selectedIds.has(row.opportunity.id);
                     return (
-                      <TableRow key={row.opportunity.id} data-testid={`row-opportunity-${row.opportunity.id}`}>
+                      <TableRow key={row.opportunity.id} data-testid={`row-opportunity-${row.opportunity.id}`} className={isSelected ? "bg-muted/40" : ""}>
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelect(row.opportunity.id)}
+                            aria-label={`Select opportunity ${row.opportunity.id}`}
+                            data-testid={`checkbox-select-${row.opportunity.id}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="text-sm font-medium">{row.lead?.name ?? "—"}</div>
                           <div className="text-xs text-muted-foreground">{row.lead?.email ?? "—"}</div>
@@ -456,6 +549,7 @@ export default function AdminDealDesk() {
                   })}
                 </TableBody>
               </Table>
+            </div>
             </div>
           )}
         </TabsContent>
