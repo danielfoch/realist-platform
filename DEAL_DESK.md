@@ -6,7 +6,16 @@ status history, consent, and email triggers all live here. External CRMs (GHL
 etc.) are execution systems fed by the webhook/exports — state changes only
 count when written back through this API.
 
-## Setup
+> **PRODUCTION NOTE:** the live realist.ca app's Deal Desk lives in
+> `server/dealDesk.ts` + `shared/dealDeskScoring.ts` + `client/` pages, with
+> schema in `shared/schema.ts` deployed via **`npm run db:push`** — NEVER
+> `npm run migrate` (the production DB is Drizzle-managed; migrate.ts will
+> refuse to run there). The sections below describe the original idx-app
+> implementation (`src/` + `frontend/`), kept as the reference spec. Scoring
+> weights, bands, statuses, SLA behavior, and email-trigger semantics are
+> identical in both.
+
+## Setup (idx app only — for production see the note above)
 
 1. Run migrations: `npm run migrate` (applies `db/migrations/013_deal_desk_loop.sql`)
 2. Replit Secrets / env vars:
