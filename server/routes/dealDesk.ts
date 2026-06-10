@@ -120,6 +120,7 @@ export function registerDealDeskRoutes(app: Express) {
               intentScore: scoreResult.intentScore,
               status: scoreResult.status,
               suggestedNextAction: scoreResult.suggestedNextAction,
+              analysisId: input.analysisId || null,
             },
             status: "pending",
           })

@@ -213,6 +213,61 @@ function buildFinancingFollowup(payload: Record<string, any>): { subject: string
   };
 }
 
+function buildWarmLeadUserNudge(payload: Record<string, any>): { subject: string; html: string; to: string } {
+  const firstName = (payload.name || "there").split(" ")[0];
+  const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+  const baseUrl = domain ? `https://${domain}` : "https://realist.ca";
+  const analysisLink = payload.analysisId
+    ? `${baseUrl}/analyze?id=${payload.analysisId}`
+    : `${baseUrl}/analyze`;
+  const bookingLink = "https://realist.ca/deal-desk";
+
+  const html = wrapEmail(`
+    ${emailHeader("Your Deal Analysis — Ready to Take the Next Step?", "Realist Deal Desk", "#22c55e")}
+    <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+      <p style="color: #111827; font-size: 15px; margin: 0 0 12px 0;">Hi ${firstName},</p>
+      <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 0 0 16px 0;">
+        You recently submitted a deal to the Realist Deal Desk — we wanted to follow up and make sure you have everything you need to move forward.
+      </p>
+
+      ${payload.address ? `
+      <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
+        <p style="margin: 0 0 10px 0; font-weight: 600; color: #111827; font-size: 14px;">Your property:</p>
+        <table style="width: 100%; border-collapse: collapse;">
+          ${row("Address", payload.address)}
+          ${payload.market ? row("Market", payload.market) : ""}
+          ${payload.propertyType ? row("Property Type", payload.propertyType) : ""}
+        </table>
+      </div>
+      ` : ""}
+
+      <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 16px 0;">
+        Our team of real estate investment specialists can walk you through the numbers, help you stress-test your assumptions, and connect you with the right financing or buying resources — at no cost to you.
+      </p>
+
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${bookingLink}" style="display: inline-block; background: #22c55e; color: white; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 15px;">
+          Book a Free Strategy Call →
+        </a>
+      </div>
+
+      <p style="color: #374151; font-size: 14px; line-height: 1.7; margin: 16px 0;">
+        Or, if you'd like to keep refining your numbers first, you can <a href="${analysisLink}" style="color: #22c55e; text-decoration: none; font-weight: 500;">return to your analysis here</a>.
+      </p>
+
+      <p style="color: #374151; font-size: 14px; margin: 20px 0 0 0;">
+        — The Realist Team
+      </p>
+    </div>
+    ${emailFooter()}
+  `);
+  return {
+    subject: `Your deal on ${payload.address || "the property"} — ready to talk numbers?`,
+    html,
+    to: payload.email,
+  };
+}
+
 function buildLostReasonNurture(payload: Record<string, any>, leadInfo?: { name: string; email: string } | null, teamEmail?: string): { subject: string; html: string; to: string[] } {
   const name = leadInfo?.name || "the lead";
   const recipients: string[] = [];
@@ -254,7 +309,7 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
   const payload = (trigger.payload as Record<string, any>) || {};
   const now = new Date();
 
-  if (trigger.triggerType === "warm_lead_24h_followup") {
+  if (trigger.triggerType === "warm_lead_24h_followup" || trigger.triggerType === "warm_lead_user_nudge") {
     const createdAt = new Date(trigger.createdAt);
     const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
     if (hoursElapsed < 24) {
@@ -297,6 +352,16 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
         }
         const { subject, html } = buildWarmLeadFollowup(payload);
         result = await client.emails.send({ from: fromEmail, to: recipients, subject, html });
+        break;
+      }
+
+      case "warm_lead_user_nudge": {
+        if (!payload.email) {
+          await storage.updateEmailTriggerStatus(trigger.id, "failed", undefined, "No recipient email in payload");
+          return;
+        }
+        const { subject, html, to } = buildWarmLeadUserNudge(payload);
+        result = await client.emails.send({ from: fromEmail, to, subject, html });
         break;
       }
 
@@ -358,7 +423,7 @@ export async function processPendingEmailTriggers(): Promise<{ processed: number
 
   for (const trigger of pending) {
     const statusBefore = trigger.status;
-    if (trigger.triggerType === "warm_lead_24h_followup") {
+    if (trigger.triggerType === "warm_lead_24h_followup" || trigger.triggerType === "warm_lead_user_nudge") {
       const hoursElapsed = (Date.now() - new Date(trigger.createdAt).getTime()) / (1000 * 60 * 60);
       if (hoursElapsed < 24) {
         skipped++;

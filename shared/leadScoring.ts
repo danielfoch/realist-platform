@@ -88,6 +88,7 @@ export function selectEmailTriggers(
   const triggers: string[] = ["deal_submitted_confirmation"];
   if (status === "hot") triggers.push("hot_lead_immediate_followup");
   if (status === "warm") triggers.push("warm_lead_24h_followup");
+  if (status === "warm" || status === "nurture") triggers.push("warm_lead_user_nudge");
   if (financingHelpWanted) triggers.push("financing_interest_followup");
   return triggers;
 }
