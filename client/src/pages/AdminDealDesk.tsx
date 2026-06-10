@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -202,8 +202,18 @@ export default function AdminDealDesk() {
   });
   const [newEmailInput, setNewEmailInput] = useState<string>("");
   const settingsLoaded = settingsData?.settings;
-  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const BANNER_LS_KEY = "dealDesk.emailBannerDismissed";
+  const [bannerDismissed, setBannerDismissed] = useState(
+    () => localStorage.getItem(BANNER_LS_KEY) === "true"
+  );
   const [currentTab, setCurrentTab] = useState("opportunities");
+
+  useEffect(() => {
+    if (settingsLoaded?.effectiveEmail) {
+      localStorage.removeItem(BANNER_LS_KEY);
+      setBannerDismissed(false);
+    }
+  }, [settingsLoaded?.effectiveEmail]);
 
   const saveSettingsMutation = useMutation({
     mutationFn: (payload: { notifyEmails: string[] }) =>
@@ -473,7 +483,7 @@ export default function AdminDealDesk() {
             .
           </div>
           <button
-            onClick={() => setBannerDismissed(true)}
+            onClick={() => { localStorage.setItem(BANNER_LS_KEY, "true"); setBannerDismissed(true); }}
             className="ml-auto hover:opacity-70"
             aria-label="Dismiss banner"
             data-testid="button-dismiss-banner"
