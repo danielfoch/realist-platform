@@ -37,7 +37,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock, CheckSquare, Settings } from "lucide-react";
+import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock, CheckSquare, Settings, History, ArrowRight, UserCheck, StickyNote } from "lucide-react";
 import { Link } from "wouter";
 
 type Opportunity = {
@@ -104,6 +104,20 @@ type EmailTrigger = {
   createdAt: string;
 };
 
+type HistoryEntry = {
+  id: string;
+  opportunityId: string;
+  changedByUserId: string | null;
+  changedByName: string | null;
+  changeType: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  fromAssignedTo: string | null;
+  toAssignedTo: string | null;
+  noteContent: string | null;
+  createdAt: string;
+};
+
 const STATUSES = [
   "new", "hot", "warm", "nurture", "contacted", "qualified",
   "booked_call", "preapproval_started", "buyer_agency_signed",
@@ -141,6 +155,7 @@ export default function AdminDealDesk() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [editingOpp, setEditingOpp] = useState<Opportunity | null>(null);
+  const [dialogTab, setDialogTab] = useState<"edit" | "history">("edit");
   const [newStatus, setNewStatus] = useState("");
   const [newAssignedTo, setNewAssignedTo] = useState("");
   const [lostReason, setLostReason] = useState("");
@@ -192,6 +207,12 @@ export default function AdminDealDesk() {
     queryKey: ["/api/deal-desk/email-triggers"],
   });
 
+  const { data: opportunityHistory = [], isLoading: historyLoading } = useQuery<HistoryEntry[]>({
+    queryKey: ["/api/deal-desk/opportunities", editingOpp?.opportunity.id, "history"],
+    queryFn: () => apiRequest<HistoryEntry[]>("GET", `/api/deal-desk/opportunities/${editingOpp!.opportunity.id}/history`),
+    enabled: !!editingOpp,
+  });
+
   const updateMutation = useMutation({
     mutationFn: (payload: { id: string; status: string; assignedTo?: string; lostReason?: string; adminNotes?: string | null }) =>
       apiRequest("PATCH", `/api/deal-desk/opportunities/${payload.id}`, {
@@ -200,10 +221,11 @@ export default function AdminDealDesk() {
         lostReason: payload.lostReason,
         adminNotes: payload.adminNotes,
       }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/activity"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/opportunities", variables.id, "history"] });
       setEditingOpp(null);
       toast({ title: "Opportunity updated" });
     },
@@ -278,10 +300,71 @@ export default function AdminDealDesk() {
 
   function openEdit(opp: Opportunity) {
     setEditingOpp(opp);
+    setDialogTab("edit");
     setNewStatus(opp.opportunity.status);
     setNewAssignedTo(opp.opportunity.assignedTo || "");
     setLostReason(opp.opportunity.lostReason || "");
     setAdminNotes(opp.opportunity.adminNotes || "");
+  }
+
+  function renderHistoryEntry(entry: HistoryEntry) {
+    if (entry.changeType === "status_changed") {
+      return (
+        <div className="flex items-start gap-3" data-testid={`history-entry-${entry.id}`}>
+          <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <ArrowRight className="h-3 w-3 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm">
+              Status changed{" "}
+              <Badge variant="outline" className="text-xs">{entry.fromStatus}</Badge>
+              {" → "}
+              <Badge variant="outline" className="text-xs">{entry.toStatus}</Badge>
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">{fmtTime(entry.createdAt)}</div>
+          </div>
+        </div>
+      );
+    }
+    if (entry.changeType === "assigned") {
+      return (
+        <div className="flex items-start gap-3" data-testid={`history-entry-${entry.id}`}>
+          <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+            <UserCheck className="h-3 w-3 text-blue-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm">
+              Assigned to <span className="font-medium">{entry.toAssignedTo || "—"}</span>
+              {entry.fromAssignedTo ? <span className="text-muted-foreground"> (was {entry.fromAssignedTo})</span> : null}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">{fmtTime(entry.createdAt)}</div>
+          </div>
+        </div>
+      );
+    }
+    if (entry.changeType === "note_added") {
+      return (
+        <div className="flex items-start gap-3" data-testid={`history-entry-${entry.id}`}>
+          <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+            <StickyNote className="h-3 w-3 text-amber-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium">Note saved</div>
+            <div className="mt-1 rounded bg-muted px-2 py-1.5 text-xs text-muted-foreground whitespace-pre-wrap">{entry.noteContent}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{fmtTime(entry.createdAt)}</div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-start gap-3" data-testid={`history-entry-${entry.id}`}>
+        <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40 mt-2" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm text-muted-foreground">{entry.changeType}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">{fmtTime(entry.createdAt)}</div>
+        </div>
+      </div>
+    );
   }
 
   function saveEdit() {
@@ -854,67 +937,106 @@ export default function AdminDealDesk() {
       </Tabs>
 
       <Dialog open={!!editingOpp} onOpenChange={open => { if (!open) setEditingOpp(null); }}>
-        <DialogContent data-testid="dialog-edit-opportunity">
+        <DialogContent className="max-w-lg" data-testid="dialog-edit-opportunity">
           <DialogHeader>
-            <DialogTitle>Update Opportunity</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Update Opportunity
+            </DialogTitle>
           </DialogHeader>
           {editingOpp && (
-            <div className="space-y-4 py-2">
-              <div className="text-sm">
+            <>
+              <div className="text-sm border-b pb-3">
                 <div className="font-medium">{editingOpp.lead?.name}</div>
                 <div className="text-muted-foreground">{editingOpp.deal?.address}</div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger data-testid="select-new-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Assigned to</label>
-                <Input
-                  value={newAssignedTo}
-                  onChange={e => setNewAssignedTo(e.target.value)}
-                  placeholder="Team member name"
-                  data-testid="input-assigned-to"
-                />
-              </div>
-              {newStatus === "lost" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Lost reason</label>
-                  <Input
-                    value={lostReason}
-                    onChange={e => setLostReason(e.target.value)}
-                    placeholder="e.g. Price too high, went with competitor"
-                    data-testid="input-lost-reason"
-                  />
-                </div>
-              )}
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-1">
-                  <FileText className="h-3.5 w-3.5" /> Admin Notes
-                </label>
-                <Textarea
-                  value={adminNotes}
-                  onChange={e => setAdminNotes(e.target.value)}
-                  placeholder="Internal notes visible only to the team…"
-                  rows={4}
-                  data-testid="textarea-admin-notes"
-                />
-              </div>
-            </div>
+              <Tabs value={dialogTab} onValueChange={v => setDialogTab(v as "edit" | "history")}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="edit" className="flex-1" data-testid="dialog-tab-edit">
+                    <FileText className="h-3.5 w-3.5 mr-1.5" /> Edit
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="flex-1" data-testid="dialog-tab-history">
+                    <History className="h-3.5 w-3.5 mr-1.5" /> History
+                    {opportunityHistory.length > 0 && (
+                      <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-medium leading-none">
+                        {opportunityHistory.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="edit" className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Status</label>
+                    <Select value={newStatus} onValueChange={setNewStatus}>
+                      <SelectTrigger data-testid="select-new-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Assigned to</label>
+                    <Input
+                      value={newAssignedTo}
+                      onChange={e => setNewAssignedTo(e.target.value)}
+                      placeholder="Team member name"
+                      data-testid="input-assigned-to"
+                    />
+                  </div>
+                  {newStatus === "lost" && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Lost reason</label>
+                      <Input
+                        value={lostReason}
+                        onChange={e => setLostReason(e.target.value)}
+                        placeholder="e.g. Price too high, went with competitor"
+                        data-testid="input-lost-reason"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1">
+                      <FileText className="h-3.5 w-3.5" /> Admin Notes
+                    </label>
+                    <Textarea
+                      value={adminNotes}
+                      onChange={e => setAdminNotes(e.target.value)}
+                      placeholder="Internal notes visible only to the team…"
+                      rows={4}
+                      data-testid="textarea-admin-notes"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setEditingOpp(null)} data-testid="button-cancel-edit">Cancel</Button>
+                    <Button onClick={saveEdit} disabled={updateMutation.isPending} data-testid="button-save-status">
+                      {updateMutation.isPending ? "Saving…" : "Save"}
+                    </Button>
+                  </DialogFooter>
+                </TabsContent>
+
+                <TabsContent value="history" className="pt-2">
+                  {historyLoading ? (
+                    <div className="py-8 text-center text-sm text-muted-foreground">Loading history…</div>
+                  ) : opportunityHistory.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-muted-foreground" data-testid="empty-history">
+                      No history yet. Changes will appear here after you save.
+                    </div>
+                  ) : (
+                    <div className="space-y-4 max-h-80 overflow-y-auto pr-1" data-testid="opportunity-history">
+                      {opportunityHistory.map(entry => (
+                        <div key={entry.id}>{renderHistoryEntry(entry)}</div>
+                      ))}
+                    </div>
+                  )}
+                  <DialogFooter className="pt-4">
+                    <Button variant="ghost" onClick={() => setEditingOpp(null)}>Close</Button>
+                  </DialogFooter>
+                </TabsContent>
+              </Tabs>
+            </>
           )}
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditingOpp(null)} data-testid="button-cancel-edit">Cancel</Button>
-            <Button onClick={saveEdit} disabled={updateMutation.isPending} data-testid="button-save-status">
-              {updateMutation.isPending ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

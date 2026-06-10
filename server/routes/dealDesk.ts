@@ -194,7 +194,14 @@ export function registerDealDeskRoutes(app: Express) {
       const { status } = schema.parse(req.body);
       const adminUserId = (req as any).session?.userId || null;
 
-      const opportunity = await storage.updateOpportunityStatus(id, { status });
+      const existing = await storage.getOpportunityById(id);
+      const prevStatus = existing?.status;
+
+      const opportunity = await storage.updateOpportunityStatus(
+        id,
+        { status },
+        { changedByUserId: adminUserId, prevStatus },
+      );
       if (!opportunity) {
         return res.status(404).json({ ok: false, error: "Not found" });
       }
@@ -230,12 +237,23 @@ export function registerDealDeskRoutes(app: Express) {
       const updates = schema.parse(req.body);
       const adminUserId = (req as any).session?.userId || null;
 
-      const opportunity = await storage.updateOpportunityStatus(id, {
-        status: updates.status,
-        assignedTo: updates.assignedTo ?? undefined,
-        lostReason: updates.lostReason ?? undefined,
-        adminNotes: updates.adminNotes ?? undefined,
-      });
+      const existing = await storage.getOpportunityById(id);
+
+      const opportunity = await storage.updateOpportunityStatus(
+        id,
+        {
+          status: updates.status,
+          assignedTo: updates.assignedTo ?? undefined,
+          lostReason: updates.lostReason ?? undefined,
+          adminNotes: updates.adminNotes ?? undefined,
+        },
+        {
+          changedByUserId: adminUserId,
+          prevStatus: existing?.status,
+          prevAssignedTo: existing?.assignedTo ?? null,
+          prevNotes: existing?.adminNotes ?? null,
+        },
+      );
       if (!opportunity) {
         return res.status(404).json({ ok: false, error: "Not found" });
       }
@@ -273,6 +291,17 @@ export function registerDealDeskRoutes(app: Express) {
         return res.status(400).json({ ok: false, errors: err.errors });
       }
       console.error("Update opportunity error:", err);
+      res.status(500).json({ ok: false });
+    }
+  });
+
+  app.get("/api/deal-desk/opportunities/:id/history", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const history = await storage.getOpportunityHistory(id);
+      res.json(history);
+    } catch (err) {
+      console.error("Get opportunity history error:", err);
       res.status(500).json({ ok: false });
     }
   });

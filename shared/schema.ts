@@ -3832,6 +3832,27 @@ export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
 export type InsertOpportunity = z.infer<typeof insertOpportunitySchema>;
 export type Opportunity = typeof opportunities.$inferSelect;
 
+export const opportunityHistory = pgTable("opportunity_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  opportunityId: varchar("opportunity_id").notNull().references(() => opportunities.id),
+  changedByUserId: varchar("changed_by_user_id"),
+  changedByName: text("changed_by_name"),
+  changeType: text("change_type").notNull(),
+  fromStatus: text("from_status"),
+  toStatus: text("to_status"),
+  fromAssignedTo: text("from_assigned_to"),
+  toAssignedTo: text("to_assigned_to"),
+  noteContent: text("note_content"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertOpportunityHistorySchema = createInsertSchema(opportunityHistory).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertOpportunityHistory = z.infer<typeof insertOpportunityHistorySchema>;
+export type OpportunityHistory = typeof opportunityHistory.$inferSelect;
+
 export const emailTriggers = pgTable("email_triggers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   leadId: varchar("lead_id").references(() => leads.id),

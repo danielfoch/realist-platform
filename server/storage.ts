@@ -208,6 +208,9 @@ import {
   opportunities,
   type Opportunity,
   type InsertOpportunity,
+  opportunityHistory,
+  type OpportunityHistory,
+  type InsertOpportunityHistory,
   emailTriggers,
   type EmailTrigger,
   type InsertEmailTrigger,
@@ -560,14 +563,17 @@ export interface IStorage {
   createDeal(deal: InsertDeal): Promise<Deal>;
   listDeals(): Promise<Deal[]>;
   createOpportunity(opp: InsertOpportunity): Promise<Opportunity>;
+  getOpportunityById(id: string): Promise<Opportunity | undefined>;
   listOpportunities(filters: { status?: string }): Promise<any[]>;
-  updateOpportunityStatus(id: string, updates: { status: string; assignedTo?: string; lostReason?: string; adminNotes?: string }): Promise<Opportunity | undefined>;
+  updateOpportunityStatus(id: string, updates: { status: string; assignedTo?: string; lostReason?: string; adminNotes?: string }, historyMeta?: { changedByUserId?: string | null; changedByName?: string | null; prevStatus?: string; prevAssignedTo?: string | null; prevNotes?: string | null }): Promise<Opportunity | undefined>;
   getDealDeskStats(): Promise<{
     hot: number; warm: number; new: number; lost: number; total: number;
     callsBooked: number; dealsAnalyzed: number;
     lostByReason: { reason: string; count: number }[];
   }>;
   getDealDeskActivityFeed(limit: number): Promise<any[]>;
+  createOpportunityHistory(entry: InsertOpportunityHistory): Promise<OpportunityHistory>;
+  getOpportunityHistory(opportunityId: string): Promise<OpportunityHistory[]>;
   createEmailTrigger(trigger: InsertEmailTrigger): Promise<EmailTrigger>;
   listPendingEmailTriggers(): Promise<EmailTrigger[]>;
   updateEmailTriggerStatus(id: string, status: string, sentAt?: Date, failureReason?: string): Promise<void>;
@@ -2550,6 +2556,11 @@ export class DatabaseStorage implements IStorage {
     return o;
   }
 
+  async getOpportunityById(id: string): Promise<Opportunity | undefined> {
+    const [o] = await db.select().from(opportunities).where(eq(opportunities.id, id));
+    return o ?? undefined;
+  }
+
   async listOpportunities(filters: { status?: string }): Promise<any[]> {
     const base = db
       .select({
@@ -2567,7 +2578,11 @@ export class DatabaseStorage implements IStorage {
     return base.orderBy(desc(opportunities.createdAt));
   }
 
-  async updateOpportunityStatus(id: string, updates: { status: string; assignedTo?: string; lostReason?: string; adminNotes?: string }): Promise<Opportunity | undefined> {
+  async updateOpportunityStatus(
+    id: string,
+    updates: { status: string; assignedTo?: string; lostReason?: string; adminNotes?: string },
+    historyMeta?: { changedByUserId?: string | null; changedByName?: string | null; prevStatus?: string; prevAssignedTo?: string | null; prevNotes?: string | null },
+  ): Promise<Opportunity | undefined> {
     const [updated] = await db.update(opportunities)
       .set({
         status: updates.status,
@@ -2578,7 +2593,55 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(opportunities.id, id))
       .returning();
-    return updated || undefined;
+    if (!updated) return undefined;
+
+    const meta = historyMeta ?? {};
+
+    if (meta.prevStatus !== undefined && meta.prevStatus !== updates.status) {
+      await db.insert(opportunityHistory).values({
+        opportunityId: id,
+        changedByUserId: meta.changedByUserId ?? null,
+        changedByName: meta.changedByName ?? null,
+        changeType: "status_changed",
+        fromStatus: meta.prevStatus,
+        toStatus: updates.status,
+      });
+    }
+
+    if (updates.assignedTo !== undefined && meta.prevAssignedTo !== updates.assignedTo) {
+      await db.insert(opportunityHistory).values({
+        opportunityId: id,
+        changedByUserId: meta.changedByUserId ?? null,
+        changedByName: meta.changedByName ?? null,
+        changeType: "assigned",
+        fromAssignedTo: meta.prevAssignedTo ?? null,
+        toAssignedTo: updates.assignedTo,
+      });
+    }
+
+    if (updates.adminNotes !== undefined && meta.prevNotes !== updates.adminNotes && updates.adminNotes) {
+      await db.insert(opportunityHistory).values({
+        opportunityId: id,
+        changedByUserId: meta.changedByUserId ?? null,
+        changedByName: meta.changedByName ?? null,
+        changeType: "note_added",
+        noteContent: updates.adminNotes,
+      });
+    }
+
+    return updated;
+  }
+
+  async createOpportunityHistory(entry: InsertOpportunityHistory): Promise<OpportunityHistory> {
+    const [h] = await db.insert(opportunityHistory).values(entry).returning();
+    return h;
+  }
+
+  async getOpportunityHistory(opportunityId: string): Promise<OpportunityHistory[]> {
+    return db.select()
+      .from(opportunityHistory)
+      .where(eq(opportunityHistory.opportunityId, opportunityId))
+      .orderBy(asc(opportunityHistory.createdAt));
   }
 
   async getDealDeskStats(): Promise<{
