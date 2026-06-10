@@ -3940,3 +3940,74 @@ export const insertUnderwritingAssumptionSchema = createInsertSchema(underwritin
 });
 export type InsertUnderwritingAssumption = z.infer<typeof insertUnderwritingAssumptionSchema>;
 export type UnderwritingAssumption = typeof underwritingAssumptions.$inferSelect;
+
+// ============================================================================
+// USER INTEGRATIONS — per-user OAuth connections to external providers.
+// Replaces the owner-account Replit connector for USER-facing exports: each
+// user connects their own Google account and spreadsheets land in their own
+// Drive. One row per (user, provider). Ported from the idx app
+// (user_integrations), adapted to the live users table.
+// ============================================================================
+
+export const userIntegrations = pgTable("user_integrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  provider: varchar("provider", { length: 30 }).notNull(), // google
+  refreshToken: text("refresh_token").notNull(),
+  accessToken: text("access_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  scope: text("scope"),
+  externalEmail: text("external_email"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("idx_user_integrations_user_provider").on(table.userId, table.provider),
+]);
+
+export const userIntegrationsRelations = relations(userIntegrations, ({ one }) => ({
+  user: one(users, { fields: [userIntegrations.userId], references: [users.id] }),
+}));
+
+export const insertUserIntegrationSchema = createInsertSchema(userIntegrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertUserIntegration = z.infer<typeof insertUserIntegrationSchema>;
+export type UserIntegration = typeof userIntegrations.$inferSelect;
+
+// ============================================================================
+// UNDERWRITING SHARES — "Challenge my underwriting" links over a
+// property_analyses row. Anonymous visitors get a teaser (address, city,
+// verdict, sharer name) behind an account wall; full metrics/assumptions
+// require an authenticated session. The first authenticated non-owner view
+// records acceptance. Ported from the idx app (underwriting_shares), adapted
+// to the live users / property_analyses tables.
+// ============================================================================
+
+export const underwritingShares = pgTable("underwriting_shares", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id, { onDelete: "cascade" }).notNull(),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  source: varchar("source", { length: 50 }), // my_performance, analyzer, ...
+  // Account-gate acceptance: the first authenticated non-owner viewer.
+  acceptedUserId: varchar("accepted_user_id").references(() => users.id, { onDelete: "set null" }),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_underwriting_shares_analysis").on(table.analysisId),
+  index("idx_underwriting_shares_owner").on(table.ownerUserId),
+]);
+
+export const underwritingSharesRelations = relations(underwritingShares, ({ one }) => ({
+  analysis: one(propertyAnalyses, { fields: [underwritingShares.analysisId], references: [propertyAnalyses.id] }),
+  owner: one(users, { fields: [underwritingShares.ownerUserId], references: [users.id] }),
+}));
+
+export const insertUnderwritingShareSchema = createInsertSchema(underwritingShares).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertUnderwritingShare = z.infer<typeof insertUnderwritingShareSchema>;
+export type UnderwritingShare = typeof underwritingShares.$inferSelect;

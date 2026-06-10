@@ -1,4 +1,13 @@
 // Google Sheets Integration - using Replit Connector or User OAuth tokens
+//
+// The Replit "google-sheet" connector (getUncachableGoogleSheetClient /
+// getUncachableGoogleDriveClient) authenticates as the OWNER's Google
+// account. Remaining intentional uses:
+//   - server/leadsSheet.ts: admin/internal leads export to Dan's sheet
+//   - exportToGoogleSheets / exportMLIToGoogleSheets fallback for ANONYMOUS
+//     analyzer visitors only (no account, no Drive of their own)
+// Logged-in users export through their own account — see
+// server/userGoogleSheets.ts (per-user OAuth, /api/integrations/google/*).
 import { google } from 'googleapis';
 
 // Replit connector settings cache

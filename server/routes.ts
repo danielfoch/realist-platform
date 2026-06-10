@@ -64,6 +64,7 @@ import {
   capstoneProformas,
   analyses,
   propertyAnalyses,
+  userIntegrations,
   rentPulse,
   rentListings,
   underwritingNotes,
@@ -122,6 +123,8 @@ import { logUserActivity, rebuildUserInferenceProfile } from "./userActivity";
 import { trackRealistEvent } from "./realistEvents";
 import { registerRealistEventRoutes } from "./eventsModule";
 import { registerDealDeskRoutes } from "./dealDesk";
+import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
+import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import {
   getCurrentSaleEstimate,
   lookupSoldPriceForListing,
@@ -697,6 +700,8 @@ export async function registerRoutes(
   registerAuthRoutes(app);
   registerRealistEventRoutes(app);
   registerDealDeskRoutes(app);
+  registerUserGoogleSheetsRoutes(app);
+  registerUnderwritingShareRoutes(app);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
@@ -4575,14 +4580,18 @@ export async function registerRoutes(
         return;
       }
 
-      // Check if user has their own Google OAuth tokens
+      // USER-facing export: logged-in users always export through their OWN
+      // Google account (per-user OAuth) so spreadsheets land in their Drive.
+      // Tokens come from the new user_integrations flow first, then the
+      // legacy google_oauth_tokens table for users who connected before.
       const userId = req.session?.userId;
       let userTokens = null;
+      let tokenSource: "integration" | "legacy" | null = null;
       let exportedToUserAccount = false;
       let userInfo: { name?: string; email?: string; phone?: string } = {};
-      
+
       console.log("[Google Sheets Export] User ID:", userId || "anonymous");
-      
+
       if (userId) {
         // Fetch user info
         const user = await authStorage.getUser(userId);
@@ -4593,19 +4602,49 @@ export async function registerRoutes(
             phone: user.phone || undefined,
           };
         }
-        
-        const googleToken = await storage.getGoogleOAuthToken(userId);
-        console.log("[Google Sheets Export] Token found:", !!googleToken, googleToken?.googleEmail || "no email");
-        if (googleToken) {
+
+        const [integration] = await db.select().from(userIntegrations).where(and(
+          eq(userIntegrations.userId, userId),
+          eq(userIntegrations.provider, "google"),
+        )).limit(1);
+        if (integration) {
           userTokens = {
-            accessToken: googleToken.accessToken,
-            refreshToken: googleToken.refreshToken,
-            expiresAt: googleToken.expiresAt,
+            accessToken: integration.accessToken || "",
+            refreshToken: integration.refreshToken,
+            expiresAt: integration.tokenExpiresAt,
           };
+          tokenSource = "integration";
           exportedToUserAccount = true;
+        } else {
+          const googleToken = await storage.getGoogleOAuthToken(userId);
+          console.log("[Google Sheets Export] Token found:", !!googleToken, googleToken?.googleEmail || "no email");
+          if (googleToken) {
+            userTokens = {
+              accessToken: googleToken.accessToken,
+              refreshToken: googleToken.refreshToken,
+              expiresAt: googleToken.expiresAt,
+            };
+            tokenSource = "legacy";
+            exportedToUserAccount = true;
+          }
+        }
+
+        if (!userTokens) {
+          // Logged-in but not connected: no silent fallback to the owner
+          // account — the client runs the connect hop and retries.
+          res.status(409).json({
+            error: "Google account not connected",
+            code: "GOOGLE_NOT_CONNECTED",
+            authUrlEndpoint: "/api/integrations/google/auth-url",
+            message: "Connect your Google account to export this analysis to your own Drive.",
+          });
+          return;
         }
       }
-      
+
+      // NOTE: anonymous visitors (no account, lead-capture funnel) still fall
+      // back to the owner-account Replit connector inside exportToGoogleSheets
+      // — intentional: there is no user Drive to own the file.
       console.log("[Google Sheets Export] Exporting to:", exportedToUserAccount ? "user account" : "shared account");
       console.log("[Google Sheets Export] User info:", userInfo);
 
@@ -4623,24 +4662,44 @@ export async function registerRoutes(
         spreadsheetUrl = exportResult.spreadsheetUrl;
 
         if (userId && userTokens && exportResult.refreshedTokens) {
-          const existingToken = await storage.getGoogleOAuthToken(userId);
-          await storage.upsertGoogleOAuthToken({
-            userId,
-            accessToken: exportResult.refreshedTokens.accessToken,
-            refreshToken: exportResult.refreshedTokens.refreshToken || userTokens.refreshToken || null,
-            tokenType: existingToken?.tokenType || "Bearer",
-            expiresAt: exportResult.refreshedTokens.expiresAt || null,
-            scope: existingToken?.scope || GOOGLE_SCOPES.join(" "),
-            googleEmail: existingToken?.googleEmail || null,
-          });
+          if (tokenSource === "integration") {
+            await db.update(userIntegrations).set({
+              accessToken: exportResult.refreshedTokens.accessToken,
+              refreshToken: exportResult.refreshedTokens.refreshToken || userTokens.refreshToken || undefined,
+              tokenExpiresAt: exportResult.refreshedTokens.expiresAt || null,
+              updatedAt: new Date(),
+            }).where(and(
+              eq(userIntegrations.userId, userId),
+              eq(userIntegrations.provider, "google"),
+            ));
+          } else {
+            const existingToken = await storage.getGoogleOAuthToken(userId);
+            await storage.upsertGoogleOAuthToken({
+              userId,
+              accessToken: exportResult.refreshedTokens.accessToken,
+              refreshToken: exportResult.refreshedTokens.refreshToken || userTokens.refreshToken || null,
+              tokenType: existingToken?.tokenType || "Bearer",
+              expiresAt: exportResult.refreshedTokens.expiresAt || null,
+              scope: existingToken?.scope || GOOGLE_SCOPES.join(" "),
+              googleEmail: existingToken?.googleEmail || null,
+            });
+          }
         }
       } catch (error) {
         if (userId && userTokens && isGoogleReconnectRequiredError(error)) {
           console.warn("[Google Sheets Export] Stored Google token is no longer valid; user needs to reconnect", error);
-          await storage.deleteGoogleOAuthToken(userId);
-          res.status(401).json({
+          if (tokenSource === "integration") {
+            await db.delete(userIntegrations).where(and(
+              eq(userIntegrations.userId, userId),
+              eq(userIntegrations.provider, "google"),
+            ));
+          } else {
+            await storage.deleteGoogleOAuthToken(userId);
+          }
+          res.status(409).json({
             error: "Google connection expired",
-            code: "GOOGLE_RECONNECT_REQUIRED",
+            code: "GOOGLE_NOT_CONNECTED",
+            authUrlEndpoint: "/api/integrations/google/auth-url",
             message: "Your Google connection expired. Reconnect Google and try the export again.",
           });
           return;
