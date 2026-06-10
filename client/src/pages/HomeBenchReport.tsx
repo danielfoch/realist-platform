@@ -34,6 +34,9 @@ import {
   ExternalLink,
   Sparkles,
   Info,
+  Bot,
+  Layers,
+  Building2,
 } from "lucide-react";
 
 type ModelKey = "fable" | "gpt" | "opus" | "gemini";
@@ -240,6 +243,93 @@ export default function HomeBenchReport() {
             client-ready output, scored by working agents.
           </p>
         </div>
+
+        {/* How we ran it — methodology + light promo */}
+        <Card className="mb-10 overflow-hidden border-stone-200 bg-white">
+          <CardContent className="p-0">
+            <div className="grid md:grid-cols-[1.05fr_1fr]">
+              <div className="p-7 md:p-8 border-b md:border-b-0 md:border-r border-stone-100">
+                <div className={SECTION_TITLE}>How we ran it</div>
+                <h2 className="text-2xl md:text-3xl font-bold text-stone-950 mt-1 leading-tight">
+                  Same harness. Same tasks. Same properties.
+                </h2>
+                <p className="text-sm md:text-base text-stone-600 mt-3 leading-relaxed">
+                  Every model in this report was plugged into the{" "}
+                  <a
+                    href="https://meetyourhomies.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-stone-950 underline decoration-amber-400 decoration-2 underline-offset-4 hover:decoration-stone-950"
+                  >
+                    Homies AI harness
+                  </a>
+                  {" "}— the same assistant runtime that real estate agents use every day for
+                  offers, showings, CRM, email, research, marketing, and valuations. Fable 5, GPT
+                  5.5, Opus 4.8, and Gemini 3.1 each ran the identical task list against the
+                  identical case files, with the same tools and the same buyer/seller/property
+                  data. Only the underlying model was swapped.
+                </p>
+                <p className="text-sm md:text-base text-stone-600 mt-3 leading-relaxed">
+                  No model got a custom prompt. No model got extra context. Every output was graded
+                  side-by-side by working agents on the same rubric.
+                </p>
+                <div className="mt-5 flex items-center gap-2 text-xs text-stone-500">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                  <span>
+                    The Homies harness is the assistants-for-realtors product the benchmark runs on.
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#FAF7F2] p-6 md:p-8 grid grid-cols-1 gap-3">
+                {[
+                  {
+                    icon: Bot,
+                    label: "01 · The harness",
+                    title: "Homies assistants for realtors",
+                    body: "Same tool set, memory, and tool-use scaffolding for every model — calendar, CRM, MLS reader, doc parser, calculator.",
+                  },
+                  {
+                    icon: Layers,
+                    label: "02 · The tasks",
+                    title: "60 realtor workflows, 7 categories",
+                    body: "Offers, showings, CRM, email, property research, marketing, and valuation. Tasks held out of training data.",
+                  },
+                  {
+                    icon: Building2,
+                    label: "03 · The properties",
+                    title: "Identical case files",
+                    body: "Same mock buyers, sellers, listings, comps, and message threads. Same disclosures and MLS records, every run.",
+                  },
+                ].map((step) => {
+                  const Icon = step.icon;
+                  return (
+                    <div
+                      key={step.label}
+                      className="flex gap-3 rounded-lg border border-stone-200 bg-white p-4"
+                      data-testid={`harness-step-${step.label.slice(0, 2)}`}
+                    >
+                      <div className="h-9 w-9 rounded-md bg-stone-950 text-amber-300 flex items-center justify-center shrink-0">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.15em] text-stone-500">
+                          {step.label}
+                        </div>
+                        <div className="text-sm font-semibold text-stone-950 mt-0.5">
+                          {step.title}
+                        </div>
+                        <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                          {step.body}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Leaderboard cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-10">
