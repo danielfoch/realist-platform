@@ -31,7 +31,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock, CheckSquare } from "lucide-react";
+import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock, CheckSquare, Settings } from "lucide-react";
 import { Link } from "wouter";
 
 type Opportunity = {
@@ -156,6 +156,30 @@ export default function AdminDealDesk() {
 
   const { data: activityFeed = [], isLoading: activityLoading } = useQuery<ActivityEvent[]>({
     queryKey: ["/api/deal-desk/activity"],
+  });
+
+  type DealDeskSettings = {
+    notifyEmail: string | null;
+    envFallback: string | null;
+    effectiveEmail: string | null;
+  };
+
+  const { data: settingsData, refetch: refetchSettings } = useQuery<{ ok: boolean; settings: DealDeskSettings }>({
+    queryKey: ["/api/deal-desk/settings"],
+  });
+  const [notifyEmailInput, setNotifyEmailInput] = useState<string>("");
+  const settingsLoaded = settingsData?.settings;
+
+  const saveSettingsMutation = useMutation({
+    mutationFn: (payload: { notifyEmail: string }) =>
+      apiRequest("PUT", "/api/deal-desk/settings", payload),
+    onSuccess: () => {
+      refetchSettings();
+      toast({ title: "Settings saved" });
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message || "Failed to save settings", variant: "destructive" });
+    },
   });
 
   const { data: emailTriggers = [], isLoading: triggersLoading } = useQuery<EmailTrigger[]>({
@@ -398,6 +422,10 @@ export default function AdminDealDesk() {
               )}
             </TabsTrigger>
             <TabsTrigger value="export" data-testid="tab-export">Export</TabsTrigger>
+            <TabsTrigger value="settings" data-testid="tab-settings">
+              <Settings className="h-3 w-3 mr-1" />
+              Settings
+            </TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Filter:</span>
@@ -720,6 +748,74 @@ export default function AdminDealDesk() {
               <div className="mt-4 rounded bg-muted p-3 text-xs font-mono text-muted-foreground">
                 GET /api/deal-desk/export?entity=opportunities&format=json<br />
                 Authorization: Bearer DEAL_DESK_EXPORT_TOKEN
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Notification Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium">Team notification email</p>
+                <p className="text-sm text-muted-foreground">
+                  All team alerts (hot leads, warm follow-ups, financing requests) go to this address.
+                  Overrides the <code className="bg-muted px-1 rounded text-xs">DEAL_DESK_NOTIFY_EMAIL</code> environment variable.
+                </p>
+
+                {settingsLoaded?.envFallback && !settingsLoaded?.notifyEmail && (
+                  <div className="rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                    Currently using env fallback: <strong>{settingsLoaded.envFallback}</strong>. Save an email below to override it.
+                  </div>
+                )}
+                {!settingsLoaded?.envFallback && !settingsLoaded?.notifyEmail && (
+                  <div className="rounded bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-3 py-2 text-xs text-red-800 dark:text-red-300">
+                    No notification email is configured — team alerts will be dropped until one is set.
+                  </div>
+                )}
+                {settingsLoaded?.effectiveEmail && (
+                  <div className="rounded bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 px-3 py-2 text-xs text-green-800 dark:text-green-300">
+                    Active: <strong>{settingsLoaded.effectiveEmail}</strong>
+                    {settingsLoaded.notifyEmail ? " (set via admin)" : " (from environment variable)"}
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <Input
+                    type="email"
+                    placeholder={settingsLoaded?.envFallback ?? "team@example.com"}
+                    value={notifyEmailInput}
+                    onChange={e => setNotifyEmailInput(e.target.value)}
+                    className="max-w-sm"
+                    data-testid="input-notify-email"
+                  />
+                  <Button
+                    onClick={() => saveSettingsMutation.mutate({ notifyEmail: notifyEmailInput })}
+                    disabled={saveSettingsMutation.isPending}
+                    data-testid="button-save-notify-email"
+                  >
+                    {saveSettingsMutation.isPending ? "Saving…" : "Save"}
+                  </Button>
+                  {settingsLoaded?.notifyEmail && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setNotifyEmailInput("");
+                        saveSettingsMutation.mutate({ notifyEmail: "" });
+                      }}
+                      disabled={saveSettingsMutation.isPending}
+                      data-testid="button-clear-notify-email"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

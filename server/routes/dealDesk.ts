@@ -381,6 +381,49 @@ export function registerDealDeskRoutes(app: Express) {
       res.status(500).json({ ok: false });
     }
   });
+
+  app.get("/api/deal-desk/settings", isAdmin, async (req, res) => {
+    try {
+      const notifyEmail = await storage.getAppSetting("deal_desk_notify_email");
+      const envFallback =
+        process.env.DEAL_DESK_NOTIFY_EMAIL ||
+        process.env.PODCAST_NOTIFY_EMAIL ||
+        null;
+      res.json({
+        ok: true,
+        settings: {
+          notifyEmail: notifyEmail ?? null,
+          envFallback,
+          effectiveEmail: notifyEmail ?? envFallback ?? null,
+        },
+      });
+    } catch (err) {
+      console.error("Settings GET error:", err);
+      res.status(500).json({ ok: false });
+    }
+  });
+
+  app.put("/api/deal-desk/settings", isAdmin, async (req, res) => {
+    const schema = z.object({
+      notifyEmail: z.string().email("Must be a valid email address").or(z.literal("")).optional().nullable(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    }
+    try {
+      const { notifyEmail } = parsed.data;
+      if (notifyEmail === null || notifyEmail === undefined || notifyEmail === "") {
+        await storage.setAppSetting("deal_desk_notify_email", "");
+      } else {
+        await storage.setAppSetting("deal_desk_notify_email", notifyEmail.trim());
+      }
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("Settings PUT error:", err);
+      res.status(500).json({ ok: false });
+    }
+  });
 }
 
 function toCsv(rows: Record<string, any>[]): string {

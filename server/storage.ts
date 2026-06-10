@@ -212,6 +212,8 @@ import {
   type EmailTrigger,
   type InsertEmailTrigger,
   userActivityEvents,
+  appSettings,
+  type AppSetting,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -572,6 +574,8 @@ export interface IStorage {
   listEmailTriggers(limit: number): Promise<EmailTrigger[]>;
   retryEmailTrigger(id: string): Promise<void>;
   listRecentActivityEvents(limit: number): Promise<any[]>;
+  getAppSetting(key: string): Promise<string | null>;
+  setAppSetting(key: string, value: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2661,6 +2665,17 @@ export class DatabaseStorage implements IStorage {
       .from(userActivityEvents)
       .orderBy(desc(userActivityEvents.eventTimestamp))
       .limit(limit);
+  }
+
+  async getAppSetting(key: string): Promise<string | null> {
+    const [row] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return row?.value ?? null;
+  }
+
+  async setAppSetting(key: string, value: string): Promise<void> {
+    await db.insert(appSettings)
+      .values({ key, value, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
   }
 }
 

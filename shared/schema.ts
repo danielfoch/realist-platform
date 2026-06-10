@@ -3853,3 +3853,10 @@ export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
 });
 export type InsertEmailTrigger = z.infer<typeof insertEmailTriggerSchema>;
 export type EmailTrigger = typeof emailTriggers.$inferSelect;
+
+export const appSettings = pgTable("app_settings", {
+  key: varchar("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export type AppSetting = typeof appSettings.$inferSelect;

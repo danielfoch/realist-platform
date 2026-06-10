@@ -2,14 +2,30 @@ import { storage } from "./storage";
 import { getResendClient } from "./resend";
 import type { EmailTrigger } from "@shared/schema";
 
-const TEAM_NOTIFY_EMAILS: string[] = (() => {
+async function getTeamNotifyEmails(): Promise<string[]> {
   const emails: string[] = [];
+
+  const dbEmail = await storage.getAppSetting("deal_desk_notify_email").catch(() => null);
+  if (dbEmail) {
+    emails.push(...dbEmail.split(",").map(e => e.trim()).filter(Boolean));
+    return emails;
+  }
+
+  if (process.env.DEAL_DESK_NOTIFY_EMAIL) {
+    emails.push(...process.env.DEAL_DESK_NOTIFY_EMAIL.split(",").map(e => e.trim()).filter(Boolean));
+    return emails;
+  }
+
   if (process.env.PODCAST_NOTIFY_EMAIL) emails.push(process.env.PODCAST_NOTIFY_EMAIL);
   if (process.env.NOTIFY_CC_EMAIL) emails.push(process.env.NOTIFY_CC_EMAIL);
   return emails;
-})();
+}
 
-const DEAL_DESK_NOTIFY_EMAIL = process.env.DEAL_DESK_NOTIFY_EMAIL || process.env.PODCAST_NOTIFY_EMAIL || "";
+async function getDealDeskNotifyEmail(): Promise<string> {
+  const dbEmail = await storage.getAppSetting("deal_desk_notify_email").catch(() => null);
+  if (dbEmail) return dbEmail.split(",")[0].trim();
+  return process.env.DEAL_DESK_NOTIFY_EMAIL || process.env.PODCAST_NOTIFY_EMAIL || "";
+}
 
 function adminDashboardUrl() {
   const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
@@ -197,10 +213,10 @@ function buildFinancingFollowup(payload: Record<string, any>): { subject: string
   };
 }
 
-function buildLostReasonNurture(payload: Record<string, any>, leadInfo?: { name: string; email: string } | null): { subject: string; html: string; to: string[] } {
+function buildLostReasonNurture(payload: Record<string, any>, leadInfo?: { name: string; email: string } | null, teamEmail?: string): { subject: string; html: string; to: string[] } {
   const name = leadInfo?.name || "the lead";
   const recipients: string[] = [];
-  if (DEAL_DESK_NOTIFY_EMAIL) recipients.push(DEAL_DESK_NOTIFY_EMAIL);
+  if (teamEmail) recipients.push(teamEmail);
   if (leadInfo?.email) recipients.push(leadInfo.email);
 
   const html = wrapEmail(`
@@ -263,8 +279,8 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
       }
 
       case "hot_lead_immediate_followup": {
-        const recipients = TEAM_NOTIFY_EMAILS.length > 0 ? TEAM_NOTIFY_EMAILS : null;
-        if (!recipients) {
+        const recipients = await getTeamNotifyEmails();
+        if (recipients.length === 0) {
           await storage.updateEmailTriggerStatus(trigger.id, "failed", undefined, "No team notify emails configured");
           return;
         }
@@ -274,8 +290,8 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
       }
 
       case "warm_lead_24h_followup": {
-        const recipients = TEAM_NOTIFY_EMAILS.length > 0 ? TEAM_NOTIFY_EMAILS : null;
-        if (!recipients) {
+        const recipients = await getTeamNotifyEmails();
+        if (recipients.length === 0) {
           await storage.updateEmailTriggerStatus(trigger.id, "failed", undefined, "No team notify emails configured");
           return;
         }
@@ -285,8 +301,8 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
       }
 
       case "financing_interest_followup": {
-        const recipients = TEAM_NOTIFY_EMAILS.length > 0 ? TEAM_NOTIFY_EMAILS : null;
-        if (!recipients) {
+        const recipients = await getTeamNotifyEmails();
+        if (recipients.length === 0) {
           await storage.updateEmailTriggerStatus(trigger.id, "failed", undefined, "No team notify emails configured");
           return;
         }
@@ -304,7 +320,8 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
           } catch {
           }
         }
-        const { subject, html, to } = buildLostReasonNurture(payload, leadInfo);
+        const dealDeskEmail = await getDealDeskNotifyEmail();
+        const { subject, html, to } = buildLostReasonNurture(payload, leadInfo, dealDeskEmail);
         if (to.length === 0) {
           await storage.updateEmailTriggerStatus(trigger.id, "failed", undefined, "No recipients for lost_reason_nurture");
           return;
@@ -359,6 +376,28 @@ export async function processPendingEmailTriggers(): Promise<{ processed: number
 }
 
 export function startEmailQueueWorker(intervalMs = 30_000): NodeJS.Timeout {
+  async function warnIfUnconfigured() {
+    try {
+      const dbEmail = await storage.getAppSetting("deal_desk_notify_email").catch(() => null);
+      const hasEmail =
+        (dbEmail && dbEmail.trim().length > 0) ||
+        process.env.DEAL_DESK_NOTIFY_EMAIL ||
+        process.env.PODCAST_NOTIFY_EMAIL ||
+        process.env.NOTIFY_CC_EMAIL;
+      if (!hasEmail) {
+        console.warn(
+          "[email-queue] WARNING: No deal desk notification email is configured. " +
+          "Set DEAL_DESK_NOTIFY_EMAIL or configure it in Admin > Deal Desk > Settings. " +
+          "Team alerts (hot leads, warm leads, financing requests) will be silently dropped."
+        );
+      } else {
+        const source = dbEmail ? "admin settings (DB)" : process.env.DEAL_DESK_NOTIFY_EMAIL ? "DEAL_DESK_NOTIFY_EMAIL env" : "legacy PODCAST_NOTIFY_EMAIL/NOTIFY_CC_EMAIL env";
+        console.log(`[email-queue] Team notification email configured via ${source}.`);
+      }
+    } catch {
+    }
+  }
+
   async function runCycle() {
     try {
       const result = await processPendingEmailTriggers();
@@ -369,6 +408,8 @@ export function startEmailQueueWorker(intervalMs = 30_000): NodeJS.Timeout {
       console.error("[email-queue] Worker cycle error:", err?.message || err);
     }
   }
+
+  warnIfUnconfigured();
   runCycle();
   return setInterval(runCycle, intervalMs);
 }
