@@ -30,7 +30,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText } from "lucide-react";
+import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { Link } from "wouter";
 
 type Opportunity = {
@@ -83,6 +83,18 @@ type ActivityEvent = {
   dealId: string | null;
   source: string | null;
   metadata: Record<string, any> | null;
+};
+
+type EmailTrigger = {
+  id: string;
+  leadId: string | null;
+  opportunityId: string | null;
+  triggerType: string;
+  status: string;
+  sentAt: string | null;
+  failureReason: string | null;
+  payload: Record<string, any> | null;
+  createdAt: string;
 };
 
 const STATUSES = [
@@ -141,6 +153,10 @@ export default function AdminDealDesk() {
 
   const { data: activityFeed = [], isLoading: activityLoading } = useQuery<ActivityEvent[]>({
     queryKey: ["/api/deal-desk/activity"],
+  });
+
+  const { data: emailTriggers = [], isLoading: triggersLoading } = useQuery<EmailTrigger[]>({
+    queryKey: ["/api/deal-desk/email-triggers"],
   });
 
   const updateMutation = useMutation({
@@ -322,6 +338,13 @@ export default function AdminDealDesk() {
           <TabsList>
             <TabsTrigger value="opportunities" data-testid="tab-opportunities">Opportunities</TabsTrigger>
             <TabsTrigger value="activity" data-testid="tab-activity">Activity Feed</TabsTrigger>
+            <TabsTrigger value="email-queue" data-testid="tab-email-queue">
+              <Mail className="h-3 w-3 mr-1" />
+              Email Queue
+              {emailTriggers.filter(t => t.status === "pending").length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs px-1">{emailTriggers.filter(t => t.status === "pending").length}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="export" data-testid="tab-export">Export</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
@@ -469,6 +492,87 @@ export default function AdminDealDesk() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="email-queue" className="mt-4">
+          <Card data-testid="card-email-queue">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Mail className="h-4 w-4" /> Email Queue
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  {emailTriggers.length} total
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {triggersLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading…</div>
+              ) : emailTriggers.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground" data-testid="empty-email-triggers">
+                  No email triggers yet. They appear when deals are submitted.
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Recipient</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Sent / Failed</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {emailTriggers.map((t) => (
+                        <TableRow key={t.id} data-testid={`row-trigger-${t.id}`}>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{t.triggerType}</code>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs text-muted-foreground">
+                              {t.payload?.email || t.payload?.name || <span className="italic">team</span>}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {t.status === "sent" && (
+                              <span className="flex items-center gap-1 text-green-600 text-xs font-medium" data-testid={`status-sent-${t.id}`}>
+                                <CheckCircle className="h-3 w-3" /> sent
+                              </span>
+                            )}
+                            {t.status === "pending" && (
+                              <span className="flex items-center gap-1 text-amber-500 text-xs font-medium" data-testid={`status-pending-${t.id}`}>
+                                <Clock className="h-3 w-3" /> pending
+                              </span>
+                            )}
+                            {t.status === "failed" && (
+                              <span className="flex items-center gap-1 text-red-500 text-xs font-medium" data-testid={`status-failed-${t.id}`}>
+                                <AlertCircle className="h-3 w-3" /> failed
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs text-muted-foreground">{fmtTime(t.createdAt)}</div>
+                          </TableCell>
+                          <TableCell>
+                            {t.sentAt && (
+                              <div className="text-xs text-green-600">{fmtTime(t.sentAt)}</div>
+                            )}
+                            {t.failureReason && (
+                              <div className="text-xs text-red-500 max-w-48 truncate" title={t.failureReason}>{t.failureReason}</div>
+                            )}
+                            {!t.sentAt && !t.failureReason && (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>

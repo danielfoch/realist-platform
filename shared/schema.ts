@@ -3840,12 +3840,16 @@ export const emailTriggers = pgTable("email_triggers", {
   triggerType: text("trigger_type").notNull(),
   payload: jsonb("payload"),
   status: text("status").default("pending").notNull(),
+  sentAt: timestamp("sent_at"),
+  failureReason: text("failure_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
   id: true,
   createdAt: true,
+  sentAt: true,
+  failureReason: true,
 });
 export type InsertEmailTrigger = z.infer<typeof insertEmailTriggerSchema>;
 export type EmailTrigger = typeof emailTriggers.$inferSelect;

@@ -266,6 +266,17 @@ export function registerDealDeskRoutes(app: Express) {
     }
   });
 
+  app.get("/api/deal-desk/email-triggers", isAdmin, async (req, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 100, 500);
+      const triggers = await storage.listEmailTriggers(limit);
+      res.json(triggers);
+    } catch (err) {
+      console.error("List email triggers error:", err);
+      res.status(500).json({ ok: false });
+    }
+  });
+
   app.get("/api/deal-desk/export", async (req, res) => {
     const authHeader = req.headers.authorization || "";
     const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;

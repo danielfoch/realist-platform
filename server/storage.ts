@@ -567,6 +567,9 @@ export interface IStorage {
   }>;
   getDealDeskActivityFeed(limit: number): Promise<any[]>;
   createEmailTrigger(trigger: InsertEmailTrigger): Promise<EmailTrigger>;
+  listPendingEmailTriggers(): Promise<EmailTrigger[]>;
+  updateEmailTriggerStatus(id: string, status: string, sentAt?: Date, failureReason?: string): Promise<void>;
+  listEmailTriggers(limit: number): Promise<EmailTrigger[]>;
   listRecentActivityEvents(limit: number): Promise<any[]>;
 }
 
@@ -2626,6 +2629,22 @@ export class DatabaseStorage implements IStorage {
   async createEmailTrigger(trigger: InsertEmailTrigger): Promise<EmailTrigger> {
     const [t] = await db.insert(emailTriggers).values(trigger).returning();
     return t;
+  }
+
+  async listPendingEmailTriggers(): Promise<EmailTrigger[]> {
+    return db.select().from(emailTriggers).where(eq(emailTriggers.status, "pending")).orderBy(emailTriggers.createdAt);
+  }
+
+  async updateEmailTriggerStatus(id: string, status: string, sentAt?: Date, failureReason?: string): Promise<void> {
+    await db.update(emailTriggers).set({
+      status,
+      ...(sentAt ? { sentAt } : {}),
+      ...(failureReason ? { failureReason } : {}),
+    }).where(eq(emailTriggers.id, id));
+  }
+
+  async listEmailTriggers(limit: number): Promise<EmailTrigger[]> {
+    return db.select().from(emailTriggers).orderBy(desc(emailTriggers.createdAt)).limit(limit);
   }
 
   async listRecentActivityEvents(limit: number): Promise<any[]> {
