@@ -39,6 +39,25 @@ export default function ReportsHub() {
           </p>
         </div>
 
+        <Card className="mb-6 overflow-hidden border-stone-200 bg-[radial-gradient(circle_at_top_right,#fde68a,transparent_30%),linear-gradient(135deg,#0f0f0f_0%,#1c1917_60%,#292524_100%)] text-stone-50">
+          <CardContent className="grid gap-6 p-8 md:grid-cols-[1.3fr_0.7fr] md:items-end">
+            <div>
+              <Badge variant="outline" className="mb-3 border-amber-200/40 bg-amber-100/10 text-amber-100">
+                New · Homies × Realist
+              </Badge>
+              <h2 className="text-3xl font-bold leading-tight">RealBench: AI Benchmark for Realtors</h2>
+              <p className="mt-3 max-w-2xl text-stone-300">
+                Fable 5, GPT 5.5, Opus 4.8, and Gemini 3.1 scored on the work agents actually do — offers, showings, CRM, email, research, marketing, and valuation.
+              </p>
+            </div>
+            <div className="md:text-right">
+              <Link href="/reports/realbench-ai-realtor-benchmark">
+                <Button className="bg-amber-400 text-stone-950 hover:bg-amber-300">See the leaderboard</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="mb-10 overflow-hidden border-stone-200 bg-[radial-gradient(circle_at_top_left,#fef3c7,transparent_28%),linear-gradient(135deg,#1c1917_0%,#292524_58%,#44403c_100%)] text-stone-50">
           <CardContent className="grid gap-6 p-8 md:grid-cols-[1.3fr_0.7fr] md:items-end">
             <div>
