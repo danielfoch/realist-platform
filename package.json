@@ -13,6 +13,7 @@
     "db:doctor": "tsx src/scripts/check-db-extensions.ts",
     "db:replit:normalize": "tsx src/scripts/normalize-replit-db.ts",
     "sync": "tsx src/sync-listings.ts",
+    "import:us": "tsx src/scripts/import-us-listings.ts",
     "sync:full": "tsx src/sync-listings.ts --full",
     "test:ddf": "tsx src/test-ddf-connection.ts",
     "migrate": "tsx src/scripts/migrate.ts",

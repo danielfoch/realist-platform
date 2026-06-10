@@ -34,7 +34,13 @@ interface ListingQuery {
   investmentFocus?: boolean | string;
   minCapRate?: number;
   maxCapRate?: number;
+  country?: 'CA' | 'US';
 }
+
+const COUNTRY_CODE_MAP: Record<string, string> = {
+  CA: 'CAN',
+  US: 'USA',
+};
 
 export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   const router = Router();
@@ -106,6 +112,7 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
       investmentFocus = false,
       minCapRate,
       maxCapRate,
+      country,
     } = req.query;
 
     const conditions: string[] = [];
@@ -174,6 +181,12 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
     if (typeof maxCapRate === 'number') {
       conditions.push(`cap_rate <= $${paramCount}`);
       params.push(maxCapRate);
+      paramCount += 1;
+    }
+
+    if (country && COUNTRY_CODE_MAP[country]) {
+      conditions.push(`address_country = $${paramCount}`);
+      params.push(COUNTRY_CODE_MAP[country]);
       paramCount += 1;
     }
 
@@ -285,12 +298,13 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
     }
 
     try {
-      const { bounds, minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
+      const { bounds, minPrice, maxPrice, propertyType, status = 'Active', country } = req.query as {
         bounds?: string;
         minPrice?: number;
         maxPrice?: number;
         propertyType?: string;
         status?: string;
+        country?: 'CA' | 'US';
       };
 
       const conditions: string[] = ['latitude IS NOT NULL', 'longitude IS NOT NULL'];
@@ -329,6 +343,12 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
         paramCount += 1;
       }
 
+      if (country && COUNTRY_CODE_MAP[country]) {
+        conditions.push(`address_country = $${paramCount}`);
+        params.push(COUNTRY_CODE_MAP[country]);
+        paramCount += 1;
+      }
+
       const result = await database.query(
         `
           SELECT
@@ -341,6 +361,8 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
             bathrooms_full,
             address_street,
             address_city,
+            address_country,
+            source,
             property_type,
             structure_type,
             cap_rate,

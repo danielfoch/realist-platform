@@ -17,6 +17,7 @@ const listingQuerySchema = z.object({
   investmentFocus: z.union([z.boolean(), z.string()]).optional(),
   minCapRate: z.coerce.number().min(0).max(100).optional(),
   maxCapRate: z.coerce.number().min(0).max(100).optional(),
+  country: z.enum(['CA', 'US']).optional(),
 });
 
 const investmentTopSchema = z.object({
@@ -36,6 +37,7 @@ const mapSchema = z.object({
   status: z.string().trim().max(20).optional(),
   minCapRate: z.coerce.number().min(0).max(100).optional(),
   maxCapRate: z.coerce.number().min(0).max(100).optional(),
+  country: z.enum(['CA', 'US']).optional(),
 });
 
 const statsSchema = z.object({

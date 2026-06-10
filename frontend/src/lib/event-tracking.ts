@@ -19,6 +19,7 @@ type EventName =
   | 'listing_search'
   | 'listing_view'
   | 'listing_favorite'
+  | 'listing_country_filter'
   | 'deal_analyzer_start'
   | 'deal_analyzer_report_generated'
   | 'deal_analyzer_saved'

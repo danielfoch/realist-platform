@@ -24,7 +24,22 @@ export interface Listing {
   estimated_monthly_rent?: number;
   photos?: { url: string; isPrimary: boolean }[];
   status: string;
+  address_country?: string;
+  source?: string;
 }
+
+const countryLabel = (country?: string): string | null => {
+  if (!country) {
+    return null;
+  }
+  if (country === 'CAN' || country === 'CA') {
+    return 'CA';
+  }
+  if (country === 'USA' || country === 'US') {
+    return 'US';
+  }
+  return country;
+};
 
 interface ListingCardProps {
   listing: Listing;
@@ -112,8 +127,15 @@ export const ListingCard: React.FC<ListingCardProps> = ({
           <MapPin className="mt-1 h-4 w-4 flex-shrink-0" />
           <div className="text-sm">
             <div>{listing.address_street}</div>
-            <div>
-              {listing.address_city}, {listing.address_province}
+            <div className="flex items-center gap-1.5">
+              <span>
+                {listing.address_city}, {listing.address_province}
+              </span>
+              {countryLabel(listing.address_country) && (
+                <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-semibold">
+                  {countryLabel(listing.address_country)}
+                </Badge>
+              )}
             </div>
           </div>
         </div>

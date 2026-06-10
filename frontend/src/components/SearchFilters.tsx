@@ -40,6 +40,7 @@ export interface SearchFiltersState {
   investmentFocus?: boolean;
   minCapRate?: number;
   maxCapRate?: number;
+  country?: 'CA' | 'US';
 }
 
 interface SearchFiltersProps {

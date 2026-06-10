@@ -29,7 +29,15 @@ interface Listing {
   estimated_monthly_rent?: number
   photos?: Array<{ url: string; isPrimary: boolean }>
   status: string
+  address_country?: string
+  source?: string
 }
+
+const countryOptions: Array<{ value: 'CA' | 'US' | undefined; label: string }> = [
+  { value: undefined, label: 'All' },
+  { value: 'CA', label: 'Canada' },
+  { value: 'US', label: 'US' },
+]
 
 interface PaginationInfo {
   page: number
@@ -192,7 +200,7 @@ export const ListingsPage: React.FC = () => {
             <h1 className="mb-2 text-2xl font-bold text-gray-900 md:text-3xl">
               Investment Properties
             </h1>
-            <p className="text-gray-600">Find your next investment property in Canada</p>
+            <p className="text-gray-600">Find your next investment property in Canada and the US</p>
             <p className="mt-2 flex items-center gap-1 text-sm text-gray-500">
               <Star className="h-4 w-4" /> {favorites.length} saved listings
             </p>
@@ -201,6 +209,29 @@ export const ListingsPage: React.FC = () => {
 
         <div className="container mx-auto px-4 py-4">
           <SearchFilters filters={filters} onFiltersChange={setFilters} onSearch={handleSearch} />
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-sm text-gray-600">Country:</span>
+            <div className="inline-flex overflow-hidden rounded-md border bg-white">
+              {countryOptions.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  className={`px-3 py-1.5 text-sm transition-colors ${
+                    filters.country === option.value
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                  onClick={() => {
+                    setFilters((prev) => ({ ...prev, country: option.value }))
+                    setPagination((prev) => ({ ...prev, page: 1 }))
+                    track('listing_country_filter', { country: option.value ?? 'all' })
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="container mx-auto px-4 py-4">
