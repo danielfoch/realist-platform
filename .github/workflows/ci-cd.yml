@@ -49,10 +49,10 @@ jobs:
         run: npm run type-check
 
       - name: Run lint
-        run: npm run lint
+        run: npm run idx:lint
 
       - name: Run tests with coverage
-        run: npm run test
+        run: npm run idx:test
 
       - name: Build
         run: npm run build
