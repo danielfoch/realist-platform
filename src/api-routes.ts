@@ -264,7 +264,7 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   router.get('/listings/map', validateMapQuery, async (req: Request, res: Response) => {
     // Demo mode
     if (isDemoMode()) {
-      const { bounds, minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
+      const { minPrice, maxPrice, propertyType, status = 'Active' } = req.query as {
         bounds?: string;
         minPrice?: number;
         maxPrice?: number;
@@ -639,9 +639,7 @@ export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
             mlsNumber, 
             address, 
             city, 
-            province, 
             monthlyRent, 
-            bedrooms,
             source: rentSource 
           } = rent;
 

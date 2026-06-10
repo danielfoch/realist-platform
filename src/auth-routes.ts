@@ -167,7 +167,8 @@ export function createAuthRouter(): Router {
       }
 
       // Remove sensitive fields
-      const { password_hash, ...userData } = user;
+      const userData = { ...user };
+      delete userData.password_hash;
 
       res.json({
         success: true,
@@ -208,7 +209,8 @@ export function createAuthRouter(): Router {
           return;
         }
 
-        const { password_hash, ...userData } = updatedUser;
+        const userData = { ...updatedUser };
+        delete userData.password_hash;
         res.json({
           success: true,
           data: userData,
@@ -310,7 +312,7 @@ export function createAuthRouter(): Router {
     async (req: AuthRequest, res: Response) => {
       if (!validate(req, res)) return;
 
-      const { tier, success_url, cancel_url } = req.body;
+      const { tier } = req.body;
       const user = req.user!;
 
       try {

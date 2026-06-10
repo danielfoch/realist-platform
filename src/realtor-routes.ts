@@ -4,7 +4,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { body, validationResult, query } from 'express-validator';
+import { body, validationResult } from 'express-validator';
 import { db } from './db';
 import { generateToken, authenticateToken, AuthRequest } from './auth-middleware';
 import crypto from 'crypto';

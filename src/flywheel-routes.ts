@@ -102,7 +102,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
   try {
     const { period = 'weekly' } = req.query;
     
-    let dateFilter;
+    let dateFilter: string;
     switch (period) {
       case 'weekly':
         dateFilter = "NOW() - INTERVAL '7 days'";
@@ -129,7 +129,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
         us.most_active_city
       FROM users u
       JOIN user_stats us ON u.id = us.user_id
-      WHERE us.last_analyzed_at > NOW() - INTERVAL '7 days'
+      WHERE us.last_analyzed_at > ${dateFilter}
       ORDER BY us.total_deals DESC
       LIMIT 50`
     );
@@ -142,7 +142,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
         ROUND(AVG(cash_on_cash)::numeric, 2) as avg_cash_on_cash,
         MODE() WITHIN GROUP (ORDER BY city) as hottest_city
       FROM analyzed_deals
-      WHERE analyzed_at > NOW() - INTERVAL '7 days'`
+      WHERE analyzed_at > ${dateFilter}`
     );
 
     return res.json({
@@ -292,7 +292,7 @@ router.get('/recommendations', async (req: Request, res: Response) => {
 
 // POST /api/deals/join - Enroll after deal analyzer and link pre-enrollment analyses
 router.post('/join', async (req: Request, res: Response) => {
-  const { name, email, phone, session_id } = req.body;
+  const { name, email, session_id } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required' });
@@ -379,20 +379,5 @@ router.post('/join', async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Failed to create account' });
   }
 });
-
-// Helper function to calculate badges
-function calculateBadges(totalDeals: number, avgCapRate: number, avgCashOnCash: number): string[] {
-  const badges = [];
-
-  if (totalDeals >= 1) badges.push("🌱 First Deal");
-  if (totalDeals >= 10) badges.push("📊 Analyst");
-  if (totalDeals >= 50) badges.push("🏆 Pro Analyst");
-  if (totalDeals >= 100) badges.push("👑 Deal Machine");
-
-  if (totalDeals >= 10 && avgCapRate >= 7.0) badges.push("🎯 Cap Rate King");
-  if (totalDeals >= 10 && avgCashOnCash >= 15) badges.push("💰 Cash Flow Master");
-
-  return badges;
-}
 
 export default router;
