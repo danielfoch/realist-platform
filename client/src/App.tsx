@@ -19,6 +19,7 @@ import Shop from "@/pages/Shop";
 import Compare from "@/pages/Compare";
 import Podcast from "@/pages/Podcast";
 import Admin from "@/pages/Admin";
+import AdminDealDesk from "@/pages/AdminDealDesk";
 import AdminEvents from "@/pages/AdminEvents";
 import AdminEventNew from "@/pages/AdminEventNew";
 import AdminEventEdit from "@/pages/AdminEventEdit";
@@ -46,6 +47,7 @@ import CoInvestingOpportunities from "@/pages/CoInvestingOpportunities";
 import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
 import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
 import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
+import DealDesk from "@/pages/DealDesk";
 import TrueCost from "@/pages/TrueCost";
 import RentVsBuy from "@/pages/RentVsBuy";
 import WillItPlex from "@/pages/WillItPlex";
@@ -138,6 +140,8 @@ function Router() {
       <Route path="/tools/coinvest/checklist" component={CoInvestingChecklist} />
       <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
       <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
+      <Route path="/deal-desk" component={DealDesk} />
+      <Route path="/tools/deal-desk" component={DealDesk} />
       <Route path="/tools/true-cost" component={TrueCost} />
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
       <Route path="/tools/cap-rates" component={CapRates} />
@@ -246,6 +250,7 @@ function Router() {
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />
       <Route path="/admin" component={Admin} />
+      <Route path="/admin/deal-desk" component={AdminDealDesk} />
       <Route path="/admin/events" component={AdminEvents} />
       <Route path="/admin/events/new" component={AdminEventNew} />
       <Route path="/admin/events/:id/edit" component={AdminEventEdit} />
