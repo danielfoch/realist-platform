@@ -632,14 +632,11 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
   createdAt: true,
-  leadId: true,
 });
 
 export const insertAnalysisSchema = createInsertSchema(analyses).omit({
   id: true,
   createdAt: true,
-  leadId: true,
-  propertyId: true,
 });
 
 export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({
@@ -1540,7 +1537,7 @@ export const buyBoxAgreementsRelations = relations(buyBoxAgreements, ({ one, man
 export const buyBoxMandates = pgTable("buybox_mandates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  agreementId: varchar("agreement_id").references(() => buyBoxAgreements.id).notNull(),
+  agreementId: varchar("agreement_id").references(() => buyBoxAgreements.id),
   status: text("status").default("new").notNull(),
   
   // Polygon data

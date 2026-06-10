@@ -2212,7 +2212,7 @@ export default function MonthlyMarketReportMay2026() {
       <SEO
         title={`${REPORT_TITLE} | Realist.ca`}
         description="A 30-45 minute investor webinar deck covering Canadian labour, inflation, the oil shock, Bank of Canada outlook, CMHC mortgage stress, supply, demographics, distress and the housing cycle."
-        canonical={`https://realist.ca/insights/${REPORT_SLUG}`}
+        canonicalUrl={`/insights/${REPORT_SLUG}`}
         structuredData={{
           "@context": "https://schema.org",
           "@type": "NewsArticle",
