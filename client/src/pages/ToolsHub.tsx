@@ -29,13 +29,6 @@ const tools = [
     badge: "New",
   },
   {
-    href: "/listings/us",
-    title: "US Listings Beta",
-    description: "Search HomeHarvest-sourced US listings in a separate beta browser while the US pipeline matures.",
-    icon: Home,
-    badge: "Internal",
-  },
-  {
     href: "/tools/multiplex-feasibility",
     title: "Multiplex Feasibility",
     description: "Screen any property for multiplex development potential. Ontario Bill 23 + Toronto multiplex by-law logic, confidence scoring, and envelope math.",
