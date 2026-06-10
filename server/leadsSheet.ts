@@ -3,6 +3,10 @@
 // partner applications, deal-match requests, and assorted lead forms.
 //
 // Auth reuses the Replit "google-sheet" connector via getUncachableGoogleSheetClient().
+// OWNER-ACCOUNT USE IS INTENTIONAL: this is an ADMIN/internal export — every
+// lead row lands in Dan's own leads spreadsheet, not a user's Drive. Do NOT
+// migrate this to the per-user OAuth flow (server/userGoogleSheets.ts); that
+// flow is for USER-facing exports only.
 // Target spreadsheet defaults to the owner's sheet:
 //   https://docs.google.com/spreadsheets/d/1r6LSoP5L5Sp1N0MDyTdw53ES_dxt4DxBk6ASHYTUgt4/edit
 // Override with the LEADS_SHEET_ID env var if needed.

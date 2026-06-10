@@ -1012,15 +1012,42 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
     setIsExportingSheets(true);
     try {
       const propertyAddress = [address, city, region].filter(Boolean).join(", ") || "Property Analysis";
-      const response = await apiRequest("POST", "/api/export/google-sheets", {
-        address: propertyAddress,
-        strategy,
-        inputs,
-        results,
+      const response = await fetch("/api/export/google-sheets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          address: propertyAddress,
+          strategy,
+          inputs,
+          results,
+        }),
       });
-      
+
       const data = await response.json();
-      
+
+      // Logged-in but Google not connected: run the connect hop, then the
+      // user retries the export after the OAuth redirect lands back here.
+      if (response.status === 409 && data.code === "GOOGLE_NOT_CONNECTED") {
+        const authRes = await fetch(data.authUrlEndpoint || "/api/integrations/google/auth-url", {
+          credentials: "include",
+        });
+        const authData = await authRes.json().catch(() => null);
+        if (authRes.ok && authData?.url) {
+          toast({
+            title: "Connect Google",
+            description: "Connect your Google account, then export again — the sheet will land in your own Drive.",
+          });
+          window.location.href = authData.url;
+          return;
+        }
+        throw new Error(data.message || "Connect your Google account to export.");
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || `Export failed (${response.status})`);
+      }
+
       if (data.success && data.url) {
         window.open(data.url, "_blank");
         toast({

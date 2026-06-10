@@ -15,6 +15,7 @@
     "test": "npm run idx:test",
     "validate:encyclopedia": "tsx script/validateEncyclopediaContent.ts",
     "db:push": "drizzle-kit push",
+    "import:us": "tsx server/importUsListings.ts",
     "market-intel:rebuild": "tsx scripts/rebuild-market-intelligence.ts rebuild",
     "leaderboard:finalize-month": "tsx scripts/rebuild-market-intelligence.ts finalize-month",
     "idx:build": "tsc -p tsconfig.idx.json",

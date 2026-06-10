@@ -27,8 +27,32 @@ async function listMigrationFiles(migrationsDir: string): Promise<string[]> {
     .sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * These SQL migrations belong to the idx app's schema. The live production
+ * database is owned by Drizzle (shared/schema.ts via `npm run db:push`) and
+ * has a differently-shaped users table — running idx migrations there would
+ * try to ALTER live tables. Detect that and refuse.
+ */
+async function assertNotDrizzleDatabase(): Promise<void> {
+  const result = await db.query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_name = 'users' AND column_name IN ('tier', 'role')`,
+  );
+  const columns = new Set(result.rows.map((r) => r.column_name));
+  // idx users has tier; the live Drizzle users has role but no tier
+  if (columns.has('role') && !columns.has('tier')) {
+    logger.error(
+      'Refusing to run: this database is managed by Drizzle (live app). ' +
+        'Use `npm run db:push` for schema changes. db/migrations/*.sql only ' +
+        'apply to a dedicated idx-app database.',
+    );
+    process.exit(1);
+  }
+}
+
 async function run(): Promise<void> {
   const migrationsDir = path.resolve(process.cwd(), 'db/migrations');
+  await assertNotDrizzleDatabase();
   await ensureMigrationsTable();
 
   const applied = await db.query<MigrationRow>('SELECT name FROM schema_migrations');

@@ -19,6 +19,7 @@ import Shop from "@/pages/Shop";
 import Compare from "@/pages/Compare";
 import Podcast from "@/pages/Podcast";
 import Admin from "@/pages/Admin";
+import AdminDealDesk from "@/pages/AdminDealDesk";
 import AdminEvents from "@/pages/AdminEvents";
 import AdminEventNew from "@/pages/AdminEventNew";
 import AdminEventEdit from "@/pages/AdminEventEdit";
@@ -46,6 +47,7 @@ import CoInvestingOpportunities from "@/pages/CoInvestingOpportunities";
 import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
 import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
 import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
+import DealDesk from "@/pages/DealDesk";
 import TrueCost from "@/pages/TrueCost";
 import RentVsBuy from "@/pages/RentVsBuy";
 import WillItPlex from "@/pages/WillItPlex";
@@ -55,7 +57,6 @@ import Premium from "@/pages/Premium";
 import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
 import ListingIntelligence from "@/pages/ListingIntelligence";
-import UsListings from "@/pages/UsListings";
 import RealtorNetwork from "@/pages/RealtorNetwork";
 import MarketReport from "@/pages/MarketReport";
 import MortgageRates from "@/pages/MortgageRates";
@@ -94,6 +95,8 @@ import {
 import JoinRealtors from "@/pages/JoinRealtors";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
+import PitchDeck from "@/pages/PitchDeck";
+import UnderwritingShare from "@/pages/UnderwritingShare";
 import AccountApiKeys from "@/pages/AccountApiKeys";
 import ThankYouVancouver from "@/pages/ThankYouVancouver";
 import NotFound from "@/pages/not-found";
@@ -138,13 +141,13 @@ function Router() {
       <Route path="/tools/coinvest/checklist" component={CoInvestingChecklist} />
       <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
       <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
+      <Route path="/deal-desk" component={DealDesk} />
+      <Route path="/tools/deal-desk" component={DealDesk} />
       <Route path="/tools/true-cost" component={TrueCost} />
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
       <Route path="/tools/cap-rates" component={CapRates} />
       <Route path="/listing-intelligence" component={ListingIntelligence} />
       <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
-      <Route path="/listings/us" component={UsListings} />
-      <Route path="/us-listings" component={UsListings} />
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
       <Route path="/deals" component={InvestorOperatingSystem} />
       <Route path="/watchlist" component={InvestorOperatingSystem} />
@@ -165,6 +168,8 @@ function Router() {
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/community/leaderboard/full" component={FullLeaderboard} />
       <Route path="/my-performance" component={MyPerformance} />
+      <Route path="/analyses/:id/deck" component={PitchDeck} />
+      <Route path="/underwriting/:token" component={UnderwritingShare} />
       <Route path="/account/api-keys" component={AccountApiKeys} />
       <Route path="/insights/market-report" component={MarketReport} />
       <Route path="/insights/mortgage-rates" component={MortgageRates} />
@@ -246,6 +251,7 @@ function Router() {
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />
       <Route path="/admin" component={Admin} />
+      <Route path="/admin/deal-desk" component={AdminDealDesk} />
       <Route path="/admin/events" component={AdminEvents} />
       <Route path="/admin/events/new" component={AdminEventNew} />
       <Route path="/admin/events/:id/edit" component={AdminEventEdit} />

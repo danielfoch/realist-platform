@@ -100,7 +100,11 @@ export type RealistEvent =
   | { event: "page_viewed"; path: string; referrer?: string; title?: string }
   | { event: "content_consumed"; content_type: "podcast" | "blog" | "guide" | "report"; content_id?: string; title?: string }
   | { event: "cta_clicked"; cta: string; location: string; destination?: string }
-  | { event: "feature_used"; feature: string; details?: Record<string, unknown> };
+  | { event: "feature_used"; feature: string; details?: Record<string, unknown> }
+
+  // Deal Desk
+  | { event: "deal_desk_cta_clicked"; source?: string }
+  | { event: "deal_submitted"; band?: string; source?: string; analysis_id?: string };
 
 // ─── Structured Preference Capture ───────────────────────────────────────────
 // Extracted from analyzer inputs to build investor preference profiles

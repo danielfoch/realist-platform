@@ -9,7 +9,7 @@ import {
   Menu, X, User, LogOut, Briefcase, Building, ChevronDown,
   Calculator, MapPin, Users, Handshake, Calendar, Radio,
   BookOpen, FileText, TrendingUp, BarChart3, Shield, Gavel,
-  Map, DollarSign, Layers, Building2, FileSearch,
+  Map, DollarSign, Layers, Building2, FileSearch, Inbox,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -39,7 +39,6 @@ const navCategories: NavCategory[] = [
     items: [
       { href: "/tools/cap-rates", label: "Yield Map", description: "Browse listings by estimated gross yield", icon: <Map className="h-4 w-4" /> },
       { href: "/listing-intelligence", label: "Listing Intelligence", description: "Collaborative underwriting card with structured feedback", icon: <FileSearch className="h-4 w-4" />, badge: "AI-ready" },
-      { href: "/listings/us", label: "US Listings", description: "HomeHarvest US listing beta, isolated from CREA", icon: <Building className="h-4 w-4" />, badge: "Beta" },
       { href: "/tools/motivated-deals", label: "Motivated Deals", description: "Motivated sellers, power of sale, VTB finder", icon: <Gavel className="h-4 w-4" />, badge: "New" },
       { href: "/tools/buybox", label: "BuyBox Builder", description: "Define and share your investment criteria", icon: <MapPin className="h-4 w-4" /> },
       { href: "/tools/coinvest", label: "Co-Invest", description: "Find investment partners", icon: <Handshake className="h-4 w-4" /> },
@@ -53,6 +52,7 @@ const navCategories: NavCategory[] = [
       { href: "/tools/analyzer", label: "Deal Analyzer", description: "Full underwriting — buy & hold, BRRR, multiplex, flip", icon: <Calculator className="h-4 w-4" /> },
       { href: "/tools/multiplex-feasibility", label: "Multiplex Feasibility", description: "Screen any property for development potential", icon: <Building2 className="h-4 w-4" />, badge: "New" },
       { href: "/tools/will-it-plex", label: "Will It Plex?", description: "Full multiplex financial pro forma", icon: <Layers className="h-4 w-4" /> },
+      { href: "/deal-desk", label: "Deal Desk", description: "Submit a deal for our team to review with you", icon: <Inbox className="h-4 w-4" />, badge: "New" },
       { href: "/tools/true-cost", label: "True Cost", description: "Complete cost breakdown for Ontario buyers", icon: <DollarSign className="h-4 w-4" /> },
       { href: "/tools/rent-vs-buy", label: "Rent vs. Buy", description: "Compare renting vs. owning over time", icon: <BarChart3 className="h-4 w-4" /> },
       { href: "/tools", label: "All Tools", description: "Browse every calculator", icon: <Calculator className="h-4 w-4" /> },
