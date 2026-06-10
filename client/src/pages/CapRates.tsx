@@ -1422,7 +1422,10 @@ export default function CapRates() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showDistressOverlay, setShowDistressOverlay] = useState(true);
   const [showDistressOnly, setShowDistressOnly] = useState(false);
-  const [showUsListingsLayer, setShowUsListingsLayer] = useState(false);
+  // Unified country filter: Canadian listings come from CREA DDF / Repliers,
+  // US listings from the us_listings table (HomeHarvest). "all" shows both.
+  const [countryFilter, setCountryFilter] = useState<"all" | "ca" | "us">("all");
+  const showUsListingsLayer = countryFilter !== "ca";
   const [savedSearches, setSavedSearches] = useState<SavedSearchSignal[]>(() => getSavedSearchSignals().slice(0, 4));
   const [savedShortlist, setSavedShortlist] = useState<SavedListingSignal[]>(() => getSavedListingSignals().slice(0, 4));
   const [recentViewedListings, setRecentViewedListings] = useState<SavedListingSignal[]>(() => getRecentViewedListingSignals().slice(0, 4));
@@ -1476,7 +1479,7 @@ export default function CapRates() {
       maxPrice,
       minBeds,
       propertyType,
-      showUsListingsLayer,
+      countryFilter,
     ],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -1934,10 +1937,13 @@ export default function CapRates() {
   }, [distressListingsInView, listingsWithCapRates]);
 
   const displayedListings = useMemo(() => {
+    // US-only mode hides the Canadian (DDF/Repliers) inventory entirely;
+    // US listings render from usMapData as markers + simple cards.
+    if (countryFilter === "us") return [];
     if (!showDistressOnly) return listingsWithCapRates;
     const distressMls = new Set(distressListingsInView.map((listing) => listing.mlsNumber));
     return listingsWithCapRates.filter((listing) => distressMls.has(listing.mlsNumber));
-  }, [distressListingsInView, listingsWithCapRates, showDistressOnly]);
+  }, [countryFilter, distressListingsInView, listingsWithCapRates, showDistressOnly]);
 
   const displayedMappableListings = useMemo(
     () => displayedListings.filter((l) => l.map?.latitude && l.map?.longitude),
@@ -2180,12 +2186,14 @@ export default function CapRates() {
       includeUnavailableMetrics,
       !showDistressOverlay,
       showDistressOnly,
+      countryFilter !== "all",
       sortMetric !== "gross_yield",
       sortDirection !== "desc",
       metricSource !== "realist_estimate",
     ].filter(Boolean).length;
   }, [
     consensusLabelFilter,
+    countryFilter,
     includeUnavailableMetrics,
     maxCapRate,
     maxGrossYield,
@@ -2429,6 +2437,55 @@ export default function CapRates() {
     }
   };
 
+  // Lightweight card for US (HomeHarvest) listings in US-only mode. US rows
+  // have no CREA yield metrics, so the card sticks to the facts + source link.
+  const renderUsListingCard = (listing: UsMapListing) => {
+    const details = [
+      listing.beds != null ? `${listing.beds} bd` : null,
+      listing.baths != null ? `${listing.baths} ba` : null,
+      listing.sqft ? `${listing.sqft.toLocaleString()} sqft` : null,
+    ].filter(Boolean).join(" · ");
+    return (
+      <div
+        key={`us-${listing.id}`}
+        className="rounded-lg border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+        data-testid={`card-us-listing-${listing.id}`}
+      >
+        <div className="flex flex-col gap-1 p-2.5">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-sm font-bold" data-testid={`text-us-price-${listing.id}`}>
+              {listing.listPrice ? formatPrice(listing.listPrice) : "Price unavailable"}
+            </span>
+            <Badge variant="outline" className="px-1 text-[9px] flex-shrink-0 border-blue-400 text-blue-700 dark:text-blue-300">
+              US
+            </Badge>
+          </div>
+          <p className="text-[11px] text-muted-foreground truncate">
+            {listing.formattedAddress}
+          </p>
+          {details && <p className="text-[11px] text-muted-foreground">{details}</p>}
+          <div className="mt-0.5 flex items-center justify-between gap-2">
+            <span className="text-[10px] text-muted-foreground">
+              {listing.propertyType || "Residential"}
+              {listing.daysOnMarket != null ? ` · ${listing.daysOnMarket} DOM` : ""}
+            </span>
+            {listing.sourceUrl && (
+              <a
+                href={listing.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-semibold text-blue-700 dark:text-blue-300"
+                onClick={(event) => event.stopPropagation()}
+              >
+                Open source listing
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderListingCard = (listing: ListingWithCapRate) => {
     const imgUrl = getImageUrl(listing.images);
     const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
@@ -2472,9 +2529,14 @@ export default function CapRates() {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-1 mb-0.5">
-              <span className="text-sm font-bold" data-testid={`text-price-${listing.mlsNumber}`}>
-                {formatPrice(price)}
-              </span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-sm font-bold" data-testid={`text-price-${listing.mlsNumber}`}>
+                  {formatPrice(price)}
+                </span>
+                <Badge variant="outline" className="px-1 text-[9px] flex-shrink-0" data-testid={`badge-country-${listing.mlsNumber}`}>
+                  CA
+                </Badge>
+              </div>
               <div className="flex flex-col items-end gap-1">
                 <Badge
                   variant={sortMetric === "price" ? "outline" : getCapRateBadgeVariant((typeof primaryMetricValue === "number" ? primaryMetricValue : listing.capRate) || 0)}
@@ -3496,16 +3558,27 @@ export default function CapRates() {
     );
   };
 
-  const resultSummaryLabel = hasSearched
-    ? totalCount > 0
-      ? `${displayedListings.length} of ${totalCount.toLocaleString()} properties`
-      : "No properties found"
-    : "Move the map or run a search to start";
-  const mobileResultSummaryLabel = totalCount > 0
-    ? `${displayedListings.length} of ${totalCount.toLocaleString()}`
-    : showDistressOverlay && distressOnlyListingsInView.length > 0
-      ? `${distressOnlyListingsInView.length} distress`
-      : "No properties";
+  const usVisibleCount = usMapData?.listings?.length ?? 0;
+  const resultSummaryLabel = countryFilter === "us"
+    ? usMapLoading
+      ? "Loading US listings…"
+      : usVisibleCount > 0
+        ? `${usVisibleCount} of ${(usMapData?.total ?? usVisibleCount).toLocaleString()} US listings`
+        : "No US listings in view"
+    : hasSearched
+      ? totalCount > 0
+        ? `${displayedListings.length} of ${totalCount.toLocaleString()} properties`
+        : "No properties found"
+      : "Move the map or run a search to start";
+  const mobileResultSummaryLabel = countryFilter === "us"
+    ? usVisibleCount > 0
+      ? `${usVisibleCount} US`
+      : "No US listings"
+    : totalCount > 0
+      ? `${displayedListings.length} of ${totalCount.toLocaleString()}`
+      : showDistressOverlay && distressOnlyListingsInView.length > 0
+        ? `${distressOnlyListingsInView.length} distress`
+        : "No properties";
 
   const sidebarContent = (
     <>
@@ -3598,6 +3671,20 @@ export default function CapRates() {
                 </div>
               </div>
             ))
+          ) : countryFilter === "us" ? (
+            (usMapData?.listings?.length ?? 0) > 0 ? (
+              <>{(usMapData?.listings ?? []).map((listing) => renderUsListingCard(listing))}</>
+            ) : (
+              <div className="rounded-lg border p-6 text-center">
+                <Map className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+                <h3 className="text-sm font-semibold mb-2">{usMapLoading ? "Loading US Listings" : "No US Listings in View"}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {usMapLoading
+                    ? "Fetching HomeHarvest markers for this area."
+                    : "Pan or zoom the map to a covered US market (HomeHarvest beta)."}
+                </p>
+              </div>
+            )
           ) : displayedListings.length > 0 || (showDistressOverlay && distressOnlyListingsInView.length > 0) ? (
             <>
               {displayedListings.map((listing) => renderListingCard(listing))}
@@ -3996,13 +4083,30 @@ export default function CapRates() {
               </div>
             </div>
             <div className="flex min-w-[220px] items-center gap-2 rounded-md border border-blue-200 bg-background px-3 py-2">
-              <Switch
-                checked={showUsListingsLayer}
-                onCheckedChange={setShowUsListingsLayer}
-              />
+              <div className="flex overflow-hidden rounded-md border border-border" data-testid="toggle-country-filter">
+                {([
+                  ["all", "All"],
+                  ["ca", "Canada"],
+                  ["us", "US"],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setCountryFilter(value)}
+                    className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                      countryFilter === value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:text-foreground"
+                    }`}
+                    data-testid={`button-country-${value}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div>
-                <p className="text-[11px] font-medium">US listings beta</p>
-                <p className="text-[10px] text-muted-foreground">HomeHarvest markers, separate from CREA yields.</p>
+                <p className="text-[11px] font-medium">Country</p>
+                <p className="text-[10px] text-muted-foreground">CREA (CA) + HomeHarvest US beta markers.</p>
               </div>
             </div>
             <Button
@@ -4041,7 +4145,7 @@ export default function CapRates() {
                 setIncludeUnavailableMetrics(false);
                 setShowDistressOverlay(true);
                 setShowDistressOnly(false);
-                setShowUsListingsLayer(false);
+                setCountryFilter("all");
               }}
               disabled={activeFilterCount === 0}
               data-testid="button-reset-filters"
@@ -4139,7 +4243,7 @@ export default function CapRates() {
                 distressMap={distressMap}
               />
             )}
-            {!findDealsActive && showDistressOverlay && distressOnlyListingsInView.length > 0 && (
+            {!findDealsActive && showDistressOverlay && countryFilter !== "us" && distressOnlyListingsInView.length > 0 && (
               <DistressListingsLayer
                 listings={distressOnlyListingsInView}
                 selectedMlsNumber={selectedDistressListing?.mlsNumber}
@@ -4172,11 +4276,15 @@ export default function CapRates() {
               data-testid="button-toggle-mobile-list"
             >
               <List className="h-4 w-4 mr-1.5" />
-              {displayedListings.length > 0
-                ? `${displayedListings.length} listings`
-                : showDistressOverlay && distressOnlyListingsInView.length > 0
-                  ? `${distressOnlyListingsInView.length} distress`
-                  : "Listings"}
+              {countryFilter === "us"
+                ? usVisibleCount > 0
+                  ? `${usVisibleCount} US listings`
+                  : "Listings"
+                : displayedListings.length > 0
+                  ? `${displayedListings.length} listings`
+                  : showDistressOverlay && distressOnlyListingsInView.length > 0
+                    ? `${distressOnlyListingsInView.length} distress`
+                    : "Listings"}
               {showMobileList ? <ChevronDown className="h-3 w-3 ml-1" /> : <ChevronUp className="h-3 w-3 ml-1" />}
             </Button>
           </div>

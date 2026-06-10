@@ -57,7 +57,6 @@ import Premium from "@/pages/Premium";
 import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
 import ListingIntelligence from "@/pages/ListingIntelligence";
-import UsListings from "@/pages/UsListings";
 import RealtorNetwork from "@/pages/RealtorNetwork";
 import MarketReport from "@/pages/MarketReport";
 import MortgageRates from "@/pages/MortgageRates";
@@ -149,8 +148,6 @@ function Router() {
       <Route path="/tools/cap-rates" component={CapRates} />
       <Route path="/listing-intelligence" component={ListingIntelligence} />
       <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
-      <Route path="/listings/us" component={UsListings} />
-      <Route path="/us-listings" component={UsListings} />
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
       <Route path="/deals" component={InvestorOperatingSystem} />
       <Route path="/watchlist" component={InvestorOperatingSystem} />
