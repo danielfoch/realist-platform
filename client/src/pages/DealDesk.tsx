@@ -28,7 +28,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, ArrowRight, Building2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
 
 const formSchema = z.object({
   name: z.string().min(1, "Full name is required"),
@@ -79,6 +80,11 @@ export default function DealDesk() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ status: string; suggestedNextAction: string; intentScore: number } | null>(null);
+  const searchString = useSearch();
+
+  const params = new URLSearchParams(searchString);
+  const prefillAddress = params.get("address") || "";
+  const prefillDealId = params.get("dealId") || null;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -86,7 +92,7 @@ export default function DealDesk() {
       name: "",
       email: "",
       phone: "",
-      address: "",
+      address: prefillAddress,
       listingUrl: "",
       market: "",
       propertyType: "",
@@ -100,6 +106,12 @@ export default function DealDesk() {
     },
   });
 
+  useEffect(() => {
+    if (prefillAddress) {
+      form.setValue("address", prefillAddress);
+    }
+  }, [prefillAddress]);
+
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const payload = {
@@ -107,6 +119,8 @@ export default function DealDesk() {
         purchasePrice: values.purchasePrice ? Number(values.purchasePrice) : null,
         estimatedRent: values.estimatedRent ? Number(values.estimatedRent) : null,
         listingUrl: values.listingUrl || null,
+        dealDeskCtaClicked: !!prefillDealId,
+        analysisId: prefillDealId || null,
       };
       return apiRequest<{ ok: boolean; status: string; suggestedNextAction: string; intentScore: number }>(
         "POST",

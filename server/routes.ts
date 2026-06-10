@@ -3424,6 +3424,30 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/activity", async (req, res) => {
+    try {
+      const { eventType, analysisId, dealId } = req.body;
+      if (!eventType || typeof eventType !== "string") {
+        return res.status(400).json({ ok: false, error: "eventType is required" });
+      }
+      const userId = (req.session as any)?.userId || null;
+      const sessionId = (req as any).sessionID || null;
+      await logUserActivity(req, {
+        userId,
+        sessionId,
+        eventName: eventType,
+        analysisId: analysisId || null,
+        dealId: dealId || null,
+        source: "deal_analyzer",
+        sourcePage: "/",
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("POST /api/activity error:", err);
+      res.status(500).json({ ok: false });
+    }
+  });
+
   app.get("/api/analyses/:id", async (req, res) => {
     try {
       const analysis = await storage.getAnalysis(req.params.id);
