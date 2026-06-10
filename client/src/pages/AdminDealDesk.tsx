@@ -29,7 +29,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users } from "lucide-react";
+import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity } from "lucide-react";
 import { Link } from "wouter";
 
 type Opportunity = {
@@ -68,6 +68,19 @@ type Stats = {
   new: number;
   lost: number;
   total: number;
+  callsBooked: number;
+  dealsAnalyzed: number;
+  lostByReason: { reason: string; count: number }[];
+};
+
+type ActivityEvent = {
+  id: string;
+  eventName: string;
+  eventTimestamp: string;
+  sourcePage: string | null;
+  dealId: string | null;
+  source: string | null;
+  metadata: Record<string, any> | null;
 };
 
 const STATUSES = [
@@ -84,6 +97,7 @@ function statusBadge(status: string) {
     nurture: "secondary",
     closed: "default",
     lost: "secondary",
+    booked_call: "default",
   };
   return <Badge variant={variants[status] ?? "outline"} data-testid={`badge-status-${status}`}>{status}</Badge>;
 }
@@ -95,6 +109,10 @@ function scoreBadge(score: number) {
 
 function fmt(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function fmtTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 export default function AdminDealDesk() {
@@ -118,6 +136,10 @@ export default function AdminDealDesk() {
     },
   });
 
+  const { data: activityFeed = [], isLoading: activityLoading } = useQuery<ActivityEvent[]>({
+    queryKey: ["/api/deal-desk/activity"],
+  });
+
   const updateMutation = useMutation({
     mutationFn: (payload: { id: string; status: string; assignedTo?: string; lostReason?: string }) =>
       apiRequest("PATCH", `/api/deal-desk/opportunities/${payload.id}`, {
@@ -128,6 +150,7 @@ export default function AdminDealDesk() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/activity"] });
       setEditingOpp(null);
       toast({ title: "Status updated" });
     },
@@ -158,6 +181,9 @@ export default function AdminDealDesk() {
   const newCount = stats?.new ?? 0;
   const lostCount = stats?.lost ?? 0;
   const total = stats?.total ?? 0;
+  const callsBooked = stats?.callsBooked ?? 0;
+  const dealsAnalyzed = stats?.dealsAnalyzed ?? 0;
+  const lostByReason = stats?.lostByReason ?? [];
 
   return (
     <div className="min-h-screen bg-background p-6 space-y-6" data-testid="admin-deal-desk">
@@ -167,7 +193,7 @@ export default function AdminDealDesk() {
           <p className="text-muted-foreground text-sm">Transaction funnel — opportunities and leads</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-refresh">
+          <Button variant="outline" size="sm" onClick={() => { refetch(); queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/stats"] }); queryClient.invalidateQueries({ queryKey: ["/api/deal-desk/activity"] }); }} data-testid="button-refresh">
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh
           </Button>
           <Link href="/admin">
@@ -176,10 +202,11 @@ export default function AdminDealDesk() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {/* KPI grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <Card data-testid="stat-total">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <Users className="h-4 w-4" /> Total
             </CardTitle>
           </CardHeader>
@@ -187,9 +214,19 @@ export default function AdminDealDesk() {
             <div className="text-2xl font-bold">{statsLoading ? "…" : total}</div>
           </CardContent>
         </Card>
+        <Card data-testid="stat-deals-analyzed">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <BarChart2 className="h-4 w-4" /> Analyzed
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statsLoading ? "…" : dealsAnalyzed}</div>
+          </CardContent>
+        </Card>
         <Card data-testid="stat-hot">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <Flame className="h-4 w-4 text-red-500" /> Hot
             </CardTitle>
           </CardHeader>
@@ -199,7 +236,7 @@ export default function AdminDealDesk() {
         </Card>
         <Card data-testid="stat-warm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <TrendingUp className="h-4 w-4 text-amber-500" /> Warm
             </CardTitle>
           </CardHeader>
@@ -209,7 +246,7 @@ export default function AdminDealDesk() {
         </Card>
         <Card data-testid="stat-new">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <Inbox className="h-4 w-4" /> New
             </CardTitle>
           </CardHeader>
@@ -217,9 +254,19 @@ export default function AdminDealDesk() {
             <div className="text-2xl font-bold">{statsLoading ? "…" : newCount}</div>
           </CardContent>
         </Card>
+        <Card data-testid="stat-calls-booked">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <Phone className="h-4 w-4 text-green-500" /> Calls
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{statsLoading ? "…" : callsBooked}</div>
+          </CardContent>
+        </Card>
         <Card data-testid="stat-lost">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <XCircle className="h-4 w-4 text-muted-foreground" /> Lost
             </CardTitle>
           </CardHeader>
@@ -229,10 +276,31 @@ export default function AdminDealDesk() {
         </Card>
       </div>
 
+      {/* Lost-by-reason breakdown */}
+      {lostByReason.length > 0 && (
+        <Card data-testid="card-lost-by-reason">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <XCircle className="h-4 w-4" /> Lost by Reason
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {lostByReason.map(r => (
+                <Badge key={r.reason} variant="secondary" data-testid={`badge-lost-reason-${r.reason}`}>
+                  {r.reason} ({r.count})
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="opportunities">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <TabsList>
             <TabsTrigger value="opportunities" data-testid="tab-opportunities">Opportunities</TabsTrigger>
+            <TabsTrigger value="activity" data-testid="tab-activity">Activity Feed</TabsTrigger>
             <TabsTrigger value="export" data-testid="tab-export">Export</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
@@ -269,44 +337,96 @@ export default function AdminDealDesk() {
                     <TableHead>Status</TableHead>
                     <TableHead>Next Action</TableHead>
                     <TableHead>Assigned</TableHead>
+                    <TableHead>Latest Activity</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {opportunities.map((row, i) => (
-                    <TableRow key={row.opportunity.id} data-testid={`row-opportunity-${row.opportunity.id}`}>
-                      <TableCell>
-                        <div className="text-sm font-medium">{row.lead?.name ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground">{row.lead?.email ?? "—"}</div>
-                        {row.lead?.phone && <div className="text-xs text-muted-foreground">{row.lead.phone}</div>}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm max-w-40 truncate">{row.deal?.address ?? "—"}</div>
-                        {row.deal?.market && <div className="text-xs text-muted-foreground">{row.deal.market}</div>}
-                      </TableCell>
-                      <TableCell>{scoreBadge(row.opportunity.intentScore)}</TableCell>
-                      <TableCell>{statusBadge(row.opportunity.status)}</TableCell>
-                      <TableCell>
-                        <div className="text-xs text-muted-foreground max-w-36">{row.opportunity.suggestedNextAction}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-xs">{row.opportunity.assignedTo ?? <span className="text-muted-foreground">Unassigned</span>}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-xs text-muted-foreground">{fmt(row.opportunity.createdAt)}</div>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm" onClick={() => openEdit(row)} data-testid={`button-edit-${row.opportunity.id}`}>
-                          Update
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {opportunities.map((row) => {
+                    const latestEvent = activityFeed.find(e => e.dealId === row.deal?.id);
+                    return (
+                      <TableRow key={row.opportunity.id} data-testid={`row-opportunity-${row.opportunity.id}`}>
+                        <TableCell>
+                          <div className="text-sm font-medium">{row.lead?.name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">{row.lead?.email ?? "—"}</div>
+                          {row.lead?.phone && <div className="text-xs text-muted-foreground">{row.lead.phone}</div>}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm max-w-40 truncate">{row.deal?.address ?? "—"}</div>
+                          {row.deal?.market && <div className="text-xs text-muted-foreground">{row.deal.market}</div>}
+                        </TableCell>
+                        <TableCell>{scoreBadge(row.opportunity.intentScore)}</TableCell>
+                        <TableCell>{statusBadge(row.opportunity.status)}</TableCell>
+                        <TableCell>
+                          <div className="text-xs text-muted-foreground max-w-36">{row.opportunity.suggestedNextAction}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs">{row.opportunity.assignedTo ?? <span className="text-muted-foreground">Unassigned</span>}</div>
+                        </TableCell>
+                        <TableCell>
+                          {latestEvent ? (
+                            <div className="text-xs text-muted-foreground" data-testid={`text-latest-activity-${row.opportunity.id}`}>
+                              <span className="font-medium text-foreground">{latestEvent.eventName}</span>
+                              <br />{fmtTime(latestEvent.eventTimestamp)}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs text-muted-foreground">{fmt(row.opportunity.createdAt)}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm" onClick={() => openEdit(row)} data-testid={`button-edit-${row.opportunity.id}`}>
+                            Update
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="h-4 w-4" /> Recent Deal Desk Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activityLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading…</div>
+              ) : activityFeed.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground" data-testid="empty-activity">
+                  No deal desk activity recorded yet.
+                </div>
+              ) : (
+                <div className="space-y-2" data-testid="activity-feed">
+                  {activityFeed.map(event => (
+                    <div key={event.id} className="flex items-start gap-3 text-sm py-2 border-b last:border-0" data-testid={`activity-event-${event.id}`}>
+                      <div className="w-2 h-2 mt-1.5 rounded-full bg-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">{event.eventName}</span>
+                          {event.source && <Badge variant="outline" className="text-xs">{event.source}</Badge>}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {fmtTime(event.eventTimestamp)}
+                          {event.dealId && <span className="ml-2">deal: <code className="font-mono">{event.dealId.slice(0, 8)}…</code></span>}
+                          {event.metadata?.status && <span className="ml-2">→ <strong>{event.metadata.status}</strong></span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="export" className="mt-4">

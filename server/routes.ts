@@ -748,6 +748,8 @@ export async function registerRoutes(
         analysisId: properties.analysis_id || properties.analysisId || null,
         sourcePage: page || null,
         component: properties.component || null,
+        dealId: properties.deal_id || properties.dealId || null,
+        source: properties.source || null,
         metadata: properties,
       });
 

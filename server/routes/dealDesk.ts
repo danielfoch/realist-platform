@@ -222,6 +222,17 @@ export function registerDealDeskRoutes(app: Express) {
     }
   });
 
+  app.get("/api/deal-desk/activity", isAdmin, async (req, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 50, 200);
+      const feed = await storage.getDealDeskActivityFeed(limit);
+      res.json(feed);
+    } catch (err) {
+      console.error("Deal desk activity error:", err);
+      res.status(500).json({ ok: false });
+    }
+  });
+
   app.get("/api/deal-desk/export", async (req, res) => {
     const authHeader = req.headers.authorization || "";
     const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;

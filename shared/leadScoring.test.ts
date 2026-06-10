@@ -139,3 +139,62 @@ describe("selectEmailTriggers", () => {
     expect(selectEmailTriggers("hot", false)).not.toContain("financing_interest_followup");
   });
 });
+
+describe("end-to-end orchestration: score → status → triggers", () => {
+  it("hot submission with financing: score 90, hot status, correct triggers", () => {
+    const input = {
+      dealSubmitted: true,
+      buyingHelpWanted: true,
+      financingHelpWanted: true,
+      returnThresholdHit: true,
+    };
+    const score = scoreLeadInput(input);
+    expect(score.intentScore).toBe(90);
+    expect(score.status).toBe("hot");
+    expect(score.suggestedNextAction).toBe("Call within 5 minutes");
+
+    const triggers = selectEmailTriggers(score.status as "hot", !!input.financingHelpWanted);
+    expect(triggers).toContain("deal_submitted_confirmation");
+    expect(triggers).toContain("hot_lead_immediate_followup");
+    expect(triggers).toContain("financing_interest_followup");
+    expect(triggers).not.toContain("warm_lead_24h_followup");
+  });
+
+  it("warm submission with phone but no buying/financing: score 50, warm, 24h followup", () => {
+    const input = { dealSubmitted: true, phoneProvided: true };
+    const score = scoreLeadInput(input);
+    expect(score.intentScore).toBe(50);
+    expect(score.status).toBe("warm");
+
+    const triggers = selectEmailTriggers(score.status as "warm", !!input.financingHelpWanted);
+    expect(triggers).toContain("deal_submitted_confirmation");
+    expect(triggers).toContain("warm_lead_24h_followup");
+    expect(triggers).not.toContain("hot_lead_immediate_followup");
+    expect(triggers).not.toContain("financing_interest_followup");
+  });
+
+  it("minimal submission (deal only): score 40, nurture, only confirmation trigger", () => {
+    const input = { dealSubmitted: true };
+    const score = scoreLeadInput(input);
+    expect(score.intentScore).toBe(40);
+    expect(score.status).toBe("nurture");
+
+    const triggers = selectEmailTriggers(score.status as "nurture", !!input.financingHelpWanted);
+    expect(triggers).toHaveLength(1);
+    expect(triggers[0]).toBe("deal_submitted_confirmation");
+  });
+
+  it("breakdown length matches number of true signals", () => {
+    const score = scoreLeadInput({
+      dealSubmitted: true,
+      phoneProvided: true,
+      buyingHelpWanted: true,
+    });
+    expect(score.breakdown).toHaveLength(3);
+    // breakdown items use 'factor' key (snake_case signal names)
+    const factors = score.breakdown.map(b => b.factor);
+    expect(factors).toContain("deal_submitted");
+    expect(factors).toContain("phone_provided");
+    expect(factors).toContain("buying_help_wanted");
+  });
+});

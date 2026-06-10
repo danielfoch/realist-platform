@@ -560,7 +560,12 @@ export interface IStorage {
   createOpportunity(opp: InsertOpportunity): Promise<Opportunity>;
   listOpportunities(filters: { status?: string }): Promise<any[]>;
   updateOpportunityStatus(id: string, updates: { status: string; assignedTo?: string; lostReason?: string }): Promise<Opportunity | undefined>;
-  getDealDeskStats(): Promise<{ hot: number; warm: number; new: number; lost: number; total: number }>;
+  getDealDeskStats(): Promise<{
+    hot: number; warm: number; new: number; lost: number; total: number;
+    callsBooked: number; dealsAnalyzed: number;
+    lostByReason: { reason: string; count: number }[];
+  }>;
+  getDealDeskActivityFeed(limit: number): Promise<any[]>;
   createEmailTrigger(trigger: InsertEmailTrigger): Promise<EmailTrigger>;
   listRecentActivityEvents(limit: number): Promise<any[]>;
 }
@@ -2506,6 +2511,7 @@ export class DatabaseStorage implements IStorage {
           ...(data.phone != null ? { phone: data.phone } : {}),
           consent: data.consent || (existing.consent ?? false),
           consentSms: data.consentSms || (existing.consentSms ?? false),
+          leadSource: data.leadSource,
         })
         .where(eq(leads.id, existing.id))
         .returning();
@@ -2566,15 +2572,25 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  async getDealDeskStats(): Promise<{ hot: number; warm: number; new: number; lost: number; total: number }> {
-    const rows = await db
-      .select({ status: opportunities.status, count: sql<number>`count(*)::int` })
-      .from(opportunities)
-      .groupBy(opportunities.status);
+  async getDealDeskStats(): Promise<{
+    hot: number; warm: number; new: number; lost: number; total: number;
+    callsBooked: number; dealsAnalyzed: number;
+    lostByReason: { reason: string; count: number }[];
+  }> {
+    const [statusRows, dealsCount, lostByReasonRows] = await Promise.all([
+      db.select({ status: opportunities.status, count: sql<number>`count(*)::int` })
+        .from(opportunities)
+        .groupBy(opportunities.status),
+      db.select({ count: sql<number>`count(*)::int` }).from(deals),
+      db.select({ reason: opportunities.lostReason, count: sql<number>`count(*)::int` })
+        .from(opportunities)
+        .where(and(eq(opportunities.status, "lost"), sql`${opportunities.lostReason} is not null`))
+        .groupBy(opportunities.lostReason),
+    ]);
 
     const map: Record<string, number> = {};
     let total = 0;
-    for (const r of rows) {
+    for (const r of statusRows) {
       map[r.status] = r.count;
       total += r.count;
     }
@@ -2584,7 +2600,26 @@ export class DatabaseStorage implements IStorage {
       new: map["new"] ?? 0,
       lost: map["lost"] ?? 0,
       total,
+      callsBooked: map["booked_call"] ?? 0,
+      dealsAnalyzed: dealsCount[0]?.count ?? 0,
+      lostByReason: lostByReasonRows.map(r => ({ reason: r.reason ?? "Unknown", count: r.count })),
     };
+  }
+
+  async getDealDeskActivityFeed(limit: number): Promise<any[]> {
+    return db.select({
+      id: userActivityEvents.id,
+      eventName: userActivityEvents.eventName,
+      eventTimestamp: userActivityEvents.eventTimestamp,
+      sourcePage: userActivityEvents.sourcePage,
+      dealId: userActivityEvents.dealId,
+      source: userActivityEvents.source,
+      metadata: userActivityEvents.metadata,
+    })
+      .from(userActivityEvents)
+      .where(sql`${userActivityEvents.source} = 'deal_desk' OR ${userActivityEvents.source} = 'deal_desk_admin' OR ${userActivityEvents.eventName} IN ('deal_submitted','crm_status_updated')`)
+      .orderBy(desc(userActivityEvents.eventTimestamp))
+      .limit(limit);
   }
 
   async createEmailTrigger(trigger: InsertEmailTrigger): Promise<EmailTrigger> {
