@@ -37,7 +37,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock, CheckSquare, Settings, History, ArrowRight, UserCheck, StickyNote } from "lucide-react";
+import { Flame, TrendingUp, Inbox, XCircle, Download, RefreshCw, Users, Phone, BarChart2, Activity, FileText, Mail, CheckCircle, AlertCircle, Clock, CheckSquare, Settings, History, ArrowRight, UserCheck, StickyNote, X, AlertTriangle } from "lucide-react";
 import { Link } from "wouter";
 
 type Opportunity = {
@@ -193,6 +193,8 @@ export default function AdminDealDesk() {
   });
   const [newEmailInput, setNewEmailInput] = useState<string>("");
   const settingsLoaded = settingsData?.settings;
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [currentTab, setCurrentTab] = useState("opportunities");
 
   const saveSettingsMutation = useMutation({
     mutationFn: (payload: { notifyEmails: string[] }) =>
@@ -407,6 +409,36 @@ export default function AdminDealDesk() {
         </div>
       </div>
 
+      {/* No-email warning banner */}
+      {!bannerDismissed && settingsData && !settingsLoaded?.effectiveEmail && (
+        <div
+          className="flex items-start gap-3 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600 px-4 py-3 text-amber-800 dark:text-amber-300"
+          data-testid="banner-no-notification-email"
+        >
+          <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0 text-amber-500" />
+          <div className="flex-1 text-sm">
+            <span className="font-semibold">No notification email configured.</span>{" "}
+            Deal Desk alerts are silently dropping. Configure one in the{" "}
+            <button
+              className="underline font-medium hover:opacity-80"
+              onClick={() => setCurrentTab("settings")}
+              data-testid="link-go-to-settings"
+            >
+              Settings tab
+            </button>
+            .
+          </div>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="ml-auto hover:opacity-70"
+            aria-label="Dismiss banner"
+            data-testid="button-dismiss-banner"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <Card data-testid="stat-total">
@@ -501,7 +533,7 @@ export default function AdminDealDesk() {
         </Card>
       )}
 
-      <Tabs defaultValue="opportunities">
+      <Tabs value={currentTab} onValueChange={setCurrentTab}>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <TabsList>
             <TabsTrigger value="opportunities" data-testid="tab-opportunities">Opportunities</TabsTrigger>
