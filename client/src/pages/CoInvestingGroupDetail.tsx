@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useState, useEffect } from "react";
@@ -36,18 +37,10 @@ export default function CoInvestingGroupDetail() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   
-  const CO_INVEST_TAB_LS_KEY = "coInvestingGroupDetail.activeTab";
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const stored = localStorage.getItem(CO_INVEST_TAB_LS_KEY);
-    return (stored && ["overview", "members", "chat"].includes(stored)) ? stored : "overview";
-  });
+  const [activeTab, setActiveTab] = usePersistedTab("coInvestingGroupDetail.activeTab", "overview", ["overview", "members", "chat"]);
   const [joinNote, setJoinNote] = useState("");
   const [pledgedCapital, setPledgedCapital] = useState("");
   const [newMessage, setNewMessage] = useState("");
-
-  useEffect(() => {
-    localStorage.setItem(CO_INVEST_TAB_LS_KEY, activeTab);
-  }, [activeTab]);
 
   const handleRepresentationError = (error: any) => {
     if (error?.requiresRepresentation) {

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -188,20 +189,11 @@ function generateCommentary(snapshots: MarketSnapshot[], month: string, yieldDat
   return commentary;
 }
 
-const MARKET_REPORT_TAB_LS_KEY = "marketReport.activeTab";
-
 export default function MarketReport() {
   const [selectedProvince, setSelectedProvince] = useState<string>("all");
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [compareCities, setCompareCities] = useState<{ city: string; province: string }[]>([]);
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const stored = localStorage.getItem(MARKET_REPORT_TAB_LS_KEY);
-    return (stored && ["overview", "yields", "intelligence", "compare"].includes(stored)) ? stored : "overview";
-  });
-
-  useEffect(() => {
-    localStorage.setItem(MARKET_REPORT_TAB_LS_KEY, activeTab);
-  }, [activeTab]);
+  const [activeTab, setActiveTab] = usePersistedTab("marketReport.activeTab", "overview", ["overview", "yields", "intelligence", "compare"]);
 
   const { data: latestData, isLoading: loadingLatest } = useQuery<{
     snapshots: MarketSnapshot[];

@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { authPath } from "@/lib/authReturn";
 import { apiRequest } from "@/lib/queryClient";
 import { Link, useLocation } from "wouter";
@@ -118,22 +119,13 @@ function buildAnalyzerHref(listing: SavedListingSignal): string {
   return `/tools/analyzer${params.toString() ? `?${params.toString()}` : ""}`;
 }
 
-const INVESTOR_PORTAL_TAB_LS_KEY = "investorPortal.activeTab";
-
 export default function InvestorPortal() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [addPropertyOpen, setAddPropertyOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const stored = localStorage.getItem(INVESTOR_PORTAL_TAB_LS_KEY);
-    return (stored && ["workspace", "saved-deals", "portfolio", "profile", "kyc", "settings"].includes(stored)) ? stored : "workspace";
-  });
-
-  useEffect(() => {
-    localStorage.setItem(INVESTOR_PORTAL_TAB_LS_KEY, activeTab);
-  }, [activeTab]);
+  const [activeTab, setActiveTab] = usePersistedTab("investorPortal.activeTab", "workspace", ["workspace", "saved-deals", "portfolio", "profile", "kyc", "settings"]);
 
   const { data: profile, isLoading: profileLoading } = useQuery<InvestorProfile | null>({
     queryKey: ["/api/investor/profile"],

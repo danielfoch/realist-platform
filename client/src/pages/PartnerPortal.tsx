@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { apiRequest } from "@/lib/queryClient";
 import { authPath } from "@/lib/authReturn";
 import { User, Briefcase, Users, CheckCircle, Clock, Phone, Mail, MapPin, Building } from "lucide-react";
@@ -49,22 +50,12 @@ const LEAD_STATUSES = [
 
 type PartnerLeadWithLead = PartnerLead & { lead: Lead };
 
-const PARTNER_VALID_TABS = ["leads", "profile"];
-const PARTNER_TAB_LS_KEY = "partnerPortal.activeTab";
-
 export default function PartnerPortal() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [currentTab, setCurrentTab] = useState(() => {
-    const stored = localStorage.getItem(PARTNER_TAB_LS_KEY);
-    return stored && PARTNER_VALID_TABS.includes(stored) ? stored : "leads";
-  });
-
-  useEffect(() => {
-    localStorage.setItem(PARTNER_TAB_LS_KEY, currentTab);
-  }, [currentTab]);
+  const [currentTab, setCurrentTab] = usePersistedTab("partnerPortal.activeTab", "leads", ["leads", "profile"]);
 
   const { data: partner, isLoading: partnerLoading } = useQuery<IndustryPartner | null>({
     queryKey: ["/api/partner/profile"],

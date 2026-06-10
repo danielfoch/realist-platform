@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -206,16 +207,7 @@ export default function AdminDealDesk() {
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem(BANNER_LS_KEY) === "true"
   );
-  const VALID_TABS = ["opportunities", "activity", "email-queue", "export", "settings"];
-  const TAB_LS_KEY = "dealDesk.activeTab";
-  const [currentTab, setCurrentTab] = useState(() => {
-    const stored = localStorage.getItem(TAB_LS_KEY);
-    return stored && VALID_TABS.includes(stored) ? stored : "opportunities";
-  });
-
-  useEffect(() => {
-    localStorage.setItem(TAB_LS_KEY, currentTab);
-  }, [currentTab]);
+  const [currentTab, setCurrentTab] = usePersistedTab("dealDesk.activeTab", "opportunities", ["opportunities", "activity", "email-queue", "export", "settings"]);
 
   useEffect(() => {
     if (settingsLoaded?.effectiveEmail) {

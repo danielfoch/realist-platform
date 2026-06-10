@@ -25,6 +25,7 @@ import type { Lead, MarketExpertApplication, RenoQuote, CoachingWaitlist, BlogPo
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 
 type ApplicationWithUser = MarketExpertApplication & {
   user?: {
@@ -84,16 +85,7 @@ type SaleResolution = {
 export default function Admin() {
   const { toast } = useToast();
 
-  const ADMIN_VALID_TABS = ["applications", "users", "leads", "reno-quotes", "coaching", "blog", "guides", "sale-oracle"];
-  const ADMIN_TAB_LS_KEY = "admin.activeTab";
-  const [currentTab, setCurrentTab] = useState(() => {
-    const stored = localStorage.getItem(ADMIN_TAB_LS_KEY);
-    return stored && ADMIN_VALID_TABS.includes(stored) ? stored : "applications";
-  });
-
-  useEffect(() => {
-    localStorage.setItem(ADMIN_TAB_LS_KEY, currentTab);
-  }, [currentTab]);
+  const [currentTab, setCurrentTab] = usePersistedTab("admin.activeTab", "applications", ["applications", "users", "leads", "reno-quotes", "coaching", "blog", "guides", "sale-oracle"]);
   
   const { data: leads, isLoading: leadsLoading, refetch: refetchLeads, error: leadsError } = useQuery<Lead[]>({
     queryKey: ["/api/admin/leads"],

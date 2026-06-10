@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import type { DealNote, LeaderboardEntry, WatchlistDeal } from "@shared/engagement";
 import {
   AlertTriangle,
@@ -130,18 +131,10 @@ function StatTile({ label, value, icon: Icon }: { label: string; value: string; 
 
 export default function InvestorOperatingSystem() {
   const { toast } = useToast();
-  const IOS_TAB_LS_KEY = "investorOS.activeTab";
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const stored = localStorage.getItem(IOS_TAB_LS_KEY);
-    return (stored && ["watchlist", "notes", "professionals", "challenge", "events"].includes(stored)) ? stored : "watchlist";
-  });
+  const [activeTab, setActiveTab] = usePersistedTab("investorOS.activeTab", "watchlist", ["watchlist", "notes", "professionals", "challenge", "events"]);
   const [notes, setNotes] = useState(sampleNotes);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [webhookStatus, setWebhookStatus] = useState("CRM webhook not tested this session.");
-
-  useEffect(() => {
-    localStorage.setItem(IOS_TAB_LS_KEY, activeTab);
-  }, [activeTab]);
 
   const investorScore = useMemo(() => {
     const contributionScore = 74;

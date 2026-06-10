@@ -12,6 +12,7 @@ import { SEO } from "@/components/SEO";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { Link } from "wouter";
 import { track } from "@/lib/analytics";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
@@ -661,19 +662,10 @@ function LeaderboardTrendCharts({ data }: { data?: LeaderboardChartsResponse }) 
   );
 }
 
-const LEADERBOARD_TAB_LS_KEY = "leaderboard.activeTab";
-
 export default function Leaderboard() {
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const stored = localStorage.getItem(LEADERBOARD_TAB_LS_KEY);
-    return (stored && ["deal-analysis", "community"].includes(stored)) ? stored : "deal-analysis";
-  });
+  const [activeTab, setActiveTab] = usePersistedTab("leaderboard.activeTab", "deal-analysis", ["deal-analysis", "community"]);
   const [period, setPeriod] = useState<string>("all-time");
   const [cityFilter, setCityFilter] = useState<string>("");
-
-  useEffect(() => {
-    localStorage.setItem(LEADERBOARD_TAB_LS_KEY, activeTab);
-  }, [activeTab]);
 
   useEffect(() => {
     track({ event: "leaderboard_viewed", period });

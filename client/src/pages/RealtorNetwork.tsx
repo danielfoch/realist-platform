@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { apiRequest, queryClient as qc } from "@/lib/queryClient";
 import { authPath } from "@/lib/authReturn";
 import {
@@ -47,21 +48,12 @@ function statusBadgeVariant(status: string): "default" | "secondary" | "outline"
   }
 }
 
-const REALTOR_NETWORK_TAB_LS_KEY = "realtorNetwork.activeTab";
-
 export default function RealtorNetwork() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const claimFormRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const stored = localStorage.getItem(REALTOR_NETWORK_TAB_LS_KEY);
-    return (stored && ["markets", "leads", "introductions"].includes(stored)) ? stored : "markets";
-  });
-
-  useEffect(() => {
-    localStorage.setItem(REALTOR_NETWORK_TAB_LS_KEY, activeTab);
-  }, [activeTab]);
+  const [activeTab, setActiveTab] = usePersistedTab("realtorNetwork.activeTab", "markets", ["markets", "leads", "introductions"]);
 
   const { data: claims, isLoading: claimsLoading } = useQuery<RealtorMarketClaim[]>({
     queryKey: ["/api/realtor-network/my-claims"],

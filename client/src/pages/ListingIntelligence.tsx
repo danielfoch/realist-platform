@@ -1,4 +1,5 @@
 import { type ReactNode, useMemo, useState, useEffect } from "react";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { Link } from "wouter";
 import { SEO, organizationSchema, softwareSchema, websiteSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
@@ -175,18 +176,9 @@ function ScorePanel({ label, value, icon }: { label: string; value: number; icon
   );
 }
 
-const LISTING_INTEL_TAB_LS_KEY = "listingIntelligence.activeTab";
-
 export default function ListingIntelligence() {
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const stored = localStorage.getItem(LISTING_INTEL_TAB_LS_KEY);
-    return (stored && ["underwriting", "feedback", "professionals", "training", "roadmap"].includes(stored)) ? stored : "underwriting";
-  });
+  const [activeTab, setActiveTab] = usePersistedTab("listingIntelligence.activeTab", "underwriting", ["underwriting", "feedback", "professionals", "training", "roadmap"]);
   const [events, setEvents] = useState<ListingFeedbackEvent[]>(sampleListingFeedbackEvents);
-
-  useEffect(() => {
-    localStorage.setItem(LISTING_INTEL_TAB_LS_KEY, activeTab);
-  }, [activeTab]);
   const [role, setRole] = useState<ProfessionalRole>("investor");
   const [inputType, setInputType] = useState<ListingFeedbackInputType>("rent_feedback");
   const [fieldAffected, setFieldAffected] = useState("monthlyRent");

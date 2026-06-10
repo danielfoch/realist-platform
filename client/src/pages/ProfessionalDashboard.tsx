@@ -28,6 +28,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { useLocation } from "wouter";
 import { authPath } from "@/lib/authReturn";
 
@@ -75,22 +76,12 @@ const TIER_INFO = {
   },
 };
 
-const PROF_VALID_TABS = ["overview", "subscription", "branding", "expert"];
-const PROF_TAB_LS_KEY = "professionalDashboard.activeTab";
-
 export default function ProfessionalDashboard() {
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
 
-  const [currentTab, setCurrentTab] = useState(() => {
-    const stored = localStorage.getItem(PROF_TAB_LS_KEY);
-    return stored && PROF_VALID_TABS.includes(stored) ? stored : "overview";
-  });
-
-  useEffect(() => {
-    localStorage.setItem(PROF_TAB_LS_KEY, currentTab);
-  }, [currentTab]);
+  const [currentTab, setCurrentTab] = usePersistedTab("professionalDashboard.activeTab", "overview", ["overview", "subscription", "branding", "expert"]);
 
   const { data: subscription, isLoading: subLoading } = useQuery<Subscription>({
     queryKey: ['/api/subscription'],
