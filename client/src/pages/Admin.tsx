@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,6 +83,17 @@ type SaleResolution = {
 
 export default function Admin() {
   const { toast } = useToast();
+
+  const ADMIN_VALID_TABS = ["applications", "users", "leads", "reno-quotes", "coaching", "blog", "guides", "sale-oracle"];
+  const ADMIN_TAB_LS_KEY = "admin.activeTab";
+  const [currentTab, setCurrentTab] = useState(() => {
+    const stored = localStorage.getItem(ADMIN_TAB_LS_KEY);
+    return stored && ADMIN_VALID_TABS.includes(stored) ? stored : "applications";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(ADMIN_TAB_LS_KEY, currentTab);
+  }, [currentTab]);
   
   const { data: leads, isLoading: leadsLoading, refetch: refetchLeads, error: leadsError } = useQuery<Lead[]>({
     queryKey: ["/api/admin/leads"],
@@ -633,7 +644,7 @@ export default function Admin() {
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="applications" className="space-y-4">
+          <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-4">
             <TabsList>
               <TabsTrigger value="applications" data-testid="tab-applications">
                 Applications {pendingApplications.length > 0 && (
