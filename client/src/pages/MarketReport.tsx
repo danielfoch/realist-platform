@@ -433,6 +433,23 @@ export default function MarketReport() {
           <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
           <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link href="/insights/market-report/homebench-ai-realtor-benchmark">
+              <Card className="h-full hover:border-stone-900/60 hover:shadow-sm cursor-pointer transition-all border-stone-900/40 bg-stone-950 text-stone-50" data-testid="card-macro-homebench">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-amber-300/20 flex items-center justify-center">
+                      <BarChart3 className="h-4.5 w-4.5 text-amber-300" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px] border-amber-300/40 bg-amber-300/10 text-amber-200">New · Homies × Realist</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">HomeBench — AI Benchmark for Realtors</h3>
+                  <p className="text-xs text-stone-300 mb-2">
+                    Fable 5, GPT 5.5, Opus 4.8 and Gemini 3.1 scored on the work agents actually do — offers, showings, CRM, email, property research, marketing and valuation.
+                  </p>
+                  <span className="text-xs text-amber-300 font-medium">See the leaderboard →</span>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/insights/statcan-labour-force-survey-may-2026">
               <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-emerald-300/60" data-testid="card-macro-lfs-may-2026">
                 <CardContent className="p-5">

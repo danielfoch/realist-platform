@@ -200,17 +200,17 @@ export default function HomeBenchReport() {
       <SEO
         title="HomeBench v0.1 — AI Benchmark for Realtors"
         description="An independent benchmark of frontier AI models on the actual work real estate agents do: offers, showings, CRM, email, property research, marketing, and valuation."
-        canonicalUrl="/reports/homebench-ai-realtor-benchmark"
+        canonicalUrl="/insights/market-report/homebench-ai-realtor-benchmark"
       />
       <Navigation />
 
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-10">
         <Link
-          href="/reports"
+          href="/insights/market-report"
           className="inline-flex items-center text-sm text-stone-500 hover:text-stone-900 mb-6"
-          data-testid="link-back-reports"
+          data-testid="link-back-market-report"
         >
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Reports
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Market Report
         </Link>
 
         {/* Hero */}
@@ -316,12 +316,13 @@ export default function HomeBenchReport() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={460}>
+            <ResponsiveContainer width="100%" height={620}>
               <BarChart
                 data={groupedData}
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-                barCategoryGap={18}
+                barCategoryGap={8}
+                barGap={2}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E7E2DA" />
                 <XAxis
@@ -675,11 +676,15 @@ export default function HomeBenchReport() {
                   Homies <ExternalLink className="h-3 w-3 ml-1.5" />
                 </Button>
               </a>
-              <Link href="/about/contact">
+              <a
+                href="https://meetyourhomies.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Button className="bg-amber-400 text-stone-950 hover:bg-amber-300">
                   Join the beta
                 </Button>
-              </Link>
+              </a>
             </div>
           </CardContent>
         </Card>

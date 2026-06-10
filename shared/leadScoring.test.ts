@@ -74,7 +74,7 @@ describe("scoreLeadInput", () => {
     expect(r.status).toBe("hot");
   });
 
-  it("all flags on equals all weights summed = 165", () => {
+  it("all flags on equals all weights summed = 170", () => {
     const r = scoreLeadInput({
       dealSubmitted: true,
       dealDeskCtaClicked: true,
@@ -87,7 +87,8 @@ describe("scoreLeadInput", () => {
       financingHelpWanted: true,
       buyingHelpWanted: true,
     });
-    expect(r.intentScore).toBe(165);
+    // 40+20+15+15+10+20+10+10+15+15 = 170
+    expect(r.intentScore).toBe(170);
     expect(r.status).toBe("hot");
     expect(r.breakdown).toHaveLength(10);
   });

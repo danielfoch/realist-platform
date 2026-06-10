@@ -216,7 +216,8 @@ function Router() {
       <Route path="/insights/guides/:slug" component={GuidePage} />
       <Route path="/reports" component={ReportsHub} />
       <Route path="/reports/canada-immigration-dashboard-2026" component={IrccImmigrationDashboardReport} />
-      <Route path="/reports/homebench-ai-realtor-benchmark" component={HomeBenchReport} />
+      <Route path="/insights/market-report/homebench-ai-realtor-benchmark" component={HomeBenchReport} />
+      <Route path="/reports/homebench-ai-realtor-benchmark">{() => <Redirect to="/insights/market-report/homebench-ai-realtor-benchmark" />}</Route>
       <Route path="/reports/:slug" component={ReportPage} />
       <Route path="/markets" component={MarketsHub} />
       <Route path="/markets/:city" component={ProgrammaticMarketPage} />

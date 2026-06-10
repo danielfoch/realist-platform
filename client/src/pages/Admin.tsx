@@ -19,7 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer, GraduationCap, Phone, Mail, MessageSquare, PenLine, BookOpen, Plus, Pencil, Trash2 } from "lucide-react";
+import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer, GraduationCap, Phone, Mail, MessageSquare, PenLine, BookOpen, Plus, Pencil, Trash2, Building2 } from "lucide-react";
+import { Link } from "wouter";
 import type { Lead, MarketExpertApplication, RenoQuote, CoachingWaitlist, BlogPost, Guide } from "@shared/schema";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -490,20 +491,28 @@ export default function Admin() {
               <h1 className="text-3xl font-bold" data-testid="text-admin-title">Admin Dashboard</h1>
               <p className="text-muted-foreground">Manage leads, applications, and users</p>
             </div>
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={() => {
-                refetchLeads();
-                refetchApplications();
-                refetchUsers();
-                refetchLeaderboardHealth();
-              }}
-              data-testid="button-refresh"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh All
-            </Button>
+            <div className="flex gap-2">
+              <Link href="/admin/deal-desk">
+                <Button variant="outline" className="gap-2" data-testid="link-deal-desk-admin">
+                  <Building2 className="h-4 w-4" />
+                  Deal Desk
+                </Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => {
+                  refetchLeads();
+                  refetchApplications();
+                  refetchUsers();
+                  refetchLeaderboardHealth();
+                }}
+                data-testid="button-refresh"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh All
+              </Button>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-4 gap-4">
