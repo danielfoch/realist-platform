@@ -4,29 +4,12 @@
  * Preserves investor underwriting activity so the system remembers what users analyze.
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { db } from './db';
 import { logger } from './logger';
 import { authenticateToken, authenticateOptional, AuthRequest } from './auth-middleware';
 
 const router = Router();
-
-interface SaveAnalysisBody {
-  propertyAddress: string;
-  metrics?: Record<string, number | string>;
-  inputs?: Record<string, number | string>;
-  verdictCheck?: string;
-  listingId?: string;
-  city?: string;
-  province?: string;
-  propertyType?: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  sqft?: number;
-  yearBuilt?: number;
-  matchedListing?: boolean;
-  notes?: string;
-}
 
 /**
  * POST /api/analyses
