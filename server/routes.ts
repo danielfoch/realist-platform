@@ -125,6 +125,7 @@ import { registerRealistEventRoutes } from "./eventsModule";
 import { registerDealDeskRoutes } from "./dealDesk";
 import { registerCrmRoutes } from "./crm";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
+import { registerMobilePushRoutes } from "./mobilePush";
 import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import {
@@ -704,6 +705,7 @@ export async function registerRoutes(
   registerDealDeskRoutes(app);
   registerCrmRoutes(app);
   registerEventsGrowthRoutes(app);
+  registerMobilePushRoutes(app);
   registerUserGoogleSheetsRoutes(app);
   registerUnderwritingShareRoutes(app);
 

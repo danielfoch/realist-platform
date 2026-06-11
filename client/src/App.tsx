@@ -1,4 +1,6 @@
 import { Switch, Route } from "wouter";
+import { useEffect } from "react";
+import { initNativePush } from "@/lib/capacitorPush";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -300,6 +302,10 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    initNativePush();
+  }, []);
+
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
