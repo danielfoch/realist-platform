@@ -754,6 +754,8 @@ export async function registerRoutes(
         analysisId: properties.analysis_id || properties.analysisId || null,
         sourcePage: page || null,
         component: properties.component || null,
+        dealId: properties.deal_id || properties.dealId || null,
+        source: properties.source || null,
         metadata: properties,
       });
 
@@ -3125,124 +3127,7 @@ export async function registerRoutes(
     }
   });
 
-  // ============================================
-  // MORTGAGE RATES API ROUTES
-  // ============================================
-
-  app.get("/api/mortgage-rates", async (req, res) => {
-    try {
-      const { getAllCurrentRates } = await import("./rateScraper");
-      const rates = await getAllCurrentRates();
-      res.json(rates);
-    } catch (error) {
-      console.error("Error fetching mortgage rates:", error);
-      res.status(500).json({ error: "Failed to fetch rates" });
-    }
-  });
-
-  app.get("/api/mortgage-rates/history", async (req, res) => {
-    try {
-      const { getRateHistory } = await import("./rateScraper");
-      const rates = await getRateHistory(
-        req.query.rateType as string | undefined,
-        req.query.term as string | undefined,
-      );
-      res.json(rates);
-    } catch (error) {
-      console.error("Error fetching rate history:", error);
-      res.status(500).json({ error: "Failed to fetch rate history" });
-    }
-  });
-
-  app.post("/api/admin/mortgage-rates/scrape", isAdmin, async (req, res) => {
-    try {
-      const { runRateScrape } = await import("./rateScraper");
-      const result = await runRateScrape();
-      res.json(result);
-    } catch (error) {
-      console.error("Error running rate scrape:", error);
-      res.status(500).json({ error: "Failed to scrape rates" });
-    }
-  });
-
-  app.post("/api/admin/mortgage-rates", isAdmin, async (req, res) => {
-    try {
-      const { rateType, term, rate, provider, source, category, isInsured } = req.body;
-      if (!rateType || !term || !rate || !provider) {
-        return res.status(400).json({ error: "rateType, term, rate, provider required" });
-      }
-      const { mortgageRates: ratesTable } = await import("@shared/schema");
-      const [result] = await db.insert(ratesTable).values({
-        rateType, term, rate: parseFloat(rate), provider,
-        source: source || "manual",
-        category: category || "custom",
-        isInsured: isInsured ?? false,
-        lastUpdated: new Date(),
-      }).returning();
-      res.json(result);
-    } catch (error) {
-      console.error("Error adding rate:", error);
-      res.status(500).json({ error: "Failed to add rate" });
-    }
-  });
-
-  app.get("/api/rates/mortgage", async (req, res) => {
-    try {
-      const { getAllCurrentRates } = await import("./rateScraper");
-      const rates = await getAllCurrentRates();
-      const termYears = req.query.termYears as string || "5";
-      const type = req.query.type as string || "fixed";
-      const termLabel = `${termYears}-year`;
-
-      const matching = rates.filter((r: any) => {
-        if (type === "variable") {
-          return r.rateType === "variable" && r.term === "5-year" && r.category === "best";
-        }
-        return r.rateType === "fixed" && r.term === termLabel && r.category === "best";
-      });
-
-      if (matching.length === 0) {
-        const fallback = rates.filter((r: any) => {
-          if (type === "variable") {
-            return r.rateType === "variable" && ["best", "big-bank", "posted"].includes(r.category) && ["5-year", "prime"].includes(r.term);
-          }
-          return r.rateType === "fixed" && r.term === termLabel && ["best", "big-bank", "posted"].includes(r.category);
-        });
-        if (fallback.length > 0) {
-          const best = fallback.reduce((a: any, b: any) => a.rate < b.rate ? a : b);
-          return res.json({ bestRate: best.rate, source: best.source, timestamp: best.lastUpdated, count: fallback.length });
-        }
-        return res.json({ bestRate: null, source: null, timestamp: null, count: 0 });
-      }
-
-      const best = matching.reduce((a: any, b: any) => a.rate < b.rate ? a : b);
-      res.json({ bestRate: best.rate, source: best.source, timestamp: best.lastUpdated, count: matching.length });
-    } catch (error) {
-      console.error("Error fetching rate:", error);
-      res.status(500).json({ error: "Failed to fetch rate" });
-    }
-  });
-
-  app.get("/api/rate-forecast/latest", async (req, res) => {
-    try {
-      const { rateForecasts } = await import("@shared/schema");
-      const forecasts = await db.select().from(rateForecasts).orderBy(sql`created_at DESC`).limit(1);
-      if (forecasts.length === 0) {
-        return res.json(null);
-      }
-      const f = forecasts[0];
-      res.json({
-        ...f,
-        path: JSON.parse(f.pathJson),
-        assumptions: f.assumptionsJson ? JSON.parse(f.assumptionsJson) : null,
-      });
-    } catch (error) {
-      console.error("Error fetching forecast:", error);
-      res.json(null);
-    }
-  });
-
-  // ============================================
+  // =====================================  // ============================================
   // RENOQUOTE API ROUTES
   // ============================================
 
@@ -3425,6 +3310,30 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching reno quotes:", error);
       res.status(500).json({ error: "Failed to fetch quotes" });
+    }
+  });
+
+  app.post("/api/activity", async (req, res) => {
+    try {
+      const { eventType, analysisId, dealId } = req.body;
+      if (!eventType || typeof eventType !== "string") {
+        return res.status(400).json({ ok: false, error: "eventType is required" });
+      }
+      const userId = (req.session as any)?.userId || null;
+      const sessionId = (req as any).sessionID || null;
+      await logUserActivity(req, {
+        userId,
+        sessionId,
+        eventName: eventType,
+        analysisId: analysisId || null,
+        dealId: dealId || null,
+        source: "deal_analyzer",
+        sourcePage: "/",
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("POST /api/activity error:", err);
+      res.status(500).json({ ok: false });
     }
   });
 
@@ -9848,136 +9757,7 @@ export async function registerRoutes(
 
   // ============================================
   // PARTNER JOIN / MATCHING ROUTES
-  // ============================================
-
-  app.post("/api/join/realtor", async (req, res) => {
-    try {
-      const { realtorApplications } = await import("@shared/schema");
-      const { insertRealtorApplicationSchema } = await import("@shared/schema");
-      const parsed = insertRealtorApplicationSchema.parse(req.body);
-      const [application] = await db.insert(realtorApplications).values(parsed).returning();
-
-      appendLead("RealtorApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
-
-      try {
-        const webhookUrl = process.env.GHL_WEBHOOK_URL;
-        if (webhookUrl) {
-          fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...parsed,
-              formTag: "realtor_application",
-              source: "realist.ca",
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      try {
-        const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
-        if (sheetsUrl) {
-          fetch(sheetsUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "realtor_application",
-              ...parsed,
-              timestamp: new Date().toISOString(),
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      res.json({ success: true, id: application.id });
-    } catch (error: any) {
-      console.error("Error creating realtor application:", error);
-      res.status(400).json({ error: error.message || "Failed to submit application" });
-    }
-  });
-
-  app.post("/api/join/lender", async (req, res) => {
-    try {
-      const { lenderApplications } = await import("@shared/schema");
-      const { insertLenderApplicationSchema } = await import("@shared/schema");
-      const parsed = insertLenderApplicationSchema.parse(req.body);
-      const [application] = await db.insert(lenderApplications).values(parsed).returning();
-
-      appendLead("LenderApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
-
-      try {
-        const webhookUrl = process.env.GHL_WEBHOOK_URL;
-        if (webhookUrl) {
-          fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...parsed,
-              formTag: "lender_application",
-              source: "realist.ca",
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      try {
-        const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
-        if (sheetsUrl) {
-          fetch(sheetsUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "lender_application",
-              ...parsed,
-              timestamp: new Date().toISOString(),
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      res.json({ success: true, id: application.id });
-    } catch (error: any) {
-      console.error("Error creating lender application:", error);
-      res.status(400).json({ error: error.message || "Failed to submit application" });
-    }
-  });
-
-  app.post("/api/deal-match", async (req, res) => {
-    try {
-      const { dealMatchRequests } = await import("@shared/schema");
-      const { insertDealMatchRequestSchema } = await import("@shared/schema");
-      const parsed = insertDealMatchRequestSchema.parse({
-        ...req.body,
-        userId: req.session?.userId || null,
-      });
-      const [match] = await db.insert(dealMatchRequests).values(parsed).returning();
-
-      appendLead("DealMatch", { ...parsed, matchId: match.id, source: "realist.ca" });
-
-      try {
-        const webhookUrl = process.env.GHL_WEBHOOK_URL;
-        if (webhookUrl) {
-          fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...parsed,
-              formTag: "deal_match_request",
-              source: "realist.ca",
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      res.json({ success: true, id: match.id });
-    } catch (error: any) {
-      console.error("Error creating deal match request:", error);
-      res.status(400).json({ error: error.message || "Failed to submit match request" });
-    }
-  });
-
-  // ============================================
-  // MARKET REPORT ROUTES
+  // =====================================  // MARKET REPORT ROUTES
   // ============================================
 
   const MAJOR_CANADIAN_CITIES = [

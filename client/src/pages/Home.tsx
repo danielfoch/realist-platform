@@ -4,6 +4,7 @@ import { Link, useSearch, useLocation } from "wouter";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
+import { DealOfTheDay } from "@/components/DealOfTheDay";
 import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
 import { CalculatorSelector, type CalculatorType } from "@/components/CalculatorSelector";
@@ -46,7 +47,7 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
 import { detectPossiblePlex } from "@shared/plexDetection";
-import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight, Sparkles, MapPinned, Target, Wand2, ClipboardCheck } from "lucide-react";
+import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight, Sparkles, MapPinned, Target, Wand2, ClipboardCheck, Building2 } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
 
 function getSessionId(): string {
@@ -204,6 +205,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
   const [inspectionContactName, setInspectionContactName] = useState("");
   const [inspectionContactEmail, setInspectionContactEmail] = useState(user?.email || "");
   const [inspectionContactPhone, setInspectionContactPhone] = useState(user?.phone || "");
+  const [autoSavedAnalysisId, setAutoSavedAnalysisId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -395,7 +397,10 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
         province: region || null,
         sessionId: getSessionId(),
       }),
-    }).catch((err) => console.error("Auto-save analysis error:", err));
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.id) setAutoSavedAnalysisId(data.id); })
+      .catch((err) => console.error("Auto-save analysis error:", err));
   }, [showResults, results, inputs.purchasePrice, inputs.monthlyRent, strategy, city]);
 
   useEffect(() => {
@@ -553,6 +558,21 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       });
     },
   });
+
+  const handleDealDeskCta = () => {
+    const formattedAddress = [address, city, region].filter(Boolean).join(", ");
+    fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ eventType: "deal_desk_cta_clicked", analysisId: autoSavedAnalysisId, dealId: autoSavedAnalysisId }),
+    }).catch(() => {});
+    track({ event: "cta_clicked", cta: "deal_desk_review", location: "analysis_results" });
+    const params = new URLSearchParams();
+    if (formattedAddress) params.set("address", formattedAddress);
+    if (autoSavedAnalysisId) params.set("dealId", autoSavedAnalysisId);
+    window.location.href = `/deal-desk${params.toString() ? `?${params.toString()}` : ""}`;
+  };
 
   const handleAnalyzeClick = () => {
     analyzerRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1185,6 +1205,8 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       <main>
         {!isStandaloneTool && <HeroSection onAnalyzeClick={handleAnalyzeClick} />}
 
+        <DealOfTheDay onAnalyzeClick={handleAnalyzeClick} />
+
         <section 
           ref={analyzerRef}
           className={isStandaloneTool ? "py-8 md:py-12" : "py-16 md:py-24 border-t border-border/50"}
@@ -1745,6 +1767,37 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
               ))}
 
               {!isCalculating && <DealTimeline />}
+
+              {!isCalculating && showResults && calculatorType === "deal_analyzer" && (
+              <Card className="border-amber-500/40 bg-gradient-to-r from-amber-500/5 via-background to-amber-500/5">
+                <CardContent className="p-6 md:p-8">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                        <Building2 className="h-4 w-4" />
+                        <span>Deal Desk</span>
+                      </div>
+                      <h3 className="text-xl md:text-2xl font-bold" data-testid="text-deal-desk-cta-title">
+                        Want our team to review this deal?
+                      </h3>
+                      <p className="text-muted-foreground max-w-lg">
+                        Submit your numbers and a Realist advisor will score it, flag risks, and connect you with the right financing or acquisition support.
+                      </p>
+                    </div>
+                    <Button
+                      size="lg"
+                      className="gap-2 shrink-0 bg-amber-600 hover:bg-amber-700 text-white"
+                      onClick={handleDealDeskCta}
+                      data-testid="button-deal-desk-cta"
+                    >
+                      <Building2 className="h-4 w-4" />
+                      Get a Deal Review
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              )}
 
               {!isCalculating && leadCaptured && (
               <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-background to-primary/5">

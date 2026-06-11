@@ -8,6 +8,8 @@ Thursday, May 21, 2026
 - Code commit SHA: `4857e3899e2b26b8a4a45daa209da7791959048a`
 - Handoff file may be committed after the code commit, so final branch tip can be newer.
 
+Handoff docs commit SHA before the final push-status note: `40e1e1a2805464a981a2cf9cfe0fa6b27506e3be`
+
 ## 3. What changed
 Added persistent deduping for recipient-specific “Challenge my underwriting.” share invites.
 

@@ -352,7 +352,6 @@ export async function searchDdfByRemarks(params: {
     count: totalCount,
   };
 }
-
 export async function getDdfListing(listingKey: string): Promise<DdfListing | null> {
   const token = await getDdfToken();
 
