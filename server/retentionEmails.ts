@@ -12,8 +12,9 @@
  *  - MILESTONE: user crosses 5/10/25/50/100 lifetime analyses → congrats +
  *    "see how you rank" leaderboard CTA.
  *
- * Guardrails: only emailDigestOptIn users; per-user cap of 3 retention emails
- * per rolling 7 days; per-trigger dedupe via retention_email_log; every email
+ * Guardrails: only emailDigestOptIn users whose latest email_consent ledger
+ * row (CASL) isn't 'revoked'; per-user cap of 3 retention emails per rolling
+ * 7 days; per-trigger dedupe via retention_email_log; every email
  * carries the standard unsubscribe link. The weekly leaderboard/KPI digest is
  * separate (weeklyDigest.ts) and already includes rank + platform stats.
  */
@@ -30,9 +31,7 @@ import {
   usListings,
   users,
 } from "@shared/schema";
-
-const WEEKLY_CAP = 3;
-const MILESTONES = [5, 10, 25, 50, 100];
+import { decideRetentionSend, newlyCrossedMilestone } from "@shared/retentionPolicy";
 
 export async function ensureRetentionTables(): Promise<void> {
   await db.execute(sql`
@@ -85,15 +84,19 @@ async function trySend(
     ON CONFLICT (user_id, dedupe_key) DO NOTHING
     RETURNING id
   `);
-  if (!(inserted as any).rows?.length) return false;
+  if (!(inserted as any).rows?.length) return false; // duplicate trigger — already handled
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const [count] = await db.execute(sql`
     SELECT COUNT(*)::int AS n FROM retention_email_log
     WHERE user_id = ${recipient.id} AND sent_at > ${weekAgo} AND email_type != 'capped'
   `).then((r: any) => r.rows);
-  if (Number(count?.n || 0) > WEEKLY_CAP) {
-    // Keep the dedupe row (so we don't retry this exact trigger) but skip the send.
+  const decision = decideRetentionSend({
+    dedupeRowInserted: true,
+    recentLogCount: Number(count?.n || 0),
+  });
+  if (decision !== "send") {
+    // Capped: keep the dedupe row (so we don't retry this exact trigger) but skip the send.
     return false;
   }
 
@@ -105,12 +108,27 @@ async function trySend(
   return true;
 }
 
+/**
+ * Recipients must (a) have the digest opt-in flag AND (b) not have revoked
+ * email consent in the CASL ledger (email_consent is append-only — the latest
+ * row per user/channel wins; no rows at all = no objection on record, so the
+ * opt-in flag alone governs, as before).
+ */
 async function optedInUsers(ids: string[]): Promise<Recipient[]> {
   if (!ids.length) return [];
   return db
     .select({ id: users.id, email: users.email, firstName: users.firstName })
     .from(users)
-    .where(and(inArray(users.id, ids), eq(users.emailDigestOptIn, true)));
+    .where(and(
+      inArray(users.id, ids),
+      eq(users.emailDigestOptIn, true),
+      sql`COALESCE((
+        SELECT ec.status FROM email_consent ec
+        WHERE ec.user_id = ${users.id} AND ec.channel = 'email'
+        ORDER BY ec.created_at DESC
+        LIMIT 1
+      ), 'granted') <> 'revoked'`,
+    ));
 }
 
 function fmtPct(value: unknown): string | null {
@@ -237,11 +255,17 @@ export async function sweepMilestones(windowHours = 24): Promise<number> {
   let sent = 0;
   for (const row of active) {
     if (!row.userId) continue;
-    const [{ n }] = await db
-      .execute(sql`SELECT COUNT(*)::int AS n FROM analyses WHERE user_id = ${row.userId}`)
+    const [{ total, recent }] = await db
+      .execute(sql`
+        SELECT COUNT(*)::int AS total,
+               COUNT(*) FILTER (WHERE created_at > ${since})::int AS recent
+        FROM analyses WHERE user_id = ${row.userId}
+      `)
       .then((r: any) => r.rows);
-    const total = Number(n || 0);
-    const milestone = [...MILESTONES].reverse().find((m) => total >= m);
+    // Only celebrate milestones crossed WITHIN this sweep window
+    // (total - recent < m <= total). Without this, the first deploy would
+    // retroactively email every active user who ever passed 5+ analyses.
+    const milestone = newlyCrossedMilestone(Number(total || 0), Number(recent || 0));
     if (!milestone) continue;
 
     for (const recipient of await optedInUsers([row.userId])) {
