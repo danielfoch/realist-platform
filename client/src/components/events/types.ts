@@ -47,7 +47,25 @@ export type RealistEventPayload = {
   refundPolicy?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  kind?: "flagship" | "meetup";
+  city?: string | null;
+  isRecurring?: boolean;
+  recurrenceNote?: string | null;
+  hostUserId?: string | null;
+  minPriceCents?: number | null;
+  rsvpCount?: number;
   createdByEmail?: string;
   speakers: RealistEventSpeaker[];
   ticketTypes: RealistEventTicketType[];
+};
+
+export type RealistSponsor = {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+  websiteUrl?: string | null;
+  blurb?: string | null;
+  tier: string;
+  isActive: boolean;
+  sortOrder: number;
 };

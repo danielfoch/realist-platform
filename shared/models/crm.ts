@@ -46,6 +46,7 @@ export const CRM_CONTACT_TYPES = [
   "seller",
   "renter",
   "realtor",
+  "sponsor",
   "other",
 ] as const;
 export type CrmContactType = (typeof CRM_CONTACT_TYPES)[number];
