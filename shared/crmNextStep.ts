@@ -14,6 +14,8 @@ export interface ContactSnapshot {
   contactType: string;
   email: string | null;
   consentEmail: boolean;
+  phone?: string | null;
+  consentSms?: boolean;
   targetMarket: string | null;
   lastTouchAt: Date | string | null;
   createdAt: Date | string;
@@ -39,6 +41,8 @@ export interface NextStep {
   dealId?: string;
   /** Prefilled draft for one-click email execution, when applicable. */
   emailDraft?: { subject: string; body: string };
+  /** Prefilled draft for one-click SMS execution, when applicable. */
+  smsDraft?: string;
 }
 
 const HOUR = 60 * 60 * 1000;
@@ -82,6 +86,23 @@ export function firstContactEmail(contact: ContactSnapshot): { subject: string; 
       `If it's easier, just reply with a listing link and I'll send back a full ` +
       `analysis.\n`,
   };
+}
+
+export function firstContactSms(contact: ContactSnapshot): string {
+  const market = contact.targetMarket ? ` in ${contact.targetMarket}` : "";
+  return (
+    `Hi ${firstName(contact.name)}, it's Dan from Realist. Thanks for connecting — ` +
+    `I work with investors${market}. What kind of property are you hunting for? ` +
+    `Send me a listing link anytime and I'll run the numbers for you.`
+  );
+}
+
+export function nurtureSms(contact: ContactSnapshot): string {
+  const market = contact.targetMarket || "your market";
+  return (
+    `Hi ${firstName(contact.name)}, Dan from Realist — been watching ${market} and a few ` +
+    `things shifted. Want me to send a deal worth running the numbers on?`
+  );
 }
 
 export function nurtureEmail(contact: ContactSnapshot): { subject: string; body: string } {
@@ -178,24 +199,27 @@ export function suggestNextStep(
   const created = toDate(contact.createdAt) ?? now;
   const sinceTouch = daysSince(contact.lastTouchAt ?? contact.createdAt, now);
   const canEmail = Boolean(contact.email && contact.consentEmail);
+  const canSms = Boolean(contact.phone && contact.consentSms);
+  const contactKind: NextStepKind = canEmail ? "email" : canSms ? "sms" : "call";
 
   switch (contact.stage) {
     case "new": {
       const dueAt = new Date(created.getTime() + HOUR);
       return {
         action: `Make first contact with ${firstName(contact.name)}`,
-        kind: canEmail ? "email" : "call",
+        kind: contactKind,
         reason: "New lead — speed to lead is the whole game. Target: under an hour.",
         dueAt,
         priority: priorityFor(dueAt, now),
         emailDraft: canEmail ? firstContactEmail(contact) : undefined,
+        smsDraft: canSms ? firstContactSms(contact) : undefined,
       };
     }
     case "contacted": {
       const dueAt = new Date(now.getTime() + Math.max(0, (3 - sinceTouch) * DAY));
       return {
         action: "Second touch — follow up on first contact",
-        kind: canEmail ? "email" : "call",
+        kind: contactKind,
         reason:
           sinceTouch >= 3
             ? `No touch in ${Math.floor(sinceTouch)} days — leads go cold after 3.`
@@ -203,17 +227,19 @@ export function suggestNextStep(
         dueAt,
         priority: priorityFor(dueAt, now),
         emailDraft: canEmail ? nurtureEmail(contact) : undefined,
+        smsDraft: canSms ? nurtureSms(contact) : undefined,
       };
     }
     case "nurturing": {
       const dueAt = new Date(now.getTime() + Math.max(0, (14 - sinceTouch) * DAY));
       return {
         action: "Nurture touch — send a deal worth analyzing",
-        kind: canEmail ? "email" : "call",
+        kind: contactKind,
         reason: "Bi-weekly cadence: stay useful, not noisy. Lead with a property, not a check-in.",
         dueAt,
         priority: priorityFor(dueAt, now),
         emailDraft: canEmail ? nurtureEmail(contact) : undefined,
+        smsDraft: canSms ? nurtureSms(contact) : undefined,
       };
     }
     case "appointment": {
@@ -240,11 +266,12 @@ export function suggestNextStep(
       const dueAt = new Date(now.getTime() + Math.max(0, (90 - sinceTouch) * DAY));
       return {
         action: "Quarterly check-in",
-        kind: canEmail ? "email" : "call",
+        kind: contactKind,
         reason: "Past clients are the referral engine — 90-day cadence.",
         dueAt,
         priority: priorityFor(dueAt, now),
         emailDraft: canEmail ? nurtureEmail(contact) : undefined,
+        smsDraft: canSms ? nurtureSms(contact) : undefined,
       };
     }
     case "lost": {

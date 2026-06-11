@@ -142,6 +142,8 @@ export default function CrmContact() {
   const [busy, setBusy] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailDraft, setEmailDraft] = useState({ subject: "", body: "" });
+  const [smsOpen, setSmsOpen] = useState(false);
+  const [smsDraft, setSmsDraft] = useState("");
 
   const load = useCallback(async () => {
     if (!contactId) return;
@@ -169,15 +171,22 @@ export default function CrmContact() {
     if (contact?.nextStep.emailDraft) {
       setEmailDraft(contact.nextStep.emailDraft);
     }
+    if (contact?.nextStep.smsDraft) {
+      setSmsDraft(contact.nextStep.smsDraft);
+    }
   }, [contact]);
 
-  async function executeStep(mode: "log" | "email") {
+  async function executeStep(mode: "log" | "email" | "sms") {
     if (!contactId) return;
     setBusy(true);
     try {
-      const payload = mode === "email" ? { mode, subject: emailDraft.subject, body: emailDraft.body } : { mode };
+      const payload =
+        mode === "email" ? { mode, subject: emailDraft.subject, body: emailDraft.body }
+        : mode === "sms" ? { mode, body: smsDraft }
+        : { mode };
       await apiRequest("POST", `/api/crm/contacts/${contactId}/next-step/execute`, payload);
       setEmailOpen(false);
+      setSmsOpen(false);
       await load();
     } catch (error) {
       console.error("Failed to execute next step", error);
@@ -224,6 +233,7 @@ export default function CrmContact() {
   }
 
   const canEmail = Boolean(contact.email && contact.consentEmail);
+  const canSms = Boolean(contact.phone && contact.consentSms);
 
   return (
     <div className="min-h-screen bg-background">
@@ -285,6 +295,25 @@ export default function CrmContact() {
                       </div>
                       <Button className="w-full" onClick={() => executeStep("email")} disabled={busy}>
                         {busy ? "Sending…" : `Send to ${contact.email}`}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+              {canSms && (
+                <Dialog open={smsOpen} onOpenChange={setSmsOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant={contact.nextStep.kind === "sms" ? "default" : "outline"}>Send text</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Text {contact.name.split(" ")[0]}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <Textarea rows={5} maxLength={1600} value={smsDraft} onChange={(e) => setSmsDraft(e.target.value)} placeholder="Type your message…" />
+                      <p className="text-xs text-muted-foreground">{smsDraft.length}/1600 · to {contact.phone}</p>
+                      <Button className="w-full" onClick={() => executeStep("sms")} disabled={busy || !smsDraft.trim()}>
+                        {busy ? "Sending…" : "Send text"}
                       </Button>
                     </div>
                   </DialogContent>

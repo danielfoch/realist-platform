@@ -18,6 +18,8 @@ function contact(overrides: Partial<ContactSnapshot> = {}): ContactSnapshot {
     contactType: "investor",
     email: "jane@example.com",
     consentEmail: true,
+    phone: "+16135551234",
+    consentSms: false,
     targetMarket: "Ottawa",
     lastTouchAt: null,
     createdAt: NOW,
@@ -106,6 +108,21 @@ describe("suggestNextStep — stage rules", () => {
     const step = suggestNextStep(contact({ stage: "lost" }), [], NOW);
     expect(step.kind).toBe("none");
     expect(step.priority).toBe("soon");
+  });
+});
+
+describe("suggestNextStep — sms", () => {
+  it("falls back to sms when no email consent but sms consent exists", () => {
+    const step = suggestNextStep(contact({ consentEmail: false, consentSms: true }), [], NOW);
+    expect(step.kind).toBe("sms");
+    expect(step.smsDraft).toContain("Jane");
+    expect(step.emailDraft).toBeUndefined();
+  });
+
+  it("prefers email over sms when both are consented", () => {
+    const step = suggestNextStep(contact({ consentSms: true }), [], NOW);
+    expect(step.kind).toBe("email");
+    expect(step.smsDraft).toBeTruthy();
   });
 });
 
