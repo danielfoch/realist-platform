@@ -413,7 +413,6 @@ export async function sendTestTriggerEmail(
   }
   return { subject: testSubject };
 }
-
 async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
   const payload = (trigger.payload as Record<string, any>) || {};
   const now = new Date();
@@ -438,7 +437,6 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
       console.error(`[email-queue] Could not check opportunity status for trigger ${trigger.id}:`, err?.message || String(err));
     }
   }
-
   try {
     const { client, fromEmail } = await getResendClient();
 

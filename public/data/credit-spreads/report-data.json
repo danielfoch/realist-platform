@@ -1,0 +1,2942 @@
+{
+  "generatedAt": "2026-04-24T02:35:16.925Z",
+  "title": "The Spread That Ate the Economy",
+  "subtitle": "How Canada’s Credit Architecture Redirected Capital from Business Formation to Housing",
+  "inputRoot": "data/canada_us_credit_spreads/",
+  "notes": {
+    "methodology": "This report uses the supplied CSV seed datasets only. Where the pack provides only a point-in-time proxy rather than a true time series, the UI calls that out explicitly.",
+    "thesisGuardrail": "Treat this as an evidence-backed framework about amplification and incentives, not a monocausal proof."
+  },
+  "executiveSummary": [
+    "Housing is not only an affordability issue; it is also a capital-allocation issue.",
+    "Canada has made levered residential real estate easier to finance, standardize, and scale than most operating businesses.",
+    "Lower discount rates let investors accept lower yields, which can compress cap rates and lift values even when rents do not rise proportionally.",
+    "Higher ownership values relative to rental income can push households toward renting while making housing more attractive as an investment vehicle.",
+    "Business formation and productivity outcomes likely have multiple causes, but credit architecture may amplify the tilt toward housing.",
+    "The evidence here is directional and framework-building; it should not be read as a single-cause explanation for Canada’s economic performance."
+  ],
+  "datasets": {
+    "officialCreditSpreadSeries": [
+      {
+        "period": "2025-10",
+        "label": "2025-10",
+        "mortgageRatePct": 3.97,
+        "businessRatePct": 4.55,
+        "spreadPctPoints": 0.58,
+        "spreadBps": 58,
+        "mortgageLabel": "Insured residential mortgage, fixed 5 years and over",
+        "businessLabel": "Business loans, total",
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/interest-rates-for-new-and-existing-lending-by-chartered-banks/",
+        "caveat": "Volume-weighted aggregate bank rates. This is not the same thing as founder-facing SME borrowing conditions."
+      },
+      {
+        "period": "2025-11",
+        "label": "2025-11",
+        "mortgageRatePct": 3.94,
+        "businessRatePct": 4.39,
+        "spreadPctPoints": 0.45,
+        "spreadBps": 45,
+        "mortgageLabel": "Insured residential mortgage, fixed 5 years and over",
+        "businessLabel": "Business loans, total",
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/interest-rates-for-new-and-existing-lending-by-chartered-banks/",
+        "caveat": "Volume-weighted aggregate bank rates. This is not the same thing as founder-facing SME borrowing conditions."
+      },
+      {
+        "period": "2025-12",
+        "label": "2025-12",
+        "mortgageRatePct": 3.97,
+        "businessRatePct": 4.41,
+        "spreadPctPoints": 0.44,
+        "spreadBps": 44,
+        "mortgageLabel": "Insured residential mortgage, fixed 5 years and over",
+        "businessLabel": "Business loans, total",
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/interest-rates-for-new-and-existing-lending-by-chartered-banks/",
+        "caveat": "Volume-weighted aggregate bank rates. This is not the same thing as founder-facing SME borrowing conditions."
+      },
+      {
+        "period": "2026-01",
+        "label": "2026-01",
+        "mortgageRatePct": 3.94,
+        "businessRatePct": 4.48,
+        "spreadPctPoints": 0.54,
+        "spreadBps": 54,
+        "mortgageLabel": "Insured residential mortgage, fixed 5 years and over",
+        "businessLabel": "Business loans, total",
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/interest-rates-for-new-and-existing-lending-by-chartered-banks/",
+        "caveat": "Volume-weighted aggregate bank rates. This is not the same thing as founder-facing SME borrowing conditions."
+      },
+      {
+        "period": "2026-02",
+        "label": "2026-02",
+        "mortgageRatePct": 3.89,
+        "businessRatePct": 4.39,
+        "spreadPctPoints": 0.5,
+        "spreadBps": 50,
+        "mortgageLabel": "Insured residential mortgage, fixed 5 years and over",
+        "businessLabel": "Business loans, total",
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/interest-rates-for-new-and-existing-lending-by-chartered-banks/",
+        "caveat": "Volume-weighted aggregate bank rates. This is not the same thing as founder-facing SME borrowing conditions."
+      }
+    ],
+    "entrepreneurProxySeries": [
+      {
+        "period": "2026-04",
+        "label": "2026-04",
+        "mortgageRatePct": 6.09,
+        "businessRatePct": 9.216,
+        "spreadPctPoints": 3.126,
+        "spreadBps": 312.6,
+        "mortgageLabel": "BoC posted 5-year conventional mortgage",
+        "businessLabel": "BDC small-business loan simulator implied simple annual rate from first six months interest-only payments",
+        "sourceUrl": "https://www.bdc.ca/en/financing/small-business-loan/simulator",
+        "caveat": "entrepreneur-facing proxy; not a statistical time series"
+      }
+    ],
+    "businessDynamism": [
+      {
+        "year": 2002,
+        "entryRatePct": 13.7,
+        "exitRatePct": 12.7,
+        "netEntryRatePct": 1,
+        "growthRateActiveBusinessesPct": 0.9,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2003,
+        "entryRatePct": 13.7,
+        "exitRatePct": 12.4,
+        "netEntryRatePct": 1.3,
+        "growthRateActiveBusinessesPct": 1.2,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2004,
+        "entryRatePct": 15.1,
+        "exitRatePct": 12.1,
+        "netEntryRatePct": 3,
+        "growthRateActiveBusinessesPct": 3,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2005,
+        "entryRatePct": 14.9,
+        "exitRatePct": 12.2,
+        "netEntryRatePct": 2.7,
+        "growthRateActiveBusinessesPct": 2.7,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2006,
+        "entryRatePct": 14.4,
+        "exitRatePct": 13,
+        "netEntryRatePct": 1.4,
+        "growthRateActiveBusinessesPct": 1.4,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2007,
+        "entryRatePct": 15.2,
+        "exitRatePct": 12,
+        "netEntryRatePct": 3.2,
+        "growthRateActiveBusinessesPct": 3.3,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2008,
+        "entryRatePct": 14.3,
+        "exitRatePct": 12.4,
+        "netEntryRatePct": 1.9,
+        "growthRateActiveBusinessesPct": 1.9,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2009,
+        "entryRatePct": 13.2,
+        "exitRatePct": 12.7,
+        "netEntryRatePct": 0.5,
+        "growthRateActiveBusinessesPct": 0.5,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2010,
+        "entryRatePct": 13.3,
+        "exitRatePct": 12,
+        "netEntryRatePct": 1.3,
+        "growthRateActiveBusinessesPct": 1.3,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2011,
+        "entryRatePct": 13.1,
+        "exitRatePct": 11.8,
+        "netEntryRatePct": 1.3,
+        "growthRateActiveBusinessesPct": 1.3,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2012,
+        "entryRatePct": 13.1,
+        "exitRatePct": 11.8,
+        "netEntryRatePct": 1.3,
+        "growthRateActiveBusinessesPct": 1.3,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2013,
+        "entryRatePct": 12.6,
+        "exitRatePct": 11.8,
+        "netEntryRatePct": 0.8,
+        "growthRateActiveBusinessesPct": 0.9,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2014,
+        "entryRatePct": 12.7,
+        "exitRatePct": 11.5,
+        "netEntryRatePct": 1.2,
+        "growthRateActiveBusinessesPct": 1.2,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2015,
+        "entryRatePct": 12.3,
+        "exitRatePct": 11.5,
+        "netEntryRatePct": 0.8,
+        "growthRateActiveBusinessesPct": 0.8,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2016,
+        "entryRatePct": 12.1,
+        "exitRatePct": 12,
+        "netEntryRatePct": 0.1,
+        "growthRateActiveBusinessesPct": 0.1,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2017,
+        "entryRatePct": 12.7,
+        "exitRatePct": 11.5,
+        "netEntryRatePct": 1.2,
+        "growthRateActiveBusinessesPct": 1.3,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2018,
+        "entryRatePct": 12.7,
+        "exitRatePct": 11.5,
+        "netEntryRatePct": 1.2,
+        "growthRateActiveBusinessesPct": 1.2,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2019,
+        "entryRatePct": 14.1,
+        "exitRatePct": 11.8,
+        "netEntryRatePct": 2.3,
+        "growthRateActiveBusinessesPct": 2.3,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2020,
+        "entryRatePct": 11.5,
+        "exitRatePct": 14,
+        "netEntryRatePct": -2.5,
+        "growthRateActiveBusinessesPct": -2.4,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2021,
+        "entryRatePct": 13.7,
+        "exitRatePct": 12.1,
+        "netEntryRatePct": 1.6,
+        "growthRateActiveBusinessesPct": 1.6,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2022,
+        "entryRatePct": 13.9,
+        "exitRatePct": 10.8,
+        "netEntryRatePct": 3.1,
+        "growthRateActiveBusinessesPct": 3.1,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      },
+      {
+        "year": 2023,
+        "entryRatePct": 12.3,
+        "exitRatePct": 11.9,
+        "netEntryRatePct": 0.4,
+        "growthRateActiveBusinessesPct": 0.5,
+        "sourceTable": "Statistics Canada Table 33-10-0164-01",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm"
+      }
+    ],
+    "gdpPerCapita": [
+      {
+        "year": 2014,
+        "realGdpPerCapita2017Cad": 57728,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2015,
+        "realGdpPerCapita2017Cad": 57637,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2016,
+        "realGdpPerCapita2017Cad": 57627,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2017,
+        "realGdpPerCapita2017Cad": 58657,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2018,
+        "realGdpPerCapita2017Cad": 59427,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2019,
+        "realGdpPerCapita2017Cad": 59681,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2020,
+        "realGdpPerCapita2017Cad": 56015,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2021,
+        "realGdpPerCapita2017Cad": 58998,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2022,
+        "realGdpPerCapita2017Cad": 60735,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2023,
+        "realGdpPerCapita2017Cad": 60277,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      },
+      {
+        "year": 2024,
+        "realGdpPerCapita2017Cad": 59738,
+        "sourceTable": "Statistics Canada Table 36-10-0706-01",
+        "sourceUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm"
+      }
+    ],
+    "housingEconomicAccount": [
+      {
+        "year": 2024,
+        "metric": "Nominal investment in residential housing",
+        "value": 237.7,
+        "unit": "CAD billions",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/250624/dq250624d-eng.htm"
+      },
+      {
+        "year": 2024,
+        "metric": "GDP associated with residential housing productive activity",
+        "value": 143.4,
+        "unit": "CAD billions",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/250624/dq250624d-eng.htm"
+      },
+      {
+        "year": 2024,
+        "metric": "Jobs associated with residential housing productive activity",
+        "value": 1.2,
+        "unit": "million jobs",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/250624/dq250624d-eng.htm"
+      },
+      {
+        "year": 2024,
+        "metric": "Net stock of housing assets",
+        "value": 4.2,
+        "unit": "CAD trillions",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/250624/dq250624d-eng.htm"
+      },
+      {
+        "year": 2024,
+        "metric": "Housing assets share of national wealth",
+        "value": 25,
+        "unit": "percent",
+        "sourceUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/250624/dq250624d-eng.htm"
+      }
+    ],
+    "postedMortgage5yRecent": [
+      {
+        "date": "2026-03-25",
+        "ratePct": 6.09,
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/"
+      },
+      {
+        "date": "2026-04-01",
+        "ratePct": 6.09,
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/"
+      },
+      {
+        "date": "2026-04-08",
+        "ratePct": 6.09,
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/"
+      },
+      {
+        "date": "2026-04-15",
+        "ratePct": 6.09,
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/"
+      },
+      {
+        "date": "2026-04-22",
+        "ratePct": 6.09,
+        "sourceUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/"
+      }
+    ],
+    "historicalMortgage5y": [
+      {
+        "period": "1973-01",
+        "ratePct": 9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-02",
+        "ratePct": 9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-03",
+        "ratePct": 9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-04",
+        "ratePct": 9.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-05",
+        "ratePct": 9.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-06",
+        "ratePct": 9.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-07",
+        "ratePct": 9.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-08",
+        "ratePct": 9.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-09",
+        "ratePct": 10,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-10",
+        "ratePct": 10,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-11",
+        "ratePct": 10,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1973-12",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-01",
+        "ratePct": 10,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-02",
+        "ratePct": 10,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-03",
+        "ratePct": 10,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-04",
+        "ratePct": 10.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-05",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-06",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-07",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-08",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-09",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-10",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-11",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1974-12",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-01",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-02",
+        "ratePct": 10.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-03",
+        "ratePct": 10.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-04",
+        "ratePct": 10.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-05",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-06",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-07",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-08",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-09",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-10",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-11",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1975-12",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-01",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-02",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-03",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-04",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-05",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-06",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-07",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-08",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-09",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-10",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-11",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1976-12",
+        "ratePct": 10.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-01",
+        "ratePct": 10.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-02",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-03",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-04",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-05",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-06",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-07",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-08",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-09",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-10",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-11",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1977-12",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-01",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-02",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-03",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-04",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-05",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-06",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-07",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-08",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-09",
+        "ratePct": 10.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-10",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-11",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1978-12",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-01",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-02",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-03",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-04",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-05",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-06",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-07",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-08",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-09",
+        "ratePct": 12.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-10",
+        "ratePct": 14.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-11",
+        "ratePct": 14.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1979-12",
+        "ratePct": 13.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-01",
+        "ratePct": 13.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-02",
+        "ratePct": 14.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-03",
+        "ratePct": 15.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-04",
+        "ratePct": 16.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-05",
+        "ratePct": 13,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-06",
+        "ratePct": 13,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-07",
+        "ratePct": 13.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-08",
+        "ratePct": 14,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-09",
+        "ratePct": 14.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-10",
+        "ratePct": 15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-11",
+        "ratePct": 15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1980-12",
+        "ratePct": 16,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-01",
+        "ratePct": 15.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-02",
+        "ratePct": 15.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-03",
+        "ratePct": 16,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-04",
+        "ratePct": 17,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-05",
+        "ratePct": 18.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-06",
+        "ratePct": 18.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-07",
+        "ratePct": 20,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-08",
+        "ratePct": 21.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-09",
+        "ratePct": 21.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-10",
+        "ratePct": 20.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-11",
+        "ratePct": 17.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1981-12",
+        "ratePct": 17.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-01",
+        "ratePct": 18.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-02",
+        "ratePct": 19.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-03",
+        "ratePct": 19.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-04",
+        "ratePct": 19.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-05",
+        "ratePct": 19.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-06",
+        "ratePct": 19.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-07",
+        "ratePct": 19.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-08",
+        "ratePct": 18.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-09",
+        "ratePct": 17.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-10",
+        "ratePct": 15.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-11",
+        "ratePct": 14.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1982-12",
+        "ratePct": 14.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-01",
+        "ratePct": 13.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-02",
+        "ratePct": 13.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-03",
+        "ratePct": 13.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-04",
+        "ratePct": 13.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-05",
+        "ratePct": 13,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-06",
+        "ratePct": 13,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-07",
+        "ratePct": 13.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-08",
+        "ratePct": 14,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-09",
+        "ratePct": 13.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-10",
+        "ratePct": 13,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-11",
+        "ratePct": 12.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1983-12",
+        "ratePct": 12.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-01",
+        "ratePct": 12.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-02",
+        "ratePct": 12.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-03",
+        "ratePct": 13.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-04",
+        "ratePct": 13.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-05",
+        "ratePct": 14.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-06",
+        "ratePct": 14.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-07",
+        "ratePct": 15.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-08",
+        "ratePct": 14.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-09",
+        "ratePct": 13.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-10",
+        "ratePct": 13.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-11",
+        "ratePct": 13,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1984-12",
+        "ratePct": 12.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-01",
+        "ratePct": 12.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-02",
+        "ratePct": 13.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-03",
+        "ratePct": 13.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-04",
+        "ratePct": 12.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-05",
+        "ratePct": 12.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-06",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-07",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-08",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-09",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-10",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-11",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1985-12",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-01",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-02",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-03",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-04",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-05",
+        "ratePct": 10.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-06",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-07",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-08",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-09",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-10",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-11",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1986-12",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-01",
+        "ratePct": 10.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-02",
+        "ratePct": 10.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-03",
+        "ratePct": 10,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-04",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-05",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-06",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-07",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-08",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-09",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-10",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-11",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1987-12",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-01",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-02",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-03",
+        "ratePct": 11,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-04",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-05",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-06",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-07",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-08",
+        "ratePct": 12.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-09",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-10",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-11",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1988-12",
+        "ratePct": 12.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-01",
+        "ratePct": 12.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-02",
+        "ratePct": 12.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-03",
+        "ratePct": 12.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-04",
+        "ratePct": 12.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-05",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-06",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-07",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-08",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-09",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-10",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-11",
+        "ratePct": 11.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1989-12",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-01",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-02",
+        "ratePct": 12.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-03",
+        "ratePct": 13.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-04",
+        "ratePct": 14.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-05",
+        "ratePct": 14.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-06",
+        "ratePct": 14.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-07",
+        "ratePct": 14.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-08",
+        "ratePct": 13.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-09",
+        "ratePct": 13.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-10",
+        "ratePct": 13.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-11",
+        "ratePct": 12.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1990-12",
+        "ratePct": 12.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-01",
+        "ratePct": 12,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-02",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-03",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-04",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-05",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-06",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-07",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-08",
+        "ratePct": 11.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-09",
+        "ratePct": 11.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-10",
+        "ratePct": 10.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-11",
+        "ratePct": 9.9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1991-12",
+        "ratePct": 9.9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-01",
+        "ratePct": 9.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-02",
+        "ratePct": 9.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-03",
+        "ratePct": 10.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-04",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-05",
+        "ratePct": 9.9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-06",
+        "ratePct": 9.63,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-07",
+        "ratePct": 8.88,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-08",
+        "ratePct": 8.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-09",
+        "ratePct": 8.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-10",
+        "ratePct": 9.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-11",
+        "ratePct": 9.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1992-12",
+        "ratePct": 9.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-01",
+        "ratePct": 9.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-02",
+        "ratePct": 9.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-03",
+        "ratePct": 8.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-04",
+        "ratePct": 8.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-05",
+        "ratePct": 8.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-06",
+        "ratePct": 8.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-07",
+        "ratePct": 8.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-08",
+        "ratePct": 8.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-09",
+        "ratePct": 8.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-10",
+        "ratePct": 8.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-11",
+        "ratePct": 7.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1993-12",
+        "ratePct": 7.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-01",
+        "ratePct": 7.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-02",
+        "ratePct": 7.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-03",
+        "ratePct": 8.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-04",
+        "ratePct": 9.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-05",
+        "ratePct": 9.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-06",
+        "ratePct": 10.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-07",
+        "ratePct": 10.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-08",
+        "ratePct": 10.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-09",
+        "ratePct": 9.9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-10",
+        "ratePct": 9.9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-11",
+        "ratePct": 9.9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1994-12",
+        "ratePct": 10.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-01",
+        "ratePct": 10.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-02",
+        "ratePct": 10.38,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-03",
+        "ratePct": 9.88,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-04",
+        "ratePct": 9.38,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-05",
+        "ratePct": 8.88,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-06",
+        "ratePct": 8.63,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-07",
+        "ratePct": 8.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-08",
+        "ratePct": 8.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-09",
+        "ratePct": 8.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-10",
+        "ratePct": 8.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-11",
+        "ratePct": 8.45,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1995-12",
+        "ratePct": 8.45,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-01",
+        "ratePct": 7.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-02",
+        "ratePct": 7.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-03",
+        "ratePct": 8.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-04",
+        "ratePct": 8.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-05",
+        "ratePct": 8.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-06",
+        "ratePct": 8.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-07",
+        "ratePct": 8.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-08",
+        "ratePct": 7.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-09",
+        "ratePct": 7.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-10",
+        "ratePct": 7.2,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-11",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1996-12",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-01",
+        "ratePct": 7.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-02",
+        "ratePct": 7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-03",
+        "ratePct": 7.3,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-04",
+        "ratePct": 7.65,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-05",
+        "ratePct": 7.35,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-06",
+        "ratePct": 7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-07",
+        "ratePct": 7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-08",
+        "ratePct": 7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-09",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-10",
+        "ratePct": 6.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-11",
+        "ratePct": 6.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1997-12",
+        "ratePct": 7.05,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-01",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-02",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-03",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-04",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-05",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-06",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-07",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-08",
+        "ratePct": 7.15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-09",
+        "ratePct": 7.15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-10",
+        "ratePct": 6.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-11",
+        "ratePct": 7.15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1998-12",
+        "ratePct": 6.6,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-01",
+        "ratePct": 6.9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-02",
+        "ratePct": 6.9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-03",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-04",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-05",
+        "ratePct": 7.3,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-06",
+        "ratePct": 7.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-07",
+        "ratePct": 7.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-08",
+        "ratePct": 7.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-09",
+        "ratePct": 7.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-10",
+        "ratePct": 8.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-11",
+        "ratePct": 8.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "1999-12",
+        "ratePct": 8.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-01",
+        "ratePct": 8.55,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-02",
+        "ratePct": 8.55,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-03",
+        "ratePct": 8.35,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-04",
+        "ratePct": 8.35,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-05",
+        "ratePct": 8.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-06",
+        "ratePct": 8.45,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-07",
+        "ratePct": 8.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-08",
+        "ratePct": 8.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-09",
+        "ratePct": 8.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-10",
+        "ratePct": 8.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-11",
+        "ratePct": 8.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2000-12",
+        "ratePct": 7.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-01",
+        "ratePct": 7.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-02",
+        "ratePct": 7.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-03",
+        "ratePct": 7.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-04",
+        "ratePct": 7.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-05",
+        "ratePct": 7.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-06",
+        "ratePct": 7.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-07",
+        "ratePct": 7.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-08",
+        "ratePct": 7.6,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-09",
+        "ratePct": 7.15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-10",
+        "ratePct": 6.9,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-11",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2001-12",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-01",
+        "ratePct": 7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-02",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-03",
+        "ratePct": 7.3,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-04",
+        "ratePct": 7.45,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-05",
+        "ratePct": 7.4,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-06",
+        "ratePct": 7.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-07",
+        "ratePct": 7.05,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-08",
+        "ratePct": 6.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-09",
+        "ratePct": 6.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-10",
+        "ratePct": 7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-11",
+        "ratePct": 6.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2002-12",
+        "ratePct": 6.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-01",
+        "ratePct": 6.45,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-02",
+        "ratePct": 6.6,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-03",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-04",
+        "ratePct": 6.65,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-05",
+        "ratePct": 6.15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-06",
+        "ratePct": 5.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-07",
+        "ratePct": 6.2,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-08",
+        "ratePct": 6.35,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-09",
+        "ratePct": 6.3,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-10",
+        "ratePct": 6.4,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-11",
+        "ratePct": 6.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2003-12",
+        "ratePct": 6.45,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-01",
+        "ratePct": 6.05,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-02",
+        "ratePct": 5.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-03",
+        "ratePct": 5.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-04",
+        "ratePct": 6.15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-05",
+        "ratePct": 6.5,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-06",
+        "ratePct": 6.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-07",
+        "ratePct": 6.55,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-08",
+        "ratePct": 6.3,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-09",
+        "ratePct": 6.3,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-10",
+        "ratePct": 6.4,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-11",
+        "ratePct": 6.3,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2004-12",
+        "ratePct": 6.05,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-01",
+        "ratePct": 6.05,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-02",
+        "ratePct": 6.05,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-03",
+        "ratePct": 6.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-04",
+        "ratePct": 6.05,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-05",
+        "ratePct": 5.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-06",
+        "ratePct": 5.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-07",
+        "ratePct": 5.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-08",
+        "ratePct": 5.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-09",
+        "ratePct": 5.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-10",
+        "ratePct": 6,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-11",
+        "ratePct": 6.15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2005-12",
+        "ratePct": 6.3,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-01",
+        "ratePct": 6.3,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-02",
+        "ratePct": 6.45,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-03",
+        "ratePct": 6.45,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-04",
+        "ratePct": 6.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-05",
+        "ratePct": 6.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-06",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-07",
+        "ratePct": 6.95,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-08",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-09",
+        "ratePct": 6.7,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-10",
+        "ratePct": 6.8,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-11",
+        "ratePct": 6.55,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2006-12",
+        "ratePct": 6.45,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-01",
+        "ratePct": 6.65,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-02",
+        "ratePct": 6.65,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-03",
+        "ratePct": 6.49,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-04",
+        "ratePct": 6.64,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-05",
+        "ratePct": 7.14,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-06",
+        "ratePct": 7.24,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-07",
+        "ratePct": 7.24,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-08",
+        "ratePct": 7.24,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-09",
+        "ratePct": 7.19,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-10",
+        "ratePct": 7.44,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-11",
+        "ratePct": 7.39,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2007-12",
+        "ratePct": 7.54,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-01",
+        "ratePct": 7.39,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-02",
+        "ratePct": 7.29,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-03",
+        "ratePct": 7.19,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-04",
+        "ratePct": 6.99,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-05",
+        "ratePct": 6.65,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-06",
+        "ratePct": 7.15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-07",
+        "ratePct": 7.15,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-08",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-09",
+        "ratePct": 6.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-10",
+        "ratePct": 7.2,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-11",
+        "ratePct": 7.2,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2008-12",
+        "ratePct": 6.75,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-01",
+        "ratePct": 5.79,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-02",
+        "ratePct": 5.79,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-03",
+        "ratePct": 5.55,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-04",
+        "ratePct": 5.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-05",
+        "ratePct": 5.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-06",
+        "ratePct": 5.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-07",
+        "ratePct": 5.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-08",
+        "ratePct": 5.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-09",
+        "ratePct": 5.49,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-10",
+        "ratePct": 5.84,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-11",
+        "ratePct": 5.59,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2009-12",
+        "ratePct": 5.49,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-01",
+        "ratePct": 5.49,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-02",
+        "ratePct": 5.39,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-03",
+        "ratePct": 5.85,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-04",
+        "ratePct": 6.25,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-05",
+        "ratePct": 5.99,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-06",
+        "ratePct": 5.89,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-07",
+        "ratePct": 5.79,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-08",
+        "ratePct": 5.39,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-09",
+        "ratePct": 5.39,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-10",
+        "ratePct": 5.29,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-11",
+        "ratePct": 5.44,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      },
+      {
+        "period": "2010-12",
+        "ratePct": 5.19,
+        "sourceUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf"
+      }
+    ]
+  },
+  "highlights": {
+    "latestOfficialSpreadBps": 50,
+    "latestOfficialPeriod": "2026-02",
+    "latestEntrepreneurFacingSpreadBps": 312.6,
+    "latestEntrepreneurFacingPeriod": "2026-04",
+    "latestEntryRatePct": 12.3,
+    "latestExitRatePct": 11.9,
+    "latestNetEntryRatePct": 0.4,
+    "latestGdpPerCapita2017Cad": 59738,
+    "gdpPerCapitaChangeSince2019Pct": 0.1,
+    "housingWealthSharePct": 25
+  },
+  "sourceRegistry": [
+    {
+      "datasetId": "ca_posted_rates_weekly",
+      "geography": "Canada",
+      "theme": "Mortgage and bank posted rates",
+      "frequency": "Weekly",
+      "officialSeriesOrTable": "Bank of Canada group: chartered_bank_interest; V80691335 = 5-year conventional mortgage, V80691311 = prime rate",
+      "source": "Bank of Canada",
+      "sourcePageUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/",
+      "downloadUrl": "https://www.bankofcanada.ca/valet/observations/group/chartered_bank_interest/json",
+      "status": "Seed includes latest five weekly rows from source page; full history available via Valet API",
+      "notes": "Posted rates are typical rates offered by six major chartered banks; monthly rates are last Wednesday of month."
+    },
+    {
+      "datasetId": "ca_new_existing_lending_rates_monthly",
+      "geography": "Canada",
+      "theme": "Residential vs corporate lending rates",
+      "frequency": "Monthly",
+      "officialSeriesOrTable": "Bank of Canada groups: A4_RATES_MONTHLY, A4_RATES_MORTGAGES, A4_RATES_EXTENDED",
+      "source": "Bank of Canada",
+      "sourcePageUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/interest-rates-for-new-and-existing-lending-by-chartered-banks/",
+      "downloadUrl": "https://www.bankofcanada.ca/valet/observations/group/A4_RATES_MONTHLY/json?start_date=2013-01-01",
+      "status": "Seed includes 2025-10 to 2026-02 values from source page; full history via Valet API",
+      "notes": "Rates are volume-weighted averages. Business loans total excludes non-residential mortgages to the personal sector as of Jan 2019."
+    },
+    {
+      "datasetId": "ca_mortgage_5y_historical_monthly",
+      "geography": "Canada",
+      "theme": "Historical conventional 5-year mortgage rate",
+      "frequency": "Monthly",
+      "officialSeriesOrTable": "V122521",
+      "source": "Bank of Canada / Statistics Canada",
+      "sourcePageUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf",
+      "downloadUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf",
+      "status": "Seed includes 1973-2010 data from Bank of Canada historical PDF; extend with StatCan V122521 / Valet current weekly series",
+      "notes": "Rates are most typical charged by major chartered banks on residential mortgages, last Wednesday of month."
+    },
+    {
+      "datasetId": "us_mortgage_30y_weekly",
+      "geography": "United States",
+      "theme": "Mortgage rate",
+      "frequency": "Weekly",
+      "officialSeriesOrTable": "FRED MORTGAGE30US",
+      "source": "Freddie Mac via FRED",
+      "sourcePageUrl": "https://fred.stlouisfed.org/series/MORTGAGE30US",
+      "downloadUrl": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=MORTGAGE30US",
+      "status": "Seed includes recent observations; full history via FRED CSV",
+      "notes": "Freddie Mac changed PMMS methodology on Nov 17, 2022."
+    },
+    {
+      "datasetId": "us_residential_investment_share_gdp",
+      "geography": "United States",
+      "theme": "Residential investment share of GDP",
+      "frequency": "Quarterly / Annual",
+      "officialSeriesOrTable": "FRED A011RE1Q156NBEA, A011RE1A156NBEA",
+      "source": "BEA via FRED",
+      "sourcePageUrl": "https://fred.stlouisfed.org/series/A011RE1Q156NBEA",
+      "downloadUrl": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=A011RE1Q156NBEA",
+      "status": "Seed includes recent annual values; full history via FRED CSV",
+      "notes": "BEA Account Code A011RE."
+    },
+    {
+      "datasetId": "us_small_business_lending_rates",
+      "geography": "United States",
+      "theme": "Small business credit rates",
+      "frequency": "Quarterly",
+      "officialSeriesOrTable": "FR 2028D, KC Fed Small Business Lending Survey",
+      "source": "Federal Reserve Bank of Kansas City",
+      "sourcePageUrl": "https://www.kansascityfed.org/surveys/small-business-lending-survey/small-business-lending-continues-to-increase-q4-2025/",
+      "downloadUrl": "https://www.kansascityfed.org/surveys/small-business-lending-survey/",
+      "status": "Seed includes Q4 2024-Q4 2025 chart data from source page; aggregate Excel available from KC Fed",
+      "notes": "Small business loan defined as loan to firm with $5M or less annual gross revenue."
+    },
+    {
+      "datasetId": "ca_business_entry_exit_2002_2023",
+      "geography": "Canada",
+      "theme": "Business dynamism",
+      "frequency": "Annual",
+      "officialSeriesOrTable": "Statistics Canada Table 33-10-0164-01",
+      "source": "Statistics Canada",
+      "sourcePageUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm",
+      "downloadUrl": "https://www150.statcan.gc.ca/n1/tbl/csv/33100164-eng.zip",
+      "status": "Seed includes chart data for 2002-2023",
+      "notes": "Private business sector; includes growth rate of active businesses, entry rate, exit rate."
+    },
+    {
+      "datasetId": "ca_business_entry_exit_1983_2012",
+      "geography": "Canada",
+      "theme": "Business dynamism long-run archive",
+      "frequency": "Annual period",
+      "officialSeriesOrTable": "Longitudinal Employment Analysis Program; archived StatCan chart",
+      "source": "Statistics Canada",
+      "sourcePageUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/140825/cg-a001-eng.htm",
+      "downloadUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/140825/cg-a001-eng.htm",
+      "status": "Seed includes archived chart data 1983/1984-2011/2012",
+      "notes": "Archived/experimental linked data; use separately from modern Table 33-10-0164-01."
+    },
+    {
+      "datasetId": "ca_gdp_per_capita_annual",
+      "geography": "Canada",
+      "theme": "GDP per capita",
+      "frequency": "Annual",
+      "officialSeriesOrTable": "Statistics Canada Table 36-10-0706-01",
+      "source": "Statistics Canada Quality of Life Hub",
+      "sourcePageUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm",
+      "downloadUrl": "https://www150.statcan.gc.ca/n1/tbl/csv/36100706-eng.zip",
+      "status": "Seed includes Quality of Life annual values 2014-2024",
+      "notes": "All figures are in 2017 constant dollars, averaged by year."
+    },
+    {
+      "datasetId": "ca_housing_economic_account_2024",
+      "geography": "Canada",
+      "theme": "Housing investment / wealth",
+      "frequency": "Annual",
+      "officialSeriesOrTable": "Housing Economic Account 2024",
+      "source": "Statistics Canada",
+      "sourcePageUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/250624/dq250624d-eng.htm",
+      "downloadUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/250624/dq250624d-eng.htm",
+      "status": "Seed includes 2024 headline metrics",
+      "notes": "Nominal investment in residential housing; GDP associated with housing; housing asset stock as share of national wealth."
+    },
+    {
+      "datasetId": "bdc_small_business_loan_proxy",
+      "geography": "Canada",
+      "theme": "Entrepreneur-facing small business debt proxy",
+      "frequency": "Point-in-time calculator",
+      "officialSeriesOrTable": "BDC Small Business Loan Simulator",
+      "source": "BDC",
+      "sourcePageUrl": "https://www.bdc.ca/en/financing/small-business-loan/simulator",
+      "downloadUrl": "https://www.bdc.ca/en/financing/small-business-loan/simulator",
+      "status": "Proxy only; not a statistical time series",
+      "notes": "$100K, 5-year term, first 6 months interest-only payments shown at $768/month; implied simple annual interest rate ~9.216%."
+    }
+  ],
+  "sourceLookup": {
+    "officialCreditSpread": {
+      "datasetId": "ca_new_existing_lending_rates_monthly",
+      "geography": "Canada",
+      "theme": "Residential vs corporate lending rates",
+      "frequency": "Monthly",
+      "officialSeriesOrTable": "Bank of Canada groups: A4_RATES_MONTHLY, A4_RATES_MORTGAGES, A4_RATES_EXTENDED",
+      "source": "Bank of Canada",
+      "sourcePageUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/interest-rates-for-new-and-existing-lending-by-chartered-banks/",
+      "downloadUrl": "https://www.bankofcanada.ca/valet/observations/group/A4_RATES_MONTHLY/json?start_date=2013-01-01",
+      "status": "Seed includes 2025-10 to 2026-02 values from source page; full history via Valet API",
+      "notes": "Rates are volume-weighted averages. Business loans total excludes non-residential mortgages to the personal sector as of Jan 2019."
+    },
+    "entrepreneurProxy": {
+      "datasetId": "bdc_small_business_loan_proxy",
+      "geography": "Canada",
+      "theme": "Entrepreneur-facing small business debt proxy",
+      "frequency": "Point-in-time calculator",
+      "officialSeriesOrTable": "BDC Small Business Loan Simulator",
+      "source": "BDC",
+      "sourcePageUrl": "https://www.bdc.ca/en/financing/small-business-loan/simulator",
+      "downloadUrl": "https://www.bdc.ca/en/financing/small-business-loan/simulator",
+      "status": "Proxy only; not a statistical time series",
+      "notes": "$100K, 5-year term, first 6 months interest-only payments shown at $768/month; implied simple annual interest rate ~9.216%."
+    },
+    "postedRates": {
+      "datasetId": "ca_posted_rates_weekly",
+      "geography": "Canada",
+      "theme": "Mortgage and bank posted rates",
+      "frequency": "Weekly",
+      "officialSeriesOrTable": "Bank of Canada group: chartered_bank_interest; V80691335 = 5-year conventional mortgage, V80691311 = prime rate",
+      "source": "Bank of Canada",
+      "sourcePageUrl": "https://www.bankofcanada.ca/rates/banking-and-financial-statistics/posted-interest-rates-offered-by-chartered-banks/",
+      "downloadUrl": "https://www.bankofcanada.ca/valet/observations/group/chartered_bank_interest/json",
+      "status": "Seed includes latest five weekly rows from source page; full history available via Valet API",
+      "notes": "Posted rates are typical rates offered by six major chartered banks; monthly rates are last Wednesday of month."
+    },
+    "historicalMortgage": {
+      "datasetId": "ca_mortgage_5y_historical_monthly",
+      "geography": "Canada",
+      "theme": "Historical conventional 5-year mortgage rate",
+      "frequency": "Monthly",
+      "officialSeriesOrTable": "V122521",
+      "source": "Bank of Canada / Statistics Canada",
+      "sourcePageUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf",
+      "downloadUrl": "https://www.bankofcanada.ca/wp-content/uploads/2010/09/selected_historical_v122521.pdf",
+      "status": "Seed includes 1973-2010 data from Bank of Canada historical PDF; extend with StatCan V122521 / Valet current weekly series",
+      "notes": "Rates are most typical charged by major chartered banks on residential mortgages, last Wednesday of month."
+    },
+    "businessDynamism": {
+      "datasetId": "ca_business_entry_exit_2002_2023",
+      "geography": "Canada",
+      "theme": "Business dynamism",
+      "frequency": "Annual",
+      "officialSeriesOrTable": "Statistics Canada Table 33-10-0164-01",
+      "source": "Statistics Canada",
+      "sourcePageUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/260212/cg-a001-eng.htm",
+      "downloadUrl": "https://www150.statcan.gc.ca/n1/tbl/csv/33100164-eng.zip",
+      "status": "Seed includes chart data for 2002-2023",
+      "notes": "Private business sector; includes growth rate of active businesses, entry rate, exit rate."
+    },
+    "gdpPerCapita": {
+      "datasetId": "ca_gdp_per_capita_annual",
+      "geography": "Canada",
+      "theme": "GDP per capita",
+      "frequency": "Annual",
+      "officialSeriesOrTable": "Statistics Canada Table 36-10-0706-01",
+      "source": "Statistics Canada Quality of Life Hub",
+      "sourcePageUrl": "https://www.statcan.gc.ca/hub-carrefour/quality-life-qualite-vie/prosperity-prosperite/gdp-pib-eng.htm",
+      "downloadUrl": "https://www150.statcan.gc.ca/n1/tbl/csv/36100706-eng.zip",
+      "status": "Seed includes Quality of Life annual values 2014-2024",
+      "notes": "All figures are in 2017 constant dollars, averaged by year."
+    },
+    "housingEconomicAccount": {
+      "datasetId": "ca_housing_economic_account_2024",
+      "geography": "Canada",
+      "theme": "Housing investment / wealth",
+      "frequency": "Annual",
+      "officialSeriesOrTable": "Housing Economic Account 2024",
+      "source": "Statistics Canada",
+      "sourcePageUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/250624/dq250624d-eng.htm",
+      "downloadUrl": "https://www150.statcan.gc.ca/n1/daily-quotidien/250624/dq250624d-eng.htm",
+      "status": "Seed includes 2024 headline metrics",
+      "notes": "Nominal investment in residential housing; GDP associated with housing; housing asset stock as share of national wealth."
+    }
+  }
+}

@@ -431,36 +431,36 @@ export default function HomeBenchReport() {
           <CardHeader className="border-b border-stone-100">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
-                <div className={SECTION_TITLE}>Benchmark</div>
-                <CardTitle className="text-2xl mt-1 text-stone-950">
-                  Overall Performance by Task Category
-                </CardTitle>
-                <p className="text-sm text-stone-500 mt-1">
-                  Higher is better. Scored across 60 tasks · 7 categories · graded by working agents.
-                </p>
+            <div className={SECTION_TITLE}>Benchmark</div>
+            <CardTitle className="text-2xl mt-1 text-stone-950">
+              Overall Performance by Task Category
+            </CardTitle>
+            <p className="text-sm text-stone-500 mt-1">
+              Higher is better. Scored across 60 tasks · 7 categories · graded by working agents.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {MODELS.map((m) => (
+              <div key={m.key} className="flex items-center gap-2 text-xs text-stone-700">
+                <span
+                  className="inline-block w-3 h-3 rounded-sm"
+                  style={{ background: m.color }}
+                />
+                {m.name}
               </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                {MODELS.map((m) => (
-                  <div key={m.key} className="flex items-center gap-2 text-xs text-stone-700">
-                    <span
-                      className="inline-block w-3 h-3 rounded-sm"
-                      style={{ background: m.color }}
-                    />
-                    {m.name}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={620}>
-              <BarChart
-                data={groupedData}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-                barCategoryGap={8}
-                barGap={2}
-              >
+            ))}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <ResponsiveContainer width="100%" height={620}>
+          <BarChart
+            data={groupedData}
+            layout="vertical"
+            margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+            barCategoryGap={8}
+            barGap={2}
+          >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E7E2DA" />
                 <XAxis
                   type="number"

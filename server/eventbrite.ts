@@ -277,7 +277,6 @@ async function refreshEventsAsync() {
       } catch (dbError) {
         console.log("Database cache update failed during refresh:", dbError);
       }
-      
       console.log(`Refreshed ${events.length} events from Eventbrite API`);
     }
   } catch (error) {
@@ -316,7 +315,6 @@ export async function forceRefreshEvents(): Promise<{ events: EventbriteEvent[];
     } catch (dbError) {
       console.log("Database cache update failed during force refresh:", dbError);
     }
-    
     return { events: apiEvents, source: "eventbrite_api" };
   }
   

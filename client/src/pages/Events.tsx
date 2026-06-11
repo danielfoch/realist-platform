@@ -423,175 +423,25 @@ export default function Events() {
           </div>
 
           {isLoading ? (
-            <div className="space-y-8">
-              <div>
-                <Skeleton className="h-8 w-64 mb-4" />
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(3)].map((_, i) => (
-                    <EventSkeleton key={i} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <Skeleton className="h-8 w-48 mb-4" />
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(2)].map((_, i) => (
-                    <EventSkeleton key={i} />
-                  ))}
-                </div>
-              </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <EventSkeleton key={i} />
+              ))}
             </div>
-          ) : (featuredEvents.length > 0 || groupedUpcoming.length > 0) ? (
+          ) : upcomingEvents.length > 0 ? (
             <>
-              {/* Featured Events Section */}
-              {featuredEvents.length > 0 && (
-                <div className="mb-12">
-                  <div className="flex items-center gap-3 mb-6">
-                    <Calendar className="h-6 w-6 text-primary" />
-                    <h2 className="text-2xl font-bold">Featured Event</h2>
-                    <Badge className="bg-primary text-primary-foreground">Special</Badge>
-                  </div>
-                  <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
-                    {featuredEvents.map((event) => {
-                      const haystack = `${event.name} ${event.venueName ?? ""} ${event.venueAddress ?? ""}`.toLowerCase();
-                      const isTorontoMultiplex =
-                        haystack.includes("unpacking multiplex") &&
-                        (haystack.includes("toronto") || haystack.includes("innis town hall"));
-                      const internalHref = isTorontoMultiplex
-                        ? "/community/events/unpacking-multiplexes-toronto"
-                        : null;
-                      const CardLinkWrapper = ({ children }: { children: React.ReactNode }) =>
-                        internalHref ? (
-                          <Link
-                            href={internalHref}
-                            data-testid={`link-featured-internal-${event.id}`}
-                          >
-                            {children}
-                          </Link>
-                        ) : (
-                          <a href={event.eventUrl} target="_blank" rel="noopener noreferrer">
-                            {children}
-                          </a>
-                        );
-                      return (
-                        <Card key={event.id} className="overflow-hidden border-primary/20" data-testid={`card-featured-event-${event.id}`}>
-                          <div className="md:flex">
-                            {(event.logoUrl || event.imageUrl) && (
-                              <div className="md:w-1/3 shrink-0">
-                                <img
-                                  src={event.logoUrl || event.imageUrl}
-                                  alt={event.name}
-                                  className="w-full aspect-square object-cover"
-                                />
-                              </div>
-                            )}
-                            <CardContent className={`p-6 flex flex-col justify-between ${(event.logoUrl || event.imageUrl) ? 'md:w-2/3' : 'w-full'}`}>
-                              <div>
-                                <h3 className="text-xl font-bold mb-2" data-testid={`text-featured-title-${event.id}`}>
-                                  {event.name}
-                                </h3>
-                                <div className="space-y-2 mb-4">
-                                  {event.startDate && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                      <Clock className="h-4 w-4 text-primary" />
-                                      <span className="font-medium">
-                                        {format(parseISO(event.startDate), "EEEE, MMMM d, yyyy 'at' h:mm a")}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {event.venueName && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                      <MapPin className="h-4 w-4" />
-                                      <span>{event.venueName}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <CardLinkWrapper>
-                                <Button className="w-full gap-2" data-testid={`button-featured-register-${event.id}`}>
-                                  {internalHref ? "View Event" : "Register Now"}
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              </CardLinkWrapper>
-                            </CardContent>
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 2026 Event Partners Section */}
-              <div className="mb-12">
-                <div className="flex items-center gap-3 mb-6">
-                  <Handshake className="h-6 w-6 text-primary" />
-                  <h2 className="text-2xl font-bold">2026 Event Partners</h2>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-                  {[
-                    { name: "CMHC", logo: "/partners/cmhc.png", url: "https://www.cmhc-schl.gc.ca" },
-                    { name: "BLD Financial", logo: "/partners/bld-financial.png", url: "https://bldfinancial.ca/" },
-                    { name: "TCI Podcast Network", logo: "/partners/tci-podcast.png", url: "https://thecanadianinvestorpodcast.com/podcast/the-canadian-real-estate-investor" },
-                    { name: "KV Capital", logo: "/partners/kv-capital.png", url: "https://www.kvcapital.ca/" },
-                    { name: "City of Edmonton", logo: "/partners/edmonton.png", url: "https://www.edmonton.ca/" },
-                    { name: "Calvert Home Mortgage", logo: "/partners/calvert-home-mortgage.png", url: "https://chmic.ca/" },
-                    { name: "Ndura Developments", logo: "/partners/ndura.png", url: "https://ndura.ca/" },
-                    { name: "M3 Development Management", logo: "/partners/m3-development.png", url: "https://www.m3dm.ca/" },
-                    { name: "Infill Development in Edmonton Association", logo: "/partners/infill-edmonton.png", url: "https://www.infilledmonton.com/" },
-                    { name: "Vancity", logo: "/partners/vancity.png", url: "https://www.vancity.com" },
-                    { name: "Forefront Multiplex Marketing", logo: "/partners/forefront.png", url: "https://weareforefront.ca/" },
-                    { name: "Theorem Developments", logo: "/partners/theorem.png", url: "https://theoremdevelopments.com" },
-                    { name: "Burke by Burke", logo: "/partners/burke-by-burke.png", url: "https://www.burkebyburke.com/" },
-                    { name: "Greater Vancouver Tenant & Property Management Ltd", logo: "/partners/gvtpm.png", url: "https://gvantpm.com/" },
-                    { name: "Homies", logo: "/partners/homies.png", url: "https://meetyourhomies.com" },
-                  ].map((partner) => (
-                    <a
-                      key={partner.name}
-                      href={partner.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center justify-center rounded-xl border border-border/50 bg-card/50 hover:bg-card hover:border-primary/30 transition-all duration-200 p-6 h-24"
-                      data-testid={`link-partner-${partner.name.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <img
-                        src={partner.logo}
-                        alt={partner.name}
-                        className="max-h-12 max-w-full object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
-                      />
-                    </a>
-                  ))}
-                </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {upcomingEvents.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
               </div>
 
-              {/* Regular Meetups Section */}
-              {groupedUpcoming.length > 0 && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Users className="h-6 w-6 text-primary" />
-                    <h2 className="text-2xl font-bold">Upcoming Meetups</h2>
-                    <Badge variant="outline" className="text-xs">
-                      First Tuesday of every month
-                    </Badge>
-                  </div>
-                  <p className="text-muted-foreground mb-4">
-                    Join investors across Canada at our monthly meetups. Click on a date to see all cities.
-                  </p>
-                  
-                  <div className="space-y-4">
-                    {groupedUpcoming.map((group) => (
-                      <MeetupDaySection key={group.dateKey} group={group} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {groupedPast.length > 0 && (
+              {pastEvents.length > 0 && (
                 <div className="mt-16">
-                  <h2 className="text-2xl font-bold mb-6 text-muted-foreground">Past Meetups</h2>
-                  <div className="space-y-4 opacity-75">
-                    {groupedPast.slice(0, 2).map((group) => (
-                      <MeetupDaySection key={group.dateKey} group={group} />
+                  <h2 className="text-2xl font-bold mb-6 text-muted-foreground">Past Events</h2>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-75">
+                    {pastEvents.slice(0, 3).map((event) => (
+                      <EventCard key={event.id} event={event} />
                     ))}
                   </div>
                 </div>
@@ -616,116 +466,6 @@ export default function Events() {
               </a>
             </div>
           )}
-
-          {/* Meetup Hosts Section */}
-          <div className="mt-24">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4" data-testid="text-hosts-title">
-                Meet Your Local Hosts
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Our trusted market experts across Canada host local meetups and provide investment guidance in their regions.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.values(marketExperts).map((expert: MarketExpert) => (
-                <Card key={expert.provinceCode} className="hover-elevate" data-testid={`card-host-${expert.provinceCode}`}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="h-16 w-16 border-2 border-primary/20">
-                        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
-                          {expert.name.split(" ").map(n => n[0]).join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-lg" data-testid={`text-host-name-${expert.provinceCode}`}>
-                            {expert.name}
-                          </h3>
-                          {expert.linkedIn && (
-                            <a href={expert.linkedIn} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                              <Linkedin className="h-4 w-4" />
-                            </a>
-                          )}
-                          {expert.instagram && (
-                            <a href={expert.instagram} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                              <Instagram className="h-4 w-4" />
-                            </a>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{expert.title}</p>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <MapPin className="h-3 w-3" />
-                          {expert.city}, {expert.province}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-4">
-                      {expert.bio}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {/* Partner Application Card */}
-              <Card className="border-dashed border-2 hover-elevate" data-testid="card-become-partner">
-                <CardContent className="pt-6 h-full flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <UserPlus className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">Become a Host</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Are you a trusted realtor or investor looking to host meetups in your area?
-                  </p>
-                  <MarketExpertApplicationDialog 
-                    trigger={
-                      <Button variant="outline" className="gap-2" data-testid="button-become-partner">
-                        <Handshake className="h-4 w-4" />
-                        Apply Now
-                      </Button>
-                    }
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Past Event Partners Section */}
-          <div className="mt-24">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-muted-foreground mb-2" data-testid="text-past-partners-title">
-                Past Event Partners
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Companies that have supported our community events.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-              {[
-                { name: "Sherwin Williams", logo: "/partners/sherwin-williams.png", url: "https://www.sherwin-williams.com" },
-                { name: "Dorr Capital", logo: "/partners/dorr-capital.png", url: "https://dorrcapital.com" },
-                { name: "Landlord.net", logo: "/partners/landlord-net.png", url: "https://landlord.net" },
-                { name: "Foremost Financial", logo: "/partners/foremost-financial.png", url: "https://foremostfinancial.ca" },
-                { name: "Cognitive Capital", logo: "/partners/cognitive-capital.png", url: "https://cognitivecapital.ca" },
-              ].map((partner) => (
-                <a
-                  key={partner.name}
-                  href={partner.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center justify-center rounded-xl border border-border/50 bg-card/50 hover:bg-card hover:border-primary/30 transition-all duration-200 p-5 h-20"
-                  data-testid={`link-past-partner-${partner.name.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <img
-                    src={partner.logo}
-                    alt={partner.name}
-                    className="max-h-10 max-w-full object-contain grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-90 transition-all duration-300"
-                  />
-                </a>
-              ))}
-            </div>
-          </div>
 
           <div className="mt-16 text-center">
             <Card className="inline-block p-8 bg-gradient-to-br from-primary/10 to-accent/10">

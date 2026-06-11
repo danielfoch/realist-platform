@@ -707,13 +707,6 @@ export async function registerRoutes(
   registerApiKeyManagementRoutes(app);
   registerAgentRoutes(app);
 
-  const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
-  registerApiKeyManagementRoutes(app);
-  registerAgentRoutes(app);
-
-  const { registerDealDeskRoutes } = await import("./routes/dealDesk");
-  registerDealDeskRoutes(app);
-
   // ─── Event Tracking ───────────────────────────────────────────────────────
   // Lightweight behavioral event capture for AI training data pipeline.
   // Every event here is a future labeled data point:
@@ -3132,124 +3125,7 @@ export async function registerRoutes(
     }
   });
 
-  // ============================================
-  // MORTGAGE RATES API ROUTES
-  // ============================================
-
-  app.get("/api/mortgage-rates", async (req, res) => {
-    try {
-      const { getAllCurrentRates } = await import("./rateScraper");
-      const rates = await getAllCurrentRates();
-      res.json(rates);
-    } catch (error) {
-      console.error("Error fetching mortgage rates:", error);
-      res.status(500).json({ error: "Failed to fetch rates" });
-    }
-  });
-
-  app.get("/api/mortgage-rates/history", async (req, res) => {
-    try {
-      const { getRateHistory } = await import("./rateScraper");
-      const rates = await getRateHistory(
-        req.query.rateType as string | undefined,
-        req.query.term as string | undefined,
-      );
-      res.json(rates);
-    } catch (error) {
-      console.error("Error fetching rate history:", error);
-      res.status(500).json({ error: "Failed to fetch rate history" });
-    }
-  });
-
-  app.post("/api/admin/mortgage-rates/scrape", isAdmin, async (req, res) => {
-    try {
-      const { runRateScrape } = await import("./rateScraper");
-      const result = await runRateScrape();
-      res.json(result);
-    } catch (error) {
-      console.error("Error running rate scrape:", error);
-      res.status(500).json({ error: "Failed to scrape rates" });
-    }
-  });
-
-  app.post("/api/admin/mortgage-rates", isAdmin, async (req, res) => {
-    try {
-      const { rateType, term, rate, provider, source, category, isInsured } = req.body;
-      if (!rateType || !term || !rate || !provider) {
-        return res.status(400).json({ error: "rateType, term, rate, provider required" });
-      }
-      const { mortgageRates: ratesTable } = await import("@shared/schema");
-      const [result] = await db.insert(ratesTable).values({
-        rateType, term, rate: parseFloat(rate), provider,
-        source: source || "manual",
-        category: category || "custom",
-        isInsured: isInsured ?? false,
-        lastUpdated: new Date(),
-      }).returning();
-      res.json(result);
-    } catch (error) {
-      console.error("Error adding rate:", error);
-      res.status(500).json({ error: "Failed to add rate" });
-    }
-  });
-
-  app.get("/api/rates/mortgage", async (req, res) => {
-    try {
-      const { getAllCurrentRates } = await import("./rateScraper");
-      const rates = await getAllCurrentRates();
-      const termYears = req.query.termYears as string || "5";
-      const type = req.query.type as string || "fixed";
-      const termLabel = `${termYears}-year`;
-
-      const matching = rates.filter((r: any) => {
-        if (type === "variable") {
-          return r.rateType === "variable" && r.term === "5-year" && r.category === "best";
-        }
-        return r.rateType === "fixed" && r.term === termLabel && r.category === "best";
-      });
-
-      if (matching.length === 0) {
-        const fallback = rates.filter((r: any) => {
-          if (type === "variable") {
-            return r.rateType === "variable" && ["best", "big-bank", "posted"].includes(r.category) && ["5-year", "prime"].includes(r.term);
-          }
-          return r.rateType === "fixed" && r.term === termLabel && ["best", "big-bank", "posted"].includes(r.category);
-        });
-        if (fallback.length > 0) {
-          const best = fallback.reduce((a: any, b: any) => a.rate < b.rate ? a : b);
-          return res.json({ bestRate: best.rate, source: best.source, timestamp: best.lastUpdated, count: fallback.length });
-        }
-        return res.json({ bestRate: null, source: null, timestamp: null, count: 0 });
-      }
-
-      const best = matching.reduce((a: any, b: any) => a.rate < b.rate ? a : b);
-      res.json({ bestRate: best.rate, source: best.source, timestamp: best.lastUpdated, count: matching.length });
-    } catch (error) {
-      console.error("Error fetching rate:", error);
-      res.status(500).json({ error: "Failed to fetch rate" });
-    }
-  });
-
-  app.get("/api/rate-forecast/latest", async (req, res) => {
-    try {
-      const { rateForecasts } = await import("@shared/schema");
-      const forecasts = await db.select().from(rateForecasts).orderBy(sql`created_at DESC`).limit(1);
-      if (forecasts.length === 0) {
-        return res.json(null);
-      }
-      const f = forecasts[0];
-      res.json({
-        ...f,
-        path: JSON.parse(f.pathJson),
-        assumptions: f.assumptionsJson ? JSON.parse(f.assumptionsJson) : null,
-      });
-    } catch (error) {
-      console.error("Error fetching forecast:", error);
-      res.json(null);
-    }
-  });
-
-  // ============================================
+  // =====================================  // ============================================
   // RENOQUOTE API ROUTES
   // ============================================
 
@@ -9878,140 +9754,8 @@ export async function registerRoutes(
   });
 
   // ============================================
-<<<<<<< HEAD
   // PARTNER JOIN / MATCHING ROUTES
-  // ============================================
-
-  app.post("/api/join/realtor", async (req, res) => {
-    try {
-      const { realtorApplications } = await import("@shared/schema");
-      const { insertRealtorApplicationSchema } = await import("@shared/schema");
-      const parsed = insertRealtorApplicationSchema.parse(req.body);
-      const [application] = await db.insert(realtorApplications).values(parsed).returning();
-
-      appendLead("RealtorApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
-
-      try {
-        const webhookUrl = process.env.GHL_WEBHOOK_URL;
-        if (webhookUrl) {
-          fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...parsed,
-              formTag: "realtor_application",
-              source: "realist.ca",
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      try {
-        const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
-        if (sheetsUrl) {
-          fetch(sheetsUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "realtor_application",
-              ...parsed,
-              timestamp: new Date().toISOString(),
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      res.json({ success: true, id: application.id });
-    } catch (error: any) {
-      console.error("Error creating realtor application:", error);
-      res.status(400).json({ error: error.message || "Failed to submit application" });
-    }
-  });
-
-  app.post("/api/join/lender", async (req, res) => {
-    try {
-      const { lenderApplications } = await import("@shared/schema");
-      const { insertLenderApplicationSchema } = await import("@shared/schema");
-      const parsed = insertLenderApplicationSchema.parse(req.body);
-      const [application] = await db.insert(lenderApplications).values(parsed).returning();
-
-      appendLead("LenderApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
-
-      try {
-        const webhookUrl = process.env.GHL_WEBHOOK_URL;
-        if (webhookUrl) {
-          fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...parsed,
-              formTag: "lender_application",
-              source: "realist.ca",
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      try {
-        const sheetsUrl = process.env.SHEETS_WEBHOOK_URL;
-        if (sheetsUrl) {
-          fetch(sheetsUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "lender_application",
-              ...parsed,
-              timestamp: new Date().toISOString(),
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      res.json({ success: true, id: application.id });
-    } catch (error: any) {
-      console.error("Error creating lender application:", error);
-      res.status(400).json({ error: error.message || "Failed to submit application" });
-    }
-  });
-
-  app.post("/api/deal-match", async (req, res) => {
-    try {
-      const { dealMatchRequests } = await import("@shared/schema");
-      const { insertDealMatchRequestSchema } = await import("@shared/schema");
-      const parsed = insertDealMatchRequestSchema.parse({
-        ...req.body,
-        userId: req.session?.userId || null,
-      });
-      const [match] = await db.insert(dealMatchRequests).values(parsed).returning();
-
-      appendLead("DealMatch", { ...parsed, matchId: match.id, source: "realist.ca" });
-
-      try {
-        const webhookUrl = process.env.GHL_WEBHOOK_URL;
-        if (webhookUrl) {
-          fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...parsed,
-              formTag: "deal_match_request",
-              source: "realist.ca",
-            }),
-          }).catch(() => {});
-        }
-      } catch {}
-
-      res.json({ success: true, id: match.id });
-    } catch (error: any) {
-      console.error("Error creating deal match request:", error);
-      res.status(400).json({ error: error.message || "Failed to submit match request" });
-    }
-  });
-
-  // ============================================
-=======
->>>>>>> c371715e2 (Published your App)
-  // MARKET REPORT ROUTES
+  // =====================================  // MARKET REPORT ROUTES
   // ============================================
 
   const MAJOR_CANADIAN_CITIES = [
@@ -10049,80 +9793,8 @@ export async function registerRoutes(
 
   app.post("/api/market-report/compute-snapshot", isAdmin, async (_req, res) => {
     try {
-<<<<<<< HEAD
       const result = await computeMonthlySnapshot();
       res.json({ success: true, month: result.month, snapshotCount: result.count });
-=======
-      const now = new Date();
-      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-      const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
-
-      const cityResults = await db
-        .select({
-          city: analyses.city,
-          province: analyses.province,
-          dealCount: count(analyses.id),
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
-          avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
-          avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
-        })
-        .from(analyses)
-        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= DATE_TRUNC('month', CURRENT_DATE)`)
-        .groupBy(analyses.city, analyses.province);
-
-      const allTimeResults = await db
-        .select({
-          city: analyses.city,
-          province: analyses.province,
-          dealCount: count(analyses.id),
-          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
-          avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
-          avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
-        })
-        .from(analyses)
-        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
-        .groupBy(analyses.city, analyses.province);
-
-      const cityMap = new Map(cityResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
-      const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
-
-      let snapshotCount = 0;
-      for (const { city, province } of MAJOR_CANADIAN_CITIES) {
-        const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
-        const current = cityMap.get(key);
-        const allTime = allTimeMap.get(key);
-        const data = current || allTime;
-        
-        const cmhcRents = CMHC_CITY_RENTS[city];
-
-        await storage.upsertMarketSnapshot({
-          city,
-          province,
-          month,
-          dealCount: data ? Number(data.dealCount) : 0,
-          avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
-          avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
-          avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
-          avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
-          avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
-          medianCapRate: null,
-          medianPurchasePrice: null,
-          avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
-          cmhcOneBed: cmhcRents?.oneBed ?? null,
-          cmhcTwoBed: cmhcRents?.twoBed ?? null,
-        });
-        snapshotCount++;
-      }
-
-      res.json({ success: true, month, snapshotCount });
->>>>>>> c371715e2 (Published your App)
     } catch (error) {
       console.error("Error computing market snapshot:", error);
       res.status(500).json({ error: "Failed to compute market snapshot" });
@@ -10140,7 +9812,6 @@ export async function registerRoutes(
     }
   });
 
-<<<<<<< HEAD
   app.get("/api/market-report/metrics", async (req, res) => {
     try {
       const city = req.query.city as string | undefined;
@@ -10175,8 +9846,6 @@ export async function registerRoutes(
     }
   });
 
-=======
->>>>>>> c371715e2 (Published your App)
   app.get("/api/market-report/history", async (req, res) => {
     try {
       const city = req.query.city as string | undefined;
@@ -10200,7 +9869,6 @@ export async function registerRoutes(
     }
   });
 
-<<<<<<< HEAD
   app.get("/api/yield-history", async (req, res) => {
     try {
       const city = req.query.city as string | undefined;
@@ -10361,9 +10029,6 @@ export async function registerRoutes(
   }
 
   // Run on server start if current month not yet snapshotted
-=======
-  // Auto-compute snapshots on server start and monthly
->>>>>>> c371715e2 (Published your App)
   (async () => {
     try {
       const months = await storage.getMarketSnapshotMonths();
@@ -10371,63 +10036,16 @@ export async function registerRoutes(
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       if (!months.includes(currentMonth)) {
         console.log("[market-report] Computing initial snapshot for", currentMonth);
-<<<<<<< HEAD
         await computeMonthlySnapshot(currentMonth);
         console.log("[market-report] Initial snapshot computed for", currentMonth);
       } else {
         console.log("[market-report] Snapshot already exists for", currentMonth);
-=======
-        const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
-        
-        const allTimeResults = await db
-          .select({
-            city: analyses.city,
-            province: analyses.province,
-            dealCount: count(analyses.id),
-            avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
-            avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
-            avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
-            avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
-            avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
-            avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
-          })
-          .from(analyses)
-          .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
-          .groupBy(analyses.city, analyses.province);
-
-        const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
-
-        for (const { city, province } of MAJOR_CANADIAN_CITIES) {
-          const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
-          const data = allTimeMap.get(key);
-          const cmhcRents = CMHC_CITY_RENTS[city];
-
-          await storage.upsertMarketSnapshot({
-            city,
-            province,
-            month: currentMonth,
-            dealCount: data ? Number(data.dealCount) : 0,
-            avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
-            avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
-            avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
-            avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
-            avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
-            medianCapRate: null,
-            medianPurchasePrice: null,
-            avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
-            cmhcOneBed: cmhcRents?.oneBed ?? null,
-            cmhcTwoBed: cmhcRents?.twoBed ?? null,
-          });
-        }
-        console.log("[market-report] Initial snapshot computed for", currentMonth);
->>>>>>> c371715e2 (Published your App)
       }
     } catch (error) {
       console.error("[market-report] Failed to compute initial snapshot:", error);
     }
   })();
 
-<<<<<<< HEAD
   // Cron: check every hour, auto-compute snapshots + DDF yield crawl on the 1st of each month
   setInterval(async () => {
     try {
@@ -10595,8 +10213,6 @@ export async function registerRoutes(
     }
   }, 6 * 60 * 60 * 1000);
 
-=======
->>>>>>> c371715e2 (Published your App)
   // ============================================
   // COMMUNITY UNDERWRITING ROUTES
   // ============================================
