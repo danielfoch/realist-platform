@@ -123,6 +123,7 @@ import { logUserActivity, rebuildUserInferenceProfile } from "./userActivity";
 import { trackRealistEvent } from "./realistEvents";
 import { registerRealistEventRoutes } from "./eventsModule";
 import { registerDealDeskRoutes } from "./dealDesk";
+import { scheduleAdminWeeklySummary } from "./adminWeeklySummary";
 import { registerCrmRoutes } from "./crm";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerMobilePushRoutes } from "./mobilePush";
@@ -734,6 +735,7 @@ export async function registerRoutes(
   registerAuthRoutes(app);
   registerRealistEventRoutes(app);
   registerDealDeskRoutes(app);
+  scheduleAdminWeeklySummary();
   registerCrmRoutes(app);
   registerEventsGrowthRoutes(app);
   registerMobilePushRoutes(app);
