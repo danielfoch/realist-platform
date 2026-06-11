@@ -28,8 +28,8 @@ export const RADIUS_TIERS_KM = [2, 5, 10] as const;
 /** Recency half-life: a 90-day-old comp counts half as much as today's. */
 const RECENCY_HALF_LIFE_DAYS = 90;
 /** Sanity bounds — observations outside these are scraper garbage. */
-const MIN_SANE_RENT = 400;
-const MAX_SANE_RENT = 20000;
+export const MIN_SANE_RENT = 400;
+export const MAX_SANE_RENT = 20000;
 
 export type BedroomBand = "0" | "1" | "2" | "3" | "4+";
 
