@@ -1,6 +1,9 @@
+import { and, desc, eq, sql } from "drizzle-orm";
 import { storage } from "./storage";
 import { getResendClient } from "./resend";
-import type { EmailTrigger } from "@shared/schema";
+import { db } from "./db";
+import { generateUnsubscribeToken } from "./weeklyDigest";
+import { analyses, propertyAnalyses, users, type EmailTrigger } from "@shared/schema";
 
 async function getTeamNotifyEmails(): Promise<string[]> {
   // Instant per-lead admin alerts are OPT-IN now — the team gets a weekly
@@ -24,6 +27,17 @@ async function getTeamNotifyEmails(): Promise<string[]> {
   if (process.env.PODCAST_NOTIFY_EMAIL) emails.push(process.env.PODCAST_NOTIFY_EMAIL);
   if (process.env.NOTIFY_CC_EMAIL) emails.push(process.env.NOTIFY_CC_EMAIL);
   return emails;
+}
+
+/**
+ * Internal ops alerts (SLA breach nags). Unlike getTeamNotifyEmails this is
+ * NOT gated behind ADMIN_INSTANT_LEAD_ALERTS — an SLA breach means a hot lead
+ * is going cold right now. Mirrors adminWeeklySummary's recipients().
+ */
+async function getAdminNotifyEmails(): Promise<string[]> {
+  const dbEmail = await storage.getAppSetting("deal_desk_notify_email").catch(() => null);
+  const raw = dbEmail || process.env.DEAL_DESK_NOTIFY_EMAIL || process.env.PODCAST_NOTIFY_EMAIL || "";
+  return raw.split(",").map(e => e.trim()).filter(Boolean);
 }
 
 async function getDealDeskNotifyEmail(): Promise<string> {
@@ -71,6 +85,162 @@ function row(label: string, value: string | number | null | undefined) {
 
 function wrapEmail(body: string) {
   return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">${body}</div>`;
+}
+
+// ── Behavioural nudges (sweep-generated, user-facing) ───────────────────────
+
+function unsubscribeFooter(userId: string): string {
+  const token = generateUnsubscribeToken(userId);
+  const unsubscribeUrl = `https://realist.ca/api/email/unsubscribe?uid=${encodeURIComponent(userId)}&token=${token}`;
+  return `<p style="color:#9ca3af;font-size:12px;margin-top:24px;">Realist.ca — Canada's real estate deal analyzer · <a href="${unsubscribeUrl}" style="color:#9ca3af;">Unsubscribe</a></p>`;
+}
+
+function nudgeCta(href: string, label: string): string {
+  return `<p style="margin:20px 0;"><a href="${href}" style="background:#16a34a;color:#fff;padding:11px 20px;border-radius:6px;text-decoration:none;font-weight:600;">${label}</a></p>`;
+}
+
+function wrapNudge(userId: string, body: string): string {
+  return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#111827;">${body}${unsubscribeFooter(userId)}</div>`;
+}
+
+interface ConsentedUser {
+  id: string;
+  email: string;
+  firstName: string | null;
+}
+
+/**
+ * Consent gate for sweep-generated user-facing nudges — same rule as
+ * retentionEmails.optedInUsers: digest opt-in flag AND latest email_consent
+ * ledger row (CASL, append-only) isn't 'revoked'.
+ */
+async function getConsentedUser(userId: string): Promise<ConsentedUser | null> {
+  const rows = await db
+    .select({ id: users.id, email: users.email, firstName: users.firstName })
+    .from(users)
+    .where(and(
+      eq(users.id, userId),
+      eq(users.emailDigestOptIn, true),
+      sql`COALESCE((
+        SELECT ec.status FROM email_consent ec
+        WHERE ec.user_id = ${users.id} AND ec.channel = 'email'
+        ORDER BY ec.created_at DESC
+        LIMIT 1
+      ), 'granted') <> 'revoked'`,
+    ))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Best-effort reference to the user's most recent deal so the nudge can name
+ * it ("reference the specific deal"). Checks the deal-analyzer table first,
+ * then listing underwriting; null → caller falls back to generic copy.
+ */
+async function getLatestDealRef(userId: string): Promise<string | null> {
+  const [a] = await db
+    .select({ address: analyses.address, city: analyses.city })
+    .from(analyses)
+    .where(eq(analyses.userId, userId))
+    .orderBy(desc(analyses.createdAt))
+    .limit(1);
+  if (a?.address) return a.address;
+  const [p] = await db
+    .select({ title: propertyAnalyses.title, city: propertyAnalyses.city })
+    .from(propertyAnalyses)
+    .where(and(eq(propertyAnalyses.userId, userId), eq(propertyAnalyses.isDeleted, false)))
+    .orderBy(desc(propertyAnalyses.createdAt))
+    .limit(1);
+  return p?.title || p?.city || a?.city || null;
+}
+
+function nudgeFirstName(payload: Record<string, any>): string {
+  return payload.firstName || (payload.name || "there").split(" ")[0];
+}
+
+export function buildSavedDealNoSubmitNudge(payload: Record<string, any>): { subject: string; html: string; to: string } {
+  const firstName = nudgeFirstName(payload);
+  const dealRef = payload.dealRef || payload.address || null;
+  const dealLabel = dealRef ? `<strong>${dealRef}</strong>` : "a deal";
+  const html = wrapNudge(payload.userId || "", `
+    <h2 style="font-size:20px;">Ready to take the next step${dealRef ? ` on ${dealRef}` : ""}?</h2>
+    <p>Hi ${firstName},</p>
+    <p>You ran the numbers on ${dealLabel} and saved it — but it's been sitting there since. If the deal is worth saving, it's worth a second opinion.</p>
+    <p>Submit it to the Deal Desk and our team will pressure-test your assumptions and flag anything you missed. Free, takes two minutes.</p>
+    ${nudgeCta("https://realist.ca/deal-desk?utm_source=email&utm_campaign=saved_deal_no_submit", "Submit to the Deal Desk")}`);
+  return {
+    subject: `Ready to take the next step on ${dealRef || "your saved deal"}?`,
+    html,
+    to: payload.email,
+  };
+}
+
+export function buildAbandonedUnderwritingNudge(payload: Record<string, any>): { subject: string; html: string; to: string } {
+  const firstName = nudgeFirstName(payload);
+  const dealRef = payload.dealRef || payload.address || null;
+  const dealLabel = dealRef ? `<strong>${dealRef}</strong>` : "a deal";
+  const html = wrapNudge(payload.userId || "", `
+    <h2 style="font-size:20px;">Your analysis is still open</h2>
+    <p>Hi ${firstName},</p>
+    <p>You started underwriting ${dealLabel} but didn't get to the verdict. Your inputs are saved exactly where you left them — sixty seconds gets you cash flow, cap rate, and DSCR.</p>
+    ${nudgeCta("https://realist.ca/tools/analyzer?utm_source=email&utm_campaign=abandoned_underwriting", "Finish your analysis")}`);
+  return {
+    subject: `Finish your analysis${dealRef ? ` on ${dealRef}` : ""} — the numbers are waiting`,
+    html,
+    to: payload.email,
+  };
+}
+
+export function buildFinancingInterestNudge(payload: Record<string, any>): { subject: string; html: string; to: string } {
+  const firstName = nudgeFirstName(payload);
+  const dealRef = payload.dealRef || payload.address || null;
+  const html = wrapNudge(payload.userId || "", `
+    <h2 style="font-size:20px;">Financing changes the math more than price does</h2>
+    <p>Hi ${firstName},</p>
+    <p>Noticed you've been adjusting the financing assumptions${dealRef ? ` on <strong>${dealRef}</strong>` : " on your analysis"}. Rate, amortization, and structure usually move a deal's verdict more than negotiating the price down.</p>
+    <p>Our team can walk you through what lenders are actually offering for a deal like yours — no cost, no pitch.</p>
+    ${nudgeCta("https://realist.ca/deal-desk?utm_source=email&utm_campaign=financing_interest", "Talk financing options")}`);
+  return {
+    subject: `Financing options${dealRef ? ` for ${dealRef}` : " for your next deal"} — let's talk numbers`,
+    html,
+    to: payload.email,
+  };
+}
+
+export function buildSlaBreachNag(payload: Record<string, any>): { subject: string; html: string } {
+  const name = payload.name || "Unknown lead";
+  const html = wrapEmail(`
+    ${emailHeader("⏰ SLA BREACH — Hot Lead Uncontacted", "Past the 30-minute first-contact window", "#dc2626")}
+    <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+      <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; margin: 0 0 16px 0;">
+        <p style="margin: 0; color: #991b1b; font-weight: 700; font-size: 14px;">This hot lead has had no first contact past the SLA. Call now — conversion drops fast.</p>
+      </div>
+
+      <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 0 0 16px 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          ${row("Name", name)}
+          ${row("Email", payload.email)}
+          ${row("Phone", payload.phone)}
+          ${row("Property", payload.address)}
+          ${row("Market", payload.market)}
+          ${row("Intent Score", payload.intentScore)}
+          ${row("Assigned To", payload.assigned_to || payload.assignedTo || "Unassigned")}
+          ${row("Opportunity", payload.opportunity_id ? String(payload.opportunity_id).slice(0, 8) + "…" : undefined)}
+        </table>
+      </div>
+
+      <div style="text-align: center; margin: 20px 0;">
+        <a href="${adminDashboardUrl()}" style="display: inline-block; background: #dc2626; color: white; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">
+          View in Deal Desk →
+        </a>
+      </div>
+    </div>
+    ${emailFooter()}
+  `);
+  return {
+    subject: `Hot lead waiting: ${name} — uncontacted past SLA`,
+    html,
+  };
 }
 
 export function buildDealSubmittedConfirmation(payload: Record<string, any>): { subject: string; html: string; to: string } {
@@ -331,6 +501,11 @@ export const EMAIL_TRIGGER_TYPES = [
   "warm_lead_user_nudge",
   "financing_interest_followup",
   "lost_reason_nurture",
+  // Sweep-generated behavioural triggers (server/dealDesk.ts POST /api/deal-desk/sweep)
+  "sla_breach_nag",
+  "saved_deal_no_submit",
+  "abandoned_underwriting",
+  "financing_interest",
 ] as const;
 
 export type EmailTriggerType = (typeof EMAIL_TRIGGER_TYPES)[number];
@@ -338,6 +513,10 @@ export type EmailTriggerType = (typeof EMAIL_TRIGGER_TYPES)[number];
 export function getSampleTriggerPayload(triggerType: string): Record<string, any> {
   return {
     name: "Jordan Sample",
+    firstName: "Jordan",
+    userId: "sample-user-id",
+    dealRef: "123 Maple Avenue, Toronto, ON",
+    assigned_to: "dan",
     email: "jordan.sample@example.com",
     phone: "(416) 555-0188",
     address: "123 Maple Avenue, Toronto, ON",
@@ -392,6 +571,22 @@ export function buildEmailForTrigger(
         : null;
       const { subject, html, to } = buildLostReasonNurture(payload, leadInfo, payload.teamEmail);
       return { subject, html, defaultTo: to, audience: "team" };
+    }
+    case "sla_breach_nag": {
+      const { subject, html } = buildSlaBreachNag(payload);
+      return { subject, html, defaultTo: [], audience: "team" };
+    }
+    case "saved_deal_no_submit": {
+      const { subject, html, to } = buildSavedDealNoSubmitNudge(payload);
+      return { subject, html, defaultTo: to ? [to] : [], audience: "lead" };
+    }
+    case "abandoned_underwriting": {
+      const { subject, html, to } = buildAbandonedUnderwritingNudge(payload);
+      return { subject, html, defaultTo: to ? [to] : [], audience: "lead" };
+    }
+    case "financing_interest": {
+      const { subject, html, to } = buildFinancingInterestNudge(payload);
+      return { subject, html, defaultTo: to ? [to] : [], audience: "lead" };
     }
     default:
       throw new Error(`Unknown trigger type: ${triggerType}`);
@@ -522,6 +717,71 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
         break;
       }
 
+      case "sla_breach_nag": {
+        // INTERNAL: nag the assignee/admin — not the user.
+        const recipients = await getAdminNotifyEmails();
+        if (recipients.length === 0) {
+          await storage.updateEmailTriggerStatus(trigger.id, "failed", undefined, "No admin notify emails configured");
+          return;
+        }
+        const enriched: Record<string, any> = { ...payload };
+        if (trigger.userId) {
+          const [lead] = await db
+            .select({ email: users.email, firstName: users.firstName, lastName: users.lastName, phone: users.phone })
+            .from(users)
+            .where(eq(users.id, trigger.userId))
+            .limit(1);
+          if (lead) {
+            enriched.name = [lead.firstName, lead.lastName].filter(Boolean).join(" ") || lead.email;
+            enriched.email = lead.email;
+            enriched.phone = lead.phone;
+          }
+        }
+        if (trigger.opportunityId) {
+          try {
+            const opp = await storage.getOpportunityById(trigger.opportunityId);
+            if (opp) {
+              enriched.address = opp.propertyAddress;
+              enriched.market = opp.market;
+              enriched.intentScore = opp.intentScore;
+              enriched.assigned_to = enriched.assigned_to || opp.assignedTo;
+              // Contacted between the sweep and now? Stand down.
+              if (opp.firstContactedAt) {
+                await storage.updateEmailTriggerStatus(trigger.id, "cancelled", undefined, "Lead was contacted before the nag fired");
+                return;
+              }
+            }
+          } catch {
+          }
+        }
+        const { subject, html } = buildSlaBreachNag(enriched);
+        result = await client.emails.send({ from: fromEmail, to: recipients, subject, html });
+        break;
+      }
+
+      case "saved_deal_no_submit":
+      case "abandoned_underwriting":
+      case "financing_interest": {
+        // User-facing behavioural nudges — consent-gated, unsubscribe link included.
+        if (!trigger.userId) {
+          await storage.updateEmailTriggerStatus(trigger.id, "failed", undefined, "No userId on trigger");
+          return;
+        }
+        const user = await getConsentedUser(trigger.userId);
+        if (!user) {
+          await storage.updateEmailTriggerStatus(trigger.id, "cancelled", undefined, "User not opted in or email consent revoked");
+          return;
+        }
+        const dealRef = await getLatestDealRef(trigger.userId).catch(() => null);
+        const enriched = { ...payload, userId: user.id, email: user.email, firstName: user.firstName, dealRef };
+        const { subject, html, to } =
+          trigger.triggerType === "saved_deal_no_submit" ? buildSavedDealNoSubmitNudge(enriched)
+          : trigger.triggerType === "abandoned_underwriting" ? buildAbandonedUnderwritingNudge(enriched)
+          : buildFinancingInterestNudge(enriched);
+        result = await client.emails.send({ from: fromEmail, to, subject, html });
+        break;
+      }
+
       default:
         await storage.updateEmailTriggerStatus(trigger.id, "failed", undefined, `Unknown trigger type: ${trigger.triggerType}`);
         return;
@@ -569,6 +829,32 @@ export async function processPendingEmailTriggers(): Promise<{ processed: number
   return { processed: pending.length, sent, failed, skipped, cancelled };
 }
 
+/**
+ * Boot-time guard for the pending-trigger dedupe index (see emailTriggers in
+ * shared/schema.ts). queueEmailTrigger's onConflictDoNothing is a silent no-op
+ * without this index. Creating a unique index fails if prod already holds
+ * duplicate pending rows, so we pre-dedupe (keep the newest row per
+ * (user, type) pair) before creating it idempotently. Mirrors the
+ * ensureRetentionTables / ensureAppTables boot-ensure pattern.
+ */
+export async function ensureEmailTriggerDedupe(): Promise<void> {
+  try {
+    await db.execute(sql`
+      DELETE FROM email_triggers t USING email_triggers k
+      WHERE t.status = 'pending' AND k.status = 'pending'
+        AND t.user_id = k.user_id
+        AND t.trigger_type = k.trigger_type
+        AND (t.created_at < k.created_at OR (t.created_at = k.created_at AND t.id < k.id))
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_email_triggers_pending_user_type
+      ON email_triggers (user_id, trigger_type) WHERE status = 'pending'
+    `);
+  } catch (err: any) {
+    console.error("[email-queue] failed to ensure pending-trigger dedupe index:", err?.message || err);
+  }
+}
+
 export function startEmailQueueWorker(intervalMs = 30_000): NodeJS.Timeout {
   async function warnIfUnconfigured() {
     try {
@@ -604,6 +890,6 @@ export function startEmailQueueWorker(intervalMs = 30_000): NodeJS.Timeout {
   }
 
   warnIfUnconfigured();
-  runCycle();
+  ensureEmailTriggerDedupe().then(() => runCycle());
   return setInterval(runCycle, intervalMs);
 }

@@ -51,7 +51,7 @@ export async function ensureRetentionTables(): Promise<void> {
   `);
 }
 
-interface Recipient {
+export interface Recipient {
   id: string;
   email: string;
   firstName: string | null;
@@ -63,15 +63,17 @@ function footer(userId: string): string {
   return `<p style="color:#9ca3af;font-size:12px;margin-top:24px;">Realist.ca — Canada's real estate deal analyzer · <a href="${unsubscribeUrl}" style="color:#9ca3af;">Unsubscribe</a></p>`;
 }
 
-function cta(href: string, label: string): string {
+export function cta(href: string, label: string): string {
   return `<p style="margin:20px 0;"><a href="${href}" style="background:#16a34a;color:#fff;padding:11px 20px;border-radius:6px;text-decoration:none;font-weight:600;">${label}</a></p>`;
 }
 
 /**
  * Atomically claim a send: inserts the dedupe row first (unique index makes
  * concurrent sweeps collapse), checks the weekly cap, then sends.
+ * Exported for reuse by the onboarding sequence (server/onboardingEmails.ts),
+ * which shares the retention_email_log table and weekly cap.
  */
-async function trySend(
+export async function trySend(
   recipient: Recipient,
   emailType: string,
   dedupeKey: string,
