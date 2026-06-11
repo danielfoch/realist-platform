@@ -519,6 +519,35 @@ function getUnqualifiedCreditReason(input: {
   return null;
 }
 
+function isAcceptedRecipientLinkOpen(input: {
+  action: QualifiedShareAction;
+  metadata?: Record<string, unknown>;
+}) {
+  return input.action === 'unique_open'
+    && input.metadata?.trackingSource === 'recipient_link'
+    && input.metadata?.explicitRecipientAccepted === true;
+}
+
+async function markRecipientLinkOpened(database: DatabaseAdapter, input: {
+  shareId: number;
+  action: QualifiedShareAction;
+  recipientHash: string;
+  metadata?: Record<string, unknown>;
+}) {
+  if (!isAcceptedRecipientLinkOpen(input)) {
+    return false;
+  }
+
+  const result = await database.query(
+    `UPDATE underwriting_share_recipients
+     SET last_opened_at = NOW()
+     WHERE share_id = $1 AND recipient_hash = $2`,
+    [input.shareId, input.recipientHash],
+  );
+
+  return Number(result.rowCount || 0) > 0;
+}
+
 export async function recordQualifiedShareAction(database: DatabaseAdapter, input: {
   shareId: number;
   inviterUserId: number | null;
@@ -529,10 +558,13 @@ export async function recordQualifiedShareAction(database: DatabaseAdapter, inpu
 }) {
   const existing = await findExistingAction(database, input.shareId, input.recipientHash, input.action);
   if (existing) {
+    const recipientStatusUpdated = await markRecipientLinkOpened(database, input);
+
     return {
       status: 'duplicate' as const,
       qualified: Boolean(existing.qualified),
       creditAmount: Number(existing.credit_amount || 0),
+      recipientStatusUpdated,
     };
   }
 
@@ -563,6 +595,7 @@ export async function recordQualifiedShareAction(database: DatabaseAdapter, inpu
   );
 
   const actionId = result.rows[0]?.id;
+  const recipientStatusUpdated = await markRecipientLinkOpened(database, input);
 
   if (qualified && input.inviterUserId && creditAmount > 0) {
     await database.query(
@@ -583,7 +616,7 @@ export async function recordQualifiedShareAction(database: DatabaseAdapter, inpu
     [input.shareId, qualified ? 1 : 0, creditAmount],
   );
 
-  return { status, qualified, creditAmount, actionId, creditQualificationReason };
+  return { status, qualified, creditAmount, actionId, creditQualificationReason, recipientStatusUpdated };
 }
 
 type ShareActionSummary = Record<QualifiedShareAction, {

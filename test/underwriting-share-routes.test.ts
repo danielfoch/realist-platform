@@ -254,6 +254,65 @@ describe('viral underwriting share qualification', () => {
     );
   });
 
+  it('marks accepted recipient-specific opens on the invite status row', async () => {
+    const query = jest.fn(async (text: string) => {
+      if (text.includes('FROM underwriting_share_actions') && text.includes('LIMIT 1')) {
+        return { rows: [] };
+      }
+
+      if (text.includes('INSERT INTO underwriting_share_actions')) {
+        return { rows: [{ id: 301 }] };
+      }
+
+      if (text.includes('UPDATE underwriting_share_recipients')) {
+        return { rows: [], rowCount: 1 };
+      }
+
+      return { rows: [{ count: '0' }] };
+    });
+
+    const result = await recordQualifiedShareAction({ query }, {
+      shareId: 7,
+      inviterUserId: 42,
+      action: 'unique_open',
+      recipientHash: 'e'.repeat(64),
+      metadata: {
+        trackingSource: 'recipient_link',
+        explicitRecipientAccepted: true,
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: 'qualified',
+      recipientStatusUpdated: true,
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE underwriting_share_recipients'),
+      [7, 'e'.repeat(64)],
+    );
+  });
+
+  it('does not mark recipient invite status for generic raw opens', async () => {
+    const db = createShareDb();
+
+    const result = await recordQualifiedShareAction(db, {
+      shareId: 7,
+      inviterUserId: 42,
+      action: 'unique_open',
+      recipientHash: '0'.repeat(64),
+      metadata: {
+        trackingSource: 'visitor_fingerprint',
+        explicitRecipientAccepted: false,
+      },
+    });
+
+    expect(result).toMatchObject({
+      status: 'unqualified',
+      recipientStatusUpdated: false,
+    });
+    expect(db.calls.some((call) => call.text.includes('UPDATE underwriting_share_recipients'))).toBe(false);
+  });
+
   it('does not grant duplicate credits for the same recipient/action/share', async () => {
     const db = createShareDb({ existing: { id: 1, qualified: true, credit_amount: 2 } });
 
