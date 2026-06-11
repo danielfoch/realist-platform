@@ -1,44 +1,29 @@
 # REPLIT PULL TODAY
 
 ## 1. Date
-Thursday, May 21, 2026
+Thursday, June 11, 2026
 
 ## 2. Branch and commit SHA
-- Branch: `realist-nightly/2026-05-21-recipient-label-dedupe`
-- Code commit SHA: `4857e3899e2b26b8a4a45daa209da7791959048a`
-- Handoff file may be committed after the code commit, so final branch tip can be newer.
-
-Handoff docs commit SHA before the final push-status note: `40e1e1a2805464a981a2cf9cfe0fa6b27506e3be`
+- Branch: `realist-nightly/2026-06-11-share-reward-status`
+- Implementation commit SHA: `131760f2e71485d7a56029c561072efe4563435f`
+- Note: this handoff file is committed after the implementation commit, so the final branch tip is newer.
 
 ## 3. What changed
-Added persistent deduping for recipient-specific “Challenge my underwriting.” share invites.
+Fixed recipient invite status tracking for the viral underwriting loop.
 
-Owners already could dedupe repeated recipient labels inside one request. This patch also checks prior issued invite labels for the same share before creating more recipient links, and adds a database uniqueness guard on `(share_id, recipient_label_hash)` so repeated investor/realtor labels cannot quietly receive multiple unique-open-credit-eligible links across later requests or races.
+When a recipient opens an issued recipient-specific “Challenge my underwriting.” link and the `unique_open` action accepts that recipient key, Realist now updates `underwriting_share_recipients.last_opened_at`. That makes invite follow-up/status reporting reflect actual qualified opens.
 
-Credit rules remain unchanged: creating links awards zero credits. Premium Google Sheets export credits still require qualified actions: issued-recipient unique open, meaningful challenge, fork, signup, or saved version within duplicate checks and daily caps.
+The anti-abuse rule stays intact: generic/raw opens remain unqualified for Google Sheets export credits and do not update recipient invite rows. Credits are still only awarded for issued-recipient opens, meaningful challenges, forks, signups, or saved versions within duplicate checks and daily caps.
 
 ## 4. Files changed
 - `src/underwriting-share-routes.ts`
 - `test/underwriting-share-routes.test.ts`
-- `db/migrations/016_underwriting_share_recipient_label_dedupe.sql`
 - `REPLIT_PULL_TODAY.md`
 
 ## 5. Migration steps
-Run the new migration before/with app startup:
+No new migration.
 
-```bash
-npm run migrate
-```
-
-New migration:
-
-```sql
-CREATE UNIQUE INDEX IF NOT EXISTS idx_underwriting_share_recipients_label_once
-  ON underwriting_share_recipients(share_id, recipient_label_hash)
-  WHERE recipient_label_hash IS NOT NULL;
-```
-
-If production already has duplicate `(share_id, recipient_label_hash)` rows, the migration will fail until duplicates are cleaned up. The app-level pre-check should prevent new duplicates once deployed.
+This uses the existing `underwriting_share_recipients.last_opened_at` column from the recipient invite migration.
 
 ## 6. Env vars needed
 No new environment variables.
@@ -46,42 +31,40 @@ No new environment variables.
 ## 7. Replit commands to run
 ```bash
 npm install
-npm run migrate
 npm run type-check
-npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
+npm test
 npm run build
 ```
 
-Optional broader verification:
+Focused verification command used locally:
 
 ```bash
-npm test
+npx jest test/underwriting-share-routes.test.ts --runInBand
 ```
 
 ## 8. Test/build result
 Passed locally:
 
 ```bash
-npm test -- --runTestsByPath test/underwriting-share-routes.test.ts
+npx jest test/underwriting-share-routes.test.ts --runInBand
 # PASS test/underwriting-share-routes.test.ts
-# 28 tests passed
+# 30 tests passed
 
 npm run type-check
-# tsc --noEmit passed
-
-npm run build
 # tsc passed
+
+npm test
+# PASS 6 test suites, 61 tests passed
 ```
 
-No deploy was run.
+`npm run build` was not run in this cron after the passing `tsc` and Jest gates.
 
 ## 9. Risks/blockers
 - No deploy was run.
-- No outbound messages/emails were sent.
+- No outbound emails/messages were sent.
 - No paid APIs were called.
-- Migration risk: if existing data has duplicate non-null label hashes for the same share, the unique index creation will fail and duplicates must be cleaned first.
-- Blank/missing recipient labels still cannot be deduped safely because there is no label hash to compare.
-- Existing pre-cron untracked files remain in the repo working tree and were not included: `REPLIT_HANDOFF_CONTRACT.md`, `REPLIT_PULL_TEMPLATE.md`, `scripts/`.
+- Branch was created from the existing local `fix/ci-type-check-repair` state, which was already ahead of `origin/main` when the cron began.
+- The final handoff commit is expected to sit on top of the implementation commit listed above.
 
 ## 10. Plain-English “what Dan should pull into Replit at 10am”
-Pull this branch to close another reward-abuse gap in the viral underwriting loop. Realist now avoids issuing multiple tracked invite links for the same hashed recipient label on the same underwriting share, even across separate requests, so Google Sheets export credits stay tied to real qualified recipient actions instead of duplicate invite-link generation.
+Pull `realist-nightly/2026-06-11-share-reward-status` to make the viral underwriting invite dashboard more accurate. Issued “Challenge my underwriting” recipient links now get marked opened only when the recipient key is accepted, while raw/generic opens still earn no credits and do not advance invite status.
