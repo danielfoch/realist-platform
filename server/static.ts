@@ -37,15 +37,30 @@ export function serveStatic(app: Express) {
     const host = req.headers["x-forwarded-host"] || req.headers.host || "realist.ca";
     const origin = `${protocol}://${host}`;
     let html = rawHtml.replace(/https:\/\/realist\.ca/g, origin);
+    let status = 200;
     try {
-      const { getMetaForPath, injectMetaIntoHtml } = await import("./seoMeta");
+      const { getMetaForPath, injectMetaIntoHtml, DEFAULT_META, isKnownAppRoute } = await import("./seoMeta");
       const { renderSeoFallback } = await import("./seoRender");
       const reqPath = (req.originalUrl || "/").split("?")[0];
-      const meta = await getMetaForPath(reqPath);
+      let meta = await getMetaForPath(reqPath);
+      const fallback = await renderSeoFallback(reqPath);
+      // Real 404s: a path with no specific meta, no prerendered content, and
+      // no matching client route is junk. Serve the SPA shell so soft client
+      // recovery still works, but with HTTP 404 + noindex and no
+      // self-referencing canonical (a 200 + self-canonical on junk URLs
+      // invites junk indexing).
+      if (meta === DEFAULT_META && !fallback && !isKnownAppRoute(reqPath)) {
+        status = 404;
+        meta = {
+          title: "Page Not Found | Realist",
+          description: "The page you are looking for does not exist. Browse Realist's Canadian real estate tools, reports, and market data instead.",
+          noindex: true,
+        };
+      }
       const canonical = `${origin}${reqPath === "/" ? "" : reqPath}`;
       html = injectMetaIntoHtml(html, meta, canonical, origin);
-      html = injectSeoFallback(html, await renderSeoFallback(reqPath));
+      html = injectSeoFallback(html, fallback);
     } catch (e) { /* fall through with default html */ }
-    res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    res.status(status).set({ "Content-Type": "text/html" }).end(html);
   });
 }
