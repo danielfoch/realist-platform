@@ -108,8 +108,47 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
     RETURNING market
   `);
 
-  const written = result.rows?.length || 0;
-  const markets = new Set((result.rows || []).map((r: any) => r.market)).size;
+  // Rent guidance from REAL asking rents (rent_listings, trailing 6 months) —
+  // stronger signal than user-entered rents alone. Metrics keyed by bedroom
+  // count: market_rent_1br ... market_rent_4br, plus market_rent_all.
+  const rentResult: any = await db.execute(sql`
+    WITH rents AS (
+      SELECT
+        LOWER(TRIM(city)) AS market,
+        CASE
+          WHEN regexp_replace(bedrooms, '[^0-9]', '', 'g') IN ('1','2','3') 
+            THEN 'market_rent_' || regexp_replace(bedrooms, '[^0-9]', '', 'g') || 'br'
+          WHEN regexp_replace(bedrooms, '[^0-9]', '', 'g') != '' 
+            AND regexp_replace(bedrooms, '[^0-9]', '', 'g')::int >= 4 
+            THEN 'market_rent_4br'
+          ELSE NULL
+        END AS metric,
+        rent
+      FROM rent_listings
+      WHERE city IS NOT NULL AND rent BETWEEN 400 AND 20000
+        AND scraped_at > NOW() - INTERVAL '6 months'
+    ),
+    grouped AS (
+      SELECT market, COALESCE(metric, 'market_rent_all') AS metric,
+        COUNT(*) AS n,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY rent) AS med,
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY rent) AS p25,
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY rent) AS p75
+      FROM rents
+      GROUP BY GROUPING SETS ((market, metric), (market))
+      HAVING COUNT(*) >= ${MIN_SAMPLE}
+    )
+    INSERT INTO ai_market_defaults (market, strategy, metric, value, p25, p75, sample_size, trained_at)
+    SELECT market, 'all', COALESCE(metric, 'market_rent_all'), med, p25, p75, n, NOW()
+    FROM grouped WHERE med IS NOT NULL
+    ON CONFLICT (market, strategy, metric)
+    DO UPDATE SET value = EXCLUDED.value, p25 = EXCLUDED.p25, p75 = EXCLUDED.p75,
+                  sample_size = EXCLUDED.sample_size, trained_at = EXCLUDED.trained_at
+    RETURNING market
+  `);
+
+  const written = (result.rows?.length || 0) + (rentResult.rows?.length || 0);
+  const markets = new Set([...(result.rows || []), ...(rentResult.rows || [])].map((r: any) => r.market)).size;
   const [{ total }] = await db
     .execute(sql`SELECT COUNT(*)::int AS total FROM analyses`)
     .then((r: any) => r.rows);
