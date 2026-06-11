@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { ORGANIZATION_SAME_AS } from "@shared/brand";
+import { ORGANIZATION_SAME_AS, DANIEL_FOCH_SAME_AS } from "@shared/brand";
 
 interface SEOProps {
   title: string;
@@ -81,9 +81,11 @@ export const organizationSchema = {
   "founders": [
     {
       "@type": "Person",
+      "@id": "https://realist.ca/#danielfoch",
       "name": "Daniel Foch",
       "jobTitle": "Chief Real Estate Officer",
-      "description": "Canadian real estate analyst, broker, and host of Canada's #1 real estate podcast"
+      "description": "Canadian real estate analyst, broker, and host of Canada's #1 real estate podcast",
+      "sameAs": DANIEL_FOCH_SAME_AS
     },
     {
       "@type": "Person",
@@ -98,7 +100,7 @@ export const organizationSchema = {
   ],
   // Owned handles only — shared with server/seoMeta.ts via @shared/brand.
   // (The old list pointed at The Canadian Investor, a different podcast.)
-  "sameAs": ORGANIZATION_SAME_AS,
+  ...(ORGANIZATION_SAME_AS.length ? { "sameAs": ORGANIZATION_SAME_AS } : {}),
   "contactPoint": {
     "@type": "ContactPoint",
     "contactType": "customer service",

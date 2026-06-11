@@ -56,8 +56,19 @@ export const PODCAST_SAME_AS = [
   PODCAST_SUBSTACK_URL,
 ];
 
-/** sameAs set for the single Realist Organization node (Realist-owned only). */
-export const ORGANIZATION_SAME_AS = [
-  "https://twitter.com/RealistCA",
-  "https://www.instagram.com/realist.ca/",
+/**
+ * sameAs for the single Realist Organization node. Realist has NO owned
+ * social handles yet (confirmed by Dan 2026-06-11 — @RealistCA and
+ * instagram.com/realist.ca do not exist). Add real ones when created;
+ * NEVER invent handles here, wrong sameAs is worse than none.
+ */
+export const ORGANIZATION_SAME_AS: string[] = [];
+
+/**
+ * Daniel Foch's personal handles — high personal search volume ("daniel
+ * foch"); attached to his Person node (founder of Realist, host of CREI).
+ */
+export const DANIEL_FOCH_SAME_AS = [
+  "https://x.com/danielfoch",
+  "https://www.instagram.com/danielfoch/",
 ];

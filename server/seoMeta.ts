@@ -4,6 +4,7 @@ import { getProgrammaticMarket, getProgrammaticStrategy } from "@shared/programm
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import {
   ORGANIZATION_SAME_AS,
+  DANIEL_FOCH_SAME_AS,
   PODCAST_NAME,
   PODCAST_RSS_URL,
   PODCAST_SAME_AS,
@@ -171,6 +172,7 @@ const STATIC_META: Record<string, PageMeta> = {
             "@id": `${BASE_URL}/#danielfoch`,
             name: "Daniel Foch",
             jobTitle: "Chief Real Estate Officer, Realist.ca",
+            sameAs: DANIEL_FOCH_SAME_AS,
           },
           {
             "@type": "Person",
@@ -737,7 +739,7 @@ export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw
       name: "Realist.ca",
       url: BASE_URL,
       logo: `${BASE_URL}/logo.png`,
-      sameAs: ORGANIZATION_SAME_AS,
+      ...(ORGANIZATION_SAME_AS.length ? { sameAs: ORGANIZATION_SAME_AS } : {}),
     },
     {
       "@context": "https://schema.org",
