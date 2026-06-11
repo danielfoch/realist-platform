@@ -531,7 +531,7 @@ export function registerCrmRoutes(app: Express): void {
           return;
         }
         if (!opp.userId) {
-          res.status(400).json({ success: false, error: "Opportunity has no linked user to import" });
+          res.status(404).json({ success: false, error: "Opportunity has no linked user" });
           return;
         }
         const [investor] = await db

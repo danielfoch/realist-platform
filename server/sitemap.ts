@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { encyclopediaGuides } from "@shared/encyclopedia";
+import { getListingSitemapRecords, listingCanonicalPath, listingLastmod } from "./listingSeo";
 
 const BASE = "https://realist.ca";
 
@@ -45,7 +46,7 @@ function urlset(urls: SitemapUrl[]) {
 
 export function buildSitemapIndex() {
   const lastmod = today();
-  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-podcast.xml", "sitemap-encyclopedia.xml"];
+  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-listings.xml", "sitemap-podcast.xml", "sitemap-encyclopedia.xml"];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemaps.map((name) => `  <sitemap>\n    <loc>${BASE}/${name}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`).join("\n")}\n</sitemapindex>\n`;
 }
 
@@ -161,4 +162,14 @@ export async function buildPodcastSitemap() {
   return urlset([
     { loc: `${BASE}/insights/podcast`, lastmod: today(), changefreq: "weekly", priority: 0.8 },
   ]);
+}
+
+export async function buildListingsSitemap() {
+  const listings = await getListingSitemapRecords();
+  return urlset(listings.map((listing) => ({
+    loc: `${BASE}${listingCanonicalPath(listing)}`,
+    lastmod: listingLastmod(listing),
+    changefreq: "daily",
+    priority: 0.62,
+  })));
 }

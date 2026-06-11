@@ -1,6 +1,13 @@
 import { storage } from "./storage";
 import { encyclopediaGuides, getEncyclopediaGuide } from "@shared/encyclopedia";
 import { getProgrammaticMarket, getProgrammaticStrategy, PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } from "@shared/programmaticSeo";
+import {
+  buildListingSeoDescription,
+  formatListingAddress,
+  formatListingPrice,
+  getListingSeoByMls,
+  listingCanonicalPath,
+} from "./listingSeo";
 
 function escapeHtml(value: string): string {
   return value
@@ -160,6 +167,75 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
 };
 
 export async function renderSeoFallback(reqPath: string): Promise<string | null> {
+  const listingMatch = reqPath.match(/^\/listings\/([^/]+)$/);
+  if (listingMatch) {
+    const listing = await getListingSeoByMls(decodeURIComponent(listingMatch[1]));
+    if (!listing) return null;
+
+    const address = formatListingAddress(listing) || `MLS ${listing.mlsNumber}`;
+    const price = formatListingPrice(listing);
+    const facts = [
+      price,
+      listing.bedrooms ? `${listing.bedrooms}${listing.bedroomsPlus ? `+${listing.bedroomsPlus}` : ""} bedrooms` : null,
+      listing.bathroomsFull ? `${listing.bathroomsFull}${listing.bathroomsHalf ? `.${listing.bathroomsHalf}` : ""} bathrooms` : null,
+      listing.squareFootage ? `${listing.squareFootage.toLocaleString()} sq. ft.` : null,
+      listing.structureType || listing.propertyType,
+    ].filter(Boolean);
+    const metrics = [
+      listing.estimatedMonthlyRent ? { label: "Estimated monthly rent", value: formatListingPrice({ listPrice: listing.estimatedMonthlyRent }) || String(listing.estimatedMonthlyRent) } : null,
+      listing.capRate ? { label: "Cap rate", value: `${Number(listing.capRate).toFixed(1)}%` } : null,
+      listing.grossYield ? { label: "Gross yield", value: `${Number(listing.grossYield).toFixed(1)}%` } : null,
+      listing.cashFlowMonthly ? { label: "Monthly cash flow", value: formatListingPrice({ listPrice: listing.cashFlowMonthly }) || String(listing.cashFlowMonthly) } : null,
+    ].filter(Boolean) as Array<{ label: string; value: string }>;
+
+    return renderShell(`
+      ${renderBreadcrumbs([
+        { href: "/", label: "Home" },
+        { href: "/tools/listing-intelligence", label: "Listings" },
+        { href: listingCanonicalPath(listing), label: address },
+      ])}
+      <article>
+        <header style="margin-bottom:28px;">
+          <p style="font-size:14px;color:#4b5563;margin:0 0 8px;">MLS ${escapeHtml(listing.mlsNumber)}${listing.status ? ` - ${escapeHtml(listing.status)}` : ""}</p>
+          <h1 style="font-size:clamp(2rem,4vw,3.5rem);line-height:1.08;margin:0 0 12px;">${escapeHtml(address)}</h1>
+          <p style="font-size:18px;line-height:1.7;max-width:780px;color:#4b5563;">${escapeHtml(buildListingSeoDescription(listing))}</p>
+        </header>
+        ${listing.photoUrl ? `<img src="${escapeHtml(listing.photoUrl)}" alt="${escapeHtml(address)}" style="width:100%;max-height:460px;object-fit:cover;border-radius:12px;margin-bottom:28px;" />` : ""}
+        <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:24px 0;">
+          ${facts.map((fact) => `
+            <div style="border:1px solid #e5e7eb;border-radius:12px;padding:14px;background:#fff;">
+              <strong style="font-size:18px;">${escapeHtml(String(fact))}</strong>
+            </div>
+          `).join("")}
+        </section>
+        ${metrics.length ? `
+          <section style="margin:32px 0;">
+            <h2 style="font-size:28px;margin:0 0 12px;">Realist investment analysis</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+              ${metrics.map((metric) => `
+                <div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;">
+                  <div style="font-size:13px;color:#6b7280;">${escapeHtml(metric.label)}</div>
+                  <div style="font-size:22px;font-weight:700;">${escapeHtml(metric.value)}</div>
+                </div>
+              `).join("")}
+            </div>
+          </section>
+        ` : ""}
+        ${listing.publicRemarks ? `
+          <section style="font-size:16px;line-height:1.8;max-width:860px;margin:32px 0;">
+            <h2 style="font-size:28px;margin:0 0 12px;">Listing remarks</h2>
+            <p>${escapeHtml(stripHtml(listing.publicRemarks))}</p>
+          </section>
+        ` : ""}
+        <section style="font-size:16px;line-height:1.8;max-width:860px;margin:32px 0;">
+          <h2 style="font-size:28px;margin:0 0 12px;">About this Realist page</h2>
+          <p>Realist.ca gives investors a property-level analysis surface for this listing, including address, MLS number, price, property details, rental assumptions when available, yield metrics, and investor due-diligence context.</p>
+        </section>
+      </article>
+      ${renderFooterLinks()}
+    `);
+  }
+
   if (reqPath === "/") {
     const latestReports = await storage.getBlogPosts({ status: "published", category: "market-analysis", limit: 6 });
     return renderShell(`

@@ -1,6 +1,13 @@
 import { storage } from "./storage";
 import { encyclopediaGuides, getEncyclopediaGuide } from "@shared/encyclopedia";
 import { getProgrammaticMarket, getProgrammaticStrategy } from "@shared/programmaticSeo";
+import {
+  buildListingSeoDescription,
+  buildListingSeoTitle,
+  buildListingStructuredData,
+  getListingSeoByMls,
+  listingCanonicalPath,
+} from "./listingSeo";
 
 const BASE_URL = "https://realist.ca";
 const RSS_FEED_URL = "https://thecanadianrealestateinvestor.substack.com/feed";
@@ -253,6 +260,32 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
   if (path.endsWith("/") && path.length > 1) {
     const trimmed = path.slice(0, -1);
     if (STATIC_META[trimmed]) return STATIC_META[trimmed];
+  }
+
+  const listingMatch = path.match(/^\/listings\/([^\/]+)$/);
+  if (listingMatch) {
+    try {
+      const listing = await getListingSeoByMls(decodeURIComponent(listingMatch[1]));
+      if (listing) {
+        return {
+          title: buildListingSeoTitle(listing),
+          description: buildListingSeoDescription(listing),
+          ogImage: listing.photoUrl || undefined,
+          ogType: "product",
+          canonicalPath: listingCanonicalPath(listing),
+          keywords: [
+            listing.addressStreet,
+            listing.addressCity,
+            listing.addressProvince,
+            listing.mlsNumber,
+            "MLS listing analysis",
+            "real estate investment analysis",
+            "Realist.ca",
+          ].filter(Boolean).join(", "),
+          structuredData: buildListingStructuredData(listing),
+        };
+      }
+    } catch { /* fall through */ }
   }
 
   // Dynamic blog post
