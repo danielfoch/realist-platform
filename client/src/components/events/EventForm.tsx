@@ -62,6 +62,10 @@ export function EventForm({ event }: { event?: RealistEventPayload }) {
     refundPolicy: event?.refundPolicy || "",
     seoTitle: event?.seoTitle || "",
     seoDescription: event?.seoDescription || "",
+    kind: event?.kind || "flagship",
+    city: event?.city || "",
+    isRecurring: event?.isRecurring || false,
+    recurrenceNote: event?.recurrenceNote || "",
     speakers: event?.speakers?.length ? event.speakers : [{ ...emptySpeaker }],
     ticketTypes: event?.ticketTypes?.length ? event.ticketTypes : [{ ...emptyTicket }],
   }), [event]);
@@ -123,6 +127,28 @@ export function EventForm({ event }: { event?: RealistEventPayload }) {
           <div className="space-y-2">
             <Label>Slug</Label>
             <Input value={form.slug} onChange={(e) => setField("slug", slugify(e.target.value))} />
+          </div>
+          <div className="space-y-2">
+            <Label>Kind</Label>
+            <Select value={form.kind || "flagship"} onValueChange={(value: any) => setField("kind", value)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="flagship">Flagship (paid tickets)</SelectItem>
+                <SelectItem value="meetup">Meetup (free, RSVP)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>City</Label>
+            <Input placeholder="Toronto" value={form.city || ""} onChange={(e) => setField("city", e.target.value)} />
+          </div>
+          <div className="flex items-center gap-3 pt-7">
+            <Switch checked={!!form.isRecurring} onCheckedChange={(checked) => setField("isRecurring", checked)} />
+            <Label>Recurring series</Label>
+          </div>
+          <div className="space-y-2">
+            <Label>Recurrence note</Label>
+            <Input placeholder="First Tuesday monthly" value={form.recurrenceNote || ""} onChange={(e) => setField("recurrenceNote", e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Status</Label>

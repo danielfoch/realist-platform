@@ -19,11 +19,10 @@ import Shop from "@/pages/Shop";
 import Compare from "@/pages/Compare";
 import Podcast from "@/pages/Podcast";
 import Admin from "@/pages/Admin";
+import AdminDealDesk from "@/pages/AdminDealDesk";
 import AdminEvents from "@/pages/AdminEvents";
 import AdminEventNew from "@/pages/AdminEventNew";
 import AdminEventEdit from "@/pages/AdminEventEdit";
-import DealDesk from "@/pages/DealDesk";
-import AdminDealDesk from "@/pages/AdminDealDesk";
 import EventDetail from "@/pages/EventDetail";
 import EventSuccess from "@/pages/EventSuccess";
 import Privacy from "@/pages/Privacy";
@@ -48,6 +47,12 @@ import CoInvestingOpportunities from "@/pages/CoInvestingOpportunities";
 import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
 import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
 import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
+import DealDesk from "@/pages/DealDesk";
+import CrmHome from "@/pages/CrmHome";
+import MeetupNew from "@/pages/MeetupNew";
+import SponsorPackagePage from "@/pages/SponsorPackagePage";
+import AdminSponsors from "@/pages/AdminSponsors";
+import CrmContact from "@/pages/CrmContact";
 import TrueCost from "@/pages/TrueCost";
 import RentVsBuy from "@/pages/RentVsBuy";
 import WillItPlex from "@/pages/WillItPlex";
@@ -57,7 +62,6 @@ import Premium from "@/pages/Premium";
 import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
 import ListingIntelligence from "@/pages/ListingIntelligence";
-import UsListings from "@/pages/UsListings";
 import RealtorNetwork from "@/pages/RealtorNetwork";
 import MarketReport from "@/pages/MarketReport";
 import MortgageRates from "@/pages/MortgageRates";
@@ -114,7 +118,6 @@ import ABCLendersCanadaGuide from "@/pages/ABCLendersCanadaGuide";
 import ReportsHub from "@/pages/ReportsHub";
 import ReportPage from "@/pages/ReportPage";
 import IrccImmigrationDashboardReport from "@/pages/IrccImmigrationDashboardReport";
-import HomeBenchReport from "@/pages/HomeBenchReport";
 import RealBenchReport from "@/pages/RealBenchReport";
 import MarketsHub from "@/pages/MarketsHub";
 import ProgrammaticMarketPage from "@/pages/ProgrammaticMarketPage";
@@ -144,13 +147,18 @@ function Router() {
       <Route path="/tools/coinvest/checklist" component={CoInvestingChecklist} />
       <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
       <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
+      <Route path="/deal-desk" component={DealDesk} />
+      <Route path="/crm" component={CrmHome} />
+      <Route path="/community/meetups/new" component={MeetupNew} />
+      <Route path="/sponsor/:slug" component={SponsorPackagePage} />
+      <Route path="/admin/sponsors" component={AdminSponsors} />
+      <Route path="/crm/contacts/:id" component={CrmContact} />
+      <Route path="/tools/deal-desk" component={DealDesk} />
       <Route path="/tools/true-cost" component={TrueCost} />
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
       <Route path="/tools/cap-rates" component={CapRates} />
       <Route path="/listing-intelligence" component={ListingIntelligence} />
       <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
-      <Route path="/listings/us" component={UsListings} />
-      <Route path="/us-listings" component={UsListings} />
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
       <Route path="/deals" component={InvestorOperatingSystem} />
       <Route path="/watchlist" component={InvestorOperatingSystem} />
@@ -222,8 +230,6 @@ function Router() {
       <Route path="/reports" component={ReportsHub} />
       <Route path="/reports/canada-immigration-dashboard-2026" component={IrccImmigrationDashboardReport} />
       <Route path="/reports/realbench-ai-realtor-benchmark" component={RealBenchReport} />
-      <Route path="/insights/market-report/homebench-ai-realtor-benchmark" component={HomeBenchReport} />
-      <Route path="/reports/homebench-ai-realtor-benchmark">{() => <Redirect to="/insights/market-report/homebench-ai-realtor-benchmark" />}</Route>
       <Route path="/reports/:slug" component={ReportPage} />
       <Route path="/markets" component={MarketsHub} />
       <Route path="/markets/:city" component={ProgrammaticMarketPage} />
@@ -256,8 +262,7 @@ function Router() {
       
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />
-      <Route path="/deal-desk" component={DealDesk} />
-      <Route path="/tools/deal-desk" component={DealDesk} />
+      <Route path="/podcast" component={Podcast} />
       <Route path="/admin" component={Admin} />
       <Route path="/admin/deal-desk" component={AdminDealDesk} />
       <Route path="/admin/events" component={AdminEvents} />

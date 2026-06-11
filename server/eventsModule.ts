@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import "express-session";
 import crypto from "crypto";
 import Stripe from "stripe";
-import { and, asc, eq, gt, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import { getUncachableStripeClient } from "./stripeClient";
@@ -14,14 +14,18 @@ import {
   realistEventTicketTypes,
   realistEventOrders,
   realistEventAttendees,
+  realistEventRsvps,
   passwordResetTokens,
   users,
 } from "@shared/schema";
 
-const EVENT_ADMIN_EMAILS = new Set([
-  "jonathan@realist.ca",
-  "danielfoch@gmail.com",
-]);
+const EVENT_ADMIN_EMAILS = new Set(
+  (process.env.REALIST_EVENT_ADMIN_EMAILS ||
+    "jonathan@realist.ca,danielfoch@gmail.com,na4hill@gmail.com")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
+);
 const DEFAULT_EVENT_ADMIN_EMAIL = "jonathan@realist.ca";
 
 declare module "express-session" {
@@ -77,8 +81,16 @@ export const eventPayloadSchema = z.object({
   refundPolicy: z.string().optional().nullable(),
   seoTitle: z.string().optional().nullable(),
   seoDescription: z.string().optional().nullable(),
+  kind: z.enum(["flagship", "meetup"]).default("flagship"),
+  city: z.string().optional().nullable(),
+  isRecurring: z.boolean().default(false),
+  recurrenceNote: z.string().optional().nullable(),
   speakers: z.array(speakerSchema).default([]),
-  ticketTypes: z.array(ticketTypeSchema).min(1),
+  ticketTypes: z.array(ticketTypeSchema).default([]),
+}).superRefine((data, ctx) => {
+  if (data.kind === "flagship" && data.ticketTypes.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Paid events need at least one ticket type" });
+  }
 });
 
 const checkoutSchema = z.object({
@@ -90,7 +102,7 @@ function nullableDate(value?: string | null) {
   return value ? new Date(value) : null;
 }
 
-function baseUrlFromRequest(req: Request) {
+export function baseUrlFromRequest(req: Request) {
   const configured = process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL;
   if (configured) return configured.replace(/\/$/, "");
   const host = req.get("host") || process.env.REPLIT_DEV_DOMAIN || "realist.ca";
@@ -98,14 +110,14 @@ function baseUrlFromRequest(req: Request) {
   return `${protocol}://${host}`;
 }
 
-async function getSessionUser(req: Request) {
+export async function getSessionUser(req: Request) {
   const userId = req.session?.userId;
   if (!userId) return null;
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return user || null;
 }
 
-async function requireEventAdmin(req: Request, res: Response, next: NextFunction) {
+export async function requireEventAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const user = await getSessionUser(req);
     if (!user) return res.status(401).json({ error: "Authentication required" });
@@ -119,7 +131,7 @@ async function requireEventAdmin(req: Request, res: Response, next: NextFunction
   }
 }
 
-async function isEventAdminRequest(req: Request) {
+export async function isEventAdminRequest(req: Request) {
   try {
     const user = await getSessionUser(req);
     return user?.email ? EVENT_ADMIN_EMAILS.has(user.email.toLowerCase()) : false;
@@ -214,6 +226,87 @@ export async function ensureRealistEventTables() {
       "created_at" timestamp NOT NULL DEFAULT now()
     )
   `);
+  // Growth-engine columns (idempotent on existing deployments).
+  await db.execute(sql`
+    ALTER TABLE "realist_events"
+      ADD COLUMN IF NOT EXISTS "kind" text NOT NULL DEFAULT 'flagship',
+      ADD COLUMN IF NOT EXISTS "city" text,
+      ADD COLUMN IF NOT EXISTS "is_recurring" boolean NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "recurrence_note" text,
+      ADD COLUMN IF NOT EXISTS "host_user_id" varchar,
+      ADD COLUMN IF NOT EXISTS "reminder_sent_at" timestamp
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "realist_event_rsvps" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "event_id" varchar NOT NULL REFERENCES "realist_events"("id") ON DELETE CASCADE,
+      "user_id" varchar REFERENCES "users"("id"),
+      "email" text NOT NULL,
+      "name" text,
+      "status" text NOT NULL DEFAULT 'GOING',
+      "created_at" timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS "uq_event_rsvp_email" ON "realist_event_rsvps" ("event_id", "email")
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "realist_event_announcements" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "event_id" varchar NOT NULL REFERENCES "realist_events"("id") ON DELETE CASCADE,
+      "audience" text NOT NULL DEFAULT 'all_optin',
+      "sent_count" integer NOT NULL DEFAULT 0,
+      "triggered_by_email" text,
+      "created_at" timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "realist_sponsors" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "name" text NOT NULL,
+      "logo_url" text,
+      "website_url" text,
+      "blurb" text,
+      "tier" text NOT NULL DEFAULT 'partner',
+      "is_active" boolean NOT NULL DEFAULT true,
+      "sort_order" integer NOT NULL DEFAULT 0,
+      "created_at" timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "realist_sponsorship_packages" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "slug" text NOT NULL UNIQUE,
+      "access_key" text NOT NULL,
+      "name" text NOT NULL,
+      "description" text,
+      "event_scope" text,
+      "price_cents" integer NOT NULL,
+      "currency" varchar(3) NOT NULL DEFAULT 'cad',
+      "perks" jsonb DEFAULT '[]'::jsonb,
+      "contract_url" text,
+      "sales_deck_url" text,
+      "quantity_total" integer,
+      "quantity_sold" integer NOT NULL DEFAULT 0,
+      "is_active" boolean NOT NULL DEFAULT true,
+      "created_at" timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "realist_sponsorship_orders" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "package_id" varchar NOT NULL REFERENCES "realist_sponsorship_packages"("id"),
+      "company" text NOT NULL,
+      "contact_name" text,
+      "email" text NOT NULL,
+      "amount_paid_cents" integer NOT NULL,
+      "currency" varchar(3) NOT NULL DEFAULT 'cad',
+      "stripe_checkout_session_id" text NOT NULL UNIQUE,
+      "stripe_payment_intent_id" text,
+      "status" text NOT NULL DEFAULT 'PAID',
+      "created_at" timestamp NOT NULL DEFAULT now()
+    )
+  `);
 }
 
 async function getEventBundleById(id: string) {
@@ -256,6 +349,10 @@ async function saveEvent(payload: z.infer<typeof eventPayloadSchema>, createdByE
     refundPolicy: payload.refundPolicy || null,
     seoTitle: payload.seoTitle || null,
     seoDescription: payload.seoDescription || null,
+    kind: payload.kind,
+    city: payload.city || null,
+    isRecurring: payload.isRecurring,
+    recurrenceNote: payload.recurrenceNote || null,
     createdByEmail,
     updatedAt: new Date(),
   };
@@ -282,7 +379,7 @@ async function saveEvent(payload: z.infer<typeof eventPayloadSchema>, createdByE
     : [];
   const existingSoldById = new Map(existingTickets.map((ticket) => [ticket.id, ticket.quantitySold]));
   await db.delete(realistEventTicketTypes).where(eq(realistEventTicketTypes.eventId, event.id));
-  await db.insert(realistEventTicketTypes).values(payload.ticketTypes.map((ticket) => ({
+  if (payload.ticketTypes.length) await db.insert(realistEventTicketTypes).values(payload.ticketTypes.map((ticket) => ({
     eventId: event.id,
     name: ticket.name,
     description: ticket.description || null,
@@ -334,6 +431,44 @@ export function registerRealistEventRoutes(app: Express) {
       res.json(event);
     } catch (error: any) {
       res.status(400).json({ error: error.errors?.[0]?.message || error.message || "Invalid event" });
+    }
+  });
+
+  app.get("/api/realist-events", async (req, res) => {
+    try {
+      const kind = typeof req.query.kind === "string" ? req.query.kind : null;
+      const city = typeof req.query.city === "string" ? req.query.city : null;
+      const conditions = [eq(realistEvents.status, "PUBLISHED")];
+      if (kind === "flagship" || kind === "meetup") conditions.push(eq(realistEvents.kind, kind));
+      if (city) conditions.push(eq(realistEvents.city, city));
+      const events = await db.select().from(realistEvents)
+        .where(and(...conditions))
+        .orderBy(asc(realistEvents.startsAt))
+        .limit(200);
+      const ids = events.map((event) => event.id);
+      const prices = ids.length ? await db.select({
+        eventId: realistEventTicketTypes.eventId,
+        minPriceCents: sql<number>`MIN(${realistEventTicketTypes.priceCents})`,
+      }).from(realistEventTicketTypes)
+        .where(and(inArray(realistEventTicketTypes.eventId, ids), eq(realistEventTicketTypes.isActive, true)))
+        .groupBy(realistEventTicketTypes.eventId) : [];
+      const rsvps = ids.length ? await db.select({
+        eventId: realistEventRsvps.eventId,
+        going: sql<number>`COUNT(*)`,
+      }).from(realistEventRsvps)
+        .where(and(inArray(realistEventRsvps.eventId, ids), eq(realistEventRsvps.status, "GOING")))
+        .groupBy(realistEventRsvps.eventId) : [];
+      const priceByEvent = new Map(prices.map((row) => [row.eventId, Number(row.minPriceCents)]));
+      const rsvpByEvent = new Map(rsvps.map((row) => [row.eventId, Number(row.going)]));
+      res.json(events.map((event) => ({
+        ...event,
+        onlineUrl: null,
+        minPriceCents: priceByEvent.get(event.id) ?? null,
+        rsvpCount: rsvpByEvent.get(event.id) ?? 0,
+      })));
+    } catch (error: any) {
+      console.error("[events] public list failed:", error);
+      res.status(500).json({ error: "Failed to load events" });
     }
   });
 

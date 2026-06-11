@@ -123,6 +123,8 @@ import { logUserActivity, rebuildUserInferenceProfile } from "./userActivity";
 import { trackRealistEvent } from "./realistEvents";
 import { registerRealistEventRoutes } from "./eventsModule";
 import { registerDealDeskRoutes } from "./dealDesk";
+import { registerCrmRoutes } from "./crm";
+import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import {
@@ -700,6 +702,8 @@ export async function registerRoutes(
   registerAuthRoutes(app);
   registerRealistEventRoutes(app);
   registerDealDeskRoutes(app);
+  registerCrmRoutes(app);
+  registerEventsGrowthRoutes(app);
   registerUserGoogleSheetsRoutes(app);
   registerUnderwritingShareRoutes(app);
 
