@@ -4164,3 +4164,76 @@ export const appSettings = pgTable("app_settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 export type AppSetting = typeof appSettings.$inferSelect;
+
+// ============================================================================
+// REALIST INTELLIGENCE — model registry + prediction ledger
+//
+// The learning loop's bookkeeping: every estimate any Realist model produces
+// is written to model_predictions with its inputs; when reality arrives (a
+// scraped rent observation near the subject, a closed deal), the resolution
+// sweep fills in actual_value/error and the row becomes labelled training +
+// eval data. model_versions records which code produced which predictions so
+// accuracy is always attributable to a specific version.
+// ============================================================================
+
+export const modelVersions = pgTable("model_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelKey: text("model_key").notNull(), // e.g. "rent_estimator"
+  version: text("version").notNull(), // e.g. "v0.1.0"
+  description: text("description"),
+  params: jsonb("params"), // config/hyperparameters for this version
+  metrics: jsonb("metrics"), // backtest/eval metrics recorded at promotion
+  status: text("status").default("active").notNull(), // active | candidate | retired
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS model_versions_key_version_idx ON model_versions(model_key, version)`,
+]);
+
+export const modelPredictions = pgTable("model_predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelKey: text("model_key").notNull(),
+  modelVersion: text("model_version").notNull(),
+  // What the prediction is about. subjectType: listing | analysis | adhoc
+  subjectType: text("subject_type").notNull(),
+  subjectId: text("subject_id"), // DDF listingKey, property_analyses.id, ...
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  // Full input snapshot (point-in-time correctness: what the model saw)
+  inputs: jsonb("inputs").notNull(),
+  // Denormalized prediction fields for SQL aggregation
+  predictedValue: real("predicted_value").notNull(),
+  intervalLow: real("interval_low"),
+  intervalHigh: real("interval_high"),
+  confidence: text("confidence"), // high | medium | low
+  method: text("method"), // comps_radius | city_aggregate | cmhc_baseline
+  compCount: integer("comp_count"),
+  // Denormalized matching keys so the resolution sweep can find ground truth
+  city: text("city"),
+  province: text("province"),
+  bedrooms: text("bedrooms"),
+  lat: real("lat"),
+  lng: real("lng"),
+  // Resolution: filled when a real-world observation matches this subject
+  resolvedAt: timestamp("resolved_at"),
+  actualValue: real("actual_value"),
+  actualSource: text("actual_source"),
+  absError: real("abs_error"),
+  pctError: real("pct_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE INDEX IF NOT EXISTS model_predictions_key_created_idx ON model_predictions(model_key, created_at)`,
+  sql`CREATE INDEX IF NOT EXISTS model_predictions_unresolved_idx ON model_predictions(model_key, created_at) WHERE resolved_at IS NULL`,
+  sql`CREATE INDEX IF NOT EXISTS model_predictions_subject_idx ON model_predictions(subject_type, subject_id)`,
+]);
+
+export const insertModelVersionSchema = createInsertSchema(modelVersions).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertModelPredictionSchema = createInsertSchema(modelPredictions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertModelVersion = z.infer<typeof insertModelVersionSchema>;
+export type ModelVersion = typeof modelVersions.$inferSelect;
+export type InsertModelPrediction = z.infer<typeof insertModelPredictionSchema>;
+export type ModelPrediction = typeof modelPredictions.$inferSelect;

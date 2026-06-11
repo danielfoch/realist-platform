@@ -628,6 +628,10 @@ async function ensureAppTables() {
       import("./monthlyWinnerEmail").then(({ scheduleMonthlyWinnerEmail }) => {
         scheduleMonthlyWinnerEmail();
       }).catch((err) => log(`Monthly winner email schedule error: ${err.message}`, "monthly-winner"));
+      import("./rentIntelligence").then(({ scheduleRentIntelligenceJobs }) => {
+        scheduleRentIntelligenceJobs(log);
+        log("Rent intelligence jobs scheduled (daily prediction sweep)", "intelligence");
+      }).catch((err) => log(`Rent intelligence schedule error: ${err.message}`, "intelligence"));
       const drainNotifications = async () => {
         try {
           const result = await processPendingGhlNotifications();
