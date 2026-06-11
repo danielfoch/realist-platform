@@ -37,6 +37,7 @@ import {
   type NextStep,
 } from "@shared/crmNextStep";
 import { getResendClient } from "./resend";
+import { sendSms, smsConfigured, registerSmsWebhookRoutes } from "./twilioSms";
 
 function sessionUserId(req: Request): string | null {
   return req.session?.userId ?? null;
@@ -60,6 +61,8 @@ function withNextStep(contact: CrmContact, deals: CrmDeal[]): CrmContact & { nex
       contactType: contact.contactType,
       email: contact.email,
       consentEmail: contact.consentEmail,
+      phone: contact.phone,
+      consentSms: contact.consentSms,
       targetMarket: contact.targetMarket,
       lastTouchAt: contact.lastTouchAt,
       createdAt: contact.createdAt,
@@ -104,6 +107,8 @@ async function touchContact(contactId: string): Promise<void> {
 }
 
 export function registerCrmRoutes(app: Express): void {
+  registerSmsWebhookRoutes(app);
+
   // ——— Contacts ———————————————————————————————————————————————
 
   app.get("/api/crm/contacts", isAuthenticated, async (req: Request, res: Response) => {
@@ -329,9 +334,31 @@ export function registerCrmRoutes(app: Express): void {
         const deals = await db.select().from(crmDeals).where(eq(crmDeals.contactId, contact.id));
         const { nextStep } = withNextStep(contact, deals);
 
-        const mode = String(req.body?.mode ?? "log"); // "log" | "email"
+        const mode = String(req.body?.mode ?? "log"); // "log" | "email" | "sms"
 
-        if (mode === "email") {
+        if (mode === "sms") {
+          if (!contact.phone || !contact.consentSms) {
+            res.status(400).json({ success: false, error: "Contact has no SMS consent on file" });
+            return;
+          }
+          if (!smsConfigured()) {
+            res.status(400).json({ success: false, error: "Twilio is not configured (set TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM_NUMBER)" });
+            return;
+          }
+          const bodyText = String(req.body?.body ?? nextStep.smsDraft ?? "");
+          if (!bodyText.trim()) {
+            res.status(400).json({ success: false, error: "Message is empty" });
+            return;
+          }
+          const { sid } = await sendSms(contact.phone, bodyText);
+          await logActivity({
+            contactId: contact.id,
+            userId,
+            kind: "sms",
+            body: `➡️ Sent: ${bodyText}`,
+            metadata: { nextStepAction: nextStep.action, direction: "outbound", twilioSid: sid },
+          });
+        } else if (mode === "email") {
           if (!contact.email || !contact.consentEmail) {
             res.status(400).json({ success: false, error: "Contact has no email consent on file" });
             return;

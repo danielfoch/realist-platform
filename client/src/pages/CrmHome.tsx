@@ -31,6 +31,7 @@ export interface NextStepDto {
   priority: "now" | "today" | "soon";
   dealId?: string;
   emailDraft?: { subject: string; body: string };
+  smsDraft?: string;
 }
 
 export interface CrmContactDto {
@@ -43,6 +44,7 @@ export interface CrmContactDto {
   source: string | null;
   targetMarket: string | null;
   consentEmail: boolean;
+  consentSms: boolean;
   lastTouchAt: string | null;
   createdAt: string;
   nextStep: NextStepDto;
@@ -133,6 +135,7 @@ function AddContactDialog({ onCreated }: { onCreated: () => void }) {
     targetMarket: "",
     source: "manual",
     consentEmail: true,
+    consentSms: false,
   });
 
   async function submit() {
@@ -146,7 +149,7 @@ function AddContactDialog({ onCreated }: { onCreated: () => void }) {
         targetMarket: form.targetMarket.trim() || null,
       });
       setOpen(false);
-      setForm({ name: "", email: "", phone: "", contactType: "investor", targetMarket: "", source: "manual", consentEmail: true });
+      setForm({ name: "", email: "", phone: "", contactType: "investor", targetMarket: "", source: "manual", consentEmail: true, consentSms: false });
       onCreated();
     } catch (error) {
       console.error("Failed to create contact", error);
@@ -199,6 +202,10 @@ function AddContactDialog({ onCreated }: { onCreated: () => void }) {
               <Input id="crm-market" value={form.targetMarket} onChange={(e) => setForm({ ...form, targetMarket: e.target.value })} placeholder="Ottawa" />
             </div>
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.consentSms} onChange={(e) => setForm({ ...form, consentSms: e.target.checked })} />
+            They agreed to receive texts (required before SMS)
+          </label>
           <Button className="w-full" onClick={submit} disabled={saving || !form.name.trim()}>
             {saving ? "Saving…" : "Create Contact"}
           </Button>
