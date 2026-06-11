@@ -76,9 +76,12 @@ async function ensureUserByEmail(email: string, name: string | null, leadSource:
 
   const baseUrl = process.env.PUBLIC_BASE_URL || "https://realist.ca";
   const rawToken = crypto.randomBytes(32).toString("hex");
+  // /api/auth/set-password looks tokens up by sha256 hash — store the hash,
+  // put the raw token in the link (same pattern as forgot-password in auth.ts)
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
   await db.insert(passwordResetTokens).values({
     userId: user.id,
-    token: rawToken,
+    token: tokenHash,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
   await sendWelcomeAccountEmail({
