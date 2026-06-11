@@ -530,6 +530,10 @@ export function registerCrmRoutes(app: Express): void {
           res.status(404).json({ success: false, error: "Opportunity not found" });
           return;
         }
+        if (!opp.userId) {
+          res.status(404).json({ success: false, error: "Opportunity has no linked user" });
+          return;
+        }
         const [investor] = await db
           .select({
             id: users.id,
