@@ -311,6 +311,17 @@ export const realistSponsorshipPackages = pgTable("realist_sponsorship_packages"
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Device tokens registered by the Capacitor mobile shells (mobile/).
+export const pushDeviceTokens = pgTable("push_device_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  token: text("token").notNull().unique(),
+  platform: varchar("platform", { length: 10 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+});
+
 export const realistSponsorshipOrders = pgTable("realist_sponsorship_orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   packageId: varchar("package_id").references(() => realistSponsorshipPackages.id).notNull(),
