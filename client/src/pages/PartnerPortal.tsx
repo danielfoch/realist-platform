@@ -13,10 +13,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { apiRequest } from "@/lib/queryClient";
 import { authPath } from "@/lib/authReturn";
 import { User, Briefcase, Users, CheckCircle, Clock, Phone, Mail, MapPin, Building } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import type { IndustryPartner, PartnerLead, Lead } from "@shared/schema";
 
@@ -53,6 +54,8 @@ export default function PartnerPortal() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const [currentTab, setCurrentTab] = usePersistedTab("partnerPortal.activeTab", "leads", ["leads", "profile"]);
 
   const { data: partner, isLoading: partnerLoading } = useQuery<IndustryPartner | null>({
     queryKey: ["/api/partner/profile"],
@@ -219,7 +222,7 @@ export default function PartnerPortal() {
             </Card>
           </div>
 
-          <Tabs defaultValue="leads" className="space-y-6">
+          <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
             <TabsList data-testid="partner-tabs">
               <TabsTrigger value="leads" data-testid="tab-leads">Leads</TabsTrigger>
               <TabsTrigger value="profile" data-testid="tab-profile">My Profile</TabsTrigger>

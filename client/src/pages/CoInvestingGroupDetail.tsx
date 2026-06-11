@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { authPath } from "@/lib/authReturn";
@@ -36,6 +37,7 @@ export default function CoInvestingGroupDetail() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   
+  const [activeTab, setActiveTab] = usePersistedTab("coInvestingGroupDetail.activeTab", "overview", ["overview", "members", "chat"]);
   const [joinNote, setJoinNote] = useState("");
   const [pledgedCapital, setPledgedCapital] = useState("");
   const [newMessage, setNewMessage] = useState("");
@@ -191,7 +193,7 @@ export default function CoInvestingGroupDetail() {
 
         <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
-            <Tabs defaultValue="overview">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="w-full">
                 <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
                 <TabsTrigger value="members" className="flex-1">Members ({approvedMembers.length})</TabsTrigger>

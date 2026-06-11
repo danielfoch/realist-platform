@@ -87,6 +87,8 @@ export async function logUserActivity(req: Request | null, event: {
   listingId?: string | null;
   listingKey?: string | null;
   analysisId?: string | null;
+  dealId?: string | null;
+  source?: string | null;
   sourcePage?: string | null;
   component?: string | null;
   metadata?: Record<string, unknown> | null;
@@ -103,6 +105,8 @@ export async function logUserActivity(req: Request | null, event: {
       listingId: event.listingId || null,
       listingKey: event.listingKey || null,
       analysisId: event.analysisId || null,
+      dealId: event.dealId || null,
+      source: event.source || null,
       sourcePage: event.sourcePage || null,
       component: event.component || null,
       metadata: event.metadata || null,

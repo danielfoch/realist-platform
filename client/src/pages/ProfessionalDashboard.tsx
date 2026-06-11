@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { useLocation } from "wouter";
 import { authPath } from "@/lib/authReturn";
 
@@ -79,6 +80,8 @@ export default function ProfessionalDashboard() {
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+
+  const [currentTab, setCurrentTab] = usePersistedTab("professionalDashboard.activeTab", "overview", ["overview", "subscription", "branding", "expert"]);
 
   const { data: subscription, isLoading: subLoading } = useQuery<Subscription>({
     queryKey: ['/api/subscription'],
@@ -232,7 +235,7 @@ export default function ProfessionalDashboard() {
           </Badge>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
           <TabsList data-testid="tabs-dashboard">
             <TabsTrigger value="overview" data-testid="tab-overview">
               <BarChart3 className="w-4 h-4 mr-2" />

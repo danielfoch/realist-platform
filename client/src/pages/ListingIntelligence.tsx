@@ -1,4 +1,5 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState, useEffect } from "react";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { Link } from "wouter";
 import { SEO, organizationSchema, softwareSchema, websiteSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
@@ -176,6 +177,7 @@ function ScorePanel({ label, value, icon }: { label: string; value: number; icon
 }
 
 export default function ListingIntelligence() {
+  const [activeTab, setActiveTab] = usePersistedTab("listingIntelligence.activeTab", "underwriting", ["underwriting", "feedback", "professionals", "training", "roadmap"]);
   const [events, setEvents] = useState<ListingFeedbackEvent[]>(sampleListingFeedbackEvents);
   const [role, setRole] = useState<ProfessionalRole>("investor");
   const [inputType, setInputType] = useState<ListingFeedbackInputType>("rent_feedback");
@@ -290,7 +292,7 @@ export default function ListingIntelligence() {
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-          <Tabs defaultValue="underwriting" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid h-auto w-full grid-cols-2 md:grid-cols-5">
               <TabsTrigger value="underwriting">Underwriting</TabsTrigger>
               <TabsTrigger value="feedback">Feedback</TabsTrigger>

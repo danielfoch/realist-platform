@@ -4090,3 +4090,67 @@ export const insertUnderwritingShareSchema = createInsertSchema(underwritingShar
 });
 export type InsertUnderwritingShare = z.infer<typeof insertUnderwritingShareSchema>;
 export type UnderwritingShare = typeof underwritingShares.$inferSelect;
+
+// ============================================================================
+// APP SETTINGS — key/value store for platform-level configuration
+// ============================================================================
+
+export const appSettings = pgTable("app_settings", {
+  key: varchar("key", { length: 255 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;
+export type InsertAppSetting = typeof appSettings.$inferInsert;
+
+// ============================================================================
+// DEALS — Deal Desk property records (distinct from savedDeals/propertyAnalyses)
+// ============================================================================
+
+export const deals = pgTable("deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id, { onDelete: "set null" }),
+  propertyAddress: text("property_address"),
+  listingUrl: text("listing_url"),
+  market: text("market"),
+  propertyType: text("property_type", { length: 60 }),
+  purchasePrice: real("purchase_price"),
+  estimatedRent: real("estimated_rent"),
+  strategy: varchar("strategy", { length: 60 }),
+  notes: text("notes"),
+  source: varchar("source", { length: 60 }).default("deal_desk"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_deals_lead").on(table.leadId),
+  index("idx_deals_created").on(table.createdAt),
+]);
+
+export const insertDealSchema = createInsertSchema(deals).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDeal = z.infer<typeof insertDealSchema>;
+export type Deal = typeof deals.$inferSelect;
+
+// ============================================================================
+// OPPORTUNITY HISTORY — audit log for opportunity status/assignment changes
+// ============================================================================
+
+export const opportunityHistory = pgTable("opportunity_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  opportunityId: varchar("opportunity_id").references(() => opportunities.id, { onDelete: "cascade" }).notNull(),
+  changedByUserId: varchar("changed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  changedByName: varchar("changed_by_name", { length: 100 }),
+  changeType: varchar("change_type", { length: 40 }).notNull(), // status_changed, assigned, note_added
+  fromStatus: varchar("from_status", { length: 30 }),
+  toStatus: varchar("to_status", { length: 30 }),
+  fromAssignedTo: varchar("from_assigned_to", { length: 100 }),
+  toAssignedTo: varchar("to_assigned_to", { length: 100 }),
+  noteContent: text("note_content"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_opportunity_history_opportunity").on(table.opportunityId),
+]);
+
+export const insertOpportunityHistorySchema = createInsertSchema(opportunityHistory).omit({ id: true, createdAt: true });
+export type InsertOpportunityHistory = z.infer<typeof insertOpportunityHistorySchema>;
+export type OpportunityHistory = typeof opportunityHistory.$inferSelect;
