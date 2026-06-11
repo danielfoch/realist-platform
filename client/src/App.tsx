@@ -48,6 +48,8 @@ import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
 import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
 import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
 import DealDesk from "@/pages/DealDesk";
+import CrmHome from "@/pages/CrmHome";
+import CrmContact from "@/pages/CrmContact";
 import TrueCost from "@/pages/TrueCost";
 import RentVsBuy from "@/pages/RentVsBuy";
 import WillItPlex from "@/pages/WillItPlex";
@@ -142,6 +144,8 @@ function Router() {
       <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
       <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
       <Route path="/deal-desk" component={DealDesk} />
+      <Route path="/crm" component={CrmHome} />
+      <Route path="/crm/contacts/:id" component={CrmContact} />
       <Route path="/tools/deal-desk" component={DealDesk} />
       <Route path="/tools/true-cost" component={TrueCost} />
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />

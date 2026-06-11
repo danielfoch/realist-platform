@@ -6,6 +6,9 @@ import { z } from "zod";
 // Re-export auth models (required for Replit Auth)
 export * from "./models/auth";
 
+// Re-export native CRM models (contacts, activities, deals)
+export * from "./models/crm";
+
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
