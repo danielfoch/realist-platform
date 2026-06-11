@@ -633,14 +633,6 @@ export function registerAuthRoutes(app: Express): void {
       });
     });
 
-    // Explicitly save session before redirect to ensure state persists
-    await new Promise<void>((resolve, reject) => {
-      req.session.save((err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: "offline",
       scope: GOOGLE_AUTH_SCOPES,

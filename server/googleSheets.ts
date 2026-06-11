@@ -148,12 +148,6 @@ interface UserInfo {
   phone?: string;
 }
 
-interface UserInfo {
-  name?: string;
-  email?: string;
-  phone?: string;
-}
-
 interface ExportData {
   address: string;
   strategy: string;
@@ -1103,72 +1097,4 @@ export async function exportMLIToGoogleSheets(data: MLIExportData, userTokens?: 
   }
 
   return spreadsheetUrl;
-}
-
-// MLI Select Export Types
-interface MLIExportData {
-  projectName: string;
-  location: string;
-  userInfo?: UserInfo;
-  inputs: {
-    projectType: string;
-    totalUnits: number;
-    affordabilityTier: string;
-    extendedCommitment: boolean;
-    energyTier: string;
-    accessibilityTier: string;
-    marketRent: number;
-    rentGrowth: number;
-    otherIncome: number;
-    vacancyRate: number;
-    expenseRatio: number;
-    landCost: number;
-    hardCosts: number;
-    softCosts: number;
-    contingencyPercent: number;
-    financingFees: number;
-    constructionFinancing: string;
-    constructionRate: number;
-    takeoutRate: number;
-    ltv: number;
-  };
-  results: {
-    totalPoints: number;
-    tier: string;
-    totalProjectCost: number;
-    insurancePremium: number;
-    loanTermYears: number;
-    amortizationYears: number;
-    maxLTV: number;
-    premiumRate: number;
-    affordableUnits: number;
-    marketUnits: number;
-    medianIncome: number;
-    affordableRentThreshold: number;
-    base: {
-      egi: number;
-      vacancyLoss: number;
-      egiAfterVacancy: number;
-      opex: number;
-      noi: number;
-      loanAmount: number;
-      annualDebtService: number;
-      dscr: number;
-      cashFlow: number;
-      equityRequired: number;
-      ltv: number;
-    };
-    bear: {
-      noi: number;
-      dscr: number;
-      cashFlow: number;
-      equityRequired: number;
-    };
-    bull: {
-      noi: number;
-      dscr: number;
-      cashFlow: number;
-      equityRequired: number;
-    };
-  };
 }

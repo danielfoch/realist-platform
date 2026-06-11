@@ -794,17 +794,17 @@ export default function MapHomepage() {
                   <Link href="/privacy" className="block hover:text-foreground transition-colors">Privacy</Link>
                 </div>
               </div>
-              <div className="pt-6 border-t border-border/30 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-muted-foreground/70">
-                <p>© {new Date().getFullYear()} Realist Inc. All rights reserved.</p>
-                <p>
-                  Real estate listings powered by{" "}
-                  <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
-                    valery.ca
-                  </a>
-                  {" / Valery Real Estate Inc."}
-                </p>
-              </div>
             </div>
+          </div>
+
+          <div className="pt-6 border-t border-border/30 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-muted-foreground/70">
+            <p>© {new Date().getFullYear()} Realist Inc. All rights reserved.</p>
+            <p>
+              Listings powered by{" "}
+              <a href="https://valery.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+                Valery Real Estate Inc.
+              </a>
+            </p>
           </div>
         </div>
       </footer>

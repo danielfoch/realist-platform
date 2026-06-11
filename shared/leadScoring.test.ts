@@ -173,15 +173,18 @@ describe("end-to-end orchestration: score → status → triggers", () => {
     expect(triggers).not.toContain("financing_interest_followup");
   });
 
-  it("minimal submission (deal only): score 40, nurture, only confirmation trigger", () => {
+  it("minimal submission (deal only): score 40, nurture, confirmation + user nudge", () => {
     const input = { dealSubmitted: true };
     const score = scoreLeadInput(input);
     expect(score.intentScore).toBe(40);
     expect(score.status).toBe("nurture");
 
     const triggers = selectEmailTriggers(score.status as "nurture", !!input.financingHelpWanted);
-    expect(triggers).toHaveLength(1);
+    expect(triggers).toHaveLength(2);
     expect(triggers[0]).toBe("deal_submitted_confirmation");
+    expect(triggers).toContain("warm_lead_user_nudge");
+    expect(triggers).not.toContain("hot_lead_immediate_followup");
+    expect(triggers).not.toContain("financing_interest_followup");
   });
 
   it("breakdown length matches number of true signals", () => {

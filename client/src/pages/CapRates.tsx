@@ -3019,15 +3019,6 @@ export default function CapRates() {
                   </Button>
                 )}
 
-                <Button
-                  className="w-full"
-                  onClick={() => handleAnalyzeListing(selectedListing)}
-                  data-testid="button-analyze-listing"
-                >
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Full Analysis in Deal Analyzer
-                </Button>
-
                 <Separator />
 
                 <div>
