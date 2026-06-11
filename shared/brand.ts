@@ -1,14 +1,21 @@
 /**
- * Single source of truth for Realist.ca brand entities and owned social handles.
+ * Single source of truth for Realist.ca brand entities and social handles.
  *
  * Imported by both the server meta layer (server/seoMeta.ts) and the client
  * SEO component (client/src/components/SEO.tsx) so the Organization schema
  * can never diverge between the two rendered documents again.
  *
- * IMPORTANT: these are the handles for The Canadian Real Estate Investor
- * podcast (Daniel Foch & Nick Hill). Do NOT use @TheCanadianInvestorPodcast
- * handles — those belong to The Canadian Investor, a different (stock
- * investing) podcast.
+ * ENTITY MODEL (read before editing):
+ * - The Canadian Real Estate Investor (CREI, hosted by Daniel Foch & Nick
+ *   Hill) is part of The Canadian Investor Podcast Network. The show SHARES
+ *   the network's YouTube/Instagram/TikTok channels — those network handles
+ *   belong on the PodcastSeries sameAs.
+ * - The Realist Organization node carries only Realist-owned handles; it is
+ *   connected to the show through the schema graph (publisher/author
+ *   relations), not by claiming the network's channels as its own identity.
+ * - Do not confuse CREI with "The Canadian Investor" (the network's stock
+ *   investing show, Braden Dennis & Simon Belanger) — different show, same
+ *   network.
  */
 
 export const BRAND_BASE_URL = "https://realist.ca";
@@ -23,9 +30,14 @@ export const PODCAST_APPLE_URL =
 export const PODCAST_SPOTIFY_URL =
   "https://open.spotify.com/show/6wcDGtXn8Pa7K02l2Ujd3g";
 
-/** Realist / CREI YouTube channel. */
-export const PODCAST_YOUTUBE_URL =
-  "https://www.youtube.com/@CanadianRealEstateInvestor";
+/** Shared Canadian Investor Podcast Network YouTube channel (CREI episodes live here). */
+export const PODCAST_YOUTUBE_URL = "https://www.youtube.com/@TCIPodcastNetwork";
+
+/** Shared network Instagram. */
+export const PODCAST_INSTAGRAM_URL = "https://www.instagram.com/tcipodcast.ca/";
+
+/** Shared network TikTok. */
+export const PODCAST_TIKTOK_URL = "https://www.tiktok.com/@tcipodcast.ca";
 
 /** Omny-hosted RSS feed for the show (also consumed by /api/podcast/episodes). */
 export const PODCAST_RSS_URL =
@@ -34,19 +46,18 @@ export const PODCAST_RSS_URL =
 export const PODCAST_SUBSTACK_URL =
   "https://thecanadianrealestateinvestor.substack.com/";
 
-/** sameAs set for the PodcastSeries node. */
+/** sameAs set for the PodcastSeries node (show + shared network channels). */
 export const PODCAST_SAME_AS = [
   PODCAST_APPLE_URL,
   PODCAST_SPOTIFY_URL,
   PODCAST_YOUTUBE_URL,
+  PODCAST_INSTAGRAM_URL,
+  PODCAST_TIKTOK_URL,
+  PODCAST_SUBSTACK_URL,
 ];
 
-/** sameAs set for the single Organization node (owned handles only). */
+/** sameAs set for the single Realist Organization node (Realist-owned only). */
 export const ORGANIZATION_SAME_AS = [
-  PODCAST_YOUTUBE_URL,
   "https://twitter.com/RealistCA",
   "https://www.instagram.com/realist.ca/",
-  PODCAST_SUBSTACK_URL,
-  PODCAST_APPLE_URL,
-  PODCAST_SPOTIFY_URL,
 ];
