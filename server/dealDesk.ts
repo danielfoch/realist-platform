@@ -33,6 +33,7 @@ import {
   type ScorableEvent,
   type IntentBand,
 } from "@shared/dealDeskScoring";
+import { isInternalTestEmail } from "./leadGuards";
 
 const OPPORTUNITY_STATUSES = [
   "new", "hot", "warm", "nurture", "contacted", "booked_call",
@@ -301,7 +302,7 @@ export function registerDealDeskRoutes(app: Express): void {
       const band = intentBand(score);
 
       // 7. Hot leads get the immediate-followup trigger
-      if (band === "hot" && consentEmail) {
+      if (band === "hot" && consentEmail && !isInternalTestEmail(normalizedEmail)) {
         await queueEmailTrigger(userId, opportunityId, "hot_lead_immediate_followup", {
           property_address: propertyAddress,
           market: market || null,

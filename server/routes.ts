@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { google } from "googleapis";
 import { appendLead } from "./leadsSheet";
 import { storage } from "./storage";
+import { isInternalTestEmail } from "./leadGuards";
 
 // Maps the formTag/source value already present on every lead payload to a
 // friendly tab name in the owner's Google Sheet. Anything not in this map
@@ -2247,7 +2248,7 @@ export async function registerRoutes(
 
       // Send email notification only for the first lead from this email
       const existingLeadCount = await storage.getLeadCountByEmail(lead.email);
-      if (existingLeadCount <= 1) {
+      if (existingLeadCount <= 1 && !isInternalTestEmail(lead.email)) {
         sendLeadNotification({
           name: lead.name,
           email: lead.email,
@@ -2286,6 +2287,7 @@ export async function registerRoutes(
 
               // Send email alert to the realtor
               try {
+                if (isInternalTestEmail(lead.email)) continue;
                 const [realtorUser] = await db.select().from(users).where(eq(users.id, claim.userId));
                 if (realtorUser) {
                   const realtorName = `${realtorUser.firstName || ''} ${realtorUser.lastName || ''}`.trim() || realtorUser.email;
@@ -2563,7 +2565,7 @@ export async function registerRoutes(
 
       // Send email notification only for the first lead from this email
       const engagementLeadCount = await storage.getLeadCountByEmail(email);
-      if (engagementLeadCount <= 1) {
+      if (engagementLeadCount <= 1 && !isInternalTestEmail(email)) {
         sendLeadNotification({
           name,
           email,

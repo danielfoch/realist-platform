@@ -22,6 +22,15 @@ const OPPORTUNITY_STATUSES = [
 const DEFAULT_ASSIGNEE = process.env.DEAL_DESK_DEFAULT_ASSIGNEE || 'dan';
 const HOT_SLA_MINUTES = 30;
 
+function isInternalTestEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return /@example\.(com|org|net)$/i.test(normalized)
+    || /(^|[+._-])test([+._-]|@)/i.test(normalized)
+    || /(^|[+._-])qa([+._-]|@)/i.test(normalized)
+    || /(^|[+._-])demo([+._-]|@)/i.test(normalized);
+}
+
 // Admin auth — same pattern as content-routes
 function authenticateApiKey(req: Request, res: Response, next: NextFunction): void {
   const apiKey = req.headers['x-api-key'] || req.query.api_key;
@@ -192,7 +201,7 @@ export function createDealDeskRouter(): Router {
       const band = intentBand(score);
 
       // 7. Hot leads get the immediate-followup trigger
-      if (band === 'hot' && consentEmail) {
+      if (band === 'hot' && consentEmail && !isInternalTestEmail(email)) {
         await queueEmailTrigger(userId, opportunityId, 'hot_lead_immediate_followup', {
           property_address: propertyAddress,
           market: market || null,
