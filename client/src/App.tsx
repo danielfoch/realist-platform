@@ -1,4 +1,5 @@
 import { Switch, Route } from "wouter";
+import { GetAppBanner } from "@/components/GetAppBanner";
 import { useEffect } from "react";
 import { initNativePush } from "@/lib/capacitorPush";
 import { queryClient } from "./lib/queryClient";
@@ -134,6 +135,8 @@ import InvestorOperatingSystem from "@/pages/InvestorOperatingSystem";
 
 function Router() {
   return (
+    <>
+    <GetAppBanner />
     <Switch>
       {/* Main entry - simplified investor homepage */}
       <Route path="/" component={InvestorStart} />
@@ -300,6 +303,7 @@ function Router() {
       {/* 404 */}
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 
