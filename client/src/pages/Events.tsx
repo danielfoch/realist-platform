@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { NativeEventsList } from "@/components/events/NativeEventsList";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
@@ -420,6 +421,10 @@ export default function Events() {
                 </Button>
               </div>
             )}
+          </div>
+
+          <div className="mb-16">
+            <NativeEventsList />
           </div>
 
           {isLoading ? (

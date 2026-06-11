@@ -7,6 +7,7 @@ import { courseEnrollments, users } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { fulfillRealistEventCheckout } from './eventsModule';
+import { fulfillSponsorshipCheckout } from './eventsGrowth';
 
 const processedEventIds = new Set<string>();
 const PROCESSED_EVENT_MAX = 1000;
@@ -66,6 +67,10 @@ export class WebhookHandlers {
 
         if (session.metadata?.source === 'realist_events') {
           await fulfillRealistEventCheckout(session);
+        }
+
+        if (session.metadata?.source === 'realist_sponsorship') {
+          await fulfillSponsorshipCheckout(session);
         }
         
         if (session.metadata?.product === 'multiplex_masterclass') {

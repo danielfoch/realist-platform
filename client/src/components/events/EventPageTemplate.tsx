@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SpeakerCard } from "./SpeakerCard";
 import { TicketSelector } from "./TicketSelector";
+import { RsvpPanel } from "./RsvpPanel";
+import { SponsorStrip } from "./SponsorStrip";
 import type { RealistEventPayload } from "./types";
 
 function formatDate(value: string, timezone: string) {
@@ -18,6 +20,7 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
   const sold = event.ticketTypes.reduce((sum, ticket) => sum + (ticket.quantitySold || 0), 0);
   const soldOutByCapacity = event.capacity != null && sold >= event.capacity;
   const onlineLabel = event.eventType === "WEBINAR" ? "Online" : event.eventType === "HYBRID" ? "Hybrid" : "In person";
+  const isFreeMeetup = event.kind === "meetup" || event.ticketTypes.length === 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -30,7 +33,12 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
       <main className="mx-auto grid max-w-7xl gap-8 px-4 py-10 md:grid-cols-[1fr_360px] md:px-6">
         <section className="space-y-8">
           <div className="space-y-4">
-            <Badge variant="secondary">{onlineLabel}</Badge>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary">{onlineLabel}</Badge>
+              {event.kind === "meetup" && <Badge>Free meetup</Badge>}
+              {event.city && <Badge variant="outline">{event.city}</Badge>}
+              {event.isRecurring && <Badge variant="outline">{event.recurrenceNote || "Recurring"}</Badge>}
+            </div>
             <h1 className="text-4xl font-bold tracking-tight md:text-5xl">{event.title}</h1>
             {event.shortDescription && <p className="max-w-3xl text-lg text-muted-foreground">{event.shortDescription}</p>}
             <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
@@ -94,6 +102,8 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
             </section>
           )}
 
+          <SponsorStrip />
+
           {event.refundPolicy && (
             <section className="space-y-3">
               <Separator />
@@ -106,6 +116,8 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
         <aside className="md:sticky md:top-24 md:self-start">
           {soldOutByCapacity ? (
             <div className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">This event is sold out.</div>
+          ) : isFreeMeetup ? (
+            <RsvpPanel slug={event.slug} />
           ) : (
             <TicketSelector slug={event.slug} tickets={event.ticketTypes} />
           )}
