@@ -3,6 +3,11 @@ import { getResendClient } from "./resend";
 import type { EmailTrigger } from "@shared/schema";
 
 async function getTeamNotifyEmails(): Promise<string[]> {
+  // Instant per-lead admin alerts are OPT-IN now — the team gets a weekly
+  // CRM summary instead (server/adminWeeklySummary.ts). Set
+  // ADMIN_INSTANT_LEAD_ALERTS=true to restore real-time alert emails.
+  if (process.env.ADMIN_INSTANT_LEAD_ALERTS !== "true") return [];
+
   const emails: string[] = [];
 
   const dbEmail = await storage.getAppSetting("deal_desk_notify_email").catch(() => null);
