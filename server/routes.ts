@@ -707,6 +707,10 @@ export async function registerRoutes(
   registerApiKeyManagementRoutes(app);
   registerAgentRoutes(app);
 
+  // Clyde's Deal Desk (production endpoints — client + email queue use these).
+  const { registerDealDeskRoutes: registerClydeDealDeskRoutes } = await import("./routes/dealDesk");
+  registerClydeDealDeskRoutes(app);
+
   // ─── Event Tracking ───────────────────────────────────────────────────────
   // Lightweight behavioral event capture for AI training data pipeline.
   // Every event here is a future labeled data point:
@@ -752,6 +756,8 @@ export async function registerRoutes(
         analysisId: properties.analysis_id || properties.analysisId || null,
         sourcePage: page || null,
         component: properties.component || null,
+        dealId: properties.deal_id || properties.dealId || null,
+        source: properties.source || null,
         metadata: properties,
       });
 
@@ -2240,7 +2246,7 @@ export async function registerRoutes(
         email: lead.email,
         firstName,
         lastName,
-        phone: lead.phone,
+        phone: lead.phone ?? undefined,
         source: "Deal Analyzer",
         tags: ["deal_analyzer", property.region || "unknown_region"],
       }).catch(err => console.error("Google Sheets backup error:", err));
@@ -2251,7 +2257,7 @@ export async function registerRoutes(
         sendLeadNotification({
           name: lead.name,
           email: lead.email,
-          phone: lead.phone,
+          phone: lead.phone ?? undefined,
           address: property.formattedAddress,
           strategy: analysis.strategyType,
           source: lead.leadSource || 'Deal Analyzer',
@@ -2319,7 +2325,7 @@ export async function registerRoutes(
           email: lead.email,
           firstName,
           lastName,
-          phone: lead.phone,
+          phone: lead.phone ?? undefined,
           leadSource: lead.leadSource || "Deal Analyzer",
         });
         userId = enrollment.userId;
@@ -2352,7 +2358,7 @@ export async function registerRoutes(
         email: lead.email,
         firstName,
         lastName,
-        phone: formatPhoneE164(lead.phone),
+        phone: formatPhoneE164(lead.phone ?? ""),
         fullName: lead.name,
         consent: lead.consent,
         leadSource: lead.leadSource,
@@ -3423,6 +3429,30 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching reno quotes:", error);
       res.status(500).json({ error: "Failed to fetch quotes" });
+    }
+  });
+
+  app.post("/api/activity", async (req, res) => {
+    try {
+      const { eventType, analysisId, dealId } = req.body;
+      if (!eventType || typeof eventType !== "string") {
+        return res.status(400).json({ ok: false, error: "eventType is required" });
+      }
+      const userId = (req.session as any)?.userId || null;
+      const sessionId = (req as any).sessionID || null;
+      await logUserActivity(req, {
+        userId,
+        sessionId,
+        eventName: eventType,
+        analysisId: analysisId || null,
+        dealId: dealId || null,
+        source: "deal_analyzer",
+        sourcePage: "/",
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("POST /api/activity error:", err);
+      res.status(500).json({ ok: false });
     }
   });
 
@@ -6974,7 +7004,10 @@ export async function registerRoutes(
 
       const normalizedMandate = {
         userId,
-        agreementId: null,
+        // NOTE: buybox_mandates.agreement_id is NOT NULL in prod (Clyde schema);
+        // this services-order path predates that and still passes null at
+        // runtime — pre-existing behavior kept as-is through the merge.
+        agreementId: null as unknown as string,
         status: "new" as const,
         polygonGeoJson: polygon,
         centroidLat: centroid?.lat ?? null,

@@ -3,6 +3,15 @@ import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigin
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// PostGIS geometry passthrough — declares the live `geom` columns so
+// drizzle-kit push stops proposing to drop them. Values are read/written as
+// raw WKB/WKT strings; all real geometry work happens in SQL.
+export const postgisGeometry = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return "geometry";
+  },
+});
+
 // Re-export auth models (required for Replit Auth)
 export * from "./models/auth";
 
@@ -10,7 +19,8 @@ export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  phone: text("phone").notNull(),
+  phone: text("phone"),
+  consentSms: boolean("consent_sms").default(false),
   consent: boolean("consent").default(false),
   leadSource: text("lead_source").default("Deal Analyzer"),
   utmSource: text("utm_source"),
@@ -1537,7 +1547,7 @@ export const buyBoxAgreementsRelations = relations(buyBoxAgreements, ({ one, man
 export const buyBoxMandates = pgTable("buybox_mandates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  agreementId: varchar("agreement_id").references(() => buyBoxAgreements.id),
+  agreementId: varchar("agreement_id").references(() => buyBoxAgreements.id).notNull(),
   status: text("status").default("new").notNull(),
   
   // Polygon data
@@ -2656,6 +2666,8 @@ export const userActivityEvents = pgTable("user_activity_events", {
   metadata: jsonb("metadata"),
   hashedIp: text("hashed_ip"),
   userAgentHash: text("user_agent_hash"),
+  dealId: varchar("deal_id"),
+  source: text("source"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -3487,6 +3499,7 @@ export const indigenousFeatures = pgTable("indigenous_features", {
   metadataJson: text("metadata_json"),
   bbox: text("bbox"),
   geojson: jsonb("geojson"),
+  geom: postgisGeometry("geom"),
   centroidLat: real("centroid_lat"),
   centroidLng: real("centroid_lng"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -3522,6 +3535,7 @@ export const watchOverlays = pgTable("watch_overlays", {
   reviewedBy: text("reviewed_by"),
   reviewStatus: text("review_status"),
   geojson: jsonb("geojson"),
+  geom: postgisGeometry("geom"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -3769,31 +3783,57 @@ export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
 
 // ============================================================================
-// DEAL DESK LOOP — opportunities, assignments, status history, consent,
-// email triggers, and underwriting assumption provenance.
-// Ported from the idx app (db/migrations/013_deal_desk_loop.sql), adapted to
-// the live users / property_analyses tables.
+// DEAL DESK LOOP — deals, opportunities, email triggers
 // ============================================================================
 
-// The canonical record routing investor intent into the Deal Desk.
+export const deals = pgTable("deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  userId: varchar("user_id").references(() => users.id),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  address: text("address").notNull(),
+  listingUrl: text("listing_url"),
+  market: text("market"),
+  propertyType: text("property_type"),
+  purchasePrice: real("purchase_price"),
+  estimatedRent: real("estimated_rent"),
+  capRate: real("cap_rate"),
+  cashFlow: real("cash_flow"),
+  targetReturnHit: boolean("target_return_hit").default(false),
+  reportUrl: text("report_url"),
+  financingHelpWanted: boolean("financing_help_wanted").default(false),
+  buyingHelpWanted: boolean("buying_help_wanted").default(false),
+  userNotes: text("user_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDealSchema = createInsertSchema(deals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDeal = z.infer<typeof insertDealSchema>;
+export type Deal = typeof deals.$inferSelect;
+
 export const opportunities = pgTable("opportunities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  dealId: varchar("deal_id").references(() => propertyAnalyses.id, { onDelete: "set null" }),
+  leadId: varchar("lead_id").references(() => leads.id),
+  userId: varchar("user_id").references(() => users.id),
+  dealId: varchar("deal_id").references(() => deals.id),
   intentScore: integer("intent_score").default(0).notNull(),
   dealScore: integer("deal_score"),
-  // new, hot, warm, nurture, contacted, booked_call, preapproval_started,
-  // buyer_agency_signed, showing_booked, offer_submitted, closed, lost
-  status: varchar("status", { length: 30 }).default("new").notNull(),
-  assignedTo: varchar("assigned_to", { length: 100 }),
-  suggestedNextAction: text("suggested_next_action"),
-  source: varchar("source", { length: 50 }).default("deal_desk"),
+  status: text("status").default("new").notNull(),
+  assignedTo: text("assigned_to"),
+  suggestedNextAction: text("suggested_next_action").notNull(),
+  source: text("source").default("deal_desk").notNull(),
   financingHelp: boolean("financing_help").default(false),
   buyingHelp: boolean("buying_help").default(false),
-  lostReason: varchar("lost_reason", { length: 100 }),
+  lostReason: text("lost_reason"),
+  adminNotes: text("admin_notes"),
   notes: text("notes"),
-  // Submission details — live analyses carry no street address, so the
-  // opportunity is self-contained even without a linked analysis.
+  // Submission details — the opportunity is self-contained even without a
+  // linked deal/analysis (ported from the GitHub Deal Desk port).
   propertyAddress: text("property_address"),
   listingUrl: text("listing_url"),
   market: text("market"),
@@ -3803,12 +3843,60 @@ export const opportunities = pgTable("opportunities", {
   firstContactedAt: timestamp("first_contacted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_opportunities_status").on(table.status),
-  index("idx_opportunities_user").on(table.userId),
-  index("idx_opportunities_score").on(table.intentScore),
-  index("idx_opportunities_assigned").on(table.assignedTo),
-]);
+});
+
+export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertOpportunity = z.infer<typeof insertOpportunitySchema>;
+export type Opportunity = typeof opportunities.$inferSelect;
+
+export const opportunityHistory = pgTable("opportunity_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  opportunityId: varchar("opportunity_id").notNull().references(() => opportunities.id),
+  changedByUserId: varchar("changed_by_user_id"),
+  changedByName: text("changed_by_name"),
+  changeType: text("change_type").notNull(),
+  fromStatus: text("from_status"),
+  toStatus: text("to_status"),
+  fromAssignedTo: text("from_assigned_to"),
+  toAssignedTo: text("to_assigned_to"),
+  noteContent: text("note_content"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertOpportunityHistorySchema = createInsertSchema(opportunityHistory).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertOpportunityHistory = z.infer<typeof insertOpportunityHistorySchema>;
+export type OpportunityHistory = typeof opportunityHistory.$inferSelect;
+
+export const emailTriggers = pgTable("email_triggers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => leads.id),
+  userId: varchar("user_id").references(() => users.id),
+  opportunityId: varchar("opportunity_id").references(() => opportunities.id),
+  triggerType: text("trigger_type").notNull(),
+  payload: jsonb("payload"),
+  status: text("status").default("pending").notNull(),
+  sentAt: timestamp("sent_at"),
+  failureReason: text("failure_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+  failureReason: true,
+});
+export type InsertEmailTrigger = z.infer<typeof insertEmailTriggerSchema>;
+export type EmailTrigger = typeof emailTriggers.$inferSelect;
+
+// ── Ported Deal Desk Loop tables (GitHub port) ──────────────────────────────
 
 export const assignments = pgTable("assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -3845,22 +3933,6 @@ export const emailConsent = pgTable("email_consent", {
   index("idx_email_consent_user").on(table.userId, table.channel, table.createdAt),
 ]);
 
-// Queue consumed by the email worker / Clyde. Behavioural emails only.
-export const emailTriggers = pgTable("email_triggers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  opportunityId: varchar("opportunity_id").references(() => opportunities.id, { onDelete: "set null" }),
-  triggerType: varchar("trigger_type", { length: 60 }).notNull(),
-  payload: jsonb("payload"),
-  status: varchar("status", { length: 10 }).default("pending").notNull(), // pending, sent, skipped
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  sentAt: timestamp("sent_at"),
-}, (table) => [
-  index("idx_email_triggers_status").on(table.status, table.createdAt),
-  // One pending trigger of a given type per user — sweeps are idempotent
-  uniqueIndex("idx_email_triggers_dedupe").on(table.userId, table.triggerType).where(sql`status = 'pending'`),
-]);
-
 // One row per assumption per model run, with provenance. The gap between
 // defaults and user edits is the proprietary learning dataset.
 export const underwritingAssumptions = pgTable("underwriting_assumptions", {
@@ -3877,7 +3949,7 @@ export const underwritingAssumptions = pgTable("underwriting_assumptions", {
 
 export const opportunitiesRelations = relations(opportunities, ({ one, many }) => ({
   user: one(users, { fields: [opportunities.userId], references: [users.id] }),
-  deal: one(propertyAnalyses, { fields: [opportunities.dealId], references: [propertyAnalyses.id] }),
+  deal: one(deals, { fields: [opportunities.dealId], references: [deals.id] }),
   assignments: many(assignments),
   statusHistory: many(statusHistory),
 }));
@@ -3893,14 +3965,6 @@ export const statusHistoryRelations = relations(statusHistory, ({ one }) => ({
 export const emailTriggersRelations = relations(emailTriggers, ({ one }) => ({
   opportunity: one(opportunities, { fields: [emailTriggers.opportunityId], references: [opportunities.id] }),
 }));
-
-export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertOpportunity = z.infer<typeof insertOpportunitySchema>;
-export type Opportunity = typeof opportunities.$inferSelect;
 
 export const insertAssignmentSchema = createInsertSchema(assignments).omit({
   id: true,
@@ -3922,14 +3986,6 @@ export const insertEmailConsentSchema = createInsertSchema(emailConsent).omit({
 });
 export type InsertEmailConsent = z.infer<typeof insertEmailConsentSchema>;
 export type EmailConsent = typeof emailConsent.$inferSelect;
-
-export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
-  id: true,
-  createdAt: true,
-  sentAt: true,
-});
-export type InsertEmailTrigger = z.infer<typeof insertEmailTriggerSchema>;
-export type EmailTrigger = typeof emailTriggers.$inferSelect;
 
 export const insertUnderwritingAssumptionSchema = createInsertSchema(underwritingAssumptions).omit({
   id: true,
@@ -4008,3 +4064,10 @@ export const insertUnderwritingShareSchema = createInsertSchema(underwritingShar
 });
 export type InsertUnderwritingShare = z.infer<typeof insertUnderwritingShareSchema>;
 export type UnderwritingShare = typeof underwritingShares.$inferSelect;
+
+export const appSettings = pgTable("app_settings", {
+  key: varchar("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export type AppSetting = typeof appSettings.$inferSelect;

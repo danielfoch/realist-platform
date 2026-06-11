@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { apiRequest, queryClient as qc } from "@/lib/queryClient";
 import { authPath } from "@/lib/authReturn";
 import {
@@ -52,6 +53,7 @@ export default function RealtorNetwork() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const claimFormRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = usePersistedTab("realtorNetwork.activeTab", "markets", ["markets", "leads", "introductions"]);
 
   const { data: claims, isLoading: claimsLoading } = useQuery<RealtorMarketClaim[]>({
     queryKey: ["/api/realtor-network/my-claims"],
@@ -128,7 +130,7 @@ export default function RealtorNetwork() {
           )}
 
           {hasClaims ? (
-            <Tabs defaultValue="markets" className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList data-testid="realtor-tabs">
                 <TabsTrigger value="markets" data-testid="tab-markets">My Markets</TabsTrigger>
                 <TabsTrigger value="leads" data-testid="tab-leads">My Leads</TabsTrigger>

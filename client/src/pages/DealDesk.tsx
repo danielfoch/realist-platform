@@ -1,377 +1,463 @@
-import { useEffect, useRef, useState } from "react";
-import { Navigation } from "@/components/Navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { track } from "@/lib/analytics";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, ArrowRight, Building2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
+
+const formSchema = z.object({
+  name: z.string().min(1, "Full name is required"),
+  email: z.string().email("Enter a valid email address"),
+  phone: z.string().optional(),
+  address: z.string().min(1, "Property address is required"),
+  listingUrl: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+  market: z.string().optional(),
+  propertyType: z.string().optional(),
+  purchasePrice: z.coerce.number().positive("Must be a positive number").optional().or(z.literal("")),
+  estimatedRent: z.coerce.number().positive("Must be a positive number").optional().or(z.literal("")),
+  financingHelpWanted: z.boolean().default(false),
+  buyingHelpWanted: z.boolean().default(false),
+  userNotes: z.string().optional(),
+  consentEmail: z.boolean().refine(v => v === true, { message: "Email consent is required" }),
+  consentSms: z.boolean().default(false),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 const PROPERTY_TYPES = [
-  { value: "detached", label: "Detached" },
-  { value: "semi", label: "Semi-Detached" },
-  { value: "townhouse", label: "Townhouse" },
-  { value: "condo", label: "Condo" },
-  { value: "duplex", label: "Duplex" },
-  { value: "triplex", label: "Triplex" },
-  { value: "fourplex", label: "Fourplex" },
-  { value: "multiplex", label: "Multiplex" },
-  { value: "other", label: "Other" },
+  "Single Family",
+  "Duplex",
+  "Triplex",
+  "Fourplex",
+  "5+ Unit Multiplex",
+  "Condo / Strata",
+  "Townhouse",
+  "Mixed Use",
+  "Commercial",
 ];
 
-interface SubmitResult {
-  opportunityId: string;
-  dealId: string | null;
-  intentScore: number;
-  band: "hot" | "warm" | "nurture" | "audience";
-  dealScore: number | null;
-  suggestedNextAction: string | null;
-}
-
-function bandMessage(band: SubmitResult["band"]): { headline: string; detail: string } {
-  if (band === "hot") {
-    return {
-      headline: "You're at the top of our queue — expect a call shortly",
-      detail: "Our team prioritizes deals like this one. Keep your phone handy.",
-    };
-  }
-  if (band === "warm") {
-    return {
-      headline: "We'll reach out within 24 hours",
-      detail: "Your deal is in our review queue and a team member will follow up soon.",
-    };
-  }
-  return {
-    headline: "We'll be in touch — keep analyzing deals",
-    detail: "The more deals you analyze, the better we can match you with opportunities.",
-  };
-}
+const CANADIAN_MARKETS = [
+  "Toronto, ON",
+  "Vancouver, BC",
+  "Calgary, AB",
+  "Edmonton, AB",
+  "Ottawa, ON",
+  "Montreal, QC",
+  "Winnipeg, MB",
+  "Hamilton, ON",
+  "London, ON",
+  "Kitchener-Waterloo, ON",
+  "Other",
+];
 
 export default function DealDesk() {
-  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const { toast } = useToast();
+  const [submitted, setSubmitted] = useState(false);
+  const [result, setResult] = useState<{ status: string; suggestedNextAction: string; intentScore: number } | null>(null);
+  const searchString = useSearch();
 
-  const prefillAddress = params.get("address") ?? "";
-  const prefillMarket = params.get("market") ?? "";
-  const prefillPrice = params.get("price") ?? "";
-  const prefillRent = params.get("rent") ?? "";
-  const prefillAnalysisId = params.get("analysisId") ?? "";
-  const src = params.get("src") ?? "";
+  const params = new URLSearchParams(searchString);
+  const prefillAddress = params.get("address") || "";
+  const prefillDealId = params.get("dealId") || null;
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [propertyAddress, setPropertyAddress] = useState(prefillAddress);
-  const [listingUrl, setListingUrl] = useState("");
-  const [market, setMarket] = useState(prefillMarket);
-  const [propertyType, setPropertyType] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState(prefillPrice);
-  const [estimatedRent, setEstimatedRent] = useState(prefillRent);
-  const [financingHelp, setFinancingHelp] = useState(false);
-  const [buyingHelp, setBuyingHelp] = useState(false);
-  const [notes, setNotes] = useState("");
-  const [consentEmail, setConsentEmail] = useState(true);
-
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<SubmitResult | null>(null);
-
-  const trackedCta = useRef(false);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      address: prefillAddress,
+      listingUrl: "",
+      market: "",
+      propertyType: "",
+      purchasePrice: "",
+      estimatedRent: "",
+      financingHelpWanted: false,
+      buyingHelpWanted: false,
+      userNotes: "",
+      consentEmail: false,
+      consentSms: false,
+    },
+  });
 
   useEffect(() => {
-    const hasPrefill =
-      prefillAddress || prefillMarket || prefillPrice || prefillRent || prefillAnalysisId || src;
-    if (hasPrefill && !trackedCta.current) {
-      trackedCta.current = true;
-      track({ event: "deal_desk_cta_clicked", source: src });
+    if (prefillAddress) {
+      form.setValue("address", prefillAddress);
     }
-  }, [prefillAddress, prefillMarket, prefillPrice, prefillRent, prefillAnalysisId, src]);
+  }, [prefillAddress]);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
+  const mutation = useMutation({
+    mutationFn: async (values: FormValues) => {
+      const payload = {
+        ...values,
+        purchasePrice: values.purchasePrice ? Number(values.purchasePrice) : null,
+        estimatedRent: values.estimatedRent ? Number(values.estimatedRent) : null,
+        listingUrl: values.listingUrl || null,
+        dealDeskCtaClicked: !!prefillDealId,
+        analysisId: prefillDealId || null,
+      };
+      const res = await apiRequest("POST", "/api/deal-desk/submit", payload);
+      return (await res.json()) as { ok: boolean; status: string; suggestedNextAction: string; intentScore: number };
+    },
+    onSuccess: (data) => {
+      setResult({ status: data.status, suggestedNextAction: data.suggestedNextAction, intentScore: data.intentScore });
+      setSubmitted(true);
+    },
+    onError: () => {
+      toast({ title: "Submission failed", description: "Please try again or contact us directly.", variant: "destructive" });
+    },
+  });
 
-    if (!email.trim() || !propertyAddress.trim()) {
-      setError("Email and property address are required.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/deal-desk/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: name.trim() || undefined,
-          email: email.trim(),
-          phone: phone.trim() || undefined,
-          propertyAddress: propertyAddress.trim(),
-          listingUrl: listingUrl.trim() || undefined,
-          market: market.trim() || undefined,
-          propertyType: propertyType || undefined,
-          purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
-          estimatedRent: estimatedRent ? Number(estimatedRent) : undefined,
-          financingHelp,
-          buyingHelp,
-          notes: notes.trim() || undefined,
-          consentEmail,
-          analysisId: prefillAnalysisId || undefined,
-          sessionId: sessionStorage.getItem("_rsid") ?? undefined,
-          source: src || "deal_desk_page",
-        }),
-      });
-
-      const body = await res.json().catch(() => null);
-      if (!res.ok || !body?.success) {
-        throw new Error(body?.error || `Submission failed (${res.status})`);
-      }
-
-      const data = body.data as SubmitResult;
-      setResult(data);
-      track({
-        event: "deal_submitted",
-        band: data.band,
-        source: src || "deal_desk_page",
-        analysis_id: data.dealId ?? undefined,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  if (result) {
-    const msg = bandMessage(result.band);
+  if (submitted && result) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <main className="container mx-auto px-4 py-12 max-w-xl">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl" data-testid="text-deal-desk-success-title">Deal submitted ✓</CardTitle>
-              <CardDescription>{propertyAddress}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 dark:bg-emerald-950 dark:border-emerald-800">
-                <p className="font-semibold text-emerald-900 dark:text-emerald-100">{msg.headline}</p>
-                <p className="text-sm text-emerald-800 dark:text-emerald-200 mt-1">{msg.detail}</p>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full text-center" data-testid="deal-desk-success">
+          <CardHeader>
+            <div className="flex justify-center mb-4">
+              <CheckCircle className="h-16 w-16 text-green-500" />
+            </div>
+            <CardTitle className="text-2xl">Deal Submitted</CardTitle>
+            <CardDescription>We have received your deal and will be in touch shortly.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg bg-muted p-4 space-y-2 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Lead score</span>
+                <Badge variant={result.status === "hot" ? "destructive" : result.status === "warm" ? "default" : "secondary"} data-testid="result-status">
+                  {result.intentScore} — {result.status.toUpperCase()}
+                </Badge>
               </div>
-              {result.suggestedNextAction && (
-                <p className="text-sm text-muted-foreground">
-                  Suggested next step: {result.suggestedNextAction}
-                </p>
-              )}
-              {result.dealScore !== null && (
-                <p className="text-xs text-muted-foreground">
-                  Deal score {result.dealScore} · Intent score {result.intentScore}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </main>
+              <p className="text-sm font-medium" data-testid="result-next-action">{result.suggestedNextAction}</p>
+            </div>
+            <Link href="/">
+              <Button className="w-full" data-testid="button-back-home">
+                Back to Realist.ca <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto px-4 py-12 max-w-xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl" data-testid="text-deal-desk-title">Submit to Deal Desk</CardTitle>
-            <CardDescription>
-              Send us a deal you're serious about and our team will review it with you.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="dd-name">Name</Label>
-                  <Input
-                    id="dd-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
-                    data-testid="input-deal-desk-name"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="dd-email">Email *</Label>
-                  <Input
-                    id="dd-email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    data-testid="input-deal-desk-email"
-                  />
-                </div>
-              </div>
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="mb-8 space-y-2">
+          <div className="flex items-center gap-2 mb-1">
+            <Building2 className="h-6 w-6 text-primary" />
+            <span className="text-sm font-semibold text-primary tracking-wide uppercase">Deal Desk</span>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight">Submit Your Deal</h1>
+          <p className="text-muted-foreground">
+            Share a deal you are analyzing and our team will review it, score it, and reach out about next steps.
+          </p>
+        </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="dd-phone">Phone</Label>
-                <Input
-                  id="dd-phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="(416) 555-0123"
-                  data-testid="input-deal-desk-phone"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(v => mutation.mutate(v))} className="space-y-6" data-testid="form-deal-desk">
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Your Contact Info</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Jane Smith" data-testid="input-name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="jane@example.com" data-testid="input-email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                      <FormControl>
+                        <Input type="tel" placeholder="+1 416 555 0100" data-testid="input-phone" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="dd-address">Property address *</Label>
-                <Input
-                  id="dd-address"
-                  required
-                  value={propertyAddress}
-                  onChange={(e) => setPropertyAddress(e.target.value)}
-                  placeholder="123 Main St, Toronto, ON"
-                  data-testid="input-deal-desk-address"
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Deal Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Property address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="123 Main St, Toronto, ON" data-testid="input-address" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="dd-listing-url">Listing URL</Label>
-                <Input
-                  id="dd-listing-url"
-                  type="url"
-                  value={listingUrl}
-                  onChange={(e) => setListingUrl(e.target.value)}
-                  placeholder="https://..."
-                  data-testid="input-deal-desk-listing-url"
+                <FormField
+                  control={form.control}
+                  name="listingUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Listing URL <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://www.realtor.ca/..." data-testid="input-listing-url" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="dd-market">Market / City</Label>
-                  <Input
-                    id="dd-market"
-                    value={market}
-                    onChange={(e) => setMarket(e.target.value)}
-                    placeholder="Toronto"
-                    data-testid="input-deal-desk-market"
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="market"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Market <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-market">
+                              <SelectValue placeholder="Select market" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {CANADIAN_MARKETS.map(m => (
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="propertyType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Property type <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-property-type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {PROPERTY_TYPES.map(t => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="dd-property-type">Property type</Label>
-                  <Select value={propertyType} onValueChange={setPropertyType}>
-                    <SelectTrigger id="dd-property-type" data-testid="select-deal-desk-property-type">
-                      <SelectValue placeholder="Select type…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROPERTY_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="dd-price">Purchase price ($)</Label>
-                  <Input
-                    id="dd-price"
-                    type="number"
-                    min="0"
-                    value={purchasePrice}
-                    onChange={(e) => setPurchasePrice(e.target.value)}
-                    placeholder="850000"
-                    data-testid="input-deal-desk-price"
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="purchasePrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Purchase price <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="750000" data-testid="input-purchase-price" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="estimatedRent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estimated rent / mo <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="3500" data-testid="input-estimated-rent" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="dd-rent">Estimated monthly rent ($)</Label>
-                  <Input
-                    id="dd-rent"
-                    type="number"
-                    min="0"
-                    value={estimatedRent}
-                    onChange={(e) => setEstimatedRent(e.target.value)}
-                    placeholder="3200"
-                    data-testid="input-deal-desk-rent"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2.5 pt-1">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="dd-financing"
-                    checked={financingHelp}
-                    onCheckedChange={(checked) => setFinancingHelp(checked === true)}
-                    data-testid="checkbox-deal-desk-financing"
-                  />
-                  <Label htmlFor="dd-financing" className="font-normal cursor-pointer">
-                    I want financing help
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="dd-buying"
-                    checked={buyingHelp}
-                    onCheckedChange={(checked) => setBuyingHelp(checked === true)}
-                    data-testid="checkbox-deal-desk-buying"
-                  />
-                  <Label htmlFor="dd-buying" className="font-normal cursor-pointer">
-                    I want help buying this property
-                  </Label>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="dd-notes">Notes</Label>
-                <Textarea
-                  id="dd-notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={4}
-                  maxLength={1000}
-                  placeholder="Anything we should know about this deal…"
-                  className="resize-none"
-                  data-testid="input-deal-desk-notes"
+                <FormField
+                  control={form.control}
+                  name="userNotes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Tell us more about the deal, your goals, or any questions you have..."
+                          className="resize-none"
+                          rows={3}
+                          data-testid="textarea-notes"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="dd-consent"
-                  checked={consentEmail}
-                  onCheckedChange={(checked) => setConsentEmail(checked === true)}
-                  data-testid="checkbox-deal-desk-consent"
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">What kind of help do you need?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <FormField
+                  control={form.control}
+                  name="financingHelpWanted"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-financing-help"
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal cursor-pointer">I want help with financing</FormLabel>
+                    </FormItem>
+                  )}
                 />
-                <Label htmlFor="dd-consent" className="font-normal cursor-pointer">
-                  Email me about this deal and similar opportunities
-                </Label>
-              </div>
+                <FormField
+                  control={form.control}
+                  name="buyingHelpWanted"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-buying-help"
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal cursor-pointer">I want help finding or buying a property</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
 
-              {error && (
-                <div
-                  className="p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-800 dark:bg-red-950 dark:border-red-800 dark:text-red-200"
-                  role="alert"
-                >
-                  {error}
-                </div>
-              )}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Consent</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <FormField
+                  control={form.control}
+                  name="consentEmail"
+                  render={({ field }) => (
+                    <FormItem className="flex items-start gap-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-consent-email"
+                        />
+                      </FormControl>
+                      <div className="space-y-1">
+                        <FormLabel className="font-normal cursor-pointer">
+                          I agree to receive follow-up emails about my deal and relevant market insights from Realist.ca.
+                        </FormLabel>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="consentSms"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-consent-sms"
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal cursor-pointer">
+                        I also consent to SMS follow-ups <span className="text-muted-foreground">(optional)</span>
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
 
-              <Button type="submit" className="w-full" disabled={submitting} data-testid="button-deal-desk-submit">
-                {submitting ? "Submitting…" : "Submit to Deal Desk"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </main>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={mutation.isPending}
+              data-testid="button-submit-deal"
+            >
+              {mutation.isPending ? "Submitting..." : "Submit Deal to Deal Desk"}
+              {!mutation.isPending && <ArrowRight className="ml-2 h-4 w-4" />}
+            </Button>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }

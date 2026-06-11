@@ -12,6 +12,7 @@ import { SEO } from "@/components/SEO";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { Link } from "wouter";
 import { track } from "@/lib/analytics";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
@@ -662,6 +663,7 @@ function LeaderboardTrendCharts({ data }: { data?: LeaderboardChartsResponse }) 
 }
 
 export default function Leaderboard() {
+  const [activeTab, setActiveTab] = usePersistedTab("leaderboard.activeTab", "deal-analysis", ["deal-analysis", "community"]);
   const [period, setPeriod] = useState<string>("all-time");
   const [cityFilter, setCityFilter] = useState<string>("");
 
@@ -759,7 +761,7 @@ export default function Leaderboard() {
               </div>
             ) : null}
 
-            <Tabs defaultValue="deal-analysis" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid w-full grid-cols-2" data-testid="tabs-leaderboard">
                 <TabsTrigger value="deal-analysis" data-testid="tab-deal-analysis">
                   <BarChart3 className="h-4 w-4 mr-2" />

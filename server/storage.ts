@@ -202,6 +202,21 @@ import {
   type InsertAreaScore,
   type SavedReport,
   type InsertSavedReport,
+  deals,
+  type Deal,
+  type InsertDeal,
+  opportunities,
+  type Opportunity,
+  type InsertOpportunity,
+  opportunityHistory,
+  type OpportunityHistory,
+  type InsertOpportunityHistory,
+  emailTriggers,
+  type EmailTrigger,
+  type InsertEmailTrigger,
+  userActivityEvents,
+  appSettings,
+  type AppSetting,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -542,6 +557,31 @@ export interface IStorage {
   getSavedReportByToken(token: string): Promise<SavedReport | undefined>;
   getSavedReportsByUser(userId: string): Promise<SavedReport[]>;
   deleteSavedReport(id: string): Promise<void>;
+
+  // Deal Desk Loop
+  upsertLeadByEmail(data: { name: string; email: string; phone?: string | null; consent: boolean; consentSms: boolean; leadSource: string }): Promise<Lead>;
+  createDeal(deal: InsertDeal): Promise<Deal>;
+  listDeals(): Promise<Deal[]>;
+  createOpportunity(opp: InsertOpportunity): Promise<Opportunity>;
+  getOpportunityById(id: string): Promise<Opportunity | undefined>;
+  listOpportunities(filters: { status?: string }): Promise<any[]>;
+  updateOpportunityStatus(id: string, updates: { status: string; assignedTo?: string; lostReason?: string; adminNotes?: string }, historyMeta?: { changedByUserId?: string | null; changedByName?: string | null; prevStatus?: string; prevAssignedTo?: string | null; prevNotes?: string | null }): Promise<Opportunity | undefined>;
+  getDealDeskStats(): Promise<{
+    hot: number; warm: number; new: number; lost: number; total: number;
+    callsBooked: number; dealsAnalyzed: number;
+    lostByReason: { reason: string; count: number }[];
+  }>;
+  getDealDeskActivityFeed(limit: number): Promise<any[]>;
+  createOpportunityHistory(entry: InsertOpportunityHistory): Promise<OpportunityHistory>;
+  getOpportunityHistory(opportunityId: string): Promise<OpportunityHistory[]>;
+  createEmailTrigger(trigger: InsertEmailTrigger): Promise<EmailTrigger>;
+  listPendingEmailTriggers(): Promise<EmailTrigger[]>;
+  updateEmailTriggerStatus(id: string, status: string, sentAt?: Date, failureReason?: string): Promise<void>;
+  listEmailTriggers(limit: number): Promise<EmailTrigger[]>;
+  retryEmailTrigger(id: string): Promise<void>;
+  listRecentActivityEvents(limit: number): Promise<any[]>;
+  getAppSetting(key: string): Promise<string | null>;
+  setAppSetting(key: string, value: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2472,6 +2512,233 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSavedReport(id: string): Promise<void> {
     await db.delete(savedReports).where(eq(savedReports.id, id));
+  }
+
+  // ── Deal Desk Loop ──────────────────────────────────────────────────────────
+
+  async upsertLeadByEmail(data: { name: string; email: string; phone?: string | null; consent: boolean; consentSms: boolean; leadSource: string }): Promise<Lead> {
+    const existing = await this.getLeadByEmail(data.email);
+    if (existing) {
+      const [updated] = await db.update(leads)
+        .set({
+          name: data.name,
+          ...(data.phone != null ? { phone: data.phone } : {}),
+          consent: data.consent || (existing.consent ?? false),
+          consentSms: data.consentSms || (existing.consentSms ?? false),
+          leadSource: data.leadSource,
+        })
+        .where(eq(leads.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [lead] = await db.insert(leads).values({
+      name: data.name,
+      email: data.email,
+      phone: data.phone || null,
+      consent: data.consent,
+      consentSms: data.consentSms,
+      leadSource: data.leadSource,
+    }).returning();
+    return lead;
+  }
+
+  async createDeal(deal: InsertDeal): Promise<Deal> {
+    const [d] = await db.insert(deals).values(deal).returning();
+    return d;
+  }
+
+  async listDeals(): Promise<Deal[]> {
+    return db.select().from(deals).orderBy(desc(deals.createdAt));
+  }
+
+  async createOpportunity(opp: InsertOpportunity): Promise<Opportunity> {
+    const [o] = await db.insert(opportunities).values(opp).returning();
+    return o;
+  }
+
+  async getOpportunityById(id: string): Promise<Opportunity | undefined> {
+    const [o] = await db.select().from(opportunities).where(eq(opportunities.id, id));
+    return o ?? undefined;
+  }
+
+  async listOpportunities(filters: { status?: string }): Promise<any[]> {
+    const base = db
+      .select({
+        opportunity: opportunities,
+        lead: leads,
+        deal: deals,
+      })
+      .from(opportunities)
+      .leftJoin(leads, eq(opportunities.leadId, leads.id))
+      .leftJoin(deals, eq(opportunities.dealId, deals.id));
+
+    if (filters.status) {
+      return base.where(eq(opportunities.status, filters.status)).orderBy(desc(opportunities.createdAt));
+    }
+    return base.orderBy(desc(opportunities.createdAt));
+  }
+
+  async updateOpportunityStatus(
+    id: string,
+    updates: { status: string; assignedTo?: string; lostReason?: string; adminNotes?: string },
+    historyMeta?: { changedByUserId?: string | null; changedByName?: string | null; prevStatus?: string; prevAssignedTo?: string | null; prevNotes?: string | null },
+  ): Promise<Opportunity | undefined> {
+    const [updated] = await db.update(opportunities)
+      .set({
+        status: updates.status,
+        ...(updates.assignedTo !== undefined ? { assignedTo: updates.assignedTo } : {}),
+        ...(updates.lostReason !== undefined ? { lostReason: updates.lostReason } : {}),
+        ...(updates.adminNotes !== undefined ? { adminNotes: updates.adminNotes } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(opportunities.id, id))
+      .returning();
+    if (!updated) return undefined;
+
+    const meta = historyMeta ?? {};
+
+    if (meta.prevStatus !== undefined && meta.prevStatus !== updates.status) {
+      await db.insert(opportunityHistory).values({
+        opportunityId: id,
+        changedByUserId: meta.changedByUserId ?? null,
+        changedByName: meta.changedByName ?? null,
+        changeType: "status_changed",
+        fromStatus: meta.prevStatus,
+        toStatus: updates.status,
+      });
+    }
+
+    if (updates.assignedTo !== undefined && meta.prevAssignedTo !== updates.assignedTo) {
+      await db.insert(opportunityHistory).values({
+        opportunityId: id,
+        changedByUserId: meta.changedByUserId ?? null,
+        changedByName: meta.changedByName ?? null,
+        changeType: "assigned",
+        fromAssignedTo: meta.prevAssignedTo ?? null,
+        toAssignedTo: updates.assignedTo,
+      });
+    }
+
+    if (updates.adminNotes !== undefined && meta.prevNotes !== updates.adminNotes && updates.adminNotes) {
+      await db.insert(opportunityHistory).values({
+        opportunityId: id,
+        changedByUserId: meta.changedByUserId ?? null,
+        changedByName: meta.changedByName ?? null,
+        changeType: "note_added",
+        noteContent: updates.adminNotes,
+      });
+    }
+
+    return updated;
+  }
+
+  async createOpportunityHistory(entry: InsertOpportunityHistory): Promise<OpportunityHistory> {
+    const [h] = await db.insert(opportunityHistory).values(entry).returning();
+    return h;
+  }
+
+  async getOpportunityHistory(opportunityId: string): Promise<OpportunityHistory[]> {
+    return db.select()
+      .from(opportunityHistory)
+      .where(eq(opportunityHistory.opportunityId, opportunityId))
+      .orderBy(asc(opportunityHistory.createdAt));
+  }
+
+  async getDealDeskStats(): Promise<{
+    hot: number; warm: number; new: number; lost: number; total: number;
+    callsBooked: number; dealsAnalyzed: number;
+    lostByReason: { reason: string; count: number }[];
+  }> {
+    const [statusRows, dealsCount, lostByReasonRows] = await Promise.all([
+      db.select({ status: opportunities.status, count: sql<number>`count(*)::int` })
+        .from(opportunities)
+        .groupBy(opportunities.status),
+      db.select({ count: sql<number>`count(*)::int` }).from(deals),
+      db.select({ reason: opportunities.lostReason, count: sql<number>`count(*)::int` })
+        .from(opportunities)
+        .where(and(eq(opportunities.status, "lost"), sql`${opportunities.lostReason} is not null`))
+        .groupBy(opportunities.lostReason),
+    ]);
+
+    const map: Record<string, number> = {};
+    let total = 0;
+    for (const r of statusRows) {
+      map[r.status] = r.count;
+      total += r.count;
+    }
+    return {
+      hot: map["hot"] ?? 0,
+      warm: map["warm"] ?? 0,
+      new: map["new"] ?? 0,
+      lost: map["lost"] ?? 0,
+      total,
+      callsBooked: map["booked_call"] ?? 0,
+      dealsAnalyzed: dealsCount[0]?.count ?? 0,
+      lostByReason: lostByReasonRows.map(r => ({ reason: r.reason ?? "Unknown", count: r.count })),
+    };
+  }
+
+  async getDealDeskActivityFeed(limit: number): Promise<any[]> {
+    return db.select({
+      id: userActivityEvents.id,
+      eventName: userActivityEvents.eventName,
+      eventTimestamp: userActivityEvents.eventTimestamp,
+      sourcePage: userActivityEvents.sourcePage,
+      dealId: userActivityEvents.dealId,
+      source: userActivityEvents.source,
+      metadata: userActivityEvents.metadata,
+    })
+      .from(userActivityEvents)
+      .where(sql`${userActivityEvents.source} = 'deal_desk' OR ${userActivityEvents.source} = 'deal_desk_admin' OR ${userActivityEvents.eventName} IN ('deal_submitted','crm_status_updated')`)
+      .orderBy(desc(userActivityEvents.eventTimestamp))
+      .limit(limit);
+  }
+
+  async createEmailTrigger(trigger: InsertEmailTrigger): Promise<EmailTrigger> {
+    const [t] = await db.insert(emailTriggers).values(trigger).returning();
+    return t;
+  }
+
+  async listPendingEmailTriggers(): Promise<EmailTrigger[]> {
+    return db.select().from(emailTriggers).where(eq(emailTriggers.status, "pending")).orderBy(emailTriggers.createdAt);
+  }
+
+  async updateEmailTriggerStatus(id: string, status: string, sentAt?: Date, failureReason?: string): Promise<void> {
+    await db.update(emailTriggers).set({
+      status,
+      ...(sentAt ? { sentAt } : {}),
+      ...(failureReason ? { failureReason } : {}),
+    }).where(eq(emailTriggers.id, id));
+  }
+
+  async listEmailTriggers(limit: number): Promise<EmailTrigger[]> {
+    return db.select().from(emailTriggers).orderBy(desc(emailTriggers.createdAt)).limit(limit);
+  }
+
+  async retryEmailTrigger(id: string): Promise<void> {
+    await db.update(emailTriggers).set({
+      status: "pending",
+      failureReason: null,
+      sentAt: null,
+    }).where(eq(emailTriggers.id, id));
+  }
+
+  async listRecentActivityEvents(limit: number): Promise<any[]> {
+    return db.select()
+      .from(userActivityEvents)
+      .orderBy(desc(userActivityEvents.eventTimestamp))
+      .limit(limit);
+  }
+
+  async getAppSetting(key: string): Promise<string | null> {
+    const [row] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return row?.value ?? null;
+  }
+
+  async setAppSetting(key: string, value: string): Promise<void> {
+    await db.insert(appSettings)
+      .values({ key, value, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
   }
 }
 

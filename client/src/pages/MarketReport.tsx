@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -192,7 +193,7 @@ export default function MarketReport() {
   const [selectedProvince, setSelectedProvince] = useState<string>("all");
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [compareCities, setCompareCities] = useState<{ city: string; province: string }[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeTab, setActiveTab] = usePersistedTab("marketReport.activeTab", "overview", ["overview", "yields", "intelligence", "compare"]);
 
   const { data: latestData, isLoading: loadingLatest } = useQuery<{
     snapshots: MarketSnapshot[];
@@ -433,6 +434,23 @@ export default function MarketReport() {
           <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
           <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link href="/insights/market-report/homebench-ai-realtor-benchmark">
+              <Card className="h-full hover:border-stone-900/60 hover:shadow-sm cursor-pointer transition-all border-stone-900/40 bg-stone-950 text-stone-50" data-testid="card-macro-homebench">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-amber-300/20 flex items-center justify-center">
+                      <BarChart3 className="h-4.5 w-4.5 text-amber-300" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px] border-amber-300/40 bg-amber-300/10 text-amber-200">New · Homies × Realist</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">HomeBench — AI Benchmark for Realtors</h3>
+                  <p className="text-xs text-stone-300 mb-2">
+                    Fable 5, GPT 5.5, Opus 4.8 and Gemini 3.1 scored on the work agents actually do — offers, showings, CRM, email, property research, marketing and valuation.
+                  </p>
+                  <span className="text-xs text-amber-300 font-medium">See the leaderboard →</span>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/insights/statcan-labour-force-survey-may-2026">
               <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-emerald-300/60" data-testid="card-macro-lfs-may-2026">
                 <CardContent className="p-5">
@@ -547,6 +565,23 @@ export default function MarketReport() {
                   <h3 className="font-bold text-sm mb-1">Financial Stability Report 2026</h3>
                   <p className="text-xs text-muted-foreground mb-2">
                     Bank of Canada read-through on mortgage arrears, renewal shock, Toronto stress pockets, valuations, and funding-market risk.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/reports/equifax-consumer-credit-trends-q1-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-sky-300/60" data-testid="card-macro-equifax-q1-2026">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                      <FileText className="h-4.5 w-4.5 text-sky-600 dark:text-sky-400" />
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">Equifax · Q1 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Equifax Consumer Credit Trends Q1 2026</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Ontario and BC mortgage holders are driving consumer-credit stress as insolvencies rise and renewal pressure persists.
                   </p>
                   <span className="text-xs text-primary font-medium">View Report →</span>
                 </CardContent>

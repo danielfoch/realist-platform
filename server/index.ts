@@ -388,6 +388,8 @@ async function ensureAppTables() {
     await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS latest_private_note_at timestamp`);
     await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS pinned_comment_count integer NOT NULL DEFAULT 0`);
     await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS reported_comment_count integer NOT NULL DEFAULT 0`);
+    await db.execute(sql`ALTER TABLE email_triggers ADD COLUMN IF NOT EXISTS sent_at timestamp`);
+    await db.execute(sql`ALTER TABLE email_triggers ADD COLUMN IF NOT EXISTS failure_reason text`);
     log("App reporting tables ready", "db");
   } catch (error: any) {
     log(`Failed to ensure app tables: ${error.message}`, "db");
@@ -595,6 +597,10 @@ async function ensureAppTables() {
           log(`Analysis backfill error: ${err.message}`, "analysis-backfill");
         }
       })();
+      import("./emailQueue").then(({ startEmailQueueWorker }) => {
+        startEmailQueueWorker(30_000);
+        log("Email queue worker started (30s interval)", "email-queue");
+      }).catch((err) => log(`Email queue worker error: ${err.message}`, "email-queue"));
       import("./weeklyDigest").then(({ scheduleWeeklyDigest }) => {
         scheduleWeeklyDigest();
       }).catch((err) => log(`Weekly digest schedule error: ${err.message}`, "digest"));

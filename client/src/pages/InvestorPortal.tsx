@@ -14,13 +14,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import { authPath } from "@/lib/authReturn";
 import { apiRequest } from "@/lib/queryClient";
 import { Link, useLocation } from "wouter";
 import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink, Settings, GitCompare, MoreHorizontal, Search, Compass, Bookmark, ArrowRight, Clock3, Target } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { GoogleConnectionCard } from "@/components/GoogleConnectionCard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { InvestorProfile, InvestorKyc, PortfolioProperty, SavedDeal } from "@shared/schema";
 import {
   removeRecentViewedListingSignal,
@@ -124,6 +125,7 @@ export default function InvestorPortal() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [addPropertyOpen, setAddPropertyOpen] = useState(false);
+  const [activeTab, setActiveTab] = usePersistedTab("investorPortal.activeTab", "workspace", ["workspace", "saved-deals", "portfolio", "profile", "kyc", "settings"]);
 
   const { data: profile, isLoading: profileLoading } = useQuery<InvestorProfile | null>({
     queryKey: ["/api/investor/profile"],
@@ -352,7 +354,7 @@ export default function InvestorPortal() {
             </Card>
           </div>
 
-          <Tabs defaultValue="workspace" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList data-testid="investor-tabs">
               <TabsTrigger value="workspace" data-testid="tab-workspace">Workspace</TabsTrigger>
               <TabsTrigger value="saved-deals" data-testid="tab-saved-deals">Analyses</TabsTrigger>

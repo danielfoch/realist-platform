@@ -24,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import {
   getRecentViewedListingSignals,
   getSavedSearchSignals,
@@ -1405,7 +1406,7 @@ export default function CapRates() {
   const [showMobileList, setShowMobileList] = useState(false);
   const [mapLayers, setMapLayers] = useState<MapLayer[]>(DEFAULT_LAYERS);
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | null>(null);
-  const [detailTab, setDetailTab] = useState<string>("overview");
+  const [detailTab, setDetailTab] = usePersistedTab("capRatesExplorer.activeTab", "overview", ["overview", "underwrite", "community"]);
   const [aggregatesMap, setAggregatesMap] = useState<Record<string, ListingAnalysisAggregate>>({});
   const listingRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const searchInProgress = useRef(false);

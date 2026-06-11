@@ -1,0 +1,179 @@
+Use this as the Replit prompt:
+
+You are working on Realist.ca. Build the first version of the Realist Event + Deal Desk Loop.
+
+Goal:
+Turn Realist from a passive underwriting tool into a transaction funnel. Every meaningful underwriting action should be logged, scored, and turned into either a Deal Desk opportunity, an email nurture trigger, or a dashboard insight.
+
+Build the simplest working version first. Do not overbuild.
+
+Core objects to create:
+1. User
+- id
+- email
+- phone
+- name
+- consent_email
+- consent_sms
+- created_at
+- updated_at
+
+2. Deal
+- id
+- user_id
+- address
+- listing_url
+- market
+- property_type
+- purchase_price
+- estimated_rent
+- cap_rate
+- cash_flow
+- target_return_hit boolean
+- underwriting_url/report_url if available
+- created_at
+- updated_at
+
+3. ActivityEvent
+- id
+- user_id nullable
+- anonymous_id nullable
+- deal_id nullable
+- event_type
+- page_url
+- source
+- metadata JSON
+- created_at
+
+Event types to support:
+- model_run
+- deal_saved
+- report_exported
+- financing_changed
+- market_researched
+- return_threshold_hit
+- deal_desk_cta_clicked
+- deal_submitted
+- call_booked
+- crm_status_updated
+- lost_reason_added
+
+4. Opportunity
+- id
+- user_id
+- deal_id nullable
+- intent_score
+- status
+- assigned_to
+- suggested_next_action
+- source
+- lost_reason nullable
+- created_at
+- updated_at
+
+Statuses:
+- new
+- hot
+- warm
+- nurture
+- contacted
+- booked_call
+- preapproval_started
+- buyer_agency_signed
+- showing_booked
+- offer_submitted
+- closed
+- lost
+
+Build these product surfaces:
+
+1. Event capture API
+Create an endpoint that frontend pages can call to log ActivityEvents. It should accept user_id or anonymous_id, event_type, page_url, source, deal_id, and metadata.
+
+2. Deal Desk submission API/form
+Create a basic “Submit to Deal Desk” flow that collects:
+- name
+- email
+- phone optional
+- property address
+- listing URL optional
+- market
+- property type
+- purchase price optional
+- estimated rent optional
+- financing help wanted yes/no
+- buying help wanted yes/no
+- user notes
+- email consent checkbox
+
+When submitted:
+- create/update User
+- create Deal
+- create ActivityEvent deal_submitted
+- create Opportunity
+- calculate initial intent_score
+- assign suggested_next_action
+
+3. Lead scoring v1
+Create a simple deterministic scoring function:
+- deal_submitted: +40
+- deal_desk_cta_clicked: +20
+- report_exported: +15
+- deal_saved: +15
+- financing_changed: +10
+- return_threshold_hit: +20
+- repeat market searches: +10
+- phone provided: +10
+- financing help wanted: +15
+- buying help wanted: +15
+
+Bands:
+- 80+ = hot, suggested_next_action: “Call within 5 minutes”
+- 50-79 = warm, suggested_next_action: “Email/SMS/call within 24 hours”
+- 20-49 = nurture, suggested_next_action: “Send market/deal education sequence”
+- under 20 = audience, suggested_next_action: “Newsletter/retargeting only”
+
+4. Internal Deal Desk dashboard
+Create an admin/internal page showing:
+- hot opportunities
+- warm opportunities
+- new Deal Desk submissions
+- deals analyzed
+- calls booked
+- active transaction opportunities
+- lost opportunities by reason
+- recent ActivityEvents
+
+Each Opportunity row should show:
+- user name/email/phone
+- deal address/market
+- intent score
+- status
+- assigned_to
+- suggested_next_action
+- created_at
+- latest activity
+
+Allow status updates from the dashboard. When status changes, create ActivityEvent crm_status_updated.
+
+5. Export/API for Clyde
+Create a simple CSV export or JSON endpoint for:
+- users
+- deals
+- opportunities
+- activity events
+
+This must be easy for an external automation agent to read later for email campaigns, weekly reports, lead routing, and AI deal review drafts.
+
+6. Email campaign hooks, not full campaigns yet
+For now, create a table or event queue called EmailTrigger with:
+- id
+- user_id
+- opportunity_id nullable
+- trigger_type
+- payload JSON
+- status pending/sent/skipped
+- created_at
+
+Create pending EmailTrigger records for:
+- hot_lead_immediate_followup
