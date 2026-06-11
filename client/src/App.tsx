@@ -115,6 +115,7 @@ import ReportsHub from "@/pages/ReportsHub";
 import ReportPage from "@/pages/ReportPage";
 import IrccImmigrationDashboardReport from "@/pages/IrccImmigrationDashboardReport";
 import HomeBenchReport from "@/pages/HomeBenchReport";
+import RealBenchReport from "@/pages/RealBenchReport";
 import MarketsHub from "@/pages/MarketsHub";
 import ProgrammaticMarketPage from "@/pages/ProgrammaticMarketPage";
 import StrategiesHub from "@/pages/StrategiesHub";
@@ -220,6 +221,7 @@ function Router() {
       <Route path="/insights/guides/:slug" component={GuidePage} />
       <Route path="/reports" component={ReportsHub} />
       <Route path="/reports/canada-immigration-dashboard-2026" component={IrccImmigrationDashboardReport} />
+      <Route path="/reports/realbench-ai-realtor-benchmark" component={RealBenchReport} />
       <Route path="/insights/market-report/homebench-ai-realtor-benchmark" component={HomeBenchReport} />
       <Route path="/reports/homebench-ai-realtor-benchmark">{() => <Redirect to="/insights/market-report/homebench-ai-realtor-benchmark" />}</Route>
       <Route path="/reports/:slug" component={ReportPage} />
