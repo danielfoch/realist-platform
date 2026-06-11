@@ -21,6 +21,7 @@ import BlogPost from "@/pages/BlogPost";
 import Shop from "@/pages/Shop";
 import Compare from "@/pages/Compare";
 import Podcast from "@/pages/Podcast";
+import PodcastEpisodeDetail from "@/pages/PodcastEpisodeDetail";
 import Admin from "@/pages/Admin";
 import AdminDealDesk from "@/pages/AdminDealDesk";
 import AdminEvents from "@/pages/AdminEvents";
@@ -228,6 +229,7 @@ function Router() {
       {/* New Insights routes */}
       <Route path="/insights" component={InsightsHub} />
       <Route path="/insights/podcast" component={Podcast} />
+      <Route path="/insights/podcast/:slug" component={PodcastEpisodeDetail} />
       <Route path="/insights/blog" component={Blog} />
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />
