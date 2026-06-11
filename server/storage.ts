@@ -492,11 +492,11 @@ export interface IStorage {
   markCommentHelpful(commentId: string, userId: string): Promise<boolean>;
   reportComment(commentId: string, userId: string): Promise<boolean>;
 
-
   upsertMarketSnapshot(data: InsertMarketSnapshot): Promise<MarketSnapshot>;
   getMarketSnapshots(city?: string, province?: string): Promise<MarketSnapshot[]>;
   getLatestMarketSnapshots(): Promise<MarketSnapshot[]>;
   getMarketSnapshotMonths(): Promise<string[]>;
+
   insertDdfListingSnapshot(data: InsertDdfListingSnapshot): Promise<DdfListingSnapshot>;
   insertDdfListingSnapshotsBatch(data: InsertDdfListingSnapshot[]): Promise<number>;
   getDdfSnapshotsByCity(city: string, month: string): Promise<DdfListingSnapshot[]>;
@@ -583,7 +583,6 @@ export interface IStorage {
   getAppSetting(key: string): Promise<string | null>;
   setAppSetting(key: string, value: string): Promise<void>;
 }
-
 
 export class DatabaseStorage implements IStorage {
   async createLead(insertLead: InsertLead): Promise<Lead> {
@@ -2092,7 +2091,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertMarketSnapshot(data: InsertMarketSnapshot): Promise<MarketSnapshot> {
-
     const [existing] = await db.select().from(marketSnapshots)
       .where(and(
         eq(marketSnapshots.city, data.city),
@@ -2138,7 +2136,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async insertDdfListingSnapshot(data: InsertDdfListingSnapshot): Promise<DdfListingSnapshot> {
-
     const [result] = await db.insert(ddfListingSnapshots).values(data).returning();
     return result;
   }
@@ -2519,7 +2516,6 @@ export class DatabaseStorage implements IStorage {
 
   // ── Deal Desk Loop ──────────────────────────────────────────────────────────
 
-
   async upsertLeadByEmail(data: { name: string; email: string; phone?: string | null; consent: boolean; consentSms: boolean; leadSource: string }): Promise<Lead> {
     const existing = await this.getLeadByEmail(data.email);
     if (existing) {
@@ -2745,6 +2741,5 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
   }
 }
-
 
 export const storage = new DatabaseStorage();

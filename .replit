@@ -65,4 +65,4 @@ VITE_SHOPIFY_STOREFRONT_ACCESS_TOKEN = "a1b026dcf583784ef7f274d93c5c97e3"
 
 [postMerge]
 path = "scripts/post-merge.sh"
-timeoutMs = 20000
+timeoutMs = 120000

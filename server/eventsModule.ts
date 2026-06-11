@@ -34,12 +34,6 @@ declare module "express-session" {
   }
 }
 
-declare module "express-session" {
-  interface SessionData {
-    userId?: string;
-  }
-}
-
 const agendaSectionSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional().default(""),
