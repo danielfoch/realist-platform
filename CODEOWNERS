@@ -1,0 +1,12 @@
+# Every PR requires Dan's review once branch protection enables
+# "Require review from Code Owners".
+* @danielfoch
+
+# The agent contract and its guard scripts are double-protected: the
+# nightly agent is forbidden from touching these by its own contract,
+# and any PR that does touch them needs Dan regardless.
+/agents/AGENT.md @danielfoch
+/scripts/agent-preflight.sh @danielfoch
+/scripts/agent-postflight.sh @danielfoch
+/CODEOWNERS @danielfoch
+/.github/ @danielfoch
