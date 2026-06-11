@@ -622,6 +622,7 @@ export async function registerRoutes(
       "Disallow: /admin",
       "",
       "Sitemap: https://realist.ca/sitemap.xml",
+      "Sitemap: https://realist.ca/sitemap-listings.xml",
       "Sitemap: https://realist.ca/sitemap-encyclopedia.xml",
       "",
     ].join("\n");
@@ -656,6 +657,20 @@ export async function registerRoutes(
       res.status(200).end(await buildReportsSitemap());
     } catch (err: any) {
       console.error("[sitemap-reports] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
+  app.get("/sitemap-listings.xml", async (_req, res) => {
+    try {
+      const { buildListingsSitemap } = await import("./sitemap");
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(await buildListingsSitemap());
+    } catch (err: any) {
+      console.error("[sitemap-listings] error:", err.message);
       res.status(500).type("text/plain").send("sitemap error");
     }
   });
@@ -695,6 +710,22 @@ export async function registerRoutes(
     res.set("Cache-Control", "public, max-age=300, s-maxage=300");
     res.set("X-Content-Type-Options", "nosniff");
     res.status(200).end(buildSitemapIndex());
+  });
+
+  app.get("/api/listings/:mlsNumber", async (req, res) => {
+    try {
+      const { getListingSeoByMls } = await import("./listingSeo");
+      const listing = await getListingSeoByMls(req.params.mlsNumber);
+      if (!listing) {
+        res.status(404).json({ success: false, error: "Listing not found" });
+        return;
+      }
+      res.set("Cache-Control", "public, max-age=60, s-maxage=300");
+      res.json({ success: true, data: listing });
+    } catch (err: any) {
+      console.error("[listing-detail] error:", err.message);
+      res.status(500).json({ success: false, error: "Failed to load listing" });
+    }
   });
 
   // Set up email/password authentication
@@ -7812,6 +7843,7 @@ export async function registerRoutes(
       "Disallow: /admin",
       "",
       "Sitemap: https://realist.ca/sitemap.xml",
+      "Sitemap: https://realist.ca/sitemap-listings.xml",
       "Sitemap: https://realist.ca/sitemap-encyclopedia.xml",
       "",
     ].join("\n");
