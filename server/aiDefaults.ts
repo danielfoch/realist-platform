@@ -36,6 +36,9 @@ export async function ensureAiDefaultTables(): Promise<void> {
     )
   `);
   await db.execute(sql`
+    ALTER TABLE "ai_market_defaults" ADD COLUMN IF NOT EXISTS "outliers_excluded" integer NOT NULL DEFAULT 0
+  `);
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "ai_training_runs" (
       "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
       "analyses_total" integer NOT NULL,
@@ -75,6 +78,32 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
       WHERE city IS NOT NULL AND TRIM(city) != ''
         AND created_at > NOW() - INTERVAL '18 months'
     ),
+    fences AS (
+      -- Tukey fences per market (k=2.5 ~= 3 sigma on normal data, but robust:
+      -- computed from quartiles, so the outliers can't drag the fence).
+      SELECT market,
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY cap_rate)  AS cap_q1,
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY cap_rate)  AS cap_q3,
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY price)     AS price_q1,
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY price)     AS price_q3,
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY cash_flow) AS cf_q1,
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY cash_flow) AS cf_q3
+      FROM base GROUP BY market
+    ),
+    filtered AS (
+      -- Outliers are EXCLUDED from guidance, never deleted from source data.
+      SELECT b.market, b.strategy, b.vacancy_rate,
+        CASE WHEN b.cap_rate BETWEEN f.cap_q1 - 2.5*(f.cap_q3-f.cap_q1) AND f.cap_q3 + 2.5*(f.cap_q3-f.cap_q1)
+             THEN b.cap_rate END AS cap_rate,
+        (b.cap_rate IS NOT NULL AND b.cap_rate NOT BETWEEN f.cap_q1 - 2.5*(f.cap_q3-f.cap_q1) AND f.cap_q3 + 2.5*(f.cap_q3-f.cap_q1))::int AS cap_out,
+        CASE WHEN b.price BETWEEN f.price_q1 - 2.5*(f.price_q3-f.price_q1) AND f.price_q3 + 2.5*(f.price_q3-f.price_q1)
+             THEN b.price END AS price,
+        (b.price IS NOT NULL AND b.price NOT BETWEEN f.price_q1 - 2.5*(f.price_q3-f.price_q1) AND f.price_q3 + 2.5*(f.price_q3-f.price_q1))::int AS price_out,
+        CASE WHEN b.cash_flow BETWEEN f.cf_q1 - 2.5*(f.cf_q3-f.cf_q1) AND f.cf_q3 + 2.5*(f.cf_q3-f.cf_q1)
+             THEN b.cash_flow END AS cash_flow,
+        (b.cash_flow IS NOT NULL AND b.cash_flow NOT BETWEEN f.cf_q1 - 2.5*(f.cf_q3-f.cf_q1) AND f.cf_q3 + 2.5*(f.cf_q3-f.cf_q1))::int AS cf_out
+      FROM base b JOIN fences f USING (market)
+    ),
     grouped AS (
       SELECT market, strategy,
         COUNT(*) AS n,
@@ -82,29 +111,33 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cap_rate) AS cap_med,
         PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY cap_rate) AS cap_p25,
         PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY cap_rate) AS cap_p75,
+        SUM(cap_out) AS cap_excluded,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price) AS price_med,
-        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cash_flow) AS cashflow_med
-      FROM base
+        SUM(price_out) AS price_excluded,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cash_flow) AS cashflow_med,
+        SUM(cf_out) AS cf_excluded
+      FROM filtered
       GROUP BY GROUPING SETS ((market, strategy), (market))
       HAVING COUNT(*) >= ${MIN_SAMPLE}
     ),
     flattened AS (
-      SELECT market, COALESCE(strategy, 'all') AS strategy, metric, value, p25, p75, n
+      SELECT market, COALESCE(strategy, 'all') AS strategy, metric, value, p25, p75, n, excluded
       FROM grouped,
       LATERAL (VALUES
-        ('vacancy_rate', vacancy_med, NULL::double precision, NULL::double precision),
-        ('cap_rate', cap_med, cap_p25, cap_p75),
-        ('purchase_price', price_med, NULL, NULL),
-        ('monthly_cash_flow', cashflow_med, NULL, NULL)
-      ) AS metrics(metric, value, p25, p75)
+        ('vacancy_rate', vacancy_med, NULL::double precision, NULL::double precision, 0::bigint),
+        ('cap_rate', cap_med, cap_p25, cap_p75, cap_excluded),
+        ('purchase_price', price_med, NULL, NULL, price_excluded),
+        ('monthly_cash_flow', cashflow_med, NULL, NULL, cf_excluded)
+      ) AS metrics(metric, value, p25, p75, excluded)
       WHERE value IS NOT NULL
     )
-    INSERT INTO ai_market_defaults (market, strategy, metric, value, p25, p75, sample_size, trained_at)
-    SELECT market, strategy, metric, value, p25, p75, n, NOW()
+    INSERT INTO ai_market_defaults (market, strategy, metric, value, p25, p75, sample_size, outliers_excluded, trained_at)
+    SELECT market, strategy, metric, value, p25, p75, n, COALESCE(excluded, 0), NOW()
     FROM flattened
     ON CONFLICT (market, strategy, metric)
     DO UPDATE SET value = EXCLUDED.value, p25 = EXCLUDED.p25, p75 = EXCLUDED.p75,
-                  sample_size = EXCLUDED.sample_size, trained_at = EXCLUDED.trained_at
+                  sample_size = EXCLUDED.sample_size, outliers_excluded = EXCLUDED.outliers_excluded,
+                  trained_at = EXCLUDED.trained_at
     RETURNING market
   `);
 
@@ -128,22 +161,36 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
       WHERE city IS NOT NULL AND rent BETWEEN 400 AND 20000
         AND scraped_at > NOW() - INTERVAL '6 months'
     ),
+    rent_fences AS (
+      SELECT market, metric,
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY rent) AS q1,
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY rent) AS q3
+      FROM rents GROUP BY market, metric
+    ),
+    rent_filtered AS (
+      SELECT r.market, r.metric,
+        CASE WHEN r.rent BETWEEN f.q1 - 2.5*(f.q3-f.q1) AND f.q3 + 2.5*(f.q3-f.q1) THEN r.rent END AS rent,
+        (r.rent NOT BETWEEN f.q1 - 2.5*(f.q3-f.q1) AND f.q3 + 2.5*(f.q3-f.q1))::int AS rent_out
+      FROM rents r JOIN rent_fences f ON f.market = r.market AND f.metric IS NOT DISTINCT FROM r.metric
+    ),
     grouped AS (
       SELECT market, COALESCE(metric, 'market_rent_all') AS metric,
-        COUNT(*) AS n,
+        COUNT(rent) AS n,
+        SUM(rent_out) AS excluded,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY rent) AS med,
         PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY rent) AS p25,
         PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY rent) AS p75
-      FROM rents
+      FROM rent_filtered
       GROUP BY GROUPING SETS ((market, metric), (market))
-      HAVING COUNT(*) >= ${MIN_SAMPLE}
+      HAVING COUNT(rent) >= ${MIN_SAMPLE}
     )
-    INSERT INTO ai_market_defaults (market, strategy, metric, value, p25, p75, sample_size, trained_at)
-    SELECT market, 'all', COALESCE(metric, 'market_rent_all'), med, p25, p75, n, NOW()
+    INSERT INTO ai_market_defaults (market, strategy, metric, value, p25, p75, sample_size, outliers_excluded, trained_at)
+    SELECT market, 'all', COALESCE(metric, 'market_rent_all'), med, p25, p75, n, COALESCE(excluded, 0), NOW()
     FROM grouped WHERE med IS NOT NULL
     ON CONFLICT (market, strategy, metric)
     DO UPDATE SET value = EXCLUDED.value, p25 = EXCLUDED.p25, p75 = EXCLUDED.p75,
-                  sample_size = EXCLUDED.sample_size, trained_at = EXCLUDED.trained_at
+                  sample_size = EXCLUDED.sample_size, outliers_excluded = EXCLUDED.outliers_excluded,
+                  trained_at = EXCLUDED.trained_at
     RETURNING market
   `);
 
@@ -181,7 +228,7 @@ export function registerAiDefaultsRoutes(app: Express): void {
         return;
       }
       const rows: any = await db.execute(sql`
-        SELECT DISTINCT ON (metric) metric, value, p25, p75, sample_size, strategy, trained_at
+        SELECT DISTINCT ON (metric) metric, value, p25, p75, sample_size, outliers_excluded, strategy, trained_at
         FROM ai_market_defaults
         WHERE market = ${market} AND strategy IN (${strategy}, 'all')
         ORDER BY metric, (strategy = ${strategy}) DESC
@@ -196,6 +243,7 @@ export function registerAiDefaultsRoutes(app: Express): void {
             p25: r.p25 != null ? Number(r.p25) : null,
             p75: r.p75 != null ? Number(r.p75) : null,
             sampleSize: r.sample_size,
+            outliersExcluded: r.outliers_excluded ?? 0,
             matchedStrategy: r.strategy,
             trainedAt: r.trained_at,
           }]),
