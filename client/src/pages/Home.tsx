@@ -4,6 +4,7 @@ import { Link, useSearch, useLocation } from "wouter";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
+import { DealOfTheDay } from "@/components/DealOfTheDay";
 import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
 import { CalculatorSelector, type CalculatorType } from "@/components/CalculatorSelector";
@@ -1203,6 +1204,8 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       
       <main>
         {!isStandaloneTool && <HeroSection onAnalyzeClick={handleAnalyzeClick} />}
+
+        <DealOfTheDay onAnalyzeClick={handleAnalyzeClick} />
 
         <section 
           ref={analyzerRef}

@@ -85,7 +85,7 @@ type SaleResolution = {
 export default function Admin() {
   const { toast } = useToast();
 
-  const [currentTab, setCurrentTab] = usePersistedTab("admin.activeTab", "applications", ["applications", "users", "leads", "reno-quotes", "coaching", "blog", "guides", "sale-oracle"]);
+  const [currentTab, setCurrentTab] = usePersistedTab("admin.activeTab", "applications", ["applications", "users", "leads", "reno-quotes", "coaching", "blog", "guides", "sale-oracle"], { storage: "session" });
   
   const { data: leads, isLoading: leadsLoading, refetch: refetchLeads, error: leadsError } = useQuery<Lead[]>({
     queryKey: ["/api/admin/leads"],
