@@ -37,7 +37,7 @@ const navCategories: NavCategory[] = [
   {
     label: "Find Deals",
     items: [
-      { href: "/tools/cap-rates", label: "Yield Map", description: "Browse listings by estimated gross yield", icon: <Map className="h-4 w-4" /> },
+      { href: "/tools/cap-rates", label: "Cap Rate Map", description: "Browse listings by cap rate and rental yield", icon: <Map className="h-4 w-4" /> },
       { href: "/listing-intelligence", label: "Listing Intelligence", description: "Collaborative underwriting card with structured feedback", icon: <FileSearch className="h-4 w-4" />, badge: "AI-ready" },
       { href: "/listings/us", label: "US Listings", description: "HomeHarvest US listing beta, isolated from CREA", icon: <Building className="h-4 w-4" />, badge: "Beta" },
       { href: "/tools/motivated-deals", label: "Motivated Deals", description: "Motivated sellers, power of sale, VTB finder", icon: <Gavel className="h-4 w-4" />, badge: "New" },

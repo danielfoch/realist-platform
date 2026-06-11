@@ -115,6 +115,7 @@ import ToolsHub from "@/pages/ToolsHub";
 import CommunityHub from "@/pages/CommunityHub";
 import InsightsHub from "@/pages/InsightsHub";
 import GuidesHub from "@/pages/GuidesHub";
+import EncyclopediaIndex from "@/pages/EncyclopediaIndex";
 import GuidePage from "@/pages/GuidePage";
 import EncyclopediaDetail from "@/pages/EncyclopediaDetail";
 import CapitalStackCanadaGuide from "@/pages/CapitalStackCanadaGuide";
@@ -227,7 +228,7 @@ function Router() {
       <Route path="/insights/blog" component={Blog} />
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />
-      <Route path="/insights/encyclopedia" component={GuidesHub} />
+      <Route path="/insights/encyclopedia" component={EncyclopediaIndex} />
       <Route path="/insights/encyclopedia/:slug" component={EncyclopediaDetail} />
       <Route path="/insights/guides/capital-stack-canada" component={CapitalStackCanadaGuide} />
       <Route path="/insights/guides/a-vs-b-vs-c-lenders-canada" component={ABCLendersCanadaGuide} />
@@ -271,7 +272,6 @@ function Router() {
       
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />
-      <Route path="/podcast" component={Podcast} />
       <Route path="/admin" component={Admin} />
       <Route path="/admin/deal-desk" component={AdminDealDesk} />
       <Route path="/admin/events" component={AdminEvents} />

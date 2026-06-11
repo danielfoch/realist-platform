@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { SEO } from "@/components/SEO";
+import { PODCAST_APPLE_URL, PODCAST_SPOTIFY_URL, PODCAST_YOUTUBE_URL } from "@shared/brand";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -153,9 +154,9 @@ export default function Podcast() {
     <div className="min-h-screen bg-background">
       <Navigation />
       <SEO
-        title="The Canadian Real Estate Investor Podcast | Realist.ca"
-        description="Listen to Canada's #1 real estate podcast for expert insights on Canadian real estate investing, market analysis, and investment strategies with Daniel and Nick."
-        canonicalUrl="https://realist.ca/podcast"
+        title="The Canadian Real Estate Investor Podcast - Daniel Foch & Nick Hill"
+        description="Canada's #1 real estate podcast. Weekly episodes on the Canadian housing market, mortgages, investing strategy, and policy."
+        canonicalUrl="/insights/podcast"
       />
 
       <main className="max-w-4xl mx-auto px-4 py-12">
@@ -401,9 +402,9 @@ export default function Podcast() {
           <p className="text-muted-foreground mb-4">Listen on your favorite platform</p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button variant="outline" asChild>
-              <a 
-                href="https://podcasts.apple.com" 
-                target="_blank" 
+              <a
+                href={PODCAST_APPLE_URL}
+                target="_blank"
                 rel="noopener noreferrer"
                 data-testid="link-apple-podcasts"
               >
@@ -411,9 +412,9 @@ export default function Podcast() {
               </a>
             </Button>
             <Button variant="outline" asChild>
-              <a 
-                href="https://open.spotify.com" 
-                target="_blank" 
+              <a
+                href={PODCAST_SPOTIFY_URL}
+                target="_blank"
                 rel="noopener noreferrer"
                 data-testid="link-spotify"
               >
@@ -421,9 +422,9 @@ export default function Podcast() {
               </a>
             </Button>
             <Button variant="outline" asChild>
-              <a 
-                href="https://www.youtube.com" 
-                target="_blank" 
+              <a
+                href={PODCAST_YOUTUBE_URL}
+                target="_blank"
                 rel="noopener noreferrer"
                 data-testid="link-youtube"
               >

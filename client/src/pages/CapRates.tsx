@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } fro
 import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
+import { SEO } from "@/components/SEO";
+import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -3759,6 +3761,12 @@ export default function CapRates() {
 
   return (
     <div className="h-screen h-[100dvh] bg-background flex flex-col overflow-hidden">
+      <SEO
+        title={SHARED_ROUTE_META["/tools/cap-rates"].title}
+        description={SHARED_ROUTE_META["/tools/cap-rates"].description}
+        canonicalUrl="/tools/cap-rates"
+        keywords="cap rate map canada, cap rates by city, rental yield map, canadian real estate cap rates, investment property search"
+      />
       <Navigation />
 
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-[1000] relative shrink-0">
@@ -3766,7 +3774,8 @@ export default function CapRates() {
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Deal sourcing</p>
-              <p className="text-sm text-muted-foreground">Search broadly, shortlist quickly, then hand the winner into underwriting.</p>
+              <h1 className="text-sm font-bold tracking-tight">Cap Rate Map of Canada</h1>
+              <p className="text-sm text-muted-foreground">Browse listings by cap rate and rental yield — search broadly, shortlist quickly, then hand the winner into underwriting.</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="text-[10px]" data-testid="badge-results-summary">

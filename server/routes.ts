@@ -690,6 +690,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/sitemap-events.xml", async (_req, res) => {
+    try {
+      const { buildEventsSitemap } = await import("./sitemap");
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(await buildEventsSitemap());
+    } catch (err: any) {
+      console.error("[sitemap-events] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
   app.get("/sitemap-encyclopedia.xml", async (_req, res) => {
     try {
       const { buildEncyclopediaSitemap } = await import("./sitemap");

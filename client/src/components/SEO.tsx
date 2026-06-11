@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { ORGANIZATION_SAME_AS } from "@shared/brand";
 
 interface SEOProps {
   title: string;
@@ -24,8 +25,16 @@ export function SEO({
   structuredData,
   noIndex = false,
 }: SEOProps) {
-  const fullTitle = title.includes("Realist.ca") ? title : `${title} | Realist.ca`;
-  const fullCanonical = canonicalUrl ? `${BASE_URL}${canonicalUrl}` : undefined;
+  // Suffix convention matches server/seoMeta.ts#injectMetaIntoHtml exactly so
+  // the pre-hydration and post-hydration titles can never disagree.
+  const fullTitle = title.includes("Realist")
+    ? title.replace(/\s\|\sRealist\.ca$/, " | Realist")
+    : `${title} | Realist`;
+  // Guard against double-prefixing when a caller passes an absolute URL
+  // (previously produced canonicals like "https://realist.cahttps://...").
+  const fullCanonical = canonicalUrl
+    ? (canonicalUrl.startsWith("http") ? canonicalUrl : `${BASE_URL}${canonicalUrl}`)
+    : undefined;
 
   return (
     <Helmet>
@@ -87,12 +96,9 @@ export const organizationSchema = {
       "jobTitle": "CEO"
     }
   ],
-  "sameAs": [
-    "https://www.youtube.com/@TheCanadianInvestorPodcast",
-    "https://www.instagram.com/thecanadianinvestorpodcast",
-    "https://twitter.com/RealistCA",
-    "https://www.tiktok.com/@thecanadianinvestor"
-  ],
+  // Owned handles only — shared with server/seoMeta.ts via @shared/brand.
+  // (The old list pointed at The Canadian Investor, a different podcast.)
+  "sameAs": ORGANIZATION_SAME_AS,
   "contactPoint": {
     "@type": "ContactPoint",
     "contactType": "customer service",

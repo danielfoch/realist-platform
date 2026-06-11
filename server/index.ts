@@ -16,6 +16,19 @@ import {
 const app = express();
 // Trust proxy for secure cookies behind Replit's reverse proxy
 app.set("trust proxy", 1);
+
+// www → apex 301. The stale www.realist.ca DNS is being repointed at this
+// deployment; this makes every old www backlink (including assets and API
+// paths the later canonicalization middleware skips) pass through to the
+// apex. Registered first so it runs before anything else in the chain.
+app.use((req, res, next) => {
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").toLowerCase();
+  if (host.startsWith("www.realist.ca")) {
+    return res.redirect(301, `https://realist.ca${req.originalUrl || "/"}`);
+  }
+  next();
+});
+
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -514,10 +527,18 @@ async function ensureAppTables() {
     res.redirect(301, target);
   });
 
-  app.get(["/tools/distress-deals", "/insights/distress-report"], (req, res, next) => {
+  app.get(
+    ["/tools/distress-deals", "/insights/distress-report", "/deal-analyzer", "/podcast"],
+    (req, res, next) => {
     const map: Record<string, string> = {
       "/tools/distress-deals": "/tools/motivated-deals",
       "/insights/distress-report": "/insights/motivated-report",
+      // Duplicate-URL consolidation: both legacy URLs rendered the same page
+      // with self-canonicals, splitting equity with /tools/analyzer and
+      // /insights/podcast. 301 at the Express level so crawlers never see
+      // the duplicates.
+      "/deal-analyzer": "/tools/analyzer",
+      "/podcast": "/insights/podcast",
     };
     const target = map[req.path];
     if (!target) return next();

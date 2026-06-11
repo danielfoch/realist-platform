@@ -1,6 +1,13 @@
 import { storage } from "./storage";
 import { encyclopediaGuides, getEncyclopediaGuide } from "@shared/encyclopedia";
 import { getProgrammaticMarket, getProgrammaticStrategy } from "@shared/programmaticSeo";
+import { SHARED_ROUTE_META } from "@shared/routeMeta";
+import {
+  ORGANIZATION_SAME_AS,
+  PODCAST_NAME,
+  PODCAST_RSS_URL,
+  PODCAST_SAME_AS,
+} from "@shared/brand";
 import {
   buildListingSeoDescription,
   buildListingSeoTitle,
@@ -20,6 +27,7 @@ export interface PageMeta {
   keywords?: string;
   canonicalPath?: string;
   structuredData?: object | object[];
+  noindex?: boolean;
 }
 
 const DEFAULT: PageMeta = {
@@ -27,8 +35,14 @@ const DEFAULT: PageMeta = {
   description: "Use Realist to find, analyze, and compare Canadian real estate deals with AI-powered underwriting, market reports, and investor tools.",
 };
 
+/** Exported so the static catch-all can detect "no route matched" (real 404s). */
+export const DEFAULT_META = DEFAULT;
+
 const STATIC_META: Record<string, PageMeta> = {
-  "/": DEFAULT,
+  // Homepage + /tools/* titles and descriptions come from the shared route
+  // meta map so the server head tags and the client Helmet layer can never
+  // disagree (the client SEO component reads the same module).
+  ...SHARED_ROUTE_META,
   "/about": {
     title: "About Realist.ca - Canadian Real Estate Investing Community",
     description: "Realist.ca is Canada's biggest real estate investor community, home of the Canadian Real Estate Investor Podcast with Daniel Foch, Nick Hill, and Jonathan Woo.",
@@ -40,59 +54,6 @@ const STATIC_META: Record<string, PageMeta> = {
   "/about/shop": {
     title: "Realist.ca Shop - Real Estate Investor Merch",
     description: "Books, merch, and resources from the Canadian Real Estate Investor Podcast and Realist.ca community.",
-  },
-  // Tools
-  "/tools": {
-    title: "Free Canadian Real Estate Tools - Realist.ca",
-    description: "Free tools for Canadian real estate investors: deal analyzer, cap rate calculator, rent vs buy, true cost calculator, fixed vs variable mortgage, and more.",
-  },
-  "/tools/analyzer": {
-    title: "Free Canadian Real Estate Deal Analyzer - Cap Rate, IRR, BRRR | Realist.ca",
-    description: "Analyze any Canadian rental property in seconds. Calculate cap rate, cash-on-cash, IRR, BRRR returns, multiplex viability and more. Free, no signup.",
-  },
-  "/tools/buybox": {
-    title: "Build Your Real Estate Buy Box - Realist.ca",
-    description: "Define your investment criteria and get matched with on-market and off-market Canadian properties that fit.",
-  },
-  "/tools/coinvest": {
-    title: "Real Estate Co-Investing Hub - Realist.ca",
-    description: "Find partners, structure deals, and pool capital with vetted Canadian real estate co-investors.",
-  },
-  "/tools/true-cost": {
-    title: "True Cost of Buying a Home in Canada Calculator - Realist.ca",
-    description: "Calculate the real all-in cost of buying a home in Canada — land transfer tax, legal fees, CMHC insurance, closing costs, monthly carrying costs.",
-  },
-  "/tools/rent-vs-buy": {
-    title: "Rent vs Buy Calculator (Canada) - Realist.ca",
-    description: "Compare the true financial outcome of renting versus buying in any Canadian city. Includes mortgage, maintenance, taxes, opportunity cost.",
-  },
-  "/tools/cap-rates": {
-    title: "Canadian Cap Rates by City - Realist.ca",
-    description: "Live cap rates and rental yields by Canadian city and neighbourhood. Toronto, Vancouver, Calgary, Edmonton, Halifax, Montreal and more.",
-  },
-  "/tools/will-it-plex": {
-    title: "Will It Plex? Multiplex Conversion Analyzer - Realist.ca",
-    description: "Find out if a single-family home is a strong multiplex conversion candidate. Free Canadian multiplex screening tool.",
-  },
-  "/tools/fixed-vs-variable": {
-    title: "Fixed vs Variable Mortgage Calculator (Canada) - Realist.ca",
-    description: "Compare fixed and variable mortgage outcomes across realistic rate paths in the Canadian market.",
-  },
-  "/tools/land-claim-screener": {
-    title: "Indigenous Land Claim Screener - Canadian Real Estate Due Diligence",
-    description: "Free screening tool to check whether a property in Canada falls within or near an Indigenous land claim, treaty, or reserve.",
-  },
-  "/tools/motivated-deals": {
-    title: "Canadian Motivated Deals - Motivated Sellers, Power of Sale & VTB Tracker",
-    description: "Live tracker of motivated Canadian listings: motivated sellers, power of sale, foreclosure, court order sale, and VTB opportunities. Updated daily.",
-  },
-  "/tools/hst-rebate": {
-    title: "Ontario New Home HST Rebate Calculator | Realist",
-    description: "Estimate Ontario new home HST rebate savings under the proposed 2026 relief policy and register for final-rule updates.",
-  },
-  "/tools/hst-calculator": {
-    title: "Canadian HST Calculator for Real Estate - Realist.ca",
-    description: "Calculate HST on Canadian real estate transactions: new construction, assignments, commercial, and investment property.",
   },
   // Course / Community
   "/course": {
@@ -192,6 +153,35 @@ const STATIC_META: Record<string, PageMeta> = {
   "/insights/podcast": {
     title: "The Canadian Real Estate Investor Podcast - Daniel Foch & Nick Hill",
     description: "Canada's #1 real estate podcast. Weekly episodes on the Canadian housing market, mortgages, investing strategy, and policy.",
+    canonicalPath: "/insights/podcast",
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "PodcastSeries",
+        "@id": `${BASE_URL}/insights/podcast#podcast`,
+        name: PODCAST_NAME,
+        url: `${BASE_URL}/insights/podcast`,
+        description: "Canada's #1 real estate podcast. Weekly episodes on the Canadian housing market, mortgages, investing strategy, and policy.",
+        webFeed: PODCAST_RSS_URL,
+        sameAs: PODCAST_SAME_AS,
+        inLanguage: "en-CA",
+        author: [
+          {
+            "@type": "Person",
+            "@id": `${BASE_URL}/#danielfoch`,
+            name: "Daniel Foch",
+            jobTitle: "Chief Real Estate Officer, Realist.ca",
+          },
+          {
+            "@type": "Person",
+            "@id": `${BASE_URL}/#nickhill`,
+            name: "Nick Hill",
+            jobTitle: "Mortgage Expert",
+          },
+        ],
+        publisher: { "@id": `${BASE_URL}/#organization` },
+      },
+    ],
   },
   "/insights/blog": {
     title: "Realist Blog - Canadian Real Estate Analysis & Commentary",
@@ -249,17 +239,65 @@ const STATIC_META: Record<string, PageMeta> = {
   },
 };
 
+/** Strip the brand suffix off a meta title to get a clean schema name. */
+function toolNameFromTitle(title: string): string {
+  return title.split(/\s[-|]\s/)[0].trim();
+}
+
+/**
+ * Tool schema (audit item 14): every /tools/* page gets WebApplication
+ * (FinanceApplication, free) + BreadcrumbList JSON-LD; the /tools hub gets
+ * BreadcrumbList.
+ */
+function withToolsSchema(path: string, meta: PageMeta): PageMeta {
+  if (path !== "/tools" && !path.startsWith("/tools/")) return meta;
+
+  const existing = meta.structuredData
+    ? (Array.isArray(meta.structuredData) ? meta.structuredData : [meta.structuredData])
+    : [];
+  const breadcrumbItems = [
+    { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+    { "@type": "ListItem", position: 2, name: "Tools", item: `${BASE_URL}/tools` },
+  ];
+  const blocks: object[] = [...existing];
+
+  if (path !== "/tools") {
+    const toolName = toolNameFromTitle(meta.title);
+    breadcrumbItems.push({ "@type": "ListItem", position: 3, name: toolName, item: `${BASE_URL}${path}` });
+    blocks.push({
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "@id": `${BASE_URL}${path}#webapp`,
+      name: toolName,
+      url: `${BASE_URL}${path}`,
+      description: meta.description,
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "Web",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "CAD" },
+      publisher: { "@id": `${BASE_URL}/#organization` },
+    });
+  }
+
+  blocks.push({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: breadcrumbItems,
+  });
+
+  return { ...meta, structuredData: blocks };
+}
+
 export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
   // Strip query string and hash
   const path = rawPath.split("?")[0].split("#")[0];
 
   // Static lookup
-  if (STATIC_META[path]) return STATIC_META[path];
+  if (STATIC_META[path]) return withToolsSchema(path, STATIC_META[path]);
 
   // Trim trailing slash
   if (path.endsWith("/") && path.length > 1) {
     const trimmed = path.slice(0, -1);
-    if (STATIC_META[trimmed]) return STATIC_META[trimmed];
+    if (STATIC_META[trimmed]) return withToolsSchema(trimmed, STATIC_META[trimmed]);
   }
 
   const listingMatch = path.match(/^\/listings\/([^\/]+)$/);
@@ -485,7 +523,133 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
     }
   }
 
+  // Dynamic event page (audit item 12): /events/:slug gets real meta, Event
+  // JSON-LD with offers, and OG/Twitter tags so shared links unfurl.
+  const eventMatch = path.match(/^\/events\/([^\/]+)$/);
+  if (eventMatch) {
+    try {
+      const event = await getPublishedEventForSeo(decodeURIComponent(eventMatch[1]));
+      if (event) return buildEventMeta(event);
+    } catch { /* fall through */ }
+  }
+
   return DEFAULT;
+}
+
+export interface SeoEventRow {
+  slug: string;
+  title: string;
+  shortDescription: string | null;
+  longDescription: string | null;
+  headerImageUrl: string | null;
+  eventType: string;
+  startsAt: Date;
+  endsAt: Date | null;
+  venueName: string | null;
+  venueAddress: string | null;
+  city: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  minPriceCents: number | null;
+  currency: string;
+}
+
+export async function getPublishedEventForSeo(slug: string): Promise<SeoEventRow | null> {
+  const { db } = await import("./db");
+  const { realistEvents, realistEventTicketTypes } = await import("@shared/schema");
+  const { and, asc, eq } = await import("drizzle-orm");
+
+  const [event] = await db.select().from(realistEvents)
+    .where(and(eq(realistEvents.slug, slug), eq(realistEvents.status, "PUBLISHED")))
+    .limit(1);
+  if (!event) return null;
+
+  const tickets = await db.select().from(realistEventTicketTypes)
+    .where(and(eq(realistEventTicketTypes.eventId, event.id), eq(realistEventTicketTypes.isActive, true)))
+    .orderBy(asc(realistEventTicketTypes.priceCents));
+
+  return {
+    slug: event.slug,
+    title: event.title,
+    shortDescription: event.shortDescription,
+    longDescription: event.longDescription,
+    headerImageUrl: event.headerImageUrl,
+    eventType: event.eventType,
+    startsAt: event.startsAt,
+    endsAt: event.endsAt,
+    venueName: event.venueName,
+    venueAddress: event.venueAddress,
+    city: event.city,
+    seoTitle: event.seoTitle,
+    seoDescription: event.seoDescription,
+    minPriceCents: tickets.length ? tickets[0].priceCents : null,
+    currency: tickets.length ? tickets[0].currency.toUpperCase() : "CAD",
+  };
+}
+
+export function formatEventDate(value: Date): string {
+  return new Date(value).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function buildEventMeta(event: SeoEventRow): PageMeta {
+  const url = `${BASE_URL}/events/${event.slug}`;
+  const dateLabel = formatEventDate(event.startsAt);
+  const title = event.seoTitle
+    || `${event.title}${event.city ? ` - ${event.city}` : ""} - ${dateLabel}`;
+  const description = event.seoDescription
+    || event.shortDescription
+    || `${event.title}${event.city ? ` in ${event.city}` : ""} on ${dateLabel}. A Realist.ca event for Canadian real estate investors. Get tickets and details.`;
+
+  return {
+    title,
+    description,
+    ogImage: event.headerImageUrl || undefined,
+    ogType: "website",
+    canonicalPath: `/events/${event.slug}`,
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        "@id": `${url}#event`,
+        name: event.title,
+        description,
+        url,
+        startDate: new Date(event.startsAt).toISOString(),
+        ...(event.endsAt ? { endDate: new Date(event.endsAt).toISOString() } : {}),
+        eventStatus: "https://schema.org/EventScheduled",
+        eventAttendanceMode: event.eventType === "ONLINE"
+          ? "https://schema.org/OnlineEventAttendanceMode"
+          : "https://schema.org/OfflineEventAttendanceMode",
+        ...(event.headerImageUrl
+          ? { image: event.headerImageUrl.startsWith("http") ? event.headerImageUrl : `${BASE_URL}${event.headerImageUrl}` }
+          : {}),
+        location: event.eventType === "ONLINE"
+          ? { "@type": "VirtualLocation", url }
+          : {
+              "@type": "Place",
+              name: event.venueName || event.city || "Venue to be announced",
+              ...(event.venueAddress ? { address: event.venueAddress } : event.city ? { address: event.city } : {}),
+            },
+        organizer: { "@type": "Organization", "@id": `${BASE_URL}/#organization`, name: "Realist.ca" },
+        offers: {
+          "@type": "Offer",
+          url,
+          price: event.minPriceCents != null ? (event.minPriceCents / 100).toFixed(2) : "0",
+          priceCurrency: event.currency,
+          availability: "https://schema.org/InStock",
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "Events", item: `${BASE_URL}/community/events` },
+          { "@type": "ListItem", position: 3, name: event.title, item: url },
+        ],
+      },
+    ],
+  };
 }
 
 function escapeHtml(s: string): string {
@@ -541,7 +705,14 @@ export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw
 
   replaceMeta("name", "description", meta.description);
   if (meta.keywords) replaceMeta("name", "keywords", meta.keywords);
-  replaceLink("canonical", canonicalUrl);
+  if (meta.noindex) {
+    // Real 404s: noindex and no canonical (a self-canonical on a junk URL
+    // invites junk indexing).
+    out = out.replace(/<link\s+rel=["']canonical["'][^>]*>\s*/i, "");
+    replaceMeta("name", "robots", "noindex, nofollow");
+  } else {
+    replaceLink("canonical", canonicalUrl);
+  }
   const rssTag = `<link rel="alternate" type="application/rss+xml" title="Realist Blog RSS" href="${RSS_FEED_URL}" />`;
   if (!/<link\s+rel=["']alternate["'][^>]*application\/rss\+xml/i.test(out)) {
     out = out.replace("</head>", `    ${rssTag}\n  </head>`);
@@ -566,12 +737,7 @@ export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw
       name: "Realist.ca",
       url: BASE_URL,
       logo: `${BASE_URL}/logo.png`,
-      sameAs: [
-        "https://www.youtube.com/@CanadianRealEstateInvestor",
-        "https://twitter.com/RealistCA",
-        "https://www.instagram.com/realist.ca/",
-        "https://thecanadianrealestateinvestor.substack.com/",
-      ],
+      sameAs: ORGANIZATION_SAME_AS,
     },
     {
       "@context": "https://schema.org",
@@ -613,4 +779,169 @@ export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw
   out = out.replace("</head>", `    ${ldScript}\n  </head>`);
 
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Known client-route table (audit item 6 — real 404s).
+//
+// Mirrors the routes declared in client/src/App.tsx. The static catch-all uses
+// this to distinguish "valid SPA surface with default meta" from "junk URL
+// that should return HTTP 404 + noindex". Dynamic *content* routes
+// (/reports/:slug, /listings/:mls, /markets/:city, /events/:slug, ...) are
+// intentionally NOT listed: their slugs are validated by getMetaForPath /
+// renderSeoFallback lookups, so an unknown slug correctly falls through to a
+// 404.
+// ---------------------------------------------------------------------------
+
+const KNOWN_APP_ROUTES = new Set<string>([
+  "/",
+  "/discover",
+  "/deal-analyzer",
+  "/tools",
+  "/tools/analyzer",
+  "/tools/buybox",
+  "/tools/buybox/agreement",
+  "/tools/buybox/checkout",
+  "/tools/coinvest",
+  "/tools/coinvest/opportunities",
+  "/tools/coinvest/checklist",
+  "/tools/coinvest/groups/new",
+  "/deal-desk",
+  "/crm",
+  "/community/meetups/new",
+  "/admin/sponsors",
+  "/tools/deal-desk",
+  "/tools/true-cost",
+  "/tools/rent-vs-buy",
+  "/tools/cap-rates",
+  "/listing-intelligence",
+  "/tools/listing-intelligence",
+  "/listings/us",
+  "/tools/investor-os",
+  "/deals",
+  "/watchlist",
+  "/deal-challenge",
+  "/professionals",
+  "/tools/will-it-plex",
+  "/tools/fixed-vs-variable",
+  "/tools/hst-rebate",
+  "/tools/hst-calculator",
+  "/tools/land-claim-screener",
+  "/tools/distress-deals",
+  "/tools/motivated-deals",
+  "/tools/multiplex-feasibility",
+  "/multiplex-investor-fit",
+  "/masterclass",
+  "/course",
+  "/insights/distress-report",
+  "/insights/motivated-report",
+  "/community/leaderboard",
+  "/community/leaderboard/full",
+  "/my-performance",
+  "/account/api-keys",
+  "/insights/market-report",
+  "/insights/mortgage-rates",
+  "/insights/market-report-builder",
+  "/insights/building-permits",
+  "/insights/productivity-gap",
+  "/insights/new-construction-canada",
+  "/insights/gta-precon-pricing",
+  "/insights/cpi-march-2026",
+  "/insights/the-spread-that-ate-the-economy",
+  "/insights/spring-economic-update-2026",
+  "/insights/precon-vs-resale-1990s",
+  "/insights/bank-of-canada-april-2026",
+  "/embed/insights/bank-of-canada-april-2026",
+  "/insights/statcan-labour-force-survey-may-2026",
+  "/insights/statcan-labour-force-survey-april-2026",
+  "/insights/statcan-gdp-q1-2026",
+  "/insights/housing-correction-locked-out-2026",
+  "/insights/labour-mortgage-stress-april-2026",
+  "/insights/monthly-market-report-may-2026",
+  "/canada-housing-market",
+  "/toronto-housing-market",
+  "/toronto-condo-prices-dropping",
+  "/biggest-price-drops-gta",
+  "/premium",
+  "/premium/branding",
+  "/community",
+  "/community/events",
+  "/community/events/unpacking-multiplexes-toronto",
+  "/community/network",
+  "/insights",
+  "/insights/podcast",
+  "/insights/blog",
+  "/insights/guides",
+  "/insights/encyclopedia",
+  "/insights/guides/capital-stack-canada",
+  "/insights/guides/a-vs-b-vs-c-lenders-canada",
+  "/reports",
+  "/reports/canada-immigration-dashboard-2026",
+  "/reports/realbench-ai-realtor-benchmark",
+  "/markets",
+  "/investing",
+  "/about",
+  "/about/team",
+  "/about/programs",
+  "/about/shop",
+  "/about/contact",
+  "/thank-you/vancouver-multiplex-2026",
+  "/edmonton",
+  "/yeg",
+  "/buybox",
+  "/buybox/agreement",
+  "/buybox/checkout",
+  "/coinvesting",
+  "/coinvesting/opportunities",
+  "/coinvesting/checklist",
+  "/coinvesting/groups/new",
+  "/events",
+  "/podcast",
+  "/blog",
+  "/shop",
+  "/dashboard",
+  "/compare",
+  "/admin",
+  "/admin/deal-desk",
+  "/admin/events",
+  "/admin/events/new",
+  "/privacy",
+  "/terms",
+  "/investor",
+  "/partner",
+  "/professional/dashboard",
+  "/signup",
+  "/get-started",
+  "/login",
+  "/create-account",
+  "/forgot-password",
+  "/reset-password",
+  "/set-password",
+  "/verify-phone",
+  "/realtor/buyboxes",
+  "/partner/network",
+  "/join/realtors",
+  "/join/lenders",
+]);
+
+// App-functional parameterized routes (sessions, checkouts, admin) that must
+// never 404 at the HTTP layer.
+const KNOWN_APP_ROUTE_PATTERNS: RegExp[] = [
+  /^\/tools\/buybox\/confirmation\/[^/]+$/,
+  /^\/tools\/coinvest\/groups\/[^/]+$/,
+  /^\/buybox\/confirmation\/[^/]+$/,
+  /^\/coinvesting\/groups\/[^/]+$/,
+  /^\/sponsor\/[^/]+$/,
+  /^\/crm\/contacts\/[^/]+$/,
+  /^\/analyses\/[^/]+\/deck$/,
+  /^\/underwriting\/[^/]+$/,
+  /^\/admin\/events\/[^/]+\/edit$/,
+  /^\/events\/[^/]+\/success$/,
+];
+
+export function isKnownAppRoute(rawPath: string): boolean {
+  let path = rawPath.split("?")[0].split("#")[0];
+  if (path.length > 1 && path.endsWith("/")) path = path.replace(/\/+$/, "");
+  if (KNOWN_APP_ROUTES.has(path)) return true;
+  return KNOWN_APP_ROUTE_PATTERNS.some((pattern) => pattern.test(path));
 }

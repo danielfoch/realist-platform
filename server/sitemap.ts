@@ -46,7 +46,7 @@ function urlset(urls: SitemapUrl[]) {
 
 export function buildSitemapIndex() {
   const lastmod = today();
-  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-listings.xml", "sitemap-podcast.xml", "sitemap-encyclopedia.xml"];
+  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-listings.xml", "sitemap-podcast.xml", "sitemap-encyclopedia.xml", "sitemap-events.xml"];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemaps.map((name) => `  <sitemap>\n    <loc>${BASE}/${name}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`).join("\n")}\n</sitemapindex>\n`;
 }
 
@@ -162,6 +162,31 @@ export async function buildPodcastSitemap() {
   return urlset([
     { loc: `${BASE}/insights/podcast`, lastmod: today(), changefreq: "weekly", priority: 0.8 },
   ]);
+}
+
+export async function buildEventsSitemap() {
+  const urls: SitemapUrl[] = [
+    { loc: `${BASE}/community/events`, lastmod: today(), changefreq: "weekly", priority: 0.8 },
+  ];
+  try {
+    const { db } = await import("./db");
+    const { realistEvents } = await import("@shared/schema");
+    const { desc, eq } = await import("drizzle-orm");
+    const events = await db
+      .select({ slug: realistEvents.slug, startsAt: realistEvents.startsAt, updatedAt: realistEvents.updatedAt })
+      .from(realistEvents)
+      .where(eq(realistEvents.status, "PUBLISHED"))
+      .orderBy(desc(realistEvents.startsAt));
+    for (const event of events) {
+      urls.push({
+        loc: `${BASE}/events/${event.slug}`,
+        lastmod: dateOnly(event.updatedAt || event.startsAt),
+        changefreq: "weekly",
+        priority: 0.75,
+      });
+    }
+  } catch {}
+  return urlset(urls);
 }
 
 export async function buildListingsSitemap() {

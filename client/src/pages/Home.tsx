@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useSearch, useLocation } from "wouter";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
+import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
 import { DealOfTheDay } from "@/components/DealOfTheDay";
@@ -1185,19 +1186,19 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <SEO
+        // Title/description come from the shared route meta map so the client
+        // Helmet layer can never disagree with the server head tags again.
         title={isStandaloneTool
-          ? "Real Estate Deal Analyzer - Cap Rate, IRR & Cash-on-Cash Calculator"
+          ? SHARED_ROUTE_META["/tools/analyzer"].title
           : "Canadian Real Estate Deal Analyzer - Toronto Property Calculator"}
         description={isStandaloneTool
-          ? "Standalone deal analyzer for Canadian real estate investors. Calculate cap rate, IRR, and cash-on-cash returns on any property with MLS# import."
+          ? SHARED_ROUTE_META["/tools/analyzer"].description
           : "Free real estate analyzer for Canadian investors. Calculate yields, IRR, cash-on-cash for Toronto, Vancouver, Calgary. Home of Daniel Foch's podcast."}
         keywords="canadian real estate, toronto real estate, real estate investing in canada, daniel foch, yield calculator canada, BRRR strategy, multiplex investing"
-        // Canonical must match the current URL — both `/tools/analyzer` and
-        // `/deal-analyzer` render this same `Home` component but are distinct
-        // SEO destinations, so each gets its own canonical instead of always
-        // pointing at `/`. Lighthouse flags a page→canonical URL mismatch as
-        // "Multiple conflicting URLs"; this resolves it.
-        canonicalUrl={isStandaloneTool ? location : "/"}
+        // `/deal-analyzer` now 301s to `/tools/analyzer` at the Express level,
+        // so the standalone tool canonicalizes to `/tools/analyzer` even if a
+        // client-side navigation lands on the legacy path.
+        canonicalUrl={isStandaloneTool ? "/tools/analyzer" : "/"}
         structuredData={combinedSchema}
       />
       <Navigation />
@@ -1256,11 +1257,11 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-3">
                   Deal analyzer
                 </p>
-                <h2 className="text-3xl md:text-4xl font-bold">
-                  Underwrite a property without the noise
-                </h2>
+                <h1 className="text-3xl md:text-4xl font-bold">
+                  Real Estate Deal Analyzer for Canadian Investors
+                </h1>
                 <p className="text-lg text-muted-foreground mt-3">
-                  Start with a listing, address, or rough deal thesis. We&apos;ll get you to first-pass cash flow and yield quickly.
+                  Underwrite a property without the noise. Start with a listing, address, or rough deal thesis. We&apos;ll get you to first-pass cash flow and yield quickly.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 shrink-0">

@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { SEO, organizationSchema, websiteSchema } from "@/components/SEO";
+import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,8 +93,8 @@ export default function InvestorStart() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Realist | AI-Powered Real Estate Investing"
-        description="Analyze any property, find listings worth underwriting, and let Realist learn your buy box from every search, save, and analysis."
+        title={SHARED_ROUTE_META["/"].title}
+        description={SHARED_ROUTE_META["/"].description}
         canonicalUrl="/"
         structuredData={combinedSchema}
       />
@@ -154,7 +155,7 @@ export default function InvestorStart() {
                 {greeting}
               </p>
               <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.04] text-balance">
-                AI-native deal underwriting for Canadian real estate investors.
+                Canadian real estate investing, underwritten by AI.
               </h1>
               <p className="mt-5 text-lg md:text-xl text-muted-foreground max-w-[760px]">
                 Analyze properties, save your assumptions, compare similar deals, and let every search,

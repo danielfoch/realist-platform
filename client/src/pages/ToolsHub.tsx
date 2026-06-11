@@ -1,4 +1,6 @@
 import { Navigation } from "@/components/Navigation";
+import { SEO } from "@/components/SEO";
+import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,8 +25,8 @@ const tools = [
   },
   {
     href: "/tools/cap-rates",
-    title: "Yield Map",
-    description: "Browse MLS listings by gross yield. Find the highest-returning properties across markets with pre-calculated returns using market rent data.",
+    title: "Cap Rate Map",
+    description: "Browse MLS listings by cap rate and rental yield. Find the highest-returning properties across markets with pre-calculated returns using market rent data.",
     icon: TrendingUp,
     badge: "New",
   },
@@ -123,8 +125,13 @@ const tools = [
 export default function ToolsHub() {
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title={SHARED_ROUTE_META["/tools"].title}
+        description={SHARED_ROUTE_META["/tools"].description}
+        canonicalUrl="/tools"
+      />
       <Navigation />
-      
+
       <main className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Investment Tools</h1>
