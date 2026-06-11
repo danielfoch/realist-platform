@@ -2535,18 +2535,29 @@ export async function registerRoutes(
     try {
       const { name, email, phone, consent, formType, formTag, tags, dealInfo, province, city } = req.body;
 
-      if (!name || !email || !phone) {
-        res.status(400).json({ error: "Name, email, and phone are required" });
+      // Phone is optional: low-friction entry points (e.g. event QR landing
+      // pages) capture email-only leads through this same path.
+      if (!name || !email) {
+        res.status(400).json({ error: "Name and email are required" });
         return;
       }
+
+      // Optional UTM attribution passthrough (leads table columns)
+      const utmField = (value: unknown): string | undefined =>
+        typeof value === "string" && value.trim() ? value.trim().slice(0, 200) : undefined;
 
       // Create the lead
       const lead = await storage.createLead({
         name,
         email,
-        phone,
+        phone: phone || null,
         consent: consent || false,
         leadSource: formType || "Deal Engagement",
+        utmSource: utmField(req.body.utmSource),
+        utmMedium: utmField(req.body.utmMedium),
+        utmCampaign: utmField(req.body.utmCampaign),
+        utmContent: utmField(req.body.utmContent),
+        utmTerm: utmField(req.body.utmTerm),
       });
 
       // Format phone to E.164 format for GHL
@@ -2579,7 +2590,7 @@ export async function registerRoutes(
         email,
         firstName,
         lastName,
-        phone: formatPhoneE164(phone),
+        phone: phone ? formatPhoneE164(phone) : undefined,
         fullName: name,
         consent: consent || false,
         leadSource: formType || "Deal Engagement",

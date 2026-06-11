@@ -105,6 +105,7 @@ import PitchDeck from "@/pages/PitchDeck";
 import UnderwritingShare from "@/pages/UnderwritingShare";
 import AccountApiKeys from "@/pages/AccountApiKeys";
 import ThankYouVancouver from "@/pages/ThankYouVancouver";
+import EdmontonEvent from "@/pages/EdmontonEvent";
 import NotFound from "@/pages/not-found";
 
 // Hub Pages
@@ -245,6 +246,10 @@ function Router() {
       <Route path="/about/shop" component={Shop} />
       <Route path="/about/contact" component={ContactPage} />
       <Route path="/thank-you/vancouver-multiplex-2026" component={ThankYouVancouver} />
+
+      {/* Event-day landing — Realist Multiplex Edmonton (QR target; /yeg is the stage-friendly alias) */}
+      <Route path="/edmonton" component={EdmontonEvent} />
+      <Route path="/yeg" component={EdmontonEvent} />
       
       {/* Redirects from old routes to new routes */}
       <Route path="/buybox">{() => <Redirect to="/tools/buybox" />}</Route>
