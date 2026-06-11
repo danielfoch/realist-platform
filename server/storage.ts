@@ -139,7 +139,6 @@ import {
   type InsertContributionEvent,
   type ListingAnalysisAggregate,
   type InsertListingAnalysisAggregate,
-<<<<<<< HEAD
   type PropertyAnalysis,
   type InsertPropertyAnalysis,
   type AnalysisAssumptionChange,
@@ -203,11 +202,6 @@ import {
   type InsertAreaScore,
   type SavedReport,
   type InsertSavedReport,
-=======
-  marketSnapshots,
-  type MarketSnapshot,
-  type InsertMarketSnapshot,
->>>>>>> c371715e2 (Published your App)
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -461,7 +455,6 @@ export interface IStorage {
   getListingAggregate(mlsNumber: string): Promise<ListingAnalysisAggregate | undefined>;
   getListingAggregatesBatch(mlsNumbers: string[]): Promise<ListingAnalysisAggregate[]>;
   upsertListingAggregate(data: InsertListingAnalysisAggregate): Promise<ListingAnalysisAggregate>;
-<<<<<<< HEAD
   createPropertyAnalysis(analysis: InsertPropertyAnalysis): Promise<PropertyAnalysis>;
   updatePropertyAnalysis(id: string, userId: string, updates: Partial<PropertyAnalysis>): Promise<PropertyAnalysis | undefined>;
   getPropertyAnalysis(id: string): Promise<PropertyAnalysis | undefined>;
@@ -483,14 +476,11 @@ export interface IStorage {
   softDeleteListingComment(id: string, userId: string): Promise<ListingComment | undefined>;
   markCommentHelpful(commentId: string, userId: string): Promise<boolean>;
   reportComment(commentId: string, userId: string): Promise<boolean>;
-=======
->>>>>>> c371715e2 (Published your App)
 
   upsertMarketSnapshot(data: InsertMarketSnapshot): Promise<MarketSnapshot>;
   getMarketSnapshots(city?: string, province?: string): Promise<MarketSnapshot[]>;
   getLatestMarketSnapshots(): Promise<MarketSnapshot[]>;
   getMarketSnapshotMonths(): Promise<string[]>;
-<<<<<<< HEAD
 
   insertDdfListingSnapshot(data: InsertDdfListingSnapshot): Promise<DdfListingSnapshot>;
   insertDdfListingSnapshotsBatch(data: InsertDdfListingSnapshot[]): Promise<number>;
@@ -552,8 +542,6 @@ export interface IStorage {
   getSavedReportByToken(token: string): Promise<SavedReport | undefined>;
   getSavedReportsByUser(userId: string): Promise<SavedReport[]>;
   deleteSavedReport(id: string): Promise<void>;
-=======
->>>>>>> c371715e2 (Published your App)
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1951,7 +1939,6 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-<<<<<<< HEAD
   async createPropertyAnalysis(analysis: InsertPropertyAnalysis): Promise<PropertyAnalysis> {
     const [result] = await db.insert(propertyAnalyses).values(analysis).returning();
     return result;
@@ -2063,8 +2050,6 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-=======
->>>>>>> c371715e2 (Published your App)
   async upsertMarketSnapshot(data: InsertMarketSnapshot): Promise<MarketSnapshot> {
     const [existing] = await db.select().from(marketSnapshots)
       .where(and(
@@ -2109,7 +2094,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(marketSnapshots.month));
     return results.map(r => r.month);
   }
-<<<<<<< HEAD
 
   async insertDdfListingSnapshot(data: InsertDdfListingSnapshot): Promise<DdfListingSnapshot> {
     const [result] = await db.insert(ddfListingSnapshots).values(data).returning();
@@ -2489,8 +2473,6 @@ export class DatabaseStorage implements IStorage {
   async deleteSavedReport(id: string): Promise<void> {
     await db.delete(savedReports).where(eq(savedReports.id, id));
   }
-=======
->>>>>>> c371715e2 (Published your App)
 }
 
 export const storage = new DatabaseStorage();

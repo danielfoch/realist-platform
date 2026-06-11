@@ -23,20 +23,6 @@ function markEventProcessed(eventId: string): boolean {
   return true;
 }
 
-const processedEventIds = new Set<string>();
-const PROCESSED_EVENT_MAX = 1000;
-
-function markEventProcessed(eventId: string): boolean {
-  if (processedEventIds.has(eventId)) {
-    return false;
-  }
-  processedEventIds.add(eventId);
-  if (processedEventIds.size > PROCESSED_EVENT_MAX) {
-    const first = processedEventIds.values().next().value;
-    if (first) processedEventIds.delete(first);
-  }
-  return true;
-}
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
