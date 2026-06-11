@@ -38,6 +38,7 @@ import {
 } from "@shared/crmNextStep";
 import { getResendClient } from "./resend";
 import { sendSms, smsConfigured, registerSmsWebhookRoutes } from "./twilioSms";
+import { aiDraftingConfigured, draftCrmMessage } from "./aiCopywriter";
 
 function sessionUserId(req: Request): string | null {
   return req.session?.userId ?? null;
@@ -314,6 +315,67 @@ export function registerCrmRoutes(app: Express): void {
       } catch (error) {
         console.error("[crm] log activity failed:", error);
         res.status(500).json({ success: false, error: "Failed to log activity" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/crm/contacts/:id/ai-draft",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        const userId = sessionUserId(req)!;
+        const contact = await ownedContact(req.params.id, userId);
+        if (!contact) {
+          res.status(404).json({ success: false, error: "Contact not found" });
+          return;
+        }
+        if (!aiDraftingConfigured()) {
+          res.status(400).json({ success: false, error: "AI drafting is not configured (set ANTHROPIC_API_KEY)" });
+          return;
+        }
+        const channel = req.body?.channel === "sms" ? "sms" : "email";
+        const [activities, deals] = await Promise.all([
+          db.select().from(crmActivities)
+            .where(eq(crmActivities.contactId, contact.id))
+            .orderBy(desc(crmActivities.createdAt))
+            .limit(15),
+          db.select().from(crmDeals).where(eq(crmDeals.contactId, contact.id)),
+        ]);
+        let analyses: Array<{ title: string | null; city: string | null; listingPrice: number | null; createdAt: Date }> = [];
+        if (contact.linkedUserId) {
+          analyses = await db
+            .select({
+              title: propertyAnalyses.title,
+              city: propertyAnalyses.city,
+              listingPrice: propertyAnalyses.listingPrice,
+              createdAt: propertyAnalyses.createdAt,
+            })
+            .from(propertyAnalyses)
+            .where(and(eq(propertyAnalyses.userId, contact.linkedUserId), eq(propertyAnalyses.isDeleted, false)))
+            .orderBy(desc(propertyAnalyses.createdAt))
+            .limit(5);
+        }
+        const { nextStep } = withNextStep(contact, deals);
+        const draft = await draftCrmMessage({
+          channel,
+          contact: {
+            name: contact.name,
+            stage: contact.stage,
+            contactType: contact.contactType,
+            targetMarket: contact.targetMarket,
+            source: contact.source,
+            lastTouchAt: contact.lastTouchAt,
+          },
+          nextStepAction: nextStep.action,
+          nextStepReason: nextStep.reason,
+          recentActivity: activities.map((a) => ({ kind: a.kind, body: a.body, createdAt: a.createdAt })),
+          analyses,
+        });
+        res.json({ success: true, draft });
+      } catch (error: any) {
+        console.error("[crm] ai draft failed:", error);
+        res.status(500).json({ success: false, error: error.message || "Failed to draft message" });
       }
     },
   );

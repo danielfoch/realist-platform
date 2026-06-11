@@ -144,6 +144,22 @@ export default function CrmContact() {
   const [emailDraft, setEmailDraft] = useState({ subject: "", body: "" });
   const [smsOpen, setSmsOpen] = useState(false);
   const [smsDraft, setSmsDraft] = useState("");
+  const [drafting, setDrafting] = useState(false);
+
+  async function aiDraft(channel: "email" | "sms") {
+    if (!contactId) return;
+    setDrafting(true);
+    try {
+      const res = await apiRequest("POST", `/api/crm/contacts/${contactId}/ai-draft`, { channel });
+      const data = await res.json();
+      if (channel === "email") setEmailDraft({ subject: data.draft.subject, body: data.draft.body });
+      else setSmsDraft(data.draft.body);
+    } catch (error) {
+      console.error("AI draft failed", error);
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   const load = useCallback(async () => {
     if (!contactId) return;
@@ -293,9 +309,14 @@ export default function CrmContact() {
                         <Label htmlFor="email-body">Body</Label>
                         <Textarea id="email-body" rows={10} value={emailDraft.body} onChange={(e) => setEmailDraft({ ...emailDraft, body: e.target.value })} />
                       </div>
-                      <Button className="w-full" onClick={() => executeStep("email")} disabled={busy}>
-                        {busy ? "Sending…" : `Send to ${contact.email}`}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => aiDraft("email")} disabled={drafting}>
+                          {drafting ? "Writing…" : "✨ AI draft"}
+                        </Button>
+                        <Button className="flex-1" onClick={() => executeStep("email")} disabled={busy}>
+                          {busy ? "Sending…" : `Send to ${contact.email}`}
+                        </Button>
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -312,9 +333,14 @@ export default function CrmContact() {
                     <div className="space-y-3">
                       <Textarea rows={5} maxLength={1600} value={smsDraft} onChange={(e) => setSmsDraft(e.target.value)} placeholder="Type your message…" />
                       <p className="text-xs text-muted-foreground">{smsDraft.length}/1600 · to {contact.phone}</p>
-                      <Button className="w-full" onClick={() => executeStep("sms")} disabled={busy || !smsDraft.trim()}>
-                        {busy ? "Sending…" : "Send text"}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => aiDraft("sms")} disabled={drafting}>
+                          {drafting ? "Writing…" : "✨ AI draft"}
+                        </Button>
+                        <Button className="flex-1" onClick={() => executeStep("sms")} disabled={busy || !smsDraft.trim()}>
+                          {busy ? "Sending…" : "Send text"}
+                        </Button>
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>
