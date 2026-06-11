@@ -1,0 +1,39 @@
+# Realist nightly agent task queue.
+# Only Dan adds items (CODEOWNERS enforces review on changes here).
+# The agent takes the highest-priority `queued` item, one per night.
+# status: queued | pr-open | merged | skipped
+
+- id: content-encyclopedia-broken-slugs
+  type: content
+  priority: 1
+  title: Fix unresolved relatedGuideSlug references in encyclopedia tool specs
+  detail: >
+    npm run build warns about 8 unresolved relatedGuideSlug references
+    (special-assessment, condo-status-certificate, net-lease,
+    triple-net-lease, cam, leasing-commission, turnover-cost,
+    maintenance-reserve). Either write the missing guides or repoint the
+    slugs to existing guides. Content-only.
+  status: queued
+  pr: null
+
+- id: email-edmonton-followup
+  type: email-templates
+  priority: 2
+  title: Draft post-Edmonton-event follow-up email copy
+  detail: >
+    Draft (do not send) the day-after email for Edmonton attendees:
+    recap, link to /edmonton analyzer flow, set-password reminder for
+    ticket buyers. Save to docs/email-drafts/.
+  status: queued
+  pr: null
+
+- id: reports-weekly-deal-digest-draft
+  type: reports
+  priority: 3
+  title: Draft the weekly "we reviewed X deals" proof report format
+  detail: >
+    Using the deal desk dashboard exports (read-only), draft the weekly
+    content-proof report template (deals analyzed, submitted, verdicts)
+    for Dan's podcast/newsletter use. Output to docs/reports/.
+  status: queued
+  pr: null
