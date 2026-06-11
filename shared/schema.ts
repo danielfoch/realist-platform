@@ -15,6 +15,9 @@ export const postgisGeometry = customType<{ data: string; driverData: string }>(
 // Re-export auth models (required for Replit Auth)
 export * from "./models/auth";
 
+// Re-export native CRM models (contacts, activities, deals)
+export * from "./models/crm";
+
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -184,6 +187,14 @@ export const realistEvents = pgTable("realist_events", {
   refundPolicy: text("refund_policy"),
   seoTitle: text("seo_title"),
   seoDescription: text("seo_description"),
+  // Growth-engine fields: flagship (paid multiplex events) vs meetup
+  // (free, recurring, member- or host-created).
+  kind: text("kind").notNull().default("flagship"),
+  city: text("city"),
+  isRecurring: boolean("is_recurring").default(false).notNull(),
+  recurrenceNote: text("recurrence_note"),
+  hostUserId: varchar("host_user_id"),
+  reminderSentAt: timestamp("reminder_sent_at"),
   createdByEmail: text("created_by_email").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -240,6 +251,77 @@ export const realistEventAttendees = pgTable("realist_event_attendees", {
   email: text("email").notNull(),
   name: text("name"),
   checkedInAt: timestamp("checked_in_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Free-event RSVPs (meetups): no Stripe, but always tied to an account —
+// the RSVP IS the signup funnel.
+export const realistEventRsvps = pgTable("realist_event_rsvps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  email: text("email").notNull(),
+  name: text("name"),
+  status: text("status").notNull().default("GOING"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uq_event_rsvp_email").on(table.eventId, table.email),
+]);
+
+// One row per announcement blast so an event is never double-blasted.
+export const realistEventAnnouncements = pgTable("realist_event_announcements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  audience: text("audience").notNull().default("all_optin"),
+  sentCount: integer("sent_count").default(0).notNull(),
+  triggeredByEmail: text("triggered_by_email"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Sponsor profiles shown publicly (event pages, events hub).
+export const realistSponsors = pgTable("realist_sponsors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  logoUrl: text("logo_url"),
+  websiteUrl: text("website_url"),
+  blurb: text("blurb"),
+  tier: text("tier").default("partner").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Private, unlisted sponsorship packages: shared by direct link + access key,
+// purchasable on-site via Stripe. Contract + sales deck are linked assets.
+export const realistSponsorshipPackages = pgTable("realist_sponsorship_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  accessKey: text("access_key").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  eventScope: text("event_scope"),
+  priceCents: integer("price_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("cad").notNull(),
+  perks: jsonb("perks").$type<string[]>().default([]),
+  contractUrl: text("contract_url"),
+  salesDeckUrl: text("sales_deck_url"),
+  quantityTotal: integer("quantity_total"),
+  quantitySold: integer("quantity_sold").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const realistSponsorshipOrders = pgTable("realist_sponsorship_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  packageId: varchar("package_id").references(() => realistSponsorshipPackages.id).notNull(),
+  company: text("company").notNull(),
+  contactName: text("contact_name"),
+  email: text("email").notNull(),
+  amountPaidCents: integer("amount_paid_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("cad").notNull(),
+  stripeCheckoutSessionId: text("stripe_checkout_session_id").notNull().unique(),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  status: text("status").notNull().default("PAID"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
