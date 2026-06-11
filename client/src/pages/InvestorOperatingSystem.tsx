@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 import type { DealNote, LeaderboardEntry, WatchlistDeal } from "@shared/engagement";
 import {
   AlertTriangle,
@@ -130,6 +131,7 @@ function StatTile({ label, value, icon: Icon }: { label: string; value: string; 
 
 export default function InvestorOperatingSystem() {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = usePersistedTab("investorOS.activeTab", "watchlist", ["watchlist", "notes", "professionals", "challenge", "events"]);
   const [notes, setNotes] = useState(sampleNotes);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [webhookStatus, setWebhookStatus] = useState("CRM webhook not tested this session.");
@@ -228,7 +230,7 @@ export default function InvestorOperatingSystem() {
           <StatTile label="Pro requests" value="6 types" icon={BriefcaseBusiness} />
         </div>
 
-        <Tabs defaultValue="watchlist" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
             <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
             <TabsTrigger value="notes">Deal Notes</TabsTrigger>

@@ -3138,6 +3138,7 @@ export type ContributionEvent = typeof contributionEvents.$inferSelect;
 export type InsertListingAnalysisAggregate = z.infer<typeof insertListingAnalysisAggregateSchema>;
 export type ListingAnalysisAggregate = typeof listingAnalysisAggregates.$inferSelect;
 
+<<<<<<< HEAD
 export type InsertPropertySaleEstimate = z.infer<typeof insertPropertySaleEstimateSchema>;
 export type PropertySaleEstimate = typeof propertySaleEstimates.$inferSelect;
 export type PropertySaleEstimateRevision = typeof propertySaleEstimateRevisions.$inferSelect;
@@ -3155,6 +3156,8 @@ export type MarketSentimentRollup = typeof marketSentimentRollups.$inferSelect;
 export type MarketReportMetric = typeof marketReportMetrics.$inferSelect;
 export type AnalysisUnderwritingComparison = typeof analysisUnderwritingComparisons.$inferSelect;
 
+=======
+>>>>>>> c371715e2 (Published your App)
 export const marketSnapshots = pgTable("market_snapshots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   city: text("city").notNull(),
@@ -3183,6 +3186,7 @@ export const insertMarketSnapshotSchema = createInsertSchema(marketSnapshots).om
 
 export type InsertMarketSnapshot = z.infer<typeof insertMarketSnapshotSchema>;
 export type MarketSnapshot = typeof marketSnapshots.$inferSelect;
+<<<<<<< HEAD
 
 export const ddfListingSnapshots = pgTable("ddf_listing_snapshots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -4008,3 +4012,5 @@ export const insertUnderwritingShareSchema = createInsertSchema(underwritingShar
 });
 export type InsertUnderwritingShare = z.infer<typeof insertUnderwritingShareSchema>;
 export type UnderwritingShare = typeof underwritingShares.$inferSelect;
+=======
+>>>>>>> c371715e2 (Published your App)

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,11 +19,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer, GraduationCap, Phone, Mail, MessageSquare, PenLine, BookOpen, Plus, Pencil, Trash2 } from "lucide-react";
+import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer, GraduationCap, Phone, Mail, MessageSquare, PenLine, BookOpen, Plus, Pencil, Trash2, Building2 } from "lucide-react";
+import { Link } from "wouter";
 import type { Lead, MarketExpertApplication, RenoQuote, CoachingWaitlist, BlogPost, Guide } from "@shared/schema";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedTab } from "@/hooks/use-persisted-tab";
 
 type ApplicationWithUser = MarketExpertApplication & {
   user?: {
@@ -82,6 +84,8 @@ type SaleResolution = {
 
 export default function Admin() {
   const { toast } = useToast();
+
+  const [currentTab, setCurrentTab] = usePersistedTab("admin.activeTab", "applications", ["applications", "users", "leads", "reno-quotes", "coaching", "blog", "guides", "sale-oracle"], { storage: "session" });
   
   const { data: leads, isLoading: leadsLoading, refetch: refetchLeads, error: leadsError } = useQuery<Lead[]>({
     queryKey: ["/api/admin/leads"],
@@ -490,20 +494,28 @@ export default function Admin() {
               <h1 className="text-3xl font-bold" data-testid="text-admin-title">Admin Dashboard</h1>
               <p className="text-muted-foreground">Manage leads, applications, and users</p>
             </div>
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={() => {
-                refetchLeads();
-                refetchApplications();
-                refetchUsers();
-                refetchLeaderboardHealth();
-              }}
-              data-testid="button-refresh"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh All
-            </Button>
+            <div className="flex gap-2">
+              <Link href="/admin/deal-desk">
+                <Button variant="outline" className="gap-2" data-testid="link-deal-desk-admin">
+                  <Building2 className="h-4 w-4" />
+                  Deal Desk
+                </Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => {
+                  refetchLeads();
+                  refetchApplications();
+                  refetchUsers();
+                  refetchLeaderboardHealth();
+                }}
+                data-testid="button-refresh"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh All
+              </Button>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-4 gap-4">
@@ -624,7 +636,7 @@ export default function Admin() {
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="applications" className="space-y-4">
+          <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-4">
             <TabsList>
               <TabsTrigger value="applications" data-testid="tab-applications">
                 Applications {pendingApplications.length > 0 && (

@@ -707,6 +707,13 @@ export async function registerRoutes(
   registerApiKeyManagementRoutes(app);
   registerAgentRoutes(app);
 
+  const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
+  registerApiKeyManagementRoutes(app);
+  registerAgentRoutes(app);
+
+  const { registerDealDeskRoutes } = await import("./routes/dealDesk");
+  registerDealDeskRoutes(app);
+
   // ─── Event Tracking ───────────────────────────────────────────────────────
   // Lightweight behavioral event capture for AI training data pipeline.
   // Every event here is a future labeled data point:
@@ -752,6 +759,8 @@ export async function registerRoutes(
         analysisId: properties.analysis_id || properties.analysisId || null,
         sourcePage: page || null,
         component: properties.component || null,
+        dealId: properties.deal_id || properties.dealId || null,
+        source: properties.source || null,
         metadata: properties,
       });
 
@@ -3423,6 +3432,30 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching reno quotes:", error);
       res.status(500).json({ error: "Failed to fetch quotes" });
+    }
+  });
+
+  app.post("/api/activity", async (req, res) => {
+    try {
+      const { eventType, analysisId, dealId } = req.body;
+      if (!eventType || typeof eventType !== "string") {
+        return res.status(400).json({ ok: false, error: "eventType is required" });
+      }
+      const userId = (req.session as any)?.userId || null;
+      const sessionId = (req as any).sessionID || null;
+      await logUserActivity(req, {
+        userId,
+        sessionId,
+        eventName: eventType,
+        analysisId: analysisId || null,
+        dealId: dealId || null,
+        source: "deal_analyzer",
+        sourcePage: "/",
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("POST /api/activity error:", err);
+      res.status(500).json({ ok: false });
     }
   });
 
@@ -9845,6 +9878,7 @@ export async function registerRoutes(
   });
 
   // ============================================
+<<<<<<< HEAD
   // PARTNER JOIN / MATCHING ROUTES
   // ============================================
 
@@ -9975,6 +10009,8 @@ export async function registerRoutes(
   });
 
   // ============================================
+=======
+>>>>>>> c371715e2 (Published your App)
   // MARKET REPORT ROUTES
   // ============================================
 
@@ -10013,8 +10049,80 @@ export async function registerRoutes(
 
   app.post("/api/market-report/compute-snapshot", isAdmin, async (_req, res) => {
     try {
+<<<<<<< HEAD
       const result = await computeMonthlySnapshot();
       res.json({ success: true, month: result.month, snapshotCount: result.count });
+=======
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
+
+      const cityResults = await db
+        .select({
+          city: analyses.city,
+          province: analyses.province,
+          dealCount: count(analyses.id),
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+          avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+          avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL AND ${analyses.createdAt} >= DATE_TRUNC('month', CURRENT_DATE)`)
+        .groupBy(analyses.city, analyses.province);
+
+      const allTimeResults = await db
+        .select({
+          city: analyses.city,
+          province: analyses.province,
+          dealCount: count(analyses.id),
+          avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+          avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+          avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+          avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+          avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+          avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+        })
+        .from(analyses)
+        .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
+        .groupBy(analyses.city, analyses.province);
+
+      const cityMap = new Map(cityResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+      const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+
+      let snapshotCount = 0;
+      for (const { city, province } of MAJOR_CANADIAN_CITIES) {
+        const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
+        const current = cityMap.get(key);
+        const allTime = allTimeMap.get(key);
+        const data = current || allTime;
+        
+        const cmhcRents = CMHC_CITY_RENTS[city];
+
+        await storage.upsertMarketSnapshot({
+          city,
+          province,
+          month,
+          dealCount: data ? Number(data.dealCount) : 0,
+          avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
+          avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
+          avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
+          avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
+          avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
+          medianCapRate: null,
+          medianPurchasePrice: null,
+          avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
+          cmhcOneBed: cmhcRents?.oneBed ?? null,
+          cmhcTwoBed: cmhcRents?.twoBed ?? null,
+        });
+        snapshotCount++;
+      }
+
+      res.json({ success: true, month, snapshotCount });
+>>>>>>> c371715e2 (Published your App)
     } catch (error) {
       console.error("Error computing market snapshot:", error);
       res.status(500).json({ error: "Failed to compute market snapshot" });
@@ -10032,6 +10140,7 @@ export async function registerRoutes(
     }
   });
 
+<<<<<<< HEAD
   app.get("/api/market-report/metrics", async (req, res) => {
     try {
       const city = req.query.city as string | undefined;
@@ -10066,6 +10175,8 @@ export async function registerRoutes(
     }
   });
 
+=======
+>>>>>>> c371715e2 (Published your App)
   app.get("/api/market-report/history", async (req, res) => {
     try {
       const city = req.query.city as string | undefined;
@@ -10089,6 +10200,7 @@ export async function registerRoutes(
     }
   });
 
+<<<<<<< HEAD
   app.get("/api/yield-history", async (req, res) => {
     try {
       const city = req.query.city as string | undefined;
@@ -10249,6 +10361,9 @@ export async function registerRoutes(
   }
 
   // Run on server start if current month not yet snapshotted
+=======
+  // Auto-compute snapshots on server start and monthly
+>>>>>>> c371715e2 (Published your App)
   (async () => {
     try {
       const months = await storage.getMarketSnapshotMonths();
@@ -10256,16 +10371,63 @@ export async function registerRoutes(
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       if (!months.includes(currentMonth)) {
         console.log("[market-report] Computing initial snapshot for", currentMonth);
+<<<<<<< HEAD
         await computeMonthlySnapshot(currentMonth);
         console.log("[market-report] Initial snapshot computed for", currentMonth);
       } else {
         console.log("[market-report] Snapshot already exists for", currentMonth);
+=======
+        const { CMHC_CITY_RENTS } = await import("@shared/cmhcRents");
+        
+        const allTimeResults = await db
+          .select({
+            city: analyses.city,
+            province: analyses.province,
+            dealCount: count(analyses.id),
+            avgCapRate: sql<number>`AVG((${analyses.resultsJson}->>'capRate')::numeric)`,
+            avgCashOnCash: sql<number>`AVG((${analyses.resultsJson}->>'cashOnCash')::numeric)`,
+            avgDscr: sql<number>`AVG((${analyses.resultsJson}->>'dscr')::numeric)`,
+            avgPurchasePrice: sql<number>`AVG((${analyses.inputsJson}->>'purchasePrice')::numeric)`,
+            avgVacancyRate: sql<number>`AVG(${analyses.vacancyRate})`,
+            avgRentPerUnit: sql<number>`AVG((${analyses.resultsJson}->>'effectiveMonthlyIncome')::numeric)`,
+          })
+          .from(analyses)
+          .where(sql`${analyses.city} IS NOT NULL AND ${analyses.city} != '' AND ${analyses.resultsJson} IS NOT NULL`)
+          .groupBy(analyses.city, analyses.province);
+
+        const allTimeMap = new Map(allTimeResults.map(r => [`${r.city?.toLowerCase()}-${r.province?.toLowerCase()}`, r]));
+
+        for (const { city, province } of MAJOR_CANADIAN_CITIES) {
+          const key = `${city.toLowerCase()}-${province.toLowerCase()}`;
+          const data = allTimeMap.get(key);
+          const cmhcRents = CMHC_CITY_RENTS[city];
+
+          await storage.upsertMarketSnapshot({
+            city,
+            province,
+            month: currentMonth,
+            dealCount: data ? Number(data.dealCount) : 0,
+            avgCapRate: data?.avgCapRate != null ? Math.round(Number(data.avgCapRate) * 100) / 100 : null,
+            avgCashOnCash: data?.avgCashOnCash != null ? Math.round(Number(data.avgCashOnCash) * 100) / 100 : null,
+            avgDscr: data?.avgDscr != null ? Math.round(Number(data.avgDscr) * 100) / 100 : null,
+            avgPurchasePrice: data?.avgPurchasePrice != null ? Math.round(Number(data.avgPurchasePrice)) : null,
+            avgRentPerUnit: data?.avgRentPerUnit != null ? Math.round(Number(data.avgRentPerUnit)) : null,
+            medianCapRate: null,
+            medianPurchasePrice: null,
+            avgVacancyRate: data?.avgVacancyRate != null ? Math.round(Number(data.avgVacancyRate) * 100) / 100 : null,
+            cmhcOneBed: cmhcRents?.oneBed ?? null,
+            cmhcTwoBed: cmhcRents?.twoBed ?? null,
+          });
+        }
+        console.log("[market-report] Initial snapshot computed for", currentMonth);
+>>>>>>> c371715e2 (Published your App)
       }
     } catch (error) {
       console.error("[market-report] Failed to compute initial snapshot:", error);
     }
   })();
 
+<<<<<<< HEAD
   // Cron: check every hour, auto-compute snapshots + DDF yield crawl on the 1st of each month
   setInterval(async () => {
     try {
@@ -10433,6 +10595,8 @@ export async function registerRoutes(
     }
   }, 6 * 60 * 60 * 1000);
 
+=======
+>>>>>>> c371715e2 (Published your App)
   // ============================================
   // COMMUNITY UNDERWRITING ROUTES
   // ============================================
