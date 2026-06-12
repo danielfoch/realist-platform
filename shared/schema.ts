@@ -3978,7 +3978,17 @@ export const emailTriggers = pgTable("email_triggers", {
   sentAt: timestamp("sent_at"),
   failureReason: text("failure_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  // The Deal Desk sweep's queueEmailTrigger relies on onConflictDoNothing
+  // against this partial unique index: at most one PENDING trigger per
+  // (user, type). Sent/failed/cancelled history rows are unaffected.
+  // NOTE: if prod already holds duplicate pending rows, creating this index
+  // fails — server/emailQueue.ts ensureEmailTriggerDedupe() pre-deletes older
+  // duplicates (keeping the newest) at boot before creating it idempotently.
+  uniqueIndex("uq_email_triggers_pending_user_type")
+    .on(table.userId, table.triggerType)
+    .where(sql`${table.status} = 'pending'`),
+]);
 
 export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
   id: true,

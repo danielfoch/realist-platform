@@ -125,6 +125,7 @@ import { registerRealistEventRoutes } from "./eventsModule";
 import { registerDealDeskRoutes } from "./dealDesk";
 import { scheduleAdminWeeklySummary } from "./adminWeeklySummary";
 import { registerRetentionEmailRoutes } from "./retentionEmails";
+import { registerOnboardingEmailRoutes } from "./onboardingEmails";
 import { registerAiDefaultsRoutes } from "./aiDefaults";
 import { registerCrmRoutes } from "./crm";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
@@ -753,6 +754,7 @@ export async function registerRoutes(
   registerDealDeskRoutes(app);
   scheduleAdminWeeklySummary();
   registerRetentionEmailRoutes(app);
+  registerOnboardingEmailRoutes(app);
   registerAiDefaultsRoutes(app);
   registerCrmRoutes(app);
   registerEventsGrowthRoutes(app);
