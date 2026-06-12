@@ -52,7 +52,7 @@ function intelApiKey(): string | undefined {
   return process.env.REALIST_INTEL_API_KEY || process.env.DEAL_DESK_API_KEY;
 }
 
-async function requireIntelAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function requireIntelAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const apiKey = req.headers["x-api-key"] || req.query.api_key;
     const configuredKey = intelApiKey();

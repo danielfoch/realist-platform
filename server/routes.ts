@@ -127,6 +127,7 @@ import { scheduleAdminWeeklySummary } from "./adminWeeklySummary";
 import { registerCrmRoutes } from "./crm";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
+import { registerRentIngestionRoutes } from "./rentIngestion";
 import { registerMobilePushRoutes } from "./mobilePush";
 import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
@@ -754,6 +755,7 @@ export async function registerRoutes(
   registerCrmRoutes(app);
   registerEventsGrowthRoutes(app);
   registerRentIntelligenceRoutes(app);
+  registerRentIngestionRoutes(app);
   registerMobilePushRoutes(app);
   registerUserGoogleSheetsRoutes(app);
   registerUnderwritingShareRoutes(app);
