@@ -129,6 +129,7 @@ import { registerOnboardingEmailRoutes } from "./onboardingEmails";
 import { registerAiDefaultsRoutes } from "./aiDefaults";
 import { registerCrmRoutes } from "./crm";
 import { registerPartnerNetworkRoutes, handoffClaimedLeadToCrm } from "./partnerNetwork";
+import { registerPartnerListingFeedRoutes } from "./partnerListingFeeds";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
@@ -761,6 +762,7 @@ export async function registerRoutes(
   registerAiDefaultsRoutes(app);
   registerCrmRoutes(app);
   registerPartnerNetworkRoutes(app);
+  registerPartnerListingFeedRoutes(app);
   registerEventsGrowthRoutes(app);
   registerRentIntelligenceRoutes(app);
   registerRentIngestionRoutes(app);

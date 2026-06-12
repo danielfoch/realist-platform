@@ -636,6 +636,10 @@ async function ensureAppTables() {
         scheduleRentIngestionJobs(log);
         log("Rent ingestion jobs scheduled (daily DDF lease crawl)", "rent-ingestion");
       }).catch((err) => log(`Rent ingestion schedule error: ${err.message}`, "rent-ingestion"));
+      import("./partnerListingFeeds").then(({ schedulePartnerListingFeedJobs }) => {
+        schedulePartnerListingFeedJobs(log);
+        log("Partner listing feed jobs scheduled (daily IDX re-sync)", "partner-feeds");
+      }).catch((err) => log(`Partner feed schedule error: ${err.message}`, "partner-feeds"));
       const drainNotifications = async () => {
         try {
           const result = await processPendingGhlNotifications();

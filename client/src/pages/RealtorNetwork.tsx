@@ -127,6 +127,14 @@ export default function RealtorNetwork() {
                   Manage your markets, leads, and introductions
                 </p>
               </div>
+              <Button
+                variant="outline"
+                onClick={() => { window.location.href = "/partner/listings"; }}
+                data-testid="button-manage-listings-feed"
+              >
+                <Building className="mr-2 h-4 w-4" />
+                My Listings Feed
+              </Button>
             </div>
           )}
 

@@ -58,6 +58,8 @@ interface DdfListing {
   NumberOfUnitsTotal?: number;
   AssociationFee?: number;
   AssociationFeeFrequency?: string;
+  ListOfficeName?: string;
+  OriginatingSystemName?: string;
   [key: string]: any;
 }
 
@@ -87,6 +89,7 @@ const DDF_SELECT_FIELDS = [
   "ParkingTotal", "NumberOfUnitsTotal",
   "AssociationFee", "AssociationFeeFrequency",
   "PhotosCount", "Media",
+  "ListOfficeName", "OriginatingSystemName",
   "ModificationTimestamp", "OriginalEntryTimestamp",
 ].join(",");
 
@@ -434,6 +437,9 @@ export function normalizeDdfToRepliersFormat(ddf: DdfListing): any {
     listDate: ddf.OriginalEntryTimestamp || undefined,
     totalActualRent: ddf.TotalActualRent || undefined,
     numberOfUnitsTotal: ddf.NumberOfUnitsTotal || undefined,
+    // CREA DDF display rules require identifying the listing brokerage
+    brokerage: ddf.ListOfficeName || null,
+    originatingBoard: ddf.OriginatingSystemName || null,
     dataSource: "crea_ddf" as const,
   };
 }

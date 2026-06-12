@@ -125,6 +125,8 @@ interface RepliersListing {
   taxes?: {
     annualAmount?: number;
   };
+  brokerage?: string | null;
+  originatingBoard?: string | null;
 }
 
 interface ListingWithCapRate extends RepliersListing {
@@ -2976,6 +2978,12 @@ export default function CapRates() {
                     {selectedListing.plexDetectionReason}
                   </div>
                 )}
+                {selectedListing.brokerage && (
+                  <p className="text-xs text-muted-foreground" data-testid="text-detail-brokerage">
+                    Listing courtesy of {selectedListing.brokerage}
+                    {selectedListing.originatingBoard ? ` — ${selectedListing.originatingBoard}` : ""}
+                  </p>
+                )}
 
                 <Button
                   className="w-full"
@@ -3465,6 +3473,11 @@ export default function CapRates() {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{formatShortAddress(selectedListing.address)}</p>
                 <p className="text-xs text-muted-foreground">{selectedListing.address?.city}</p>
+                {selectedListing.brokerage && (
+                  <p className="truncate text-[10px] text-muted-foreground" data-testid="text-quickcard-brokerage">
+                    Listing courtesy of {selectedListing.brokerage}
+                  </p>
+                )}
               </div>
               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setSelectedListing(null)}>
                 <X className="h-3.5 w-3.5" />

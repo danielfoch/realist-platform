@@ -2470,6 +2470,74 @@ export type RealtorLeadNotification = typeof realtorLeadNotifications.$inferSele
 export type InsertRealtorIntroduction = z.infer<typeof insertRealtorIntroductionSchema>;
 export type RealtorIntroduction = typeof realtorIntroductions.$inferSelect;
 
+// Partner IDX/VOW listing feeds: either provisioned via Repliers (licensed,
+// activates after admin provisioning + fee approval) or imported from the
+// partner's own IDX website (partner warrants display rights in the signed
+// agreement).
+export const partnerListingFeeds = pgTable("partner_listing_feeds", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  partnerId: varchar("partner_id").references(() => industryPartners.id),
+  feedType: text("feed_type").notNull(), // repliers_idx | own_idx_site
+  status: text("status").default("active").notNull(), // awaiting_provisioning | active | error | disabled
+  idxSiteUrl: text("idx_site_url"),
+  boardName: text("board_name"),
+  agreementVersion: text("agreement_version"),
+  agreementText: text("agreement_text"),
+  agreementSignedAt: timestamp("agreement_signed_at"),
+  agreementSignature: text("agreement_signature"),
+  agreementSignedName: text("agreement_signed_name"),
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStatus: text("last_sync_status"),
+  lastSyncError: text("last_sync_error"),
+  listingsImported: integer("listings_imported").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const partnerListings = pgTable("partner_listings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  feedId: varchar("feed_id").references(() => partnerListingFeeds.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  externalId: text("external_id").notNull(),
+  sourceUrl: text("source_url"),
+  mlsNumber: text("mls_number"),
+  address: text("address"),
+  city: text("city"),
+  region: text("region"),
+  postalCode: text("postal_code"),
+  listPrice: real("list_price"),
+  bedrooms: real("bedrooms"),
+  bathrooms: real("bathrooms"),
+  propertyType: text("property_type"),
+  photoUrl: text("photo_url"),
+  description: text("description"),
+  listingBrokerage: text("listing_brokerage"),
+  status: text("status").default("active").notNull(), // active | removed
+  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("partner_listings_feed_external_idx").on(table.feedId, table.externalId),
+  index("partner_listings_city_status_idx").on(table.city, table.status),
+]);
+
+export const insertPartnerListingFeedSchema = createInsertSchema(partnerListingFeeds).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPartnerListingSchema = createInsertSchema(partnerListings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPartnerListingFeed = z.infer<typeof insertPartnerListingFeedSchema>;
+export type PartnerListingFeed = typeof partnerListingFeeds.$inferSelect;
+export type InsertPartnerListing = z.infer<typeof insertPartnerListingSchema>;
+export type PartnerListing = typeof partnerListings.$inferSelect;
+
 // ============================================
 // COMMUNITY UNDERWRITING TABLES
 // ============================================

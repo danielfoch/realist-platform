@@ -141,3 +141,66 @@ Signed electronically by ${input.signedName} on ${signedDate}.`;
 
   return { version: PARTNER_NETWORK_AGREEMENT_VERSION, title, text, terms };
 }
+
+// ============================================
+// IDX / VOW LISTING FEED AGREEMENT
+// ============================================
+
+export const IDX_FEED_AGREEMENT_VERSION = "2026-06-12.v1";
+
+export const LISTING_FEED_TYPES = ["repliers_idx", "own_idx_site"] as const;
+export type ListingFeedType = (typeof LISTING_FEED_TYPES)[number];
+
+export function isListingFeedType(value: unknown): value is ListingFeedType {
+  return typeof value === "string" && (LISTING_FEED_TYPES as readonly string[]).includes(value);
+}
+
+export interface IdxFeedAgreementInput {
+  feedType: ListingFeedType;
+  signedName: string;
+  brokerageName: string;
+  realEstateBoard?: string | null;
+  idxSiteUrl?: string | null;
+  signedAtIso: string;
+}
+
+/**
+ * Agreement a partner signs to put their listings on realist.ca.
+ *
+ * Two paths:
+ * - repliers_idx: a licensed IDX/VOW feed provisioned through Repliers under
+ *   Valery Real Estate Inc. Activates after provisioning; data costs may apply.
+ * - own_idx_site: the partner points us at their existing IDX website and we
+ *   import listings from it. The partner warrants they hold the display and
+ *   redistribution rights for everything imported — board IDX licenses are
+ *   typically site-specific, so this warranty is the compliance load-bearing
+ *   clause, not a formality.
+ */
+export function buildIdxFeedAgreement(input: IdxFeedAgreementInput): { version: string; title: string; text: string } {
+  const signedDate = input.signedAtIso.slice(0, 10);
+  const title = "Realist Partner Listing Feed Agreement";
+
+  const sourceClause =
+    input.feedType === "repliers_idx"
+      ? `1. FEED. Realist will provision a licensed IDX/VOW listing feed for the Partner through Repliers in cooperation with Valery Real Estate Inc.${input.realEstateBoard ? ` for ${input.realEstateBoard}` : ""}. The feed activates once provisioning is complete. Third-party data fees may apply and will be confirmed with the Partner before activation; the Partner owes nothing until they approve any such fees in writing.`
+      : `1. FEED. The Partner directs Realist to import listings from the Partner's existing IDX website at ${input.idxSiteUrl || "[IDX website URL]"} and to refresh that import periodically. The Partner represents and warrants that they hold all rights, licenses, and board permissions required to display and redistribute every listing imported from that site, and will notify Realist immediately if any listing must be removed.`;
+
+  const text = `${title}
+Version ${IDX_FEED_AGREEMENT_VERSION} — signed ${signedDate}
+
+This agreement is between ${input.signedName}${input.brokerageName ? `, of ${input.brokerageName}` : ""} (the "Partner") and Realist (realist.ca).
+
+${sourceClause}
+
+2. ATTRIBUTION. Listings sourced from the Partner will display the Partner's name and contact information with the caption "Listing provided by ${input.signedName} via IDX${input.realEstateBoard ? ` — ${input.realEstateBoard}` : ""}", together with the name of the listing brokerage for each listing as required by CREA and board display rules.
+
+3. ACCURACY AND TAKEDOWN. The Partner is responsible for the accuracy of listings sourced from them. Realist will remove or correct any listing within one business day of a takedown request from the Partner, a board, or a listing brokerage.
+
+4. NO FEES FOR DISPLAY. Realist charges no monthly fee for listing display. Any third-party feed costs under Section 1 are pass-through and require the Partner's prior written approval.
+
+5. TERM. Either party may terminate at any time, after which Realist will stop importing and remove the Partner's sourced listings from active display.
+
+Signed electronically by ${input.signedName} on ${signedDate}.`;
+
+  return { version: IDX_FEED_AGREEMENT_VERSION, title, text };
+}

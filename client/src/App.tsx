@@ -105,6 +105,8 @@ import {
 import JoinRealtors from "@/pages/JoinRealtors";
 import JoinMortgageBrokers from "@/pages/JoinMortgageBrokers";
 import PartnerOnboarding from "@/pages/PartnerOnboarding";
+import PartnerListingsFeed from "@/pages/PartnerListingsFeed";
+import PartnerListings from "@/pages/PartnerListings";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
 import PitchDeck from "@/pages/PitchDeck";
@@ -302,6 +304,8 @@ function Router() {
       <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
       <Route path="/partner/network" component={RealtorNetwork} />
       <Route path="/partner/onboarding" component={PartnerOnboarding} />
+      <Route path="/partner/listings" component={PartnerListingsFeed} />
+      <Route path="/listings/partners" component={PartnerListings} />
       <Route path="/join/realtors" component={JoinRealtors} />
       <Route path="/join/mortgage-brokers" component={JoinMortgageBrokers} />
       <Route path="/join/lenders" component={JoinLenders} />
