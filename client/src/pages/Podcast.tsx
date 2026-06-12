@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,6 +37,7 @@ import {
 import { format } from "date-fns";
 
 interface PodcastEpisode {
+  slug: string;
   title: string;
   description: string;
   pubDate: string;
@@ -354,7 +356,17 @@ export default function Podcast() {
                     </Button>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-lg leading-tight mb-2">
-                        {episode.title}
+                        {episode.slug ? (
+                          <Link
+                            href={`/insights/podcast/${episode.slug}`}
+                            className="hover:text-primary transition-colors"
+                            data-testid={`link-episode-title-${index}`}
+                          >
+                            {episode.title}
+                          </Link>
+                        ) : (
+                          episode.title
+                        )}
                       </h3>
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
                         {episode.description?.replace(/<[^>]*>/g, "")}
@@ -370,7 +382,15 @@ export default function Podcast() {
                             {episode.duration}
                           </span>
                         )}
-                        {episode.link && (
+                        {episode.slug ? (
+                          <Link
+                            href={`/insights/podcast/${episode.slug}`}
+                            className="flex items-center gap-1 hover:text-primary transition-colors font-medium"
+                            data-testid={`link-episode-${index}`}
+                          >
+                            Show notes & details
+                          </Link>
+                        ) : episode.link ? (
                           <a
                             href={episode.link}
                             target="_blank"
@@ -381,7 +401,7 @@ export default function Podcast() {
                             <ExternalLink className="w-3 h-3" />
                             View Details
                           </a>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </div>
