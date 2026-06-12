@@ -128,6 +128,7 @@ import { registerRetentionEmailRoutes } from "./retentionEmails";
 import { registerOnboardingEmailRoutes } from "./onboardingEmails";
 import { registerAiDefaultsRoutes } from "./aiDefaults";
 import { registerCrmRoutes } from "./crm";
+import { registerPartnerNetworkRoutes, handoffClaimedLeadToCrm } from "./partnerNetwork";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
@@ -759,6 +760,7 @@ export async function registerRoutes(
   registerOnboardingEmailRoutes(app);
   registerAiDefaultsRoutes(app);
   registerCrmRoutes(app);
+  registerPartnerNetworkRoutes(app);
   registerEventsGrowthRoutes(app);
   registerRentIntelligenceRoutes(app);
   registerRentIngestionRoutes(app);
@@ -2352,6 +2354,20 @@ export async function registerRoutes(
                 status: "new",
                 notifiedAt: new Date(),
               });
+
+              logUserActivity(null, {
+                userId: claim.userId,
+                eventName: "partner_lead_notified",
+                source: "partner_network",
+                metadata: {
+                  partnerType: claim.partnerType ?? "realtor",
+                  leadId: lead.id,
+                  analysisId: analysis.id,
+                  dealCity: property.city,
+                  dealRegion: property.region,
+                  dealStrategy: analysis.strategyType,
+                },
+              }).catch(err => console.error("partner_lead_notified event error:", err));
 
               // Send email alert to the realtor
               try {
@@ -5669,7 +5685,14 @@ export async function registerRoutes(
         sentAt: new Date(),
       });
 
-      res.json({ success: true, introduction });
+      const crmContactId = await handoffClaimedLeadToCrm({
+        req,
+        partnerUserId: userId,
+        lead,
+        notification,
+      });
+
+      res.json({ success: true, introduction, crmContactId });
     } catch (error) {
       console.error("Error claiming lead:", error);
       res.status(500).json({ error: "Failed to claim lead" });
