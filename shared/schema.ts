@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, uniqueIndex, index, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, unique, uniqueIndex, index, foreignKey, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -3978,7 +3978,17 @@ export const emailTriggers = pgTable("email_triggers", {
   sentAt: timestamp("sent_at"),
   failureReason: text("failure_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  // The Deal Desk sweep's queueEmailTrigger relies on onConflictDoNothing
+  // against this partial unique index: at most one PENDING trigger per
+  // (user, type). Sent/failed/cancelled history rows are unaffected.
+  // NOTE: if prod already holds duplicate pending rows, creating this index
+  // fails — server/emailQueue.ts ensureEmailTriggerDedupe() pre-deletes older
+  // duplicates (keeping the newest) at boot before creating it idempotently.
+  uniqueIndex("uq_email_triggers_pending_user_type")
+    .on(table.userId, table.triggerType)
+    .where(sql`${table.status} = 'pending'`),
+]);
 
 export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
   id: true,
@@ -4086,6 +4096,66 @@ export const insertUnderwritingAssumptionSchema = createInsertSchema(underwritin
 });
 export type InsertUnderwritingAssumption = z.infer<typeof insertUnderwritingAssumptionSchema>;
 export type UnderwritingAssumption = typeof underwritingAssumptions.$inferSelect;
+
+// ── Retention flywheel + AI defaults (PR #27) ───────────────────────────────
+// These three tables are ensured at boot via raw CREATE TABLE IF NOT EXISTS
+// (server/aiDefaults.ts ensureAiDefaultTables, server/retentionEmails.ts
+// ensureRetentionTables) — kept as belt-and-suspenders. The definitions below
+// mirror that raw SQL EXACTLY (columns, types, nullability, defaults, and the
+// Postgres auto-generated constraint names) so `npm run db:push` sees the live
+// tables as already in sync instead of proposing ALTERs.
+
+// Learned underwriting priors per (market, strategy, metric).
+export const aiMarketDefaults = pgTable("ai_market_defaults", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  market: text("market").notNull(),
+  strategy: text("strategy").default("all").notNull(),
+  metric: text("metric").notNull(),
+  value: real("value").notNull(),
+  p25: real("p25"),
+  p75: real("p75"),
+  sampleSize: integer("sample_size").notNull(),
+  trainedAt: timestamp("trained_at").defaultNow().notNull(),
+  // Added by ALTER TABLE ... ADD COLUMN IF NOT EXISTS in ensureAiDefaultTables.
+  outliersExcluded: integer("outliers_excluded").default(0).notNull(),
+}, (table) => [
+  // The raw SQL declares an inline UNIQUE ("market","strategy","metric"), so
+  // the live constraint carries Postgres's auto name (…_key) — not Drizzle's
+  // default (…_unique). Name it explicitly to match.
+  unique("ai_market_defaults_market_strategy_metric_key").on(table.market, table.strategy, table.metric),
+]);
+
+export type AiMarketDefault = typeof aiMarketDefaults.$inferSelect;
+
+// One row per training run — snapshots model coverage over time.
+export const aiTrainingRuns = pgTable("ai_training_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysesTotal: integer("analyses_total").notNull(),
+  marketsTrained: integer("markets_trained").notNull(),
+  metricsWritten: integer("metrics_written").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type AiTrainingRun = typeof aiTrainingRuns.$inferSelect;
+
+// Send/claim log for behavioural retention emails: the (user_id, dedupe_key)
+// unique index is the atomic claim that collapses concurrent sweeps.
+export const retentionEmailLog = pgTable("retention_email_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  dedupeKey: text("dedupe_key").notNull(),
+  emailType: text("email_type").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+}, (table) => [
+  // Inline REFERENCES in the raw SQL ⇒ live FK is named …_user_id_fkey; use a
+  // table-level foreignKey() so the name matches (vs Drizzle's …_users_id_fk).
+  foreignKey({ name: "retention_email_log_user_id_fkey", columns: [table.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+  uniqueIndex("uq_retention_dedupe").on(table.userId, table.dedupeKey),
+  index("idx_retention_user_sent").on(table.userId, table.sentAt),
+]);
+
+export type RetentionEmailLogEntry = typeof retentionEmailLog.$inferSelect;
 
 // ============================================================================
 // USER INTEGRATIONS — per-user OAuth connections to external providers.
