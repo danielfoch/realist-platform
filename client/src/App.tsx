@@ -103,6 +103,8 @@ import {
   CanadaHousingMarketPage,
 } from "@/pages/seo/MarketPages";
 import JoinRealtors from "@/pages/JoinRealtors";
+import JoinMortgageBrokers from "@/pages/JoinMortgageBrokers";
+import PartnerOnboarding from "@/pages/PartnerOnboarding";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
 import PitchDeck from "@/pages/PitchDeck";
@@ -299,7 +301,9 @@ function Router() {
       <Route path="/verify-phone" component={VerifyPhone} />
       <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
       <Route path="/partner/network" component={RealtorNetwork} />
+      <Route path="/partner/onboarding" component={PartnerOnboarding} />
       <Route path="/join/realtors" component={JoinRealtors} />
+      <Route path="/join/mortgage-brokers" component={JoinMortgageBrokers} />
       <Route path="/join/lenders" component={JoinLenders} />
       
       {/* 404 */}
