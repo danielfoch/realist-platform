@@ -73,12 +73,14 @@ export function registerPartnerNetworkRoutes(app: Express): void {
         return res.status(400).json({ error: "You already have an active claim for this market" });
       }
 
+      // undefined (not null) for blank optionals so an update never wipes
+      // values the partner already has on their profile
       const partner = await storage.upsertIndustryPartner({
         userId,
         partnerType: data.partnerType,
         companyName: data.brokerageName,
-        licenseNumber: data.licenseNumber || null,
-        phone: data.phone || null,
+        licenseNumber: data.licenseNumber || undefined,
+        phone: data.phone || undefined,
       });
 
       const terms = getReferralTerms(data.partnerType);
