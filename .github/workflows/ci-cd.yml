@@ -6,7 +6,44 @@ on:
   pull_request:
 
 jobs:
+  # Fast tripwire: committed conflict markers have reached main twice via
+  # dirty-workspace commits. Fails in seconds, before the expensive job.
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reject committed conflict markers
+        run: |
+          set -e
+          # Look for full 7-char markers at line start in tracked text files.
+          # Excludes this workflow itself and lockfiles.
+          MATCHES=$(git grep -nIE '^(<{7}|>{7}|={7})( |$)' -- \
+            ':!*.lock' ':!package-lock.json' ':!.github/workflows/ci-cd.yml' \
+            || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Committed merge conflict markers found:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "No conflict markers. Clean."
+
+      - name: Reject dirty-tree sweep artifacts
+        run: |
+          set -e
+          # Pasted-prompt files and other workspace droppings that have been
+          # accidentally committed before.
+          BAD=$(git ls-files | grep -E '(^|/)Pasted-.*\.txt$|REPLIT_PULL_TODAY\.md$' || true)
+          if [ -n "$BAD" ]; then
+            echo "::error::Workspace sweep artifacts committed:"
+            echo "$BAD"
+            exit 1
+          fi
+          echo "No sweep artifacts. Clean."
+
   build-test:
+    needs: hygiene
     runs-on: ubuntu-latest
     services:
       postgres:

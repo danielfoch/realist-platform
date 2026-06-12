@@ -1,7 +1,7 @@
 # Credit Spreads Report Data
 
 Generated from: `data/canada_us_credit_spreads/`
-Generated at: 2026-06-11T19:53:00.499Z
+Generated at: 2026-06-11T19:50:44.294Z
 
 ## Files
 

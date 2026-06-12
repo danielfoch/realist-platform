@@ -159,8 +159,25 @@ export async function buildReportsSitemap() {
 }
 
 export async function buildPodcastSitemap() {
+  const urls: SitemapUrl[] = [];
+  let hubLastmod = today();
+  try {
+    const { getPodcastEpisodes } = await import("./podcastFeed");
+    const episodes = await getPodcastEpisodes();
+    // Hub lastmod = newest episode pubDate; episode lastmod = its real pubDate.
+    if (episodes[0]?.pubDate) hubLastmod = dateOnly(episodes[0].pubDate);
+    for (const episode of episodes) {
+      urls.push({
+        loc: `${BASE}/insights/podcast/${episode.slug}`,
+        lastmod: dateOnly(episode.pubDate || undefined),
+        changefreq: "monthly",
+        priority: 0.65,
+      });
+    }
+  } catch {}
   return urlset([
-    { loc: `${BASE}/insights/podcast`, lastmod: today(), changefreq: "weekly", priority: 0.8 },
+    { loc: `${BASE}/insights/podcast`, lastmod: hubLastmod, changefreq: "weekly", priority: 0.8 },
+    ...urls,
   ]);
 }
 
