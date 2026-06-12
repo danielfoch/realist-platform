@@ -152,19 +152,24 @@ export async function syncOwnIdxFeed(feed: PartnerListingFeed): Promise<{ import
         });
     }
 
-    // Listings that vanished from the source page are no longer active
+    // Listings that vanished from the source page are no longer active.
+    // An empty extraction is treated as a soft failure (site change, JS-only
+    // render, temporary outage) — existing listings are kept, not wiped.
     const activeIds = extracted.map((l) => l.externalId);
-    const removedResult = await db
-      .update(partnerListings)
-      .set({ status: "removed" })
-      .where(
-        and(
-          eq(partnerListings.feedId, feed.id),
-          eq(partnerListings.status, "active"),
-          activeIds.length > 0 ? notInArray(partnerListings.externalId, activeIds) : undefined,
-        ),
-      )
-      .returning({ id: partnerListings.id });
+    const removedResult =
+      activeIds.length > 0
+        ? await db
+            .update(partnerListings)
+            .set({ status: "removed" })
+            .where(
+              and(
+                eq(partnerListings.feedId, feed.id),
+                eq(partnerListings.status, "active"),
+                notInArray(partnerListings.externalId, activeIds),
+              ),
+            )
+            .returning({ id: partnerListings.id })
+        : [];
 
     await db
       .update(partnerListingFeeds)
@@ -173,7 +178,8 @@ export async function syncOwnIdxFeed(feed: PartnerListingFeed): Promise<{ import
         lastSyncAt: now,
         lastSyncStatus: extracted.length > 0 ? "ok" : "no_listings_found",
         lastSyncError: null,
-        listingsImported: extracted.length,
+        // keep the previous count on an empty extraction — listings were kept
+        ...(extracted.length > 0 ? { listingsImported: extracted.length } : {}),
         updatedAt: now,
       })
       .where(eq(partnerListingFeeds.id, feed.id));
