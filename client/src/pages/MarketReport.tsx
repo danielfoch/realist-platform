@@ -451,6 +451,23 @@ export default function MarketReport() {
                 </CardContent>
               </Card>
             </Link>
+            <Link href="/insights/canada-interprovincial-migration-2026">
+              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-sky-300/60" data-testid="card-macro-interprovincial-migration-2026">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                      <Users className="h-4.5 w-4.5 text-sky-600 dark:text-sky-400" />
+                    </div>
+                    <Badge variant="default" className="text-[10px]">New · Jun 12, 2026</Badge>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1">Interprovincial Migration: Alberta Wins, Ontario Loses</h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Fraser Institute&apos;s 1995/96-2024/25 migration study turned into an investor-facing report with interactive charts, age-group breakdowns, and housing implications.
+                  </p>
+                  <span className="text-xs text-primary font-medium">View Report →</span>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href="/insights/statcan-labour-force-survey-may-2026">
               <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-emerald-300/60" data-testid="card-macro-lfs-may-2026">
                 <CardContent className="p-5">
