@@ -5,7 +5,6 @@ import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/compon
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
-import { DealOfTheDay } from "@/components/DealOfTheDay";
 import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
 import { CalculatorSelector, type CalculatorType } from "@/components/CalculatorSelector";
@@ -1206,9 +1205,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       <main>
         {!isStandaloneTool && <HeroSection onAnalyzeClick={handleAnalyzeClick} />}
 
-        <DealOfTheDay onAnalyzeClick={handleAnalyzeClick} />
-
-        <section 
+        <section
           ref={analyzerRef}
           className={isStandaloneTool ? "py-8 md:py-12" : "py-16 md:py-24 border-t border-border/50"}
           id="analyzer"
