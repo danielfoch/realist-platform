@@ -1203,6 +1203,39 @@ export const insertDealMatchRequestSchema = createInsertSchema(dealMatchRequests
   createdAt: true,
 });
 
+export const offers = pgTable("offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  propertyAddress: text("property_address").notNull(),
+  listingId: text("listing_id"),
+  city: text("city"),
+  province: text("province"),
+  offerPrice: integer("offer_price"),
+  depositAmount: integer("deposit_amount"),
+  closingDate: text("closing_date"),
+  conditions: text("conditions").array(),
+  financingHelpWanted: boolean("financing_help_wanted").default(false),
+  representationHelpWanted: boolean("representation_help_wanted").default(false),
+  notes: text("notes"),
+  dealSummary: jsonb("deal_summary"),
+  consentEmail: boolean("consent_email").default(false),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertOfferSchema = createInsertSchema(offers).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
+export type InsertOffer = z.infer<typeof insertOfferSchema>;
+export type Offer = typeof offers.$inferSelect;
+
 // Types
 export type InsertInvestorProfile = z.infer<typeof insertInvestorProfileSchema>;
 export type InvestorProfile = typeof investorProfiles.$inferSelect;
