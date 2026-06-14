@@ -68,16 +68,26 @@ function gitLogSince(since: string): QueryRow[] {
 
 function buildInsights(input: {
   events: QueryRow[];
+  activityEvents: QueryRow[];
   dealActivity: QueryRow[];
+  propertyAnalyses: QueryRow[];
   assumptionEdits: QueryRow[];
   propertyKeys: QueryRow[];
+  aiDefaults: QueryRow[];
+  trainingRuns: QueryRow[];
+  modelPredictionQuality: QueryRow[];
 }): string[] {
   const insights: string[] = [];
   const queryErrors = [
     ...input.events,
+    ...input.activityEvents,
     ...input.dealActivity,
+    ...input.propertyAnalyses,
     ...input.assumptionEdits,
     ...input.propertyKeys,
+    ...input.aiDefaults,
+    ...input.trainingRuns,
+    ...input.modelPredictionQuality,
   ].filter((row) => row.error);
 
   if (queryErrors.length) {
@@ -87,18 +97,22 @@ function buildInsights(input: {
   }
 
   const totalEvents = input.events.reduce((sum, row) => sum + Number(row.count || 0), 0);
+  const totalActivityEvents = input.activityEvents.reduce((sum, row) => sum + Number(row.count || 0), 0);
   const reviewEvents = input.events
     .filter((row) => REVIEW_EVENT_NAMES.has(String(row.event)))
     .reduce((sum, row) => sum + Number(row.count || 0), 0);
+  const reviewActivityEvents = input.activityEvents
+    .filter((row) => REVIEW_EVENT_NAMES.has(String(row.event_name)))
+    .reduce((sum, row) => sum + Number(row.count || 0), 0);
 
-  if (totalEvents === 0) {
-    insights.push("No user events were captured in the period. Verify tracking, traffic, or production database access before proposing product changes.");
+  if (totalEvents + totalActivityEvents === 0) {
+    insights.push("No behavioral events were captured in the period. Verify tracking, traffic, or production database access before proposing product changes.");
   } else {
-    insights.push(`${totalEvents} product events captured; ${reviewEvents} were deal-analysis or execution-intent events.`);
+    insights.push(`${totalActivityEvents} canonical activity events and ${totalEvents} legacy API events were captured; ${reviewActivityEvents + reviewEvents} were deal-analysis or execution-intent events.`);
   }
 
   const hasPayloadKeys = input.propertyKeys.some((row) => row.property_key && !row.error);
-  if (!hasPayloadKeys && totalEvents > 0) {
+  if (!hasPayloadKeys && totalEvents + totalActivityEvents > 0) {
     insights.push("Events exist but structured payload keys are thin. Prioritize richer client-side analytics before asking AI to infer product changes.");
   }
 
@@ -114,8 +128,27 @@ function buildInsights(input: {
   }
 
   const dealCount = input.dealActivity.reduce((sum, row) => sum + Number(row.analyses || 0), 0);
+  const propertyAnalysisCount = input.propertyAnalyses.reduce((sum, row) => sum + Number(row.analyses || 0), 0);
   if (dealCount > 0) {
-    insights.push(`${dealCount} deal analyses were created. Use city/property/strategy clusters to tune default assumptions.`);
+    insights.push(`${dealCount} legacy deal analyses were created. Use city/property/strategy clusters to tune default assumptions.`);
+  }
+  if (propertyAnalysisCount > 0) {
+    insights.push(`${propertyAnalysisCount} canonical property analyses were created. Use their assumptions/final assumptions as the primary learning source.`);
+  }
+
+  const trainedMetrics = input.aiDefaults.reduce((sum, row) => sum + Number(row.metrics || 0), 0);
+  if (trainedMetrics > 0) {
+    insights.push(`${trainedMetrics} market-default metrics are already trained in ai_market_defaults. Product suggestions should use that table instead of inventing new defaults.`);
+  }
+
+  const latestTraining = input.trainingRuns.find((row) => row.created_at);
+  if (latestTraining) {
+    insights.push(`Latest AI-default training run: ${latestTraining.created_at} across ${latestTraining.markets_trained} markets and ${latestTraining.metrics_written} metrics.`);
+  }
+
+  const resolvedPredictions = input.modelPredictionQuality.reduce((sum, row) => sum + Number(row.resolved_predictions || 0), 0);
+  if (resolvedPredictions > 0) {
+    insights.push(`${resolvedPredictions} model predictions have resolved outcomes. Use model_predictions error metrics for estimator improvements.`);
   }
 
   return insights;
@@ -138,6 +171,7 @@ function buildReplitPrompt(reportPath: string, insights: string[]): string {
     "",
     "## Constraints",
     "- Do not change database schema.",
+    "- Use the existing learning tables: user_activity_events, property_analyses, underwriting_assumptions, ai_market_defaults, ai_training_runs, and model_predictions.",
     "- Do not edit `src/**`, `server/**`, `scripts/**`, or migrations.",
     "- Keep changes small enough for one reviewable PR.",
     "- Run the existing frontend checks before handing back.",
@@ -170,10 +204,31 @@ async function main() {
     LIMIT 25
   `, params);
 
+  const activityEvents = await queryRows(`
+    SELECT
+      event_name,
+      COUNT(*)::int AS count,
+      COUNT(DISTINCT COALESCE(user_id::text, session_id))::int AS actors,
+      MAX(event_timestamp)::text AS latest
+    FROM user_activity_events
+    WHERE event_timestamp >= $1::timestamptz AND event_timestamp < $2::timestamptz
+    GROUP BY event_name
+    ORDER BY count DESC, event_name ASC
+    LIMIT 25
+  `, params);
+
   const propertyKeys = await queryRows(`
+    WITH keys AS (
+      SELECT key
+      FROM user_events, LATERAL jsonb_object_keys(COALESCE(properties, '{}'::jsonb)) AS key
+      WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz
+      UNION ALL
+      SELECT key
+      FROM user_activity_events, LATERAL jsonb_object_keys(COALESCE(metadata, '{}'::jsonb)) AS key
+      WHERE event_timestamp >= $1::timestamptz AND event_timestamp < $2::timestamptz
+    )
     SELECT key AS property_key, COUNT(*)::int AS count
-    FROM user_events, LATERAL jsonb_object_keys(COALESCE(properties, '{}'::jsonb)) AS key
-    WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz
+    FROM keys
     GROUP BY key
     ORDER BY count DESC, key ASC
     LIMIT 30
@@ -194,6 +249,24 @@ async function main() {
     LIMIT 20
   `, params);
 
+  const propertyAnalyses = await queryRows(`
+    SELECT
+      COALESCE(city, 'unknown') AS city,
+      COALESCE(province, '') AS province,
+      COALESCE(property_type, 'unknown') AS property_type,
+      COUNT(*)::int AS analyses,
+      COUNT(DISTINCT user_id)::int AS users,
+      COUNT(*) FILTER (WHERE final_assumptions IS NOT NULL)::int AS final_assumption_sets,
+      COUNT(*) FILTER (WHERE ai_assumptions IS NOT NULL)::int AS ai_assumption_sets
+    FROM property_analyses
+    WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz
+      AND is_deleted IS NOT TRUE
+      AND is_anonymized IS NOT TRUE
+    GROUP BY city, province, property_type
+    ORDER BY analyses DESC
+    LIMIT 20
+  `, params);
+
   const assumptionEdits = await queryRows(`
     SELECT
       key,
@@ -206,8 +279,60 @@ async function main() {
     LIMIT 25
   `, params);
 
+  const aiDefaults = await queryRows(`
+    SELECT
+      market,
+      strategy,
+      COUNT(*)::int AS metrics,
+      SUM(sample_size)::int AS samples,
+      MAX(trained_at)::text AS latest_training
+    FROM ai_market_defaults
+    GROUP BY market, strategy
+    ORDER BY metrics DESC, samples DESC
+    LIMIT 25
+  `, []);
+
+  const trainingRuns = await queryRows(`
+    SELECT
+      created_at::text,
+      analyses_total,
+      markets_trained,
+      metrics_written,
+      COALESCE(notes, '') AS notes
+    FROM ai_training_runs
+    ORDER BY created_at DESC
+    LIMIT 5
+  `, []);
+
+  const modelPredictionQuality = await queryRows(`
+    SELECT
+      model_key,
+      model_version,
+      COUNT(*)::int AS predictions,
+      COUNT(*) FILTER (WHERE resolved_at IS NOT NULL)::int AS resolved_predictions,
+      ROUND(AVG(abs_error) FILTER (WHERE abs_error IS NOT NULL)::numeric, 2)::text AS avg_abs_error,
+      ROUND(AVG(pct_error) FILTER (WHERE pct_error IS NOT NULL)::numeric, 2)::text AS avg_pct_error,
+      MAX(created_at)::text AS latest_prediction
+    FROM model_predictions
+    WHERE (created_at >= $1::timestamptz AND created_at < $2::timestamptz)
+       OR (resolved_at >= $1::timestamptz AND resolved_at < $2::timestamptz)
+    GROUP BY model_key, model_version
+    ORDER BY predictions DESC
+    LIMIT 20
+  `, params);
+
   const commits = gitLogSince(start.toISOString());
-  const insights = buildInsights({ events, dealActivity, assumptionEdits, propertyKeys });
+  const insights = buildInsights({
+    events,
+    activityEvents,
+    dealActivity,
+    propertyAnalyses,
+    assumptionEdits,
+    propertyKeys,
+    aiDefaults,
+    trainingRuns,
+    modelPredictionQuality,
+  });
 
   const outDir = path.join(process.cwd(), "reports", "platform-learning");
   await mkdir(outDir, { recursive: true });
@@ -234,16 +359,34 @@ async function main() {
     ...insights.map((insight) => `- ${insight}`),
     "",
     "## Event Summary",
+    "Canonical events from `user_activity_events`:",
+    "",
+    markdownTable(activityEvents, ["event_name", "count", "actors", "latest"]),
+    "",
+    "Legacy/API events from `user_events`:",
+    "",
     markdownTable(events, ["event", "count", "actors", "latest"]),
     "",
     "## Event Payload Keys",
     markdownTable(propertyKeys, ["property_key", "count"]),
     "",
-    "## Deal Analysis Clusters",
+    "## Canonical Property Analysis Clusters",
+    markdownTable(propertyAnalyses, ["city", "province", "property_type", "analyses", "users", "final_assumption_sets", "ai_assumption_sets"]),
+    "",
+    "## Legacy Deal Analysis Clusters",
     markdownTable(dealActivity, ["city", "province", "property_type", "analyses", "users", "avg_deal_score"]),
     "",
     "## Underwriting Assumption Signals",
     markdownTable(assumptionEdits, ["key", "source", "edits"]),
+    "",
+    "## AI Market Defaults",
+    markdownTable(aiDefaults, ["market", "strategy", "metrics", "samples", "latest_training"]),
+    "",
+    "## AI Training Runs",
+    markdownTable(trainingRuns, ["created_at", "analyses_total", "markets_trained", "metrics_written", "notes"]),
+    "",
+    "## Model Prediction Quality",
+    markdownTable(modelPredictionQuality, ["model_key", "model_version", "predictions", "resolved_predictions", "avg_abs_error", "avg_pct_error", "latest_prediction"]),
     "",
     "## Git Commits Since Window Start",
     markdownTable(commits, ["sha", "date", "author", "subject"]),
@@ -252,9 +395,10 @@ async function main() {
     `Generated: \`${relativeHandoffPath}\``,
     "",
     "## Next Loop Upgrade",
+    "- Call the existing AI defaults trainer before report generation when the scheduler has production database access.",
     "- Add GitHub PR API ingestion once the GitHub token is available in the runtime.",
     "- Add Telegram/calendar delivery from the scheduler host, not from the web app runtime.",
-    "- Add outcome labels for booked calls, submitted deals, closed deals, and lost reasons.",
+    "- Push new product instrumentation into `user_activity_events` so it joins the Fable-built intelligence layer.",
   ].join("\n");
 
   await writeFile(reportPath, `${report}\n`);

@@ -7,10 +7,11 @@ Realist should learn from how investors actually underwrite deals, not from gene
 The first loop is deliberately small:
 
 1. Preserve structured analytics payloads from `/api/events/track`.
-2. Generate a weekly report from user events, deal analyses, underwriting assumptions, and recent commits.
+2. Generate a weekly report from the existing Fable-built intelligence spine.
 3. Generate a Replit-ready handoff prompt only when the report has review-worthy signals.
 
 No auto-merge. No autonomous investment advice. No product changes without review.
+No parallel learning database.
 
 ## Runbook
 
@@ -33,9 +34,14 @@ Outputs:
 
 Inputs:
 
-- `user_events`: product behavior, search, listing, underwriting, save/export, partner demand
-- `deal_analyses`: city, province, property type, score, verdict
+- `user_activity_events`: canonical product behavior, search, listing, underwriting, save/export, partner demand
+- `property_analyses`: canonical underwriting records, AI assumptions, final assumptions, user notes
 - `underwriting_assumptions`: default vs user-edited underwriting inputs
+- `ai_market_defaults`: trained market/strategy/metric priors
+- `ai_training_runs`: learning coverage over time
+- `model_predictions`: model version, prediction inputs, resolved outcomes, error metrics
+- `user_events`: legacy/API telemetry still used by existing routes and intent scoring
+- `deal_analyses`: legacy deal analysis records still used by Deal Desk routes
 - `git log`: product changes shipped during the same window
 
 Outputs:
@@ -49,14 +55,17 @@ Outputs:
 
 - The loop proposes work; it does not auto-merge.
 - If no events are captured, the report blocks product PR recommendations.
+- New product instrumentation should write to `user_activity_events` unless it is supporting the existing legacy `/api/events/track` path.
+- Learned defaults must come from `ai_market_defaults`; do not create a second defaults table.
+- Model accuracy must come from `model_predictions`; do not create a second prediction ledger.
 - Telegram and calendar delivery should run from Clyde/OpenClaw scheduler context, not from the web app runtime.
 - Investment math must stay deterministic and auditable.
 - PII should stay out of generated reports unless there is a specific operational need.
 
 ## Upgrade Path
 
-1. Add GitHub PR API ingestion with a repo-scoped token.
-2. Add Telegram summary delivery to Dan when report-worthy signals exist.
-3. Add calendar invite generation for review meetings.
-4. Add outcome labels: call booked, offer submitted, closed, lost reason.
-5. Add investor preference profiles from repeated underwriting edits.
+1. Run the existing AI defaults trainer before report generation in the scheduler environment.
+2. Add GitHub PR API ingestion with a repo-scoped token.
+3. Add Telegram summary delivery to Dan when report-worthy signals exist.
+4. Add calendar invite generation for review meetings.
+5. Expand outcome labels through existing activity/event tables: call booked, offer submitted, closed, lost reason.
