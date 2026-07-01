@@ -86,6 +86,39 @@ export interface TrackEventInput {
   referrer?: string | null;
 }
 
+const TRACK_CONTROL_FIELDS = new Set([
+  'event',
+  'properties',
+  'user_id',
+  'deal_id',
+  'session_id',
+]);
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function normalizeTrackProperties(body: unknown): Record<string, unknown> | null {
+  if (!isPlainObject(body)) return null;
+
+  const normalized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (!TRACK_CONTROL_FIELDS.has(key) && value !== undefined) {
+      normalized[key] = value;
+    }
+  }
+
+  if (isPlainObject(body.properties)) {
+    for (const [key, value] of Object.entries(body.properties)) {
+      if (value !== undefined) {
+        normalized[key] = value;
+      }
+    }
+  }
+
+  return Object.keys(normalized).length ? normalized : null;
+}
+
 // ---------- Outbound webhook (downstream automations / Clyde) ----------
 
 function emitWebhook(input: TrackEventInput): void {
@@ -182,7 +215,7 @@ export function eventTrackingMiddleware() {
  * Public-facing endpoint called from the frontend.
  */
 export async function handleTrackEvent(req: Request, res: Response): Promise<void> {
-  const { event, properties, session_id, deal_id, user_id } = req.body;
+  const { event, session_id, deal_id, user_id } = req.body;
 
   if (!event) {
     res.status(400).json({ success: false, error: 'event is required' });
@@ -196,7 +229,7 @@ export async function handleTrackEvent(req: Request, res: Response): Promise<voi
     user_id: userId,
     deal_id: typeof deal_id === 'number' ? deal_id : null,
     event: event as EventName,
-    properties: properties ?? null,
+    properties: normalizeTrackProperties(req.body),
     session_id: session_id ?? null,
     ip_address: ip,
     user_agent: req.headers['user-agent'] || null,
