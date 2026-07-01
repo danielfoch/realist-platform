@@ -55,11 +55,26 @@ export const DEV_ASSUMPTION_DEFAULTS = {
   condoPsf: 1050,
 } as const;
 
-export type DevAssumptions = {
-  -readonly [K in keyof typeof DEV_ASSUMPTION_DEFAULTS]: (typeof DEV_ASSUMPTION_DEFAULTS)[K] extends Record<string, unknown>
-    ? Record<string, number>
-    : (typeof DEV_ASSUMPTION_DEFAULTS)[K];
-};
+export interface DevAssumptions {
+  source: string;
+  lastVerified: string;
+  hardCostPsf: number;
+  softCostPctOfHard: number;
+  contingencyPct: number;
+  dcPerUnit: number;
+  dcExemptUnits: number;
+  constructionRate: number;
+  constructionMonths: number;
+  loanToCost: number;
+  vacancyPct: number;
+  opexPctOfEgi: number;
+  exitCapRate: number;
+  condoSellingCostPct: number;
+  targetCondoMarginOnCost: number;
+  targetYieldOnCost: number;
+  monthlyRents: Record<UnitType, number>;
+  condoPsf: number;
+}
 
 // ─── Land transfer tax (ON + Toronto MLTT, residential brackets) ────────────
 
