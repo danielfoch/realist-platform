@@ -107,6 +107,7 @@ import JoinMortgageBrokers from "@/pages/JoinMortgageBrokers";
 import PartnerOnboarding from "@/pages/PartnerOnboarding";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
+import Stats from "@/pages/Stats";
 import PitchDeck from "@/pages/PitchDeck";
 import UnderwritingShare from "@/pages/UnderwritingShare";
 import AccountApiKeys from "@/pages/AccountApiKeys";
@@ -191,6 +192,8 @@ function Router() {
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/community/leaderboard/full" component={FullLeaderboard} />
       <Route path="/my-performance" component={MyPerformance} />
+      <Route path="/stats" component={Stats} />
+      <Route path="/tools/stats" component={Stats} />
       <Route path="/analyses/:id/deck" component={PitchDeck} />
       <Route path="/underwriting/:token" component={UnderwritingShare} />
       <Route path="/account/api-keys" component={AccountApiKeys} />
