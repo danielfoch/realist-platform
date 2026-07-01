@@ -547,6 +547,8 @@ async function ensureAppTables() {
   });
 
   await registerRoutes(httpServer, app);
+  const { registerMultiplexUnderwriterRoutes } = await import("./multiplexUnderwriter");
+  registerMultiplexUnderwriterRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
