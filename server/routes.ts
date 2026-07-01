@@ -20,6 +20,7 @@ const LEAD_TAB_BY_FORMTAG: Record<string, string> = {
   realtor_application: "RealtorApplications",
   lender_application: "LenderApplications",
   deal_match_request: "DealMatch",
+  offer_request: "Offers",
   multiplex_masterclass: "MasterclassLeads",
   multiplexmasterclass: "MultiplexFitAssessment",
   land_claim_screener: "LandClaimLeads",
@@ -10071,6 +10072,39 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error creating deal match request:", error);
       res.status(400).json({ error: error.message || "Failed to submit match request" });
+    }
+  });
+
+  app.post("/api/offers", async (req, res) => {
+    try {
+      const { offers, insertOfferSchema } = await import("@shared/schema");
+      const parsed = insertOfferSchema.parse({
+        ...req.body,
+        userId: req.session?.userId || null,
+      });
+      const [offer] = await db.insert(offers).values(parsed).returning();
+
+      appendLead("Offers", { ...parsed, offerId: offer.id, source: "realist.ca" });
+
+      try {
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...parsed,
+              formTag: "offer_request",
+              source: "realist.ca",
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      res.json({ success: true, id: offer.id });
+    } catch (error: any) {
+      console.error("Error creating offer:", error);
+      res.status(400).json({ error: error.message || "Failed to submit offer" });
     }
   });
 

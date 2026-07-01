@@ -53,6 +53,7 @@ import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
 import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
 import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
 import DealDesk from "@/pages/DealDesk";
+import Offer from "@/pages/Offer";
 import CrmHome from "@/pages/CrmHome";
 import MeetupNew from "@/pages/MeetupNew";
 import SponsorPackagePage from "@/pages/SponsorPackagePage";
@@ -161,6 +162,7 @@ function Router() {
       <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
       <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
       <Route path="/deal-desk" component={DealDesk} />
+      <Route path="/offer" component={Offer} />
       <Route path="/crm" component={CrmHome} />
       <Route path="/community/meetups/new" component={MeetupNew} />
       <Route path="/sponsor/:slug" component={SponsorPackagePage} />
