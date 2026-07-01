@@ -12,6 +12,7 @@ import {
   queueDailyDigestNotifications,
   queueInactiveHighIntentNotifications,
 } from "./notifications";
+import { registerAiDefaultsRoutes, scheduleNightlyTraining } from "./aiMarketDefaults";
 
 const app = express();
 // Trust proxy for secure cookies behind Replit's reverse proxy
@@ -547,6 +548,7 @@ async function ensureAppTables() {
   });
 
   await registerRoutes(httpServer, app);
+  registerAiDefaultsRoutes(app);
   const { registerMultiplexUnderwriterRoutes } = await import("./multiplexUnderwriter");
   registerMultiplexUnderwriterRoutes(app);
 
@@ -630,6 +632,7 @@ async function ensureAppTables() {
       import("./monthlyWinnerEmail").then(({ scheduleMonthlyWinnerEmail }) => {
         scheduleMonthlyWinnerEmail();
       }).catch((err) => log(`Monthly winner email schedule error: ${err.message}`, "monthly-winner"));
+      scheduleNightlyTraining();
       import("./rentIntelligence").then(({ scheduleRentIntelligenceJobs }) => {
         scheduleRentIntelligenceJobs(log);
         log("Rent intelligence jobs scheduled (daily prediction sweep)", "intelligence");

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, count, desc, eq, gte, lte, ne, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
 import {
@@ -8,6 +8,7 @@ import {
   listingAnalysisAggregates,
   listingWatchers,
   notificationQueue,
+  propertyAnalyses,
   type DiscoverySignal,
   type DdfListingSnapshot,
   type ListingAnalysisAggregate,
@@ -38,7 +39,9 @@ type NotificationKind =
   | "multiplex_intent"
   | "distress_intent"
   | "daily_digest_ready"
-  | "weekly_leaderboard_digest";
+  | "weekly_leaderboard_digest"
+  | "co_analysis_alert"
+  | "milestone_reached";
 
 export type GhlNotificationPayload = {
   sendEmail: true;
@@ -65,6 +68,8 @@ export type GhlNotificationPayload = {
   consensusLabel?: string | null;
   matchCount?: number;
   searchArea?: string;
+  milestoneCount?: number;
+  coAnalystCount?: number;
   reasonText: string;
   ctaLabel: string;
   ctaUrl: string;
@@ -276,6 +281,7 @@ function buildPayload(input: {
   consensusLabel?: string | null;
   matchCount?: number;
   searchArea?: string;
+  emailHtml?: string;
   ghlTags: string[];
   leadScoreDelta: number;
 }): GhlNotificationPayload {
@@ -318,7 +324,7 @@ function buildPayload(input: {
     subjectLine: input.subjectLine,
     previewText: input.previewText,
     emailBody: buildEmailBody(firstName, detailLines),
-    emailHtml: undefined,
+    emailHtml: input.emailHtml,
     ghlTags: input.ghlTags,
     leadScoreDelta: input.leadScoreDelta,
   };
@@ -1326,4 +1332,227 @@ export async function getAggregateByMls(mlsNumber: string): Promise<ListingAnaly
     .where(eq(listingAnalysisAggregates.listingMlsNumber, mlsNumber))
     .limit(1);
   return aggregate;
+}
+
+// ---------------------------------------------------------------------------
+// Co-analysis social proof
+// ---------------------------------------------------------------------------
+
+/**
+ * When a user posts an analysis, notify all OTHER users who previously
+ * analyzed the same MLS number. One email per user per MLS per day cap.
+ */
+export async function queueCoAnalysisNotifications(params: {
+  newAnalysis: PropertyAnalysis;
+  actorUserId: string;
+}): Promise<number> {
+  const { newAnalysis, actorUserId } = params;
+  if (!newAnalysis.listingMlsNumber) return 0;
+
+  // Find distinct users who previously analyzed this listing (exclude the actor)
+  const priorAnalysts = await db
+    .selectDistinct({ userId: propertyAnalyses.userId })
+    .from(propertyAnalyses)
+    .where(and(
+      eq(propertyAnalyses.listingMlsNumber, newAnalysis.listingMlsNumber),
+      ne(propertyAnalyses.userId, actorUserId),
+      isNotNull(propertyAnalyses.userId),
+      eq(propertyAnalyses.isDeleted, false),
+    ));
+
+  if (!priorAnalysts.length) return 0;
+
+  const address = newAnalysis.listingMlsNumber;
+  const city = newAnalysis.city || "";
+  const metricsRaw = (newAnalysis.calculatedMetrics || {}) as Record<string, unknown>;
+  const capRate = typeof metricsRaw.capRate === "number" ? metricsRaw.capRate : null;
+  const cashOnCash = typeof metricsRaw.cashOnCash === "number" ? metricsRaw.cashOnCash : null;
+
+  const capRateText = capRate != null ? ` — ${capRate.toFixed(1)}% cap rate` : "";
+  const cocText = cashOnCash != null ? `, ${cashOnCash.toFixed(1)}% CoC` : "";
+  const listingUrl = `https://realist.ca/listings/${newAnalysis.listingMlsNumber}?source=co-analysis-email`;
+
+  let queued = 0;
+  const today = new Date().toISOString().slice(0, 10);
+
+  for (const { userId } of priorAnalysts) {
+    if (!userId) continue;
+    if (!(await recipientAllows(userId, "community"))) continue;
+
+    const recipient = await getRecipient(userId);
+    if (!recipient?.email) continue;
+
+    const dedupeKey = `co_analysis_alert:${userId}:${newAnalysis.listingMlsNumber}:${today}`;
+
+    const reasonText = `Another investor just underewrote ${address}${city ? ` in ${city}` : ""}${capRateText}${cocText}.`;
+    const emailBody = buildEmailBody(recipient.firstName || "there", [
+      `Someone else just analyzed a property you've looked at:`,
+      ``,
+      `${address}${city ? ` — ${city}` : ""}`,
+      capRate != null ? `Their cap rate: ${capRate.toFixed(1)}%` : "",
+      cashOnCash != null ? `Their cash-on-cash: ${cashOnCash.toFixed(1)}%` : "",
+      ``,
+      `Market consensus is forming on this listing. See how your numbers compare:`,
+      listingUrl,
+    ].filter(Boolean));
+
+    const html = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;background:#fff;">
+        <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:24px;border-radius:8px 8px 0 0;">
+          <p style="margin:0;font-size:11px;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;">Realist.ca</p>
+          <h2 style="margin:4px 0 0;font-size:18px;color:#fff;font-weight:700;">Another investor just underewrote this deal</h2>
+        </div>
+        <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;">
+          <p style="margin:0 0 16px;font-size:15px;color:#111827;">Hey ${recipient.firstName || "there"},</p>
+          <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.6;">
+            Another investor just ran their numbers on <strong>${address}</strong>${city ? ` in <strong>${city}</strong>` : ""} — a listing you've analyzed before.
+          </p>
+          ${capRate != null ? `
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:0 0 16px;">
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;">Their underwriting</p>
+            <p style="margin:0;font-size:22px;font-weight:700;color:#7c3aed;">${capRate.toFixed(1)}% cap rate${cashOnCash != null ? ` · ${cashOnCash.toFixed(1)}% CoC` : ""}</p>
+          </div>` : ""}
+          <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6;">
+            Market consensus is starting to form. See how your assumptions stack up.
+          </p>
+          <div style="text-align:center;">
+            <a href="${listingUrl}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+              Compare Your Analysis
+            </a>
+          </div>
+        </div>
+        <div style="padding:12px 24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#f9fafb;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#9ca3af;">Realist.ca — Canada's Real Estate Deal Analyzer</p>
+        </div>
+      </div>
+    `;
+
+    await enqueueForRecipients({
+      eventType: "co_analysis_alert",
+      listingMlsNumber: newAnalysis.listingMlsNumber,
+      city: newAnalysis.city || null,
+      rawPayload: {
+        listingMlsNumber: newAnalysis.listingMlsNumber,
+        newAnalysisId: newAnalysis.id,
+        actorUserId,
+        capRate,
+        cashOnCash,
+      },
+      recipients: [{
+        userId,
+        payload: buildPayload({
+          recipient,
+          eventType: "co_analysis_alert",
+          reasonText,
+          ctaLabel: "Compare your analysis",
+          ctaUrl: listingUrl,
+          subjectLine: `Another investor just underewrote ${address}`,
+          previewText: `See how your numbers compare on this listing.`,
+          listingMlsNumber: newAnalysis.listingMlsNumber,
+          listingCity: city,
+          capRate,
+          cashOnCash,
+          ghlTags: ["realist-user", "co-analysis-alert"],
+          leadScoreDelta: 7,
+          emailHtml: html,
+        }),
+        dedupeKey,
+      }],
+    });
+    queued++;
+  }
+
+  return queued;
+}
+
+// ---------------------------------------------------------------------------
+// Milestone emails
+// ---------------------------------------------------------------------------
+
+const MILESTONES = [1, 5, 10, 25, 50, 100, 250, 500] as const;
+
+const MILESTONE_COPY: Record<number, { subject: string; body: string }> = {
+  1:   { subject: "You just analyzed your first deal on Realist", body: "Welcome to the community. Every serious investor starts with deal #1 — you've done it. The edge compounds from here." },
+  5:   { subject: "5 deals analyzed on Realist.ca", body: "Five deals in. That's more underwriting than most people do in a full year of 'looking'. You're building the right habit." },
+  10:  { subject: "10 deals analyzed — you're in the top tier", body: "Ten clean underwritings. The math muscle is real now. Most investors quit after one or two — you're in a different category." },
+  25:  { subject: "25 deals analyzed on Realist.ca", body: "Twenty-five deals. At this point you have genuine market pattern recognition — you know what a real number looks like before the calculator confirms it." },
+  50:  { subject: "50 deals analyzed — certified deal nerd", body: "Fifty analyses. The average Canadian 'real estate investor' has looked at maybe three deals in their life. You've done fifty. That's not a hobby, that's an edge." },
+  100: { subject: "100 deals analyzed on Realist.ca", body: "One hundred deal analyses. Elite territory. The platform has learned from your inputs, and so have you. This is the kind of volume that separates operators from observers." },
+  250: { subject: "250 deals — Realist power user", body: "Two hundred and fifty analyses. You're one of the most active underwriters on the platform. Your data is literally training the market benchmarks other investors see." },
+  500: { subject: "500 deals on Realist.ca — hall of fame", body: "Five hundred. There are maybe a handful of people on the platform at this number. You're not just using realist.ca — you're shaping it." },
+};
+
+/**
+ * Check if userId has crossed a milestone with their latest analysis
+ * and queue a milestone email if so. Call after every new analysis is saved.
+ */
+export async function queueMilestoneNotification(userId: string): Promise<boolean> {
+  if (!(await recipientAllows(userId, "community"))) return false;
+
+  const [countRow] = await db
+    .select({ total: count() })
+    .from(propertyAnalyses)
+    .where(and(eq(propertyAnalyses.userId, userId), eq(propertyAnalyses.isDeleted, false)));
+
+  const total = Number(countRow?.total ?? 0);
+  const milestone = MILESTONES.find(m => m === total);
+  if (!milestone) return false;
+
+  const copy = MILESTONE_COPY[milestone];
+  if (!copy) return false;
+
+  const recipient = await getRecipient(userId);
+  if (!recipient?.email) return false;
+
+  const ctaUrl = `https://realist.ca/tools/cap-rates?source=milestone-email`;
+  const emailBody = buildEmailBody(recipient.firstName || "there", [copy.body, "", `Keep going: ${ctaUrl}`]);
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;background:#fff;">
+      <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:24px;border-radius:8px 8px 0 0;">
+        <p style="margin:0;font-size:11px;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;">Realist.ca</p>
+        <h2 style="margin:4px 0 0;font-size:20px;color:#fff;font-weight:700;">${milestone} deals analyzed</h2>
+      </div>
+      <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;">
+        <p style="margin:0 0 16px;font-size:15px;color:#111827;">Hey ${recipient.firstName || "there"},</p>
+        <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:8px;padding:16px;margin:0 0 20px;text-align:center;">
+          <p style="margin:0;font-size:36px;font-weight:800;color:#92400e;">${milestone}</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#78350f;font-weight:600;">deals analyzed on Realist.ca</p>
+        </div>
+        <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6;">${copy.body}</p>
+        <div style="text-align:center;">
+          <a href="${ctaUrl}" style="display:inline-block;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">
+            Analyze Another Deal
+          </a>
+        </div>
+      </div>
+      <div style="padding:12px 24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;background:#f9fafb;text-align:center;">
+        <p style="margin:0;font-size:11px;color:#9ca3af;">Realist.ca — Canada's Real Estate Deal Analyzer</p>
+      </div>
+    </div>
+  `;
+
+  const dedupeKey = `milestone_reached:${userId}:${milestone}`;
+
+  await enqueueForRecipients({
+    eventType: "milestone_reached",
+    rawPayload: { milestone, totalAnalyses: total },
+    recipients: [{
+      userId,
+      payload: buildPayload({
+        recipient,
+        eventType: "milestone_reached",
+        reasonText: `You've analyzed ${milestone} deals on Realist.ca.`,
+        ctaLabel: "Analyze another deal",
+        ctaUrl,
+        subjectLine: copy.subject,
+        previewText: copy.body.slice(0, 90),
+        ghlTags: ["realist-user", "milestone", `milestone-${milestone}`],
+        leadScoreDelta: milestone >= 50 ? 10 : milestone >= 10 ? 6 : 3,
+        emailHtml: html,
+      }),
+      dedupeKey,
+    }],
+  });
+
+  return true;
 }

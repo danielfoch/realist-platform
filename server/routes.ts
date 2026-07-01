@@ -160,7 +160,9 @@ import {
   buildAnalysisCompletedPayload,
   buildSavedSearchMatchPayload,
   queueAnalysisNotification,
+  queueCoAnalysisNotifications,
   queueCommentNotification,
+  queueMilestoneNotification,
   queueSavedSearchMatchNotifications,
   queueUsListingChangeNotifications,
   syncWatchersFromDiscoverySignals,
@@ -10790,6 +10792,12 @@ export async function registerRoutes(
         afterAggregate,
       }).catch((error) => {
         console.error("Error queueing analysis-created notification:", error);
+      });
+      queueCoAnalysisNotifications({ newAnalysis: analysis, actorUserId: userId }).catch((err) => {
+        console.error("Error queueing co-analysis notifications:", err);
+      });
+      queueMilestoneNotification(userId).catch((err) => {
+        console.error("Error queueing milestone notification:", err);
       });
       res.json(analysis);
     } catch (error) {
