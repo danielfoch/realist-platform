@@ -3884,6 +3884,29 @@ export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
 
 // ============================================================================
+// API USAGE EVENTS — one row per bearer-authenticated agent/API call.
+// Powers per-key rate limiting audits, the account usage dashboard, and
+// (later) Stripe metered billing. Inputs are never stored — only a hash.
+// ============================================================================
+export const apiUsageEvents = pgTable("api_usage_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiKeyId: varchar("api_key_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  method: varchar("method", { length: 8 }).notNull(),
+  endpoint: text("endpoint").notNull(),
+  status: integer("status").notNull(),
+  latencyMs: integer("latency_ms").notNull(),
+  inputHash: varchar("input_hash", { length: 16 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("api_usage_events_key_created_idx").on(table.apiKeyId, table.createdAt),
+  index("api_usage_events_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export type ApiUsageEvent = typeof apiUsageEvents.$inferSelect;
+export type InsertApiUsageEvent = typeof apiUsageEvents.$inferInsert;
+
+// ============================================================================
 // DEAL DESK LOOP — deals, opportunities, email triggers
 // ============================================================================
 

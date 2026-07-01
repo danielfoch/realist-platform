@@ -1,4 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -29,6 +31,39 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Security headers. CSP is left off (the Vite SPA relies on inline scripts,
+// Google Maps, and Stripe); frameguard and CORP are off because the public
+// /embed/insights/* reports are designed to be iframed and hotlinked from
+// third-party sites.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  frameguard: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false,
+}));
+
+// Cross-origin API access: cookie-credentialed requests are only honoured
+// from our own origins (web app, Capacitor shells, Replit staging, local
+// dev). Bearer-token agent calls carry no cookies, so this is not a
+// restriction on the MCP/agent API — server-to-server calls have no Origin.
+const corsOriginAllowlist = [
+  /^https:\/\/(?:[a-z0-9-]+\.)?realist\.ca$/i,
+  /^https:\/\/[a-z0-9-]+\.replit\.(?:app|dev)$/i,
+  /^capacitor:\/\/localhost$/i,
+  /^https?:\/\/localhost(?::\d+)?$/i,
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || corsOriginAllowlist.some((re) => re.test(origin))) {
+      return callback(null, true);
+    }
+    // Disallowed origin: answer without CORS headers rather than erroring,
+    // so non-browser callers and same-origin requests are unaffected.
+    return callback(null, false);
+  },
+  credentials: true,
+}));
 
 const httpServer = createServer(app);
 
@@ -404,6 +439,21 @@ async function ensureAppTables() {
     await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS reported_comment_count integer NOT NULL DEFAULT 0`);
     await db.execute(sql`ALTER TABLE email_triggers ADD COLUMN IF NOT EXISTS sent_at timestamp`);
     await db.execute(sql`ALTER TABLE email_triggers ADD COLUMN IF NOT EXISTS failure_reason text`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS api_usage_events (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        api_key_id varchar NOT NULL,
+        user_id varchar NOT NULL,
+        method varchar(8) NOT NULL,
+        endpoint text NOT NULL,
+        status integer NOT NULL,
+        latency_ms integer NOT NULL,
+        input_hash varchar(16),
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS api_usage_events_key_created_idx ON api_usage_events(api_key_id, created_at)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS api_usage_events_user_created_idx ON api_usage_events(user_id, created_at)`);
     log("App reporting tables ready", "db");
   } catch (error: any) {
     log(`Failed to ensure app tables: ${error.message}`, "db");
