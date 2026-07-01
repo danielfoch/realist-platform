@@ -15,6 +15,12 @@ import {
   getListingSeoByMls,
   listingCanonicalPath,
 } from "./listingSeo";
+import { deriveEpisodeKeywords } from "@shared/podcastEpisodes";
+import {
+  durationToIso8601,
+  stripShowNotes,
+  type PodcastEpisode as PodcastFeedEpisode,
+} from "./podcastFeed";
 
 const BASE_URL = "https://realist.ca";
 const RSS_FEED_URL = "https://thecanadianrealestateinvestor.substack.com/feed";
@@ -523,6 +529,18 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
     }
   }
 
+  // Per-episode podcast pages: /insights/podcast/:slug gets real meta,
+  // PodcastEpisode JSON-LD linked to the hub's PodcastSeries node, and
+  // BreadcrumbList. Unknown slugs fall through to the 404 path.
+  const podcastEpisodeMatch = path.match(/^\/insights\/podcast\/([^\/]+)$/);
+  if (podcastEpisodeMatch) {
+    try {
+      const { getEpisodeBySlug } = await import("./podcastFeed");
+      const episode = await getEpisodeBySlug(decodeURIComponent(podcastEpisodeMatch[1]));
+      if (episode) return buildPodcastEpisodeMeta(episode);
+    } catch { /* fall through */ }
+  }
+
   // Dynamic event page (audit item 12): /events/:slug gets real meta, Event
   // JSON-LD with offers, and OG/Twitter tags so shared links unfurl.
   const eventMatch = path.match(/^\/events\/([^\/]+)$/);
@@ -646,6 +664,65 @@ function buildEventMeta(event: SeoEventRow): PageMeta {
           { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
           { "@type": "ListItem", position: 2, name: "Events", item: `${BASE_URL}/community/events` },
           { "@type": "ListItem", position: 3, name: event.title, item: url },
+        ],
+      },
+    ],
+  };
+}
+
+function buildPodcastEpisodeMeta(episode: PodcastFeedEpisode): PageMeta {
+  const canonicalPath = `/insights/podcast/${episode.slug}`;
+  const url = `${BASE_URL}${canonicalPath}`;
+  const description = stripShowNotes(episode.description, 158)
+    || `${episode.title} — an episode of ${PODCAST_NAME} with Daniel Foch and Nick Hill.`;
+  const publishedDate = episode.pubDate ? new Date(episode.pubDate) : null;
+  const datePublished = publishedDate && !isNaN(publishedDate.getTime())
+    ? publishedDate.toISOString()
+    : undefined;
+  const isoDuration = durationToIso8601(episode.duration);
+
+  return {
+    title: `${episode.title} - ${PODCAST_NAME} Podcast`,
+    description,
+    ogImage: episode.imageUrl || undefined,
+    canonicalPath,
+    keywords: deriveEpisodeKeywords(episode.title),
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "PodcastEpisode",
+        "@id": `${url}#episode`,
+        name: episode.title,
+        url,
+        ...(datePublished ? { datePublished } : {}),
+        description: stripShowNotes(episode.description, 500) || description,
+        ...(episode.audioUrl
+          ? {
+              associatedMedia: {
+                "@type": "MediaObject",
+                contentUrl: episode.audioUrl,
+                encodingFormat: "audio/mpeg",
+              },
+            }
+          : {}),
+        ...(isoDuration ? { timeRequired: isoDuration } : {}),
+        ...(episode.imageUrl ? { image: episode.imageUrl } : {}),
+        partOfSeries: {
+          "@type": "PodcastSeries",
+          "@id": `${BASE_URL}/insights/podcast#podcast`,
+          name: PODCAST_NAME,
+          url: `${BASE_URL}/insights/podcast`,
+        },
+        publisher: { "@id": `${BASE_URL}/#organization` },
+        inLanguage: "en-CA",
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "Podcast", item: `${BASE_URL}/insights/podcast` },
+          { "@type": "ListItem", position: 3, name: episode.title, item: url },
         ],
       },
     ],

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { usePersistedTab } from "@/hooks/use-persisted-tab";
@@ -477,12 +478,22 @@ function LeadsSection({ leads, isLoading }: { leads: NotificationWithLead[] | un
 
   const claimLeadMutation = useMutation({
     mutationFn: async (notificationId: string) => {
-      await apiRequest("POST", `/api/realtor-network/claim-lead/${notificationId}`);
+      const res = await apiRequest("POST", `/api/realtor-network/claim-lead/${notificationId}`);
+      return res.json() as Promise<{ success: boolean; crmContactId?: string | null }>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/realtor-network/my-leads"] });
       queryClient.invalidateQueries({ queryKey: ["/api/realtor-network/introductions"] });
-      toast({ title: "Lead Claimed!", description: "A formal introduction has been sent to the investor." });
+      queryClient.invalidateQueries({ queryKey: ["/api/crm/contacts"] });
+      toast({
+        title: "Lead Claimed!",
+        description: "Introduction sent. The lead has been added to your CRM.",
+        action: data?.crmContactId ? (
+          <ToastAction altText="Open in CRM" onClick={() => { window.location.href = `/crm/contacts/${data.crmContactId}`; }}>
+            Open in CRM
+          </ToastAction>
+        ) : undefined,
+      });
     },
     onError: () => {
       toast({ title: "Failed to claim lead", description: "Please try again.", variant: "destructive" });

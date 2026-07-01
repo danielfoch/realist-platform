@@ -1,6 +1,7 @@
 import { storage } from "./storage";
 import { encyclopediaGuides, getEncyclopediaGuide } from "@shared/encyclopedia";
 import { getProgrammaticMarket, getProgrammaticStrategy, PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } from "@shared/programmaticSeo";
+import { PODCAST_APPLE_URL, PODCAST_SPOTIFY_URL, PODCAST_YOUTUBE_URL } from "@shared/brand";
 import {
   buildListingSeoDescription,
   formatListingAddress,
@@ -859,6 +860,98 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
             { href: "/insights/podcast", label: "The Canadian Real Estate Investor Podcast" },
           ])}
         </section>
+      </article>
+      ${renderFooterLinks()}
+    `);
+  }
+
+  // Podcast hub: crawlable episode index so every /insights/podcast/:slug
+  // page is discoverable from plain HTML anchors.
+  if (reqPath === "/insights/podcast") {
+    const { getPodcastEpisodes } = await import("./podcastFeed");
+    const episodes = await getPodcastEpisodes().catch(() => []);
+    return renderShell(`
+      <header>
+        <h1 style="font-size:40px;margin:0 0 12px;">The Canadian Real Estate Investor Podcast</h1>
+        <p style="font-size:18px;color:#4b5563;max-width:760px;line-height:1.7;">Canada's #1 real estate podcast, hosted by Daniel Foch and Nick Hill. Weekly episodes on the Canadian housing market, mortgages, investing strategy, and policy — every episode below has its own page with full show notes and an in-browser player.</p>
+      </header>
+      <section style="margin:24px 0;">
+        <h2 style="font-size:28px;margin-bottom:12px;">Listen on your favourite platform</h2>
+        ${renderLinkList([
+          { href: PODCAST_APPLE_URL, label: "Apple Podcasts" },
+          { href: PODCAST_SPOTIFY_URL, label: "Spotify" },
+          { href: PODCAST_YOUTUBE_URL, label: "YouTube" },
+        ])}
+      </section>
+      <section style="margin-top:32px;">
+        <h2 style="font-size:28px;margin-bottom:12px;">All Episodes</h2>
+        ${renderLinkList(episodes.map((episode) => ({
+          href: `/insights/podcast/${episode.slug}`,
+          label: episode.title,
+        })))}
+      </section>
+      ${renderFooterLinks()}
+    `);
+  }
+
+  // Per-episode podcast pages: full show notes, audio, topics, related
+  // episodes, and the contextual tool CTA — all in the pre-hydration HTML.
+  const podcastEpisodeMatch = reqPath.match(/^\/insights\/podcast\/([^/]+)$/);
+  if (podcastEpisodeMatch) {
+    const { getEpisodePayload } = await import("./podcastFeed");
+    const payload = await getEpisodePayload(decodeURIComponent(podcastEpisodeMatch[1])).catch(() => null);
+    if (!payload) return null;
+    const publishedDate = payload.pubDate ? new Date(payload.pubDate) : null;
+    const dateLabel = publishedDate && !isNaN(publishedDate.getTime())
+      ? publishedDate.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })
+      : null;
+    return renderShell(`
+      ${renderBreadcrumbs([
+        { href: "/", label: "Home" },
+        { href: "/insights/podcast", label: "Podcast" },
+        { href: `/insights/podcast/${payload.slug}`, label: payload.title },
+      ])}
+      <article>
+        <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">The Canadian Real Estate Investor Podcast</p>
+        <h1 style="font-size:clamp(2rem,4vw,3.25rem);line-height:1.1;margin:8px 0 14px;">${escapeHtml(payload.title)}</h1>
+        <p style="font-size:14px;color:#6b7280;margin:0 0 14px;">
+          ${dateLabel ? `Published ${escapeHtml(dateLabel)}` : ""}${payload.duration ? ` · ${escapeHtml(payload.duration)}` : ""}
+        </p>
+        ${payload.topics.length ? `<p style="font-size:14px;color:#4b5563;margin:0 0 18px;"><strong>Topics:</strong> ${payload.topics.map(escapeHtml).join(", ")}</p>` : ""}
+        ${payload.audioUrl ? `
+          <audio controls preload="none" src="${escapeHtml(payload.audioUrl)}" style="width:100%;max-width:760px;margin:8px 0 20px;">
+            <a href="${escapeHtml(payload.audioUrl)}">Listen to ${escapeHtml(payload.title)}</a>
+          </audio>
+        ` : ""}
+        <section style="font-size:16px;line-height:1.8;max-width:860px;margin:20px 0;">
+          <h2 style="font-size:28px;margin:0 0 12px;">Show Notes</h2>
+          ${payload.showNotesHtml}
+        </section>
+        <section style="border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:760px;margin:28px 0;">
+          <h2 style="font-size:22px;margin:0 0 8px;">Put this episode to work</h2>
+          <p style="font-size:16px;color:#4b5563;margin:0 0 12px;">${escapeHtml(payload.cta.copy)}</p>
+          <p style="margin:0;">
+            <a href="${escapeHtml(payload.cta.primary.href)}" style="display:inline-block;background:#0f766e;color:#fff;border-radius:8px;padding:10px 20px;text-decoration:none;font-weight:600;">${escapeHtml(payload.cta.primary.label)}</a>
+            ${payload.cta.secondary ? `&nbsp; <a href="${escapeHtml(payload.cta.secondary.href)}" style="color:#0f766e;text-decoration:none;font-weight:600;">${escapeHtml(payload.cta.secondary.label)}</a>` : ""}
+          </p>
+        </section>
+        <section style="margin:28px 0;">
+          <h2 style="font-size:22px;margin:0 0 8px;">Listen on</h2>
+          ${renderLinkList([
+            { href: PODCAST_APPLE_URL, label: "Apple Podcasts" },
+            { href: PODCAST_SPOTIFY_URL, label: "Spotify" },
+            { href: PODCAST_YOUTUBE_URL, label: "YouTube" },
+          ])}
+        </section>
+        ${payload.related.length ? `
+          <section style="margin:28px 0;">
+            <h2 style="font-size:22px;margin:0 0 8px;">Related Episodes</h2>
+            ${renderLinkList(payload.related.map((related) => ({
+              href: `/insights/podcast/${related.slug}`,
+              label: related.title,
+            })))}
+          </section>
+        ` : ""}
       </article>
       ${renderFooterLinks()}
     `);

@@ -240,6 +240,10 @@ export async function crawlDdfForProvince(
             standardStatus: listing.StandardStatus || listing.MlsStatus || null,
             listOfficeBoard: listing.ListOfficeBoard || listing.OriginatingSystemName || null,
             photosCount: listing.PhotosCount,
+            photoUrl:
+              listing.Media?.find((m) => m.PreferredPhotoYN && m.MediaURL)?.MediaURL ||
+              listing.Media?.[0]?.MediaURL ||
+              null,
             modificationTimestamp: listing.ModificationTimestamp,
           },
           snapshotMonth: month,
@@ -333,6 +337,10 @@ export async function crawlDdfForCity(
             standardStatus: listing.StandardStatus || listing.MlsStatus || null,
             listOfficeBoard: listing.ListOfficeBoard || listing.OriginatingSystemName || null,
             photosCount: listing.PhotosCount,
+            photoUrl:
+              listing.Media?.find((m) => m.PreferredPhotoYN && m.MediaURL)?.MediaURL ||
+              listing.Media?.[0]?.MediaURL ||
+              null,
             modificationTimestamp: listing.ModificationTimestamp,
           },
           snapshotMonth: month,

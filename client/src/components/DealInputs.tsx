@@ -27,6 +27,7 @@ import {
 import { useState, useEffect } from "react";
 import type { BuyHoldInputs } from "@shared/schema";
 import { CashbackDisplay } from "@/components/CashbackDisplay";
+import { RentEstimateHint } from "@/components/RentEstimateHint";
 import { MortgageConsultationButton } from "@/components/MortgageConsultationButton";
 import { FinancingExpertPanel } from "@/components/FinancingExpertPanel";
 
@@ -474,6 +475,7 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
           </CardHeader>
           <CardContent className="space-y-4">
             <CurrencyInput id="monthlyRent" label="Monthly Rent" value={inputs.monthlyRent} onChange={(v) => updateInput("monthlyRent", v)} testId="input-monthly-rent" />
+            <RentEstimateHint city={city} region={region} country={country} currentRent={inputs.monthlyRent} onApply={(v) => updateInput("monthlyRent", v)} />
             <PercentInput id="vacancy" label="Vacancy Rate" value={inputs.vacancyPercent} onChange={(v) => updateInput("vacancyPercent", v)} testId="slider-vacancy" min={0} max={20} step={0.5} />
             <PercentInput id="rentGrowthIncome" label="Annual Rent Growth" value={inputs.rentGrowthPercent} onChange={(v) => updateInput("rentGrowthPercent", v)} testId="slider-rent-growth-income" min={-5} max={10} step={0.5} />
           </CardContent>
@@ -1058,6 +1060,7 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
           </CardHeader>
           <CardContent className="space-y-4">
             <CurrencyInput id="monthlyRent" label={`Total Monthly Rent (${numUnits} units)`} value={inputs.monthlyRent} onChange={(v) => updateInput("monthlyRent", v)} testId="input-monthly-rent" />
+            <RentEstimateHint city={city} region={region} country={country} units={numUnits} currentRent={inputs.monthlyRent} onApply={(v) => updateInput("monthlyRent", v)} />
             <div className="p-3 bg-muted/50 rounded-lg">
               <span className="text-sm text-muted-foreground">Average rent per unit: ${Math.round(inputs.monthlyRent / numUnits).toLocaleString()}/mo</span>
             </div>

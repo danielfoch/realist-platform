@@ -197,13 +197,13 @@ const SOURCES: Record<string, PolicySource> = {
     date: "2023-09-28",
     confidence: "high",
   },
-  torontoTE6unit: {
-    type: "policy_document",
-    name: "City of Toronto — Toronto & East York 6-Unit Multiplex Permissions",
-    url: "https://www.toronto.ca/city-government/planning-development/planning-studies-initiatives/expanding-housing-options/",
-    jurisdiction: "Toronto — Toronto & East York",
-    date: "2024-05-01",
-    confidence: "medium",
+  torontoSixplex2025: {
+    type: "bylaw",
+    name: "City of Toronto — By-law 654-2025 / OPA 818: Fiveplexes & Sixplexes (as-of-right in 9 wards + councillor opt-in)",
+    url: "https://www.toronto.ca/city-government/planning-development/planning-studies-initiatives/multiplex-housing/",
+    jurisdiction: "Toronto — Wards 4, 9, 10, 11, 12, 13, 14, 19 (Toronto & East York) + Ward 23 (Scarborough North)",
+    date: "2025-06-25",
+    confidence: "high",
   },
   torontoGardenSuite2022: {
     type: "bylaw",
@@ -324,26 +324,33 @@ const MUNICIPALITY_RULES: Record<string, MunicipalityRule> = {
     garden_suite_possible: true,
     // Laneway suites possible on most lots with lane access in former City of Toronto / East York
     laneway_suite_possible: true,
-    // Toronto & East York community council area + Ward 23 allow 6 units (adopted 2024)
+    // By-law 654-2025 / OPA 818 (June 2025): 5-6 units as-of-right in the eight
+    // Toronto & East York wards (4, 9, 10, 11, 12, 13, 14, 19) plus Ward 23
+    // (Scarborough North). Remaining wards require councillor opt-in.
     six_unit_area_possible: true,
     six_unit_area_note:
-      "Properties in the Toronto & East York community council area or Ward 23 (Scarborough North – Don Mills) may be permitted up to 6 units. Verify using Toronto's zoning map and the applicable community council boundary.",
+      "By-law 654-2025 permits five- and six-unit multiplexes as-of-right in Wards 4, 9, 10, 11, 12, 13, 14, 19 (Toronto & East York district) and Ward 23 (Scarborough North). Other wards require the local councillor to opt in — the list can grow; verify the property's ward against the current by-law.",
     // Standard Toronto residential zone: ~33–35% lot coverage for principal building
     // For multiplex scenarios, effective coverage including rear structures may reach 45%+
     default_lot_coverage_ratio: 0.35,
     coverage_basis: "municipality_fallback",
-    typical_storeys: 2.5,
+    // Multiplex by-law permits 10m height (~3 storeys); sixplex areas allow up to
+    // 4 storeys/12m. 3 is the realistic massing basis for multiplex GFA.
+    typical_storeys: 3,
     approval_notes: [
       "Toronto's city-wide multiplex by-law allows up to 4 units 'as of right' in residential areas (subject to zoning standards)",
-      "Zoning standards including lot coverage, height, setbacks, and parking still apply and can constrain the actual unit count",
+      "By-law 654-2025 extends as-of-right permission to 5-6 units in Wards 4, 9, 10, 11, 12, 13, 14, 19 and Ward 23; other wards may opt in",
+      "FSI does not apply to multiplexes — the envelope is governed by height (10m; 12m/4 storeys in sixplex areas), lot coverage, and setbacks (7.5m rear; 0.9m sides, 1.5m for 5+ units)",
+      "No minimum parking requirement applies to multiplexes",
       "Minor variances may be needed for irregular lots or non-standard configurations",
+      "Development charge relief may apply (Bill 23 ARU exemptions; City multiplex/sixplex incentive programs) — verify current treatment before underwriting",
       "Laneway suites are permitted on lots with lane access (approx. 65,000 eligible lots)",
       "Garden suites are permitted on most residential lots since 2022",
       "Heritage designation, TRCA flood/conservation, and other overlays can reduce feasibility",
     ],
     sources: [
       SOURCES.torontoMultiplex2023,
-      SOURCES.torontoTE6unit,
+      SOURCES.torontoSixplex2025,
       SOURCES.torontoGardenSuite2022,
       SOURCES.torontoLaneway2018,
     ],
@@ -727,6 +734,51 @@ function detectProvince(input: FeasibilityInput): {
   return { key: null, rule: null, confidence_contribution: 0 };
 }
 
+/**
+ * Sixplex geography under By-law 654-2025: as-of-right in the eight Toronto &
+ * East York wards (4, 9, 10, 11, 12, 13, 14, 19) plus Ward 23 (Scarborough
+ * North). Additional wards may opt in via their councillor — keep OPT_IN_WARDS
+ * current when that happens.
+ *
+ * FSA prefixes are a conservative heuristic (certainty: inferred) until the
+ * geodata phase resolves the actual ward from ward-boundary polygons. Only
+ * FSAs that sit clearly inside a sixplex ward are listed; boundary-straddling
+ * FSAs are deliberately excluded so we never over-promise six units.
+ */
+export const TORONTO_SIXPLEX_WARDS = {
+  asOfRightWards: [
+    { ward: 4, name: "Parkdale–High Park" },
+    { ward: 9, name: "Davenport" },
+    { ward: 10, name: "Spadina–Fort York" },
+    { ward: 11, name: "University–Rosedale" },
+    { ward: 12, name: "Toronto–St. Paul's" },
+    { ward: 13, name: "Toronto Centre" },
+    { ward: 14, name: "Toronto–Danforth" },
+    { ward: 19, name: "Beaches–East York" },
+    { ward: 23, name: "Scarborough North" },
+  ],
+  // Councillor opt-ins post-654-2025. Verify against the current by-law
+  // consolidation before relying on this list.
+  optInWards: [] as Array<{ ward: number; name: string }>,
+  // Conservative FSA→sixplex-ward heuristic (clearly-core FSAs only).
+  likelyFsaPrefixes: [
+    // East end / East York / Danforth (Wards 14, 19)
+    "M4B", "M4C", "M4E", "M4J", "M4K", "M4L", "M4M",
+    // Toronto Centre / downtown (Wards 10, 13)
+    "M4W", "M4X", "M4Y", "M5A", "M5B", "M5C", "M5E", "M5G", "M5H", "M5J", "M5T", "M5V",
+    // University–Rosedale / Annex (Ward 11)
+    "M5R", "M5S",
+    // St. Paul's midtown (Ward 12)
+    "M4V", "M5P", "M6C",
+    // Davenport / Parkdale / High Park (Wards 4, 9)
+    "M6G", "M6H", "M6J", "M6K", "M6P", "M6R", "M6S",
+    // Scarborough North (Ward 23)
+    "M1V", "M1S",
+  ],
+  source: "By-law 654-2025 / OPA 818, adopted 2025-06-25",
+  lastVerified: "2026-07",
+};
+
 function inferTorontoSixUnitStatus(input: FeasibilityInput, munRule: MunicipalityRule | null): "not_applicable" | "possible_unverified" | "more_likely_area" {
   if (munRule?.name !== "City of Toronto" || !munRule.six_unit_area_possible) return "not_applicable";
 
@@ -735,19 +787,32 @@ function inferTorontoSixUnitStatus(input: FeasibilityInput, munRule: Municipalit
   const postal = (input.postalCode || "").toUpperCase().replace(/\s+/g, "");
   const search = `${city} ${address}`;
 
+  const fsa = postal.slice(0, 3);
+  if (fsa && TORONTO_SIXPLEX_WARDS.likelyFsaPrefixes.includes(fsa)) {
+    return "more_likely_area";
+  }
+
   if (
     city === "east york" ||
-    city === "york" ||
     search.includes("east york") ||
     search.includes("toronto and east york")
   ) {
     return "more_likely_area";
   }
 
-  if (city === "scarborough" || search.includes("ward 23") || /^M2N|^M3A|^M3B|^M3C/.test(postal)) {
-    return "possible_unverified";
+  // Named ward references in the address string
+  const wardMatch = search.match(/ward\s+(\d{1,2})/);
+  if (wardMatch) {
+    const wardNum = parseInt(wardMatch[1], 10);
+    const eligible = [
+      ...TORONTO_SIXPLEX_WARDS.asOfRightWards,
+      ...TORONTO_SIXPLEX_WARDS.optInWards,
+    ].some((w) => w.ward === wardNum);
+    if (eligible) return "more_likely_area";
   }
 
+  // Everywhere else in Toronto: only via councillor opt-in or minor variance —
+  // report as possible-but-unverified rather than likely.
   return "possible_unverified";
 }
 
