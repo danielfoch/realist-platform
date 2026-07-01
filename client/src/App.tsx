@@ -28,6 +28,7 @@ import AdminEvents from "@/pages/AdminEvents";
 import AdminEventNew from "@/pages/AdminEventNew";
 import AdminEventEdit from "@/pages/AdminEventEdit";
 import EventDetail from "@/pages/EventDetail";
+import Meetups from "@/pages/Meetups";
 import EventSuccess from "@/pages/EventSuccess";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
@@ -228,6 +229,8 @@ function Router() {
       {/* New Community routes */}
       <Route path="/community" component={CommunityHub} />
       <Route path="/community/events" component={Events} />
+      <Route path="/meetups" component={Meetups} />
+      <Route path="/community/meetups">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/community/events/unpacking-multiplexes-toronto" component={UnpackingMultiplexesToronto} />
       <Route path="/community/network" component={NetworkHub} />
       

@@ -691,6 +691,10 @@ async function ensureAppTables() {
         scheduleRentIngestionJobs(log);
         log("Rent ingestion jobs scheduled (daily DDF lease crawl)", "rent-ingestion");
       }).catch((err) => log(`Rent ingestion schedule error: ${err.message}`, "rent-ingestion"));
+      import("./eventsCommunity").then(({ scheduleEventsCommunityJobs }) => {
+        scheduleEventsCommunityJobs(log);
+        log("Events community jobs scheduled (daily recurrence sweep)", "events");
+      }).catch((err) => log(`Events community schedule error: ${err.message}`, "events"));
       const drainNotifications = async () => {
         try {
           const result = await processPendingGhlNotifications();

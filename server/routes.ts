@@ -130,6 +130,7 @@ import { registerAiDefaultsRoutes } from "./aiDefaults";
 import { registerCrmRoutes } from "./crm";
 import { registerPartnerNetworkRoutes, handoffClaimedLeadToCrm } from "./partnerNetwork";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
+import { registerEventsCommunityRoutes } from "./eventsCommunity";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
 import { registerMobilePushRoutes } from "./mobilePush";
@@ -764,6 +765,7 @@ export async function registerRoutes(
   registerCrmRoutes(app);
   registerPartnerNetworkRoutes(app);
   registerEventsGrowthRoutes(app);
+  registerEventsCommunityRoutes(app);
   registerRentIntelligenceRoutes(app);
   registerRentIngestionRoutes(app);
   registerMobilePushRoutes(app);

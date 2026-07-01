@@ -193,6 +193,11 @@ export const realistEvents = pgTable("realist_events", {
   city: text("city"),
   isRecurring: boolean("is_recurring").default(false).notNull(),
   recurrenceNote: text("recurrence_note"),
+  // Mechanical recurrence: when set, a daily job clones the event into the
+  // next occurrence after it ends. parentEventId points at the series root.
+  recurrenceRule: text("recurrence_rule"), // weekly | biweekly | monthly_same_weekday
+  recurrenceUntil: timestamp("recurrence_until"),
+  parentEventId: varchar("parent_event_id"),
   hostUserId: varchar("host_user_id"),
   reminderSentAt: timestamp("reminder_sent_at"),
   createdByEmail: text("created_by_email").notNull(),
@@ -266,6 +271,21 @@ export const realistEventRsvps = pgTable("realist_event_rsvps", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("uq_event_rsvp_email").on(table.eventId, table.email),
+]);
+
+// Discussion threads on event/meetup pages (the meetup.com "threads"
+// replacement). One level of nesting via parentCommentId.
+export const realistEventComments = pgTable("realist_event_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  parentCommentId: varchar("parent_comment_id"),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("visible"), // visible | removed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("event_comments_event_idx").on(table.eventId, table.status),
 ]);
 
 // One row per announcement blast so an event is never double-blasted.
@@ -851,6 +871,7 @@ export type InspectionRequest = typeof inspectionRequests.$inferSelect;
 
 export type InsertRealistEvent = z.infer<typeof insertRealistEventSchema>;
 export type RealistEvent = typeof realistEvents.$inferSelect;
+export type RealistEventComment = typeof realistEventComments.$inferSelect;
 export type InsertRealistEventSpeaker = z.infer<typeof insertRealistEventSpeakerSchema>;
 export type RealistEventSpeaker = typeof realistEventSpeakers.$inferSelect;
 export type InsertRealistEventTicketType = z.infer<typeof insertRealistEventTicketTypeSchema>;
