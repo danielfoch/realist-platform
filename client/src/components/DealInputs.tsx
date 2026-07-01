@@ -24,7 +24,7 @@ import {
   Building2,
   Bed
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { BuyHoldInputs } from "@shared/schema";
 import { CashbackDisplay } from "@/components/CashbackDisplay";
 import { MortgageConsultationButton } from "@/components/MortgageConsultationButton";
@@ -306,8 +306,42 @@ interface CashbackProps {
   country: "canada" | "usa";
 }
 
+interface AiMarketDefaults {
+  found: boolean;
+  market?: string;
+  strategy?: string;
+  sampleCount?: number;
+  metrics?: Record<string, { median: number; mean: number | null; p25: number | null; p75: number | null }>;
+}
+
 function BuyHoldInputs({ inputs, onChange, country, region, city, address, defaultLeadInfo }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void; country: string } & CashbackProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [aiDefaults, setAiDefaults] = useState<AiMarketDefaults | null>(null);
+  const [aiApplied, setAiApplied] = useState(false);
+
+  useEffect(() => {
+    if (!city) return;
+    setAiDefaults(null);
+    setAiApplied(false);
+    fetch(`/api/ai/defaults?city=${encodeURIComponent(city)}&strategy=rental`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: AiMarketDefaults | null) => { if (data?.found) setAiDefaults(data); })
+      .catch(() => {});
+  }, [city]);
+
+  const applyAiDefaults = () => {
+    if (!aiDefaults?.metrics) return;
+    const m = aiDefaults.metrics;
+    const patch: Partial<BuyHoldInputs> = {};
+    if (m.vacancyPercent?.median) patch.vacancyPercent = Math.round(m.vacancyPercent.median * 10) / 10;
+    else if (m.vacancyRate?.median) patch.vacancyPercent = Math.round(m.vacancyRate.median * 10) / 10;
+    if (m.managementFeePercent?.median) patch.managementPercent = Math.round(m.managementFeePercent.median * 10) / 10;
+    if (m.maintenancePercent?.median) patch.maintenancePercent = Math.round(m.maintenancePercent.median * 10) / 10;
+    if (m.monthlyRent?.median && !inputs.monthlyRent) patch.monthlyRent = Math.round(m.monthlyRent.median);
+    if (m.grossMonthlyRent?.median && !inputs.monthlyRent) patch.monthlyRent = Math.round(m.grossMonthlyRent.median);
+    onChange({ ...inputs, ...patch });
+    setAiApplied(true);
+  };
 
   const updateInput = <K extends keyof BuyHoldInputs>(key: K, value: BuyHoldInputs[K]) => {
     onChange({ ...inputs, [key]: value });
@@ -413,6 +447,22 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
           </div>
         </CardContent>
       </Card>
+
+      {aiDefaults?.found && !aiApplied && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm">
+          <span className="text-violet-700">
+            AI defaults available — learned from <strong>{aiDefaults.sampleCount?.toLocaleString()}</strong> analyses in {city}
+          </span>
+          <Button size="sm" variant="outline" className="shrink-0 border-violet-300 text-violet-700 hover:bg-violet-100" onClick={applyAiDefaults}>
+            Apply
+          </Button>
+        </div>
+      )}
+      {aiApplied && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
+          AI defaults applied — tweak any field to customize
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="h-fit">

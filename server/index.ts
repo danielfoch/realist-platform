@@ -12,6 +12,7 @@ import {
   queueDailyDigestNotifications,
   queueInactiveHighIntentNotifications,
 } from "./notifications";
+import { registerAiDefaultsRoutes, scheduleNightlyTraining } from "./aiMarketDefaults";
 
 const app = express();
 // Trust proxy for secure cookies behind Replit's reverse proxy
@@ -547,6 +548,7 @@ async function ensureAppTables() {
   });
 
   await registerRoutes(httpServer, app);
+  registerAiDefaultsRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -628,6 +630,7 @@ async function ensureAppTables() {
       import("./monthlyWinnerEmail").then(({ scheduleMonthlyWinnerEmail }) => {
         scheduleMonthlyWinnerEmail();
       }).catch((err) => log(`Monthly winner email schedule error: ${err.message}`, "monthly-winner"));
+      scheduleNightlyTraining();
       const drainNotifications = async () => {
         try {
           const result = await processPendingGhlNotifications();
