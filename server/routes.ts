@@ -102,9 +102,10 @@ import { eq, and, desc, inArray, notInArray, sql, count, gte, lte, ilike } from 
 import { z } from "zod";
 import { COMMUNITY_DEFAULTS, COMMUNITY_FLAGS, computeConsensusLabel, sanitizeUserText, summarizeCommunityMetrics, truncateText } from "@shared/community";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
-import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
+import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin, appBaseUrl } from "./auth";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { passwordResetTokens } from "@shared/models/auth";
+import { normalizeEmail, SETUP_LINK_TTL_MS } from "@shared/authTokens";
 import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
 import { 
@@ -562,7 +563,9 @@ async function autoEnrollLeadAsUser(params: {
   phone?: string;
   leadSource?: string;
 }): Promise<{ userId: string; isNew: boolean }> {
-  const emailLower = params.email.toLowerCase();
+  // Lowercase + trim so casing/whitespace can't fork identities across the
+  // many silent-creation paths that funnel through here.
+  const emailLower = normalizeEmail(params.email);
 
   const existingUser = await db.select().from(users).where(eq(users.email, emailLower)).limit(1);
   if (existingUser.length > 0) {
@@ -596,7 +599,7 @@ async function autoEnrollLeadAsUser(params: {
 
   const rawToken = crypto.randomBytes(32).toString("hex");
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
 
   await db.insert(passwordResetTokens).values({
     userId: newUser.id,
@@ -604,12 +607,7 @@ async function autoEnrollLeadAsUser(params: {
     expiresAt,
   });
 
-  const baseUrl = process.env.REPLIT_DEV_DOMAIN
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : process.env.REPL_SLUG
-      ? `https://${process.env.REPL_SLUG}.replit.app`
-      : "https://realist.ca";
-  const setupLink = `${baseUrl}/set-password?token=${rawToken}`;
+  const setupLink = `${appBaseUrl()}/set-password?token=${rawToken}`;
 
   sendWelcomeAccountEmail({
     toEmail: emailLower,
@@ -2442,6 +2440,7 @@ export async function registerRoutes(
       }
 
       let userId: string | null = null;
+      let enrollmentIsNew = false;
       try {
         const enrollment = await autoEnrollLeadAsUser({
           email: lead.email,
@@ -2451,6 +2450,7 @@ export async function registerRoutes(
           leadSource: lead.leadSource || "Deal Analyzer",
         });
         userId = enrollment.userId;
+        enrollmentIsNew = enrollment.isNew;
 
         if (userId) {
           await storage.linkAnalysisToUser(analysis.id, userId);
@@ -2506,6 +2506,9 @@ export async function registerRoutes(
           propertyId: property.id,
           analysisId: analysis.id,
           userId,
+          // New accounts are passwordless: the client uses this to explain the
+          // welcome email without firing a duplicate lead-enroll call.
+          isNewUser: enrollmentIsNew,
         },
       });
     } catch (error) {
@@ -2914,7 +2917,7 @@ export async function registerRoutes(
 
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
           await db.insert(passwordResetTokens).values({
             userId: newUser.id,
             token: tokenHash,
@@ -2922,15 +2925,10 @@ export async function registerRoutes(
           });
 
           if (sendEmails !== false) {
-            const baseUrl = process.env.REPLIT_DEV_DOMAIN
-              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-              : process.env.REPL_SLUG
-                ? `https://${process.env.REPL_SLUG}.replit.app`
-                : "https://realist.ca";
             sendWelcomeAccountEmail({
               toEmail: email,
               firstName: row.first_name || row.firstName || "there",
-              setupLink: `${baseUrl}/set-password?token=${rawToken}`,
+              setupLink: `${appBaseUrl()}/set-password?token=${rawToken}`,
               leadSource: "Account Recovery",
             }).catch(err => console.error(`Welcome email error for ${email}:`, err));
           }
@@ -3093,23 +3091,17 @@ export async function registerRoutes(
 
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
           await db.insert(passwordResetTokens).values({
             userId: user.id,
             token: tokenHash,
             expiresAt,
           });
 
-          const baseUrl = process.env.REPLIT_DEV_DOMAIN
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-            : process.env.REPL_SLUG
-              ? `https://${process.env.REPL_SLUG}.replit.app`
-              : "https://realist.ca";
-
           await sendWelcomeAccountEmail({
             toEmail: user.email,
             firstName: user.firstName || "there",
-            setupLink: `${baseUrl}/set-password?token=${rawToken}`,
+            setupLink: `${appBaseUrl()}/set-password?token=${rawToken}`,
             leadSource: "Account Recovery",
           });
 

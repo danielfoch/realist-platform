@@ -19,6 +19,7 @@ import {
   passwordResetTokens,
   users,
 } from "@shared/schema";
+import { normalizeEmail, SETUP_LINK_TTL_MS } from "@shared/authTokens";
 
 const EVENT_ADMIN_EMAILS = new Set(
   (process.env.REALIST_EVENT_ADMIN_EMAILS ||
@@ -610,7 +611,9 @@ export function registerRealistEventRoutes(app: Express) {
 }
 
 async function createOrUpdateEventUser(session: Stripe.Checkout.Session) {
-  const email = (session.customer_details?.email || session.customer_email || "").toLowerCase();
+  // normalizeEmail (lowercase + trim) so Stripe-entered emails can't fork
+  // identities against the other silent-creation paths.
+  const email = normalizeEmail(session.customer_details?.email || session.customer_email);
   if (!email) return null;
   const name = session.customer_details?.name || "";
   const [firstName, ...lastParts] = name.split(" ").filter(Boolean);
@@ -641,7 +644,7 @@ async function createOrUpdateEventUser(session: Stripe.Checkout.Session) {
   // /api/auth/set-password looks tokens up by sha256 hash — store the hash,
   // put the raw token in the link (same pattern as forgot-password in auth.ts)
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
   await db.insert(passwordResetTokens).values({
     userId: user.id,
     token: tokenHash,
