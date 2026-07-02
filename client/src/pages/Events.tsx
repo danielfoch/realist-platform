@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { NativeEventsList } from "@/components/events/NativeEventsList";
+import { FlagshipEventBanner } from "@/components/events/FlagshipEventBanner";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
@@ -394,6 +395,8 @@ export default function Events() {
         structuredData={eventsSchema}
       />
       <Navigation />
+
+      <FlagshipEventBanner />
 
       <main className="py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
