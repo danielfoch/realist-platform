@@ -79,6 +79,8 @@ import DistressReport from "@/pages/DistressReport";
 import MultiplexFit from "@/pages/MultiplexFit";
 import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
 import MultiplexFeasibilityPage from "@/pages/MultiplexFeasibilityPage";
+import MultiplexUnderwriterPage from "@/pages/MultiplexUnderwriterPage";
+import PowerTeam from "@/pages/PowerTeam";
 import OntarioHstRebateCalculator from "@/pages/OntarioHstRebateCalculator";
 import Course from "@/pages/Course";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
@@ -187,6 +189,8 @@ function Router() {
       <Route path="/tools/distress-deals" component={DistressDeals} />
       <Route path="/tools/motivated-deals" component={DistressDeals} />
       <Route path="/tools/multiplex-feasibility" component={MultiplexFeasibilityPage} />
+      <Route path="/tools/multiplex-underwriter" component={MultiplexUnderwriterPage} />
+      <Route path="/power-team" component={PowerTeam} />
       <Route path="/multiplex-investor-fit" component={MultiplexFit} />
       <Route path="/masterclass" component={MultiplexMasterclass} />
       <Route path="/course" component={Course} />
