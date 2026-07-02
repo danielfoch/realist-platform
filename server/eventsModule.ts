@@ -20,6 +20,7 @@ import {
   users,
 } from "@shared/schema";
 import { normalizeEmail, SETUP_LINK_TTL_MS } from "@shared/authTokens";
+import { paymentOutcome, sessionMatchesEvent, summarizeRoster } from "@shared/eventCheckout";
 
 const EVENT_ADMIN_EMAILS = new Set(
   (process.env.REALIST_EVENT_ADMIN_EMAILS ||
@@ -607,6 +608,82 @@ export function registerRealistEventRoutes(app: Express) {
     } catch (error: any) {
       res.status(400).json({ error: error.errors?.[0]?.message || error.message || "Failed to create checkout" });
     }
+  });
+
+  // Success-page verification. Stripe webhooks can lag (or, on a misconfigured
+  // deploy, never arrive) — so the buyer's success page confirms payment
+  // directly with Stripe and triggers fulfilment as an idempotent fallback.
+  app.get("/api/events/:slug/verify-payment", async (req, res) => {
+    try {
+      const sessionId = typeof req.query.session_id === "string" ? req.query.session_id : "";
+      if (!sessionId) return res.status(400).json({ error: "session_id is required" });
+
+      const [event] = await db.select().from(realistEvents)
+        .where(and(eq(realistEvents.slug, req.params.slug), eq(realistEvents.status, "PUBLISHED"))).limit(1);
+      if (!event) return res.status(404).json({ error: "Event not found" });
+
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (!sessionMatchesEvent(session, event.id)) {
+        return res.status(400).json({ error: "This payment does not belong to this event" });
+      }
+
+      const outcome = paymentOutcome(session);
+      if (outcome === "paid") {
+        // Idempotent: no-ops if the webhook already fulfilled this session.
+        await fulfillRealistEventCheckout(session).catch((error) =>
+          console.error("[events] verify-payment fulfilment fallback failed:", error.message),
+        );
+      }
+      const [order] = await db.select({ id: realistEventOrders.id })
+        .from(realistEventOrders)
+        .where(eq(realistEventOrders.stripeCheckoutSessionId, session.id)).limit(1);
+
+      res.json({ outcome, fulfilled: !!order, eventTitle: event.title });
+    } catch (error: any) {
+      console.error("[events] verify-payment failed:", error.message);
+      res.status(500).json({ error: "Could not verify payment" });
+    }
+  });
+
+  // Admin order roster + door-ops summary.
+  app.get("/api/admin/events/:id/orders", requireEventAdmin, async (req, res) => {
+    const [event] = await db.select().from(realistEvents).where(eq(realistEvents.id, req.params.id)).limit(1);
+    if (!event) return res.status(404).json({ error: "Event not found" });
+
+    const [orders, attendees, ticketTypes] = await Promise.all([
+      db.select().from(realistEventOrders).where(eq(realistEventOrders.eventId, event.id)).orderBy(asc(realistEventOrders.createdAt)),
+      db.select().from(realistEventAttendees).where(eq(realistEventAttendees.eventId, event.id)).orderBy(asc(realistEventAttendees.name)),
+      db.select().from(realistEventTicketTypes).where(eq(realistEventTicketTypes.eventId, event.id)),
+    ]);
+    const ticketNameById = new Map(ticketTypes.map((t) => [t.id, t.name]));
+    res.json({
+      event: { id: event.id, title: event.title, slug: event.slug, startsAt: event.startsAt },
+      summary: summarizeRoster(orders, attendees),
+      ticketTypes: ticketTypes.map((t) => ({ id: t.id, name: t.name })),
+      attendees: attendees.map((a) => ({
+        id: a.id,
+        name: a.name,
+        email: a.email,
+        ticketType: ticketNameById.get(a.ticketTypeId) || "—",
+        checkedInAt: a.checkedInAt,
+      })),
+    });
+  });
+
+  // Door check-in: mark an attendee arrived (or undo). checked_in_at existed on
+  // the attendees table since launch but nothing ever wrote it.
+  app.post("/api/admin/events/:id/attendees/:attendeeId/check-in", requireEventAdmin, async (req, res) => {
+    const checkedIn = req.body?.checkedIn !== false; // default true; pass {checkedIn:false} to undo
+    const [updated] = await db.update(realistEventAttendees)
+      .set({ checkedInAt: checkedIn ? new Date() : null })
+      .where(and(
+        eq(realistEventAttendees.id, req.params.attendeeId),
+        eq(realistEventAttendees.eventId, req.params.id),
+      ))
+      .returning();
+    if (!updated) return res.status(404).json({ error: "Attendee not found for this event" });
+    res.json({ id: updated.id, checkedInAt: updated.checkedInAt });
   });
 }
 

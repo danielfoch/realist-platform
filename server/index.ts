@@ -630,6 +630,19 @@ async function ensureAppTables() {
     },
     () => {
       log(`serving on port ${port}`);
+      // On-sale guard: event ticket fulfilment runs off the Stripe webhook.
+      // If the secret is missing in production, fulfilment falls back to the
+      // success-page verification path only — make that impossible to miss.
+      if (process.env.NODE_ENV === "production" && !process.env.STRIPE_WEBHOOK_SECRET) {
+        console.error(
+          "\n========================================================================\n" +
+          "  CRITICAL: STRIPE_WEBHOOK_SECRET is not set.\n" +
+          "  Stripe webhooks will NOT fulfil event tickets; buyers are covered\n" +
+          "  only by the success-page verification fallback. Set this secret\n" +
+          "  before Toronto ticket on-sale.\n" +
+          "========================================================================\n",
+        );
+      }
       seedGeographies().catch((err) => log(`Seed error: ${err.message}`, "seed"));
       seedCourseContent().catch((err) => log(`Course seed error: ${err.message}`, "course-seed"));
 
