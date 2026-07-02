@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
+import { FieldNotes } from "@/components/experts/FieldNotes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -259,6 +260,8 @@ export default function ListingDetailPage() {
             <p className="leading-8 text-muted-foreground">{remarks}</p>
           </section>
         )}
+
+        <FieldNotes mlsNumber={listing.mlsNumber} />
       </main>
     </div>
   );

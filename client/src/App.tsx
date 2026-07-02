@@ -69,6 +69,9 @@ import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
 import ListingIntelligence from "@/pages/ListingIntelligence";
 import ListingDetailPage from "@/pages/ListingDetailPage";
+import Experts from "@/pages/Experts";
+import ExpertProfile from "@/pages/ExpertProfile";
+import JoinExperts from "@/pages/JoinExperts";
 import RealtorNetwork from "@/pages/RealtorNetwork";
 import MarketReport from "@/pages/MarketReport";
 import MortgageRates from "@/pages/MortgageRates";
@@ -177,6 +180,9 @@ function Router() {
       <Route path="/listing-intelligence" component={ListingIntelligence} />
       <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
       <Route path="/listings/:mlsNumber" component={ListingDetailPage} />
+      <Route path="/join/experts" component={JoinExperts} />
+      <Route path="/experts" component={Experts} />
+      <Route path="/experts/:userId" component={ExpertProfile} />
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
       <Route path="/deals" component={InvestorOperatingSystem} />
       <Route path="/watchlist" component={InvestorOperatingSystem} />
