@@ -15,8 +15,14 @@
 
 import cron from "node-cron";
 import { db } from "./db";
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Express } from "express";
+import { modelVersions, modelPredictions } from "@shared/schema";
+import {
+  requireIntelAdmin,
+  MARKET_DEFAULTS_MODEL_KEY,
+  MARKET_DEFAULTS_VERSION,
+} from "./rentIntelligence";
 
 // ---------------------------------------------------------------------------
 // Self-migrating tables
@@ -140,6 +146,8 @@ export async function trainMarketDefaults(): Promise<{ analysesProcessed: number
       WHERE id = ${runId}
     `);
 
+    await recordTrainingInLedger(analysesProcessed, marketsUpdated);
+
     console.log(`[ai-train] Completed: ${analysesProcessed} analyses, ${marketsUpdated} defaults upserted`);
     return { analysesProcessed, marketsUpdated };
   } catch (err: any) {
@@ -148,6 +156,78 @@ export async function trainMarketDefaults(): Promise<{ analysesProcessed: number
     `);
     console.error("[ai-train] Training failed:", err.message);
     throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Intelligence-ledger integration
+//
+// market_defaults is a model like any other: registered in model_versions,
+// its rent priors logged to model_predictions so the nightly resolution
+// sweep can score user assumptions against scraped market reality (the
+// "assumption gap" per city).
+// ---------------------------------------------------------------------------
+
+export async function ensureMarketDefaultsRegistered(): Promise<void> {
+  try {
+    await db.insert(modelVersions).values({
+      modelKey: MARKET_DEFAULTS_MODEL_KEY,
+      version: MARKET_DEFAULTS_VERSION,
+      description: "User-assumption priors: nightly PERCENTILE_CONT medians of property_analyses finalAssumptions/calculatedMetrics per city + strategy (18-month lookback, min sample 3).",
+      params: { lookbackMonths: 18, minSample: 3, aggregation: "median" },
+    }).onConflictDoNothing();
+  } catch (err: any) {
+    console.error("[ai-train] Failed to register model version:", err.message);
+  }
+}
+
+async function recordTrainingInLedger(analysesProcessed: number, marketsUpdated: number): Promise<void> {
+  try {
+    await db.update(modelVersions)
+      .set({ metrics: { analysesProcessed, marketsUpdated, trainedAt: new Date().toISOString() } })
+      .where(and(
+        eq(modelVersions.modelKey, MARKET_DEFAULTS_MODEL_KEY),
+        eq(modelVersions.version, MARKET_DEFAULTS_VERSION),
+      ));
+
+    // Log the monthly-rent prior per market as a prediction. bedrooms stays
+    // NULL (city-level, mixed sizes); the sweep resolves it against the
+    // mixed-bedroom city median of scraped observations.
+    const priors = await db.execute(sql`
+      SELECT market, strategy, median_value, p25, p75, sample_count
+      FROM ai_market_defaults
+      WHERE metric = 'monthlyRent'
+    `);
+    const rows = (priors.rows as Array<{
+      market: string;
+      strategy: string;
+      median_value: string;
+      p25: string | null;
+      p75: string | null;
+      sample_count: string;
+    }>).map((r) => ({
+      modelKey: MARKET_DEFAULTS_MODEL_KEY,
+      modelVersion: MARKET_DEFAULTS_VERSION,
+      subjectType: "market",
+      subjectId: `${r.market}:${r.strategy}`,
+      inputs: { market: r.market, strategy: r.strategy, metric: "monthlyRent", sampleCount: Number(r.sample_count) },
+      predictedValue: Number(r.median_value),
+      intervalLow: r.p25 != null ? Number(r.p25) : null,
+      intervalHigh: r.p75 != null ? Number(r.p75) : null,
+      confidence: Number(r.sample_count) >= 30 ? "medium" : "low",
+      method: "user_prior_median",
+      compCount: Number(r.sample_count),
+      city: r.market,
+      province: null,
+      bedrooms: null,
+    })).filter((r) => Number.isFinite(r.predictedValue) && r.predictedValue > 0);
+
+    if (rows.length > 0) {
+      await db.insert(modelPredictions).values(rows);
+    }
+  } catch (err: any) {
+    // Ledger bookkeeping must never fail a training run.
+    console.error("[ai-train] Ledger recording failed:", err.message);
   }
 }
 
@@ -227,9 +307,11 @@ export async function getTrainingStats(): Promise<{ totalAnalyses: number; marke
 // ---------------------------------------------------------------------------
 
 export function registerAiDefaultsRoutes(app: Express): void {
-  ensureTables().catch((err) =>
-    console.error("[ai-market-defaults] Failed to ensure tables:", err.message)
-  );
+  ensureTables()
+    .then(() => ensureMarketDefaultsRegistered())
+    .catch((err) =>
+      console.error("[ai-market-defaults] Failed to ensure tables:", err.message)
+    );
 
   // Public — used by the deal analyzer to pre-fill inputs
   app.get("/api/ai/defaults", async (req, res) => {
@@ -246,9 +328,11 @@ export function registerAiDefaultsRoutes(app: Express): void {
     }
   });
 
-  // Admin-only: trigger a training run manually
-  app.post("/api/ai/train", async (req: any, res) => {
-    if (req.session?.role !== "admin") return res.status(403).json({ error: "admin only" });
+  // Admin-only: trigger a training run manually. Sessions never store a
+  // role (auth.ts only writes userId), so the old req.session.role check
+  // rejected everyone — requireIntelAdmin looks the role up from the users
+  // table and also accepts the intelligence x-api-key for cron callers.
+  app.post("/api/ai/train", requireIntelAdmin, async (_req, res) => {
     try {
       const result = await trainMarketDefaults();
       res.json({ success: true, ...result });

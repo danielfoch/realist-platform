@@ -136,6 +136,7 @@ import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerEventsCommunityRoutes } from "./eventsCommunity";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
+import { registerRentBacktestRoutes } from "./rentBacktestRunner";
 import { registerMobilePushRoutes } from "./mobilePush";
 import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
@@ -805,6 +806,7 @@ export async function registerRoutes(
   registerEventsCommunityRoutes(app);
   registerRentIntelligenceRoutes(app);
   registerRentIngestionRoutes(app);
+  registerRentBacktestRoutes(app);
   registerMobilePushRoutes(app);
   registerUserGoogleSheetsRoutes(app);
   registerUnderwritingShareRoutes(app);
