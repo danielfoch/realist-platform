@@ -67,6 +67,9 @@ export default function CreateAccount() {
         professionalType: data.role === "partner" ? data.professionalType : undefined,
         certificationNumber: data.role === "partner" ? data.certificationNumber : undefined,
         serviceArea: data.role === "partner" ? data.serviceArea : undefined,
+        // Anonymous analyzer session — lets the server adopt pre-signup
+        // analyses so the portal isn't empty on first login.
+        sessionId: localStorage.getItem("realist_session_id") || undefined,
       });
       return response.json();
     },

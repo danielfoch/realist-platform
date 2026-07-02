@@ -234,12 +234,22 @@ export function registerAuthRoutes(app: Express): void {
       
       // Set session
       req.session.userId = newUser.id;
-      
+
+      // Claim anonymous analyses made under the client's realist_session_id
+      // so the portal isn't empty on first login. Never fails the signup.
+      const anonymousSessionId = typeof (req.body as any)?.sessionId === "string" ? (req.body as any).sessionId : null;
+      const backfilledAnalyses = await backfillAnalysesForSession(newUser.id, anonymousSessionId)
+        .catch((err) => {
+          console.error("[signup] analysis backfill error:", err.message);
+          return 0;
+        });
+
       res.json({
         id: newUser.id,
         email: newUser.email,
         firstName: newUser.firstName,
         lastName: newUser.lastName,
+        backfilledAnalyses,
       });
 
       sendSignupWebhookToGHL(newUser).catch(err =>
@@ -251,6 +261,24 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(400).json({ message: error.errors[0]?.message || "Validation error" });
       }
       res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  // Claim anonymous analyses after an auth flow that couldn't carry the
+  // client's realist_session_id through the redirect (Google OAuth). The
+  // client calls this once, authenticated, after landing back in the app.
+  // Idempotent: only adopts analyses that still have no owner.
+  app.post("/api/auth/claim-session", isAuthenticated, async (req, res) => {
+    try {
+      const sessionId = typeof (req.body as any)?.sessionId === "string" ? (req.body as any).sessionId : null;
+      if (!sessionId) {
+        return res.status(400).json({ message: "sessionId is required" });
+      }
+      const backfilledAnalyses = await backfillAnalysesForSession(req.session.userId!, sessionId);
+      res.json({ backfilledAnalyses });
+    } catch (error: any) {
+      console.error("Claim session error:", error);
+      res.status(500).json({ message: "Failed to claim session" });
     }
   });
 
