@@ -60,10 +60,27 @@ Re-running either import upserts in place (safe to refresh anytime).
 Statistics Canada Open Licence — attribution required and rendered on every
 display surface (the API returns the attribution string; the card shows it).
 
+## Québec assessment roll (property layer)
+
+- `shared/quebecRoll.ts` parses the MAMH RL XML (field codes verified against
+  real 2026 files); `scripts/import-quebec-roll.ts` streams per-municipality
+  files (Montréal ~800MB, constant memory) into `assessment_units`.
+- Import (downloads directly from MAMH; re-runnable):
+  - `npx tsx scripts/import-quebec-roll.ts list montr` — find codes
+  - `npx tsx scripts/import-quebec-roll.ts municipality 66023,65005,81017` — Montréal, Laval, Gatineau
+  - Province-wide: iterate the `list` output (1,134 municipalities, ~2.8M units).
+- Matching: loose civic + street-name key (accents stripped, St→Saint expanded,
+  street type dropped); ambiguous matches across municipalities are resolved by
+  the listing's city and otherwise REFUSED rather than guessed.
+- Listing pages show a "Property intelligence" card (year built, assessed value,
+  listed-at-×-assessed, lot/floor area, frontage, storeys, dwelling units) with
+  CC-BY Québec attribution.
+
 ## Follow-ups (workplan §3)
 
 - Render neighbourhood facts into the listing SEO bot fallback + JSON-LD
   (`listingSeo.ts`) so the unique content is crawlable.
 - Analyzer prefill from `GET /api/enrichment`.
-- Next layers on the same spine: QC/NS/Winnipeg/Calgary/Edmonton assessment
-  rolls (property-level), city permits, climate screeners.
+- Next layers on the same spine: NS/Winnipeg/Calgary/Edmonton assessment
+  rolls (same assessment_units table, new source value), city permits, climate
+  screeners, Montréal parcel geometry (joins the roll by matricule).
