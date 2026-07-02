@@ -102,8 +102,10 @@ import { eq, and, desc, inArray, notInArray, sql, count, gte, lte, ilike } from 
 import { z } from "zod";
 import { COMMUNITY_DEFAULTS, COMMUNITY_FLAGS, computeConsensusLabel, sanitizeUserText, summarizeCommunityMetrics, truncateText } from "@shared/community";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
-import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
+import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin, appBaseUrl } from "./auth";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { passwordResetTokens } from "@shared/models/auth";
+import { normalizeEmail, SETUP_LINK_TTL_MS } from "@shared/authTokens";
 import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
 import { 
@@ -130,10 +132,13 @@ import { registerOnboardingEmailRoutes } from "./onboardingEmails";
 import { registerAiDefaultsRoutes } from "./aiDefaults";
 import { registerCrmRoutes } from "./crm";
 import { registerPartnerNetworkRoutes, handoffClaimedLeadToCrm } from "./partnerNetwork";
+import { registerExpertRoutes } from "./experts";
+import { registerSocialStatsRoutes } from "./socialStats";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerEventsCommunityRoutes } from "./eventsCommunity";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
+import { registerRentBacktestRoutes } from "./rentBacktestRunner";
 import { registerMobilePushRoutes } from "./mobilePush";
 import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
@@ -167,9 +172,8 @@ import {
   queueMilestoneNotification,
   queueSavedSearchMatchNotifications,
   queueUsListingChangeNotifications,
-  syncWatchersFromDiscoverySignals,
-  upsertWatcherFromSavedDeal,
 } from "./notifications";
+import { registerWatchlistRoutes } from "./watchlists";
 import { 
   calculateTrueCost, 
   cities, 
@@ -559,7 +563,9 @@ async function autoEnrollLeadAsUser(params: {
   phone?: string;
   leadSource?: string;
 }): Promise<{ userId: string; isNew: boolean }> {
-  const emailLower = params.email.toLowerCase();
+  // Lowercase + trim so casing/whitespace can't fork identities across the
+  // many silent-creation paths that funnel through here.
+  const emailLower = normalizeEmail(params.email);
 
   const existingUser = await db.select().from(users).where(eq(users.email, emailLower)).limit(1);
   if (existingUser.length > 0) {
@@ -593,7 +599,7 @@ async function autoEnrollLeadAsUser(params: {
 
   const rawToken = crypto.randomBytes(32).toString("hex");
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
 
   await db.insert(passwordResetTokens).values({
     userId: newUser.id,
@@ -601,12 +607,7 @@ async function autoEnrollLeadAsUser(params: {
     expiresAt,
   });
 
-  const baseUrl = process.env.REPLIT_DEV_DOMAIN
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : process.env.REPL_SLUG
-      ? `https://${process.env.REPL_SLUG}.replit.app`
-      : "https://realist.ca";
-  const setupLink = `${baseUrl}/set-password?token=${rawToken}`;
+  const setupLink = `${appBaseUrl()}/set-password?token=${rawToken}`;
 
   sendWelcomeAccountEmail({
     toEmail: emailLower,
@@ -757,6 +758,39 @@ export async function registerRoutes(
   // Set up email/password authentication
   setupAuth(app);
   registerAuthRoutes(app);
+
+  // Authenticated proxy for the stats dashboard hosted on Vercel.
+  // Users hit /stats on realist.ca (already logged in via session), and we
+  // forward the request to stats.realist.ca server-side. The Vercel app
+  // never has to know about realist.ca's auth system.
+  const STATS_UPSTREAM = process.env.STATS_UPSTREAM_URL || "https://stats.realist.ca";
+  app.use(
+    "/stats",
+    (req, res, next) => {
+      if ((req as any).session?.userId) return next();
+      const returnTo = encodeURIComponent(req.originalUrl || "/stats");
+      res.redirect(302, `/login?returnUrl=${returnTo}`);
+    },
+    createProxyMiddleware({
+      target: STATS_UPSTREAM,
+      changeOrigin: true,
+      ws: true,
+      pathRewrite: { "^/stats": "" },
+      on: {
+        proxyReq: (proxyReq) => {
+          // Don't leak the realist.ca session cookie to the upstream app.
+          proxyReq.removeHeader("cookie");
+        },
+        error: (err, _req, res) => {
+          console.error("[stats-proxy] error:", err.message);
+          if (res && "writeHead" in res && !res.headersSent) {
+            (res as any).writeHead(502, { "Content-Type": "text/plain" });
+            (res as any).end("Stats dashboard is temporarily unavailable.");
+          }
+        },
+      },
+    })
+  );
   registerRealistEventRoutes(app);
   registerDealDeskRoutes(app);
   scheduleAdminWeeklySummary();
@@ -765,13 +799,17 @@ export async function registerRoutes(
   registerAiDefaultsRoutes(app);
   registerCrmRoutes(app);
   registerPartnerNetworkRoutes(app);
+  registerExpertRoutes(app);
+  registerSocialStatsRoutes(app);
   registerEventsGrowthRoutes(app);
   registerEventsCommunityRoutes(app);
   registerRentIntelligenceRoutes(app);
   registerRentIngestionRoutes(app);
+  registerRentBacktestRoutes(app);
   registerMobilePushRoutes(app);
   registerUserGoogleSheetsRoutes(app);
   registerUnderwritingShareRoutes(app);
+  registerWatchlistRoutes(app);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
@@ -2404,6 +2442,7 @@ export async function registerRoutes(
       }
 
       let userId: string | null = null;
+      let enrollmentIsNew = false;
       try {
         const enrollment = await autoEnrollLeadAsUser({
           email: lead.email,
@@ -2413,6 +2452,7 @@ export async function registerRoutes(
           leadSource: lead.leadSource || "Deal Analyzer",
         });
         userId = enrollment.userId;
+        enrollmentIsNew = enrollment.isNew;
 
         if (userId) {
           await storage.linkAnalysisToUser(analysis.id, userId);
@@ -2468,6 +2508,9 @@ export async function registerRoutes(
           propertyId: property.id,
           analysisId: analysis.id,
           userId,
+          // New accounts are passwordless: the client uses this to explain the
+          // welcome email without firing a duplicate lead-enroll call.
+          isNewUser: enrollmentIsNew,
         },
       });
     } catch (error) {
@@ -2876,7 +2919,7 @@ export async function registerRoutes(
 
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
           await db.insert(passwordResetTokens).values({
             userId: newUser.id,
             token: tokenHash,
@@ -2884,15 +2927,10 @@ export async function registerRoutes(
           });
 
           if (sendEmails !== false) {
-            const baseUrl = process.env.REPLIT_DEV_DOMAIN
-              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-              : process.env.REPL_SLUG
-                ? `https://${process.env.REPL_SLUG}.replit.app`
-                : "https://realist.ca";
             sendWelcomeAccountEmail({
               toEmail: email,
               firstName: row.first_name || row.firstName || "there",
-              setupLink: `${baseUrl}/set-password?token=${rawToken}`,
+              setupLink: `${appBaseUrl()}/set-password?token=${rawToken}`,
               leadSource: "Account Recovery",
             }).catch(err => console.error(`Welcome email error for ${email}:`, err));
           }
@@ -3055,23 +3093,17 @@ export async function registerRoutes(
 
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
           await db.insert(passwordResetTokens).values({
             userId: user.id,
             token: tokenHash,
             expiresAt,
           });
 
-          const baseUrl = process.env.REPLIT_DEV_DOMAIN
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-            : process.env.REPL_SLUG
-              ? `https://${process.env.REPL_SLUG}.replit.app`
-              : "https://realist.ca";
-
           await sendWelcomeAccountEmail({
             toEmail: user.email,
             firstName: user.firstName || "there",
-            setupLink: `${baseUrl}/set-password?token=${rawToken}`,
+            setupLink: `${appBaseUrl()}/set-password?token=${rawToken}`,
             leadSource: "Account Recovery",
           });
 
@@ -4270,11 +4302,9 @@ export async function registerRoutes(
         ? { ...validatedData, userId }
         : validatedData;
       const deal = await storage.createSavedDeal(dealData);
-      if (userId) {
-        upsertWatcherFromSavedDeal(userId, deal).catch((error) => {
-          console.error("Error upserting watcher from saved deal:", error);
-        });
-      }
+      // NOTE: saving a deal used to silently mint a listing_watchers row
+      // (five alert streams the user never asked for). Retired — watches are
+      // now created only by the explicit Watch button (server/watchlists.ts).
       res.json({ success: true, data: deal });
     } catch (error) {
       console.error("Error saving deal:", error);
@@ -4424,11 +4454,12 @@ export async function registerRoutes(
       ];
 
       await storage.upsertDiscoverySignals(records);
-      await syncWatchersFromDiscoverySignals({
-        userId,
-        savedListings: payload.savedListings,
-        recentViewedListings: payload.recentViewedListings,
-      });
+      // NOTE: this sync used to auto-create listing_watchers rows from PASSIVE
+      // signals (merely viewing a listing, or shortlisting one) with all five
+      // alert flags on and no off switch. That consent-hostile pattern is
+      // retired: watching a listing now requires the explicit Watch button
+      // (server/watchlists.ts), and legacy auto-created watcher rows are
+      // visible and deletable in the watchlist UI.
       const mergedSignals = await storage.getDiscoverySignalsByUser(userId);
 
       res.json({
@@ -12853,6 +12884,29 @@ export async function registerRoutes(
       res.json(report);
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
+  // ─── Notebook (user account save/load) ──────────────────────────────────
+  app.get("/api/notebook", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const row = await storage.getUserNotebook(userId);
+      res.json({ data: row?.data ?? {} });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/notebook", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { data } = req.body;
+      if (!data || typeof data !== "object") return res.status(400).json({ error: "data required" });
+      const row = await storage.upsertUserNotebook(userId, data);
+      res.json({ ok: true, updatedAt: row.updatedAt });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 

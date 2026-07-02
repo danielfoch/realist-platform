@@ -11,6 +11,7 @@ import { sendCrmWebhook, buildCrmWebhookPayload } from "./crmWebhook";
 import {
   realistEvents,
   realistEventSpeakers,
+  realistEventSponsors,
   realistEventTicketTypes,
   realistEventOrders,
   realistEventAttendees,
@@ -18,6 +19,7 @@ import {
   passwordResetTokens,
   users,
 } from "@shared/schema";
+import { normalizeEmail, SETUP_LINK_TTL_MS } from "@shared/authTokens";
 
 const EVENT_ADMIN_EMAILS = new Set(
   (process.env.REALIST_EVENT_ADMIN_EMAILS ||
@@ -47,6 +49,15 @@ const speakerSchema = z.object({
   company: z.string().optional().nullable(),
   bio: z.string().optional().nullable(),
   imageUrl: z.string().optional().nullable(),
+  sortOrder: z.coerce.number().int().default(0),
+});
+
+const sponsorSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1),
+  logoUrl: z.string().optional().nullable(),
+  websiteUrl: z.string().optional().nullable(),
+  tier: z.string().default("partner"),
   sortOrder: z.coerce.number().int().default(0),
 });
 
@@ -86,6 +97,7 @@ export const eventPayloadSchema = z.object({
   isRecurring: z.boolean().default(false),
   recurrenceNote: z.string().optional().nullable(),
   speakers: z.array(speakerSchema).default([]),
+  sponsors: z.array(sponsorSchema).default([]),
   ticketTypes: z.array(ticketTypeSchema).default([]),
 }).superRefine((data, ctx) => {
   if (data.kind === "flagship" && data.ticketTypes.length === 0) {
@@ -280,6 +292,17 @@ export async function ensureRealistEventTables() {
     )
   `);
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "realist_event_sponsors" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "event_id" varchar NOT NULL REFERENCES "realist_events"("id") ON DELETE CASCADE,
+      "name" text NOT NULL,
+      "logo_url" text,
+      "website_url" text,
+      "tier" text NOT NULL DEFAULT 'partner',
+      "sort_order" integer NOT NULL DEFAULT 0
+    )
+  `);
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "realist_sponsors" (
       "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
       "name" text NOT NULL,
@@ -331,21 +354,23 @@ export async function ensureRealistEventTables() {
 async function getEventBundleById(id: string) {
   const [event] = await db.select().from(realistEvents).where(eq(realistEvents.id, id)).limit(1);
   if (!event) return null;
-  const [speakers, ticketTypes] = await Promise.all([
+  const [speakers, sponsors, ticketTypes] = await Promise.all([
     db.select().from(realistEventSpeakers).where(eq(realistEventSpeakers.eventId, id)).orderBy(asc(realistEventSpeakers.sortOrder)),
+    db.select().from(realistEventSponsors).where(eq(realistEventSponsors.eventId, id)).orderBy(asc(realistEventSponsors.sortOrder)),
     db.select().from(realistEventTicketTypes).where(eq(realistEventTicketTypes.eventId, id)).orderBy(asc(realistEventTicketTypes.priceCents)),
   ]);
-  return { ...event, speakers, ticketTypes };
+  return { ...event, speakers, sponsors, ticketTypes };
 }
 
 async function getPublishedEventBundleBySlug(slug: string, includeOnlineUrl: boolean) {
   const [event] = await db.select().from(realistEvents).where(and(eq(realistEvents.slug, slug), eq(realistEvents.status, "PUBLISHED"))).limit(1);
   if (!event) return null;
-  const [speakers, ticketTypes] = await Promise.all([
+  const [speakers, sponsors, ticketTypes] = await Promise.all([
     db.select().from(realistEventSpeakers).where(eq(realistEventSpeakers.eventId, event.id)).orderBy(asc(realistEventSpeakers.sortOrder)),
+    db.select().from(realistEventSponsors).where(eq(realistEventSponsors.eventId, event.id)).orderBy(asc(realistEventSponsors.sortOrder)),
     db.select().from(realistEventTicketTypes).where(eq(realistEventTicketTypes.eventId, event.id)).orderBy(asc(realistEventTicketTypes.priceCents)),
   ]);
-  return { ...event, onlineUrl: includeOnlineUrl ? event.onlineUrl : null, speakers, ticketTypes };
+  return { ...event, onlineUrl: includeOnlineUrl ? event.onlineUrl : null, speakers, sponsors, ticketTypes };
 }
 
 async function saveEvent(payload: z.infer<typeof eventPayloadSchema>, createdByEmail: string, id?: string) {
@@ -390,6 +415,18 @@ async function saveEvent(payload: z.infer<typeof eventPayloadSchema>, createdByE
       bio: speaker.bio || null,
       imageUrl: speaker.imageUrl || null,
       sortOrder: speaker.sortOrder,
+    })));
+  }
+
+  await db.delete(realistEventSponsors).where(eq(realistEventSponsors.eventId, event.id));
+  if (payload.sponsors?.length) {
+    await db.insert(realistEventSponsors).values(payload.sponsors.map((sponsor) => ({
+      eventId: event.id,
+      name: sponsor.name,
+      logoUrl: sponsor.logoUrl || null,
+      websiteUrl: sponsor.websiteUrl || null,
+      tier: sponsor.tier || "partner",
+      sortOrder: sponsor.sortOrder ?? 0,
     })));
   }
 
@@ -574,7 +611,9 @@ export function registerRealistEventRoutes(app: Express) {
 }
 
 async function createOrUpdateEventUser(session: Stripe.Checkout.Session) {
-  const email = (session.customer_details?.email || session.customer_email || "").toLowerCase();
+  // normalizeEmail (lowercase + trim) so Stripe-entered emails can't fork
+  // identities against the other silent-creation paths.
+  const email = normalizeEmail(session.customer_details?.email || session.customer_email);
   if (!email) return null;
   const name = session.customer_details?.name || "";
   const [firstName, ...lastParts] = name.split(" ").filter(Boolean);
@@ -605,7 +644,7 @@ async function createOrUpdateEventUser(session: Stripe.Checkout.Session) {
   // /api/auth/set-password looks tokens up by sha256 hash — store the hash,
   // put the raw token in the link (same pattern as forgot-password in auth.ts)
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
   await db.insert(passwordResetTokens).values({
     userId: user.id,
     token: tokenHash,

@@ -11,6 +11,7 @@ const COLUMNS: FooterColumn[] = [
     links: [
       { label: "Yield Map", href: "/tools/cap-rates" },
       { label: "Motivated Deals", href: "/tools/motivated-deals" },
+      { label: "Watchlist & Alerts", href: "/watchlist" },
       { label: "BuyBox", href: "/tools/buybox" },
       { label: "Co-Investing", href: "/tools/coinvest" },
     ],
@@ -40,6 +41,7 @@ const COLUMNS: FooterColumn[] = [
     title: "Community",
     links: [
       { label: "Community Hub", href: "/community" },
+      { label: "Find an Expert", href: "/experts" },
       { label: "Events", href: "/community/events" },
       { label: "Meetups", href: "/meetups" },
       { label: "Leaderboard", href: "/community/leaderboard" },
@@ -54,6 +56,7 @@ const COLUMNS: FooterColumn[] = [
       { label: "Join as a Realtor", href: "/join/realtors" },
       { label: "Mortgage Brokers", href: "/join/mortgage-brokers" },
       { label: "Lenders", href: "/join/lenders" },
+      { label: "Become an Expert", href: "/join/experts" },
       { label: "About", href: "/about" },
       { label: "Contact", href: "/about/contact" },
       { label: "Premium", href: "/premium" },

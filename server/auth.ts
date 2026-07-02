@@ -9,8 +9,25 @@ import { users, passwordResetTokens, signupSchema, loginSchema, forgotPasswordSc
 import { eq, and, gt, sql } from "drizzle-orm";
 import { storage } from "./storage";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
-import { sendWelcomeAccountEmail } from "./resend";
+import { sendWelcomeAccountEmail, sendLoginLinkEmail, sendPasswordResetEmail } from "./resend";
 import { appendLead } from "./leadsSheet";
+import {
+  SETUP_LINK_TTL_MS,
+  evaluateLoginLinkRequest,
+  hashLoginToken,
+  issueLoginToken,
+  normalizeEmail,
+  verifyLoginToken,
+} from "@shared/authTokens";
+
+/** Public origin for links we email out (set-password, magic sign-in, reset). */
+export function appBaseUrl(): string {
+  return process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : process.env.REPL_SLUG
+      ? `https://${process.env.REPL_SLUG}.replit.app`
+      : "https://realist.ca";
+}
 
 async function sendLoginWebhookToGHL(user: { id: string; email: string; firstName: string | null; lastName: string | null; phone?: string | null }) {
   // Pipe to the owner's Google Sheet (replaces GHL).
@@ -98,9 +115,16 @@ const GOOGLE_AUTH_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
 
+// stats.realist.ca shares this app's account (cookie scoped to `.realist.ca`),
+// so returning a visitor to the stats subdomain after OAuth is allowed.
+const EXTERNAL_RETURN_ALLOWLIST = ["https://stats.realist.ca"];
+
 function sanitizeAuthReturnUrl(raw: unknown, fallback = "/investor"): string {
   if (typeof raw !== "string") return fallback;
   const trimmed = raw.trim();
+  if (EXTERNAL_RETURN_ALLOWLIST.some((origin) => trimmed === origin || trimmed.startsWith(origin + "/"))) {
+    return trimmed;
+  }
   if (!trimmed || trimmed.startsWith("//") || /^https?:\/\//i.test(trimmed)) return fallback;
   return trimmed.startsWith("/") ? trimmed : fallback;
 }
@@ -202,17 +226,17 @@ export function registerAuthRoutes(app: Express): void {
       const data = signupSchema.parse(req.body);
       
       // Check if user already exists
-      const existingUser = await db.select().from(users).where(eq(users.email, data.email.toLowerCase())).limit(1);
+      const existingUser = await db.select().from(users).where(eq(users.email, normalizeEmail(data.email))).limit(1);
       if (existingUser.length > 0) {
         return res.status(400).json({ message: "An account with this email already exists" });
       }
-      
+
       // Hash password
       const passwordHash = await bcrypt.hash(data.password, 12);
-      
+
       // Create user
       const [newUser] = await db.insert(users).values({
-        email: data.email.toLowerCase(),
+        email: normalizeEmail(data.email),
         passwordHash,
         firstName: data.firstName,
         lastName: data.lastName,
@@ -234,12 +258,22 @@ export function registerAuthRoutes(app: Express): void {
       
       // Set session
       req.session.userId = newUser.id;
-      
+
+      // Claim anonymous analyses made under the client's realist_session_id
+      // so the portal isn't empty on first login. Never fails the signup.
+      const anonymousSessionId = typeof (req.body as any)?.sessionId === "string" ? (req.body as any).sessionId : null;
+      const backfilledAnalyses = await backfillAnalysesForSession(newUser.id, anonymousSessionId)
+        .catch((err) => {
+          console.error("[signup] analysis backfill error:", err.message);
+          return 0;
+        });
+
       res.json({
         id: newUser.id,
         email: newUser.email,
         firstName: newUser.firstName,
         lastName: newUser.lastName,
+        backfilledAnalyses,
       });
 
       sendSignupWebhookToGHL(newUser).catch(err =>
@@ -254,13 +288,42 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // Claim anonymous analyses after an auth flow that couldn't carry the
+  // client's realist_session_id through the redirect (Google OAuth). The
+  // client calls this once, authenticated, after landing back in the app.
+  // Idempotent: only adopts analyses that still have no owner.
+  app.post("/api/auth/claim-session", isAuthenticated, async (req, res) => {
+    try {
+      const sessionId = typeof (req.body as any)?.sessionId === "string" ? (req.body as any).sessionId : null;
+      if (!sessionId) {
+        return res.status(400).json({ message: "sessionId is required" });
+      }
+      const backfilledAnalyses = await backfillAnalysesForSession(req.session.userId!, sessionId);
+      res.json({ backfilledAnalyses });
+    } catch (error: any) {
+      console.error("Claim session error:", error);
+      res.status(500).json({ message: "Failed to claim session" });
+    }
+  });
+
   // Login
   app.post("/api/auth/login", async (req, res) => {
     try {
       const data = loginSchema.parse(req.body);
       
       // Find user
-      const [user] = await db.select().from(users).where(eq(users.email, data.email.toLowerCase())).limit(1);
+      const [user] = await db.select().from(users).where(eq(users.email, normalizeEmail(data.email))).limit(1);
+      if (user && !user.passwordHash) {
+        // Account was silently created (lead capture, event ticket/RSVP, ...)
+        // and never got a password. Distinct code so the client can offer a
+        // magic sign-in link instead of a dead-end failure. Deliberate
+        // trade-off: this reveals the account exists, in exchange for not
+        // permanently locking these users out.
+        return res.status(401).json({
+          message: "This account doesn't have a password yet. Use an email sign-in link instead.",
+          code: "NO_PASSWORD_SET",
+        });
+      }
       if (!user || !user.passwordHash) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
@@ -346,8 +409,8 @@ export function registerAuthRoutes(app: Express): void {
       const data = forgotPasswordSchema.parse(req.body);
       
       // Find user
-      const [user] = await db.select().from(users).where(eq(users.email, data.email.toLowerCase())).limit(1);
-      
+      const [user] = await db.select().from(users).where(eq(users.email, normalizeEmail(data.email))).limit(1);
+
       // Always return success to prevent email enumeration
       if (!user) {
         return res.json({ message: "If an account exists with this email, you will receive a password reset link" });
@@ -370,11 +433,19 @@ export function registerAuthRoutes(app: Express): void {
         expiresAt,
       });
       
-      // TODO: Send email with reset link in production
+      // Actually send the reset email (this endpoint used to generate tokens
+      // but never email them in production — a silent dead end).
+      const resetLink = `${appBaseUrl()}/reset-password?token=${rawToken}`;
+      sendPasswordResetEmail({
+        toEmail: user.email,
+        firstName: user.firstName || "there",
+        resetLink,
+      }).catch(err => console.error("Password reset email error:", err));
+
       if (process.env.NODE_ENV !== "production") {
         console.log(`[DEV] Password reset link for ${user.email}: /reset-password?token=${rawToken}`);
       }
-      
+
       res.json({ message: "If an account exists with this email, you will receive a password reset link" });
     } catch (error: any) {
       console.error("Forgot password error:", error);
@@ -434,14 +505,15 @@ export function registerAuthRoutes(app: Express): void {
   // Auto-enroll from deal analyzer (creates account if email doesn't exist)
   app.post("/api/auth/lead-enroll", async (req, res) => {
     try {
-      const { email, firstName, lastName, password, sessionId } = req.body;
-      
+      const { firstName, lastName, password, sessionId } = req.body;
+      const email = normalizeEmail(req.body.email);
+
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
       }
-      
+
       // Check if user exists
-      const [existingUser] = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+      const [existingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
       
       if (existingUser) {
         // If user exists and password provided, attempt login
@@ -464,20 +536,15 @@ export function registerAuthRoutes(app: Express): void {
         if (!existingUser.passwordHash) {
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-          
+          const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
+
           await db.insert(passwordResetTokens).values({
             userId: existingUser.id,
             token: tokenHash,
             expiresAt,
           });
-          
-          const baseUrl = process.env.REPLIT_DEV_DOMAIN
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-            : process.env.REPL_SLUG
-              ? `https://${process.env.REPL_SLUG}.replit.app`
-              : "https://realist.ca";
-          const setupLink = `${baseUrl}/set-password?token=${rawToken}`;
+
+          const setupLink = `${appBaseUrl()}/set-password?token=${rawToken}`;
           sendWelcomeAccountEmail({
             toEmail: existingUser.email,
             firstName: existingUser.firstName || "there",
@@ -496,27 +563,22 @@ export function registerAuthRoutes(app: Express): void {
       
       const nameParts = (firstName || "").split(" ");
       const [newUser] = await db.insert(users).values({
-        email: email.toLowerCase(),
+        email,
         firstName: nameParts[0] || firstName || null,
         lastName: lastName || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : null),
       }).returning();
-      
+
       const rawToken = crypto.randomBytes(32).toString("hex");
       const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      
+      const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
+
       await db.insert(passwordResetTokens).values({
         userId: newUser.id,
         token: tokenHash,
         expiresAt,
       });
-      
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : process.env.REPL_SLUG
-          ? `https://${process.env.REPL_SLUG}.replit.app`
-          : "https://realist.ca";
-      const setupLink = `${baseUrl}/set-password?token=${rawToken}`;
+
+      const setupLink = `${appBaseUrl()}/set-password?token=${rawToken}`;
       sendWelcomeAccountEmail({
         toEmail: newUser.email,
         firstName: newUser.firstName || firstName || "there",
@@ -599,6 +661,157 @@ export function registerAuthRoutes(app: Express): void {
     } catch (error) {
       console.error("Set password error:", error);
       res.status(500).json({ message: "Failed to set password" });
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Magic-link login: makes every silently-created account (lead capture,
+  // event ticket checkout, event RSVP, admin import) permanently accessible
+  // with nothing but email access — no password ever required.
+  // ---------------------------------------------------------------------
+
+  // Per-email rolling-hour request log. In-memory on a single-instance
+  // deployment (same trade-off as services/rateLimiter.ts); pruned on access.
+  const loginLinkRequests = new Map<string, number[]>();
+  const LOGIN_LINK_MAP_CAP = 10_000;
+
+  // Request a sign-in link. Always 200 with a generic message (no user
+  // enumeration): the email is only actually sent if the account exists.
+  app.post("/api/auth/email-login-link", async (req, res) => {
+    try {
+      const parsed = forgotPasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
+      }
+      const email = normalizeEmail(parsed.data.email);
+
+      // Rate-limit uniformly (existing account or not) so limiter behaviour
+      // can't be used to probe for accounts. Max 3 links per email per hour.
+      const decision = evaluateLoginLinkRequest(loginLinkRequests.get(email) ?? []);
+      if (loginLinkRequests.size >= LOGIN_LINK_MAP_CAP && !loginLinkRequests.has(email)) {
+        // Cheap eviction: drop entries whose newest request left the window.
+        const cutoff = Date.now() - 60 * 60 * 1000;
+        for (const [key, stamps] of loginLinkRequests) {
+          if (!stamps.length || stamps[stamps.length - 1] <= cutoff) loginLinkRequests.delete(key);
+        }
+      }
+      loginLinkRequests.set(email, decision.recentRequests);
+      if (!decision.allowed) {
+        return res.status(429).json({
+          message: "Too many sign-in links requested for this email. Please try again in a bit.",
+          retryAfterSeconds: Math.ceil(decision.retryAfterMs / 1000),
+        });
+      }
+
+      const genericResponse = {
+        message: "If an account exists with this email, a sign-in link is on its way.",
+      };
+
+      const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      if (!user) {
+        return res.json(genericResponse);
+      }
+
+      // 32-byte random token; only the purpose-scoped sha256 hash is stored,
+      // so this row can never be redeemed at set-password/reset-password.
+      const { rawToken, tokenHash, expiresAt } = issueLoginToken();
+      await db.insert(passwordResetTokens).values({
+        userId: user.id,
+        token: tokenHash,
+        expiresAt,
+      });
+
+      const loginLink = `${appBaseUrl()}/api/auth/email-login?token=${rawToken}`;
+      sendLoginLinkEmail({
+        toEmail: user.email,
+        firstName: user.firstName || "there",
+        loginLink,
+      }).catch(err => console.error("Login link email error:", err));
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`[DEV] Login link for ${user.email}: ${loginLink}`);
+      }
+
+      res.json(genericResponse);
+    } catch (error) {
+      console.error("Email login link error:", error);
+      res.status(500).json({ message: "Failed to process request" });
+    }
+  });
+
+  // Redeem a sign-in link: verify, burn the token (single use — deleted, not
+  // flagged), create the session, land on the dashboard. Passwordless users
+  // get a soft "add a password (optional)" banner via the setpw param.
+  app.get("/api/auth/email-login", async (req, res) => {
+    try {
+      const token = typeof req.query.token === "string" ? req.query.token : "";
+      if (!token) {
+        return res.redirect("/login?error=link_invalid");
+      }
+
+      const tokenHash = hashLoginToken(token);
+      const [record] = await db.select()
+        .from(passwordResetTokens)
+        .where(eq(passwordResetTokens.token, tokenHash))
+        .limit(1);
+
+      const decision = verifyLoginToken(record);
+      if (!record || !decision.ok) {
+        return res.redirect("/login?error=link_invalid");
+      }
+
+      // Single use: delete on use.
+      await db.delete(passwordResetTokens).where(eq(passwordResetTokens.id, record.id));
+
+      const [user] = await db.select().from(users).where(eq(users.id, record.userId)).limit(1);
+      if (!user) {
+        return res.redirect("/login?error=link_invalid");
+      }
+
+      req.session.userId = user.id;
+
+      // Persist the session before redirecting (same pattern as google/start).
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => (err ? reject(err) : resolve()));
+      });
+
+      sendLoginWebhookToGHL(user).catch(err =>
+        console.error("[ghl-login] magic link webhook error:", err.message)
+      );
+
+      res.redirect(user.passwordHash ? "/investor" : "/investor?setpw=offer");
+    } catch (error) {
+      console.error("Email login error:", error);
+      res.redirect("/login?error=link_invalid");
+    }
+  });
+
+  // Let a logged-in passwordless user add a password directly (no token
+  // needed — they already proved email ownership via the magic link).
+  app.post("/api/auth/create-password", isAuthenticated, async (req, res) => {
+    try {
+      const { password } = req.body;
+      if (typeof password !== "string" || password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      }
+
+      const [user] = await db.select().from(users).where(eq(users.id, req.session.userId!)).limit(1);
+      if (!user) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+      if (user.passwordHash) {
+        return res.status(400).json({ message: "Password already set. Use forgot password to change it." });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 12);
+      await db.update(users)
+        .set({ passwordHash, updatedAt: new Date() })
+        .where(eq(users.id, user.id));
+
+      res.json({ message: "Password added successfully" });
+    } catch (error) {
+      console.error("Create password error:", error);
+      res.status(500).json({ message: "Failed to add password" });
     }
   });
 
@@ -706,7 +919,7 @@ export function registerAuthRoutes(app: Express): void {
             console.error("[ghl-login] oauth webhook error:", err.message)
           );
         }
-        if (user && !user.phoneVerified) {
+        if (user && !user.phoneVerified && !user.phoneVerificationSkippedAt) {
           res.redirect(verifyPhonePath(returnUrl));
           return;
         }
@@ -744,7 +957,7 @@ export function registerAuthRoutes(app: Express): void {
         const returnUrl = sanitizeAuthReturnUrl(req.session.googleAuthReturnUrl);
         delete req.session.googleAuthReturnUrl;
         
-        if (!existingUser.phoneVerified) {
+        if (!existingUser.phoneVerified && !existingUser.phoneVerificationSkippedAt) {
           res.redirect(verifyPhonePath(returnUrl));
           return;
         }
@@ -903,7 +1116,12 @@ export function registerAuthRoutes(app: Express): void {
   // Phone Verification - Skip (optional, for users who don't want to verify)
   app.post("/api/auth/phone/skip", isAuthenticated, async (req, res) => {
     try {
-      // Just redirect them without marking as verified
+      // Persist the skip so OAuth logins stop re-prompting on every visit
+      // (previously a no-op: nothing was stored, so /verify-phone came back
+      // on each Google login).
+      await db.update(users)
+        .set({ phoneVerificationSkippedAt: new Date(), updatedAt: new Date() })
+        .where(eq(users.id, req.session.userId!));
       res.json({ message: "Phone verification skipped" });
     } catch (error) {
       console.error("Error skipping phone verification:", error);

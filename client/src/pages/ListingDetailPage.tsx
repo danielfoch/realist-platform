@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
+import { NeighbourhoodInsights } from "@/components/NeighbourhoodInsights";
+import { FieldNotes } from "@/components/experts/FieldNotes";
+import { WatchListingButton } from "@/components/WatchListingButton";
+import { ListingEngagementStrip } from "@/components/ListingEngagementStats";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -191,10 +195,11 @@ export default function ListingDetailPage() {
             </div>
 
             <h1 className="mb-3 text-3xl font-bold tracking-normal md:text-5xl">{fullAddress}</h1>
-            <p className="mb-6 flex items-center gap-2 text-muted-foreground">
+            <p className="mb-3 flex items-center gap-2 text-muted-foreground">
               <MapPin className="h-4 w-4" />
               {[listing.addressCity, listing.addressProvince, listing.addressPostalCode].filter(Boolean).join(", ")}
             </p>
+            <ListingEngagementStrip mlsNumber={listing.mlsNumber} className="mb-6" />
 
             {listing.photoUrl ? (
               <img
@@ -236,6 +241,14 @@ export default function ListingDetailPage() {
                     Analyze this deal <TrendingUp className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
+                <WatchListingButton
+                  className="w-full"
+                  listingKey={listing.mlsNumber}
+                  source="ddf"
+                  address={fullAddress}
+                  city={listing.addressCity || undefined}
+                  price={toNumber(listing.listPrice) ?? undefined}
+                />
               </CardContent>
             </Card>
 
@@ -250,6 +263,14 @@ export default function ListingDetailPage() {
                 <Fact icon={<Building2 className="h-4 w-4" />} label="Type" value={listing.structureType || listing.propertyType || "N/A"} />
               </CardContent>
             </Card>
+
+            <NeighbourhoodInsights
+              lat={toNumber(listing.latitude)}
+              lng={toNumber(listing.longitude)}
+              address={listing.addressStreet || undefined}
+              city={listing.addressCity}
+              listPrice={toNumber(listing.listPrice)}
+            />
           </div>
         </section>
 
@@ -259,6 +280,8 @@ export default function ListingDetailPage() {
             <p className="leading-8 text-muted-foreground">{remarks}</p>
           </section>
         )}
+
+        <FieldNotes mlsNumber={listing.mlsNumber} />
       </main>
     </div>
   );

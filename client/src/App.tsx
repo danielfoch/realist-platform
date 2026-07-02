@@ -16,6 +16,10 @@ import Home from "@/pages/Home";
 import InvestorStart from "@/pages/InvestorStart";
 import About from "@/pages/About";
 import Events from "@/pages/Events";
+import Notebook from "@/pages/Notebook";
+import NotebookPrint from "@/pages/NotebookPrint";
+import DanielFoch from "@/pages/DanielFoch";
+import NickHill from "@/pages/NickHill";
 import UnpackingMultiplexesToronto from "@/pages/UnpackingMultiplexesToronto";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
@@ -62,6 +66,7 @@ import AdminSponsors from "@/pages/AdminSponsors";
 import CrmContact from "@/pages/CrmContact";
 import TrueCost from "@/pages/TrueCost";
 import RentVsBuy from "@/pages/RentVsBuy";
+import RentToOwn from "@/pages/RentToOwn";
 import WillItPlex from "@/pages/WillItPlex";
 import Leaderboard from "@/pages/Leaderboard";
 import FullLeaderboard from "@/pages/FullLeaderboard";
@@ -70,6 +75,9 @@ import PremiumBranding from "@/pages/PremiumBranding";
 import CapRates from "@/pages/CapRates";
 import ListingIntelligence from "@/pages/ListingIntelligence";
 import ListingDetailPage from "@/pages/ListingDetailPage";
+import Experts from "@/pages/Experts";
+import ExpertProfile from "@/pages/ExpertProfile";
+import JoinExperts from "@/pages/JoinExperts";
 import RealtorNetwork from "@/pages/RealtorNetwork";
 import MarketReport from "@/pages/MarketReport";
 import MortgageRates from "@/pages/MortgageRates";
@@ -101,6 +109,7 @@ import HousingCorrectionLockedOut2026Report from "@/pages/HousingCorrectionLocke
 import LabourMortgageStressApril2026Report from "@/pages/LabourMortgageStressApril2026Report";
 import MonthlyMarketReportMay2026 from "@/pages/MonthlyMarketReportMay2026";
 import InterprovincialMigrationCanada2026Report from "@/pages/InterprovincialMigrationCanada2026Report";
+import HomeBenchReport from "@/pages/HomeBenchReport";
 import SeoProjectDetail from "@/pages/SeoProjectDetail";
 import {
   TorontoHousingMarketPage,
@@ -145,6 +154,7 @@ import ProgrammaticStrategyPage from "@/pages/ProgrammaticStrategyPage";
 import NetworkHub from "@/pages/NetworkHub";
 import ContactPage from "@/pages/ContactPage";
 import InvestorOperatingSystem from "@/pages/InvestorOperatingSystem";
+import Watchlist from "@/pages/Watchlist";
 
 function Router() {
   return (
@@ -178,14 +188,18 @@ function Router() {
       <Route path="/tools/deal-desk" component={DealDesk} />
       <Route path="/tools/true-cost" component={TrueCost} />
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
+      <Route path="/tools/rent-to-own" component={RentToOwn} />
       <Route path="/tools/cap-rates" component={CapRates} />
       <Route path="/listing-intelligence">{() => <Redirect to="/tools/listing-intelligence" />}</Route>
       <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
       <Route path="/listings/us" component={UsListings} />
       <Route path="/listings/:mlsNumber" component={ListingDetailPage} />
+      <Route path="/join/experts" component={JoinExperts} />
+      <Route path="/experts" component={Experts} />
+      <Route path="/experts/:userId" component={ExpertProfile} />
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
-      <Route path="/deals">{() => <Redirect to="/tools/investor-os" />}</Route>
-      <Route path="/watchlist">{() => <Redirect to="/tools/investor-os" />}</Route>
+      <Route path="/deals" component={Watchlist} />
+      <Route path="/watchlist" component={Watchlist} />
       <Route path="/deal-challenge">{() => <Redirect to="/tools/investor-os" />}</Route>
       <Route path="/professionals">{() => <Redirect to="/power-team" />}</Route>
       <Route path="/tools/will-it-plex" component={WillItPlex} />
@@ -232,6 +246,7 @@ function Router() {
       <Route path="/insights/labour-mortgage-stress-april-2026" component={LabourMortgageStressApril2026Report} />
       <Route path="/insights/monthly-market-report-may-2026" component={MonthlyMarketReportMay2026} />
       <Route path="/insights/canada-interprovincial-migration-2026" component={InterprovincialMigrationCanada2026Report} />
+      <Route path="/insights/market-report/homebench-ai-realtor-benchmark" component={HomeBenchReport} />
       {/* SEO landing pages — programmatic + query-driven */}
       <Route path="/canada-housing-market" component={CanadaHousingMarketPage} />
       <Route path="/toronto-housing-market" component={TorontoHousingMarketPage} />
@@ -292,12 +307,15 @@ function Router() {
       <Route path="/coinvesting/checklist">{() => <Redirect to="/tools/coinvest/checklist" />}</Route>
       <Route path="/coinvesting/groups/new">{() => <Redirect to="/tools/coinvest/groups/new" />}</Route>
       <Route path="/coinvesting/groups/:id">{(props: any) => <Redirect to={`/tools/coinvest/groups/${props.params?.id}`} />}</Route>
-      <Route path="/events">{() => <Redirect to="/community/events" />}</Route>
+      <Route path="/events" component={Events} />
+      <Route path="/notebook" component={Notebook} />
+      <Route path="/notebook/print" component={NotebookPrint} />
+      <Route path="/danielfoch" component={DanielFoch} />
+      <Route path="/nickhill" component={NickHill} />
       <Route path="/podcast">{() => <Redirect to="/insights/podcast" />}</Route>
       <Route path="/blog">{() => <Redirect to="/insights/blog" />}</Route>
       <Route path="/shop">{() => <Redirect to="/about/shop" />}</Route>
       <Route path="/dashboard">{() => <Redirect to="/my-performance" />}</Route>
-      <Route path="/insights/market-report/homebench-ai-realtor-benchmark">{() => <Redirect to="/reports/realbench-ai-realtor-benchmark" />}</Route>
       
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />

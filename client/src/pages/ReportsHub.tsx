@@ -51,8 +51,8 @@ export default function ReportsHub() {
               </p>
             </div>
             <div className="md:text-right">
-              <Link href="/reports/realbench-ai-realtor-benchmark">
-                <Button className="bg-amber-400 text-stone-950 hover:bg-amber-300">Preview the benchmark</Button>
+              <Link href="/insights/market-report/homebench-ai-realtor-benchmark">
+                <Button className="bg-amber-400 text-stone-950 hover:bg-amber-300">See the leaderboard</Button>
               </Link>
             </div>
           </CardContent>

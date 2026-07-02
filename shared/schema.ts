@@ -216,6 +216,16 @@ export const realistEventSpeakers = pgTable("realist_event_speakers", {
   sortOrder: integer("sort_order").default(0).notNull(),
 });
 
+export const realistEventSponsors = pgTable("realist_event_sponsors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  logoUrl: text("logo_url"),
+  websiteUrl: text("website_url"),
+  tier: text("tier").default("partner").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
 export const realistEventTicketTypes = pgTable("realist_event_ticket_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
@@ -434,6 +444,11 @@ export const discoverySignals = pgTable(
   }),
 );
 
+// Explicit listing watches. Rows are created ONLY by a deliberate user action
+// (the Watch button, source_type 'watch_ddf' / 'watch_us'). Legacy rows from
+// the retired passive auto-watch paths (source_type 'view' / 'saved_listing' /
+// 'saved_deal') may still exist in prod; they are surfaced and deletable in
+// the watchlist UI (server/watchlists.ts). Deploy schema changes via db:push.
 export const listingWatchers = pgTable(
   "listing_watchers",
   {
@@ -442,6 +457,13 @@ export const listingWatchers = pgTable(
     listingMlsNumber: text("listing_mls_number").notNull(),
     sourceType: text("source_type").notNull(),
     sourceId: varchar("source_id"),
+    // Display snapshot captured when the watch was created, so the watchlist
+    // stays meaningful after a CA listing leaves the live DDF feed.
+    addressSnapshot: text("address_snapshot"),
+    citySnapshot: text("city_snapshot"),
+    // Baseline for price-change detection (see server/watchlists.ts sweep).
+    lastKnownPrice: real("last_known_price"),
+    lastAlertAt: timestamp("last_alert_at"),
     watchAnalysisUpdates: boolean("watch_analysis_updates").default(true).notNull(),
     watchCommentUpdates: boolean("watch_comment_updates").default(true).notNull(),
     watchPriceUpdates: boolean("watch_price_updates").default(true).notNull(),
@@ -458,6 +480,29 @@ export const listingWatchers = pgTable(
       table.sourceType,
       table.sourceId,
     ),
+  }),
+);
+
+// Saved searches with alert delivery. Unlike the discovery_signals
+// 'saved_search' rows (an analytics mirror of localStorage), these are the
+// first-class, user-managed records the alert sweep runs against.
+// criteriaJson shape: shared/watchlistAlerts.ts SavedSearchCriteria.
+export const savedSearches = pgTable(
+  "saved_searches",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    name: text("name").notNull(),
+    criteriaJson: jsonb("criteria_json").notNull(),
+    frequency: text("frequency").default("daily").notNull(), // 'daily' | 'weekly'
+    lastRunAt: timestamp("last_run_at"),
+    lastMatchCount: integer("last_match_count").default(0).notNull(),
+    lastAlertAt: timestamp("last_alert_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdx: index("saved_searches_user_idx").on(table.userId),
   }),
 );
 
@@ -527,6 +572,13 @@ export const discoverySignalsRelations = relations(discoverySignals, ({ one }) =
 export const listingWatchersRelations = relations(listingWatchers, ({ one }) => ({
   user: one(users, {
     fields: [listingWatchers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const savedSearchesRelations = relations(savedSearches, ({ one }) => ({
+  user: one(users, {
+    fields: [savedSearches.userId],
     references: [users.id],
   }),
 }));
@@ -813,6 +865,15 @@ export const insertListingWatcherSchema = createInsertSchema(listingWatchers).om
   updatedAt: true,
 });
 
+export const insertSavedSearchSchema = createInsertSchema(savedSearches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastRunAt: true,
+  lastMatchCount: true,
+  lastAlertAt: true,
+});
+
 export const insertNotificationEventSchema = createInsertSchema(notificationEvents).omit({
   id: true,
   createdAt: true,
@@ -884,6 +945,9 @@ export type DiscoverySignal = typeof discoverySignals.$inferSelect;
 
 export type InsertListingWatcher = z.infer<typeof insertListingWatcherSchema>;
 export type ListingWatcher = typeof listingWatchers.$inferSelect;
+
+export type InsertSavedSearch = z.infer<typeof insertSavedSearchSchema>;
+export type SavedSearch = typeof savedSearches.$inferSelect;
 
 export type InsertNotificationEvent = z.infer<typeof insertNotificationEventSchema>;
 export type NotificationEvent = typeof notificationEvents.$inferSelect;
@@ -1053,7 +1117,7 @@ export const portfolioProperties = pgTable("portfolio_properties", {
 // INDUSTRY PARTNER PORTAL SCHEMAS
 // ============================================
 
-export const partnerTypes = ["realtor", "mortgage_broker", "lawyer", "accountant", "property_manager", "contractor", "appraiser", "inspector", "other"] as const;
+export const partnerTypes = ["realtor", "mortgage_broker", "lawyer", "accountant", "property_manager", "contractor", "appraiser", "inspector", "architect", "urban_planner", "other"] as const;
 export type PartnerType = (typeof partnerTypes)[number];
 
 export const industryPartners = pgTable("industry_partners", {
@@ -2695,6 +2759,28 @@ export const contributionEvents = pgTable("contribution_events", {
   targetId: varchar("target_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Expert field notes: professional-authored commentary on a specific listing
+// (an architect flags a conversion constraint, a planner notes zoning, a
+// mortgage pro notes financing angles). Voting uses the shared `votes` table
+// (targetType="expert_field_note"); score is denormalized here. Points flow
+// into contribution_events so experts rank on the existing leaderboard.
+export const expertFieldNotes = pgTable("expert_field_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  category: text("category").notNull(), // ExpertCategory
+  body: text("body").notNull(),
+  score: integer("score").default(0).notNull(),
+  status: text("status").default("visible").notNull(), // visible | removed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("expert_field_notes_listing_idx").on(table.listingMlsNumber, table.status),
+  index("expert_field_notes_user_idx").on(table.userId),
+]);
+
+export type ExpertFieldNote = typeof expertFieldNotes.$inferSelect;
 
 export const listingAnalysisAggregates = pgTable("listing_analysis_aggregates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -4392,3 +4478,14 @@ export type InsertModelVersion = z.infer<typeof insertModelVersionSchema>;
 export type ModelVersion = typeof modelVersions.$inferSelect;
 export type InsertModelPrediction = z.infer<typeof insertModelPredictionSchema>;
 export type ModelPrediction = typeof modelPredictions.$inferSelect;
+
+// ─── User Notebooks ─────────────────────────────────────────────────────────
+export const userNotebooks = pgTable("user_notebooks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: integer("user_id").notNull(),
+  data: jsonb("data").notNull().default({}),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export const insertUserNotebookSchema = createInsertSchema(userNotebooks).omit({ id: true, updatedAt: true });
+export type InsertUserNotebook = z.infer<typeof insertUserNotebookSchema>;
+export type UserNotebook = typeof userNotebooks.$inferSelect;

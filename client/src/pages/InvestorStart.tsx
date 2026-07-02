@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { SEO, organizationSchema, websiteSchema } from "@/components/SEO";
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Navigation } from "@/components/Navigation";
+import { AnalysesCounter } from "@/components/AnalysesCounter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -167,6 +168,7 @@ export default function InvestorStart() {
                 Paste a listing or address and get cash flow, yield, and risk in seconds.
                 Realist learns your buy box with every deal you run.
               </p>
+              <AnalysesCounter className="mt-5 bg-background/80" />
               <div className="mt-7 flex flex-col sm:flex-row gap-3">
                 <Link href="/tools/analyzer">
                   <Button

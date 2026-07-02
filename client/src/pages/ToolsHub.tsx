@@ -7,7 +7,7 @@ import { Link } from "wouter";
 import {
   Calculator, MapPin, Handshake, TrendingUp, FileSpreadsheet, DollarSign,
   Building2, Scale, ArrowLeftRight, Shield, Gavel, BriefcaseBusiness,
-  Sparkles, Layers, Inbox, ArrowRight,
+  Sparkles, Layers, Inbox, ArrowRight, Bell,
 } from "lucide-react";
 
 interface Tool {
@@ -119,6 +119,13 @@ const sections: ToolSection[] = [
         icon: Scale,
       },
       {
+        href: "/tools/rent-to-own",
+        title: "Buy vs Rent-to-Own",
+        description: "Compare a CMHC-insured purchase against a rent-to-own pathway — upfront cash, monthly cost, equity path, and total 5-year cost, side by side.",
+        icon: Scale,
+        badge: "New",
+      },
+      {
         href: "/tools/fixed-vs-variable",
         title: "Fixed vs Variable",
         description: "Compare total interest costs for fixed vs variable mortgages over 5, 10, and 25 years with stress-test scenarios.",
@@ -142,6 +149,13 @@ const sections: ToolSection[] = [
         description: "Save deals, add structured notes, compare opportunities, and request professional feedback on your pipeline.",
         icon: BriefcaseBusiness,
         badge: "Preview",
+      },
+      {
+        href: "/watchlist",
+        title: "Watchlist & Alerts",
+        description: "Watch listings and saved searches, and get alerted when prices drop or new matches appear.",
+        icon: Bell,
+        badge: "New",
       },
       {
         href: "/tools/deal-desk",

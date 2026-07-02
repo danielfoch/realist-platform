@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Lock, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { RequestLoginLink } from "@/components/RequestLoginLink";
 
 const setPasswordSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -29,6 +30,9 @@ export default function SetPassword() {
   const [success, setSuccess] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  // True once the server rejects the token (expired/used/invalid) — swap the
+  // error wall for a self-serve "send me a fresh sign-in link" recovery.
+  const [tokenRejected, setTokenRejected] = useState(false);
 
   useEffect(() => {
     // Check URL params for token (sent via email)
@@ -87,29 +91,43 @@ export default function SetPassword() {
       toast({ title: "Password set successfully!" });
     },
     onError: (error: any) => {
+      const message: string = error?.message || "";
+      // 400s from this endpoint mean the token is invalid, expired, or spent —
+      // offer a fresh magic sign-in link instead of dead-ending.
+      if (message.startsWith("400")) {
+        setTokenRejected(true);
+      }
       toast({
         title: "Failed to set password",
-        description: error.message || "Please try again or request a new link",
+        description: message || "Please try again or request a new link",
         variant: "destructive",
       });
     },
   });
 
-  if (!token) {
+  if (!token || tokenRejected) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
-              <h2 className="text-xl font-semibold text-destructive">No Setup Token</h2>
+              <h2 className="text-xl font-semibold">
+                {tokenRejected ? "That link has expired" : "No Setup Link"}
+              </h2>
               <p className="text-muted-foreground">
-                You need a valid setup link to set your password.
+                {tokenRejected
+                  ? "Setup links only last so long — but your account is still there. Get a fresh sign-in link below and you're in. Adding a password is optional."
+                  : "Your setup link is missing or incomplete — but you don't need it. Enter your email and we'll send you a one-click sign-in link instead."}
               </p>
-              <Link href="/login">
-                <Button variant="outline" className="mt-4" data-testid="button-go-to-login">
-                  Go to Login
-                </Button>
-              </Link>
+              <RequestLoginLink defaultEmail={email} />
+              <p className="text-sm text-muted-foreground">
+                Already have a password?{" "}
+                <Link href="/login">
+                  <span className="text-primary hover:underline cursor-pointer" data-testid="link-login-fallback">
+                    Sign in
+                  </span>
+                </Link>
+              </p>
             </div>
           </CardContent>
         </Card>

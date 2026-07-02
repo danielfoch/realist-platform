@@ -23,6 +23,9 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   phone: varchar("phone"),
   phoneVerified: boolean("phone_verified").default(false),
+  // Set when the user explicitly skips phone verification so OAuth logins
+  // stop re-prompting on every visit. Requires `npm run db:push` on deploy.
+  phoneVerificationSkippedAt: timestamp("phone_verification_skipped_at"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("investor"),
   emailVerified: boolean("email_verified").default(false),

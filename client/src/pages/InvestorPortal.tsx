@@ -21,6 +21,7 @@ import { Link, useLocation } from "wouter";
 import { User, Building, FileCheck, Plus, Trash2, TrendingUp, DollarSign, Home, MapPin, Calculator, ExternalLink, Settings, GitCompare, MoreHorizontal, Search, Compass, Bookmark, ArrowRight, Clock3, Target } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { GoogleConnectionCard } from "@/components/GoogleConnectionCard";
+import { AddPasswordBanner } from "@/components/AddPasswordBanner";
 import { useState, useEffect } from "react";
 import type { InvestorProfile, InvestorKyc, PortfolioProperty, SavedDeal } from "@shared/schema";
 import {
@@ -282,6 +283,8 @@ export default function InvestorPortal() {
 
       <main className="py-8">
         <div className="max-w-5xl mx-auto px-4 md:px-6 space-y-8">
+          <AddPasswordBanner />
+
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-3xl font-bold" data-testid="text-investor-portal-title">

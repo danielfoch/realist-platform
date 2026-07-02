@@ -14,6 +14,7 @@ import {
   queueDailyDigestNotifications,
   queueInactiveHighIntentNotifications,
 } from "./notifications";
+import { runWatchlistAlertSweep } from "./watchlists";
 import { scheduleNightlyTraining } from "./aiDefaults";
 
 const app = express();
@@ -606,6 +607,8 @@ async function ensureAppTables() {
   registerPublicProfileRoutes(app);
   const { registerAskRealistRoutes } = await import("./askRealist");
   registerAskRealistRoutes(app);
+  const { registerEnrichmentRoutes } = await import("./enrichment");
+  registerEnrichmentRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -726,6 +729,20 @@ async function ensureAppTables() {
           }
         } catch (err: any) {
           log(`Lifecycle jobs error: ${err.message}`, "notifications");
+        }
+        // Watchlist + saved-search alert sweep (batched, consent-gated emails
+        // via the email_triggers queue). Frequency gating lives inside the
+        // sweep, so the hourly cadence is just the polling interval.
+        try {
+          const sweep = await runWatchlistAlertSweep();
+          if (sweep.priceAlertUsers || sweep.searchAlertUsers || sweep.baselinesSeeded) {
+            log(
+              `Watchlist sweep: watches=${sweep.watchesChecked}, seeded=${sweep.baselinesSeeded}, priceAlerts=${sweep.priceAlertUsers}, searchesRun=${sweep.searchesRun}, searchAlerts=${sweep.searchAlertUsers}`,
+              "watchlists",
+            );
+          }
+        } catch (err: any) {
+          log(`Watchlist sweep error: ${err.message}`, "watchlists");
         }
       };
       runLifecycleJobs();

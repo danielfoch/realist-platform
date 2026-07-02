@@ -15,7 +15,7 @@
 
 import type { Express, Request, Response, NextFunction } from "express";
 import "express-session";
-import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import {
@@ -48,6 +48,15 @@ const RESOLUTION_RADIUS_KM = 0.75;
 const RESOLUTION_MAX_AGE_DAYS = 120;
 const SWEEP_BATCH_SIZE = 200;
 
+/**
+ * Model key for the market-defaults prior system (user-assumption medians).
+ * The module that logged these predictions (aiMarketDefaults) was removed in
+ * favour of aiDefaults.ts; the key stays so the resolution sweep can still
+ * score any legacy model_predictions rows written under it.
+ */
+export const MARKET_DEFAULTS_MODEL_KEY = "market_defaults";
+export const MARKET_DEFAULTS_VERSION = "v1.0.0";
+
 function intelApiKey(): string | undefined {
   return process.env.REALIST_INTEL_API_KEY || process.env.DEAL_DESK_API_KEY;
 }
@@ -76,7 +85,7 @@ export async function requireIntelAdmin(req: Request, res: Response, next: NextF
   }
 }
 
-function resolveCmhcBaseline(
+export function resolveCmhcBaseline(
   city: string | null | undefined,
   province: string | null | undefined,
   bedrooms: number | string,
@@ -254,6 +263,10 @@ export async function ensureModelVersionRegistered(): Promise<void> {
  * observations scraped after the prediction was made (same bedroom band,
  * within RESOLUTION_RADIUS_KM when geo-located, else same city). The median
  * of matching observations becomes the prediction's actual value.
+ *
+ * market_defaults predictions (city-level user-assumption priors, bedrooms
+ * NULL) resolve against the mixed-bedroom city median — measuring the gap
+ * between what users assume rents are and what the market actually asks.
  */
 export async function runPredictionResolutionSweep(): Promise<{ examined: number; resolved: number }> {
   const oldest = new Date(Date.now() - RESOLUTION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000);
@@ -261,7 +274,7 @@ export async function runPredictionResolutionSweep(): Promise<{ examined: number
     .select()
     .from(modelPredictions)
     .where(and(
-      eq(modelPredictions.modelKey, RENT_ESTIMATOR_MODEL_KEY),
+      inArray(modelPredictions.modelKey, [RENT_ESTIMATOR_MODEL_KEY, MARKET_DEFAULTS_MODEL_KEY]),
       isNull(modelPredictions.resolvedAt),
       gte(modelPredictions.createdAt, oldest),
     ))
@@ -269,8 +282,8 @@ export async function runPredictionResolutionSweep(): Promise<{ examined: number
 
   let resolved = 0;
   for (const prediction of unresolved) {
+    // Null band = market-level prediction; matches observations of any size.
     const band = prediction.bedrooms;
-    if (!band) continue;
     const hasGeo = prediction.lat != null && prediction.lng != null;
     if (!hasGeo && !prediction.city) continue;
 
@@ -293,7 +306,7 @@ export async function runPredictionResolutionSweep(): Promise<{ examined: number
       .limit(1000);
 
     const matches = candidates.filter((c) => {
-      if (normalizeBedroomBand(c.bedrooms) !== band) return false;
+      if (band && normalizeBedroomBand(c.bedrooms) !== band) return false;
       if (c.rent < 400 || c.rent > 20000) return false;
       if (hasGeo) {
         if (c.lat == null || c.lng == null) return false;
@@ -382,24 +395,27 @@ export function registerRentIntelligenceRoutes(app: Express): void {
 
   app.get("/api/intelligence/accuracy", requireIntelAdmin, async (_req, res) => {
     try {
-      const rows = await db.execute(sql`
-        SELECT
-          model_version,
-          method,
-          COUNT(*)::int AS predictions,
-          COUNT(resolved_at)::int AS resolved,
-          ROUND(AVG(abs_error) FILTER (WHERE resolved_at IS NOT NULL)::numeric, 0) AS avg_abs_error,
-          ROUND(AVG(pct_error) FILTER (WHERE resolved_at IS NOT NULL)::numeric, 1) AS mape,
-          ROUND((COUNT(*) FILTER (
-            WHERE resolved_at IS NOT NULL
-              AND actual_value BETWEEN interval_low AND interval_high
-          )::numeric / NULLIF(COUNT(resolved_at), 0)) * 100, 1) AS interval_coverage_pct
-        FROM model_predictions
-        WHERE model_key = ${RENT_ESTIMATOR_MODEL_KEY}
-        GROUP BY model_version, method
-        ORDER BY model_version DESC, predictions DESC
-      `);
-      res.json({ success: true, accuracy: rows.rows });
+      const [rows, registry] = await Promise.all([
+        db.execute(sql`
+          SELECT
+            model_key,
+            model_version,
+            method,
+            COUNT(*)::int AS predictions,
+            COUNT(resolved_at)::int AS resolved,
+            ROUND(AVG(abs_error) FILTER (WHERE resolved_at IS NOT NULL)::numeric, 0) AS avg_abs_error,
+            ROUND(AVG(pct_error) FILTER (WHERE resolved_at IS NOT NULL)::numeric, 1) AS mape,
+            ROUND((COUNT(*) FILTER (
+              WHERE resolved_at IS NOT NULL
+                AND actual_value BETWEEN interval_low AND interval_high
+            )::numeric / NULLIF(COUNT(resolved_at), 0)) * 100, 1) AS interval_coverage_pct
+          FROM model_predictions
+          GROUP BY model_key, model_version, method
+          ORDER BY model_key, model_version DESC, predictions DESC
+        `),
+        db.select().from(modelVersions).orderBy(sql`${modelVersions.createdAt} DESC`),
+      ]);
+      res.json({ success: true, registry, accuracy: rows.rows });
     } catch (error) {
       console.error("[intelligence] accuracy report failed:", error);
       res.status(500).json({ success: false, error: "Failed to compute accuracy" });

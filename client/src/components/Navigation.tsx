@@ -10,7 +10,7 @@ import {
   Calculator, MapPin, Users, Handshake, Calendar, Radio,
   FileText, TrendingUp, BarChart3, Shield, Gavel,
   Map, DollarSign, Layers, Building2, Inbox, Sparkles,
-  KeyRound, FolderOpen, Gauge, Newspaper, Globe2,
+  KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -74,6 +74,7 @@ const navCategories: NavCategory[] = [
     label: "Community",
     items: [
       { href: "/community", label: "Community Hub", description: "Everything happening across the Realist community", icon: <Users className="h-4 w-4" /> },
+      { href: "/experts", label: "Find an Expert", description: "Vetted market experts and building pros", icon: <Briefcase className="h-4 w-4" /> },
       { href: "/community/events", label: "Events", description: "Workshops and investor meetups", icon: <Calendar className="h-4 w-4" /> },
       { href: "/meetups", label: "Meetups", description: "Local investor meetups with native RSVP", icon: <MapPin className="h-4 w-4" /> },
       { href: "/community/leaderboard", label: "Leaderboard", description: "Top deal analysts in the community", icon: <TrendingUp className="h-4 w-4" /> },
@@ -87,6 +88,7 @@ const navCategories: NavCategory[] = [
       { href: "/join/realtors", label: "Realtors", description: "Get matched with investors analyzing deals in your market", icon: <Building className="h-4 w-4" /> },
       { href: "/join/mortgage-brokers", label: "Mortgage Brokers", description: "Fund deals sourced and underwritten on Realist", icon: <DollarSign className="h-4 w-4" /> },
       { href: "/join/lenders", label: "Lenders", description: "Reach investors at the moment they need financing", icon: <Handshake className="h-4 w-4" /> },
+      { href: "/join/experts", label: "Become an Expert", description: "Share your market knowledge with Realist investors", icon: <Users className="h-4 w-4" /> },
       { href: "/partner", label: "Partner Portal", description: "Manage your leads, markets, and referrals", icon: <Gauge className="h-4 w-4" /> },
     ],
   },
@@ -99,6 +101,7 @@ const HUB_HREFS = new Set(["/tools", "/insights", "/community", "/reports", "/ma
 const eventAdminEmails = new Set([
   "jonathan@realist.ca",
   "danielfoch@gmail.com",
+  "na4hill@gmail.com",
 ]);
 
 function isActiveHref(location: string, href: string): boolean {
@@ -232,6 +235,12 @@ export function Navigation() {
                         <DropdownMenuItem className="cursor-pointer" data-testid="link-my-deals">
                           <FolderOpen className="mr-2 h-4 w-4" />
                           My Deals
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/watchlist">
+                        <DropdownMenuItem className="cursor-pointer" data-testid="link-my-watchlist">
+                          <Bell className="mr-2 h-4 w-4" />
+                          Watchlist & Alerts
                         </DropdownMenuItem>
                       </Link>
                       <Link href="/my-performance">

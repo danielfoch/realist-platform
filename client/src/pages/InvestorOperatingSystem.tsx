@@ -14,7 +14,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistedTab } from "@/hooks/use-persisted-tab";
-import type { DealNote, LeaderboardEntry, WatchlistDeal } from "@shared/engagement";
+import type { DealNote, LeaderboardEntry } from "@shared/engagement";
+import { WatchlistPanel } from "@/components/WatchlistPanel";
 import {
   AlertTriangle,
   BarChart3,
@@ -34,42 +35,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-const sampleDeals: WatchlistDeal[] = [
-  {
-    id: "wl-001",
-    listingId: "duplex-hamilton-001",
-    address: "42 Barton St E",
-    city: "Hamilton",
-    price: 689000,
-    stage: "underwriting",
-    interestLevel: "high",
-    privateNote: "Needs rent validation before offer.",
-    targetOfferPrice: 642000,
-    estimatedRent: 4550,
-    estimatedRepairBudget: 42000,
-    nextAction: "Ask contractor for exterior and basement quote",
-    confidenceScore: 72,
-    riskScore: 38,
-    savedAt: new Date().toISOString(),
-  },
-  {
-    id: "wl-002",
-    listingId: "triplex-windsor-014",
-    address: "1187 Parent Ave",
-    city: "Windsor",
-    price: 529000,
-    stage: "due_diligence",
-    interestLevel: "medium",
-    privateNote: "Cash flow works only if upper rent reaches $1,850.",
-    targetOfferPrice: 505000,
-    estimatedRent: 3900,
-    estimatedRepairBudget: 26000,
-    nextAction: "Validate zoning and insurance",
-    confidenceScore: 66,
-    riskScore: 44,
-    savedAt: new Date().toISOString(),
-  },
-];
+// The fabricated `sampleDeals` watchlist that used to render here is gone —
+// the Watchlist tab now shows the user's REAL watches and saved searches via
+// WatchlistPanel (/api/watchlists). /watchlist itself routes to the dedicated
+// Watchlist page.
 
 const sampleNotes: DealNote[] = [
   {
@@ -228,7 +197,7 @@ export default function InvestorOperatingSystem() {
 
         <div className="grid gap-4 md:grid-cols-4 mb-8">
           <StatTile label="Investor score" value={`${investorScore}/100`} icon={Medal} />
-          <StatTile label="Saved deals" value={String(sampleDeals.length)} icon={Save} />
+          <StatTile label="Watchlist" value="Live alerts" icon={Save} />
           <StatTile label="Structured notes" value={String(notes.length)} icon={MessageSquarePlus} />
           <StatTile label="Pro requests" value="6 types" icon={BriefcaseBusiness} />
         </div>
@@ -244,40 +213,7 @@ export default function InvestorOperatingSystem() {
 
           <TabsContent value="watchlist" className="space-y-6">
             <div className="grid gap-5 lg:grid-cols-[1.5fr_0.9fr]">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Deal Pipeline</CardTitle>
-                  <CardDescription>Saved deals become a workflow with stage, assumptions, next action, risk, and confidence.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {sampleDeals.map((deal) => (
-                    <div key={deal.id} className="rounded-md border p-4">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{deal.address}</h3>
-                            <Badge variant="outline">{deal.stage.replace(/_/g, " ")}</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{deal.city} · {currency.format(deal.price)}</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-2"
-                          onClick={() => apiRequest("POST", "/api/engagement/saved-deal", deal).then((r) => r.json()).then((result) => setWebhookStatus(`Saved deal event: ${result.eventId}. Webhook status: ${result.webhook?.status || "unknown"}.`))}
-                        >
-                          <Save className="h-4 w-4" /> Save event
-                        </Button>
-                      </div>
-                      <div className="mt-4 grid gap-3 md:grid-cols-3">
-                        <div><p className="text-xs text-muted-foreground">Target offer</p><p className="font-mono">{currency.format(deal.targetOfferPrice || 0)}</p></div>
-                        <div><p className="text-xs text-muted-foreground">Rent / repairs</p><p className="font-mono">{currency.format(deal.estimatedRent || 0)} · {currency.format(deal.estimatedRepairBudget || 0)}</p></div>
-                        <div><p className="text-xs text-muted-foreground">Next action</p><p className="text-sm">{deal.nextAction}</p></div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+              <WatchlistPanel />
 
               <Card>
                 <CardHeader>

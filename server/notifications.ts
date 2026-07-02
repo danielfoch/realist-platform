@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lte, ne, isNotNull } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lte, ne, isNotNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
 import {
@@ -14,16 +14,16 @@ import {
   type ListingAnalysisAggregate,
   type ListingComment,
   type PropertyAnalysis,
-  type SavedDeal,
   type UsListing,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
-
-type WatchedListingSignal = {
-  listingId?: string;
-  address?: string;
-  city?: string;
-};
+import {
+  buildNoteVoteCopy,
+  noteExcerpt,
+  noteVoteDedupeKey,
+  type NoteVoteMilestone,
+} from "@shared/fieldNotes";
+import type { ExpertFieldNote } from "@shared/schema";
 
 type NotificationKind =
   | "saved_search_match"
@@ -41,7 +41,8 @@ type NotificationKind =
   | "daily_digest_ready"
   | "weekly_leaderboard_digest"
   | "co_analysis_alert"
-  | "milestone_reached";
+  | "milestone_reached"
+  | "note_vote_update";
 
 export type GhlNotificationPayload = {
   sendEmail: true;
@@ -330,42 +331,36 @@ function buildPayload(input: {
   };
 }
 
-export async function upsertWatcherFromSavedDeal(userId: string, deal: SavedDeal): Promise<void> {
-  if (!deal.mlsNumber) return;
-  await storage.upsertListingWatcher({
-    userId,
-    listingMlsNumber: deal.mlsNumber,
-    sourceType: "saved_deal",
-    sourceId: deal.id,
-    lastSeenAt: new Date(),
-  });
-}
+// upsertWatcherFromSavedDeal / syncWatchersFromDiscoverySignals used to live
+// here, auto-creating listing_watchers rows (with all five alert flags on)
+// from passive signals — saving a deal, shortlisting, or merely VIEWING a
+// listing. Retired as consent-hostile: watches are now created only by the
+// explicit Watch action (server/watchlists.ts), and legacy auto-created rows
+// remain visible/deletable via GET /api/watchlists.
 
-export async function syncWatchersFromDiscoverySignals(params: {
-  userId: string;
-  savedListings: WatchedListingSignal[];
-  recentViewedListings: WatchedListingSignal[];
-}): Promise<void> {
-  const tasks = [...params.savedListings.map((signal) => ({
-    signal,
-    sourceType: "saved_listing",
-    sourceId: signal.listingId || signal.address || null,
-  })), ...params.recentViewedListings.map((signal) => ({
-    signal,
-    sourceType: "view",
-    sourceId: signal.listingId || signal.address || null,
-  }))];
-
-  await Promise.all(tasks.map(async ({ signal, sourceType, sourceId }) => {
-    if (!signal.listingId) return;
-    await storage.upsertListingWatcher({
-      userId: params.userId,
-      listingMlsNumber: signal.listingId,
-      sourceType,
-      sourceId,
-      lastSeenAt: new Date(),
-    });
-  }));
+/**
+ * Central unsubscribe gate. Every recipient must (a) not have turned off the
+ * users.email_digest_opt_in flag and (b) not have a latest email_consent
+ * ledger row of 'revoked' for the email channel (append-only CASL ledger —
+ * latest row per user wins; no rows = no objection on record). Applied here,
+ * in the single enqueue path, so every notification producer inherits it.
+ */
+async function filterUnsubscribedRecipients(userIds: string[]): Promise<Set<string>> {
+  if (!userIds.length) return new Set();
+  const rows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(
+      inArray(users.id, userIds),
+      sql`COALESCE(${users.emailDigestOptIn}, true) = true`,
+      sql`COALESCE((
+        SELECT ec.status FROM email_consent ec
+        WHERE ec.user_id = ${users.id} AND ec.channel = 'email'
+        ORDER BY ec.created_at DESC
+        LIMIT 1
+      ), 'granted') <> 'revoked'`,
+    ));
+  return new Set(rows.map((row) => row.id));
 }
 
 async function enqueueForRecipients(args: {
@@ -381,6 +376,16 @@ async function enqueueForRecipients(args: {
     dedupeKey: string;
   }>;
 }): Promise<void> {
+  const allowedIds = await filterUnsubscribedRecipients(
+    Array.from(new Set(args.recipients.map((recipient) => recipient.userId))),
+  );
+  const allowedRecipients = args.recipients.filter((recipient) => allowedIds.has(recipient.userId));
+  const skipped = args.recipients.length - allowedRecipients.length;
+  if (skipped > 0) {
+    console.log(`[notifications] ${args.eventType}: skipped ${skipped} unsubscribed/revoked recipient(s)`);
+  }
+  if (!allowedRecipients.length) return;
+
   const event = await storage.createNotificationEvent({
     eventType: args.eventType,
     listingMlsNumber: args.listingMlsNumber || null,
@@ -390,7 +395,7 @@ async function enqueueForRecipients(args: {
     payloadJson: args.rawPayload,
   });
 
-  await Promise.all(args.recipients.map(async (recipient) => {
+  await Promise.all(allowedRecipients.map(async (recipient) => {
     await storage.createNotificationQueueItem({
       recipientUserId: recipient.userId,
       notificationEventId: event.id,
@@ -1384,7 +1389,7 @@ export async function queueCoAnalysisNotifications(params: {
 
     const dedupeKey = `co_analysis_alert:${userId}:${newAnalysis.listingMlsNumber}:${today}`;
 
-    const reasonText = `Another investor just underewrote ${address}${city ? ` in ${city}` : ""}${capRateText}${cocText}.`;
+    const reasonText = `Another investor just underwrote ${address}${city ? ` in ${city}` : ""}${capRateText}${cocText}.`;
     const emailBody = buildEmailBody(recipient.firstName || "there", [
       `Someone else just analyzed a property you've looked at:`,
       ``,
@@ -1400,7 +1405,7 @@ export async function queueCoAnalysisNotifications(params: {
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;background:#fff;">
         <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:24px;border-radius:8px 8px 0 0;">
           <p style="margin:0;font-size:11px;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;">Realist.ca</p>
-          <h2 style="margin:4px 0 0;font-size:18px;color:#fff;font-weight:700;">Another investor just underewrote this deal</h2>
+          <h2 style="margin:4px 0 0;font-size:18px;color:#fff;font-weight:700;">Another investor just underwrote this deal</h2>
         </div>
         <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;">
           <p style="margin:0 0 16px;font-size:15px;color:#111827;">Hey ${recipient.firstName || "there"},</p>
@@ -1446,7 +1451,7 @@ export async function queueCoAnalysisNotifications(params: {
           reasonText,
           ctaLabel: "Compare your analysis",
           ctaUrl: listingUrl,
-          subjectLine: `Another investor just underewrote ${address}`,
+          subjectLine: `Another investor just underwrote ${address}`,
           previewText: `See how your numbers compare on this listing.`,
           listingMlsNumber: newAnalysis.listingMlsNumber,
           listingCity: city,
@@ -1551,6 +1556,85 @@ export async function queueMilestoneNotification(userId: string): Promise<boolea
         emailHtml: html,
       }),
       dedupeKey,
+    }],
+  });
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Field-note vote notifications
+// ---------------------------------------------------------------------------
+
+/**
+ * Notify a field-note author when the note's NET score crosses a threshold
+ * (first upvote, +5, +10, or first downvote). Milestone detection happens at
+ * the vote endpoint via decideNoteVoteMilestone; this function handles
+ * consent, batching, and delivery.
+ *
+ * Email-first by design: there is no user-facing in-app notification surface
+ * on this branch, so this rides the existing notification queue (GHL email
+ * pipeline). Batched to max ONE email per note per UTC day — the dedupe key
+ * intentionally omits the milestone, and the notification_queue unique index
+ * drops later inserts (createNotificationQueueItem is onConflictDoNothing).
+ * Consent-gated by notificationPreferences.communityAlertsEnabled (plus the
+ * productUpdatesEnabled kill-switch).
+ */
+export async function queueFieldNoteVoteNotification(params: {
+  note: ExpertFieldNote;
+  milestone: NoteVoteMilestone;
+  newScore: number;
+}): Promise<boolean> {
+  const { note, milestone, newScore } = params;
+  if (!(await recipientAllows(note.userId, "community"))) return false;
+
+  const recipient = await getRecipient(note.userId);
+  if (!recipient?.email) return false;
+
+  // Best-effort listing label enrichment (city from the DDF snapshot).
+  let city: string | null = null;
+  try {
+    const [snapshot] = await db
+      .select({ city: ddfListingSnapshots.city })
+      .from(ddfListingSnapshots)
+      .where(eq(ddfListingSnapshots.mlsNumber, note.listingMlsNumber))
+      .orderBy(desc(ddfListingSnapshots.capturedAt))
+      .limit(1);
+    city = snapshot?.city || null;
+  } catch {
+    city = null;
+  }
+  const listingLabel = city ? `MLS ${note.listingMlsNumber} (${city})` : `MLS ${note.listingMlsNumber}`;
+
+  const copy = buildNoteVoteCopy({
+    milestone,
+    score: newScore,
+    listingLabel,
+    noteExcerpt: noteExcerpt(note.body),
+  });
+  const ctaUrl = `https://realist.ca/listings/${encodeURIComponent(note.listingMlsNumber)}?source=note-vote-email#field-notes`;
+
+  await enqueueForRecipients({
+    eventType: "note_vote_update",
+    listingMlsNumber: note.listingMlsNumber,
+    city,
+    rawPayload: { fieldNoteId: note.id, milestone, score: newScore },
+    recipients: [{
+      userId: note.userId,
+      payload: buildPayload({
+        recipient,
+        eventType: "note_vote_update",
+        reasonText: copy.reasonText,
+        ctaLabel: "See your note on the listing",
+        ctaUrl,
+        subjectLine: copy.subjectLine,
+        previewText: copy.previewText,
+        listingMlsNumber: note.listingMlsNumber,
+        listingCity: city,
+        ghlTags: ["realist-user", "field-note", `note-vote-${milestone}`],
+        leadScoreDelta: milestone === "first_downvote" ? 0 : 2,
+      }),
+      dedupeKey: noteVoteDedupeKey(note.id),
     }],
   });
 
