@@ -27,8 +27,13 @@ import {
   ChevronLeft,
   Sparkles,
   Share2,
+  UserRound,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import aledHeadshot from "@assets/image_1781720568994.png";
+import joshHeadshot from "@assets/image_1781720589907.png";
+import noamHeadshot from "@assets/image_1781720616832.png";
+import ryanHeadshot from "@assets/image_1781720634648.png";
 
 const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
 const EVENT_TITLE = "Unpacking Multiplexes Toronto";
@@ -79,6 +84,46 @@ const highlights = [
   { icon: Users, label: "High-value networking with 100+ housing professionals" },
   { icon: Utensils, label: "Complimentary food & refreshments" },
   { icon: Sparkles, label: "Actionable takeaways you can implement immediately" },
+];
+
+const SPEAKERS = [
+  {
+    name: "Aled Ab Iorwerth",
+    org: "CMHC",
+    title: "Deputy Chief Economist",
+    bio: "Leading housing economics research at Canada's national housing agency, focused on affordability, supply, and policy.",
+    photo: aledHeadshot,
+  },
+  {
+    name: "Josh Findlay",
+    org: "BLD Financial",
+    title: "Principal",
+    bio: "Specialist in construction financing and CMHC MLI Select programs for multiplex and purpose-built rental projects.",
+    photo: joshHeadshot,
+  },
+  {
+    name: "Noam Hazan",
+    org: "Noam Hazan Design Studio",
+    title: "Principal Architect",
+    bio: "Award-winning architect with deep expertise in multiplex design, infill development, and cost-effective construction detailing.",
+    photo: noamHeadshot,
+  },
+  {
+    name: "Ryan Valente",
+    org: "Reside Properties",
+    title: "Founder",
+    bio: "Active multiplex developer and investor building and operating multi-unit residential properties across the GTA.",
+    photo: ryanHeadshot,
+  },
+];
+
+const AGENDA = [
+  { time: "5:00 PM", label: "Doors Open", description: "Arrive, connect, and grab a drink." },
+  { time: "6:00 PM", label: "Opening Remarks", description: "Welcome from the organizers and a quick overview of the evening." },
+  { time: "6:10 PM", label: "Finance Panel", description: "Construction loans, CMHC MLI Select, and capital strategies for multiplex builds." },
+  { time: "6:50 PM", label: "Planning & Contemplation", description: "Zoning bylaws, as-of-right permissions, and navigating Toronto's planning landscape." },
+  { time: "7:30 PM", label: "Execution", description: "From site acquisition to tenant placement — the full multiplex development lifecycle." },
+  { time: "8:10 PM", label: "Networking Mixer", description: "Open networking with food, drinks, and Toronto's leading multiplex community." },
 ];
 
 const faqs = [
@@ -250,8 +295,74 @@ export default function UnpackingMultiplexesToronto() {
               </p>
             </div>
 
+            {/* Speakers */}
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold mb-6">What You'll Learn</h2>
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">Speakers</h2>
+              <p className="text-muted-foreground mb-6">
+                Hear from practitioners working at the front lines of multiplex development, finance, design, and policy.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {SPEAKERS.map((s) => (
+                  <Card key={s.name} className="hover-elevate" data-testid={`card-speaker-${s.name.split(" ")[0].toLowerCase()}`}>
+                    <CardContent className="p-5">
+                      <div className="flex items-start gap-4">
+                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                          {s.photo ? (
+                            <img src={s.photo} alt={s.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <UserRound className="h-6 w-6 text-primary" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-base leading-tight">{s.name}</div>
+                          <div className="text-sm text-primary font-medium mt-0.5">{s.title}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">{s.org}</div>
+                          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{s.bio}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Agenda */}
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">Agenda</h2>
+              <p className="text-muted-foreground mb-6">
+                Tuesday, September 15, 2026 · The Terminal Theatre
+              </p>
+              <div className="relative">
+                <div className="absolute left-[4.5rem] top-0 bottom-0 w-px bg-border/60" aria-hidden="true" />
+                <ol className="space-y-0">
+                  {AGENDA.map((item, idx) => (
+                    <li
+                      key={item.time}
+                      className="relative flex gap-5 pb-6 last:pb-0"
+                      data-testid={`agenda-item-${idx}`}
+                    >
+                      <div className="w-16 shrink-0 text-right">
+                        <span className="text-xs font-semibold tabular-nums text-muted-foreground leading-none pt-1 inline-block">
+                          {item.time}
+                        </span>
+                      </div>
+                      <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-background mt-0.5">
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      </div>
+                      <div className="pb-1">
+                        <div className="font-semibold text-base leading-tight">{item.label}</div>
+                        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-4">What You'll Learn</h2>
               <div className="grid sm:grid-cols-2 gap-4">
                 {learnPoints.map((p) => {
                   const Icon = p.icon;
@@ -421,6 +532,31 @@ export default function UnpackingMultiplexesToronto() {
               </Card>
             </div>
           </aside>
+        </div>
+      </section>
+
+      {/* Sponsors */}
+      <section className="border-t border-border/60 bg-stone-50 dark:bg-stone-900">
+        <div className="max-w-6xl mx-auto px-4 py-10">
+          <p className="text-xs uppercase tracking-[0.18em] text-stone-400 text-center mb-8">
+            Event sponsors & partners
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-10 md:gap-16">
+            {[
+              { src: "/partners/cmhc.png", alt: "CMHC" },
+              { src: "/partners/bld-financial.png", alt: "BLD Financial" },
+              { src: "/partners/reside-properties.png", alt: "Reside Properties" },
+              { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio" },
+            ].map((sponsor) => (
+              <img
+                key={sponsor.alt}
+                src={sponsor.src}
+                alt={sponsor.alt}
+                className="h-10 w-auto object-contain"
+                data-testid={`sponsor-logo-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
+              />
+            ))}
+          </div>
         </div>
       </section>
 

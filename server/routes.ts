@@ -102,6 +102,7 @@ import { z } from "zod";
 import { COMMUNITY_DEFAULTS, COMMUNITY_FLAGS, computeConsensusLabel, sanitizeUserText, summarizeCommunityMetrics, truncateText } from "@shared/community";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { passwordResetTokens } from "@shared/models/auth";
 import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
@@ -124,8 +125,14 @@ import { trackRealistEvent } from "./realistEvents";
 import { registerRealistEventRoutes } from "./eventsModule";
 import { registerDealDeskRoutes } from "./dealDesk";
 import { scheduleAdminWeeklySummary } from "./adminWeeklySummary";
+import { registerRetentionEmailRoutes } from "./retentionEmails";
+import { registerOnboardingEmailRoutes } from "./onboardingEmails";
+import { registerAiDefaultsRoutes } from "./aiDefaults";
 import { registerCrmRoutes } from "./crm";
+import { registerPartnerNetworkRoutes, handoffClaimedLeadToCrm } from "./partnerNetwork";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
+import { registerRentIntelligenceRoutes } from "./rentIntelligence";
+import { registerRentIngestionRoutes } from "./rentIngestion";
 import { registerMobilePushRoutes } from "./mobilePush";
 import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
@@ -747,11 +754,50 @@ export async function registerRoutes(
   // Set up email/password authentication
   setupAuth(app);
   registerAuthRoutes(app);
+
+  // Authenticated proxy for the stats dashboard hosted on Vercel.
+  // Users hit /stats on realist.ca (already logged in via session), and we
+  // forward the request to stats.realist.ca server-side. The Vercel app
+  // never has to know about realist.ca's auth system.
+  const STATS_UPSTREAM = process.env.STATS_UPSTREAM_URL || "https://stats.realist.ca";
+  app.use(
+    "/stats",
+    (req, res, next) => {
+      if ((req as any).session?.userId) return next();
+      const returnTo = encodeURIComponent(req.originalUrl || "/stats");
+      res.redirect(302, `/login?returnUrl=${returnTo}`);
+    },
+    createProxyMiddleware({
+      target: STATS_UPSTREAM,
+      changeOrigin: true,
+      ws: true,
+      pathRewrite: { "^/stats": "" },
+      on: {
+        proxyReq: (proxyReq) => {
+          // Don't leak the realist.ca session cookie to the upstream app.
+          proxyReq.removeHeader("cookie");
+        },
+        error: (err, _req, res) => {
+          console.error("[stats-proxy] error:", err.message);
+          if (res && "writeHead" in res && !res.headersSent) {
+            (res as any).writeHead(502, { "Content-Type": "text/plain" });
+            (res as any).end("Stats dashboard is temporarily unavailable.");
+          }
+        },
+      },
+    })
+  );
   registerRealistEventRoutes(app);
   registerDealDeskRoutes(app);
   scheduleAdminWeeklySummary();
+  registerRetentionEmailRoutes(app);
+  registerOnboardingEmailRoutes(app);
+  registerAiDefaultsRoutes(app);
   registerCrmRoutes(app);
+  registerPartnerNetworkRoutes(app);
   registerEventsGrowthRoutes(app);
+  registerRentIntelligenceRoutes(app);
+  registerRentIngestionRoutes(app);
   registerMobilePushRoutes(app);
   registerUserGoogleSheetsRoutes(app);
   registerUnderwritingShareRoutes(app);
@@ -2342,6 +2388,20 @@ export async function registerRoutes(
                 status: "new",
                 notifiedAt: new Date(),
               });
+
+              logUserActivity(null, {
+                userId: claim.userId,
+                eventName: "partner_lead_notified",
+                source: "partner_network",
+                metadata: {
+                  partnerType: claim.partnerType ?? "realtor",
+                  leadId: lead.id,
+                  analysisId: analysis.id,
+                  dealCity: property.city,
+                  dealRegion: property.region,
+                  dealStrategy: analysis.strategyType,
+                },
+              }).catch(err => console.error("partner_lead_notified event error:", err));
 
               // Send email alert to the realtor
               try {
@@ -5106,71 +5166,36 @@ export async function registerRoutes(
     }
   });
 
-  // Podcast episodes from RSS feed
-  app.get("/api/podcast/episodes", async (req, res) => {
+  // Podcast episodes from RSS feed (cached ~1h in server/podcastFeed.ts).
+  // Each episode includes its stable slug for /insights/podcast/:slug links.
+  app.get("/api/podcast/episodes", async (_req, res) => {
     try {
-      const rssUrl = "https://www.omnycontent.com/d/playlist/d75d2ff4-a4dd-4a19-bcb1-ad35013dfc83/1d7b066c-9af2-431a-bea7-aecd01493da3/69cdac4f-3b2e-45b4-ae6f-aecd0152873d/podcast.rss";
-      
-      const response = await fetch(rssUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; Realist/1.0)',
-          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`RSS fetch failed: ${response.status}`);
-      }
-      
-      const xmlText = await response.text();
-      
-      // Parse XML manually
-      const episodes: any[] = [];
-      const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-      let match;
-      
-      // Get feed image
-      const feedImageMatch = xmlText.match(/<image>[\s\S]*?<url>([^<]+)<\/url>[\s\S]*?<\/image>/);
-      const feedImage = feedImageMatch ? feedImageMatch[1] : "";
-      
-      while ((match = itemRegex.exec(xmlText)) !== null) {
-        const itemXml = match[1];
-        
-        const getTagContent = (tag: string) => {
-          const regex = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([^<]*)<\\/${tag}>`);
-          const m = itemXml.match(regex);
-          return m ? (m[1] || m[2] || "").trim() : "";
-        };
-        
-        const getAttr = (tag: string, attr: string) => {
-          const regex = new RegExp(`<${tag}[^>]*${attr}="([^"]*)"[^>]*/?>`);
-          const m = itemXml.match(regex);
-          return m ? m[1] : "";
-        };
-        
-        const title = getTagContent("title");
-        const description = getTagContent("description") || getTagContent("itunes:summary");
-        const pubDate = getTagContent("pubDate");
-        const link = getTagContent("link");
-        const duration = getTagContent("itunes:duration");
-        const audioUrl = getAttr("enclosure", "url") || link;
-        const imageUrl = getAttr("itunes:image", "href") || feedImage;
-        
-        episodes.push({
-          title,
-          description,
-          pubDate,
-          audioUrl,
-          duration,
-          link,
-          imageUrl,
-        });
-      }
-      
+      const { getPodcastEpisodes } = await import("./podcastFeed");
+      const episodes = await getPodcastEpisodes();
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
       res.json(episodes.slice(0, 50)); // Limit to 50 episodes
     } catch (error) {
       console.error("Error fetching podcast episodes:", error);
       res.status(500).json({ error: "Failed to fetch podcast episodes" });
+    }
+  });
+
+  // Single episode payload for the /insights/podcast/:slug page — sanitized
+  // + encyclopedia-linked show notes, topics, contextual tool CTA, related
+  // episodes, and the (currently null) enrichment seam.
+  app.get("/api/podcast/episodes/:slug", async (req, res) => {
+    try {
+      const { getEpisodePayload } = await import("./podcastFeed");
+      const payload = await getEpisodePayload(req.params.slug);
+      if (!payload) {
+        res.status(404).json({ error: "Episode not found" });
+        return;
+      }
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.json(payload);
+    } catch (error) {
+      console.error("Error fetching podcast episode:", error);
+      res.status(500).json({ error: "Failed to fetch podcast episode" });
     }
   });
 
@@ -5694,7 +5719,14 @@ export async function registerRoutes(
         sentAt: new Date(),
       });
 
-      res.json({ success: true, introduction });
+      const crmContactId = await handoffClaimedLeadToCrm({
+        req,
+        partnerUserId: userId,
+        lead,
+        notification,
+      });
+
+      res.json({ success: true, introduction, crmContactId });
     } catch (error) {
       console.error("Error claiming lead:", error);
       res.status(500).json({ error: "Failed to claim lead" });
@@ -12718,6 +12750,29 @@ export async function registerRoutes(
       res.json(report);
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
+  // ─── Notebook (user account save/load) ──────────────────────────────────
+  app.get("/api/notebook", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const row = await storage.getUserNotebook(userId);
+      res.json({ data: row?.data ?? {} });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/notebook", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { data } = req.body;
+      if (!data || typeof data !== "object") return res.status(400).json({ error: "data required" });
+      const row = await storage.upsertUserNotebook(userId, data);
+      res.json({ ok: true, updatedAt: row.updatedAt });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 

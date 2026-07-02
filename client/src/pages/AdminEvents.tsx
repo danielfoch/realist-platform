@@ -42,7 +42,7 @@ export default function AdminEvents() {
               <div className="max-w-md space-y-2">
                 <h2 className="text-lg font-semibold">Events admin access required</h2>
                 <p className="text-sm text-muted-foreground">
-                  Sign in as jonathan@realist.ca or danielfoch@gmail.com to create and publish events.
+                  Sign in as jonathan@realist.ca, danielfoch@gmail.com, or na4hill@gmail.com to create and publish events.
                 </p>
               </div>
             ) : isLoading ? (

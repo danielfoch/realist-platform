@@ -49,6 +49,10 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
     title: "Rent vs Buy Calculator (Canada) - Realist.ca",
     description: "Compare the true financial outcome of renting versus buying in any Canadian city. Includes mortgage, maintenance, taxes, opportunity cost.",
   },
+  "/tools/rent-to-own": {
+    title: "Buy vs Rent-to-Own Calculator (Canada) - Realist.ca",
+    description: "Compare a traditional CMHC-insured purchase against a rent-to-own pathway. See upfront cash, monthly cost, equity, and total 5-year cost side by side.",
+  },
   "/tools/will-it-plex": {
     title: "Will It Plex? Multiplex Conversion Analyzer - Realist.ca",
     description: "Find out if a single-family home is a strong multiplex conversion candidate. Free Canadian multiplex screening tool.",

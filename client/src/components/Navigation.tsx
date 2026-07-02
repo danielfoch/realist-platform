@@ -82,6 +82,7 @@ const navCategories: NavCategory[] = [
 const eventAdminEmails = new Set([
   "jonathan@realist.ca",
   "danielfoch@gmail.com",
+  "na4hill@gmail.com",
 ]);
 
 function NavItemRow({ item }: { item: NavItem }) {

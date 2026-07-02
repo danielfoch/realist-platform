@@ -628,6 +628,14 @@ async function ensureAppTables() {
       import("./monthlyWinnerEmail").then(({ scheduleMonthlyWinnerEmail }) => {
         scheduleMonthlyWinnerEmail();
       }).catch((err) => log(`Monthly winner email schedule error: ${err.message}`, "monthly-winner"));
+      import("./rentIntelligence").then(({ scheduleRentIntelligenceJobs }) => {
+        scheduleRentIntelligenceJobs(log);
+        log("Rent intelligence jobs scheduled (daily prediction sweep)", "intelligence");
+      }).catch((err) => log(`Rent intelligence schedule error: ${err.message}`, "intelligence"));
+      import("./rentIngestion").then(({ scheduleRentIngestionJobs }) => {
+        scheduleRentIngestionJobs(log);
+        log("Rent ingestion jobs scheduled (daily DDF lease crawl)", "rent-ingestion");
+      }).catch((err) => log(`Rent ingestion schedule error: ${err.message}`, "rent-ingestion"));
       const drainNotifications = async () => {
         try {
           const result = await processPendingGhlNotifications();

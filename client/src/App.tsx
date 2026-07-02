@@ -15,12 +15,17 @@ import Home from "@/pages/Home";
 import InvestorStart from "@/pages/InvestorStart";
 import About from "@/pages/About";
 import Events from "@/pages/Events";
+import Notebook from "@/pages/Notebook";
+import NotebookPrint from "@/pages/NotebookPrint";
+import DanielFoch from "@/pages/DanielFoch";
+import NickHill from "@/pages/NickHill";
 import UnpackingMultiplexesToronto from "@/pages/UnpackingMultiplexesToronto";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 import Shop from "@/pages/Shop";
 import Compare from "@/pages/Compare";
 import Podcast from "@/pages/Podcast";
+import PodcastEpisodeDetail from "@/pages/PodcastEpisodeDetail";
 import Admin from "@/pages/Admin";
 import AdminDealDesk from "@/pages/AdminDealDesk";
 import AdminEvents from "@/pages/AdminEvents";
@@ -58,6 +63,7 @@ import AdminSponsors from "@/pages/AdminSponsors";
 import CrmContact from "@/pages/CrmContact";
 import TrueCost from "@/pages/TrueCost";
 import RentVsBuy from "@/pages/RentVsBuy";
+import RentToOwn from "@/pages/RentToOwn";
 import WillItPlex from "@/pages/WillItPlex";
 import Leaderboard from "@/pages/Leaderboard";
 import FullLeaderboard from "@/pages/FullLeaderboard";
@@ -95,6 +101,7 @@ import HousingCorrectionLockedOut2026Report from "@/pages/HousingCorrectionLocke
 import LabourMortgageStressApril2026Report from "@/pages/LabourMortgageStressApril2026Report";
 import MonthlyMarketReportMay2026 from "@/pages/MonthlyMarketReportMay2026";
 import InterprovincialMigrationCanada2026Report from "@/pages/InterprovincialMigrationCanada2026Report";
+import HomeBenchReport from "@/pages/HomeBenchReport";
 import SeoProjectDetail from "@/pages/SeoProjectDetail";
 import {
   TorontoHousingMarketPage,
@@ -103,6 +110,8 @@ import {
   CanadaHousingMarketPage,
 } from "@/pages/seo/MarketPages";
 import JoinRealtors from "@/pages/JoinRealtors";
+import JoinMortgageBrokers from "@/pages/JoinMortgageBrokers";
+import PartnerOnboarding from "@/pages/PartnerOnboarding";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
 import PitchDeck from "@/pages/PitchDeck";
@@ -165,6 +174,7 @@ function Router() {
       <Route path="/tools/deal-desk" component={DealDesk} />
       <Route path="/tools/true-cost" component={TrueCost} />
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
+      <Route path="/tools/rent-to-own" component={RentToOwn} />
       <Route path="/tools/cap-rates" component={CapRates} />
       <Route path="/listing-intelligence" component={ListingIntelligence} />
       <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
@@ -212,6 +222,7 @@ function Router() {
       <Route path="/insights/labour-mortgage-stress-april-2026" component={LabourMortgageStressApril2026Report} />
       <Route path="/insights/monthly-market-report-may-2026" component={MonthlyMarketReportMay2026} />
       <Route path="/insights/canada-interprovincial-migration-2026" component={InterprovincialMigrationCanada2026Report} />
+      <Route path="/insights/market-report/homebench-ai-realtor-benchmark" component={HomeBenchReport} />
       {/* SEO landing pages — programmatic + query-driven */}
       <Route path="/canada-housing-market" component={CanadaHousingMarketPage} />
       <Route path="/toronto-housing-market" component={TorontoHousingMarketPage} />
@@ -230,6 +241,7 @@ function Router() {
       {/* New Insights routes */}
       <Route path="/insights" component={InsightsHub} />
       <Route path="/insights/podcast" component={Podcast} />
+      <Route path="/insights/podcast/:slug" component={PodcastEpisodeDetail} />
       <Route path="/insights/blog" component={Blog} />
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />
@@ -269,7 +281,11 @@ function Router() {
       <Route path="/coinvesting/checklist">{() => <Redirect to="/tools/coinvest/checklist" />}</Route>
       <Route path="/coinvesting/groups/new">{() => <Redirect to="/tools/coinvest/groups/new" />}</Route>
       <Route path="/coinvesting/groups/:id">{(props: any) => <Redirect to={`/tools/coinvest/groups/${props.params?.id}`} />}</Route>
-      <Route path="/events">{() => <Redirect to="/community/events" />}</Route>
+      <Route path="/events" component={Events} />
+      <Route path="/notebook" component={Notebook} />
+      <Route path="/notebook/print" component={NotebookPrint} />
+      <Route path="/danielfoch" component={DanielFoch} />
+      <Route path="/nickhill" component={NickHill} />
       <Route path="/podcast">{() => <Redirect to="/insights/podcast" />}</Route>
       <Route path="/blog">{() => <Redirect to="/insights/blog" />}</Route>
       <Route path="/shop">{() => <Redirect to="/about/shop" />}</Route>
@@ -299,7 +315,9 @@ function Router() {
       <Route path="/verify-phone" component={VerifyPhone} />
       <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
       <Route path="/partner/network" component={RealtorNetwork} />
+      <Route path="/partner/onboarding" component={PartnerOnboarding} />
       <Route path="/join/realtors" component={JoinRealtors} />
+      <Route path="/join/mortgage-brokers" component={JoinMortgageBrokers} />
       <Route path="/join/lenders" component={JoinLenders} />
       
       {/* 404 */}

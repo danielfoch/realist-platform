@@ -3,7 +3,7 @@ import { pool } from "./db";
 const BASE_URL = "https://realist.ca";
 
 export type ListingSeoRecord = {
-  id: number;
+  id: string | number;
   mlsNumber: string;
   status: string | null;
   listDate: Date | string | null;
@@ -166,47 +166,53 @@ export function buildListingStructuredData(listing: ListingSeoRecord): object[] 
   ];
 }
 
+// Listing data lives in ddf_listing_snapshots (fed daily by the DDF yield
+// crawler), keyed by (listing_key, snapshot_month) — the latest snapshot is
+// the current truth for a listing. Street address, remarks, status, and the
+// primary photo ride along in raw_json.
+const SNAPSHOT_SEO_SELECT = `
+  SELECT
+    s.id,
+    s.mls_number AS "mlsNumber",
+    COALESCE(NULLIF(s.raw_json->>'standardStatus', ''), 'Active') AS "status",
+    CASE
+      WHEN s.days_on_market IS NOT NULL
+      THEN (s.captured_at - make_interval(days => s.days_on_market))::date
+    END AS "listDate",
+    s.captured_at AS "lastUpdated",
+    s.property_sub_type AS "propertyType",
+    s.structure_type AS "structureType",
+    NULLIF(TRIM(split_part(s.raw_json->>'streetAddress', ',', 1)), '') AS "addressStreet",
+    NULL AS "addressUnit",
+    s.city AS "addressCity",
+    s.province AS "addressProvince",
+    s.postal_code AS "addressPostalCode",
+    s.latitude,
+    s.longitude,
+    s.list_price AS "listPrice",
+    s.bedrooms_total AS "bedrooms",
+    NULL::int AS "bedroomsPlus",
+    s.bathrooms_total AS "bathroomsFull",
+    NULL::int AS "bathroomsHalf",
+    NULLIF(ROUND(s.living_area), 0)::int AS "squareFootage",
+    s.raw_json->>'publicRemarks' AS "publicRemarks",
+    s.estimated_monthly_rent AS "estimatedMonthlyRent",
+    s.net_yield AS "capRate",
+    s.gross_yield AS "grossYield",
+    NULL::real AS "cashFlowMonthly",
+    s.raw_json->>'photoUrl' AS "photoUrl"
+  FROM ddf_listing_snapshots s
+`;
+
 export async function getListingSeoByMls(mlsNumberRaw: string): Promise<ListingSeoRecord | null> {
   const mlsNumber = sanitizeMlsNumber(mlsNumberRaw);
   if (!mlsNumber) return null;
 
   const result = await pool.query<ListingSeoRecord>(
     `
-      SELECT
-        l.id,
-        l.mls_number AS "mlsNumber",
-        l.status,
-        l.list_date AS "listDate",
-        l.last_updated AS "lastUpdated",
-        l.property_type AS "propertyType",
-        l.structure_type AS "structureType",
-        l.address_street AS "addressStreet",
-        l.address_unit AS "addressUnit",
-        l.address_city AS "addressCity",
-        l.address_province AS "addressProvince",
-        l.address_postal_code AS "addressPostalCode",
-        l.latitude,
-        l.longitude,
-        l.list_price AS "listPrice",
-        l.bedrooms,
-        l.bedrooms_plus AS "bedroomsPlus",
-        l.bathrooms_full AS "bathroomsFull",
-        l.bathrooms_half AS "bathroomsHalf",
-        l.square_footage AS "squareFootage",
-        l.public_remarks AS "publicRemarks",
-        l.estimated_monthly_rent AS "estimatedMonthlyRent",
-        l.cap_rate AS "capRate",
-        l.gross_yield AS "grossYield",
-        l.cash_flow_monthly AS "cashFlowMonthly",
-        (
-          SELECT p.photo_url
-          FROM listing_photos p
-          WHERE p.listing_id = l.id
-          ORDER BY p.is_primary DESC, p.sequence_number ASC, p.id ASC
-          LIMIT 1
-        ) AS "photoUrl"
-      FROM listings l
-      WHERE l.mls_number = $1
+      ${SNAPSHOT_SEO_SELECT}
+      WHERE s.mls_number = $1
+      ORDER BY s.snapshot_month DESC, s.captured_at DESC
       LIMIT 1
     `,
     [mlsNumber],
@@ -216,18 +222,25 @@ export async function getListingSeoByMls(mlsNumberRaw: string): Promise<ListingS
 }
 
 export async function getListingSitemapRecords(limit = 10000): Promise<ListingSitemapRecord[]> {
+  // "Active" = re-seen by the daily crawl within the last week. Listings that
+  // drop out of the DDF feed stop having captured_at refreshed and age out of
+  // the sitemap on their own.
   const result = await pool.query<ListingSitemapRecord>(
     `
-      SELECT
-        mls_number AS "mlsNumber",
-        last_updated AS "lastUpdated",
-        list_date AS "listDate"
-      FROM listings
-      WHERE status = 'Active'
-        AND mls_number IS NOT NULL
-        AND address_street IS NOT NULL
-        AND address_city IS NOT NULL
-      ORDER BY COALESCE(last_updated, synced_at, created_at) DESC
+      SELECT "mlsNumber", "lastUpdated", "listDate" FROM (
+        SELECT DISTINCT ON (s.mls_number)
+          s.mls_number AS "mlsNumber",
+          s.captured_at AS "lastUpdated",
+          NULL::date AS "listDate"
+        FROM ddf_listing_snapshots s
+        WHERE s.mls_number IS NOT NULL
+          AND s.captured_at >= NOW() - INTERVAL '7 days'
+          AND COALESCE(NULLIF(s.raw_json->>'standardStatus', ''), 'Active') ILIKE 'active%'
+          AND NULLIF(TRIM(split_part(s.raw_json->>'streetAddress', ',', 1)), '') IS NOT NULL
+          AND s.city IS NOT NULL
+        ORDER BY s.mls_number, s.snapshot_month DESC, s.captured_at DESC
+      ) latest
+      ORDER BY "lastUpdated" DESC
       LIMIT $1
     `,
     [Math.max(1, Math.min(limit, 50000))],

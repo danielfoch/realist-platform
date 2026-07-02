@@ -1205,7 +1205,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       <main>
         {!isStandaloneTool && <HeroSection onAnalyzeClick={handleAnalyzeClick} />}
 
-        <section 
+        <section
           ref={analyzerRef}
           className={isStandaloneTool ? "py-8 md:py-12" : "py-16 md:py-24 border-t border-border/50"}
           id="analyzer"

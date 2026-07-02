@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "generatedAt": "2026-06-11T16:46:33.553Z",
+=======
+  "generatedAt": "2026-06-11T19:50:44.294Z",
+>>>>>>> a85ee5a06dfc2962d39319f28c1e889dc53f5271
   "title": "The Spread That Ate the Economy",
   "subtitle": "How Canada’s Credit Architecture Redirected Capital from Business Formation to Housing",
   "inputRoot": "data/canada_us_credit_spreads/",

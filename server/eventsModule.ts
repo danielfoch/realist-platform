@@ -11,6 +11,7 @@ import { sendCrmWebhook, buildCrmWebhookPayload } from "./crmWebhook";
 import {
   realistEvents,
   realistEventSpeakers,
+  realistEventSponsors,
   realistEventTicketTypes,
   realistEventOrders,
   realistEventAttendees,
@@ -50,6 +51,15 @@ const speakerSchema = z.object({
   sortOrder: z.coerce.number().int().default(0),
 });
 
+const sponsorSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1),
+  logoUrl: z.string().optional().nullable(),
+  websiteUrl: z.string().optional().nullable(),
+  tier: z.string().default("partner"),
+  sortOrder: z.coerce.number().int().default(0),
+});
+
 const ticketTypeSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1),
@@ -86,6 +96,7 @@ export const eventPayloadSchema = z.object({
   isRecurring: z.boolean().default(false),
   recurrenceNote: z.string().optional().nullable(),
   speakers: z.array(speakerSchema).default([]),
+  sponsors: z.array(sponsorSchema).default([]),
   ticketTypes: z.array(ticketTypeSchema).default([]),
 }).superRefine((data, ctx) => {
   if (data.kind === "flagship" && data.ticketTypes.length === 0) {
@@ -261,6 +272,17 @@ export async function ensureRealistEventTables() {
     )
   `);
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "realist_event_sponsors" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "event_id" varchar NOT NULL REFERENCES "realist_events"("id") ON DELETE CASCADE,
+      "name" text NOT NULL,
+      "logo_url" text,
+      "website_url" text,
+      "tier" text NOT NULL DEFAULT 'partner',
+      "sort_order" integer NOT NULL DEFAULT 0
+    )
+  `);
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "realist_sponsors" (
       "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
       "name" text NOT NULL,
@@ -312,21 +334,23 @@ export async function ensureRealistEventTables() {
 async function getEventBundleById(id: string) {
   const [event] = await db.select().from(realistEvents).where(eq(realistEvents.id, id)).limit(1);
   if (!event) return null;
-  const [speakers, ticketTypes] = await Promise.all([
+  const [speakers, sponsors, ticketTypes] = await Promise.all([
     db.select().from(realistEventSpeakers).where(eq(realistEventSpeakers.eventId, id)).orderBy(asc(realistEventSpeakers.sortOrder)),
+    db.select().from(realistEventSponsors).where(eq(realistEventSponsors.eventId, id)).orderBy(asc(realistEventSponsors.sortOrder)),
     db.select().from(realistEventTicketTypes).where(eq(realistEventTicketTypes.eventId, id)).orderBy(asc(realistEventTicketTypes.priceCents)),
   ]);
-  return { ...event, speakers, ticketTypes };
+  return { ...event, speakers, sponsors, ticketTypes };
 }
 
 async function getPublishedEventBundleBySlug(slug: string, includeOnlineUrl: boolean) {
   const [event] = await db.select().from(realistEvents).where(and(eq(realistEvents.slug, slug), eq(realistEvents.status, "PUBLISHED"))).limit(1);
   if (!event) return null;
-  const [speakers, ticketTypes] = await Promise.all([
+  const [speakers, sponsors, ticketTypes] = await Promise.all([
     db.select().from(realistEventSpeakers).where(eq(realistEventSpeakers.eventId, event.id)).orderBy(asc(realistEventSpeakers.sortOrder)),
+    db.select().from(realistEventSponsors).where(eq(realistEventSponsors.eventId, event.id)).orderBy(asc(realistEventSponsors.sortOrder)),
     db.select().from(realistEventTicketTypes).where(eq(realistEventTicketTypes.eventId, event.id)).orderBy(asc(realistEventTicketTypes.priceCents)),
   ]);
-  return { ...event, onlineUrl: includeOnlineUrl ? event.onlineUrl : null, speakers, ticketTypes };
+  return { ...event, onlineUrl: includeOnlineUrl ? event.onlineUrl : null, speakers, sponsors, ticketTypes };
 }
 
 async function saveEvent(payload: z.infer<typeof eventPayloadSchema>, createdByEmail: string, id?: string) {
@@ -371,6 +395,18 @@ async function saveEvent(payload: z.infer<typeof eventPayloadSchema>, createdByE
       bio: speaker.bio || null,
       imageUrl: speaker.imageUrl || null,
       sortOrder: speaker.sortOrder,
+    })));
+  }
+
+  await db.delete(realistEventSponsors).where(eq(realistEventSponsors.eventId, event.id));
+  if (payload.sponsors?.length) {
+    await db.insert(realistEventSponsors).values(payload.sponsors.map((sponsor) => ({
+      eventId: event.id,
+      name: sponsor.name,
+      logoUrl: sponsor.logoUrl || null,
+      websiteUrl: sponsor.websiteUrl || null,
+      tier: sponsor.tier || "partner",
+      sortOrder: sponsor.sortOrder ?? 0,
     })));
   }
 

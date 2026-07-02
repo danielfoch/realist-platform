@@ -70,6 +70,13 @@ const tools = [
     icon: Scale,
   },
   {
+    href: "/tools/rent-to-own",
+    title: "Buy vs Rent-to-Own",
+    description: "Compare a CMHC-insured purchase against a rent-to-own pathway — upfront cash, monthly cost, equity path, and total 5-year cost, side by side.",
+    icon: Scale,
+    badge: "New",
+  },
+  {
     href: "/tools/buybox",
     title: "BuyBox Builder",
     description: "Define your investment criteria and let realtors find properties that match your specific requirements.",
