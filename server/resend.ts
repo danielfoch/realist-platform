@@ -457,6 +457,71 @@ export async function sendRealtorLeadAlert(params: {
   return data;
 }
 
+export async function sendPartnerNetworkWelcomeEmail(params: {
+  to: string;
+  partnerName: string;
+  partnerLabel: string;
+  marketCity: string;
+  marketRegion: string;
+  feePercent: number;
+  payeeName: string;
+  payeeCompany: string;
+  agreementText: string;
+}) {
+  const { client, fromEmail } = await getResendClient();
+
+  const subject = `Welcome to the Realist Partner Network — ${params.marketCity} is yours`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      ${emailHeader('Welcome to the Realist Partner Network', `You're live in ${params.marketCity}, ${params.marketRegion}`)}
+
+      <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <p style="color: #111827; font-size: 15px; line-height: 1.6;">
+          Hi ${params.partnerName},
+        </p>
+        <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+          You've joined as a <strong>${params.partnerLabel}</strong> for <strong>${params.marketCity}, ${params.marketRegion}</strong>.
+          When investors analyze deals in your market on realist.ca, you'll get an email alert and the lead will appear in your partner portal.
+        </p>
+
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0 0 8px 0; color: #111827; font-size: 14px;"><strong>Your terms:</strong></p>
+          <p style="margin: 0 0 4px 0; color: #374151; font-size: 13px;">• No monthly fees — ever</p>
+          <p style="margin: 0 0 4px 0; color: #374151; font-size: 13px;">• ${params.feePercent}% referral fee on closed referred deals, payable to ${params.payeeName}, ${params.payeeCompany}</p>
+          <p style="margin: 0; color: #374151; font-size: 13px;">• Manage every referred lead in your included Realist CRM</p>
+        </div>
+
+        <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+          <strong>Next steps:</strong> review new leads at <a href="https://realist.ca/partner/network" style="color: #16a34a;">realist.ca/partner/network</a> and work them in your CRM at <a href="https://realist.ca/crm" style="color: #16a34a;">realist.ca/crm</a>. Speed wins — claimed leads get a warm email introduction automatically.
+        </p>
+
+        <p style="color: #6b7280; font-size: 12px; line-height: 1.5; margin-top: 24px;">
+          A copy of your signed referral agreement is included below for your records.
+        </p>
+        <pre style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; color: #374151; font-size: 11px; white-space: pre-wrap; line-height: 1.5;">${params.agreementText}</pre>
+      </div>
+
+      ${emailFooter()}
+    </div>
+  `;
+
+  const { data, error } = await client.emails.send({
+    from: fromEmail,
+    to: params.to,
+    subject,
+    html,
+  });
+
+  if (error) {
+    console.error('Failed to send partner network welcome email:', error);
+    return null;
+  }
+
+  console.log(`Partner network welcome email sent to ${params.to} (${params.marketCity})`);
+  return data;
+}
+
 export async function sendMasterclassWelcomeEmail(params: {
   toEmail: string;
   customerName: string;

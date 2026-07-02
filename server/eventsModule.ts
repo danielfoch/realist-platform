@@ -234,7 +234,26 @@ export async function ensureRealistEventTables() {
       ADD COLUMN IF NOT EXISTS "is_recurring" boolean NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS "recurrence_note" text,
       ADD COLUMN IF NOT EXISTS "host_user_id" varchar,
-      ADD COLUMN IF NOT EXISTS "reminder_sent_at" timestamp
+      ADD COLUMN IF NOT EXISTS "reminder_sent_at" timestamp,
+      ADD COLUMN IF NOT EXISTS "recurrence_rule" text,
+      ADD COLUMN IF NOT EXISTS "recurrence_until" timestamp,
+      ADD COLUMN IF NOT EXISTS "parent_event_id" varchar
+  `);
+  // Community layer: discussion threads on event pages.
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "realist_event_comments" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "event_id" varchar NOT NULL REFERENCES "realist_events"("id") ON DELETE CASCADE,
+      "user_id" varchar NOT NULL REFERENCES "users"("id"),
+      "parent_comment_id" varchar,
+      "body" text NOT NULL,
+      "status" text NOT NULL DEFAULT 'visible',
+      "created_at" timestamp NOT NULL DEFAULT now(),
+      "updated_at" timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "event_comments_event_idx" ON "realist_event_comments" ("event_id", "status")
   `);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "realist_event_rsvps" (

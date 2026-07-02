@@ -24,9 +24,10 @@ import {
   Building2,
   Bed
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { BuyHoldInputs } from "@shared/schema";
 import { CashbackDisplay } from "@/components/CashbackDisplay";
+import { RentEstimateHint } from "@/components/RentEstimateHint";
 import { MortgageConsultationButton } from "@/components/MortgageConsultationButton";
 import { FinancingExpertPanel } from "@/components/FinancingExpertPanel";
 
@@ -306,8 +307,42 @@ interface CashbackProps {
   country: "canada" | "usa";
 }
 
+interface AiMarketDefaults {
+  found: boolean;
+  market?: string;
+  strategy?: string;
+  sampleCount?: number;
+  metrics?: Record<string, { median: number; mean: number | null; p25: number | null; p75: number | null }>;
+}
+
 function BuyHoldInputs({ inputs, onChange, country, region, city, address, defaultLeadInfo }: { inputs: BuyHoldInputs; onChange: (inputs: BuyHoldInputs) => void; country: string } & CashbackProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [aiDefaults, setAiDefaults] = useState<AiMarketDefaults | null>(null);
+  const [aiApplied, setAiApplied] = useState(false);
+
+  useEffect(() => {
+    if (!city) return;
+    setAiDefaults(null);
+    setAiApplied(false);
+    fetch(`/api/ai/defaults?city=${encodeURIComponent(city)}&strategy=rental`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: AiMarketDefaults | null) => { if (data?.found) setAiDefaults(data); })
+      .catch(() => {});
+  }, [city]);
+
+  const applyAiDefaults = () => {
+    if (!aiDefaults?.metrics) return;
+    const m = aiDefaults.metrics;
+    const patch: Partial<BuyHoldInputs> = {};
+    if (m.vacancyPercent?.median) patch.vacancyPercent = Math.round(m.vacancyPercent.median * 10) / 10;
+    else if (m.vacancyRate?.median) patch.vacancyPercent = Math.round(m.vacancyRate.median * 10) / 10;
+    if (m.managementFeePercent?.median) patch.managementPercent = Math.round(m.managementFeePercent.median * 10) / 10;
+    if (m.maintenancePercent?.median) patch.maintenancePercent = Math.round(m.maintenancePercent.median * 10) / 10;
+    if (m.monthlyRent?.median && !inputs.monthlyRent) patch.monthlyRent = Math.round(m.monthlyRent.median);
+    if (m.grossMonthlyRent?.median && !inputs.monthlyRent) patch.monthlyRent = Math.round(m.grossMonthlyRent.median);
+    onChange({ ...inputs, ...patch });
+    setAiApplied(true);
+  };
 
   const updateInput = <K extends keyof BuyHoldInputs>(key: K, value: BuyHoldInputs[K]) => {
     onChange({ ...inputs, [key]: value });
@@ -414,6 +449,22 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
         </CardContent>
       </Card>
 
+      {aiDefaults?.found && !aiApplied && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm">
+          <span className="text-violet-700">
+            AI defaults available — learned from <strong>{aiDefaults.sampleCount?.toLocaleString()}</strong> analyses in {city}
+          </span>
+          <Button size="sm" variant="outline" className="shrink-0 border-violet-300 text-violet-700 hover:bg-violet-100" onClick={applyAiDefaults}>
+            Apply
+          </Button>
+        </div>
+      )}
+      {aiApplied && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
+          AI defaults applied — tweak any field to customize
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="h-fit">
           <CardHeader className="pb-4">
@@ -424,6 +475,7 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
           </CardHeader>
           <CardContent className="space-y-4">
             <CurrencyInput id="monthlyRent" label="Monthly Rent" value={inputs.monthlyRent} onChange={(v) => updateInput("monthlyRent", v)} testId="input-monthly-rent" />
+            <RentEstimateHint city={city} region={region} country={country} currentRent={inputs.monthlyRent} onApply={(v) => updateInput("monthlyRent", v)} />
             <PercentInput id="vacancy" label="Vacancy Rate" value={inputs.vacancyPercent} onChange={(v) => updateInput("vacancyPercent", v)} testId="slider-vacancy" min={0} max={20} step={0.5} />
             <PercentInput id="rentGrowthIncome" label="Annual Rent Growth" value={inputs.rentGrowthPercent} onChange={(v) => updateInput("rentGrowthPercent", v)} testId="slider-rent-growth-income" min={-5} max={10} step={0.5} />
           </CardContent>
@@ -1008,6 +1060,7 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
           </CardHeader>
           <CardContent className="space-y-4">
             <CurrencyInput id="monthlyRent" label={`Total Monthly Rent (${numUnits} units)`} value={inputs.monthlyRent} onChange={(v) => updateInput("monthlyRent", v)} testId="input-monthly-rent" />
+            <RentEstimateHint city={city} region={region} country={country} units={numUnits} currentRent={inputs.monthlyRent} onApply={(v) => updateInput("monthlyRent", v)} />
             <div className="p-3 bg-muted/50 rounded-lg">
               <span className="text-sm text-muted-foreground">Average rent per unit: ${Math.round(inputs.monthlyRent / numUnits).toLocaleString()}/mo</span>
             </div>

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RECURRENCE_RULES, RECURRENCE_RULE_LABELS } from "@shared/eventRecurrence";
 
 export default function MeetupNew() {
   const [, navigate] = useLocation();
@@ -17,6 +19,7 @@ export default function MeetupNew() {
     venueAddress: "",
     shortDescription: "",
     capacity: "",
+    recurrenceRule: "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +40,7 @@ export default function MeetupNew() {
           venueAddress: form.venueAddress.trim() || null,
           shortDescription: form.shortDescription.trim() || null,
           capacity: form.capacity ? Number(form.capacity) : null,
+          recurrenceRule: form.recurrenceRule && form.recurrenceRule !== "once" ? form.recurrenceRule : null,
         }),
       });
       const data = await res.json();
@@ -94,6 +98,23 @@ export default function MeetupNew() {
             <div className="space-y-2">
               <Label htmlFor="m-address">Address</Label>
               <Input id="m-address" value={form.venueAddress} onChange={(e) => setForm({ ...form, venueAddress: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Repeats</Label>
+              <Select value={form.recurrenceRule} onValueChange={(v) => setForm({ ...form, recurrenceRule: v })}>
+                <SelectTrigger data-testid="select-recurrence">
+                  <SelectValue placeholder="One-time meetup" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="once">One-time meetup</SelectItem>
+                  {RECURRENCE_RULES.map((rule) => (
+                    <SelectItem key={rule} value={rule}>{RECURRENCE_RULE_LABELS[rule]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Recurring meetups automatically re-post the next date after each one ends — set it once, never repost.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="m-desc">What should attendees expect?</Label>

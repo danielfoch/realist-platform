@@ -41,6 +41,17 @@ interface WeeklyLeaderboardEntry {
   avgCapRate: number | null;
 }
 
+interface DealOfTheWeek {
+  city: string;
+  province: string | null;
+  strategyType: string;
+  capRate: number;
+  cashOnCash: number;
+  dscr: number;
+  purchasePrice: number | null;
+  analysisId: string;
+}
+
 function getLastWeekBounds(): { weekStart: string; weekEnd: string } {
   const now = new Date();
   const torontoNow = new Date(now.toLocaleString("en-US", { timeZone: "America/Toronto" }));
@@ -199,6 +210,56 @@ async function getWeeklyTopAnalysts(limit = 5): Promise<WeeklyLeaderboardEntry[]
   }));
 }
 
+async function getWeeklyDealOfTheWeek(): Promise<DealOfTheWeek | null> {
+  const { weekStart, weekEnd } = getLastWeekBounds();
+
+  // Composite score: cap rate 40% + cash-on-cash 30% + DSCR (×3 to normalize scale) 30%
+  const rows = await db
+    .select({
+      id: analyses.id,
+      city: analyses.city,
+      province: analyses.province,
+      strategyType: analyses.strategyType,
+      inputsJson: analyses.inputsJson,
+      resultsJson: analyses.resultsJson,
+    })
+    .from(analyses)
+    .where(sql`
+      ${ELIGIBLE_ANALYSIS_PREDICATE_SQL}
+      AND ${analyses.createdAt} >= ${weekStart}
+      AND ${analyses.createdAt} < ${weekEnd}
+      AND ${analyses.city} IS NOT NULL
+      AND (${analyses.resultsJson}->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+      AND (${analyses.resultsJson}->>'cashOnCash') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+      AND (${analyses.resultsJson}->>'dscr') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+    `)
+    .orderBy(sql`
+      ((${analyses.resultsJson}->>'capRate')::numeric * 0.4
+      + (${analyses.resultsJson}->>'cashOnCash')::numeric * 0.3
+      + (${analyses.resultsJson}->>'dscr')::numeric * 3.0) DESC
+    `)
+    .limit(1);
+
+  if (!rows.length) return null;
+
+  const row = rows[0];
+  const results = row.resultsJson as Record<string, unknown>;
+  const inputs = row.inputsJson as Record<string, unknown>;
+
+  const purchasePrice = inputs?.purchasePrice != null ? Number(inputs.purchasePrice) : null;
+
+  return {
+    city: row.city || "Canada",
+    province: row.province,
+    strategyType: row.strategyType,
+    capRate: Math.round(Number(results.capRate) * 10) / 10,
+    cashOnCash: Math.round(Number(results.cashOnCash) * 10) / 10,
+    dscr: Math.round(Number(results.dscr) * 100) / 100,
+    purchasePrice: purchasePrice && purchasePrice > 0 ? purchasePrice : null,
+    analysisId: row.id,
+  };
+}
+
 function getWeekDateRange(): { start: string; end: string } {
   const { weekStart, weekEnd } = getLastWeekBounds();
   const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -231,8 +292,19 @@ function buildDigestText(
   leaderboard: WeeklyLeaderboardEntry[],
   insight: string,
   unsubscribeUrl: string,
+  dealOfWeek: DealOfTheWeek | null,
 ): string {
   const { start, end } = getWeekDateRange();
+  const location = dealOfWeek ? [dealOfWeek.city, dealOfWeek.province].filter(Boolean).join(", ") : null;
+  const dotw = dealOfWeek ? [
+    "--- Deal of the Week ---",
+    `${location} | ${dealOfWeek.strategyType}`,
+    dealOfWeek.purchasePrice ? `Price: $${dealOfWeek.purchasePrice.toLocaleString("en-CA")}` : null,
+    `Cap Rate: ${dealOfWeek.capRate.toFixed(1)}%  |  Cash-on-Cash: ${dealOfWeek.cashOnCash.toFixed(1)}%  |  DSCR: ${dealOfWeek.dscr.toFixed(2)}x`,
+    `Analyze a deal like this: https://realist.ca/tools/cap-rates?source=dotw-email`,
+    "",
+  ] : [];
+
   const lines = [
     `Hey ${firstName || "there"},`,
     "",
@@ -244,6 +316,7 @@ function buildDigestText(
     `Avg DSCR: ${platform.avgDscr != null ? `${platform.avgDscr.toFixed(2)}x` : "n/a"}`,
     platform.mostActiveCity ? `Top market: ${platform.mostActiveCity} (${platform.mostActiveCityDeals} deals)` : null,
     "",
+    ...dotw,
     `Your week: ${user.userDeals} deals analyzed`,
     `Your avg cap rate: ${user.userAvgCapRate != null ? `${user.userAvgCapRate.toFixed(1)}%` : "n/a"}`,
     user.rank ? `Your weekly rank: #${user.rank} of ${user.totalUsers}` : "You were not ranked this week yet.",
@@ -271,7 +344,8 @@ function buildDigestHtml(
   allTime: AllTimeStats,
   leaderboard: WeeklyLeaderboardEntry[],
   insight: string,
-  unsubscribeUrl: string
+  unsubscribeUrl: string,
+  dealOfWeek: DealOfTheWeek | null,
 ): string {
   const { start, end } = getWeekDateRange();
   const isQuietWeek = platform.totalDeals === 0;
@@ -384,6 +458,46 @@ function buildDigestHtml(
     </div>
   `;
 
+  const dealOfWeekLocation = dealOfWeek ? [dealOfWeek.city, dealOfWeek.province].filter(Boolean).join(", ") : null;
+  const dealOfWeekSection = dealOfWeek ? `
+    <div style="background: linear-gradient(135deg, #fff7ed 0%, #fffbf5 100%); border: 2px solid #f97316; border-radius: 10px; padding: 20px; margin: 16px 0;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+        <span style="font-size: 18px;">🔥</span>
+        <p style="margin: 0; font-size: 15px; font-weight: 700; color: #c2410c;">Deal of the Week</p>
+      </div>
+      <p style="margin: 0 0 14px 0; font-size: 13px; color: #78350f;">
+        Top-scoring deal from the Realist platform this week — picked by cap rate, cash-on-cash, and DSCR.
+      </p>
+      <table style="width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 14px;">
+        <tr>
+          <td style="padding: 4px 0; font-size: 13px; color: #374151; font-weight: 600; width: 45%;">Location</td>
+          <td style="padding: 4px 0; font-size: 13px; color: #111827;">${dealOfWeekLocation}</td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; font-size: 13px; color: #374151; font-weight: 600;">Strategy</td>
+          <td style="padding: 4px 0; font-size: 13px; color: #111827;">${dealOfWeek.strategyType}</td>
+        </tr>
+        ${dealOfWeek.purchasePrice ? `
+        <tr>
+          <td style="padding: 4px 0; font-size: 13px; color: #374151; font-weight: 600;">Purchase Price</td>
+          <td style="padding: 4px 0; font-size: 13px; color: #111827;">$${dealOfWeek.purchasePrice.toLocaleString("en-CA")}</td>
+        </tr>` : ''}
+      </table>
+      <table style="width: 100%; border-collapse: separate; border-spacing: 4px;">
+        <tr>
+          ${kpiCard('Cap Rate', dealOfWeek.capRate.toFixed(1) + '%', '#f97316')}
+          ${kpiCard('Cash-on-Cash', dealOfWeek.cashOnCash.toFixed(1) + '%', '#16a34a')}
+          ${kpiCard('DSCR', dealOfWeek.dscr.toFixed(2) + 'x', '#2563eb')}
+        </tr>
+      </table>
+      <div style="text-align: center; margin-top: 16px;">
+        <a href="https://realist.ca/tools/cap-rates?source=dotw-email" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 13px;">
+          Analyze a Deal Like This →
+        </a>
+      </div>
+    </div>
+  ` : '';
+
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
       <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 28px 24px; border-radius: 8px 8px 0 0;">
@@ -401,6 +515,7 @@ function buildDigestHtml(
         </p>
 
         ${weeklySection}
+        ${dealOfWeekSection}
         ${leaderboardSection}
         ${allTimeSection}
         ${userSection}
@@ -441,8 +556,10 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
   const platform = await getPlatformWeeklyStats();
   const allTime = await getAllTimeStats();
   const leaderboard = await getWeeklyTopAnalysts(5);
+  const dealOfWeek = await getWeeklyDealOfTheWeek();
   const insight = buildTacticalInsight(platform, leaderboard);
   console.log(`[weekly-digest] Platform stats: ${platform.totalDeals} weekly deals, ${allTime.totalDeals} all-time deals, cap rate ${platform.avgCapRate}%`);
+  console.log(`[weekly-digest] Deal of the week: ${dealOfWeek ? `${dealOfWeek.city} — ${dealOfWeek.capRate}% cap / ${dealOfWeek.cashOnCash}% CoC / ${dealOfWeek.dscr}x DSCR` : 'none this week'}`);
 
   const recipients = await db
     .select({
@@ -501,7 +618,8 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
         allTime,
         leaderboard,
         insight,
-        unsubscribeUrl
+        unsubscribeUrl,
+        dealOfWeek,
       );
       const text = buildDigestText(
         recipient.firstName || "",
@@ -511,6 +629,7 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
         leaderboard,
         insight,
         unsubscribeUrl,
+        dealOfWeek,
       );
 
       const subject = platform.totalDeals > 0
@@ -556,6 +675,7 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
           platformAvgDscr: platform.avgDscr,
           insight,
           unsubscribeUrl,
+          dealOfWeek: dealOfWeek ?? null,
         },
         scheduledFor: new Date(),
       }).onConflictDoNothing({

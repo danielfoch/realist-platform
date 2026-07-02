@@ -27,7 +27,9 @@ import {
   isEventAdminRequest,
   requireEventAdmin,
 } from "./eventsModule";
+import { RECURRENCE_RULES, RECURRENCE_RULE_LABELS } from "@shared/eventRecurrence";
 import {
+  emailConsent,
   passwordResetTokens,
   realistEventAnnouncements,
   realistEventAttendees,
@@ -73,6 +75,14 @@ async function ensureUserByEmail(email: string, name: string | null, leadSource:
     role: "investor",
     emailVerified: true,
   }).returning();
+
+  // CASL ledger: the RSVP/signup form is the express consent moment.
+  await db.insert(emailConsent).values({
+    userId: user.id,
+    channel: "email",
+    status: "granted",
+    source: leadSource.slice(0, 100),
+  }).catch((error) => console.error("[events-growth] consent ledger write failed:", error.message));
 
   const baseUrl = process.env.PUBLIC_BASE_URL || "https://realist.ca";
   const rawToken = crypto.randomBytes(32).toString("hex");
@@ -130,6 +140,7 @@ const memberMeetupSchema = z.object({
   venueAddress: z.string().max(300).optional().nullable(),
   shortDescription: z.string().max(2000).optional().nullable(),
   capacity: z.coerce.number().int().min(0).optional().nullable(),
+  recurrenceRule: z.enum(RECURRENCE_RULES).optional().nullable(),
 });
 
 const sponsorSchema = z.object({
@@ -261,7 +272,9 @@ export function registerEventsGrowthRoutes(app: Express): void {
         capacity: payload.capacity ?? null,
         kind: "meetup",
         city: payload.city,
-        isRecurring: false,
+        isRecurring: Boolean(payload.recurrenceRule),
+        recurrenceRule: payload.recurrenceRule || null,
+        recurrenceNote: payload.recurrenceRule ? RECURRENCE_RULE_LABELS[payload.recurrenceRule] : null,
         hostUserId: user.id,
         createdByEmail: user.email,
       }).returning();

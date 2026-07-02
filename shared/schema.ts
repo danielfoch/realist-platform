@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, uniqueIndex, index, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, unique, uniqueIndex, index, foreignKey, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -193,6 +193,11 @@ export const realistEvents = pgTable("realist_events", {
   city: text("city"),
   isRecurring: boolean("is_recurring").default(false).notNull(),
   recurrenceNote: text("recurrence_note"),
+  // Mechanical recurrence: when set, a daily job clones the event into the
+  // next occurrence after it ends. parentEventId points at the series root.
+  recurrenceRule: text("recurrence_rule"), // weekly | biweekly | monthly_same_weekday
+  recurrenceUntil: timestamp("recurrence_until"),
+  parentEventId: varchar("parent_event_id"),
   hostUserId: varchar("host_user_id"),
   reminderSentAt: timestamp("reminder_sent_at"),
   createdByEmail: text("created_by_email").notNull(),
@@ -266,6 +271,21 @@ export const realistEventRsvps = pgTable("realist_event_rsvps", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("uq_event_rsvp_email").on(table.eventId, table.email),
+]);
+
+// Discussion threads on event/meetup pages (the meetup.com "threads"
+// replacement). One level of nesting via parentCommentId.
+export const realistEventComments = pgTable("realist_event_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  parentCommentId: varchar("parent_comment_id"),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("visible"), // visible | removed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("event_comments_event_idx").on(table.eventId, table.status),
 ]);
 
 // One row per announcement blast so an event is never double-blasted.
@@ -851,6 +871,7 @@ export type InspectionRequest = typeof inspectionRequests.$inferSelect;
 
 export type InsertRealistEvent = z.infer<typeof insertRealistEventSchema>;
 export type RealistEvent = typeof realistEvents.$inferSelect;
+export type RealistEventComment = typeof realistEventComments.$inferSelect;
 export type InsertRealistEventSpeaker = z.infer<typeof insertRealistEventSpeakerSchema>;
 export type RealistEventSpeaker = typeof realistEventSpeakers.$inferSelect;
 export type InsertRealistEventTicketType = z.infer<typeof insertRealistEventTicketTypeSchema>;
@@ -1202,6 +1223,39 @@ export const insertDealMatchRequestSchema = createInsertSchema(dealMatchRequests
   status: true,
   createdAt: true,
 });
+
+export const offers = pgTable("offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  propertyAddress: text("property_address").notNull(),
+  listingId: text("listing_id"),
+  city: text("city"),
+  province: text("province"),
+  offerPrice: integer("offer_price"),
+  depositAmount: integer("deposit_amount"),
+  closingDate: text("closing_date"),
+  conditions: text("conditions").array(),
+  financingHelpWanted: boolean("financing_help_wanted").default(false),
+  representationHelpWanted: boolean("representation_help_wanted").default(false),
+  notes: text("notes"),
+  dealSummary: jsonb("deal_summary"),
+  consentEmail: boolean("consent_email").default(false),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertOfferSchema = createInsertSchema(offers).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
+export type InsertOffer = z.infer<typeof insertOfferSchema>;
+export type Offer = typeof offers.$inferSelect;
 
 // Types
 export type InsertInvestorProfile = z.infer<typeof insertInvestorProfileSchema>;
@@ -2375,15 +2429,23 @@ export const realtorMarketClaims = pgTable("realtor_market_claims", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
   partnerId: varchar("partner_id").references(() => industryPartners.id),
+  partnerType: text("partner_type").default("realtor").notNull(),
   marketCity: text("market_city").notNull(),
   marketRegion: text("market_region").notNull(),
+  realEstateBoard: text("real_estate_board"),
+  brokerageName: text("brokerage_name"),
+  licenseNumber: text("license_number"),
   status: text("status").default("active").notNull(),
   referralFeePercent: real("referral_fee_percent").default(25).notNull(),
+  referralPayeeName: text("referral_payee_name"),
+  referralPayeeCompany: text("referral_payee_company"),
+  referralAgreementVersion: text("referral_agreement_version"),
+  referralAgreementText: text("referral_agreement_text"),
   referralAgreementSignedAt: timestamp("referral_agreement_signed_at"),
   referralAgreementSignature: text("referral_agreement_signature"),
   referralAgreementSignedName: text("referral_agreement_signed_name"),
   stripeSubscriptionId: text("stripe_subscription_id"),
-  monthlyFee: real("monthly_fee").default(49.99),
+  monthlyFee: real("monthly_fee").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -3876,6 +3938,29 @@ export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
 
 // ============================================================================
+// API USAGE EVENTS — one row per bearer-authenticated agent/API call.
+// Powers per-key rate limiting audits, the account usage dashboard, and
+// (later) Stripe metered billing. Inputs are never stored — only a hash.
+// ============================================================================
+export const apiUsageEvents = pgTable("api_usage_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiKeyId: varchar("api_key_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  method: varchar("method", { length: 8 }).notNull(),
+  endpoint: text("endpoint").notNull(),
+  status: integer("status").notNull(),
+  latencyMs: integer("latency_ms").notNull(),
+  inputHash: varchar("input_hash", { length: 16 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("api_usage_events_key_created_idx").on(table.apiKeyId, table.createdAt),
+  index("api_usage_events_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export type ApiUsageEvent = typeof apiUsageEvents.$inferSelect;
+export type InsertApiUsageEvent = typeof apiUsageEvents.$inferInsert;
+
+// ============================================================================
 // DEAL DESK LOOP — deals, opportunities, email triggers
 // ============================================================================
 
@@ -3978,7 +4063,17 @@ export const emailTriggers = pgTable("email_triggers", {
   sentAt: timestamp("sent_at"),
   failureReason: text("failure_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  // The Deal Desk sweep's queueEmailTrigger relies on onConflictDoNothing
+  // against this partial unique index: at most one PENDING trigger per
+  // (user, type). Sent/failed/cancelled history rows are unaffected.
+  // NOTE: if prod already holds duplicate pending rows, creating this index
+  // fails — server/emailQueue.ts ensureEmailTriggerDedupe() pre-deletes older
+  // duplicates (keeping the newest) at boot before creating it idempotently.
+  uniqueIndex("uq_email_triggers_pending_user_type")
+    .on(table.userId, table.triggerType)
+    .where(sql`${table.status} = 'pending'`),
+]);
 
 export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
   id: true,
@@ -4087,6 +4182,66 @@ export const insertUnderwritingAssumptionSchema = createInsertSchema(underwritin
 export type InsertUnderwritingAssumption = z.infer<typeof insertUnderwritingAssumptionSchema>;
 export type UnderwritingAssumption = typeof underwritingAssumptions.$inferSelect;
 
+// ── Retention flywheel + AI defaults (PR #27) ───────────────────────────────
+// These three tables are ensured at boot via raw CREATE TABLE IF NOT EXISTS
+// (server/aiDefaults.ts ensureAiDefaultTables, server/retentionEmails.ts
+// ensureRetentionTables) — kept as belt-and-suspenders. The definitions below
+// mirror that raw SQL EXACTLY (columns, types, nullability, defaults, and the
+// Postgres auto-generated constraint names) so `npm run db:push` sees the live
+// tables as already in sync instead of proposing ALTERs.
+
+// Learned underwriting priors per (market, strategy, metric).
+export const aiMarketDefaults = pgTable("ai_market_defaults", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  market: text("market").notNull(),
+  strategy: text("strategy").default("all").notNull(),
+  metric: text("metric").notNull(),
+  value: real("value").notNull(),
+  p25: real("p25"),
+  p75: real("p75"),
+  sampleSize: integer("sample_size").notNull(),
+  trainedAt: timestamp("trained_at").defaultNow().notNull(),
+  // Added by ALTER TABLE ... ADD COLUMN IF NOT EXISTS in ensureAiDefaultTables.
+  outliersExcluded: integer("outliers_excluded").default(0).notNull(),
+}, (table) => [
+  // The raw SQL declares an inline UNIQUE ("market","strategy","metric"), so
+  // the live constraint carries Postgres's auto name (…_key) — not Drizzle's
+  // default (…_unique). Name it explicitly to match.
+  unique("ai_market_defaults_market_strategy_metric_key").on(table.market, table.strategy, table.metric),
+]);
+
+export type AiMarketDefault = typeof aiMarketDefaults.$inferSelect;
+
+// One row per training run — snapshots model coverage over time.
+export const aiTrainingRuns = pgTable("ai_training_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysesTotal: integer("analyses_total").notNull(),
+  marketsTrained: integer("markets_trained").notNull(),
+  metricsWritten: integer("metrics_written").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type AiTrainingRun = typeof aiTrainingRuns.$inferSelect;
+
+// Send/claim log for behavioural retention emails: the (user_id, dedupe_key)
+// unique index is the atomic claim that collapses concurrent sweeps.
+export const retentionEmailLog = pgTable("retention_email_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  dedupeKey: text("dedupe_key").notNull(),
+  emailType: text("email_type").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+}, (table) => [
+  // Inline REFERENCES in the raw SQL ⇒ live FK is named …_user_id_fkey; use a
+  // table-level foreignKey() so the name matches (vs Drizzle's …_users_id_fk).
+  foreignKey({ name: "retention_email_log_user_id_fkey", columns: [table.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+  uniqueIndex("uq_retention_dedupe").on(table.userId, table.dedupeKey),
+  index("idx_retention_user_sent").on(table.userId, table.sentAt),
+]);
+
+export type RetentionEmailLogEntry = typeof retentionEmailLog.$inferSelect;
+
 // ============================================================================
 // USER INTEGRATIONS — per-user OAuth connections to external providers.
 // Replaces the owner-account Replit connector for USER-facing exports: each
@@ -4164,3 +4319,76 @@ export const appSettings = pgTable("app_settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 export type AppSetting = typeof appSettings.$inferSelect;
+
+// ============================================================================
+// REALIST INTELLIGENCE — model registry + prediction ledger
+//
+// The learning loop's bookkeeping: every estimate any Realist model produces
+// is written to model_predictions with its inputs; when reality arrives (a
+// scraped rent observation near the subject, a closed deal), the resolution
+// sweep fills in actual_value/error and the row becomes labelled training +
+// eval data. model_versions records which code produced which predictions so
+// accuracy is always attributable to a specific version.
+// ============================================================================
+
+export const modelVersions = pgTable("model_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelKey: text("model_key").notNull(), // e.g. "rent_estimator"
+  version: text("version").notNull(), // e.g. "v0.1.0"
+  description: text("description"),
+  params: jsonb("params"), // config/hyperparameters for this version
+  metrics: jsonb("metrics"), // backtest/eval metrics recorded at promotion
+  status: text("status").default("active").notNull(), // active | candidate | retired
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE UNIQUE INDEX IF NOT EXISTS model_versions_key_version_idx ON model_versions(model_key, version)`,
+]);
+
+export const modelPredictions = pgTable("model_predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelKey: text("model_key").notNull(),
+  modelVersion: text("model_version").notNull(),
+  // What the prediction is about. subjectType: listing | analysis | adhoc
+  subjectType: text("subject_type").notNull(),
+  subjectId: text("subject_id"), // DDF listingKey, property_analyses.id, ...
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  // Full input snapshot (point-in-time correctness: what the model saw)
+  inputs: jsonb("inputs").notNull(),
+  // Denormalized prediction fields for SQL aggregation
+  predictedValue: real("predicted_value").notNull(),
+  intervalLow: real("interval_low"),
+  intervalHigh: real("interval_high"),
+  confidence: text("confidence"), // high | medium | low
+  method: text("method"), // comps_radius | city_aggregate | cmhc_baseline
+  compCount: integer("comp_count"),
+  // Denormalized matching keys so the resolution sweep can find ground truth
+  city: text("city"),
+  province: text("province"),
+  bedrooms: text("bedrooms"),
+  lat: real("lat"),
+  lng: real("lng"),
+  // Resolution: filled when a real-world observation matches this subject
+  resolvedAt: timestamp("resolved_at"),
+  actualValue: real("actual_value"),
+  actualSource: text("actual_source"),
+  absError: real("abs_error"),
+  pctError: real("pct_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, () => [
+  sql`CREATE INDEX IF NOT EXISTS model_predictions_key_created_idx ON model_predictions(model_key, created_at)`,
+  sql`CREATE INDEX IF NOT EXISTS model_predictions_unresolved_idx ON model_predictions(model_key, created_at) WHERE resolved_at IS NULL`,
+  sql`CREATE INDEX IF NOT EXISTS model_predictions_subject_idx ON model_predictions(subject_type, subject_id)`,
+]);
+
+export const insertModelVersionSchema = createInsertSchema(modelVersions).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertModelPredictionSchema = createInsertSchema(modelPredictions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertModelVersion = z.infer<typeof insertModelVersionSchema>;
+export type ModelVersion = typeof modelVersions.$inferSelect;
+export type InsertModelPrediction = z.infer<typeof insertModelPredictionSchema>;
+export type ModelPrediction = typeof modelPredictions.$inferSelect;

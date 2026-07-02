@@ -47,7 +47,7 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
 import { detectPossiblePlex } from "@shared/plexDetection";
-import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, Users, Landmark, ArrowRight, Sparkles, MapPinned, Target, Wand2, ClipboardCheck, Building2 } from "lucide-react";
+import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, FileSignature, ArrowRight, Sparkles, MapPinned, Target, Wand2, ClipboardCheck, Building2 } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
 
 function getSessionId(): string {
@@ -572,6 +572,19 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
     if (formattedAddress) params.set("address", formattedAddress);
     if (autoSavedAnalysisId) params.set("dealId", autoSavedAnalysisId);
     window.location.href = `/deal-desk${params.toString() ? `?${params.toString()}` : ""}`;
+  };
+
+  const handleMakeOffer = () => {
+    const formattedAddress = [address, city, region].filter(Boolean).join(", ");
+    track({ event: "cta_clicked", cta: "make_offer", location: "analysis_results", destination: "/offer" });
+    const params = new URLSearchParams();
+    if (formattedAddress) params.set("address", formattedAddress);
+    if (city) params.set("city", city);
+    if (region) params.set("province", region);
+    if (mlsNumber) params.set("listingId", mlsNumber);
+    if (inputs.purchasePrice) params.set("price", String(inputs.purchasePrice));
+    if (autoSavedAnalysisId) params.set("dealId", autoSavedAnalysisId);
+    window.location.href = `/offer${params.toString() ? `?${params.toString()}` : ""}`;
   };
 
   const handleAnalyzeClick = () => {
@@ -1205,7 +1218,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       <main>
         {!isStandaloneTool && <HeroSection onAnalyzeClick={handleAnalyzeClick} />}
 
-        <section 
+        <section
           ref={analyzerRef}
           className={isStandaloneTool ? "py-8 md:py-12" : "py-16 md:py-24 border-t border-border/50"}
           id="analyzer"
@@ -1805,34 +1818,19 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                       Ready to move on this deal?
                     </h3>
                     <p className="text-muted-foreground max-w-lg mx-auto">
-                      Get matched with realtors who have similar deals and lenders who will finance this type of property.
+                      Start your offer and a Realist advisor will connect you with a realtor to draft and submit it on this property.
                     </p>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                      <Link href="/join/realtors">
-                        <Button
-                          size="lg"
-                          className="gap-2 w-full sm:w-auto"
-                          data-testid="button-match-realtor"
-                          onClick={() => track({ event: "consultation_requested", type: "realtor", context: "analysis_results", city: city || undefined, strategy })}
-                        >
-                          <Users className="h-4 w-4" />
-                          Find a Realtor
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Link href="/join/lenders">
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          className="gap-2 w-full sm:w-auto"
-                          data-testid="button-match-lender"
-                          onClick={() => track({ event: "consultation_requested", type: "mortgage", context: "analysis_results", city: city || undefined, strategy })}
-                        >
-                          <Landmark className="h-4 w-4" />
-                          Find a Lender
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
+                    <div className="flex items-center justify-center">
+                      <Button
+                        size="lg"
+                        className="gap-2 w-full sm:w-auto"
+                        data-testid="button-make-offer"
+                        onClick={handleMakeOffer}
+                      >
+                        <FileSignature className="h-4 w-4" />
+                        Make an Offer
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>

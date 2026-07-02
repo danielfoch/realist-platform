@@ -16,6 +16,7 @@ import { storage } from "./storage";
 import { apiKeys, analyses, propertyAnalyses, users } from "@shared/schema";
 import { calculateInvestmentMetrics } from "@shared/investmentMetrics";
 import { isAuthenticated } from "./auth";
+import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
 
 // ---------- key helpers ----------
 const KEY_PREFIX = "realist_live_";
@@ -242,6 +243,17 @@ export function registerApiKeyManagementRoutes(app: Express) {
     }
   });
 
+  app.get("/api/api-keys/usage", isAuthenticated, async (req: any, res) => {
+    try {
+      const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 90);
+      const summary = await getUsageSummaryForUser(req.session.userId, days);
+      res.json(summary);
+    } catch (err) {
+      console.error("[api-keys] usage summary error:", err);
+      res.status(500).json({ error: "Failed to load usage summary" });
+    }
+  });
+
   app.delete("/api/api-keys/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.userId;
@@ -260,8 +272,12 @@ export function registerApiKeyManagementRoutes(app: Express) {
 
 // ---------- agent endpoints (bearer-authenticated) ----------
 export function registerAgentRoutes(app: Express) {
+  // Every /api/agent/* request: authenticate the key, enforce per-key rate
+  // limits, and record a usage event (including 429s and errors).
+  app.use("/api/agent", bearerAuth, agentRateLimit, usageMeter);
+
   /** Verify the key works and return the owning user. */
-  app.get("/api/agent/me", bearerAuth, async (req, res) => {
+  app.get("/api/agent/me", async (req, res) => {
     try {
       const [user] = await db.select({
         id: users.id,
@@ -281,7 +297,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Underwrite a CREA-listed property by MLS number. */
-  app.post("/api/agent/underwrite/listing", bearerAuth, async (req, res) => {
+  app.post("/api/agent/underwrite/listing", async (req, res) => {
     try {
       const parsed = underwriteListingSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
@@ -364,7 +380,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Underwrite a custom address with caller-provided price + assumptions. */
-  app.post("/api/agent/underwrite/custom", bearerAuth, async (req, res) => {
+  app.post("/api/agent/underwrite/custom", async (req, res) => {
     try {
       const parsed = underwriteCustomSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
@@ -401,7 +417,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Natural-language deal search over CREA DDF. Internally proxies /api/find-deals logic. */
-  app.post("/api/agent/find-deals", bearerAuth, async (req, res) => {
+  app.post("/api/agent/find-deals", async (req, res) => {
     try {
       const query = (req.body?.query || "").toString().trim();
       if (!query) return res.status(400).json({ error: "query_required" });
@@ -444,7 +460,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** List the calling user's saved underwritings. */
-  app.get("/api/agent/analyses", bearerAuth, async (req, res) => {
+  app.get("/api/agent/analyses", async (req, res) => {
     try {
       const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 25, 1), 100);
       const rows = await storage.getAnalysesByUser(req.agentUserId!);
@@ -471,7 +487,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Fetch a single analysis the caller owns. */
-  app.get("/api/agent/analyses/:id", bearerAuth, async (req, res) => {
+  app.get("/api/agent/analyses/:id", async (req, res) => {
     try {
       const analysis = await storage.getAnalysis(req.params.id);
       if (!analysis) return res.status(404).json({ error: "not_found" });
@@ -495,7 +511,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Submit an underwriting to the community feed for upvotes / comments. */
-  app.post("/api/agent/community/submit", bearerAuth, async (req, res) => {
+  app.post("/api/agent/community/submit", async (req, res) => {
     try {
       const parsed = submitForReviewSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
@@ -546,7 +562,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Mortgage rates (no auth required at the source, but we keep it under the bearer for usage tracking). */
-  app.get("/api/agent/mortgage-rates", bearerAuth, async (_req, res) => {
+  app.get("/api/agent/mortgage-rates", async (_req, res) => {
     try {
       const baseUrl = process.env.AGENT_INTERNAL_BASE_URL
         || `http://127.0.0.1:${process.env.PORT || 5000}`;
@@ -561,7 +577,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** City-level market report. */
-  app.get("/api/agent/market-report", bearerAuth, async (req, res) => {
+  app.get("/api/agent/market-report", async (req, res) => {
     try {
       const city = (req.query.city as string || "").trim();
       const baseUrl = process.env.AGENT_INTERNAL_BASE_URL

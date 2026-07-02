@@ -405,10 +405,29 @@ ${inputReadme.trim()}
 `;
 
   await Promise.all([
-    writeFile(path.join(OUTPUT_ROOT, "report-data.json"), JSON.stringify(reportData, null, 2)),
-    writeFile(path.join(OUTPUT_ROOT, "source-registry.json"), JSON.stringify(sourceRegistry, null, 2)),
-    writeFile(path.join(OUTPUT_ROOT, "README.md"), outputReadme),
+    writeIfChanged(path.join(OUTPUT_ROOT, "report-data.json"), JSON.stringify(reportData, null, 2)),
+    writeIfChanged(path.join(OUTPUT_ROOT, "source-registry.json"), JSON.stringify(sourceRegistry, null, 2)),
+    writeIfChanged(path.join(OUTPUT_ROOT, "README.md"), outputReadme),
   ]);
+}
+/**
+ * Write only when the meaningful content changed. The generatedAt timestamp
+ * is excluded from the comparison — otherwise every build dirties the
+ * tracked output files, and Replit's publish flow auto-commits the noise
+ * (the source of recurring workspace/main divergence).
+ */
+async function writeIfChanged(filePath: string, content: string): Promise<void> {
+  const normalize = (text: string) =>
+    text
+      .replace(/"generatedAt":\s*"[^"]*"/, '"generatedAt": "<normalized>"')
+      .replace(/Generated at: .*/g, "Generated at: <normalized>");
+  try {
+    const existing = await readFile(filePath, "utf8");
+    if (normalize(existing) === normalize(content)) return;
+  } catch {
+    // missing file — write it
+  }
+  await writeFile(filePath, content);
 }
 
 const executedDirectly =
