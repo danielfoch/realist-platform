@@ -427,33 +427,30 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
         sessionId: getSessionId(),
       });
       
-      // Auto-enroll user account from lead data
+      // Auto-enroll happens server-side inside POST /api/leads (one welcome
+      // email, one 14-day setup link). A second client-side call to
+      // /api/auth/lead-enroll used to fire here too, sending the same person
+      // TWO welcome emails with different expiries — removed.
       try {
-        const enrollResponse = await apiRequest("POST", "/api/auth/lead-enroll", {
-          email: data.email,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          sessionId: getSessionId(),
-        });
-        const enrollData = await enrollResponse.json();
-        
-        // Store enrollment status (setup token is sent via email for security)
+        const leadResult = await response.clone().json();
+        const isNewUser = Boolean(leadResult?.data?.isNewUser);
         localStorage.setItem("realist_lead_info", JSON.stringify({
           name: fullName,
           email: data.email,
           phone: data.phone,
-          isNewUser: enrollData.isNewUser,
-          needsPassword: enrollData.needsPassword,
+          isNewUser,
+          // New auto-enrolled accounts are passwordless until the user opts in.
+          needsPassword: isNewUser,
         }));
       } catch {
-        // Enrollment failed, still save lead info
+        // Couldn't parse enrollment status, still save lead info
         localStorage.setItem("realist_lead_info", JSON.stringify({
           name: fullName,
           email: data.email,
           phone: data.phone,
         }));
       }
-      
+
       return response;
     },
     onSuccess: () => {

@@ -41,6 +41,7 @@ import {
   realistSponsorshipPackages,
   users,
 } from "@shared/schema";
+import { normalizeEmail, SETUP_LINK_TTL_MS } from "@shared/authTokens";
 
 const ANNOUNCE_BATCH_CAP = 5000;
 const SPONSOR_ADMIN_NOTIFY = () =>
@@ -63,7 +64,8 @@ function slugify(value: string): string {
  * the RSVP IS the signup.
  */
 async function ensureUserByEmail(email: string, name: string | null, leadSource: string) {
-  const normalized = email.toLowerCase();
+  // Lowercase + trim so RSVP-form emails can't fork identities.
+  const normalized = normalizeEmail(email);
   const [existing] = await db.select().from(users).where(eq(users.email, normalized)).limit(1);
   if (existing) return existing;
 
@@ -92,7 +94,7 @@ async function ensureUserByEmail(email: string, name: string | null, leadSource:
   await db.insert(passwordResetTokens).values({
     userId: user.id,
     token: tokenHash,
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    expiresAt: new Date(Date.now() + SETUP_LINK_TTL_MS),
   });
   await sendWelcomeAccountEmail({
     toEmail: normalized,
