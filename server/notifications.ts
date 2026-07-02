@@ -14,7 +14,6 @@ import {
   type ListingAnalysisAggregate,
   type ListingComment,
   type PropertyAnalysis,
-  type SavedDeal,
   type UsListing,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
@@ -25,12 +24,6 @@ import {
   type NoteVoteMilestone,
 } from "@shared/fieldNotes";
 import type { ExpertFieldNote } from "@shared/schema";
-
-type WatchedListingSignal = {
-  listingId?: string;
-  address?: string;
-  city?: string;
-};
 
 type NotificationKind =
   | "saved_search_match"
@@ -338,43 +331,12 @@ function buildPayload(input: {
   };
 }
 
-export async function upsertWatcherFromSavedDeal(userId: string, deal: SavedDeal): Promise<void> {
-  if (!deal.mlsNumber) return;
-  await storage.upsertListingWatcher({
-    userId,
-    listingMlsNumber: deal.mlsNumber,
-    sourceType: "saved_deal",
-    sourceId: deal.id,
-    lastSeenAt: new Date(),
-  });
-}
-
-export async function syncWatchersFromDiscoverySignals(params: {
-  userId: string;
-  savedListings: WatchedListingSignal[];
-  recentViewedListings: WatchedListingSignal[];
-}): Promise<void> {
-  const tasks = [...params.savedListings.map((signal) => ({
-    signal,
-    sourceType: "saved_listing",
-    sourceId: signal.listingId || signal.address || null,
-  })), ...params.recentViewedListings.map((signal) => ({
-    signal,
-    sourceType: "view",
-    sourceId: signal.listingId || signal.address || null,
-  }))];
-
-  await Promise.all(tasks.map(async ({ signal, sourceType, sourceId }) => {
-    if (!signal.listingId) return;
-    await storage.upsertListingWatcher({
-      userId: params.userId,
-      listingMlsNumber: signal.listingId,
-      sourceType,
-      sourceId,
-      lastSeenAt: new Date(),
-    });
-  }));
-}
+// upsertWatcherFromSavedDeal / syncWatchersFromDiscoverySignals used to live
+// here, auto-creating listing_watchers rows (with all five alert flags on)
+// from passive signals — saving a deal, shortlisting, or merely VIEWING a
+// listing. Retired as consent-hostile: watches are now created only by the
+// explicit Watch action (server/watchlists.ts), and legacy auto-created rows
+// remain visible/deletable via GET /api/watchlists.
 
 /**
  * Central unsubscribe gate. Every recipient must (a) not have turned off the

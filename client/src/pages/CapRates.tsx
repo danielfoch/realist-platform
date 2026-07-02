@@ -41,6 +41,7 @@ import {
 } from "@/lib/analytics";
 import { getCmhcRent } from "@shared/cmhcRents";
 import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
+import { WatchListingButton } from "@/components/WatchListingButton";
 import type { ListingAnalysisAggregate } from "@shared/schema";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
@@ -2346,6 +2347,30 @@ export default function CapRates() {
     setSavedSearches(getSavedSearchSignals().slice(0, 4));
     if (isAuthenticated) {
       void syncDiscoverySignalsWithAccount();
+      // Also create the first-class saved search that powers email alerts
+      // (server/watchlists.ts). Daily digest-style by default — one email per
+      // window with every new match, never one email per listing.
+      const toNumber = (value: string) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+      };
+      apiRequest("POST", "/api/watchlists/searches", {
+        name: savedSearch.label.slice(0, 120),
+        criteria: {
+          query: savedSearch.query,
+          city: inferredGeography,
+          propertyType: savedSearch.propertyType,
+          minCap: minCapRate ? toNumber(minCapRate) : undefined,
+          minPrice: minPrice ? toNumber(minPrice) : undefined,
+          maxPrice: maxPrice ? toNumber(maxPrice) : undefined,
+          country: "CA",
+        },
+        frequency: "daily",
+      }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/watchlists"] });
+      }).catch((error) => {
+        console.error("Failed to save search for alerts:", error);
+      });
     }
     track({
       event: "saved_search",
@@ -2366,7 +2391,9 @@ export default function CapRates() {
     });
     toast({
       title: "Search saved",
-      description: "This search now appears in your investor workspace.",
+      description: isAuthenticated
+        ? "You'll get an email when new listings match this search. Manage it on your watchlist."
+        : "This search now appears in your investor workspace. Create an account to get new-match email alerts.",
     });
   };
 
@@ -2996,6 +3023,21 @@ export default function CapRates() {
                   <Star className="h-4 w-4 mr-2" />
                   Save to shortlist
                 </Button>
+                {selectedListing.mlsNumber && (
+                  <WatchListingButton
+                    className="w-full"
+                    listingKey={selectedListing.mlsNumber}
+                    source="ddf"
+                    address={formatAddress(selectedListing.address)}
+                    city={selectedListing.address?.city || undefined}
+                    price={(() => {
+                      const parsed = typeof selectedListing.listPrice === "string"
+                        ? parseFloat(selectedListing.listPrice)
+                        : selectedListing.listPrice;
+                      return typeof parsed === "number" && Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+                    })()}
+                  />
+                )}
                 <CommunityMetricsSummary aggregate={agg} />
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
                   <div className="flex items-center justify-between gap-2">

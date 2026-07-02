@@ -480,6 +480,96 @@ export function buildLostReasonNurture(payload: Record<string, any>, leadInfo?: 
   };
 }
 
+// ── Watchlist + saved-search alerts (server/watchlists.ts sweep) ────────────
+//
+// Both types are user-REQUESTED alerts (an explicit Watch click / saved
+// search), consent-gated like the behavioural nudges and batched: the sweep
+// enqueues at most ONE pending trigger per (user, type) — enforced by the
+// uq_email_triggers_pending_user_type partial index — with every change /
+// matching search folded into a single payload. Never one email per match.
+
+function formatDollars(value: number | null | undefined): string {
+  return value == null || !Number.isFinite(value) ? "—" : `$${Math.round(value).toLocaleString("en-CA")}`;
+}
+
+export interface WatchlistPriceChangeItem {
+  listingKey: string;
+  address?: string | null;
+  city?: string | null;
+  previousPrice: number;
+  currentPrice: number;
+  direction: "drop" | "increase";
+}
+
+export function buildWatchlistPriceChangeEmail(payload: Record<string, any>): { subject: string; html: string; to: string } {
+  const firstName = nudgeFirstName(payload);
+  const items = (payload.items || []) as WatchlistPriceChangeItem[];
+  const first = items[0];
+  const label = first?.address || first?.listingKey || "A listing you watch";
+  const verb = first?.direction === "increase" ? "went up" : "dropped";
+  const subject = items.length > 1
+    ? `${label} ${verb} — and ${items.length - 1} more on your watchlist moved`
+    : `${label} ${verb} from ${formatDollars(first?.previousPrice)} to ${formatDollars(first?.currentPrice)}`;
+
+  const analyzerParams = new URLSearchParams();
+  if (first?.listingKey) analyzerParams.set("mls", first.listingKey);
+  if (first?.address) analyzerParams.set("address", first.address);
+  if (first?.city) analyzerParams.set("city", first.city);
+  if (first?.currentPrice) analyzerParams.set("price", String(first.currentPrice));
+  analyzerParams.set("utm_source", "email");
+  analyzerParams.set("utm_campaign", "watchlist_price_change");
+  const ctaUrl = `https://realist.ca/tools/analyzer?${analyzerParams.toString()}`;
+
+  const rows = items.slice(0, 3).map((item) => `
+    <li style="margin:0 0 8px;">
+      <strong>${item.address || item.listingKey}</strong>${item.city ? `, ${item.city}` : ""} —
+      ${item.direction === "increase" ? "up" : "down"} from ${formatDollars(item.previousPrice)} to <strong>${formatDollars(item.currentPrice)}</strong>
+    </li>`).join("");
+
+  const html = wrapNudge(payload.userId || "", `
+    <h2 style="font-size:20px;">Price ${first?.direction === "increase" ? "increase" : "drop"} on your watchlist</h2>
+    <p>Hi ${firstName},</p>
+    <p>${items.length > 1 ? `${items.length} listings you watch just changed price:` : "A listing you watch just changed price:"}</p>
+    <ul style="padding-left:18px;">${rows}</ul>
+    ${items.length > 3 ? `<p>…and ${items.length - 3} more.</p>` : ""}
+    <p>The old numbers are stale — re-run your underwriting at the new price.</p>
+    ${nudgeCta(ctaUrl, "Re-run your numbers")}`);
+  return { subject, html, to: payload.email };
+}
+
+export interface SavedSearchMatchesItem {
+  name: string;
+  matchCount: number;
+  city?: string | null;
+  url: string; // relative /tools/cap-rates?... deep link
+  sampleAddresses?: string[];
+}
+
+export function buildSavedSearchMatchesEmail(payload: Record<string, any>): { subject: string; html: string; to: string } {
+  const firstName = nudgeFirstName(payload);
+  const searches = (payload.searches || []) as SavedSearchMatchesItem[];
+  const first = searches[0];
+  const totalMatches = searches.reduce((sum, search) => sum + (search.matchCount || 0), 0);
+  const subject = first
+    ? `${first.matchCount} new ${first.city ? `${first.city} ` : ""}listing${first.matchCount === 1 ? "" : "s"} match "${first.name}"`
+    : "New listings match your saved search";
+  const ctaUrl = `https://realist.ca${first?.url || "/tools/cap-rates"}${(first?.url || "").includes("?") ? "&" : "?"}utm_source=email&utm_campaign=saved_search_matches`;
+
+  const rows = searches.slice(0, 3).map((search) => `
+    <li style="margin:0 0 8px;">
+      <strong>${search.matchCount}</strong> new match${search.matchCount === 1 ? "" : "es"} for “${search.name}”
+      ${search.sampleAddresses?.length ? `<br/><span style="color:#6b7280;font-size:13px;">${search.sampleAddresses.slice(0, 2).join(" · ")}</span>` : ""}
+    </li>`).join("");
+
+  const html = wrapNudge(payload.userId || "", `
+    <h2 style="font-size:20px;">${totalMatches} new listing${totalMatches === 1 ? "" : "s"} match your saved search${searches.length > 1 ? "es" : ""}</h2>
+    <p>Hi ${firstName},</p>
+    <ul style="padding-left:18px;">${rows}</ul>
+    <p>Fresh inventory moves fast — see the matches on the map and run the numbers before someone else does.</p>
+    ${nudgeCta(ctaUrl, "See the matches")}`);
+  return { subject, html, to: payload.email };
+}
+
 const NUDGE_SUPPRESS_STATUSES = new Set([
   "contacted",
   "qualified",
@@ -506,6 +596,9 @@ export const EMAIL_TRIGGER_TYPES = [
   "saved_deal_no_submit",
   "abandoned_underwriting",
   "financing_interest",
+  // Watchlist alerts (server/watchlists.ts sweep) — user-requested, batched
+  "watchlist_price_change",
+  "saved_search_matches",
 ] as const;
 
 export type EmailTriggerType = (typeof EMAIL_TRIGGER_TYPES)[number];
@@ -530,6 +623,23 @@ export function getSampleTriggerPayload(triggerType: string): Record<string, any
     analysisId: "sample-analysis-id",
     lostReason: "Went with another lender",
     opportunityId: "sample-opportunity-id",
+    // watchlist_price_change sample
+    items: [{
+      listingKey: "X9912345",
+      address: "123 Maple Avenue",
+      city: "Toronto",
+      previousPrice: 869000,
+      currentPrice: 849000,
+      direction: "drop",
+    }],
+    // saved_search_matches sample
+    searches: [{
+      name: "Edmonton multiplexes under $900k",
+      matchCount: 3,
+      city: "Edmonton",
+      url: "/tools/cap-rates?q=multiplex+edmonton",
+      sampleAddresses: ["10715 82 Ave NW", "9203 111 St NW"],
+    }],
   };
 }
 
@@ -586,6 +696,14 @@ export function buildEmailForTrigger(
     }
     case "financing_interest": {
       const { subject, html, to } = buildFinancingInterestNudge(payload);
+      return { subject, html, defaultTo: to ? [to] : [], audience: "lead" };
+    }
+    case "watchlist_price_change": {
+      const { subject, html, to } = buildWatchlistPriceChangeEmail(payload);
+      return { subject, html, defaultTo: to ? [to] : [], audience: "lead" };
+    }
+    case "saved_search_matches": {
+      const { subject, html, to } = buildSavedSearchMatchesEmail(payload);
       return { subject, html, defaultTo: to ? [to] : [], audience: "lead" };
     }
     default:
@@ -756,6 +874,29 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
         }
         const { subject, html } = buildSlaBreachNag(enriched);
         result = await client.emails.send({ from: fromEmail, to: recipients, subject, html });
+        break;
+      }
+
+      case "watchlist_price_change":
+      case "saved_search_matches": {
+        // User-requested watchlist alerts. Same CASL consent gate as the
+        // behavioural nudges (digest opt-in AND consent ledger not revoked),
+        // plus the notification_preferences check the sweep already applied
+        // at enqueue time. Unsubscribe link included via wrapNudge.
+        if (!trigger.userId) {
+          await storage.updateEmailTriggerStatus(trigger.id, "failed", undefined, "No userId on trigger");
+          return;
+        }
+        const user = await getConsentedUser(trigger.userId);
+        if (!user) {
+          await storage.updateEmailTriggerStatus(trigger.id, "cancelled", undefined, "User not opted in or email consent revoked");
+          return;
+        }
+        const enriched = { ...payload, userId: user.id, email: user.email, firstName: user.firstName };
+        const { subject, html, to } = trigger.triggerType === "watchlist_price_change"
+          ? buildWatchlistPriceChangeEmail(enriched)
+          : buildSavedSearchMatchesEmail(enriched);
+        result = await client.emails.send({ from: fromEmail, to, subject, html });
         break;
       }
 

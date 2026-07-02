@@ -150,6 +150,7 @@ import ProgrammaticStrategyPage from "@/pages/ProgrammaticStrategyPage";
 import NetworkHub from "@/pages/NetworkHub";
 import ContactPage from "@/pages/ContactPage";
 import InvestorOperatingSystem from "@/pages/InvestorOperatingSystem";
+import Watchlist from "@/pages/Watchlist";
 
 function Router() {
   return (
@@ -192,8 +193,8 @@ function Router() {
       <Route path="/experts" component={Experts} />
       <Route path="/experts/:userId" component={ExpertProfile} />
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
-      <Route path="/deals" component={InvestorOperatingSystem} />
-      <Route path="/watchlist" component={InvestorOperatingSystem} />
+      <Route path="/deals" component={Watchlist} />
+      <Route path="/watchlist" component={Watchlist} />
       <Route path="/deal-challenge" component={InvestorOperatingSystem} />
       <Route path="/professionals" component={InvestorOperatingSystem} />
       <Route path="/tools/will-it-plex" component={WillItPlex} />

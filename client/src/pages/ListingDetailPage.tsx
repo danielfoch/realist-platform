@@ -17,6 +17,7 @@ import {
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { FieldNotes } from "@/components/experts/FieldNotes";
+import { WatchListingButton } from "@/components/WatchListingButton";
 import { ListingEngagementStrip } from "@/components/ListingEngagementStats";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -239,6 +240,14 @@ export default function ListingDetailPage() {
                     Analyze this deal <TrendingUp className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
+                <WatchListingButton
+                  className="w-full"
+                  listingKey={listing.mlsNumber}
+                  source="ddf"
+                  address={fullAddress}
+                  city={listing.addressCity || undefined}
+                  price={toNumber(listing.listPrice) ?? undefined}
+                />
               </CardContent>
             </Card>
 

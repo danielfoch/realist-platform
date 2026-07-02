@@ -444,6 +444,11 @@ export const discoverySignals = pgTable(
   }),
 );
 
+// Explicit listing watches. Rows are created ONLY by a deliberate user action
+// (the Watch button, source_type 'watch_ddf' / 'watch_us'). Legacy rows from
+// the retired passive auto-watch paths (source_type 'view' / 'saved_listing' /
+// 'saved_deal') may still exist in prod; they are surfaced and deletable in
+// the watchlist UI (server/watchlists.ts). Deploy schema changes via db:push.
 export const listingWatchers = pgTable(
   "listing_watchers",
   {
@@ -452,6 +457,13 @@ export const listingWatchers = pgTable(
     listingMlsNumber: text("listing_mls_number").notNull(),
     sourceType: text("source_type").notNull(),
     sourceId: varchar("source_id"),
+    // Display snapshot captured when the watch was created, so the watchlist
+    // stays meaningful after a CA listing leaves the live DDF feed.
+    addressSnapshot: text("address_snapshot"),
+    citySnapshot: text("city_snapshot"),
+    // Baseline for price-change detection (see server/watchlists.ts sweep).
+    lastKnownPrice: real("last_known_price"),
+    lastAlertAt: timestamp("last_alert_at"),
     watchAnalysisUpdates: boolean("watch_analysis_updates").default(true).notNull(),
     watchCommentUpdates: boolean("watch_comment_updates").default(true).notNull(),
     watchPriceUpdates: boolean("watch_price_updates").default(true).notNull(),
@@ -468,6 +480,29 @@ export const listingWatchers = pgTable(
       table.sourceType,
       table.sourceId,
     ),
+  }),
+);
+
+// Saved searches with alert delivery. Unlike the discovery_signals
+// 'saved_search' rows (an analytics mirror of localStorage), these are the
+// first-class, user-managed records the alert sweep runs against.
+// criteriaJson shape: shared/watchlistAlerts.ts SavedSearchCriteria.
+export const savedSearches = pgTable(
+  "saved_searches",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id).notNull(),
+    name: text("name").notNull(),
+    criteriaJson: jsonb("criteria_json").notNull(),
+    frequency: text("frequency").default("daily").notNull(), // 'daily' | 'weekly'
+    lastRunAt: timestamp("last_run_at"),
+    lastMatchCount: integer("last_match_count").default(0).notNull(),
+    lastAlertAt: timestamp("last_alert_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdx: index("saved_searches_user_idx").on(table.userId),
   }),
 );
 
@@ -537,6 +572,13 @@ export const discoverySignalsRelations = relations(discoverySignals, ({ one }) =
 export const listingWatchersRelations = relations(listingWatchers, ({ one }) => ({
   user: one(users, {
     fields: [listingWatchers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const savedSearchesRelations = relations(savedSearches, ({ one }) => ({
+  user: one(users, {
+    fields: [savedSearches.userId],
     references: [users.id],
   }),
 }));
@@ -823,6 +865,15 @@ export const insertListingWatcherSchema = createInsertSchema(listingWatchers).om
   updatedAt: true,
 });
 
+export const insertSavedSearchSchema = createInsertSchema(savedSearches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastRunAt: true,
+  lastMatchCount: true,
+  lastAlertAt: true,
+});
+
 export const insertNotificationEventSchema = createInsertSchema(notificationEvents).omit({
   id: true,
   createdAt: true,
@@ -894,6 +945,9 @@ export type DiscoverySignal = typeof discoverySignals.$inferSelect;
 
 export type InsertListingWatcher = z.infer<typeof insertListingWatcherSchema>;
 export type ListingWatcher = typeof listingWatchers.$inferSelect;
+
+export type InsertSavedSearch = z.infer<typeof insertSavedSearchSchema>;
+export type SavedSearch = typeof savedSearches.$inferSelect;
 
 export type InsertNotificationEvent = z.infer<typeof insertNotificationEventSchema>;
 export type NotificationEvent = typeof notificationEvents.$inferSelect;
