@@ -22,6 +22,8 @@ export const EXPERT_CATEGORIES = [
   "appraisal",
   "inspection",
   "realtor",
+  // Regular signed-in members (non-partner investors) writing field notes.
+  "investor",
   "other",
 ] as const;
 export type ExpertCategory = (typeof EXPERT_CATEGORIES)[number];
@@ -37,6 +39,7 @@ export const EXPERT_CATEGORY_LABELS: Record<ExpertCategory, string> = {
   appraisal: "Appraiser",
   inspection: "Home Inspector",
   realtor: "Realtor",
+  investor: "Investor",
   other: "Industry Expert",
 };
 

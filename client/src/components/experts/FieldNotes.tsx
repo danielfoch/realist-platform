@@ -8,9 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { authPath } from "@/lib/authReturn";
 import { apiRequest } from "@/lib/queryClient";
-import { ChevronUp, ChevronDown, HardHat, Loader2, Trash2 } from "lucide-react";
+import { ChevronUp, ChevronDown, EyeOff, HardHat, Loader2, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { EXPERT_CATEGORY_LABELS, isExpertCategory } from "@shared/contributorReputation";
+import { FIELD_NOTE_LIMITS } from "@shared/fieldNotes";
 
 interface FieldNote {
   id: string;
@@ -19,10 +20,12 @@ interface FieldNote {
   authorCompany: string | null;
   authorHeadshot: string | null;
   category: string;
+  isExpert?: boolean;
   body: string;
   score: number;
   myVote: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 function categoryLabel(category: string): string {
@@ -35,18 +38,26 @@ export function FieldNotes({ mlsNumber }: { mlsNumber: string }) {
   const key = [`/api/listings/${mlsNumber}/field-notes`];
   const [body, setBody] = useState("");
   const [composing, setComposing] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data: notes = [], isLoading } = useQuery<FieldNote[]>({ queryKey: key });
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: key });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: key });
+    queryClient.invalidateQueries({ queryKey: [`/api/listings/${encodeURIComponent(mlsNumber)}/engagement`] });
+  };
 
-  // Any approved industry partner can post; we check the user's own partner
-  // profile lazily only when they try to compose.
+  // Approved industry partners get the long-form expert allowance; any other
+  // signed-in member can leave ONE short note per listing (editable).
   const { data: myPartner } = useQuery<{ isApproved: boolean } | null>({
     queryKey: ["/api/partner/profile"],
     enabled: isAuthenticated,
     retry: false,
   });
-  const canWrite = Boolean(myPartner?.isApproved);
+  const isExpertWriter = Boolean(myPartner?.isApproved);
+  const maxLength = isExpertWriter ? FIELD_NOTE_LIMITS.EXPERT_MAX_LENGTH : FIELD_NOTE_LIMITS.MEMBER_MAX_LENGTH;
+  const isAdmin = user?.role === "admin";
+  const myNote = user ? notes.find((note) => note.userId === user.id) : undefined;
+  const canAddNew = isAuthenticated && (isExpertWriter || !myNote);
 
   const postMutation = useMutation({
     mutationFn: async () => {
@@ -56,6 +67,18 @@ export function FieldNotes({ mlsNumber }: { mlsNumber: string }) {
     onSuccess: () => {
       setBody("");
       setComposing(false);
+      invalidate();
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const res = await apiRequest("PATCH", `/api/field-notes/${id}`, { body: body.trim() });
+      return res.json();
+    },
+    onSuccess: () => {
+      setBody("");
+      setEditingId(null);
       invalidate();
     },
   });
@@ -73,56 +96,87 @@ export function FieldNotes({ mlsNumber }: { mlsNumber: string }) {
     onSuccess: invalidate,
   });
 
+  const hideMutation = useMutation({
+    mutationFn: async (id: string) => apiRequest("POST", `/api/field-notes/${id}/hide`, { hidden: true }),
+    onSuccess: invalidate,
+  });
+
+  const startEditing = (note: FieldNote) => {
+    setComposing(false);
+    setEditingId(note.id);
+    setBody(note.body);
+  };
+
+  const composerOpen = composing || editingId !== null;
+  const activeMutation = editingId ? editMutation : postMutation;
+  const submitLabel = editingId ? "Save changes" : "Post note";
+
   return (
-    <section className="mt-10 max-w-4xl" data-testid="section-field-notes">
+    <section id="field-notes" className="mt-10 max-w-4xl" data-testid="section-field-notes">
       <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
         <h2 className="flex items-center gap-2 text-2xl font-bold">
           <HardHat className="h-5 w-5 text-primary" />
-          Expert field notes {notes.length > 0 && <span className="text-base font-normal text-muted-foreground">({notes.length})</span>}
+          Field notes {notes.length > 0 && <span className="text-base font-normal text-muted-foreground">({notes.length})</span>}
         </h2>
-        {canWrite && !composing && (
-          <Button size="sm" variant="outline" onClick={() => setComposing(true)} data-testid="button-add-field-note">
+        {canAddNew && !composerOpen && (
+          <Button size="sm" variant="outline" onClick={() => { setBody(""); setComposing(true); }} data-testid="button-add-field-note">
             Add your field note
+          </Button>
+        )}
+        {isAuthenticated && myNote && !isExpertWriter && !composerOpen && (
+          <Button size="sm" variant="outline" onClick={() => startEditing(myNote)} data-testid="button-edit-field-note">
+            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+            Edit your note
           </Button>
         )}
       </div>
 
       <p className="mb-4 text-sm text-muted-foreground">
-        Notes from vetted architects, planners, mortgage, legal and inspection pros on this property. Upvote what's useful.
+        On-the-ground notes from vetted industry experts and investors who have dug into this property. Upvote what's useful.
       </p>
 
-      {composing && (
+      {composerOpen && (
         <div className="mb-5 space-y-2 rounded-lg border p-4">
           <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={4}
-            maxLength={4000}
-            placeholder="Share a professional insight — zoning, conversion feasibility, financing angle, inspection red flag…"
+            maxLength={maxLength}
+            placeholder={
+              isExpertWriter
+                ? "Share a professional insight — zoning, conversion feasibility, financing angle, inspection red flag…"
+                : "Share what you learned about this property — rent reality, repair scope, neighbourhood context…"
+            }
             data-testid="input-field-note"
           />
-          {postMutation.isError && <p className="text-xs text-destructive">{(postMutation.error as Error).message}</p>}
+          <p className="text-right text-xs text-muted-foreground">{body.trim().length}/{maxLength}</p>
+          {activeMutation.isError && <p className="text-xs text-destructive">{(activeMutation.error as Error).message}</p>}
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => postMutation.mutate()} disabled={postMutation.isPending || body.trim().length < 10} data-testid="button-submit-field-note">
-              {postMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-              Post note
+            <Button
+              size="sm"
+              onClick={() => (editingId ? editMutation.mutate({ id: editingId }) : postMutation.mutate())}
+              disabled={activeMutation.isPending || body.trim().length < FIELD_NOTE_LIMITS.MIN_LENGTH}
+              data-testid="button-submit-field-note"
+            >
+              {activeMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+              {submitLabel}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setComposing(false)}>Cancel</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setComposing(false); setEditingId(null); setBody(""); }}>Cancel</Button>
           </div>
         </div>
       )}
 
       {!isAuthenticated && (
         <div className="mb-5 rounded-lg border bg-muted/30 p-4 text-sm">
-          Are you an architect, planner, or mortgage/legal/inspection pro?{" "}
-          <a className="text-primary underline" href="/join/experts">Join the expert network</a> to add field notes and build your reputation.
+          <a className="text-primary underline" href={authPath("/login")}>Sign in</a> to add your own field note and vote on what's useful.
+          Industry pro? <a className="text-primary underline" href="/join/experts">Join the expert network</a> to build your reputation.
         </div>
       )}
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading field notes…</p>
       ) : notes.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No expert field notes on this property yet.</p>
+        <p className="text-sm text-muted-foreground">No field notes on this property yet. Be the first to share what you know.</p>
       ) : (
         <div className="space-y-4">
           {notes.map((note) => (
@@ -147,21 +201,54 @@ export function FieldNotes({ mlsNumber }: { mlsNumber: string }) {
                 </button>
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Avatar className="h-6 w-6">
                     {note.authorHeadshot && <AvatarImage src={note.authorHeadshot} alt={note.authorName} />}
                     <AvatarFallback className="text-[10px]">{note.authorName.slice(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  <Link href={`/experts/${note.userId}`} className="text-sm font-semibold hover:underline">
-                    {note.authorName}
-                  </Link>
-                  <Badge variant="secondary" className="text-[10px]">{categoryLabel(note.category)}</Badge>
-                  <span className="text-xs text-muted-foreground">{format(new Date(note.createdAt), "MMM d, yyyy")}</span>
-                  {(user?.id === note.userId || user?.role === "admin") && (
-                    <button className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(note.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                  {note.isExpert !== false ? (
+                    <Link href={`/experts/${note.userId}`} className="text-sm font-semibold hover:underline">
+                      {note.authorName}
+                    </Link>
+                  ) : (
+                    <span className="text-sm font-semibold">{note.authorName}</span>
                   )}
+                  <Badge variant="secondary" className="text-[10px]">
+                    {note.category === "investor" ? "Investor" : categoryLabel(note.category)}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{format(new Date(note.createdAt), "MMM d, yyyy")}</span>
+                  <span className="ml-auto flex items-center gap-1.5">
+                    {user?.id === note.userId && (
+                      <button
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => startEditing(note)}
+                        title="Edit your note"
+                        data-testid={`button-edit-${note.id}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {isAdmin && user?.id !== note.userId && (
+                      <button
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => hideMutation.mutate(note.id)}
+                        title="Hide note (admin)"
+                        data-testid={`button-hide-${note.id}`}
+                      >
+                        <EyeOff className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {(user?.id === note.userId || isAdmin) && (
+                      <button
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteMutation.mutate(note.id)}
+                        title="Delete note"
+                        data-testid={`button-delete-${note.id}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </span>
                 </div>
                 <p className="mt-1.5 whitespace-pre-wrap text-sm">{note.body}</p>
               </div>

@@ -17,6 +17,7 @@ import {
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { FieldNotes } from "@/components/experts/FieldNotes";
+import { ListingEngagementStrip } from "@/components/ListingEngagementStats";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -192,10 +193,11 @@ export default function ListingDetailPage() {
             </div>
 
             <h1 className="mb-3 text-3xl font-bold tracking-normal md:text-5xl">{fullAddress}</h1>
-            <p className="mb-6 flex items-center gap-2 text-muted-foreground">
+            <p className="mb-3 flex items-center gap-2 text-muted-foreground">
               <MapPin className="h-4 w-4" />
               {[listing.addressCity, listing.addressProvince, listing.addressPostalCode].filter(Boolean).join(", ")}
             </p>
+            <ListingEngagementStrip mlsNumber={listing.mlsNumber} className="mb-6" />
 
             {listing.photoUrl ? (
               <img
