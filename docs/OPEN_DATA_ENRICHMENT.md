@@ -76,11 +76,23 @@ display surface (the API returns the attribution string; the card shows it).
   listed-at-×-assessed, lot/floor area, frontage, storeys, dwelling units) with
   CC-BY Québec attribution.
 
+## Building permits (Vancouver, Calgary, Montréal)
+
+- Adapters in `shared/buildingPermits.ts` (endpoints + columns verified live);
+  importer streams the CSV exports (50-500MB, embedded newlines handled by
+  `shared/streamingCsv.ts`): `npx tsx scripts/import-building-permits.ts all`
+  (or a comma list; re-runnable, upserts by permit number — schedule monthly).
+- Listing pages: "Building permits" card — permit history at the address +
+  "N permits issued within 1 km in the last 24 months" (project value where the
+  city publishes it: Vancouver yes; Calgary/Montréal publish no cost column).
+- Adding a city = one adapter object (key, downloadUrl, licence, mapRow).
+
 ## Follow-ups (workplan §3)
 
 - Render neighbourhood facts into the listing SEO bot fallback + JSON-LD
   (`listingSeo.ts`) so the unique content is crawlable.
 - Analyzer prefill from `GET /api/enrichment`.
 - Next layers on the same spine: NS/Winnipeg/Calgary/Edmonton assessment
-  rolls (same assessment_units table, new source value), city permits, climate
-  screeners, Montréal parcel geometry (joins the roll by matricule).
+  rolls (same assessment_units table, new source value), more permit cities
+  (Toronto/Ottawa/Edmonton/Winnipeg adapters), climate screeners, Montréal
+  parcel geometry (joins the roll by matricule).
