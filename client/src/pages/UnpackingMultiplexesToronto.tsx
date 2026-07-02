@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
@@ -36,6 +37,8 @@ import noamHeadshot from "@assets/image_1781720616832.png";
 import ryanHeadshot from "@assets/image_1781720634648.png";
 
 const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
+// Meta Pixel scoped to this event page only (loaded in a useEffect below).
+const FB_PIXEL_ID = "1661103374140663";
 const EVENT_TITLE = "Unpacking Multiplexes Toronto";
 const EVENT_TAGLINE = "Toronto's Premier Multiplex Development Conference";
 const EVENT_HERO_IMAGE = "/events/unpacking-multiplexes-toronto-ai-hero.png";
@@ -153,6 +156,49 @@ export default function UnpackingMultiplexesToronto() {
   const { toast } = useToast();
   const eventDate = new Date("2026-09-15T17:00:00-04:00");
 
+  // Load the Meta (Facebook) Pixel on this page only. The base snippet is
+  // idempotent (bails if window.fbq already exists), so it's safe across SPA
+  // re-mounts; we still (re-)init and fire PageView each time the page mounts.
+  useEffect(() => {
+    const w = window as any;
+    if (!w.fbq) {
+      /* eslint-disable */
+      (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = !0;
+        n.version = "2.0";
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = !0;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(w, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+      /* eslint-enable */
+    }
+    w.fbq("init", FB_PIXEL_ID);
+    w.fbq("track", "PageView");
+  }, []);
+
+  // Fire on every "Buy Tickets" click. InitiateCheckout is Meta's standard
+  // event for starting a purchase, so it can be optimized/reported in Ads
+  // Manager. `location` distinguishes the hero / sidebar / footer buttons.
+  const trackBuyTickets = (location: string) => {
+    const fbq = (window as any).fbq;
+    if (typeof fbq === "function") {
+      fbq("track", "InitiateCheckout", {
+        content_name: EVENT_TITLE,
+        content_category: "Event Tickets",
+        source_button: location,
+      });
+    }
+  };
+
   const handleShare = async () => {
     const url = window.location.href;
     const shareData = {
@@ -179,6 +225,16 @@ export default function UnpackingMultiplexesToronto() {
         description="Toronto's premier multiplex development conference. Join developers, architects, planners and investors at The Terminal Theatre, Queens Quay Terminal on Tuesday, September 15, 2026."
         ogImage={EVENT_HERO_IMAGE}
       />
+      {/* Meta Pixel noscript fallback (JS-disabled visitors still register a view) */}
+      <noscript>
+        <img
+          height="1"
+          width="1"
+          style={{ display: "none" }}
+          alt=""
+          src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`}
+        />
+      </noscript>
       <Navigation />
 
       {/* Hero */}
@@ -251,6 +307,7 @@ export default function UnpackingMultiplexesToronto() {
               href={TICKET_URL}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => trackBuyTickets("hero")}
               data-testid="link-buy-tickets-hero"
             >
               <Button size="lg" className="gap-2" data-testid="button-buy-tickets-hero">
@@ -454,6 +511,7 @@ export default function UnpackingMultiplexesToronto() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block"
+                    onClick={() => trackBuyTickets("sidebar")}
                     data-testid="link-buy-tickets-sidebar"
                   >
                     <Button
@@ -574,6 +632,7 @@ export default function UnpackingMultiplexesToronto() {
             href={TICKET_URL}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackBuyTickets("footer")}
             data-testid="link-buy-tickets-footer"
           >
             <Button size="lg" className="gap-2" data-testid="button-buy-tickets-footer">
