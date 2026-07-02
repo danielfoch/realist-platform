@@ -17,6 +17,7 @@
     "db:push": "drizzle-kit push",
     "import:us": "tsx server/importUsListings.ts",
     "market-intel:rebuild": "tsx scripts/rebuild-market-intelligence.ts rebuild",
+    "platform-learning:weekly": "tsx scripts/weekly-platform-learning-loop.ts",
     "leaderboard:finalize-month": "tsx scripts/rebuild-market-intelligence.ts finalize-month",
     "idx:build": "tsc -p tsconfig.idx.json",
     "idx:dev": "tsx watch src/server.ts",
@@ -36,6 +37,7 @@
     "idx:check": "npm run idx:type-check && npm run idx:lint && npm run idx:test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.109.1",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@octokit/rest": "^21.1.1",

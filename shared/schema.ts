@@ -193,6 +193,11 @@ export const realistEvents = pgTable("realist_events", {
   city: text("city"),
   isRecurring: boolean("is_recurring").default(false).notNull(),
   recurrenceNote: text("recurrence_note"),
+  // Mechanical recurrence: when set, a daily job clones the event into the
+  // next occurrence after it ends. parentEventId points at the series root.
+  recurrenceRule: text("recurrence_rule"), // weekly | biweekly | monthly_same_weekday
+  recurrenceUntil: timestamp("recurrence_until"),
+  parentEventId: varchar("parent_event_id"),
   hostUserId: varchar("host_user_id"),
   reminderSentAt: timestamp("reminder_sent_at"),
   createdByEmail: text("created_by_email").notNull(),
@@ -276,6 +281,21 @@ export const realistEventRsvps = pgTable("realist_event_rsvps", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("uq_event_rsvp_email").on(table.eventId, table.email),
+]);
+
+// Discussion threads on event/meetup pages (the meetup.com "threads"
+// replacement). One level of nesting via parentCommentId.
+export const realistEventComments = pgTable("realist_event_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  parentCommentId: varchar("parent_comment_id"),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("visible"), // visible | removed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("event_comments_event_idx").on(table.eventId, table.status),
 ]);
 
 // One row per announcement blast so an event is never double-blasted.
@@ -861,6 +881,7 @@ export type InspectionRequest = typeof inspectionRequests.$inferSelect;
 
 export type InsertRealistEvent = z.infer<typeof insertRealistEventSchema>;
 export type RealistEvent = typeof realistEvents.$inferSelect;
+export type RealistEventComment = typeof realistEventComments.$inferSelect;
 export type InsertRealistEventSpeaker = z.infer<typeof insertRealistEventSpeakerSchema>;
 export type RealistEventSpeaker = typeof realistEventSpeakers.$inferSelect;
 export type InsertRealistEventTicketType = z.infer<typeof insertRealistEventTicketTypeSchema>;
@@ -1212,6 +1233,39 @@ export const insertDealMatchRequestSchema = createInsertSchema(dealMatchRequests
   status: true,
   createdAt: true,
 });
+
+export const offers = pgTable("offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  propertyAddress: text("property_address").notNull(),
+  listingId: text("listing_id"),
+  city: text("city"),
+  province: text("province"),
+  offerPrice: integer("offer_price"),
+  depositAmount: integer("deposit_amount"),
+  closingDate: text("closing_date"),
+  conditions: text("conditions").array(),
+  financingHelpWanted: boolean("financing_help_wanted").default(false),
+  representationHelpWanted: boolean("representation_help_wanted").default(false),
+  notes: text("notes"),
+  dealSummary: jsonb("deal_summary"),
+  consentEmail: boolean("consent_email").default(false),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertOfferSchema = createInsertSchema(offers).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
+export type InsertOffer = z.infer<typeof insertOfferSchema>;
+export type Offer = typeof offers.$inferSelect;
 
 // Types
 export type InsertInvestorProfile = z.infer<typeof insertInvestorProfileSchema>;
@@ -3892,6 +3946,29 @@ export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
 });
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
+
+// ============================================================================
+// API USAGE EVENTS — one row per bearer-authenticated agent/API call.
+// Powers per-key rate limiting audits, the account usage dashboard, and
+// (later) Stripe metered billing. Inputs are never stored — only a hash.
+// ============================================================================
+export const apiUsageEvents = pgTable("api_usage_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiKeyId: varchar("api_key_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  method: varchar("method", { length: 8 }).notNull(),
+  endpoint: text("endpoint").notNull(),
+  status: integer("status").notNull(),
+  latencyMs: integer("latency_ms").notNull(),
+  inputHash: varchar("input_hash", { length: 16 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("api_usage_events_key_created_idx").on(table.apiKeyId, table.createdAt),
+  index("api_usage_events_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export type ApiUsageEvent = typeof apiUsageEvents.$inferSelect;
+export type InsertApiUsageEvent = typeof apiUsageEvents.$inferInsert;
 
 // ============================================================================
 // DEAL DESK LOOP — deals, opportunities, email triggers

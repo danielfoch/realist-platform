@@ -20,6 +20,7 @@ const LEAD_TAB_BY_FORMTAG: Record<string, string> = {
   realtor_application: "RealtorApplications",
   lender_application: "LenderApplications",
   deal_match_request: "DealMatch",
+  offer_request: "Offers",
   multiplex_masterclass: "MasterclassLeads",
   multiplexmasterclass: "MultiplexFitAssessment",
   land_claim_screener: "LandClaimLeads",
@@ -131,6 +132,7 @@ import { registerAiDefaultsRoutes } from "./aiDefaults";
 import { registerCrmRoutes } from "./crm";
 import { registerPartnerNetworkRoutes, handoffClaimedLeadToCrm } from "./partnerNetwork";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
+import { registerEventsCommunityRoutes } from "./eventsCommunity";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
 import { registerMobilePushRoutes } from "./mobilePush";
@@ -161,7 +163,9 @@ import {
   buildAnalysisCompletedPayload,
   buildSavedSearchMatchPayload,
   queueAnalysisNotification,
+  queueCoAnalysisNotifications,
   queueCommentNotification,
+  queueMilestoneNotification,
   queueSavedSearchMatchNotifications,
   queueUsListingChangeNotifications,
   syncWatchersFromDiscoverySignals,
@@ -796,6 +800,7 @@ export async function registerRoutes(
   registerCrmRoutes(app);
   registerPartnerNetworkRoutes(app);
   registerEventsGrowthRoutes(app);
+  registerEventsCommunityRoutes(app);
   registerRentIntelligenceRoutes(app);
   registerRentIngestionRoutes(app);
   registerMobilePushRoutes(app);
@@ -10104,6 +10109,39 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/offers", async (req, res) => {
+    try {
+      const { offers, insertOfferSchema } = await import("@shared/schema");
+      const parsed = insertOfferSchema.parse({
+        ...req.body,
+        userId: req.session?.userId || null,
+      });
+      const [offer] = await db.insert(offers).values(parsed).returning();
+
+      appendLead("Offers", { ...parsed, offerId: offer.id, source: "realist.ca" });
+
+      try {
+        const webhookUrl = process.env.GHL_WEBHOOK_URL;
+        if (webhookUrl) {
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...parsed,
+              formTag: "offer_request",
+              source: "realist.ca",
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
+      res.json({ success: true, id: offer.id });
+    } catch (error: any) {
+      console.error("Error creating offer:", error);
+      res.status(400).json({ error: error.message || "Failed to submit offer" });
+    }
+  });
+
   // ============================================
   // MARKET REPORT ROUTES
   // ============================================
@@ -10824,6 +10862,12 @@ export async function registerRoutes(
         afterAggregate,
       }).catch((error) => {
         console.error("Error queueing analysis-created notification:", error);
+      });
+      queueCoAnalysisNotifications({ newAnalysis: analysis, actorUserId: userId }).catch((err) => {
+        console.error("Error queueing co-analysis notifications:", err);
+      });
+      queueMilestoneNotification(userId).catch((err) => {
+        console.error("Error queueing milestone notification:", err);
       });
       res.json(analysis);
     } catch (error) {

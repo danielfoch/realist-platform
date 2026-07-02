@@ -32,6 +32,7 @@ import AdminEvents from "@/pages/AdminEvents";
 import AdminEventNew from "@/pages/AdminEventNew";
 import AdminEventEdit from "@/pages/AdminEventEdit";
 import EventDetail from "@/pages/EventDetail";
+import Meetups from "@/pages/Meetups";
 import EventSuccess from "@/pages/EventSuccess";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
@@ -56,6 +57,7 @@ import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
 import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
 import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
 import DealDesk from "@/pages/DealDesk";
+import Offer from "@/pages/Offer";
 import CrmHome from "@/pages/CrmHome";
 import MeetupNew from "@/pages/MeetupNew";
 import SponsorPackagePage from "@/pages/SponsorPackagePage";
@@ -82,6 +84,8 @@ import DistressReport from "@/pages/DistressReport";
 import MultiplexFit from "@/pages/MultiplexFit";
 import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
 import MultiplexFeasibilityPage from "@/pages/MultiplexFeasibilityPage";
+import MultiplexUnderwriterPage from "@/pages/MultiplexUnderwriterPage";
+import PowerTeam from "@/pages/PowerTeam";
 import OntarioHstRebateCalculator from "@/pages/OntarioHstRebateCalculator";
 import Course from "@/pages/Course";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
@@ -114,6 +118,7 @@ import JoinMortgageBrokers from "@/pages/JoinMortgageBrokers";
 import PartnerOnboarding from "@/pages/PartnerOnboarding";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
+import Stats from "@/pages/Stats";
 import PitchDeck from "@/pages/PitchDeck";
 import UnderwritingShare from "@/pages/UnderwritingShare";
 import AccountApiKeys from "@/pages/AccountApiKeys";
@@ -166,6 +171,7 @@ function Router() {
       <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
       <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
       <Route path="/deal-desk" component={DealDesk} />
+      <Route path="/offer" component={Offer} />
       <Route path="/crm" component={CrmHome} />
       <Route path="/community/meetups/new" component={MeetupNew} />
       <Route path="/sponsor/:slug" component={SponsorPackagePage} />
@@ -191,6 +197,8 @@ function Router() {
       <Route path="/tools/distress-deals" component={DistressDeals} />
       <Route path="/tools/motivated-deals" component={DistressDeals} />
       <Route path="/tools/multiplex-feasibility" component={MultiplexFeasibilityPage} />
+      <Route path="/tools/multiplex-underwriter" component={MultiplexUnderwriterPage} />
+      <Route path="/power-team" component={PowerTeam} />
       <Route path="/multiplex-investor-fit" component={MultiplexFit} />
       <Route path="/masterclass" component={MultiplexMasterclass} />
       <Route path="/course" component={Course} />
@@ -199,6 +207,8 @@ function Router() {
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/community/leaderboard/full" component={FullLeaderboard} />
       <Route path="/my-performance" component={MyPerformance} />
+      <Route path="/stats" component={Stats} />
+      <Route path="/tools/stats" component={Stats} />
       <Route path="/analyses/:id/deck" component={PitchDeck} />
       <Route path="/underwriting/:token" component={UnderwritingShare} />
       <Route path="/account/api-keys" component={AccountApiKeys} />
@@ -235,6 +245,8 @@ function Router() {
       {/* New Community routes */}
       <Route path="/community" component={CommunityHub} />
       <Route path="/community/events" component={Events} />
+      <Route path="/meetups" component={Meetups} />
+      <Route path="/community/meetups">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/community/events/unpacking-multiplexes-toronto" component={UnpackingMultiplexesToronto} />
       <Route path="/community/network" component={NetworkHub} />
       

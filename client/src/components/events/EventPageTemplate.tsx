@@ -6,6 +6,7 @@ import { SpeakerCard } from "./SpeakerCard";
 import { TicketSelector } from "./TicketSelector";
 import { RsvpPanel } from "./RsvpPanel";
 import { SponsorStrip } from "./SponsorStrip";
+import { EventComments } from "./EventComments";
 import type { RealistEventPayload } from "./types";
 
 function formatDate(value: string, timezone: string) {
@@ -103,6 +104,8 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
           )}
 
           <SponsorStrip />
+
+          <EventComments slug={event.slug} />
 
           {event.refundPolicy && (
             <section className="space-y-3">
