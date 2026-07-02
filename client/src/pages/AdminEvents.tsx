@@ -69,6 +69,9 @@ export default function AdminEvents() {
                       <TableCell>{new Date(event.startsAt).toLocaleString()}</TableCell>
                       <TableCell>{event.eventType}</TableCell>
                       <TableCell className="text-right">
+                        <Button asChild size="sm" variant="ghost" className="mr-2">
+                          <Link href={`/admin/events/${event.id}/roster`}>Roster</Link>
+                        </Button>
                         <Button asChild size="sm" variant="outline">
                           <Link href={`/admin/events/${event.id}/edit`}>Edit</Link>
                         </Button>
