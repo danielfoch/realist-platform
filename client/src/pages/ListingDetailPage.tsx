@@ -264,7 +264,13 @@ export default function ListingDetailPage() {
               </CardContent>
             </Card>
 
-            <NeighbourhoodInsights lat={toNumber(listing.latitude)} lng={toNumber(listing.longitude)} />
+            <NeighbourhoodInsights
+              lat={toNumber(listing.latitude)}
+              lng={toNumber(listing.longitude)}
+              address={listing.addressStreet || undefined}
+              city={listing.addressCity}
+              listPrice={toNumber(listing.listPrice)}
+            />
           </div>
         </section>
 

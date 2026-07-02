@@ -9,8 +9,12 @@
  * licence, attribution and freshness here so coverage is visible in admin and
  * attribution strings reach display surfaces.
  *
- * GET /api/enrichment?lat=..&lng=..  → { neighbourhood, layers }
- * GET /api/enrichment/layers         → registry (freshness/licence per layer)
+ * v2 adds the property layer: Québec assessment-roll units (MAMH open data,
+ * imported by scripts/import-quebec-roll.ts) matched to listings by a loose
+ * civic-number + street-name key.
+ *
+ * GET /api/enrichment?lat=..&lng=..&address=..&city=..  → { neighbourhood, property }
+ * GET /api/enrichment/layers  → registry (freshness/licence per layer)
  */
 
 import type { Express, Request, Response } from "express";
@@ -23,6 +27,7 @@ import {
   type DaProfile,
   type NeighbourhoodStats,
 } from "@shared/censusProfile";
+import { looseKeyFromListingAddress, QUEBEC_ROLL_ATTRIBUTION } from "@shared/quebecRoll";
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 
@@ -65,6 +70,42 @@ export async function ensureEnrichmentTables(): Promise<void> {
       profile               jsonb NOT NULL,
       imported_at           timestamp NOT NULL DEFAULT now()
     )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS assessment_units (
+      id                 varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      source             text NOT NULL,
+      municipality_code  text NOT NULL,
+      municipality_name  text,
+      roll_year          integer,
+      matricule          text,
+      address            text,
+      loose_address_key  text,
+      lot_number         text,
+      cubf               text,
+      frontage_m         real,
+      lot_area_m2        double precision,
+      storeys            real,
+      year_built         integer,
+      year_built_estimated boolean,
+      floor_area_m2      real,
+      dwellings          integer,
+      market_ref_date    text,
+      land_value         bigint,
+      building_value     bigint,
+      total_value        bigint,
+      previous_roll_value bigint,
+      imported_at        timestamp NOT NULL DEFAULT now(),
+      UNIQUE (source, municipality_code, matricule)
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS assessment_units_loose_key_idx
+    ON assessment_units (loose_address_key)
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS assessment_units_muni_idx
+    ON assessment_units (municipality_code)
   `);
 }
 
@@ -129,6 +170,81 @@ export async function getNeighbourhoodStats(lat: number, lng: number): Promise<N
   return deriveNeighbourhoodStats(rehydrateProfile(dauid, stored.profile));
 }
 
+// ─── Property assessment lookup ──────────────────────────────────────────────
+
+export interface PropertyAssessment {
+  address: string | null;
+  municipality: string | null;
+  rollYear: number | null;
+  cubf: string | null;
+  yearBuilt: number | null;
+  yearBuiltEstimated: boolean;
+  storeys: number | null;
+  floorAreaM2: number | null;
+  lotAreaM2: number | null;
+  frontageM: number | null;
+  dwellings: number | null;
+  marketRefDate: string | null;
+  landValue: number | null;
+  buildingValue: number | null;
+  totalValue: number | null;
+  previousRollValue: number | null;
+  attribution: string;
+}
+
+const foldName = (s: string): string =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+export async function getPropertyAssessment(
+  address: string,
+  city?: string | null,
+): Promise<PropertyAssessment | null> {
+  const key = looseKeyFromListingAddress(address);
+  if (!key) return null;
+  const rows = await db.execute(sql`
+    SELECT address, municipality_name, roll_year, cubf, year_built, year_built_estimated,
+           storeys, floor_area_m2, lot_area_m2, frontage_m, dwellings, market_ref_date,
+           land_value, building_value, total_value, previous_roll_value
+    FROM assessment_units
+    WHERE loose_address_key = ${key}
+    LIMIT 10
+  `);
+  let candidates = rows.rows as Array<Record<string, unknown>>;
+  if (!candidates.length) return null;
+  // The same "47 saint isidore" can exist in many municipalities — use the
+  // listing's city to disambiguate, and refuse to guess when we can't.
+  if (candidates.length > 1) {
+    if (!city) return null;
+    const target = foldName(city);
+    candidates = candidates.filter((r) => {
+      const muni = foldName(String(r.municipality_name ?? ""));
+      return muni && (target.includes(muni) || muni.includes(target));
+    });
+    if (candidates.length !== 1) return null;
+  }
+  const r = candidates[0];
+  const n = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
+  return {
+    address: (r.address as string) ?? null,
+    municipality: (r.municipality_name as string) ?? null,
+    rollYear: n(r.roll_year),
+    cubf: (r.cubf as string) ?? null,
+    yearBuilt: n(r.year_built),
+    yearBuiltEstimated: !!r.year_built_estimated,
+    storeys: n(r.storeys),
+    floorAreaM2: n(r.floor_area_m2),
+    lotAreaM2: n(r.lot_area_m2),
+    frontageM: n(r.frontage_m),
+    dwellings: n(r.dwellings),
+    marketRefDate: (r.market_ref_date as string) ?? null,
+    landValue: n(r.land_value),
+    buildingValue: n(r.building_value),
+    totalValue: n(r.total_value),
+    previousRollValue: n(r.previous_roll_value),
+    attribution: QUEBEC_ROLL_ATTRIBUTION,
+  };
+}
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
 export function registerEnrichmentRoutes(app: Express): void {
@@ -139,12 +255,18 @@ export function registerEnrichmentRoutes(app: Express): void {
   app.get("/api/enrichment", async (req: Request, res: Response) => {
     const lat = Number(req.query.lat);
     const lng = Number(req.query.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-      return res.status(400).json({ success: false, error: "lat and lng query params are required" });
+    const address = typeof req.query.address === "string" ? req.query.address.trim() : "";
+    const city = typeof req.query.city === "string" ? req.query.city.trim() : "";
+    const hasPoint = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+    if (!hasPoint && !address) {
+      return res.status(400).json({ success: false, error: "lat+lng or address query params are required" });
     }
     try {
-      const neighbourhood = await getNeighbourhoodStats(lat, lng);
-      return res.json({ success: true, data: { neighbourhood } });
+      const [neighbourhood, property] = await Promise.all([
+        hasPoint ? getNeighbourhoodStats(lat, lng) : Promise.resolve(null),
+        address ? getPropertyAssessment(address, city || null) : Promise.resolve(null),
+      ]);
+      return res.json({ success: true, data: { neighbourhood, property } });
     } catch (err: any) {
       console.error("[enrichment] lookup failed:", err?.message ?? err);
       return res.status(500).json({ success: false, error: "Enrichment lookup failed" });
