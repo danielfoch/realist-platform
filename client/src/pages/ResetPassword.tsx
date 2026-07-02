@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Lock, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { RequestLoginLink } from "@/components/RequestLoginLink";
 
 const resetPasswordSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -26,6 +27,9 @@ export default function ResetPassword() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [success, setSuccess] = useState(false);
+  // True once the server rejects the token — offer a fresh sign-in link
+  // instead of an error wall.
+  const [tokenRejected, setTokenRejected] = useState(false);
 
   // Get token from URL
   const urlParams = new URLSearchParams(window.location.search);
@@ -52,29 +56,41 @@ export default function ResetPassword() {
       toast({ title: "Password reset successfully!" });
     },
     onError: (error: any) => {
+      const message: string = error?.message || "";
+      if (message.startsWith("400")) {
+        setTokenRejected(true);
+      }
       toast({
         title: "Reset failed",
-        description: error.message || "Invalid or expired reset link",
+        description: message || "Invalid or expired reset link",
         variant: "destructive",
       });
     },
   });
 
-  if (!token) {
+  if (!token || tokenRejected) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
-              <h2 className="text-xl font-semibold text-destructive">Invalid Reset Link</h2>
+              <h2 className="text-xl font-semibold">
+                {tokenRejected ? "That reset link has expired" : "Invalid Reset Link"}
+              </h2>
               <p className="text-muted-foreground">
-                This password reset link is invalid or has expired.
+                {tokenRejected
+                  ? "No need to start over — get a one-click sign-in link below, then change your password from your dashboard."
+                  : "This password reset link is invalid or has expired. Enter your email and we'll send a one-click sign-in link instead."}
               </p>
-              <Link href="/forgot-password">
-                <Button variant="outline" className="mt-4" data-testid="button-request-new">
-                  Request a new link
-                </Button>
-              </Link>
+              <RequestLoginLink />
+              <p className="text-sm text-muted-foreground">
+                Prefer a password reset email?{" "}
+                <Link href="/forgot-password">
+                  <span className="text-primary hover:underline cursor-pointer" data-testid="button-request-new">
+                    Request a new reset link
+                  </span>
+                </Link>
+              </p>
             </div>
           </CardContent>
         </Card>

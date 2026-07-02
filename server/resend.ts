@@ -848,7 +848,13 @@ export async function sendWelcomeAccountEmail(params: {
           </div>
           
           <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0 0 8px 0;">
-            This link expires in 7 days. If you didn't use Realist.ca, you can safely ignore this email.
+            This link expires in 14 days. If you didn't use Realist.ca, you can safely ignore this email.
+          </p>
+
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0 0 8px 0;">
+            Link expired? No problem — sign in anytime with just your email at
+            <a href="https://realist.ca/login" style="color: #16a34a;">realist.ca/login</a>
+            (choose &ldquo;Email me a sign-in link&rdquo;).
           </p>
 
           <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
@@ -878,6 +884,142 @@ export async function sendWelcomeAccountEmail(params: {
     return emailData;
   } catch (error) {
     console.error(`Error sending welcome email to ${params.toEmail}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Magic sign-in link. Transactional auth email (consent-exempt): only ever
+ * sent in direct response to a sign-in request for an existing account.
+ */
+export async function sendLoginLinkEmail(params: {
+  toEmail: string;
+  firstName: string;
+  loginLink: string;
+}) {
+  try {
+    const { client, fromEmail } = await getResendClient();
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${emailHeader('Sign in to Realist.ca', 'Your one-time sign-in link')}
+
+        <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="color: #111827; font-size: 16px; margin: 0 0 16px 0;">
+            Hi ${params.firstName || 'there'},
+          </p>
+
+          <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
+            Click the button below to sign in to your Realist.ca account. No password needed.
+          </p>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${params.loginLink}" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              Sign In to Realist.ca
+            </a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0 0 8px 0;">
+            This link works once and expires in 30 minutes. Need a new one? Request another at
+            <a href="https://realist.ca/login" style="color: #16a34a;">realist.ca/login</a>.
+          </p>
+
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              If you didn't request this link, you can safely ignore this email — your account stays secure.
+            </p>
+          </div>
+        </div>
+
+        ${emailFooter()}
+      </div>
+    `;
+
+    const { data: emailData, error } = await client.emails.send({
+      from: fromEmail,
+      to: [params.toEmail],
+      subject: `Your Realist.ca sign-in link`,
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send login link email:', error);
+      throw error;
+    }
+
+    console.log(`Login link email sent to: ${params.toEmail}`);
+    return emailData;
+  } catch (error) {
+    console.error(`Error sending login link email to ${params.toEmail}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Password reset link. Transactional auth email (consent-exempt).
+ * Wired for the forgot-password flow, which previously generated tokens but
+ * never actually emailed them in production.
+ */
+export async function sendPasswordResetEmail(params: {
+  toEmail: string;
+  firstName: string;
+  resetLink: string;
+}) {
+  try {
+    const { client, fromEmail } = await getResendClient();
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${emailHeader('Reset your password', 'Realist.ca account recovery')}
+
+        <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="color: #111827; font-size: 16px; margin: 0 0 16px 0;">
+            Hi ${params.firstName || 'there'},
+          </p>
+
+          <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
+            We received a request to reset the password on your Realist.ca account. Click below to choose a new one.
+          </p>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${params.resetLink}" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              Reset Password
+            </a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0 0 8px 0;">
+            This link expires in 1 hour. Prefer not to bother with a password? Sign in anytime with just your email at
+            <a href="https://realist.ca/login" style="color: #16a34a;">realist.ca/login</a>
+            (choose &ldquo;Email me a sign-in link&rdquo;).
+          </p>
+
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              If you didn't request this, you can safely ignore this email — your password won't change.
+            </p>
+          </div>
+        </div>
+
+        ${emailFooter()}
+      </div>
+    `;
+
+    const { data: emailData, error } = await client.emails.send({
+      from: fromEmail,
+      to: [params.toEmail],
+      subject: `Reset your Realist.ca password`,
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send password reset email:', error);
+      throw error;
+    }
+
+    console.log(`Password reset email sent to: ${params.toEmail}`);
+    return emailData;
+  } catch (error) {
+    console.error(`Error sending password reset email to ${params.toEmail}:`, error);
     return null;
   }
 }

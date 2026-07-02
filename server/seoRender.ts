@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { getAnalysesCountStats } from "./socialStats";
 import { encyclopediaGuides, getEncyclopediaGuide } from "@shared/encyclopedia";
 import { getProgrammaticMarket, getProgrammaticStrategy, PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } from "@shared/programmaticSeo";
 import { PODCAST_APPLE_URL, PODCAST_SPOTIFY_URL, PODCAST_YOUTUBE_URL } from "@shared/brand";
@@ -495,13 +496,22 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
 
   if (reqPath === "/") {
     const latestReports = await storage.getBlogPosts({ status: "published", category: "market-analysis", limit: 6 });
+    // Crawlable social proof: live analyzer-run counts (cached 60s). Never
+    // block homepage rendering on the counter.
+    const analysesStats = await getAnalysesCountStats().catch(() => null);
+    const analysesProofLine = analysesStats && analysesStats.total > 0
+      ? `
+        <p style="font-size:16px;font-weight:600;margin:14px 0 0;color:#0f766e;">
+          ${analysesStats.total.toLocaleString("en-CA")} deals analyzed by Canadian investors${analysesStats.thisWeek > 0 ? ` — ${analysesStats.thisWeek.toLocaleString("en-CA")} this week` : ""}.
+        </p>`
+      : "";
     return renderShell(`
       <header style="margin-bottom:32px;">
         <p style="display:inline-block;border:1px solid #d1d5db;border-radius:999px;padding:6px 10px;font-size:12px;margin-bottom:14px;">AI real estate deal finder for Canada</p>
         <h1 style="font-size:clamp(2.5rem,5vw,4.5rem);line-height:1.05;margin:0 0 14px;">Canadian real estate investing, underwritten by AI.</h1>
         <p style="font-size:18px;line-height:1.7;max-width:760px;color:#4b5563;">
           Realist combines property-level underwriting, market reports, Canadian housing data, and investor workflows into one research surface. Use it to compare rental properties, screen cap rates, understand market risk, and move from a broad search to a defensible investment decision.
-        </p>
+        </p>${analysesProofLine}
       </header>
       <section style="font-size:16px;line-height:1.85;color:#111827;max-width:900px;">
         <p>

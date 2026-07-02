@@ -15,7 +15,7 @@ import {
   queueInactiveHighIntentNotifications,
 } from "./notifications";
 import { runWatchlistAlertSweep } from "./watchlists";
-import { registerAiDefaultsRoutes, scheduleNightlyTraining } from "./aiMarketDefaults";
+import { scheduleNightlyTraining } from "./aiDefaults";
 
 const app = express();
 // Trust proxy for secure cookies behind Replit's reverse proxy
@@ -599,7 +599,6 @@ async function ensureAppTables() {
   });
 
   await registerRoutes(httpServer, app);
-  registerAiDefaultsRoutes(app);
   const { registerMultiplexUnderwriterRoutes } = await import("./multiplexUnderwriter");
   registerMultiplexUnderwriterRoutes(app);
   const { registerPowerTeamRoutes } = await import("./powerTeam");
