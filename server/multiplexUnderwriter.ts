@@ -16,10 +16,11 @@
 
 import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import { isAdmin } from "./auth";
+import { users } from "@shared/models/auth";
 import { resolveSite, type ResolvedSite } from "./torontoGeo";
 import { computeMultiplexFeasibility, TORONTO_SIXPLEX_WARDS } from "./multiplexFeasibility";
 import {
@@ -553,7 +554,14 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
       const isOwner =
         (r.user_id && r.user_id === req.session?.userId) ||
         (!r.user_id && r.session_id && r.session_id === req.sessionID);
-      if (!isOwner && req.session?.role !== "admin") return res.status(403).json({ error: "forbidden" });
+      if (!isOwner) {
+        let isSessionAdmin = false;
+        if (req.session?.userId) {
+          const [user] = await db.select({ role: users.role }).from(users).where(eq(users.id, req.session.userId)).limit(1);
+          isSessionAdmin = user?.role === "admin";
+        }
+        if (!isSessionAdmin) return res.status(403).json({ error: "forbidden" });
+      }
       res.json({
         id: r.id,
         address: r.address,
