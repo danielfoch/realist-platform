@@ -496,6 +496,15 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
         underwrite.assumptionNotes.push("Lot frontage/depth back-filled from area — confirm actual dimensions.");
       }
 
+      // Narrative layer — deterministic math computes, the LLM narrates.
+      const { writeMultiplexReport } = await import("./multiplexReportWriter");
+      const { report, source: reportSource } = await writeMultiplexReport({
+        address: input.address,
+        site,
+        underwrite,
+      });
+      const result = { ...underwrite, report, reportSource };
+
       const shareToken = crypto.randomBytes(12).toString("hex");
       const userId = req.session?.userId ?? null;
       const inserted = await db.execute(sql`
@@ -503,13 +512,13 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
         VALUES (
           ${userId}, ${req.sessionID ?? null}, ${input.address}, ${site.lat}, ${site.lng},
           ${extractFsa(input)}, ${JSON.stringify(input)}::jsonb,
-          ${JSON.stringify(site)}::jsonb, ${JSON.stringify(underwrite)}::jsonb, ${shareToken}
+          ${JSON.stringify(site)}::jsonb, ${JSON.stringify(result)}::jsonb, ${shareToken}
         )
         RETURNING id
       `);
       const id = (inserted.rows[0] as { id: string }).id;
 
-      res.json({ status: "complete", id, shareToken, site, underwrite, disclaimer: DISCLAIMER });
+      res.json({ status: "complete", id, shareToken, site, underwrite: result, disclaimer: DISCLAIMER });
     } catch (err: any) {
       console.error("[multiplex] underwrite failed:", err);
       res.status(500).json({ error: "Underwrite failed — please try again." });
