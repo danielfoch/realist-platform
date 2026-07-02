@@ -1063,7 +1063,7 @@ export const portfolioProperties = pgTable("portfolio_properties", {
 // INDUSTRY PARTNER PORTAL SCHEMAS
 // ============================================
 
-export const partnerTypes = ["realtor", "mortgage_broker", "lawyer", "accountant", "property_manager", "contractor", "appraiser", "inspector", "other"] as const;
+export const partnerTypes = ["realtor", "mortgage_broker", "lawyer", "accountant", "property_manager", "contractor", "appraiser", "inspector", "architect", "urban_planner", "other"] as const;
 export type PartnerType = (typeof partnerTypes)[number];
 
 export const industryPartners = pgTable("industry_partners", {
@@ -2705,6 +2705,28 @@ export const contributionEvents = pgTable("contribution_events", {
   targetId: varchar("target_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Expert field notes: professional-authored commentary on a specific listing
+// (an architect flags a conversion constraint, a planner notes zoning, a
+// mortgage pro notes financing angles). Voting uses the shared `votes` table
+// (targetType="expert_field_note"); score is denormalized here. Points flow
+// into contribution_events so experts rank on the existing leaderboard.
+export const expertFieldNotes = pgTable("expert_field_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  category: text("category").notNull(), // ExpertCategory
+  body: text("body").notNull(),
+  score: integer("score").default(0).notNull(),
+  status: text("status").default("visible").notNull(), // visible | removed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("expert_field_notes_listing_idx").on(table.listingMlsNumber, table.status),
+  index("expert_field_notes_user_idx").on(table.userId),
+]);
+
+export type ExpertFieldNote = typeof expertFieldNotes.$inferSelect;
 
 export const listingAnalysisAggregates = pgTable("listing_analysis_aggregates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
