@@ -208,7 +208,7 @@ export default function AdminDealDesk() {
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem(BANNER_LS_KEY) === "true"
   );
-  const [currentTab, setCurrentTab] = usePersistedTab("dealDesk.activeTab", "opportunities", ["opportunities", "activity", "email-queue", "export", "settings"], { storage: "session" });
+  const [currentTab, setCurrentTab] = usePersistedTab("dealDesk.activeTab", "opportunities", ["opportunities", "activity", "email-queue", "export", "settings"], { storage: "session", ttl: { days: 7 } });
 
   useEffect(() => {
     if (settingsLoaded?.effectiveEmail) {

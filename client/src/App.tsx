@@ -99,6 +99,7 @@ import StatCanGdpQ12026Report from "@/pages/StatCanGdpQ12026Report";
 import HousingCorrectionLockedOut2026Report from "@/pages/HousingCorrectionLockedOut2026Report";
 import LabourMortgageStressApril2026Report from "@/pages/LabourMortgageStressApril2026Report";
 import MonthlyMarketReportMay2026 from "@/pages/MonthlyMarketReportMay2026";
+import InterprovincialMigrationCanada2026Report from "@/pages/InterprovincialMigrationCanada2026Report";
 import SeoProjectDetail from "@/pages/SeoProjectDetail";
 import {
   TorontoHousingMarketPage,
@@ -223,6 +224,7 @@ function Router() {
       <Route path="/insights/housing-correction-locked-out-2026" component={HousingCorrectionLockedOut2026Report} />
       <Route path="/insights/labour-mortgage-stress-april-2026" component={LabourMortgageStressApril2026Report} />
       <Route path="/insights/monthly-market-report-may-2026" component={MonthlyMarketReportMay2026} />
+      <Route path="/insights/canada-interprovincial-migration-2026" component={InterprovincialMigrationCanada2026Report} />
       {/* SEO landing pages — programmatic + query-driven */}
       <Route path="/canada-housing-market" component={CanadaHousingMarketPage} />
       <Route path="/toronto-housing-market" component={TorontoHousingMarketPage} />

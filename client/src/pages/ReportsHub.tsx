@@ -77,6 +77,25 @@ export default function ReportsHub() {
           </CardContent>
         </Card>
 
+        <Card className="mb-10 overflow-hidden border-stone-200 bg-[radial-gradient(circle_at_top_right,#dbeafe,transparent_28%),linear-gradient(135deg,#082f49_0%,#0f172a_55%,#1e3a8a_100%)] text-stone-50">
+          <CardContent className="grid gap-6 p-8 md:grid-cols-[1.3fr_0.7fr] md:items-end">
+            <div>
+              <Badge variant="outline" className="mb-3 border-sky-200/40 bg-sky-100/10 text-sky-100">
+                New report
+              </Badge>
+              <h2 className="text-3xl font-bold leading-tight">Canada Interprovincial Migration 2026</h2>
+              <p className="mt-3 max-w-2xl text-stone-300">
+                Interactive breakdown of the Fraser Institute migration study showing Alberta&apos;s long-run domestic migration lead, Ontario&apos;s losses, age-group flows, and housing-market implications.
+              </p>
+            </div>
+            <div className="md:text-right">
+              <Link href="/insights/canada-interprovincial-migration-2026">
+                <Button className="bg-sky-300 text-slate-950 hover:bg-sky-200">Open report</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
         {isLoading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, index) => (
