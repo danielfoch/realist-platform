@@ -1,7 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,14 +19,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Lock, Users, ExternalLink } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 const leadFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Please enter a valid email address"),
-  phone: z.string().min(10, "Please enter a valid phone number"),
+  // Optional on purpose: a mandatory phone field is the single biggest
+  // form-abandonment lever, and email is all we need to save progress.
+  phone: z
+    .string()
+    .optional()
+    .refine((v) => !v || v.replace(/\D/g, "").length >= 10, "Please enter a valid phone number"),
   consent: z.boolean().default(false),
 });
 
@@ -48,8 +52,6 @@ export function LeadCaptureModal({
   isSubmitting,
   defaultValues,
 }: LeadCaptureModalProps) {
-  const [step, setStep] = useState<"form" | "skool">("form");
-  
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
@@ -61,27 +63,17 @@ export function LeadCaptureModal({
     },
   });
 
+  // Deliberately no post-submit interstitial: the user asked for their
+  // analysis, so send them straight back to it. Community invites belong in
+  // the follow-up email, not between the user and the action they requested.
   const handleSubmit = async (data: LeadFormValues) => {
     await onSubmit(data);
-    setStep("skool");
-  };
-
-  const handleSkoolClick = () => {
-    window.open("https://www.skool.com/realist", "_blank");
-    setStep("form");
-    form.reset();
-    onOpenChange(false);
-  };
-
-  const handleSkip = () => {
-    setStep("form");
     form.reset();
     onOpenChange(false);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setStep("form");
       form.reset();
     }
     onOpenChange(newOpen);
@@ -90,8 +82,7 @@ export function LeadCaptureModal({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
-        {step === "form" ? (
-          <>
+        <>
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold">
                 Save Your Progress
@@ -173,7 +164,7 @@ export function LeadCaptureModal({
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone Number *</FormLabel>
+                      <FormLabel>Phone Number (optional)</FormLabel>
                       <FormControl>
                         <Input
                           type="tel"
@@ -243,48 +234,6 @@ export function LeadCaptureModal({
               </form>
             </Form>
           </>
-        ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-center">
-                One More Step!
-              </DialogTitle>
-              <DialogDescription className="text-base text-center">
-                Join our free community of Canadian real estate investors on Skool.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex flex-col items-center py-6 space-y-6">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="w-10 h-10 text-primary" />
-              </div>
-              
-              <div className="text-center space-y-2">
-                <p className="text-muted-foreground">
-                  Connect with thousands of investors, get exclusive insights, and level up your real estate game.
-                </p>
-              </div>
-
-              <Button
-                onClick={handleSkoolClick}
-                className="w-full h-12 text-base"
-                data-testid="button-join-skool"
-              >
-                Join Free Group
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                onClick={handleSkip}
-                className="text-muted-foreground"
-                data-testid="button-skip-skool"
-              >
-                Skip for now
-              </Button>
-            </div>
-          </>
-        )}
       </DialogContent>
     </Dialog>
   );

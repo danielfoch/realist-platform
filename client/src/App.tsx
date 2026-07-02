@@ -1,5 +1,6 @@
 import { Switch, Route } from "wouter";
 import { GetAppBanner } from "@/components/GetAppBanner";
+import { SiteFooter } from "@/components/SiteFooter";
 import { useEffect } from "react";
 import { initNativePush } from "@/lib/capacitorPush";
 import { queryClient } from "./lib/queryClient";
@@ -123,6 +124,9 @@ import PartnerOnboarding from "@/pages/PartnerOnboarding";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
 import Stats from "@/pages/Stats";
+import UsListings from "@/pages/UsListings";
+import PublicProfile from "@/pages/PublicProfile";
+import WorkWithRealist from "@/pages/WorkWithRealist";
 import PitchDeck from "@/pages/PitchDeck";
 import UnderwritingShare from "@/pages/UnderwritingShare";
 import AccountApiKeys from "@/pages/AccountApiKeys";
@@ -161,7 +165,7 @@ function Router() {
       {/* Main entry - simplified investor homepage */}
       <Route path="/" component={InvestorStart} />
       <Route path="/discover" component={MapHomepage} />
-      <Route path="/deal-analyzer">{() => <Home />}</Route>
+      <Route path="/deal-analyzer">{() => <Redirect to="/tools/analyzer" />}</Route>
       
       {/* New Tools routes */}
       <Route path="/tools" component={ToolsHub} />
@@ -175,7 +179,7 @@ function Router() {
       <Route path="/tools/coinvest/checklist" component={CoInvestingChecklist} />
       <Route path="/tools/coinvest/groups/new" component={CoInvestingGroupNew} />
       <Route path="/tools/coinvest/groups/:id" component={CoInvestingGroupDetail} />
-      <Route path="/deal-desk" component={DealDesk} />
+      <Route path="/deal-desk">{() => <Redirect to="/tools/deal-desk" />}</Route>
       <Route path="/offer" component={Offer} />
       <Route path="/crm" component={CrmHome} />
       <Route path="/community/meetups/new" component={MeetupNew} />
@@ -187,8 +191,9 @@ function Router() {
       <Route path="/tools/rent-vs-buy" component={RentVsBuy} />
       <Route path="/tools/rent-to-own" component={RentToOwn} />
       <Route path="/tools/cap-rates" component={CapRates} />
-      <Route path="/listing-intelligence" component={ListingIntelligence} />
+      <Route path="/listing-intelligence">{() => <Redirect to="/tools/listing-intelligence" />}</Route>
       <Route path="/tools/listing-intelligence" component={ListingIntelligence} />
+      <Route path="/listings/us" component={UsListings} />
       <Route path="/listings/:mlsNumber" component={ListingDetailPage} />
       <Route path="/join/experts" component={JoinExperts} />
       <Route path="/experts" component={Experts} />
@@ -196,26 +201,28 @@ function Router() {
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
       <Route path="/deals" component={Watchlist} />
       <Route path="/watchlist" component={Watchlist} />
-      <Route path="/deal-challenge" component={InvestorOperatingSystem} />
-      <Route path="/professionals" component={InvestorOperatingSystem} />
+      <Route path="/deal-challenge">{() => <Redirect to="/tools/investor-os" />}</Route>
+      <Route path="/professionals">{() => <Redirect to="/power-team" />}</Route>
       <Route path="/tools/will-it-plex" component={WillItPlex} />
       <Route path="/tools/fixed-vs-variable" component={FixedVsVariable} />
       <Route path="/tools/hst-rebate" component={OntarioHstRebateCalculator} />
       <Route path="/tools/land-claim-screener" component={LandClaimScreener} />
-      <Route path="/tools/distress-deals" component={DistressDeals} />
+      <Route path="/tools/distress-deals">{() => <Redirect to="/tools/motivated-deals" />}</Route>
       <Route path="/tools/motivated-deals" component={DistressDeals} />
       <Route path="/tools/multiplex-feasibility" component={MultiplexFeasibilityPage} />
       <Route path="/tools/multiplex-underwriter" component={MultiplexUnderwriterPage} />
       <Route path="/power-team" component={PowerTeam} />
+      <Route path="/work-with-realist" component={WorkWithRealist} />
       <Route path="/multiplex-investor-fit" component={MultiplexFit} />
       <Route path="/masterclass" component={MultiplexMasterclass} />
       <Route path="/course" component={Course} />
-      <Route path="/insights/distress-report" component={DistressReport} />
+      <Route path="/insights/distress-report">{() => <Redirect to="/insights/motivated-report" />}</Route>
       <Route path="/insights/motivated-report" component={DistressReport} />
       <Route path="/community/leaderboard" component={Leaderboard} />
       <Route path="/community/leaderboard/full" component={FullLeaderboard} />
+      <Route path="/u/:userId" component={PublicProfile} />
       <Route path="/my-performance" component={MyPerformance} />
-      <Route path="/stats" component={Stats} />
+      <Route path="/stats">{() => <Redirect to="/tools/stats" />}</Route>
       <Route path="/tools/stats" component={Stats} />
       <Route path="/analyses/:id/deck" component={PitchDeck} />
       <Route path="/underwriting/:token" component={UnderwritingShare} />
@@ -327,7 +334,7 @@ function Router() {
       <Route path="/partner" component={PartnerPortal} />
       <Route path="/professional/dashboard" component={ProfessionalDashboard} />
       <Route path="/signup" component={Signup} />
-      <Route path="/get-started" component={Signup} />
+      <Route path="/get-started">{() => <Redirect to="/signup" />}</Route>
       <Route path="/login" component={Login} />
       <Route path="/create-account" component={CreateAccount} />
       <Route path="/forgot-password" component={ForgotPassword} />
@@ -344,6 +351,7 @@ function Router() {
       {/* 404 */}
       <Route component={NotFound} />
     </Switch>
+    <SiteFooter />
     </>
   );
 }

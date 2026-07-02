@@ -4,7 +4,6 @@ import { Link, useSearch, useLocation } from "wouter";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Navigation } from "@/components/Navigation";
-import { HeroSection } from "@/components/HeroSection";
 import { AnalysesCounter } from "@/components/AnalysesCounter";
 import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
@@ -17,6 +16,7 @@ import { ResultsSummary } from "@/components/ResultsSummary";
 import { SourcesUsesWaterfall } from "@/components/SourcesUsesWaterfall";
 import { ProformaTable } from "@/components/ProformaTable";
 import { DealTimeline } from "@/components/DealTimeline";
+import { AskRealistPanel } from "@/components/AskRealistPanel";
 import { LeadCaptureModal } from "@/components/LeadCaptureModal";
 import { RentVsBuyCalculator } from "@/components/RentVsBuyCalculator";
 import { RenoQuoteWizard } from "@/components/RenoQuoteWizard";
@@ -45,6 +45,7 @@ import {
   type SavedListingSignal,
   type SavedSearchSignal,
 } from "@/lib/analytics";
+import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
 import { detectPossiblePlex } from "@shared/plexDetection";
@@ -153,6 +154,23 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
   }, [isAuthenticated]);
 
   const appliedSeedRef = useRef<string>("");
+  const contextHydratedRef = useRef(false);
+
+  // When no URL seed brought the user here, hydrate the address from the
+  // shared property context so the property follows them between tools.
+  useEffect(() => {
+    if (embedded || contextHydratedRef.current) return;
+    const params = new URLSearchParams(searchString || "");
+    if (params.get("address") || params.get("price") || params.get("q") || params.get("mls")) return;
+    const ctx = loadPropertyContext();
+    if (!ctx?.address) return;
+    contextHydratedRef.current = true;
+    setAddress(ctx.address);
+    if (ctx.city) setCity(ctx.city);
+    if (ctx.province) setRegion(ctx.province);
+    if (ctx.mlsNumber) setMlsNumber(ctx.mlsNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const activeSeed = embedded && seedQuery != null ? seedQuery : searchString;
@@ -191,6 +209,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
 
     if (!addr && !price && !prompt) return;
     appliedSeedRef.current = activeSeed;
+    contextHydratedRef.current = true;
 
     if (addr) setAddress(addr);
     if (cityParam) setCity(cityParam);
@@ -392,7 +411,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
   }, [showResults, leadCaptured, calculatorType, strategy, inputs.purchasePrice, inputs.monthlyRent, city, region, propertyType, results.capRate, results.cashOnCash, results.irr]);
 
   const leadMutation = useMutation({
-    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone: string; consent: boolean }) => {
+    mutationFn: async (data: { firstName: string; lastName: string; email: string; phone?: string; consent: boolean }) => {
       const formattedAddress = [address, city, region, country === "canada" ? "Canada" : "USA", postalCode]
         .filter(Boolean)
         .join(", ");
@@ -503,8 +522,10 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
     track({ event: "cta_clicked", cta: "deal_desk_review", location: "analysis_results" });
     const params = new URLSearchParams();
     if (formattedAddress) params.set("address", formattedAddress);
+    if (inputs.purchasePrice) params.set("price", String(inputs.purchasePrice));
+    if (inputs.monthlyRent) params.set("rent", String(inputs.monthlyRent));
     if (autoSavedAnalysisId) params.set("dealId", autoSavedAnalysisId);
-    window.location.href = `/deal-desk${params.toString() ? `?${params.toString()}` : ""}`;
+    window.location.href = `/tools/deal-desk${params.toString() ? `?${params.toString()}` : ""}`;
   };
 
   const handleMakeOffer = () => {
@@ -518,10 +539,6 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
     if (inputs.purchasePrice) params.set("price", String(inputs.purchasePrice));
     if (autoSavedAnalysisId) params.set("dealId", autoSavedAnalysisId);
     window.location.href = `/offer${params.toString() ? `?${params.toString()}` : ""}`;
-  };
-
-  const handleAnalyzeClick = () => {
-    analyzerRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleAnalyzeAnother = () => {
@@ -637,6 +654,14 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
 
   const handleCalculate = async () => {
     setIsCalculating(true);
+    savePropertyContext({
+      address: address || undefined,
+      city: city || undefined,
+      province: region || undefined,
+      price: inputs.purchasePrice || undefined,
+      monthlyRent: inputs.monthlyRent || undefined,
+      mlsNumber: mlsNumber || undefined,
+    });
     track({
       event: "analyzer_started",
       address: [address, city, region].filter(Boolean).join(", ") || undefined,
@@ -706,7 +731,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
     }
   };
 
-  const handleLeadSubmit = async (data: { firstName: string; lastName: string; email: string; phone: string; consent: boolean }) => {
+  const handleLeadSubmit = async (data: { firstName: string; lastName: string; email: string; phone?: string; consent: boolean }) => {
     await leadMutation.mutateAsync(data);
   };
 
@@ -1142,8 +1167,6 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       <Navigation />
       
       <main>
-        {!isStandaloneTool && <HeroSection onAnalyzeClick={handleAnalyzeClick} />}
-
         <section
           ref={analyzerRef}
           className={isStandaloneTool ? "py-8 md:py-12" : "py-16 md:py-24 border-t border-border/50"}
@@ -1666,6 +1689,23 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
               {!isCalculating && <DealTimeline />}
 
               {!isCalculating && showResults && calculatorType === "deal_analyzer" && (
+                <AskRealistPanel
+                  context={{
+                    address: address || undefined,
+                    city: city || undefined,
+                    province: region || undefined,
+                    strategy,
+                    price: inputs.purchasePrice || undefined,
+                    monthlyRent: inputs.monthlyRent || undefined,
+                    capRate: Number.isFinite(results.capRate) ? results.capRate : undefined,
+                    cashOnCash: Number.isFinite(results.cashOnCash) ? results.cashOnCash : undefined,
+                    monthlyCashFlow: Number.isFinite(results.monthlyCashFlow) ? results.monthlyCashFlow : undefined,
+                    dscr: typeof results.dscr === "number" && Number.isFinite(results.dscr) ? results.dscr : undefined,
+                  }}
+                />
+              )}
+
+              {!isCalculating && showResults && calculatorType === "deal_analyzer" && (
               <Card className="border-amber-500/40 bg-gradient-to-r from-amber-500/5 via-background to-amber-500/5">
                 <CardContent className="p-6 md:p-8">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between">
@@ -1675,10 +1715,14 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                         <span>Deal Desk</span>
                       </div>
                       <h3 className="text-xl md:text-2xl font-bold" data-testid="text-deal-desk-cta-title">
-                        Want our team to review this deal?
+                        Take this deal forward
                       </h3>
                       <p className="text-muted-foreground max-w-lg">
-                        Submit your numbers and a Realist advisor will score it, flag risks, and connect you with the right financing or acquisition support.
+                        Your numbers carry over automatically. A Realist advisor will review the deal, flag risks,
+                        and match you with a vetted local realtor or mortgage pro to see it through.{" "}
+                        <Link href="/work-with-realist" className="underline hover:text-foreground">
+                          How this works
+                        </Link>
                       </p>
                     </div>
                     <Button
@@ -1688,7 +1732,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                       data-testid="button-deal-desk-cta"
                     >
                       <Building2 className="h-4 w-4" />
-                      Get a Deal Review
+                      Take it forward
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -1727,23 +1771,6 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
         )}
       </main>
 
-      <footer className="py-8 border-t border-border/50">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xs">R</span>
-              </div>
-              <span>Realist.ca</span>
-            </div>
-            <div className="flex items-center gap-6">
-              <a href="/about" className="hover:text-foreground transition-colors">About</a>
-              <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
-            </div>
-          </div>
-        </div>
-      </footer>
 
       <LeadCaptureModal
         open={leadCaptureOpen}

@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { SEO } from "@/components/SEO";
+import { Navigation } from "@/components/Navigation";
 import { apiRequest } from "@/lib/queryClient";
 import {
   calculateHstRebate,
@@ -173,9 +174,9 @@ export default function OntarioHstRebateCalculator() {
         canonicalUrl="/tools/hst-rebate"
       />
 
+      <Navigation />
       <header className="border-b border-[#E6E2DC] bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6 md:px-8">
-          <img src="/realist-logo.svg" alt="Realist" className="h-8 w-auto" />
+        <div className="mx-auto flex max-w-6xl items-center justify-end px-5 py-4 md:px-8">
           <img
             src="/ohba-logo.png"
             alt="Ontario Home Builders' Association"

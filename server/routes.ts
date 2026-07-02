@@ -5585,11 +5585,51 @@ export async function registerRoutes(
   // REALTOR PARTNER NETWORK ROUTES
   // ============================================
 
+  // Public demand preview — professionals should see real investor activity
+  // in their market BEFORE being asked to sign a referral agreement.
+  app.get("/api/realtor-network/market-demand", async (req, res) => {
+    try {
+      const city = String(req.query.city || "").trim();
+      if (!city) return res.status(400).json({ error: "city is required" });
+      const province = String(req.query.province || "").trim();
+
+      const provinceFilter = province
+        ? sql`AND LOWER(TRIM(province)) = ${province.toLowerCase()}`
+        : sql``;
+      const result: any = await db.execute(sql`
+        SELECT
+          COUNT(*)::int AS analyses_30d,
+          COUNT(DISTINCT COALESCE(user_id, session_id))::int AS investors_30d,
+          MAX(created_at) AS last_activity_at
+        FROM analyses
+        WHERE LOWER(TRIM(city)) = ${city.toLowerCase()}
+          AND created_at > NOW() - INTERVAL '30 days'
+          AND deleted_at IS NULL
+          ${provinceFilter}
+      `);
+      const row = result.rows?.[0] ?? {};
+      res.json({
+        city,
+        province: province || null,
+        analyses30d: Number(row.analyses_30d || 0),
+        investors30d: Number(row.investors_30d || 0),
+        lastActivityAt: row.last_activity_at || null,
+      });
+    } catch (error) {
+      console.error("Error fetching market demand:", error);
+      res.status(500).json({ error: "Failed to fetch market demand" });
+    }
+  });
+
+  // Registering a market is free and signature-less: professionals see demand
+  // first. The 25% referral agreement is signed at the moment they claim
+  // their first real lead (maximal commitment at the moment of proven value,
+  // not at the moment of minimal trust).
   const claimMarketSchema = z.object({
     marketCity: z.string().min(1, "Market city is required"),
     marketRegion: z.string().min(1, "Market region is required"),
-    signedName: z.string().min(1, "Full legal name is required"),
-    signatureDataUrl: z.string().min(1, "Signature is required"),
+    signedName: z.string().optional(),
+    signatureDataUrl: z.string().optional(),
   });
 
   app.post("/api/realtor-network/claim-market", isAuthenticated, async (req: any, res) => {
@@ -5603,8 +5643,8 @@ export async function registerRoutes(
 
       const existingClaims = await storage.getRealtorMarketClaimsByUser(userId);
       const alreadyClaimed = existingClaims.find(
-        c => c.marketCity.toLowerCase() === marketCity.toLowerCase() && 
-             c.marketRegion.toLowerCase() === marketRegion.toLowerCase() && 
+        c => c.marketCity.toLowerCase() === marketCity.toLowerCase() &&
+             c.marketRegion.toLowerCase() === marketRegion.toLowerCase() &&
              c.status === "active"
       );
       if (alreadyClaimed) {
@@ -5612,6 +5652,7 @@ export async function registerRoutes(
       }
 
       const partner = await storage.getIndustryPartner(userId);
+      const signedNow = Boolean(signedName && signatureDataUrl);
 
       const claim = await storage.createRealtorMarketClaim({
         userId,
@@ -5620,15 +5661,53 @@ export async function registerRoutes(
         marketRegion,
         status: "active",
         referralFeePercent: 25,
-        referralAgreementSignedAt: new Date(),
-        referralAgreementSignature: signatureDataUrl,
-        referralAgreementSignedName: signedName,
+        referralAgreementSignedAt: signedNow ? new Date() : null,
+        referralAgreementSignature: signedNow ? signatureDataUrl : null,
+        referralAgreementSignedName: signedNow ? signedName : null,
       });
 
       res.json(claim);
     } catch (error) {
       console.error("Error claiming market:", error);
       res.status(500).json({ error: "Failed to claim market" });
+    }
+  });
+
+  // Sign the referral agreement for an existing (unsigned) market claim —
+  // called from the lead-claim flow when the professional accepts their
+  // first lead.
+  const signAgreementSchema = z.object({
+    claimId: z.string().min(1),
+    signedName: z.string().min(1, "Full legal name is required"),
+    signatureDataUrl: z.string().min(1, "Signature is required"),
+  });
+
+  app.post("/api/realtor-network/sign-agreement", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const parsed = signAgreementSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid request" });
+      }
+      const { claimId, signedName, signatureDataUrl } = parsed.data;
+
+      const claim = await storage.getRealtorMarketClaim(claimId);
+      if (!claim) return res.status(404).json({ error: "Claim not found" });
+      if (claim.userId !== userId) return res.status(403).json({ error: "Not your claim" });
+      if (claim.referralAgreementSignedAt) {
+        return res.status(400).json({ error: "Agreement already signed" });
+      }
+
+      const updated = await storage.updateRealtorMarketClaim(claimId, {
+        referralAgreementSignedAt: new Date(),
+        referralAgreementSignature: signatureDataUrl,
+        referralAgreementSignedName: signedName,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error signing agreement:", error);
+      res.status(500).json({ error: "Failed to sign agreement" });
     }
   });
 
@@ -5666,6 +5745,20 @@ export async function registerRoutes(
       }
       if (notification.status === "claimed") {
         return res.status(400).json({ error: "Lead already claimed" });
+      }
+
+      // The referral agreement must be signed before the first lead flows —
+      // this is the commitment moment (value is now proven, not promised).
+      const marketClaim = await storage.getRealtorMarketClaim(notification.realtorClaimId);
+      if (marketClaim && !marketClaim.referralAgreementSignedAt) {
+        return res.status(409).json({
+          error: "agreement_required",
+          message: "Sign the referral agreement for this market to claim your first lead.",
+          claimId: marketClaim.id,
+          marketCity: marketClaim.marketCity,
+          marketRegion: marketClaim.marketRegion,
+          referralFeePercent: marketClaim.referralFeePercent,
+        });
       }
 
       const lead = await storage.getLead(notification.leadId);

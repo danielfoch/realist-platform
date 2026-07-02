@@ -1,3 +1,11 @@
+> **⚠️ OUTDATED — do not implement from this document (July 2026).**
+> The $29/month price, JWT/GoHighLevel stack, and `frontend/src` paths below describe an app that
+> was never shipped. The live app uses session auth, a $10/month Stripe subscription, and
+> `client/src`. More importantly, the current monetization strategy is **deal-through referrals**
+> (analyses flow to network professionals via the CRM; realtors/brokers pay a referral fee on
+> closed deals), not SaaS gating — see docs/UX_AUDIT_2026-07.md "Strategy decisions".
+> Kept for historical reference only.
+
 # Realist.ca Monetization Integration
 
 This document describes the monetization features implemented for Realist.ca, including:

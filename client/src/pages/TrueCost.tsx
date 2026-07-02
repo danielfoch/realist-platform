@@ -24,6 +24,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Navigation } from "@/components/Navigation";
 import { Loader2, Calculator, DollarSign, Home, MapPin, HelpCircle, Lock, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -202,6 +203,7 @@ export default function TrueCost() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Navigation />
       <div className="container max-w-6xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <Badge variant="secondary" className="mb-4">

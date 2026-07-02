@@ -603,6 +603,10 @@ async function ensureAppTables() {
   registerMultiplexUnderwriterRoutes(app);
   const { registerPowerTeamRoutes } = await import("./powerTeam");
   registerPowerTeamRoutes(app);
+  const { registerPublicProfileRoutes } = await import("./publicProfiles");
+  registerPublicProfileRoutes(app);
+  const { registerAskRealistRoutes } = await import("./askRealist");
+  registerAskRealistRoutes(app);
   const { registerEnrichmentRoutes } = await import("./enrichment");
   registerEnrichmentRoutes(app);
 
@@ -700,6 +704,9 @@ async function ensureAppTables() {
         scheduleMonthlyWinnerEmail();
       }).catch((err) => log(`Monthly winner email schedule error: ${err.message}`, "monthly-winner"));
       scheduleNightlyTraining();
+      if (!process.env.ANTHROPIC_API_KEY) {
+        log("⚠️  ANTHROPIC_API_KEY is not set — Multiplex Underwriter narratives fall back to templates and Ask Realist (/api/ask) is DISABLED. Users are seeing zero live AI.", "startup");
+      }
       import("./rentIntelligence").then(({ scheduleRentIntelligenceJobs }) => {
         scheduleRentIntelligenceJobs(log);
         log("Rent intelligence jobs scheduled (daily prediction sweep)", "intelligence");

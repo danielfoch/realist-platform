@@ -5,6 +5,9 @@
 - `DDF_USERNAME`: CREA DDF username.
 - `DDF_PASSWORD`: CREA DDF password.
 
+## Required for AI features
+- `ANTHROPIC_API_KEY`: powers the Multiplex Underwriter's AI narratives and the on-site "Ask Realist" agent (`/api/ask`). When unset, the underwriter silently falls back to deterministic templates and Ask Realist is disabled (the panel hides itself). The server logs a startup warning if missing. **Post-deploy check:** `curl https://realist.ca/api/ask/status` should return `{"available":true}`.
+
 ## Optional
 - `PORT`: API port (default `3000`).
 - `LOG_LEVEL`: `debug|info|warn|error` (default `info`).

@@ -15,22 +15,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertTriangle,
-  ArrowRight,
   BadgeCheck,
   BarChart3,
   BrainCircuit,
-  Building2,
   Calculator,
   CheckCircle2,
   ClipboardList,
   Database,
   FileSearch,
-  GraduationCap,
   Handshake,
   Network,
-  Scale,
   ShieldCheck,
-  Sparkles,
   TrendingUp,
   Users,
   Wrench,
@@ -94,45 +89,6 @@ const fieldOptions = [
   { value: "zoning", label: "Zoning / legal use" },
 ];
 
-const roadmapTools = [
-  "Deal analyzer",
-  "Cap rate map",
-  "MLI Select calculator",
-  "Will-It-Plex",
-  "Rate tracker",
-  "Market dashboard",
-  "Portfolio tracker",
-  "AI deal parser",
-  "Rent estimator",
-  "BRRRR calculator",
-  "Flip calculator",
-  "Buy box matcher",
-];
-
-const educationTracks = [
-  "Realist 101",
-  "Multiplex Masterclass",
-  "Advanced operator track",
-  "Investor playbooks",
-  "Deal breakdowns",
-  "Underwriting tutorials",
-  "Market education",
-  "Glossary and resources",
-];
-
-const brokerageAutomation = [
-  "Listing intake automation",
-  "Listing copy assistant",
-  "Smart CMA placeholder",
-  "Comps adjustment workflow",
-  "Overpricing flag",
-  "Absorption rate placeholder",
-  "Buyer persona predictor",
-  "Pipeline heat map",
-  "Lead follow-up placeholder",
-  "Internal review queue",
-];
-
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
@@ -177,7 +133,7 @@ function ScorePanel({ label, value, icon }: { label: string; value: number; icon
 }
 
 export default function ListingIntelligence() {
-  const [activeTab, setActiveTab] = usePersistedTab("listingIntelligence.activeTab", "underwriting", ["underwriting", "feedback", "professionals", "training", "roadmap"]);
+  const [activeTab, setActiveTab] = usePersistedTab("listingIntelligence.activeTab", "underwriting", ["underwriting", "feedback", "professionals", "training"]);
   const [events, setEvents] = useState<ListingFeedbackEvent[]>(sampleListingFeedbackEvents);
   const [role, setRole] = useState<ProfessionalRole>("investor");
   const [inputType, setInputType] = useState<ListingFeedbackInputType>("rent_feedback");
@@ -232,6 +188,11 @@ export default function ListingIntelligence() {
       <Navigation />
 
       <main>
+        <div className="mx-auto max-w-7xl px-4 pt-6 md:px-6">
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600 dark:text-amber-400" data-testid="banner-sample-data">
+            Labs preview — everything below runs on sample data. It shows where collaborative underwriting is headed, not live listings.
+          </div>
+        </div>
         <section className="border-b border-border/60 bg-[linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.32))]">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-16">
             <div>
@@ -293,12 +254,11 @@ export default function ListingIntelligence() {
 
         <section className="mx-auto max-w-7xl px-4 py-10 md:px-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid h-auto w-full grid-cols-2 md:grid-cols-5">
+            <TabsList className="grid h-auto w-full grid-cols-2 md:grid-cols-4">
               <TabsTrigger value="underwriting">Underwriting</TabsTrigger>
               <TabsTrigger value="feedback">Feedback</TabsTrigger>
               <TabsTrigger value="professionals">Network</TabsTrigger>
               <TabsTrigger value="training">AI-ready data</TabsTrigger>
-              <TabsTrigger value="roadmap">OS roadmap</TabsTrigger>
             </TabsList>
 
             <TabsContent value="underwriting" className="space-y-6">
@@ -575,53 +535,6 @@ export default function ListingIntelligence() {
               </div>
             </TabsContent>
 
-            <TabsContent value="roadmap" className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5 text-primary" />Investor Tools</CardTitle></CardHeader>
-                  <CardContent className="space-y-2 text-sm text-muted-foreground">{roadmapTools.map((item) => <p key={item}>· {item}</p>)}</CardContent>
-                </Card>
-                <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2"><GraduationCap className="h-5 w-5 text-primary" />Education</CardTitle></CardHeader>
-                  <CardContent className="space-y-2 text-sm text-muted-foreground">{educationTracks.map((item) => <p key={item}>· {item}</p>)}</CardContent>
-                </Card>
-                <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" />Brokerage OS</CardTitle></CardHeader>
-                  <CardContent className="space-y-2 text-sm text-muted-foreground">{brokerageAutomation.map((item) => <p key={item}>· {item}</p>)}</CardContent>
-                </Card>
-                <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2"><Scale className="h-5 w-5 text-primary" />Access Tiers</CardTitle></CardHeader>
-                  <CardContent className="space-y-3 text-sm text-muted-foreground">
-                    <p><span className="font-medium text-foreground">Free:</span> listings, basic calculators, education.</p>
-                    <p><span className="font-medium text-foreground">Pro:</span> advanced underwriting, saved deals, referrals, dashboards.</p>
-                    <p><span className="font-medium text-foreground">Operator:</span> advanced training, execution support, deal reviews.</p>
-                    <p><span className="font-medium text-foreground">Future capital:</span> informational deal-room readiness only.</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="rounded-xl border border-border/70 bg-card p-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <Badge variant="secondary" className="gap-1">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      AI-native, auditable, Canadian
-                    </Badge>
-                    <h2 className="mt-3 text-2xl font-bold">Free tools → education → Pro tools → professional execution → future operator readiness.</h2>
-                    <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-                      This scaffolds the product funnel without adding payments, private admin data, external CRM connections,
-                      regulated investment flows, or production ML infrastructure.
-                    </p>
-                  </div>
-                  <Link href="/premium">
-                    <Button className="gap-2">
-                      View Pro layer
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </TabsContent>
           </Tabs>
         </section>
       </main>

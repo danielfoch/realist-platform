@@ -26,6 +26,8 @@ const MIN_SAMPLE = 5;
 // applyAiDefaults reads vacancyRate / monthlyRent / etc. from `metrics`).
 const METRIC_RESPONSE_KEYS: Record<string, string> = {
   vacancy_rate: "vacancyRate",
+  management_percent: "managementFeePercent",
+  maintenance_percent: "maintenancePercent",
   cap_rate: "capRate",
   purchase_price: "purchasePrice",
   monthly_cash_flow: "monthlyCashFlow",
@@ -37,6 +39,28 @@ const METRIC_RESPONSE_KEYS: Record<string, string> = {
 };
 
 export async function ensureAiDefaultTables(): Promise<void> {
+  // A legacy module (aiMarketDefaults, since removed) created these tables with
+  // an incompatible column set (median_value/sample_count). Both are derived
+  // caches rebuilt by training, so park the legacy copy and recreate cleanly.
+  const legacyDefaults = await db.execute(sql`
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'ai_market_defaults' AND column_name = 'median_value' LIMIT 1
+  `);
+  if (legacyDefaults.rows.length) {
+    await db.execute(sql`DROP TABLE IF EXISTS ai_market_defaults_legacy`);
+    await db.execute(sql`ALTER TABLE ai_market_defaults RENAME TO ai_market_defaults_legacy`);
+    console.log("[ai-defaults] Parked legacy ai_market_defaults schema as ai_market_defaults_legacy");
+  }
+  const legacyRuns = await db.execute(sql`
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'ai_training_runs' AND column_name = 'status' LIMIT 1
+  `);
+  if (legacyRuns.rows.length) {
+    await db.execute(sql`DROP TABLE IF EXISTS ai_training_runs_legacy`);
+    await db.execute(sql`ALTER TABLE ai_training_runs RENAME TO ai_training_runs_legacy`);
+    console.log("[ai-defaults] Parked legacy ai_training_runs schema as ai_training_runs_legacy");
+  }
+
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "ai_market_defaults" (
       "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -81,7 +105,16 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
       SELECT
         LOWER(TRIM(city)) AS market,
         strategy_type AS strategy,
-        vacancy_rate,
+        COALESCE(vacancy_rate,
+          CASE WHEN (inputs_json->>'vacancyPercent') ~ '^[0-9]+(\\.[0-9]+)?$'
+               AND (inputs_json->>'vacancyPercent')::numeric BETWEEN 0 AND 50
+               THEN (inputs_json->>'vacancyPercent')::numeric END) AS vacancy_rate,
+        CASE WHEN (inputs_json->>'managementPercent') ~ '^[0-9]+(\\.[0-9]+)?$'
+             AND (inputs_json->>'managementPercent')::numeric BETWEEN 0 AND 50
+             THEN (inputs_json->>'managementPercent')::numeric END AS mgmt_pct,
+        CASE WHEN (inputs_json->>'maintenancePercent') ~ '^[0-9]+(\\.[0-9]+)?$'
+             AND (inputs_json->>'maintenancePercent')::numeric BETWEEN 0 AND 50
+             THEN (inputs_json->>'maintenancePercent')::numeric END AS maint_pct,
         CASE WHEN (results_json->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$'
              AND (results_json->>'capRate')::numeric BETWEEN -10 AND 25
              THEN (results_json->>'capRate')::numeric END AS cap_rate,
@@ -108,7 +141,7 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
     ),
     filtered AS (
       -- Outliers are EXCLUDED from guidance, never deleted from source data.
-      SELECT b.market, b.strategy, b.vacancy_rate,
+      SELECT b.market, b.strategy, b.vacancy_rate, b.mgmt_pct, b.maint_pct,
         CASE WHEN b.cap_rate BETWEEN f.cap_q1 - 2.5*(f.cap_q3-f.cap_q1) AND f.cap_q3 + 2.5*(f.cap_q3-f.cap_q1)
              THEN b.cap_rate END AS cap_rate,
         (b.cap_rate IS NOT NULL AND b.cap_rate NOT BETWEEN f.cap_q1 - 2.5*(f.cap_q3-f.cap_q1) AND f.cap_q3 + 2.5*(f.cap_q3-f.cap_q1))::int AS cap_out,
@@ -124,6 +157,8 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
       SELECT market, strategy,
         COUNT(*) AS n,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY vacancy_rate) AS vacancy_med,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY mgmt_pct) AS mgmt_med,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY maint_pct) AS maint_med,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cap_rate) AS cap_med,
         PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY cap_rate) AS cap_p25,
         PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY cap_rate) AS cap_p75,
@@ -141,6 +176,8 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
       FROM grouped,
       LATERAL (VALUES
         ('vacancy_rate', vacancy_med, NULL::double precision, NULL::double precision, 0::bigint),
+        ('management_percent', mgmt_med, NULL, NULL, 0),
+        ('maintenance_percent', maint_med, NULL, NULL, 0),
         ('cap_rate', cap_med, cap_p25, cap_p75, cap_excluded),
         ('purchase_price', price_med, NULL, NULL, price_excluded),
         ('monthly_cash_flow', cashflow_med, NULL, NULL, cf_excluded)
@@ -261,6 +298,7 @@ export function registerAiDefaultsRoutes(app: Express): void {
       }
       const metrics: Record<string, { median: number; mean: number | null; p25: number | null; p75: number | null }> = {};
       let sampleCount = 0;
+      let trainedAt: string | null = resultRows[0]?.trained_at ?? null;
       for (const r of resultRows) {
         const key = METRIC_RESPONSE_KEYS[r.metric] || r.metric;
         metrics[key] = {
@@ -270,8 +308,9 @@ export function registerAiDefaultsRoutes(app: Express): void {
           p75: r.p75 != null ? Number(r.p75) : null,
         };
         sampleCount = Math.max(sampleCount, Number(r.sample_size) || 0);
+        if (trainedAt != null && r.trained_at > trainedAt) trainedAt = r.trained_at;
       }
-      res.json({ found: true, market, strategy, sampleCount, metrics });
+      res.json({ found: true, market, strategy, sampleCount, trainedAt, metrics });
     } catch (error) {
       console.error("[ai-defaults] lookup failed:", error);
       res.status(500).json({ found: false, error: "Failed to load defaults" });

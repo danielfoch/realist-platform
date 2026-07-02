@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -88,21 +89,32 @@ export default function RealtorNetwork() {
   }
 
   if (!isAuthenticated) {
+    // Demand first, commitment later: show a professional real investor
+    // activity in their market before asking them to sign anything.
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
         <main className="py-16">
-          <div className="max-w-md mx-auto px-4 text-center">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
-              <Handshake className="h-8 w-8 text-primary" />
+          <div className="max-w-2xl mx-auto px-4 space-y-8">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                <Handshake className="h-8 w-8 text-primary" />
+              </div>
+              <h1 className="text-3xl font-bold" data-testid="text-login-required">See investor demand in your market</h1>
+              <p className="text-muted-foreground max-w-lg mx-auto">
+                Check how many investors are underwriting deals in your city right now — free,
+                before you join anything.
+              </p>
             </div>
-            <h1 className="text-2xl font-bold mb-4" data-testid="text-login-required">Sign In Required</h1>
-            <p className="text-muted-foreground mb-6">
-              Please sign in to access the Realtor Partner Network and start receiving investor leads.
-            </p>
-            <Button onClick={() => window.location.href = authPath("/login")} data-testid="button-sign-in">
-              Sign In
-            </Button>
+            <MarketDemandLookup />
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                Ready to receive these leads? Sign in to claim your market.
+              </p>
+              <Button onClick={() => window.location.href = authPath("/login")} data-testid="button-sign-in">
+                Sign In
+              </Button>
+            </div>
           </div>
         </main>
       </div>
@@ -204,6 +216,101 @@ function HeroSection({ onCTA }: { onCTA: () => void }) {
           </Card>
         ))}
       </div>
+
+      <MarketDemandLookup />
+    </div>
+  );
+}
+
+function MarketDemandLookup() {
+  const [city, setCity] = useState("");
+  const [province, setProvince] = useState("");
+  const [searched, setSearched] = useState<{ city: string; province: string } | null>(null);
+
+  const { data: demand, isLoading } = useQuery<{
+    city: string;
+    analyses30d: number;
+    investors30d: number;
+    lastActivityAt: string | null;
+  }>({
+    queryKey: [`/api/realtor-network/market-demand?city=${encodeURIComponent(searched?.city || "")}&province=${encodeURIComponent(searched?.province || "")}`],
+    enabled: Boolean(searched?.city),
+  });
+
+  return (
+    <Card data-testid="card-market-demand">
+      <CardHeader>
+        <CardTitle className="text-lg">Investor demand in your market</CardTitle>
+        <CardDescription>Live counts from deals underwritten on Realist in the last 30 days.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <form
+          className="flex flex-col sm:flex-row gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (city.trim()) setSearched({ city: city.trim(), province });
+          }}
+        >
+          <Input
+            placeholder="City — e.g. Hamilton"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="sm:flex-1"
+            data-testid="input-demand-city"
+          />
+          <Select value={province} onValueChange={setProvince}>
+            <SelectTrigger className="sm:w-[200px]" data-testid="select-demand-province">
+              <SelectValue placeholder="Province (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              {PROVINCES.map((p) => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="submit" disabled={!city.trim() || isLoading} data-testid="button-check-demand">
+            Check demand
+          </Button>
+        </form>
+
+        {searched && (
+          isLoading ? (
+            <p className="text-sm text-muted-foreground">Checking {searched.city}…</p>
+          ) : demand ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" data-testid="demand-results">
+              <div className="rounded-lg border p-4 text-center">
+                <p className="text-2xl font-bold font-mono">{demand.analyses30d}</p>
+                <p className="text-xs text-muted-foreground mt-1">deals analyzed in {demand.city} (30 days)</p>
+              </div>
+              <div className="rounded-lg border p-4 text-center">
+                <p className="text-2xl font-bold font-mono">{demand.investors30d}</p>
+                <p className="text-xs text-muted-foreground mt-1">active investors</p>
+              </div>
+              <div className="rounded-lg border p-4 text-center">
+                <p className="text-2xl font-bold font-mono">
+                  {demand.lastActivityAt ? new Date(demand.lastActivityAt).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : "—"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">most recent analysis</p>
+              </div>
+            </div>
+          ) : null
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Shared referral-agreement copy — shown for transparency at registration,
+// signed only at first lead claim.
+function ReferralAgreementText() {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-referral-agreement">
+        The Receiving Brokerage acknowledges receipt of the referral information provided by <strong>Realist Inc. Personal Real Estate Corporation</strong> (the "Referring Brokerage") and agrees to offer service to the referred Seller/Buyer. The Receiving Brokerage agrees to inform the Referring Brokerage of the results of this referral and provide documentation of the results including the Listing Agreement, Agreement of Purchase and Sale, and a statement of commission earnings or a copy of the Trade Record Sheet.
+      </p>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        The Receiving Brokerage agrees to pay <strong>Realist Inc. Personal Real Estate Corporation</strong> upon receipt of commission resulting from this referral, a fee of <strong>25%</strong> of the gross commission earned on any transaction that results from leads received through this platform.
+      </p>
     </div>
   );
 }
@@ -211,14 +318,140 @@ function HeroSection({ onCTA }: { onCTA: () => void }) {
 function ClaimMarketForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [marketCity, setMarketCity] = useState("");
+  const [marketRegion, setMarketRegion] = useState("");
+
+  const claimMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/realtor-network/claim-market", {
+        marketCity,
+        marketRegion,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/realtor-network/my-claims"] });
+      toast({ title: "Market Registered!", description: `You've registered ${marketCity}, ${marketRegion}. You'll be notified when investor leads appear.` });
+      setMarketCity("");
+      setMarketRegion("");
+    },
+    onError: () => {
+      toast({ title: "Failed to register market", description: "Please try again or contact support.", variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!marketCity.trim()) {
+      toast({ title: "City Required", description: "Please enter a market city.", variant: "destructive" });
+      return;
+    }
+    if (!marketRegion) {
+      toast({ title: "Province Required", description: "Please select a province.", variant: "destructive" });
+      return;
+    }
+    claimMutation.mutate();
+  };
+
+  return (
+    <Card data-testid="card-claim-market">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MapPin className="h-5 w-5" />
+          Register Your Market — Free
+        </CardTitle>
+        <CardDescription>
+          Pick a city and province to get notified about investor leads in that area.
+          No signature and no fees to register.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="marketCity">Market City</Label>
+            <Input
+              id="marketCity"
+              value={marketCity}
+              onChange={(e) => setMarketCity(e.target.value)}
+              placeholder="e.g. Toronto, Vancouver, Calgary"
+              data-testid="input-market-city"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="marketRegion">Province</Label>
+            <Select value={marketRegion} onValueChange={setMarketRegion}>
+              <SelectTrigger data-testid="select-market-region">
+                <SelectValue placeholder="Select province" />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVINCES.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              The referral agreement (for later — read it now)
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Based on OREA Form 641. You'll sign this only when you claim your first lead —
+              never before you've seen real demand.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ReferralAgreementText />
+          </CardContent>
+        </Card>
+
+        <Button
+          onClick={handleSubmit}
+          disabled={claimMutation.isPending}
+          data-testid="button-claim-market"
+        >
+          {claimMutation.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Registering...
+            </>
+          ) : (
+            <>
+              <MapPin className="h-4 w-4 mr-2" />
+              Register Market — Free
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface PendingAgreement {
+  claimId: string;
+  notificationId: string;
+  marketCity: string;
+  marketRegion: string;
+}
+
+function AgreementSignDialog({
+  pending,
+  onOpenChange,
+  onSigned,
+}: {
+  pending: PendingAgreement | null;
+  onOpenChange: (open: boolean) => void;
+  onSigned: (notificationId: string) => void;
+}) {
+  const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureDataUrl, setSignatureDataUrl] = useState("");
-  const [marketCity, setMarketCity] = useState("");
-  const [marketRegion, setMarketRegion] = useState("");
   const [signedName, setSignedName] = useState("");
 
   useEffect(() => {
+    if (!pending) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -227,7 +460,7 @@ function ClaimMarketForm() {
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-  }, []);
+  }, [pending]);
 
   const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -273,110 +506,48 @@ function ClaimMarketForm() {
     setSignatureDataUrl("");
   }, []);
 
-  const claimMutation = useMutation({
+  const signMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/realtor-network/claim-market", {
-        marketCity,
-        marketRegion,
+      if (!pending) throw new Error("nothing pending");
+      await apiRequest("POST", "/api/realtor-network/sign-agreement", {
+        claimId: pending.claimId,
         signedName,
         signatureDataUrl,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/realtor-network/my-claims"] });
-      toast({ title: "Market Claimed!", description: `You've claimed ${marketCity}, ${marketRegion}. You'll receive leads from this area.` });
-      setMarketCity("");
-      setMarketRegion("");
+      const notificationId = pending!.notificationId;
+      toast({ title: "Agreement signed", description: "Claiming your lead now…" });
       setSignedName("");
       clearSignature();
+      onOpenChange(false);
+      onSigned(notificationId);
     },
     onError: () => {
-      toast({ title: "Failed to claim market", description: "Please try again or contact support.", variant: "destructive" });
+      toast({ title: "Couldn't sign the agreement", description: "Please try again.", variant: "destructive" });
     },
   });
 
-  const handleSubmit = () => {
-    if (!marketCity.trim()) {
-      toast({ title: "City Required", description: "Please enter a market city.", variant: "destructive" });
-      return;
-    }
-    if (!marketRegion) {
-      toast({ title: "Province Required", description: "Please select a province.", variant: "destructive" });
-      return;
-    }
-    if (!signedName.trim()) {
-      toast({ title: "Name Required", description: "Please enter your full legal name.", variant: "destructive" });
-      return;
-    }
-    if (!signatureDataUrl) {
-      toast({ title: "Signature Required", description: "Please draw your signature.", variant: "destructive" });
-      return;
-    }
-    claimMutation.mutate();
-  };
-
   return (
-    <Card data-testid="card-claim-market">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5" />
-          Claim a Market
-        </CardTitle>
-        <CardDescription>
-          Select a city and province to start receiving investor leads in that area.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="marketCity">Market City</Label>
-            <Input
-              id="marketCity"
-              value={marketCity}
-              onChange={(e) => setMarketCity(e.target.value)}
-              placeholder="e.g. Toronto, Vancouver, Calgary"
-              data-testid="input-market-city"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="marketRegion">Province</Label>
-            <Select value={marketRegion} onValueChange={setMarketRegion}>
-              <SelectTrigger data-testid="select-market-region">
-                <SelectValue placeholder="Select province" />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVINCES.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <Dialog open={Boolean(pending)} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Sign the referral agreement for {pending?.marketCity}</DialogTitle>
+          <DialogDescription>
+            This is the commitment moment: you have a real lead waiting. Signing covers
+            {" "}{pending?.marketCity}, {pending?.marketRegion} — 25% referral on closed transactions
+            from Realist leads, nothing else.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="rounded-md border p-4 max-h-48 overflow-y-auto">
+          <ReferralAgreementText />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Referral Agreement
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Based on OREA Form 641 — Referral Agreement
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground leading-relaxed" data-testid="text-referral-agreement">
-              The Receiving Brokerage acknowledges receipt of the referral information provided by <strong>Realist Inc. Personal Real Estate Corporation</strong> (the "Referring Brokerage") and agrees to offer service to the referred Seller/Buyer. The Receiving Brokerage agrees to inform the Referring Brokerage of the results of this referral and provide documentation of the results including the Listing Agreement, Agreement of Purchase and Sale, and a statement of commission earnings or a copy of the Trade Record Sheet.
-            </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              The Receiving Brokerage agrees to pay <strong>Realist Inc. Personal Real Estate Corporation</strong> upon receipt of commission resulting from this referral, a fee of <strong>25%</strong> of the gross commission earned on any transaction that results from leads received through this platform.
-            </p>
-          </CardContent>
-        </Card>
-
         <div className="space-y-2">
-          <Label htmlFor="signedName">Full Legal Name</Label>
+          <Label htmlFor="dialogSignedName">Full Legal Name</Label>
           <Input
-            id="signedName"
+            id="dialogSignedName"
             value={signedName}
             onChange={(e) => setSignedName(e.target.value)}
             placeholder="Enter your full legal name"
@@ -408,24 +579,35 @@ function ClaimMarketForm() {
         </div>
 
         <Button
-          onClick={handleSubmit}
-          disabled={claimMutation.isPending}
-          data-testid="button-claim-market"
+          className="w-full"
+          onClick={() => {
+            if (!signedName.trim()) {
+              toast({ title: "Name Required", description: "Please enter your full legal name.", variant: "destructive" });
+              return;
+            }
+            if (!signatureDataUrl) {
+              toast({ title: "Signature Required", description: "Please draw your signature.", variant: "destructive" });
+              return;
+            }
+            signMutation.mutate();
+          }}
+          disabled={signMutation.isPending}
+          data-testid="button-sign-agreement"
         >
-          {claimMutation.isPending ? (
+          {signMutation.isPending ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Claiming...
+              Signing...
             </>
           ) : (
             <>
               <PenTool className="h-4 w-4 mr-2" />
-              Sign Agreement & Claim Market
+              Sign & Claim Lead
             </>
           )}
         </Button>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -475,16 +657,37 @@ function MarketsSection({ claims }: { claims: RealtorMarketClaim[] }) {
 function LeadsSection({ leads, isLoading }: { leads: NotificationWithLead[] | undefined; isLoading: boolean }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [pendingAgreement, setPendingAgreement] = useState<PendingAgreement | null>(null);
 
   const claimLeadMutation = useMutation({
+    // Raw fetch (not apiRequest) so a 409 agreement_required can be handled
+    // as a flow step instead of a generic error.
     mutationFn: async (notificationId: string) => {
-      const res = await apiRequest("POST", `/api/realtor-network/claim-lead/${notificationId}`);
-      return res.json() as Promise<{ success: boolean; crmContactId?: string | null }>;
+      const res = await fetch(`/api/realtor-network/claim-lead/${notificationId}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data?.error === "agreement_required") {
+        return { agreementRequired: true as const, notificationId, ...data };
+      }
+      if (!res.ok) throw new Error(data?.error || "Failed to claim lead");
+      return data as { success: boolean; crmContactId?: string | null };
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
+      if (data?.agreementRequired) {
+        setPendingAgreement({
+          claimId: data.claimId,
+          notificationId: data.notificationId,
+          marketCity: data.marketCity,
+          marketRegion: data.marketRegion,
+        });
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/realtor-network/my-leads"] });
       queryClient.invalidateQueries({ queryKey: ["/api/realtor-network/introductions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/crm/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/realtor-network/my-claims"] });
       toast({
         title: "Lead Claimed!",
         description: "Introduction sent. The lead has been added to your CRM.",
@@ -525,6 +728,11 @@ function LeadsSection({ leads, isLoading }: { leads: NotificationWithLead[] | un
 
   return (
     <div className="space-y-4">
+      <AgreementSignDialog
+        pending={pendingAgreement}
+        onOpenChange={(open) => { if (!open) setPendingAgreement(null); }}
+        onSigned={(notificationId) => claimLeadMutation.mutate(notificationId)}
+      />
       <h2 className="text-xl font-semibold" data-testid="text-my-leads-heading">Lead Notifications</h2>
       <Card>
         <Table>
