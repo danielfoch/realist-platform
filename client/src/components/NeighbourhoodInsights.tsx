@@ -60,6 +60,22 @@ type PropertyAssessment = {
 
 const SQFT_PER_M2 = 10.7639;
 
+/** Mirrors PermitActivity from server/enrichment.ts (municipal open data). */
+type PermitActivity = {
+  atAddress: Array<{
+    permitNumber: string;
+    issuedDate: string | null;
+    permitType: string | null;
+    workType: string | null;
+    status: string | null;
+    description: string | null;
+    estimatedValue: number | null;
+    units: number | null;
+  }>;
+  nearby: { radiusM: number; windowMonths: number; count: number; totalValue: number | null } | null;
+  attribution: string | null;
+};
+
 export function NeighbourhoodInsights({
   lat,
   lng,
@@ -78,7 +94,11 @@ export function NeighbourhoodInsights({
   const enabled = (lat !== null && lng !== null) || !!address;
   const { data } = useQuery<{
     success: boolean;
-    data: { neighbourhood: NeighbourhoodStats | null; property: PropertyAssessment | null };
+    data: {
+      neighbourhood: NeighbourhoodStats | null;
+      property: PropertyAssessment | null;
+      permits: PermitActivity | null;
+    };
   }>({
     queryKey: ["/api/enrichment", lat, lng, address, city],
     queryFn: async () => {
@@ -100,13 +120,65 @@ export function NeighbourhoodInsights({
 
   const stats = data?.data?.neighbourhood;
   const property = data?.data?.property ?? null;
+  const permits = data?.data?.permits ?? null;
   // Render nothing until an enrichment layer is imported / the lookup matches.
-  if (!stats && !property) return null;
+  if (!stats && !property && !permits) return null;
   return (
     <>
       {property && <PropertyIntelligenceCard property={property} listPrice={listPrice ?? null} className={className} />}
+      {permits && <PermitsCard permits={permits} className={className} />}
       {stats && <NeighbourhoodCard stats={stats} className={className} />}
     </>
+  );
+}
+
+function PermitsCard({ permits, className }: { permits: PermitActivity; className?: string }) {
+  const { atAddress, nearby } = permits;
+  if (!atAddress.length && !nearby) return null;
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Landmark className="h-5 w-5" /> Building permits
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {atAddress.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">At this address</div>
+            {atAddress.slice(0, 5).map((p) => (
+              <div key={p.permitNumber} className="rounded-lg border p-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-semibold">{p.workType || p.permitType || "Permit"}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {[p.issuedDate, p.status].filter(Boolean).join(" · ")}
+                  </span>
+                </div>
+                {(p.estimatedValue !== null || p.units !== null) && (
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {[
+                      p.estimatedValue !== null ? money(p.estimatedValue) : null,
+                      p.units !== null && p.units > 0 ? `${p.units} unit${p.units === 1 ? "" : "s"}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+                )}
+                {p.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{p.description}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+        {nearby && (
+          <p className={`text-sm text-muted-foreground ${atAddress.length ? "mt-3" : ""}`}>
+            {nearby.count.toLocaleString()} permit{nearby.count === 1 ? "" : "s"} issued within{" "}
+            {Math.round(nearby.radiusM / 100) / 10} km in the last {nearby.windowMonths} months
+            {nearby.totalValue !== null ? ` — ${money(nearby.totalValue)} in declared project value` : ""}.
+          </p>
+        )}
+        {permits.attribution && <p className="mt-3 text-xs text-muted-foreground">{permits.attribution}</p>}
+      </CardContent>
+    </Card>
   );
 }
 
