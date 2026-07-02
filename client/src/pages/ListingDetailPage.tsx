@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
+import { NeighbourhoodInsights } from "@/components/NeighbourhoodInsights";
 import { FieldNotes } from "@/components/experts/FieldNotes";
 import { WatchListingButton } from "@/components/WatchListingButton";
 import { ListingEngagementStrip } from "@/components/ListingEngagementStats";
@@ -262,6 +263,8 @@ export default function ListingDetailPage() {
                 <Fact icon={<Building2 className="h-4 w-4" />} label="Type" value={listing.structureType || listing.propertyType || "N/A"} />
               </CardContent>
             </Card>
+
+            <NeighbourhoodInsights lat={toNumber(listing.latitude)} lng={toNumber(listing.longitude)} />
           </div>
         </section>
 
