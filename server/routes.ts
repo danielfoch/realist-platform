@@ -170,9 +170,8 @@ import {
   queueMilestoneNotification,
   queueSavedSearchMatchNotifications,
   queueUsListingChangeNotifications,
-  syncWatchersFromDiscoverySignals,
-  upsertWatcherFromSavedDeal,
 } from "./notifications";
+import { registerWatchlistRoutes } from "./watchlists";
 import { 
   calculateTrueCost, 
   cities, 
@@ -810,6 +809,7 @@ export async function registerRoutes(
   registerMobilePushRoutes(app);
   registerUserGoogleSheetsRoutes(app);
   registerUnderwritingShareRoutes(app);
+  registerWatchlistRoutes(app);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
@@ -4308,11 +4308,9 @@ export async function registerRoutes(
         ? { ...validatedData, userId }
         : validatedData;
       const deal = await storage.createSavedDeal(dealData);
-      if (userId) {
-        upsertWatcherFromSavedDeal(userId, deal).catch((error) => {
-          console.error("Error upserting watcher from saved deal:", error);
-        });
-      }
+      // NOTE: saving a deal used to silently mint a listing_watchers row
+      // (five alert streams the user never asked for). Retired — watches are
+      // now created only by the explicit Watch button (server/watchlists.ts).
       res.json({ success: true, data: deal });
     } catch (error) {
       console.error("Error saving deal:", error);
@@ -4462,11 +4460,12 @@ export async function registerRoutes(
       ];
 
       await storage.upsertDiscoverySignals(records);
-      await syncWatchersFromDiscoverySignals({
-        userId,
-        savedListings: payload.savedListings,
-        recentViewedListings: payload.recentViewedListings,
-      });
+      // NOTE: this sync used to auto-create listing_watchers rows from PASSIVE
+      // signals (merely viewing a listing, or shortlisting one) with all five
+      // alert flags on and no off switch. That consent-hostile pattern is
+      // retired: watching a listing now requires the explicit Watch button
+      // (server/watchlists.ts), and legacy auto-created watcher rows are
+      // visible and deletable in the watchlist UI.
       const mergedSignals = await storage.getDiscoverySignalsByUser(userId);
 
       res.json({
