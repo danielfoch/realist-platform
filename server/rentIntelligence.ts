@@ -49,9 +49,10 @@ const RESOLUTION_MAX_AGE_DAYS = 120;
 const SWEEP_BATCH_SIZE = 200;
 
 /**
- * Model key for the aiMarketDefaults prior system (user-assumption medians).
- * Defined here — the ledger owner — so aiMarketDefaults can import it
- * without creating an import cycle.
+ * Model key for the market-defaults prior system (user-assumption medians).
+ * The module that logged these predictions (aiMarketDefaults) was removed in
+ * favour of aiDefaults.ts; the key stays so the resolution sweep can still
+ * score any legacy model_predictions rows written under it.
  */
 export const MARKET_DEFAULTS_MODEL_KEY = "market_defaults";
 export const MARKET_DEFAULTS_VERSION = "v1.0.0";

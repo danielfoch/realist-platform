@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, User, ArrowRight, ClipboardCheck, Wrench } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-import { authPath, clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl } from "@/lib/authReturn";
+import { authPath, clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl, goToReturnUrl } from "@/lib/authReturn";
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -67,6 +67,9 @@ export default function CreateAccount() {
         professionalType: data.role === "partner" ? data.professionalType : undefined,
         certificationNumber: data.role === "partner" ? data.certificationNumber : undefined,
         serviceArea: data.role === "partner" ? data.serviceArea : undefined,
+        // Anonymous analyzer session — lets the server adopt pre-signup
+        // analyses so the portal isn't empty on first login.
+        sessionId: localStorage.getItem("realist_session_id") || undefined,
       });
       return response.json();
     },
@@ -74,7 +77,7 @@ export default function CreateAccount() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Account created!", description: "Welcome to Realist." });
       clearAuthReturnUrl();
-      setLocation(returnUrl);
+      goToReturnUrl(returnUrl, setLocation);
     },
     onError: (error: any) => {
       toast({

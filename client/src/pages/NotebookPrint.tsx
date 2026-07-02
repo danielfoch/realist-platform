@@ -112,7 +112,7 @@ export default function NotebookPrint() {
     <>
       <SEO
         title="Field Notebook — 5×8 Print Template | Realist.ca"
-        description="Printable 5×8 field notebook template for Realist.ca property walkthroughs."
+        description="Printable 5x8 field notebook template for property tours and real estate due diligence."
         noIndex
       />
       <style>{`
