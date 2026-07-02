@@ -990,6 +990,7 @@ export const investorProfiles = pgTable("investor_profiles", {
   country: text("country").default("canada"),
   bio: text("bio"),
   investmentGoals: text("investment_goals"),
+  podcastListener: boolean("podcast_listener"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1254,6 +1255,7 @@ export const professionalSubscriptions = pgTable("professional_subscriptions", {
   professionalType: text("professional_type"),
   certificationNumber: text("certification_number"),
   serviceArea: text("service_area"),
+  podcastListener: boolean("podcast_listener"),
   onboardingStatus: text("onboarding_status").default("started"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

@@ -176,6 +176,83 @@ import {
   type TrueCostInput,
 } from "./costData";
 
+const onboardingPodcastSchema = z.object({
+  podcastListener: z.enum(["yes", "no"]).optional(),
+});
+
+function toPodcastListenerBoolean(value?: "yes" | "no"): boolean | null {
+  if (value === "yes") return true;
+  if (value === "no") return false;
+  return null;
+}
+
+function podcastListenerLabel(value: boolean | null): string {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return "";
+}
+
+async function appendOnboardingLeadCapture(
+  userId: string,
+  role: "investor" | "professional",
+  podcastListener: boolean | null,
+  extra: Record<string, unknown> = {},
+): Promise<void> {
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      phone: users.phone,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user) return;
+
+  const listenerLabel = podcastListenerLabel(podcastListener);
+  const leadPayload = {
+    email: user.email,
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    phone: user.phone || "",
+    userId: user.id,
+    role,
+    source: "realist.ca",
+    event: "onboarding_completed",
+    formTag: "realist_onboarding",
+    podcastListener: listenerLabel,
+    teamCallNote: listenerLabel
+      ? `Podcast listener: ${listenerLabel}. Ask whether they want to engage with Nick/Dan.`
+      : "",
+    ...extra,
+  };
+
+  await appendLead("Signups", leadPayload);
+
+  const webhookUrl = process.env.GHL_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  try {
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...leadPayload,
+        tags: [
+          "realist-user",
+          "onboarding-completed",
+          podcastListener === true ? "podcast-listener" : "not-podcast-listener",
+        ],
+      }),
+    });
+  } catch (error: any) {
+    console.error("[ghl-onboarding] webhook failed:", error?.message || error);
+  }
+}
+
 const rateLimit = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
@@ -5334,15 +5411,31 @@ export async function registerRoutes(
   app.post("/api/investor/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.userId;
+      const onboarding = onboardingPodcastSchema.parse(req.body || {});
+      const podcastListener = toPodcastListenerBoolean(onboarding.podcastListener);
       const existingProfile = await storage.getInvestorProfile(userId);
       if (existingProfile) {
+        if (podcastListener !== null && existingProfile.podcastListener !== podcastListener) {
+          const updatedProfile = await storage.upsertInvestorProfile({ userId, podcastListener });
+          await appendOnboardingLeadCapture(userId, "investor", podcastListener);
+          res.json(updatedProfile);
+          return;
+        }
         res.json(existingProfile);
         return;
       }
-      const profile = await storage.upsertInvestorProfile({ userId });
+      const profile = await storage.upsertInvestorProfile({
+        userId,
+        ...(podcastListener !== null ? { podcastListener } : {}),
+      });
+      await appendOnboardingLeadCapture(userId, "investor", podcastListener);
       res.json(profile);
     } catch (error) {
       console.error("Error creating investor profile:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+        return;
+      }
       res.status(500).json({ error: "Failed to create profile" });
     }
   });
@@ -5740,6 +5833,8 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId;
       const { brokerageName, brokerageCity, brokerageProvince, professionalType, certificationNumber, serviceArea } = req.body;
+      const onboarding = onboardingPodcastSchema.parse(req.body || {});
+      const podcastListener = toPodcastListenerBoolean(onboarding.podcastListener);
       
       const subscription = await storage.upsertProfessionalSubscription({
         userId,
@@ -5752,14 +5847,26 @@ export async function registerRoutes(
         professionalType: professionalType || null,
         certificationNumber: certificationNumber || null,
         serviceArea: serviceArea || null,
+        ...(podcastListener !== null ? { podcastListener } : {}),
         onboardingStatus: professionalType === "inspector" || professionalType === "contractor"
           ? "pending_verification"
           : "started",
+      });
+      await appendOnboardingLeadCapture(userId, "professional", podcastListener, {
+        professionalType: professionalType || "",
+        brokerageName: brokerageName || "",
+        brokerageCity: brokerageCity || "",
+        brokerageProvince: brokerageProvince || "",
+        serviceArea: serviceArea || "",
       });
       
       res.json(subscription);
     } catch (error) {
       console.error("Error creating subscription:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+        return;
+      }
       res.status(500).json({ error: "Failed to create subscription" });
     }
   });

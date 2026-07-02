@@ -51,6 +51,7 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 ### Pending/Recent Work
 - `ef7766e` (Clyde) — /api/deals/join, user_sessions table for session→user linking
 - `486c4e5` (Clyde) — event tracking infrastructure
+- 2026-07-02 (Clyde) — onboarding captures `podcast_listener` on investor/professional profiles and writes the answer to lead capture for caller context.
 - Replit Agent (in progress) — adapting session linking to Drizzle schema
 
 ## How to Break Deadlocks

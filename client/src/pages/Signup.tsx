@@ -6,14 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { authPath } from "@/lib/authReturn";
+import { PODCAST_NAME } from "@shared/brand";
 import { Building, TrendingUp, Users, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canadaProvinces } from "@/lib/provinces";
+
+type PodcastListenerAnswer = "yes" | "no";
 
 interface BrokerageInfo {
   brokerageName: string;
@@ -31,6 +35,7 @@ export default function Signup() {
   const queryClient = useQueryClient();
   const [selectedRole, setSelectedRole] = useState<"investor" | "professional" | null>(null);
   const [step, setStep] = useState<"role" | "brokerage">("role");
+  const [podcastListener, setPodcastListener] = useState<PodcastListenerAnswer | "">("");
   const [brokerageInfo, setBrokerageInfo] = useState<BrokerageInfo>({
     brokerageName: "",
     brokerageCity: "",
@@ -41,11 +46,14 @@ export default function Signup() {
   });
 
   const createProfileMutation = useMutation({
-    mutationFn: async (data: { role: "investor" | "professional"; brokerage?: BrokerageInfo }) => {
+    mutationFn: async (data: { role: "investor" | "professional"; podcastListener: PodcastListenerAnswer; brokerage?: BrokerageInfo }) => {
       if (data.role === "investor") {
-        return apiRequest("POST", "/api/investor/profile", {});
+        return apiRequest("POST", "/api/investor/profile", { podcastListener: data.podcastListener });
       } else {
-        return apiRequest("POST", "/api/subscription/create", data.brokerage || {});
+        return apiRequest("POST", "/api/subscription/create", {
+          ...(data.brokerage || {}),
+          podcastListener: data.podcastListener,
+        });
       }
     },
     onSuccess: (_, data) => {
@@ -74,8 +82,13 @@ export default function Signup() {
   };
 
   const handleContinue = () => {
+    if (!podcastListener) {
+      toast({ title: "Please answer the podcast question", variant: "destructive" });
+      return;
+    }
+
     if (selectedRole === "investor") {
-      createProfileMutation.mutate({ role: "investor" });
+      createProfileMutation.mutate({ role: "investor", podcastListener });
     } else if (selectedRole === "professional") {
       setStep("brokerage");
     }
@@ -86,7 +99,12 @@ export default function Signup() {
       toast({ title: "Please enter your brokerage name", variant: "destructive" });
       return;
     }
-    createProfileMutation.mutate({ role: "professional", brokerage: brokerageInfo });
+    if (!podcastListener) {
+      toast({ title: "Please answer the podcast question", variant: "destructive" });
+      setStep("role");
+      return;
+    }
+    createProfileMutation.mutate({ role: "professional", podcastListener, brokerage: brokerageInfo });
   };
 
   if (authLoading) {
@@ -361,10 +379,56 @@ export default function Signup() {
             </Card>
           </div>
 
+          <Card className="mt-8">
+            <CardContent className="pt-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <Label className="text-base font-semibold">
+                    Do you listen to{" "}
+                    <a
+                      href="/insights/podcast"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline-offset-4 hover:underline"
+                      data-testid="link-onboarding-podcast"
+                    >
+                      {PODCAST_NAME}
+                    </a>
+                    ?
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    This helps our team understand your Realist community context.
+                  </p>
+                </div>
+                <RadioGroup
+                  value={podcastListener}
+                  onValueChange={(value) => setPodcastListener(value as PodcastListenerAnswer)}
+                  className="grid grid-cols-2 gap-3 md:min-w-[220px]"
+                  data-testid="radio-podcast-listener"
+                >
+                  <Label
+                    htmlFor="podcast-listener-yes"
+                    className="flex cursor-pointer items-center gap-2 rounded-md border p-3 text-sm hover:bg-muted"
+                  >
+                    <RadioGroupItem value="yes" id="podcast-listener-yes" />
+                    Yes
+                  </Label>
+                  <Label
+                    htmlFor="podcast-listener-no"
+                    className="flex cursor-pointer items-center gap-2 rounded-md border p-3 text-sm hover:bg-muted"
+                  >
+                    <RadioGroupItem value="no" id="podcast-listener-no" />
+                    No
+                  </Label>
+                </RadioGroup>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="mt-8 flex justify-center">
             <Button
               size="lg"
-              disabled={!selectedRole || createProfileMutation.isPending}
+              disabled={!selectedRole || !podcastListener || createProfileMutation.isPending}
               onClick={handleContinue}
               className="min-w-[200px] gap-2"
               data-testid="button-continue-signup"
