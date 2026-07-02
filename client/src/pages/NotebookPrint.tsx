@@ -110,7 +110,11 @@ const PAGE: React.CSSProperties = {
 export default function NotebookPrint() {
   return (
     <>
-      <SEO title="Field Notebook — 5×8 Print Template | Realist.ca" noIndex />
+      <SEO
+        title="Field Notebook — 5×8 Print Template | Realist.ca"
+        description="Printable 5x8 field notebook template for real estate walkthroughs, client notes, and deal screening."
+        noIndex
+      />
       <style>{`
         @page { size: 5in 8in; margin: 0.38in 0.4in; }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
