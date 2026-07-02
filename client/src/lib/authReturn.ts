@@ -1,5 +1,14 @@
 const AUTH_PATHS = new Set(["/login", "/create-account", "/signup", "/verify-phone", "/forgot-password", "/reset-password"]);
 
+// Cross-app SSO: realist.ca and stats.realist.ca share one account (the session
+// cookie is scoped to `.realist.ca`). We allow returning a visitor to the stats
+// subdomain after auth so signing up there lands them back where they were.
+const EXTERNAL_RETURN_ALLOWLIST = ["https://stats.realist.ca"];
+
+export function isAllowedExternalReturn(url: string): boolean {
+  return EXTERNAL_RETURN_ALLOWLIST.some((origin) => url === origin || url.startsWith(origin + "/"));
+}
+
 export function sanitizeReturnUrl(value: string | null | undefined, fallback = "/"): string {
   if (!value) return fallback;
 
@@ -10,12 +19,27 @@ export function sanitizeReturnUrl(value: string | null | undefined, fallback = "
     decoded = value;
   }
 
+  if (isAllowedExternalReturn(decoded)) return decoded;
+
   if (!decoded.startsWith("/") || decoded.startsWith("//")) return fallback;
 
   const path = decoded.split("?")[0].split("#")[0] || "/";
   if (AUTH_PATHS.has(path)) return fallback;
 
   return decoded;
+}
+
+/**
+ * Navigate to a post-auth return URL. External (allow-listed) targets need a
+ * full-page load since the SPA router can't cross origins; internal paths use
+ * client-side navigation.
+ */
+export function goToReturnUrl(returnUrl: string, setLocation: (to: string) => void): void {
+  if (isAllowedExternalReturn(returnUrl)) {
+    window.location.href = returnUrl;
+  } else {
+    setLocation(returnUrl);
+  }
 }
 
 export function getCurrentReturnUrl(fallback = "/"): string {

@@ -98,9 +98,16 @@ const GOOGLE_AUTH_SCOPES = [
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
 
+// stats.realist.ca shares this app's account (cookie scoped to `.realist.ca`),
+// so returning a visitor to the stats subdomain after OAuth is allowed.
+const EXTERNAL_RETURN_ALLOWLIST = ["https://stats.realist.ca"];
+
 function sanitizeAuthReturnUrl(raw: unknown, fallback = "/investor"): string {
   if (typeof raw !== "string") return fallback;
   const trimmed = raw.trim();
+  if (EXTERNAL_RETURN_ALLOWLIST.some((origin) => trimmed === origin || trimmed.startsWith(origin + "/"))) {
+    return trimmed;
+  }
   if (!trimmed || trimmed.startsWith("//") || /^https?:\/\//i.test(trimmed)) return fallback;
   return trimmed.startsWith("/") ? trimmed : fallback;
 }
