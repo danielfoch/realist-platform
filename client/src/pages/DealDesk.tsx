@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { Navigation } from "@/components/Navigation";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -85,6 +86,8 @@ export default function DealDesk() {
   const params = new URLSearchParams(searchString);
   const prefillAddress = params.get("address") || "";
   const prefillDealId = params.get("dealId") || null;
+  const prefillPrice = Number(params.get("price")) || "";
+  const prefillRent = Number(params.get("rent")) || "";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -96,8 +99,8 @@ export default function DealDesk() {
       listingUrl: "",
       market: "",
       propertyType: "",
-      purchasePrice: "",
-      estimatedRent: "",
+      purchasePrice: prefillPrice,
+      estimatedRent: prefillRent,
       financingHelpWanted: false,
       buyingHelpWanted: false,
       userNotes: "",
@@ -168,6 +171,7 @@ export default function DealDesk() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Navigation />
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="mb-8 space-y-2">
           <div className="flex items-center gap-2 mb-1">

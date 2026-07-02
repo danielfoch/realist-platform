@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { track } from "@/lib/analytics";
+import { loadPropertyContext, propertyContextToParams, savePropertyContext } from "@/lib/propertyContext";
 import {
   Building2, Calculator, MapPin, AlertTriangle, ChevronRight,
   Info, Zap, ArrowRight, Layers,
@@ -74,9 +75,31 @@ const DEFAULT_FORM: FeasibilityFormState = {
 };
 
 export default function MultiplexFeasibilityPage() {
-  const [form, setForm] = useState<FeasibilityFormState>(DEFAULT_FORM);
+  const [form, setForm] = useState<FeasibilityFormState>(() => {
+    const ctx = loadPropertyContext();
+    if (!ctx) return DEFAULT_FORM;
+    return {
+      ...DEFAULT_FORM,
+      address: ctx.address ?? "",
+      city: ctx.city ?? "",
+      province: ctx.province ?? DEFAULT_FORM.province,
+      postalCode: ctx.postalCode ?? "",
+      zoneCode: ctx.zoneCode ?? "",
+      lotFrontage: ctx.lotFrontageM ? String(ctx.lotFrontageM) : "",
+      lotDepth: ctx.lotDepthM ? String(ctx.lotDepthM) : "",
+    };
+  });
   const [submitted, setSubmitted] = useState<FeasibilityFormState | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  const crossToolParams = propertyContextToParams({
+    address: form.address || undefined,
+    city: form.city || undefined,
+    province: form.province || undefined,
+    zoneCode: form.zoneCode || undefined,
+    lotFrontageM: form.lotFrontage ? Number(form.lotFrontage) : undefined,
+    lotDepthM: form.lotDepth ? Number(form.lotDepth) : undefined,
+  });
 
   const update = (field: keyof FeasibilityFormState, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -85,6 +108,16 @@ export default function MultiplexFeasibilityPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.city && !form.address) return;
+
+    savePropertyContext({
+      address: form.address || undefined,
+      city: form.city || undefined,
+      province: form.province || undefined,
+      postalCode: form.postalCode || undefined,
+      zoneCode: form.zoneCode || undefined,
+      lotFrontageM: form.lotFrontage ? Number(form.lotFrontage) : undefined,
+      lotDepthM: form.lotDepth ? Number(form.lotDepth) : undefined,
+    });
 
     track({
       event: "feature_used",
@@ -166,7 +199,7 @@ export default function MultiplexFeasibilityPage() {
               </p>
             </div>
             <div className="shrink-0">
-              <Link href="/tools/will-it-plex">
+              <Link href={`/tools/will-it-plex${crossToolParams}`}>
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <Layers className="h-3.5 w-3.5" />
                   Full Pro Forma → Will It Plex?
@@ -369,12 +402,12 @@ export default function MultiplexFeasibilityPage() {
               </p>
             </form>
 
-            {/* Navigation to related tools */}
+            {/* Navigation to related tools — carry what the user already typed */}
             <div className="space-y-2 pt-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Related Tools</p>
               {[
-                { href: "/tools/will-it-plex", label: "Will It Plex?", desc: "Full financial pro forma for multiplex" },
-                { href: "/tools/analyzer", label: "Deal Analyzer", desc: "Complete underwriting — cash flow, IRR, BRRR" },
+                { href: `/tools/will-it-plex${crossToolParams}`, label: "Will It Plex?", desc: "Full financial pro forma for multiplex" },
+                { href: `/tools/analyzer${crossToolParams}`, label: "Deal Analyzer", desc: "Complete underwriting — cash flow, IRR, BRRR" },
                 { href: "/tools/true-cost", label: "True Cost", desc: "Ontario buyer cost breakdown" },
               ].map(({ href, label, desc }) => (
                 <Link key={href} href={href}>
@@ -505,13 +538,13 @@ export default function MultiplexFeasibilityPage() {
             <p className="text-sm text-muted-foreground mt-0.5">Run the full multiplex financial pro forma in Will It Plex?, or analyze cash flow in the deal analyzer.</p>
           </div>
           <div className="flex gap-3 shrink-0">
-            <Link href="/tools/will-it-plex">
+            <Link href={`/tools/will-it-plex${crossToolParams}`}>
               <Button size="sm" className="gap-1.5">
                 <Layers className="h-3.5 w-3.5" />
                 Will It Plex?
               </Button>
             </Link>
-            <Link href="/tools/analyzer">
+            <Link href={`/tools/analyzer${crossToolParams}`}>
               <Button variant="outline" size="sm" className="gap-1.5">
                 <Calculator className="h-3.5 w-3.5" />
                 Deal Analyzer

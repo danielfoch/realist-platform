@@ -25,6 +25,8 @@ export interface MapLayer {
   opacity: number;
   category: "financial" | "demographic" | "infrastructure" | "composite";
   badge?: string;
+  /** No data pipeline behind this layer yet — render disabled so a toggle can never silently show nothing. */
+  comingSoon?: boolean;
 }
 
 const DEFAULT_LAYERS: MapLayer[] = [
@@ -82,32 +84,35 @@ const DEFAULT_LAYERS: MapLayer[] = [
   {
     id: "crime",
     name: "Crime Index",
-    description: "Crime severity index from local police open data and StatCan.",
+    description: "Crime severity index from local police open data and StatCan. Coming soon.",
     icon: <Shield className="h-4 w-4" />,
     color: "#dc2626",
     enabled: false,
     opacity: 0.5,
     category: "demographic",
+    comingSoon: true,
   },
   {
     id: "transit",
     name: "Transit",
-    description: "Transit routes and stops from GTFS feeds. Proximity to transit affects property values.",
+    description: "Transit routes and stops from GTFS feeds. Proximity to transit affects property values. Coming soon.",
     icon: <Train className="h-4 w-4" />,
     color: "#06b6d4",
     enabled: false,
     opacity: 0.6,
     category: "infrastructure",
+    comingSoon: true,
   },
   {
     id: "permits",
     name: "Development Permits",
-    description: "Active development and building permits from municipal open data.",
+    description: "Active development and building permits from municipal open data. Coming soon.",
     icon: <FileText className="h-4 w-4" />,
     color: "#f97316",
     enabled: false,
     opacity: 0.6,
     category: "infrastructure",
+    comingSoon: true,
   },
 ];
 
@@ -186,7 +191,7 @@ export function MapLayersPanel({ layers, onLayersChange }: MapLayersPanelProps) 
   const toggleLayer = (layerId: string) => {
     onLayersChange(
       layers.map((l) =>
-        l.id === layerId ? { ...l, enabled: !l.enabled } : l
+        l.id === layerId && !l.comingSoon ? { ...l, enabled: !l.enabled } : l
       )
     );
   };
@@ -209,7 +214,8 @@ export function MapLayersPanel({ layers, onLayersChange }: MapLayersPanelProps) 
 
   return (
     <TooltipProvider>
-      <div className="absolute top-3 right-3 z-[1000]" data-testid="map-layers-panel">
+      {/* top-24 clears the "Map metric" selector card that owns the top-right corner */}
+      <div className="absolute top-24 right-3 z-[1000]" data-testid="map-layers-panel">
         <Button
           size="sm"
           variant={activeLayers.length > 0 ? "default" : "secondary"}
@@ -262,11 +268,15 @@ export function MapLayersPanel({ layers, onLayersChange }: MapLayersPanelProps) 
                               {layer.icon}
                             </div>
                             <span className="text-xs font-medium">{layer.name}</span>
-                            {layer.badge && (
+                            {layer.comingSoon ? (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 text-muted-foreground">
+                                Coming soon
+                              </Badge>
+                            ) : layer.badge ? (
                               <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
                                 {layer.badge}
                               </Badge>
-                            )}
+                            ) : null}
                           </div>
                           <div className="flex items-center gap-1.5">
                             <Tooltip>
@@ -281,6 +291,7 @@ export function MapLayersPanel({ layers, onLayersChange }: MapLayersPanelProps) 
                             </Tooltip>
                             <Switch
                               checked={layer.enabled}
+                              disabled={layer.comingSoon}
                               onCheckedChange={() => toggleLayer(layer.id)}
                               className="scale-75"
                               data-testid={`switch-${layer.id}`}

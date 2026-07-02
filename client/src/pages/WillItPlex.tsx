@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { Navigation } from "@/components/Navigation";
+import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -55,19 +57,34 @@ export default function WillItPlex() {
   const [htmlSource, setHtmlSource] = useState("");
   const [showHtmlInput, setShowHtmlInput] = useState(false);
   const [importedProperty, setImportedProperty] = useState<CapstoneProperty | null>(null);
-  const [inputMode, setInputMode] = useState<"import" | "manual">("import");
   
-  // Manual input state
-  const [manualAddress, setManualAddress] = useState("");
-  const [manualCity, setManualCity] = useState("");
-  const [manualProvince, setManualProvince] = useState("");
-  const [manualPrice, setManualPrice] = useState<number | "">("");
+  // Manual input state — seeded from cross-tool params (?address=…) or the
+  // shared property context so users never re-type a property between tools.
+  const seed = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ctx = params.get("address") || params.get("city") ? null : loadPropertyContext();
+    return {
+      address: params.get("address") ?? ctx?.address ?? "",
+      city: params.get("city") ?? ctx?.city ?? "",
+      province: params.get("province") ?? ctx?.province ?? "",
+      price: Number(params.get("price")) || ctx?.price || "",
+      frontage: Number(params.get("frontage")) || ctx?.lotFrontageM || "",
+      depth: Number(params.get("depth")) || ctx?.lotDepthM || "",
+      zone: params.get("zone") ?? ctx?.zoneCode ?? "",
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [manualAddress, setManualAddress] = useState(seed.address);
+  const [manualCity, setManualCity] = useState(seed.city);
+  const [manualProvince, setManualProvince] = useState(seed.province);
+  const [manualPrice, setManualPrice] = useState<number | "">(seed.price as number | "");
   const [manualBedrooms, setManualBedrooms] = useState<number | "">(3);
   const [manualBathrooms, setManualBathrooms] = useState<number | "">(2);
   const [manualSquareFootage, setManualSquareFootage] = useState<number | "">("");
-  const [manualLotFrontage, setManualLotFrontage] = useState<number | "">("");
-  const [manualLotDepth, setManualLotDepth] = useState<number | "">("");
+  const [manualLotFrontage, setManualLotFrontage] = useState<number | "">(seed.frontage as number | "");
+  const [manualLotDepth, setManualLotDepth] = useState<number | "">(seed.depth as number | "");
   const [manualPropertyType, setManualPropertyType] = useState("Detached");
+  const [inputMode, setInputMode] = useState<"import" | "manual">(seed.address || seed.city ? "manual" : "import");
   
   // Buy & Hold state
   const [monthlyRent, setMonthlyRent] = useState(2500);
@@ -164,6 +181,14 @@ export default function WillItPlex() {
       lotArea: null,
       annualTaxes: null,
       createdAt: new Date(),
+    });
+    savePropertyContext({
+      address: manualAddress,
+      city: manualCity,
+      province: manualProvince || undefined,
+      price: typeof manualPrice === "number" ? manualPrice : undefined,
+      lotFrontageM: typeof manualLotFrontage === "number" ? manualLotFrontage : undefined,
+      lotDepthM: typeof manualLotDepth === "number" ? manualLotDepth : undefined,
     });
     toast({ title: "Property added", description: `${manualAddress}, ${manualCity}` });
   };
@@ -1194,11 +1219,12 @@ export default function WillItPlex() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Navigation />
       <div className="container max-w-4xl mx-auto py-8 px-4">
         <div className="flex justify-center mb-6">
-          <img 
-            src={ohbaLogo} 
-            alt="OHBA Futures Faster" 
+          <img
+            src={ohbaLogo}
+            alt="OHBA Futures Faster"
             className="h-12 grayscale opacity-70"
           />
         </div>

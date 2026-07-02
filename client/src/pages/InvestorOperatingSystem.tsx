@@ -134,7 +134,7 @@ export default function InvestorOperatingSystem() {
   const [activeTab, setActiveTab] = usePersistedTab("investorOS.activeTab", "watchlist", ["watchlist", "notes", "professionals", "challenge", "events"]);
   const [notes, setNotes] = useState(sampleNotes);
   const [submitting, setSubmitting] = useState<string | null>(null);
-  const [webhookStatus, setWebhookStatus] = useState("CRM webhook not tested this session.");
+  const [webhookStatus, setWebhookStatus] = useState("");
 
   const investorScore = useMemo(() => {
     const contributionScore = 74;
@@ -202,19 +202,22 @@ export default function InvestorOperatingSystem() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Investor OS - Realist"
+        title="My Deals - Realist"
         description="Save deals, add structured deal notes, compare opportunities, request professional feedback, and build AI-ready contribution data."
         canonicalUrl="/tools/investor-os"
       />
       <Navigation />
 
       <main className="container mx-auto px-4 py-10 max-w-7xl">
+        <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600 dark:text-amber-400" data-testid="banner-sample-data">
+          Preview — this workspace currently shows sample data while we connect it to your saved analyses.
+        </div>
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <Badge variant="secondary" className="mb-3 gap-1"><ShieldCheck className="h-3.5 w-3.5" /> Prototype intelligence engine</Badge>
-            <h1 className="text-3xl md:text-5xl font-bold tracking-tight">Realist Investor OS</h1>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">My Deals</h1>
             <p className="mt-3 max-w-3xl text-muted-foreground">
-              Find better investment properties with AI-ready underwriting, crowd-sourced deal notes, professional feedback, and structured contribution data.
+              Your deal workspace — saved properties, structured notes, professional feedback, and comparisons in one place.
             </p>
           </div>
           <div className="flex gap-2">
@@ -480,7 +483,7 @@ export default function InvestorOperatingSystem() {
                 <CardDescription>Email event layer and CRM-ready webhook adapter for future automations.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-md border p-4 text-sm">{webhookStatus}</div>
+                {webhookStatus && <div className="rounded-md border p-4 text-sm">{webhookStatus}</div>}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-md border p-3"><CheckCircle2 className="h-4 w-4 mb-2 text-emerald-600" /><p className="font-medium">Structured events</p><p className="text-sm text-muted-foreground">Deal notes, saved deals, quotes, challenges, consults, and digests.</p></div>
                   <div className="rounded-md border p-3"><AlertTriangle className="h-4 w-4 mb-2 text-amber-600" /><p className="font-medium">Non-blocking delivery</p><p className="text-sm text-muted-foreground">Webhook failures do not break user-facing forms.</p></div>

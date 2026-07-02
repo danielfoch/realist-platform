@@ -289,7 +289,10 @@ export default function JoinLenders() {
                   data-testid="checkbox-lender-referral"
                 />
                 <Label htmlFor="referral" className="text-sm leading-relaxed cursor-pointer">
-                  I agree to pay a referral fee on funded deals sourced through Realist.ca's investor network.
+                  I understand participation involves a referral fee on funded deals sourced through
+                  Realist.ca's investor network. The exact percentage and terms are set out in the
+                  partner agreement you'll review and sign before any lead is exchanged — nothing is
+                  binding at this step.
                 </Label>
               </div>
 

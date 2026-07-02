@@ -3,6 +3,7 @@ import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
+import { AskRealistPanel } from "@/components/AskRealistPanel";
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -762,6 +763,22 @@ function MapEventHandler({
   onBoundsChange: (bounds: MapBounds) => void;
 }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reportedInitial = useRef(false);
+
+  // Report the initial viewport so the map never opens empty — pins should
+  // show on first paint (Zillow/Redfin behaviour), not only after a pan.
+  const mountedMap = useMap();
+  useEffect(() => {
+    if (reportedInitial.current) return;
+    reportedInitial.current = true;
+    const b = mountedMap.getBounds();
+    onBoundsChange({
+      north: b.getNorth(),
+      south: b.getSouth(),
+      east: b.getEast(),
+      west: b.getWest(),
+    });
+  }, [mountedMap, onBoundsChange]);
 
   useMapEvents({
     moveend: (e) => {
@@ -1133,24 +1150,6 @@ function UsListingsLayer({
   return null;
 }
 
-function GeolocateOnMount() {
-  const map = useMap();
-  const attempted = useRef(false);
-  useEffect(() => {
-    if (attempted.current) return;
-    attempted.current = true;
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        map.flyTo([pos.coords.latitude, pos.coords.longitude], DEFAULT_ZOOM, { duration: 1.5 });
-      },
-      () => {},
-      { timeout: 5000, maximumAge: 300000 }
-    );
-  }, [map]);
-  return null;
-}
-
 function MapQuickCardOverlay({
   listing,
   children,
@@ -1399,6 +1398,7 @@ export default function CapRates() {
   const [numPages, setNumPages] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [selectedListing, setSelectedListing] = useState<ListingWithCapRate | null>(null);
   const [selectedDistressListing, setSelectedDistressListing] = useState<DistressListing | null>(null);
   const [analyzerSheetMeta, setAnalyzerSheetMeta] = useState<{ title: string; subtitle: string } | null>(null);
@@ -1689,6 +1689,7 @@ export default function CapRates() {
     if (searchInProgress.current) return;
     searchInProgress.current = true;
     setIsSearching(true);
+    setFetchError(false);
     try {
       const useDdf = ddfStatus?.configured && ddfStatus?.authenticated;
 
@@ -1758,18 +1759,28 @@ export default function CapRates() {
       }
       setHasSearched(true);
     } catch (error) {
+      // Never let an API failure masquerade as "no properties found" — say
+      // the platform had a problem, not that the inventory is empty.
       console.error("Error fetching listings:", error);
       setListings([]);
       setTotalCount(0);
+      setFetchError(true);
+      toast({
+        title: "Couldn't load listings",
+        description: "Something went wrong on our end. Move the map or hit retry to try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSearching(false);
       searchInProgress.current = false;
     }
-  }, [minPrice, maxPrice, minBeds, minUnits, propertyType, ddfStatus]);
+  }, [minPrice, maxPrice, minBeds, minUnits, propertyType, ddfStatus, toast]);
 
+  // Keep the selected listing pinned while the user repositions the map —
+  // clearing it on pan made it impossible to review a property and move the
+  // viewport at the same time.
   const handleBoundsChange = useCallback((bounds: MapBounds) => {
     setMapBounds(bounds);
-    setSelectedListing(null);
     fetchListingsForBounds(bounds, 1);
   }, [fetchListingsForBounds]);
 
@@ -3604,6 +3615,16 @@ export default function CapRates() {
               {isSearching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
             </div>
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
+          {findDealsActive && (
+            <AskRealistPanel
+              compact
+              initialQuestion={findDealsQuery}
+              context={{
+                city: findDealsFilters.city || undefined,
+                price: findDealsFilters.maxPrice || undefined,
+              }}
+            />
+          )}
           {(savedSearches.length > 0 || savedShortlist.length > 0 || recentViewedListings.length > 0) && (
             <Card className="border-border/60">
               <CardContent className="p-3 space-y-3">
@@ -3735,6 +3756,23 @@ export default function CapRates() {
                 </div>
               )}
             </>
+          ) : fetchError ? (
+            <div className="rounded-lg border border-destructive/40 p-6 text-center" data-testid="listings-error-state">
+              <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-3" />
+              <h3 className="text-sm font-semibold mb-2">We couldn't load listings</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                This is a problem on our end, not empty inventory.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => mapBounds && fetchListingsForBounds(mapBounds, 1)}
+                disabled={isSearching || !mapBounds}
+                data-testid="button-retry-listings"
+              >
+                Retry
+              </Button>
+            </div>
           ) : hasSearched ? (
             <div className="rounded-lg border p-6 text-center">
               <Search className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
@@ -3773,9 +3811,9 @@ export default function CapRates() {
         <div className="px-3 py-3 space-y-3">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Deal sourcing</p>
-              <h1 className="text-sm font-bold tracking-tight">Cap Rate Map of Canada</h1>
-              <p className="text-sm text-muted-foreground">Browse listings by cap rate and rental yield — search broadly, shortlist quickly, then hand the winner into underwriting.</p>
+              <p className="hidden md:block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Deal sourcing</p>
+              <h1 className="text-sm font-bold tracking-tight">Yield Map of Canada</h1>
+              <p className="hidden md:block text-sm text-muted-foreground">Browse listings by cap rate and rental yield — search broadly, shortlist quickly, then hand the winner into underwriting.</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="text-[10px]" data-testid="badge-results-summary">
@@ -3790,8 +3828,8 @@ export default function CapRates() {
             </div>
           </div>
 
-          <div className="flex gap-2 items-center">
-            <div className="flex-1 relative">
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative w-full sm:w-auto sm:flex-1 min-w-0">
               <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
               <Input
                 placeholder='Try: "duplexes in Hamilton under 600k" or "3 bed houses in Calgary"'
@@ -4269,7 +4307,6 @@ export default function CapRates() {
             )}
             <NeighbourhoodOverlay layers={mapLayers} />
             <MapEventHandler onBoundsChange={handleBoundsChange} />
-            <GeolocateOnMount />
             {flyTo && <FlyToLocation lat={flyTo.lat} lng={flyTo.lng} />}
             <MapQuickCardOverlay listing={selectedListing}>
               {renderMapQuickCard()}

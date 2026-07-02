@@ -397,23 +397,6 @@ export default function Compare() {
           </Card>
         </main>
 
-        <footer className="py-8 border-t border-border/50">
-          <div className="max-w-7xl mx-auto px-4 md:px-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-sm text-muted-foreground">
-                2025 Realist.ca. All rights reserved.
-              </p>
-              <div className="flex gap-4">
-                <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Privacy Policy
-                </Link>
-                <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Terms of Service
-                </Link>
-              </div>
-            </div>
-          </div>
-        </footer>
       </div>
     );
   }
@@ -844,23 +827,6 @@ export default function Compare() {
         )}
       </main>
 
-      <footer className="py-8 border-t border-border/50 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-muted-foreground">
-              2025 Realist.ca. All rights reserved.
-            </p>
-            <div className="flex gap-4">
-              <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Terms of Service
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

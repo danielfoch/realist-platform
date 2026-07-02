@@ -81,23 +81,6 @@ export default function Terms() {
         </div>
       </main>
 
-      <footer className="py-8 border-t border-border/50">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xs">R</span>
-              </div>
-              <span>Realist.ca</span>
-            </div>
-            <div className="flex items-center gap-6">
-              <a href="/about" className="hover:text-foreground transition-colors">About</a>
-              <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -265,18 +265,22 @@ function AnalystRow({ entry }: { entry: LeaderboardEntry }) {
         )}
       </div>
 
-      <Avatar className="h-9 w-9 shrink-0">
-        {entry.profileImageUrl && (
-          <AvatarImage src={entry.profileImageUrl} alt={entry.name} />
-        )}
-        <AvatarFallback className="text-xs">{getInitials(entry.name)}</AvatarFallback>
-      </Avatar>
+      <Link href={`/u/${entry.userId}`} className="shrink-0" data-testid={`link-analyst-avatar-${entry.rank}`}>
+        <Avatar className="h-9 w-9">
+          {entry.profileImageUrl && (
+            <AvatarImage src={entry.profileImageUrl} alt={entry.name} />
+          )}
+          <AvatarFallback className="text-xs">{getInitials(entry.name)}</AvatarFallback>
+        </Avatar>
+      </Link>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-medium truncate text-sm" data-testid={`text-analyst-name-${entry.rank}`}>
-            {entry.name}
-          </p>
+          <Link href={`/u/${entry.userId}`} className="min-w-0">
+            <p className="font-medium truncate text-sm hover:underline" data-testid={`text-analyst-name-${entry.rank}`}>
+              {entry.name}
+            </p>
+          </Link>
           {entry.role && <RoleBadge role={entry.role} />}
         </div>
         <div className="flex items-center gap-2 flex-wrap">

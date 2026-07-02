@@ -103,6 +103,8 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
         displayTitle: dynamicExpert.brokerageName || staticExpert.brokerageName || staticExpert.title,
         displayCity: dynamicExpert.brokerageCity || staticExpert.city || "",
         province: dynamicExpert.brokerageProvince || staticExpert.province,
+        // Never show one expert's booking link under another expert's name
+        bookingUrl: dynamicExpert.name && dynamicExpert.name !== staticExpert.name ? undefined : staticExpert.bookingUrl,
       };
     }
     if (dynamicExpert) {
@@ -117,6 +119,7 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
         bio: "",
         displayTitle: dynamicExpert.brokerageName || "Market Expert",
         displayCity: dynamicExpert.brokerageCity || dynamicExpert.marketCity || city || "",
+        bookingUrl: undefined as string | undefined,
       };
     }
     if (staticExpert) {
@@ -218,12 +221,14 @@ export function MarketExpertPanel({ region, city, country, dealInfo, defaultValu
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
-        <a href="https://calendly.com/danielfoch/consultation-realist-ca" target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
-          <Button size="sm" variant="outline" className="gap-1 w-full sm:w-auto" data-testid="button-book-call">
-            <Phone className="h-3 w-3" />
-            Book a Call
-          </Button>
-        </a>
+        {displayExpert!.bookingUrl && (
+          <a href={displayExpert!.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+            <Button size="sm" variant="outline" className="gap-1 w-full sm:w-auto" data-testid="button-book-call">
+              <Phone className="h-3 w-3" />
+              Book a Call
+            </Button>
+          </a>
+        )}
         <Button 
           size="sm"
           className="gap-1 flex-1 sm:flex-none" 

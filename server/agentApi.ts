@@ -72,7 +72,7 @@ export async function bearerAuth(req: Request, res: Response, next: NextFunction
 // Uses the shared `calculateInvestmentMetrics` engine (same one the main app
 // analyzer relies on) so MCP/CLI underwriting is the single source of truth
 // for cap rate, NOI, monthly cash flow, DSCR, and cash-on-cash return.
-function underwriteSimple(input: {
+export function underwriteSimple(input: {
   price: number;
   monthlyRent?: number;
   units?: number;

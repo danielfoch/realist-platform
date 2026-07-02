@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
+import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -115,13 +116,31 @@ export default function MultiplexUnderwriterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [address, setAddress] = useState("");
+  // Seed from cross-tool params or the shared property context so an address
+  // typed in feasibility/analyzer carries straight into the AI underwrite.
+  const [address, setAddress] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("share")) return "";
+    return params.get("address") ?? loadPropertyContext()?.address ?? "";
+  });
   const [postalCode, setPostalCode] = useState("");
   const [site, setSite] = useState<ResolvedSite | null>(null);
 
-  const [frontage, setFrontage] = useState("");
-  const [depth, setDepth] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState("");
+  const [frontage, setFrontage] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("share")) return "";
+    return params.get("frontage") ?? (loadPropertyContext()?.lotFrontageM?.toString() ?? "");
+  });
+  const [depth, setDepth] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("share")) return "";
+    return params.get("depth") ?? (loadPropertyContext()?.lotDepthM?.toString() ?? "");
+  });
+  const [purchasePrice, setPurchasePrice] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("share")) return "";
+    return params.get("price") ?? (loadPropertyContext()?.price?.toString() ?? "");
+  });
   const [laneAccess, setLaneAccess] = useState(false);
 
   const [result, setResult] = useState<UnderwriteResult | null>(null);
@@ -148,6 +167,7 @@ export default function MultiplexUnderwriterPage() {
   async function resolveSite() {
     setBusy(true);
     setError(null);
+    savePropertyContext({ address, postalCode: postalCode || undefined });
     track({ event: "analyzer_started", address, strategy: "multiplex", source: "multiplex_underwriter" });
     try {
       const res = await apiRequest("POST", "/api/multiplex-underwriter", { address, postalCode: postalCode || undefined });

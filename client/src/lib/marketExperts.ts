@@ -10,6 +10,8 @@ export interface MarketExpert {
   instagram?: string;
   email?: string;
   brokerageName?: string;
+  /** Personal booking link — "Book a Call" only renders when the displayed expert has one. */
+  bookingUrl?: string;
 }
 
 // Durham Region municipalities for city-level matching
@@ -41,6 +43,7 @@ export const marketExperts: Record<string, MarketExpert> = {
     bio: "Host of The Canadian Real Estate Investor Podcast with 11,000+ community members. Specializing in Ontario investment properties with deep expertise in Toronto, Hamilton, and surrounding markets.",
     linkedIn: "https://www.linkedin.com/in/danielfoch/",
     instagram: "https://www.instagram.com/thecreipodcast/",
+    bookingUrl: "https://calendly.com/danielfoch/consultation-realist-ca",
   },
   BC: {
     name: "James Anderson",

@@ -14,7 +14,7 @@ import {
   queueDailyDigestNotifications,
   queueInactiveHighIntentNotifications,
 } from "./notifications";
-import { registerAiDefaultsRoutes, scheduleNightlyTraining } from "./aiMarketDefaults";
+import { scheduleNightlyTraining } from "./aiDefaults";
 
 const app = express();
 // Trust proxy for secure cookies behind Replit's reverse proxy
@@ -598,11 +598,14 @@ async function ensureAppTables() {
   });
 
   await registerRoutes(httpServer, app);
-  registerAiDefaultsRoutes(app);
   const { registerMultiplexUnderwriterRoutes } = await import("./multiplexUnderwriter");
   registerMultiplexUnderwriterRoutes(app);
   const { registerPowerTeamRoutes } = await import("./powerTeam");
   registerPowerTeamRoutes(app);
+  const { registerPublicProfileRoutes } = await import("./publicProfiles");
+  registerPublicProfileRoutes(app);
+  const { registerAskRealistRoutes } = await import("./askRealist");
+  registerAskRealistRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -685,6 +688,9 @@ async function ensureAppTables() {
         scheduleMonthlyWinnerEmail();
       }).catch((err) => log(`Monthly winner email schedule error: ${err.message}`, "monthly-winner"));
       scheduleNightlyTraining();
+      if (!process.env.ANTHROPIC_API_KEY) {
+        log("⚠️  ANTHROPIC_API_KEY is not set — Multiplex Underwriter narratives fall back to templates and Ask Realist (/api/ask) is DISABLED. Users are seeing zero live AI.", "startup");
+      }
       import("./rentIntelligence").then(({ scheduleRentIntelligenceJobs }) => {
         scheduleRentIntelligenceJobs(log);
         log("Rent intelligence jobs scheduled (daily prediction sweep)", "intelligence");

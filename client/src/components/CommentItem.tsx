@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CommentHelpfulButton } from "@/components/CommentHelpfulButton";
 import { CommentReportButton } from "@/components/CommentReportButton";
 import { CommentReplyForm } from "@/components/CommentReplyForm";
@@ -20,7 +22,20 @@ export function CommentItem({ comment, canEdit, onHelpful, onReport, onReply, on
     <div className="rounded-lg border border-border/60 p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold">{comment.user?.displayName || comment.userDisplaySnapshot || "Community investor"}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {comment.userId ? (
+              <Link href={`/u/${comment.userId}`}>
+                <p className="text-sm font-semibold hover:underline">
+                  {comment.user?.displayName || comment.userDisplaySnapshot || "Community investor"}
+                </p>
+              </Link>
+            ) : (
+              <p className="text-sm font-semibold">{comment.user?.displayName || comment.userDisplaySnapshot || "Community investor"}</p>
+            )}
+            {comment.user?.role && comment.user.role !== "investor" && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{comment.user.role}</Badge>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {new Date(comment.createdAt).toLocaleString()}{comment.editedAt ? " · edited" : ""}
           </p>

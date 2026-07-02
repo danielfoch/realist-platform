@@ -7,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { getSavedListingSignals, getSavedSearchSignals, syncDiscoverySignalsWithAccount, track, trackRealistEvent } from "@/lib/analytics";
-import { ArrowRight, BarChart3, Brain, Compass, Map, Radar, Save, Target, Trophy } from "lucide-react";
+import { ArrowRight, BarChart3, Brain, Compass, Map, Radar, Save, Target } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { CANADA_SVG_PATH, CANADA_VIEWBOX } from "@/lib/canadaSilhouette";
+import { mediaLogos } from "@/lib/mediaLogos";
+import { SITE_STATS } from "@/lib/siteStats";
 
 function formatCurrency(value?: number) {
   if (!value) return null;
@@ -41,6 +43,8 @@ export default function InvestorStart() {
   const { isAuthenticated, user } = useAuth();
   const [recentSavedListing, setRecentSavedListing] = useState(() => getSavedListingSignals()[0]);
   const [recentSavedSearch, setRecentSavedSearch] = useState(() => getSavedSearchSignals()[0]);
+  // First-time visitors have no history — never show them their own empty state.
+  const hasResumeSignals = Boolean(recentSavedListing || recentSavedSearch);
   const [calculationParticles, setCalculationParticles] = useState<CalculationParticle[]>([]);
   const particleIdRef = useRef(0);
   const lastParticleAtRef = useRef(0);
@@ -60,7 +64,7 @@ export default function InvestorStart() {
 
   const greeting = isAuthenticated
     ? `Welcome back${user?.firstName ? `, ${user.firstName}` : ""}.`
-    : "AI-powered real estate investing";
+    : null;
 
   const learningSignals = [
     "Learns your markets",
@@ -151,15 +155,17 @@ export default function InvestorStart() {
 
           <div className="relative max-w-6xl mx-auto px-4 md:px-6 py-16 md:py-24">
             <div className="max-w-[860px]">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-4">
-                {greeting}
-              </p>
+              {greeting && (
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-4">
+                  {greeting}
+                </p>
+              )}
               <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.04] text-balance">
                 Canadian real estate investing, underwritten by AI.
               </h1>
               <p className="mt-5 text-lg md:text-xl text-muted-foreground max-w-[760px]">
-                Analyze properties, save your assumptions, compare similar deals, and let every search,
-                save, and calculator run sharpen your account-backed investment workflow.
+                Paste a listing or address and get cash flow, yield, and risk in seconds.
+                Realist learns your buy box with every deal you run.
               </p>
               <div className="mt-7 flex flex-col sm:flex-row gap-3">
                 <Link href="/tools/analyzer">
@@ -176,19 +182,19 @@ export default function InvestorStart() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-                <Link href="/community/leaderboard?period=weekly">
+                <Link href="/tools/cap-rates">
                   <Button
                     size="lg"
                     variant="outline"
                     className="gap-2 w-full sm:w-auto bg-background/70"
                     onClick={() => {
-                      track({ event: "cta_clicked", cta: "homepage_hero_leaderboard", location: "homepage_hero", destination: "/community/leaderboard" });
-                      trackRealistEvent("homepage.cta_clicked", { cta: "see_weekly_leaderboard", location: "homepage_hero", destination: "/community/leaderboard" });
+                      track({ event: "cta_clicked", cta: "homepage_hero_map", location: "homepage_hero", destination: "/tools/cap-rates" });
+                      trackRealistEvent("homepage.cta_clicked", { cta: "explore_yield_map", location: "homepage_hero", destination: "/tools/cap-rates" });
                     }}
                     data-testid="button-home-hero-map"
                   >
-                    <Trophy className="h-4 w-4" />
-                    See this week's leaderboard
+                    <Map className="h-4 w-4" />
+                    Explore the yield map
                   </Button>
                 </Link>
               </div>
@@ -206,6 +212,56 @@ export default function InvestorStart() {
                     <div key={item.label} className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/75 px-3 py-2 text-sm font-medium">
                       <Icon className="h-4 w-4 text-primary" />
                       {item.label}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-8 border-y border-border/40 bg-muted/20">
+          <div className="max-w-6xl mx-auto px-4 md:px-6 space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              {[
+                { value: SITE_STATS.communityMembers, label: "community members" },
+                { value: SITE_STATS.dealsAnalyzedVolume, label: "in deals analyzed" },
+                { value: SITE_STATS.canadianCities, label: "Canadian cities" },
+                { value: SITE_STATS.skoolMembers, label: "Skool members" },
+              ].map((stat) => (
+                <div key={stat.label}>
+                  <p className="text-2xl md:text-3xl font-bold font-mono">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="text-center space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest" data-testid="text-as-seen-on">
+                As seen on
+              </p>
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 md:gap-4 max-w-4xl mx-auto">
+                {mediaLogos.map((media) => {
+                  const logo = (
+                    <img
+                      src={media.image}
+                      alt={media.name}
+                      className="h-4 md:h-5 w-auto max-w-full object-contain grayscale opacity-55 transition-all group-hover:grayscale-0 group-hover:opacity-100"
+                    />
+                  );
+                  return media.url ? (
+                    <a
+                      key={media.name}
+                      href={media.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group hover-elevate px-2 py-2 rounded-md flex items-center justify-center"
+                      title={media.name}
+                    >
+                      {logo}
+                    </a>
+                  ) : (
+                    <div key={media.name} className="group px-2 py-2 rounded-md flex items-center justify-center" title={media.name}>
+                      {logo}
                     </div>
                   );
                 })}
@@ -303,7 +359,7 @@ export default function InvestorStart() {
 
         <section className="pb-10 md:pb-14">
           <div className="max-w-6xl mx-auto px-4 md:px-6">
-            <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className={hasResumeSignals ? "grid gap-5 lg:grid-cols-[1.2fr_0.8fr]" : "grid gap-5"}>
               <Card className="border-border/60 bg-gradient-to-br from-card via-card to-primary/5">
                 <CardHeader>
                   <Badge variant="secondary" className="mb-2 w-fit gap-1">
@@ -328,6 +384,7 @@ export default function InvestorStart() {
                 </CardContent>
               </Card>
 
+              {hasResumeSignals && (
               <Card className="border-border/60">
                 <CardHeader>
                   <CardTitle className="text-xl">Continue where you left off</CardTitle>
@@ -371,45 +428,46 @@ export default function InvestorStart() {
                   )}
                 </CardContent>
               </Card>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="py-10 md:py-14 border-t border-border/40">
+          <div className="max-w-6xl mx-auto px-4 md:px-6">
+            <div className="rounded-xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/5 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+              <div className="max-w-xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">For professionals</p>
+                <h2 className="text-xl md:text-2xl font-bold tracking-tight">
+                  Realtor, mortgage pro, or building expert?
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Investors on Realist are underwriting deals in your market right now. Join the Power Team
+                  to get matched with them when a deal moves forward.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                <Link href="/power-team">
+                  <Button
+                    className="gap-2 w-full sm:w-auto"
+                    onClick={() => track({ event: "cta_clicked", cta: "homepage_power_team", location: "homepage_pro_band", destination: "/power-team" })}
+                    data-testid="button-home-power-team"
+                  >
+                    Join the Power Team
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/join/realtors">
+                  <Button variant="outline" className="w-full sm:w-auto" data-testid="button-home-join-realtors">
+                    I'm a realtor
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="py-8 border-t border-border/50">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xs">R</span>
-              </div>
-              <span>
-                Realist.ca powered by{" "}
-                <a
-                  href="https://valery.ca"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-foreground transition-colors"
-                  data-testid="link-valery"
-                >
-                  Valery.ca
-                </a>
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-              <a href="/markets" className="hover:text-foreground transition-colors">Markets</a>
-              <a href="/reports" className="hover:text-foreground transition-colors">Reports</a>
-              <a href="/investing" className="hover:text-foreground transition-colors">Investing</a>
-              <a href="/about" className="hover:text-foreground transition-colors">About</a>
-              <a href="/about/contact" className="hover:text-foreground transition-colors">Contact</a>
-              <a href="/insights/podcast" className="hover:text-foreground transition-colors">Podcast</a>
-              <a href="https://thecanadianrealestateinvestor.substack.com/feed" className="hover:text-foreground transition-colors">RSS</a>
-              <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
