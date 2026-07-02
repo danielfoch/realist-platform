@@ -5,6 +5,7 @@ import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/compon
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
+import { AnalysesCounter } from "@/components/AnalysesCounter";
 import { AddressInput } from "@/components/AddressInput";
 import { StrategySelector } from "@/components/StrategySelector";
 import { CalculatorSelector, type CalculatorType } from "@/components/CalculatorSelector";
@@ -1273,6 +1274,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                 <p className="text-lg text-muted-foreground mt-3">
                   Underwrite a property without the noise. Start with a listing, address, or rough deal thesis. We&apos;ll get you to first-pass cash flow and yield quickly.
                 </p>
+                <AnalysesCounter className="mt-4" />
               </div>
               <div className="flex flex-col sm:flex-row gap-2 shrink-0">
                 <Link href="/tools/cap-rates">

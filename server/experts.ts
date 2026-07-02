@@ -5,17 +5,30 @@
  * in the shared `votes` table (targetType="expert_field_note") and every
  * points-worthy action writes a `contribution_events` row, so experts appear
  * on the existing /api/leaderboard/contributions AND on the category-scoped
- * leaderboard here. Writing field notes is gated to approved industry
- * partners (credibility is the point); voting is open to any logged-in member.
+ * leaderboard here.
+ *
+ * Two author tiers write field notes:
+ *  - approved industry partners ("expert"): long-form notes, multiple per
+ *    listing, full name + company shown (credibility is the point);
+ *  - any signed-in member ("investor"): ONE short note (≤500 chars) per
+ *    listing, editable, displayed as first name + last initial.
+ * Voting is open to any logged-in member. When a note's net score crosses a
+ * threshold (first upvote, +5, +10, first downvote) the author gets an email
+ * through the notification queue (see queueFieldNoteVoteNotification).
+ *
+ * Moderation minimum: authors can delete their own note (status="removed"),
+ * admins can hide/unhide any note (status="hidden"). No profanity filter yet
+ * — deliberate v1 scope.
  */
 
 import type { Express, Request, Response } from "express";
 import "express-session";
 import { z } from "zod";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "./db";
-import { isAuthenticated } from "./auth";
+import { isAdmin, isAuthenticated } from "./auth";
 import { logUserActivity } from "./userActivity";
+import { queueFieldNoteVoteNotification } from "./notifications";
 import {
   contributionEvents,
   expertFieldNotes,
@@ -29,12 +42,22 @@ import {
   computeRank,
   isExpertCategory,
 } from "@shared/contributorReputation";
+import { anonymizeDisplayName } from "@shared/community";
+import {
+  decideNoteVoteMilestone,
+  validateFieldNoteBody,
+  type FieldNoteAuthorTier,
+} from "@shared/fieldNotes";
 
 const createNoteSchema = z.object({
   listingMlsNumber: z.string().trim().min(1, "Listing is required").max(50),
-  body: z.string().trim().min(10, "Add at least a sentence of insight").max(4000),
+  body: z.string(),
   category: z.string().optional(),
 });
+
+const editNoteSchema = z.object({ body: z.string() });
+
+const hideNoteSchema = z.object({ hidden: z.boolean() });
 
 const voteSchema = z.object({ value: z.number().int().min(-1).max(1) });
 
@@ -263,19 +286,26 @@ export function registerExpertRoutes(app: Express): void {
       }
 
       res.json(
-        rows.map((r) => ({
-          id: r.note.id,
-          userId: r.note.userId,
-          authorName: displayName(r),
-          authorCompany: r.companyName,
-          authorHeadshot: r.headshotUrl || r.profileImageUrl || null,
-          category: r.note.category,
-          rank: computeRank(0).tier, // per-note rank badge filled client-side from profile if needed
-          body: r.note.body,
-          score: r.note.score,
-          myVote: myVotes.get(r.note.id) ?? 0,
-          createdAt: r.note.createdAt,
-        })),
+        rows.map((r) => {
+          // Partner-authored notes show the expert's full name + company;
+          // member notes show first name + last initial only.
+          const isExpertNote = Boolean(r.partnerType);
+          return {
+            id: r.note.id,
+            userId: r.note.userId,
+            authorName: isExpertNote ? displayName(r) : anonymizeDisplayName(r.firstName, r.lastName, "Realist investor"),
+            authorCompany: isExpertNote ? r.companyName : null,
+            authorHeadshot: r.headshotUrl || r.profileImageUrl || null,
+            category: r.note.category,
+            isExpert: isExpertNote,
+            rank: computeRank(0).tier, // per-note rank badge filled client-side from profile if needed
+            body: r.note.body,
+            score: r.note.score,
+            myVote: myVotes.get(r.note.id) ?? 0,
+            createdAt: r.note.createdAt,
+            updatedAt: r.note.updatedAt,
+          };
+        }),
       );
     } catch (error) {
       console.error("[experts] list field notes failed:", error);
@@ -283,7 +313,9 @@ export function registerExpertRoutes(app: Express): void {
     }
   });
 
-  // Add a field note (approved industry partners only).
+  // Add a field note. Approved industry partners write long-form expert notes
+  // (multiple per listing); any other signed-in member gets ONE short note per
+  // listing (editable via PATCH below).
   app.post("/api/listings/:mlsNumber/field-notes", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.session.userId as string;
@@ -292,18 +324,45 @@ export function registerExpertRoutes(app: Express): void {
         .from(industryPartners)
         .where(eq(industryPartners.userId, userId))
         .limit(1);
-      if (!partner || !partner.isApproved) {
-        return res.status(403).json({ error: "Only approved industry experts can add field notes" });
-      }
+      const isExpert = Boolean(partner?.isApproved);
+      const tier: FieldNoteAuthorTier = isExpert ? "expert" : "member";
 
       const parsed = createNoteSchema.safeParse({ ...req.body, listingMlsNumber: req.params.mlsNumber });
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid note" });
       }
-      const category =
-        parsed.data.category && isExpertCategory(parsed.data.category)
-          ? parsed.data.category
-          : categoryFromPartnerType(partner.partnerType);
+      const validated = validateFieldNoteBody(parsed.data.body, tier);
+      if (!validated.ok) {
+        return res.status(400).json({ error: validated.error });
+      }
+
+      if (!isExpert) {
+        const [existing] = await db
+          .select({ id: expertFieldNotes.id })
+          .from(expertFieldNotes)
+          .where(
+            and(
+              eq(expertFieldNotes.userId, userId),
+              eq(expertFieldNotes.listingMlsNumber, parsed.data.listingMlsNumber),
+              // "removed" notes free the slot; hidden notes keep it occupied
+              // so moderation can't be sidestepped by re-posting.
+              ne(expertFieldNotes.status, "removed"),
+            ),
+          )
+          .limit(1);
+        if (existing) {
+          return res.status(409).json({
+            error: "You already have a field note on this listing — edit it instead",
+            noteId: existing.id,
+          });
+        }
+      }
+
+      const category = isExpert
+        ? (parsed.data.category && isExpertCategory(parsed.data.category)
+            ? parsed.data.category
+            : categoryFromPartnerType(partner!.partnerType))
+        : "investor";
 
       const [note] = await db
         .insert(expertFieldNotes)
@@ -311,7 +370,7 @@ export function registerExpertRoutes(app: Express): void {
           userId,
           listingMlsNumber: parsed.data.listingMlsNumber,
           category,
-          body: parsed.data.body,
+          body: validated.body,
         })
         .returning();
 
@@ -385,12 +444,77 @@ export function registerExpertRoutes(app: Express): void {
           targetId: note.id,
         });
 
+        // Notify the author when the net score crosses a threshold (first
+        // upvote, +5, +10, first downvote). Fire-and-forget: the queue layer
+        // handles consent + one-email-per-note-per-day batching.
+        const milestone = decideNoteVoteMilestone(note.score, updated.score);
+        if (milestone) {
+          queueFieldNoteVoteNotification({ note: updated, milestone, newScore: updated.score })
+            .catch((err) => console.error("[experts] note vote notification failed:", err));
+        }
+
         return res.json({ score: updated.score, myVote: newValue });
       }
       return res.json({ score: note.score, myVote: newValue });
     } catch (error) {
       console.error("[experts] vote failed:", error);
       res.status(500).json({ error: "Failed to record vote" });
+    }
+  });
+
+  // Edit a field note (author only). Members keep their single editable note
+  // current; experts can fix theirs too. Tier limits re-apply on edit.
+  app.patch("/api/field-notes/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.session.userId as string;
+      const parsed = editNoteSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid note" });
+
+      const [note] = await db.select().from(expertFieldNotes).where(eq(expertFieldNotes.id, req.params.id)).limit(1);
+      if (!note || note.status !== "visible") return res.status(404).json({ error: "Field note not found" });
+      if (note.userId !== userId) return res.status(403).json({ error: "You can only edit your own note" });
+
+      const [partner] = await db
+        .select({ isApproved: industryPartners.isApproved })
+        .from(industryPartners)
+        .where(eq(industryPartners.userId, userId))
+        .limit(1);
+      const tier: FieldNoteAuthorTier = partner?.isApproved ? "expert" : "member";
+      const validated = validateFieldNoteBody(parsed.data.body, tier);
+      if (!validated.ok) return res.status(400).json({ error: validated.error });
+
+      const [updated] = await db
+        .update(expertFieldNotes)
+        .set({ body: validated.body, updatedAt: new Date() })
+        .where(eq(expertFieldNotes.id, note.id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("[experts] edit field note failed:", error);
+      res.status(500).json({ error: "Failed to update field note" });
+    }
+  });
+
+  // Admin moderation: hide/unhide a note without deleting it. (Deliberately
+  // no profanity filter in v1 — hide + author delete is the moderation
+  // minimum.)
+  app.post("/api/field-notes/:id/hide", isAdmin, async (req: any, res: Response) => {
+    try {
+      const parsed = hideNoteSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Expected { hidden: boolean }" });
+
+      const [note] = await db.select().from(expertFieldNotes).where(eq(expertFieldNotes.id, req.params.id)).limit(1);
+      if (!note || note.status === "removed") return res.status(404).json({ error: "Field note not found" });
+
+      const [updated] = await db
+        .update(expertFieldNotes)
+        .set({ status: parsed.data.hidden ? "hidden" : "visible", updatedAt: new Date() })
+        .where(eq(expertFieldNotes.id, note.id))
+        .returning();
+      res.json({ id: updated.id, status: updated.status });
+    } catch (error) {
+      console.error("[experts] hide field note failed:", error);
+      res.status(500).json({ error: "Failed to moderate field note" });
     }
   });
 

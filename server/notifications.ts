@@ -18,6 +18,13 @@ import {
   type UsListing,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
+import {
+  buildNoteVoteCopy,
+  noteExcerpt,
+  noteVoteDedupeKey,
+  type NoteVoteMilestone,
+} from "@shared/fieldNotes";
+import type { ExpertFieldNote } from "@shared/schema";
 
 type WatchedListingSignal = {
   listingId?: string;
@@ -41,7 +48,8 @@ type NotificationKind =
   | "daily_digest_ready"
   | "weekly_leaderboard_digest"
   | "co_analysis_alert"
-  | "milestone_reached";
+  | "milestone_reached"
+  | "note_vote_update";
 
 export type GhlNotificationPayload = {
   sendEmail: true;
@@ -1551,6 +1559,85 @@ export async function queueMilestoneNotification(userId: string): Promise<boolea
         emailHtml: html,
       }),
       dedupeKey,
+    }],
+  });
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Field-note vote notifications
+// ---------------------------------------------------------------------------
+
+/**
+ * Notify a field-note author when the note's NET score crosses a threshold
+ * (first upvote, +5, +10, or first downvote). Milestone detection happens at
+ * the vote endpoint via decideNoteVoteMilestone; this function handles
+ * consent, batching, and delivery.
+ *
+ * Email-first by design: there is no user-facing in-app notification surface
+ * on this branch, so this rides the existing notification queue (GHL email
+ * pipeline). Batched to max ONE email per note per UTC day — the dedupe key
+ * intentionally omits the milestone, and the notification_queue unique index
+ * drops later inserts (createNotificationQueueItem is onConflictDoNothing).
+ * Consent-gated by notificationPreferences.communityAlertsEnabled (plus the
+ * productUpdatesEnabled kill-switch).
+ */
+export async function queueFieldNoteVoteNotification(params: {
+  note: ExpertFieldNote;
+  milestone: NoteVoteMilestone;
+  newScore: number;
+}): Promise<boolean> {
+  const { note, milestone, newScore } = params;
+  if (!(await recipientAllows(note.userId, "community"))) return false;
+
+  const recipient = await getRecipient(note.userId);
+  if (!recipient?.email) return false;
+
+  // Best-effort listing label enrichment (city from the DDF snapshot).
+  let city: string | null = null;
+  try {
+    const [snapshot] = await db
+      .select({ city: ddfListingSnapshots.city })
+      .from(ddfListingSnapshots)
+      .where(eq(ddfListingSnapshots.mlsNumber, note.listingMlsNumber))
+      .orderBy(desc(ddfListingSnapshots.capturedAt))
+      .limit(1);
+    city = snapshot?.city || null;
+  } catch {
+    city = null;
+  }
+  const listingLabel = city ? `MLS ${note.listingMlsNumber} (${city})` : `MLS ${note.listingMlsNumber}`;
+
+  const copy = buildNoteVoteCopy({
+    milestone,
+    score: newScore,
+    listingLabel,
+    noteExcerpt: noteExcerpt(note.body),
+  });
+  const ctaUrl = `https://realist.ca/listings/${encodeURIComponent(note.listingMlsNumber)}?source=note-vote-email#field-notes`;
+
+  await enqueueForRecipients({
+    eventType: "note_vote_update",
+    listingMlsNumber: note.listingMlsNumber,
+    city,
+    rawPayload: { fieldNoteId: note.id, milestone, score: newScore },
+    recipients: [{
+      userId: note.userId,
+      payload: buildPayload({
+        recipient,
+        eventType: "note_vote_update",
+        reasonText: copy.reasonText,
+        ctaLabel: "See your note on the listing",
+        ctaUrl,
+        subjectLine: copy.subjectLine,
+        previewText: copy.previewText,
+        listingMlsNumber: note.listingMlsNumber,
+        listingCity: city,
+        ghlTags: ["realist-user", "field-note", `note-vote-${milestone}`],
+        leadScoreDelta: milestone === "first_downvote" ? 0 : 2,
+      }),
+      dedupeKey: noteVoteDedupeKey(note.id),
     }],
   });
 

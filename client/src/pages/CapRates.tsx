@@ -56,6 +56,7 @@ import { AnalysisConsentNotice, type AnalysisConsentState } from "@/components/A
 import { CommunityMetricsSummary } from "@/components/CommunityMetricsSummary";
 import { CommunityAnalysisModal } from "@/components/CommunityAnalysisModal";
 import { ListingCommentsSection } from "@/components/ListingCommentsSection";
+import { ListingEngagementStrip } from "@/components/ListingEngagementStats";
 import { ListingCommentCountBadge } from "@/components/ListingCommentCountBadge";
 import {
   Sheet,
@@ -2880,6 +2881,7 @@ export default function CapRates() {
                 <CardDescription className="text-xs">
                   {formatAddress(selectedListing.address)}
                 </CardDescription>
+                <ListingEngagementStrip mlsNumber={selectedListing.mlsNumber} compact className="mt-1.5" />
               </div>
               <Button
                 variant="outline"
