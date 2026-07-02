@@ -103,6 +103,7 @@ import { z } from "zod";
 import { COMMUNITY_DEFAULTS, COMMUNITY_FLAGS, computeConsensusLabel, sanitizeUserText, summarizeCommunityMetrics, truncateText } from "@shared/community";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./auth";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { passwordResetTokens } from "@shared/models/auth";
 import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
@@ -757,6 +758,39 @@ export async function registerRoutes(
   // Set up email/password authentication
   setupAuth(app);
   registerAuthRoutes(app);
+
+  // Authenticated proxy for the stats dashboard hosted on Vercel.
+  // Users hit /stats on realist.ca (already logged in via session), and we
+  // forward the request to stats.realist.ca server-side. The Vercel app
+  // never has to know about realist.ca's auth system.
+  const STATS_UPSTREAM = process.env.STATS_UPSTREAM_URL || "https://stats.realist.ca";
+  app.use(
+    "/stats",
+    (req, res, next) => {
+      if ((req as any).session?.userId) return next();
+      const returnTo = encodeURIComponent(req.originalUrl || "/stats");
+      res.redirect(302, `/login?returnUrl=${returnTo}`);
+    },
+    createProxyMiddleware({
+      target: STATS_UPSTREAM,
+      changeOrigin: true,
+      ws: true,
+      pathRewrite: { "^/stats": "" },
+      on: {
+        proxyReq: (proxyReq) => {
+          // Don't leak the realist.ca session cookie to the upstream app.
+          proxyReq.removeHeader("cookie");
+        },
+        error: (err, _req, res) => {
+          console.error("[stats-proxy] error:", err.message);
+          if (res && "writeHead" in res && !res.headersSent) {
+            (res as any).writeHead(502, { "Content-Type": "text/plain" });
+            (res as any).end("Stats dashboard is temporarily unavailable.");
+          }
+        },
+      },
+    })
+  );
   registerRealistEventRoutes(app);
   registerDealDeskRoutes(app);
   scheduleAdminWeeklySummary();
@@ -12760,6 +12794,29 @@ export async function registerRoutes(
       res.json(report);
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
+  // ─── Notebook (user account save/load) ──────────────────────────────────
+  app.get("/api/notebook", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const row = await storage.getUserNotebook(userId);
+      res.json({ data: row?.data ?? {} });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/notebook", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { data } = req.body;
+      if (!data || typeof data !== "object") return res.status(400).json({ error: "data required" });
+      const row = await storage.upsertUserNotebook(userId, data);
+      res.json({ ok: true, updatedAt: row.updatedAt });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 

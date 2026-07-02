@@ -289,6 +289,17 @@ export default function HomeBenchReport() {
             marketing listings, and valuing homes. No generic benchmarks. No vanity tasks. Just
             client-ready output, scored by working agents.
           </p>
+          <p className="mt-4 text-sm text-stone-500">
+            Published in collaboration with{" "}
+            <a
+              href="https://homiesAI.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-stone-700 underline underline-offset-2 hover:text-stone-950"
+            >
+              Homies AI for Realtors
+            </a>
+          </p>
         </div>
 
         {/* How we ran it — methodology + light promo */}

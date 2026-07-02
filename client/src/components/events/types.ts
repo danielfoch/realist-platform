@@ -57,6 +57,16 @@ export type RealistEventPayload = {
   createdByEmail?: string;
   speakers: RealistEventSpeaker[];
   ticketTypes: RealistEventTicketType[];
+  sponsors: RealistEventSponsor[];
+};
+
+export type RealistEventSponsor = {
+  id?: string;
+  name: string;
+  logoUrl?: string | null;
+  websiteUrl?: string | null;
+  tier?: string;
+  sortOrder?: number;
 };
 
 export type RealistSponsor = {

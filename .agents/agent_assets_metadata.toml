@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "_DG-JCxK2YSjNncbOer24"
+uri = "file://outputs/HomeBenchReport.txt"
+type = "text"
+title = "HomeBenchReport.tsx"

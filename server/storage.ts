@@ -217,6 +217,7 @@ import {
   userActivityEvents,
   appSettings,
   type AppSetting,
+  userNotebooks,
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
@@ -582,6 +583,8 @@ export interface IStorage {
   listRecentActivityEvents(limit: number): Promise<any[]>;
   getAppSetting(key: string): Promise<string | null>;
   setAppSetting(key: string, value: string): Promise<void>;
+  getUserNotebook(userId: number): Promise<any | null>;
+  upsertUserNotebook(userId: number, data: Record<string, any>): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2739,6 +2742,19 @@ export class DatabaseStorage implements IStorage {
     await db.insert(appSettings)
       .values({ key, value, updatedAt: new Date() })
       .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
+  }
+
+  async getUserNotebook(userId: number): Promise<any | null> {
+    const [row] = await db.select().from(userNotebooks).where(eq(userNotebooks.userId, userId));
+    return row ?? null;
+  }
+
+  async upsertUserNotebook(userId: number, data: Record<string, any>): Promise<any> {
+    const [row] = await db.insert(userNotebooks)
+      .values({ userId, data, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: userNotebooks.userId, set: { data, updatedAt: new Date() } })
+      .returning();
+    return row;
   }
 }
 

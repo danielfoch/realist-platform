@@ -216,6 +216,16 @@ export const realistEventSpeakers = pgTable("realist_event_speakers", {
   sortOrder: integer("sort_order").default(0).notNull(),
 });
 
+export const realistEventSponsors = pgTable("realist_event_sponsors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  logoUrl: text("logo_url"),
+  websiteUrl: text("website_url"),
+  tier: text("tier").default("partner").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
 export const realistEventTicketTypes = pgTable("realist_event_ticket_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
@@ -4392,3 +4402,14 @@ export type InsertModelVersion = z.infer<typeof insertModelVersionSchema>;
 export type ModelVersion = typeof modelVersions.$inferSelect;
 export type InsertModelPrediction = z.infer<typeof insertModelPredictionSchema>;
 export type ModelPrediction = typeof modelPredictions.$inferSelect;
+
+// ─── User Notebooks ─────────────────────────────────────────────────────────
+export const userNotebooks = pgTable("user_notebooks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: integer("user_id").notNull(),
+  data: jsonb("data").notNull().default({}),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export const insertUserNotebookSchema = createInsertSchema(userNotebooks).omit({ id: true, updatedAt: true });
+export type InsertUserNotebook = z.infer<typeof insertUserNotebookSchema>;
+export type UserNotebook = typeof userNotebooks.$inferSelect;

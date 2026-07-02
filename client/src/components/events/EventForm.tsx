@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { AgendaSection, RealistEventPayload, RealistEventSpeaker, RealistEventTicketType } from "./types";
+import type { AgendaSection, RealistEventPayload, RealistEventSponsor, RealistEventSpeaker, RealistEventTicketType } from "./types";
 
 const emptySpeaker: RealistEventSpeaker = { name: "", title: "", company: "", bio: "", imageUrl: "", sortOrder: 0 };
+const emptySponsor: RealistEventSponsor = { name: "", logoUrl: "", websiteUrl: "", tier: "partner", sortOrder: 0 };
 const emptyTicket: RealistEventTicketType = {
   name: "General Admission",
   description: "",
@@ -67,6 +68,7 @@ export function EventForm({ event }: { event?: RealistEventPayload }) {
     isRecurring: event?.isRecurring || false,
     recurrenceNote: event?.recurrenceNote || "",
     speakers: event?.speakers?.length ? event.speakers : [{ ...emptySpeaker }],
+    sponsors: event?.sponsors?.length ? event.sponsors : [],
     ticketTypes: event?.ticketTypes?.length ? event.ticketTypes : [{ ...emptyTicket }],
   }), [event]);
   const [form, setForm] = useState(initial);
@@ -76,7 +78,7 @@ export function EventForm({ event }: { event?: RealistEventPayload }) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function updateArray<T>(key: "speakers" | "ticketTypes" | "agendaSections", index: number, patch: Partial<T>) {
+  function updateArray<T>(key: "speakers" | "sponsors" | "ticketTypes" | "agendaSections", index: number, patch: Partial<T>) {
     setForm((current) => ({
       ...current,
       [key]: (current[key] as T[]).map((item, i) => i === index ? { ...item, ...patch } : item),
@@ -92,6 +94,7 @@ export function EventForm({ event }: { event?: RealistEventPayload }) {
         endsAt: fromDatetimeLocal(form.endsAt),
         capacity: form.capacity === null || form.capacity === undefined || String(form.capacity) === "" ? null : Number(form.capacity),
         speakers: form.speakers.filter((speaker) => speaker.name.trim()),
+        sponsors: form.sponsors.filter((s) => s.name.trim()),
         agendaSections: form.agendaSections.filter((section) => section.title.trim()),
         ticketTypes: form.ticketTypes.filter((ticket) => ticket.name.trim()).map((ticket) => ({
           ...ticket,
@@ -115,6 +118,49 @@ export function EventForm({ event }: { event?: RealistEventPayload }) {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Sponsors & partners</CardTitle>
+          <Button type="button" size="sm" variant="outline" onClick={() => setField("sponsors", [...form.sponsors, { ...emptySponsor }])}>
+            <Plus className="mr-2 h-4 w-4" /> Add sponsor
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {form.sponsors.length === 0 && (
+            <p className="text-sm text-muted-foreground">No sponsors yet. Click "Add sponsor" to add one.</p>
+          )}
+          {form.sponsors.map((sponsor, index) => (
+            <div key={index} className="grid gap-3 rounded-lg border p-4 md:grid-cols-2">
+              <Input placeholder="Sponsor name *" value={sponsor.name} onChange={(e) => updateArray<RealistEventSponsor>("sponsors", index, { name: e.target.value })} />
+              <Select value={sponsor.tier || "partner"} onValueChange={(value) => updateArray<RealistEventSponsor>("sponsors", index, { tier: value })}>
+                <SelectTrigger><SelectValue placeholder="Tier" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="presenting">Presenting</SelectItem>
+                  <SelectItem value="gold">Gold</SelectItem>
+                  <SelectItem value="silver">Silver</SelectItem>
+                  <SelectItem value="partner">Partner</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input placeholder="Logo URL (e.g. /partners/cmhc.png)" value={sponsor.logoUrl || ""} onChange={(e) => updateArray<RealistEventSponsor>("sponsors", index, { logoUrl: e.target.value })} />
+              <Input placeholder="Website URL" value={sponsor.websiteUrl || ""} onChange={(e) => updateArray<RealistEventSponsor>("sponsors", index, { websiteUrl: e.target.value })} />
+              <div className="flex items-center gap-3 md:col-span-2 justify-between">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">Sort order</Label>
+                  <Input type="number" className="w-20" value={sponsor.sortOrder ?? 0} onChange={(e) => updateArray<RealistEventSponsor>("sponsors", index, { sortOrder: Number(e.target.value) })} />
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setField("sponsors", form.sponsors.filter((_, i) => i !== index))}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+          <p className="text-xs text-muted-foreground">
+            Tip: logo URLs can reference files already in <code>/partners/</code> (e.g. <code>/partners/cmhc.png</code>).
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader><CardTitle>Event details</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
