@@ -325,8 +325,24 @@ export async function buildCreditSpreadsData() {
         )
       : null;
 
+  // Deterministic data vintage: the newest observation date across the
+  // date-bearing input series. A wall-clock stamp here made every machine
+  // that ran the build commit a different timestamp for identical data,
+  // which is what kept putting these tracked artifacts into merge conflict
+  // between the Replit workspace and GitHub main.
+  const newestObservation = [
+    ...currentPosted5y.map((row) => row.date),
+    ...officialSpreadSeries.map((row) => `${row.period}-01`),
+    ...historicalMortgage5y.map((row) => `${row.period}-01`),
+  ]
+    .filter((date) => /^\d{4}-\d{2}-\d{2}/.test(date))
+    .sort()
+    .at(-1);
+
   const reportData = {
-    generatedAt: new Date().toISOString(),
+    generatedAt: newestObservation
+      ? `${newestObservation.slice(0, 10)}T00:00:00.000Z`
+      : "1970-01-01T00:00:00.000Z",
     title: "The Spread That Ate the Economy",
     subtitle:
       "How Canada’s Credit Architecture Redirected Capital from Business Formation to Housing",

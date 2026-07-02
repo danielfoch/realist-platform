@@ -15,10 +15,26 @@
  */
 
 import type { Express, Request, Response } from "express";
+import cron from "node-cron";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 
 const MIN_SAMPLE = 5;
+
+// Trained metric names (snake_case, as written by trainMarketDefaults) mapped
+// to the camelCase keys the client contract expects (DealInputs.tsx
+// applyAiDefaults reads vacancyRate / monthlyRent / etc. from `metrics`).
+const METRIC_RESPONSE_KEYS: Record<string, string> = {
+  vacancy_rate: "vacancyRate",
+  cap_rate: "capRate",
+  purchase_price: "purchasePrice",
+  monthly_cash_flow: "monthlyCashFlow",
+  market_rent_all: "monthlyRent",
+  market_rent_1br: "marketRent1br",
+  market_rent_2br: "marketRent2br",
+  market_rent_3br: "marketRent3br",
+  market_rent_4br: "marketRent4br",
+};
 
 export async function ensureAiDefaultTables(): Promise<void> {
   await db.execute(sql`
@@ -217,41 +233,48 @@ export function registerAiDefaultsRoutes(app: Express): void {
   /**
    * Learned underwriting priors for a market. The analyzer calls this to
    * pre-fill assumptions; falls back from (market, strategy) → (market, all).
-   * Each prior carries sampleSize so the UI can show "learned from N analyses".
+   *
+   * Response contract (owned by client/src/components/DealInputs.tsx):
+   *   { found: false, market, strategy }                    — nothing learned yet
+   *   { found: true, market, strategy, sampleCount,
+   *     metrics: { [camelCaseKey]: { median, mean, p25, p75 } } }
+   * sampleCount drives the "learned from N analyses" banner.
    */
   app.get("/api/ai/defaults", async (req: Request, res: Response) => {
     try {
       const market = String(req.query.city || "").trim().toLowerCase();
-      const strategy = String(req.query.strategy || "all").trim();
+      const strategy = String(req.query.strategy || "all").trim().toLowerCase();
       if (!market) {
-        res.status(400).json({ success: false, error: "city is required" });
+        res.status(400).json({ found: false, error: "city is required" });
         return;
       }
       const rows: any = await db.execute(sql`
-        SELECT DISTINCT ON (metric) metric, value, p25, p75, sample_size, outliers_excluded, strategy, trained_at
+        SELECT DISTINCT ON (metric) metric, value, p25, p75, sample_size, strategy, trained_at
         FROM ai_market_defaults
         WHERE market = ${market} AND strategy IN (${strategy}, 'all')
         ORDER BY metric, (strategy = ${strategy}) DESC
       `);
-      res.json({
-        success: true,
-        market,
-        strategy,
-        defaults: Object.fromEntries(
-          (rows.rows || []).map((r: any) => [r.metric, {
-            value: Number(r.value),
-            p25: r.p25 != null ? Number(r.p25) : null,
-            p75: r.p75 != null ? Number(r.p75) : null,
-            sampleSize: r.sample_size,
-            outliersExcluded: r.outliers_excluded ?? 0,
-            matchedStrategy: r.strategy,
-            trainedAt: r.trained_at,
-          }]),
-        ),
-      });
+      const resultRows: any[] = rows.rows || [];
+      if (resultRows.length === 0) {
+        res.json({ found: false, market, strategy });
+        return;
+      }
+      const metrics: Record<string, { median: number; mean: number | null; p25: number | null; p75: number | null }> = {};
+      let sampleCount = 0;
+      for (const r of resultRows) {
+        const key = METRIC_RESPONSE_KEYS[r.metric] || r.metric;
+        metrics[key] = {
+          median: Number(r.value),
+          mean: null,
+          p25: r.p25 != null ? Number(r.p25) : null,
+          p75: r.p75 != null ? Number(r.p75) : null,
+        };
+        sampleCount = Math.max(sampleCount, Number(r.sample_size) || 0);
+      }
+      res.json({ found: true, market, strategy, sampleCount, metrics });
     } catch (error) {
       console.error("[ai-defaults] lookup failed:", error);
-      res.status(500).json({ success: false, error: "Failed to load defaults" });
+      res.status(500).json({ found: false, error: "Failed to load defaults" });
     }
   });
 
@@ -284,4 +307,18 @@ export function registerAiDefaultsRoutes(app: Express): void {
       res.json({ success: true, runs: [] });
     }
   });
+}
+
+/**
+ * Nightly in-process training. 2:00 AM Toronto (07:00 UTC) — after the
+ * nightly DDF/MLS imports land, so rent priors train on fresh listings.
+ */
+export function scheduleNightlyTraining(): void {
+  cron.schedule("0 7 * * *", () => {
+    console.log("[ai-trainer] Nightly training cron triggered");
+    trainMarketDefaults().catch((err: any) =>
+      console.error("[ai-trainer] Nightly training error:", err.message),
+    );
+  });
+  console.log("[ai-trainer] Nightly training scheduled (2am Toronto / 07:00 UTC)");
 }

@@ -47,7 +47,7 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
 import { detectPossiblePlex } from "@shared/plexDetection";
-import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, FileSignature, ArrowRight, Sparkles, MapPinned, Target, Wand2, ClipboardCheck, Building2 } from "lucide-react";
+import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, FileSignature, ArrowRight, Sparkles, MapPinned, Target, ClipboardCheck, Building2 } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
 
 function getSessionId(): string {
@@ -85,74 +85,10 @@ const defaultInputs: BuyHoldInputs = {
   cmhcMliPoints: 0,
 };
 
-type SimilarDeal = {
-  id: string;
-  label: string;
-  address: string;
-  city: string;
-  province: string;
-  propertyType: string;
-  estimatedUnitCount: number;
-  purchasePrice: number;
-  monthlyRent: number;
-  investorScore: number;
-  risk: string;
-};
-
-function buildSimilarDeals(input: {
-  city: string;
-  province: string;
-  propertyType: string;
-  inputs: BuyHoldInputs;
-  strategy: string;
-}): SimilarDeal[] {
-  const city = input.city || "Hamilton";
-  const province = input.province || "ON";
-  const propertyType = input.propertyType || (input.strategy === "multiplex" ? "possible duplex" : "rental house");
-  const price = input.inputs.purchasePrice || defaultInputs.purchasePrice;
-  const rent = input.inputs.monthlyRent || defaultInputs.monthlyRent;
-  return [
-    {
-      id: "screening-queue-1",
-      label: `${city} ${propertyType}`,
-      address: `Similar ${propertyType} candidate`,
-      city,
-      province,
-      propertyType,
-      estimatedUnitCount: propertyType.toLowerCase().includes("plex") || propertyType.toLowerCase().includes("duplex") ? 2 : 1,
-      purchasePrice: Math.round(price * 0.96),
-      monthlyRent: Math.round(rent * 0.98),
-      investorScore: 82,
-      risk: "Medium",
-    },
-    {
-      id: "screening-queue-2",
-      label: `${city} value-add rental`,
-      address: "Nearby value-add listing candidate",
-      city,
-      province,
-      propertyType,
-      estimatedUnitCount: propertyType.toLowerCase().includes("triplex") ? 3 : 2,
-      purchasePrice: Math.round(price * 1.04),
-      monthlyRent: Math.round(rent * 1.08),
-      investorScore: 76,
-      risk: "Review assumptions",
-    },
-    {
-      id: "screening-queue-3",
-      label: `${city} same-assumption stress test`,
-      address: "Nearby listing with similar rent profile",
-      city,
-      province,
-      propertyType,
-      estimatedUnitCount: propertyType.toLowerCase().includes("four") ? 4 : 2,
-      purchasePrice: Math.round(price * 0.9),
-      monthlyRent: Math.round(rent * 0.93),
-      investorScore: 79,
-      risk: "Quick screen",
-    },
-  ];
-}
+// Seam: the fabricated "similar deals" mock (invented comps with made-up
+// investor scores) was removed. Real similar-deals will be queried from
+// ddf_listing_snapshots (nearby active listings with comparable price/rent
+// profiles) when that surface ships.
 
 type HomeProps = {
   embedded?: boolean;
@@ -351,7 +287,6 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
     return calculateStressTest(inputs);
   }, [inputs]);
 
-  const similarDeals = useMemo(() => buildSimilarDeals({ city, province: region, propertyType, inputs, strategy }), [city, region, propertyType, inputs, strategy]);
   const plexDetection = useMemo(() => detectPossiblePlex({
     propertyType,
     kitchenCount: strategy === "multiplex" ? 2 : undefined,
@@ -614,39 +549,6 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       destination: "/tools/cap-rates",
     });
     window.location.href = `/tools/cap-rates${prompt ? `?q=${encodeURIComponent(prompt)}` : ""}`;
-  };
-
-  const handleApplyAssumptionsToDeal = (deal: SimilarDeal) => {
-    const clonedInputs: BuyHoldInputs = {
-      ...inputs,
-      purchasePrice: deal.purchasePrice,
-      monthlyRent: deal.monthlyRent,
-    };
-    setInputs(clonedInputs);
-    setAddress(deal.address);
-    setCity(deal.city);
-    setRegion(deal.province);
-    setPropertyType(deal.propertyType);
-    setMlsNumber(deal.id);
-    setShowResults(false);
-    trackRealistEvent("analysis.assumptions_applied_to_listing", {
-      source_listing_id: mlsNumber || propertyLabel,
-      target_listing_id: deal.id,
-      city: deal.city,
-      strategy,
-      cloned_assumptions: {
-        purchasePrice: deal.purchasePrice,
-        monthlyRent: deal.monthlyRent,
-        vacancyPercent: inputs.vacancyPercent,
-        interestRate: inputs.interestRate,
-        downPaymentPercent: inputs.downPaymentPercent,
-      },
-    });
-    toast({
-      title: "Assumptions applied",
-      description: "Source assumptions were cloned into the similar deal. Review the changed price and rent before running analysis.",
-    });
-    setTimeout(() => analyzerRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   };
 
   const handleOpenInspectionRequest = () => {
@@ -1166,7 +1068,10 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
               </Button>
             </div>
 
-            {showResults && leadCaptured && (
+            {/* Mirror the standalone analyzer: anonymous users always get the
+                headline metrics after Calculate; the deeper charts stay behind
+                the same save-your-progress capture as the standalone path. */}
+            {showResults && (
               <div className="mt-10 space-y-6">
                 <MetricCards
                   capRate={results.capRate}
@@ -1175,7 +1080,30 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                   irr={results.irr}
                   monthlyCashFlow={results.monthlyCashFlow}
                 />
-                <AnalysisCharts results={results} />
+                {leadCaptured ? (
+                  <AnalysisCharts results={results} />
+                ) : (
+                  <Card className="border-dashed border-primary/30 bg-background/80">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="space-y-1">
+                          <h3 className="text-lg font-bold">Want the full model and saved workflow?</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Save your progress to unlock deeper charts, exports, and repeat-use shortcuts.
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => setLeadCaptureOpen(true)}
+                          className="gap-2 shrink-0"
+                          data-testid="button-embedded-unlock-breakdown"
+                        >
+                          Save My Progress
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
           </>
@@ -1548,7 +1476,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                         <span className={resultVerdict.tone}>{resultVerdict.title}</span>
                       </div>
                       <div>
-                        <h3 className="text-2xl font-bold">First value moment: the deal now has a direction</h3>
+                        <h3 className="text-2xl font-bold">Your results</h3>
                         <p className="text-muted-foreground mt-1">
                           {resultVerdict.description}
                         </p>
@@ -1621,74 +1549,33 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                 />
               )}
 
+              {/* Seam: a real similar-deals card (live comps from
+                  ddf_listing_snapshots) will render here once built. The
+                  previous card here showed fabricated comparables with
+                  invented scores and was removed. */}
               {!isCalculating && (
-                <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                  <Card className="border-primary/20" data-testid="card-assumption-flywheel">
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <Wand2 className="h-5 w-5 text-primary" />
-                        <CardTitle>Apply these assumptions to similar deals</CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        Preserve this scenario's vacancy, financing, and expense assumptions, then clone them into another estimated candidate for faster screening.
-                      </p>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {similarDeals.map((deal) => (
-                          <div key={deal.id} className="rounded-lg border border-border/70 p-4 bg-background">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="font-medium">{deal.label}</p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {formatCurrency(deal.purchasePrice)} · est. rent {formatCurrency(deal.monthlyRent)} · score {deal.investorScore}
-                                </p>
-                              </div>
-                              <Badge variant="secondary">{deal.risk}</Badge>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-4 w-full gap-2"
-                              onClick={() => handleApplyAssumptionsToDeal(deal)}
-                              data-testid={`button-apply-assumptions-${deal.id}`}
-                            >
-                              <Wand2 className="h-4 w-4" />
-                              Apply assumptions
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                      <Button variant="ghost" size="sm" className="gap-2" onClick={handleSearchMatchingDeals} data-testid="button-open-live-similar-deals">
-                        <MapPinned className="h-4 w-4" />
-                        Open live matching listings
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-amber-500/25" data-testid="card-plex-detection">
-                    <CardHeader>
-                      <CardTitle>Possible plex signal</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        {plexDetection.estimated_unit_count ? (
-                          <Badge variant="secondary">Possible {plexDetection.estimated_unit_count}-unit setup</Badge>
-                        ) : (
-                          <Badge variant="outline">No strong plex signal</Badge>
-                        )}
-                        <Badge variant="outline">{plexDetection.plex_confidence_score}/100 confidence</Badge>
-                        {plexDetection.needs_manual_review && <Badge variant="outline">Manual review</Badge>}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {plexDetection.plex_detection_reason}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Unit count and legal status are estimated from available fields and text. Verify legal status before underwriting or waiving conditions.
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
+                <Card className="border-amber-500/25" data-testid="card-plex-detection">
+                  <CardHeader>
+                    <CardTitle>Possible plex signal</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {plexDetection.estimated_unit_count ? (
+                        <Badge variant="secondary">Possible {plexDetection.estimated_unit_count}-unit setup</Badge>
+                      ) : (
+                        <Badge variant="outline">No strong plex signal</Badge>
+                      )}
+                      <Badge variant="outline">{plexDetection.plex_confidence_score}/100 confidence</Badge>
+                      {plexDetection.needs_manual_review && <Badge variant="outline">Manual review</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {plexDetection.plex_detection_reason}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Unit count and legal status are estimated from available fields and text. Verify legal status before underwriting or waiving conditions.
+                    </p>
+                  </CardContent>
+                </Card>
               )}
 
               {!isCalculating && (

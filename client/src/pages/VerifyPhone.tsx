@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone, ArrowRight, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl } from "@/lib/authReturn";
+import { clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl, goToReturnUrl } from "@/lib/authReturn";
 
 const phoneSchema = z.object({
   phone: z.string().min(10, "Please enter a valid phone number"),
@@ -83,7 +83,7 @@ export default function VerifyPhone() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/phone/status"] });
       toast({ title: "Phone verified!", description: "Your phone number has been verified." });
       clearAuthReturnUrl();
-      setLocation(returnUrl);
+      goToReturnUrl(returnUrl, setLocation);
     },
     onError: (error: any) => {
       toast({
@@ -101,7 +101,7 @@ export default function VerifyPhone() {
     },
     onSuccess: () => {
       clearAuthReturnUrl();
-      setLocation(returnUrl);
+      goToReturnUrl(returnUrl, setLocation);
     },
   });
 
@@ -121,7 +121,7 @@ export default function VerifyPhone() {
               className="w-full" 
               onClick={() => {
                 clearAuthReturnUrl();
-                setLocation(returnUrl);
+                goToReturnUrl(returnUrl, setLocation);
               }}
               data-testid="button-continue-verified"
             >

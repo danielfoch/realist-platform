@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, ArrowRight, MailCheck, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-import { authPath, clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl } from "@/lib/authReturn";
+import { authPath, clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl, goToReturnUrl } from "@/lib/authReturn";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -59,7 +59,7 @@ export default function Login() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Welcome back!", description: "You have been logged in successfully." });
       clearAuthReturnUrl();
-      setLocation(returnUrl);
+      goToReturnUrl(returnUrl, setLocation);
     },
     onError: (error: any) => {
       if (typeof error?.message === "string" && error.message.includes("NO_PASSWORD_SET")) {

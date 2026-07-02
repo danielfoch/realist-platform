@@ -14,6 +14,11 @@ export function GoogleSignInButton({
   disabled = false 
 }: GoogleSignInButtonProps) {
   const handleClick = () => {
+    // The OAuth redirect can't carry the anonymous analyzer session id, so
+    // flag it here; useAuth claims it via /api/auth/claim-session after login.
+    if (localStorage.getItem("realist_session_id")) {
+      localStorage.setItem("realist_oauth_claim_pending", "1");
+    }
     const returnUrl = rememberAuthReturnUrl(getAuthReturnUrl());
     const googleUrl = `/api/auth/google/start?returnUrl=${encodeURIComponent(returnUrl)}`;
     window.location.href = googleUrl;

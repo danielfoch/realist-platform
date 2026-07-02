@@ -6,7 +6,9 @@ import { getResendClient } from "./resend";
 
 const REPLY_TO_EMAIL = process.env.MONTHLY_WINNER_REPLY_EMAIL || "danielfoch@gmail.com";
 const TEXT_PHONE = process.env.MONTHLY_WINNER_TEXT_PHONE || "";
-const WINNER_COUNT = Math.max(1, Math.min(10, Number(process.env.MONTHLY_WINNER_COUNT) || 3));
+// Everyone ranked last month gets a placement email; only #1 gets the prize.
+const RANK_EMAIL_LIMIT = Math.max(1, Math.min(500, Number(process.env.MONTHLY_RANK_EMAIL_LIMIT) || 500));
+const PRIZE_RANKS = Math.max(1, Math.min(3, Number(process.env.MONTHLY_PRIZE_RANKS) || 1));
 
 const PRIZE_TIERS: Record<number, { medal: string; label: string }> = {
   1: { medal: "🥇", label: "1st place" },
@@ -21,6 +23,8 @@ interface WinnerRow {
   firstName: string | null;
   lastName: string | null;
   dealCount: number;
+  emailDigestOptIn: boolean | null;
+  consentStatus: string;
 }
 
 function getLastMonthBoundsToronto(): { start: string; end: string; monthKey: string; label: string } {
@@ -38,7 +42,7 @@ function getLastMonthBoundsToronto(): { start: string; end: string; monthKey: st
   };
 }
 
-export async function getLastMonthWinners(limit = WINNER_COUNT): Promise<WinnerRow[]> {
+export async function getLastMonthWinners(limit = RANK_EMAIL_LIMIT): Promise<WinnerRow[]> {
   const { start, end } = getLastMonthBoundsToronto();
   const rows = await db
     .select({
@@ -47,6 +51,8 @@ export async function getLastMonthWinners(limit = WINNER_COUNT): Promise<WinnerR
       firstName: users.firstName,
       lastName: users.lastName,
       dealCount: count(analyses.id),
+      emailDigestOptIn: users.emailDigestOptIn,
+      consentStatus: sql<string>`COALESCE((SELECT ec.status FROM email_consent ec WHERE ec.user_id = ${users.id} AND ec.channel = 'email' ORDER BY ec.created_at DESC LIMIT 1), 'granted')`,
     })
     .from(analyses)
     .innerJoin(users, sql`${users.id} = ${analyses.userId}`)
@@ -80,7 +86,7 @@ export async function getLastMonthWinners(limit = WINNER_COUNT): Promise<WinnerR
         OR ((${analyses.resultsJson}->>'dscr')::numeric BETWEEN 0 AND 4)
       )
     `)
-    .groupBy(analyses.userId, users.email, users.firstName, users.lastName)
+    .groupBy(analyses.userId, users.email, users.firstName, users.lastName, users.emailDigestOptIn)
     .orderBy(desc(count(analyses.id)))
     .limit(limit);
 
@@ -93,16 +99,20 @@ export async function getLastMonthWinners(limit = WINNER_COUNT): Promise<WinnerR
       firstName: r.firstName,
       lastName: r.lastName,
       dealCount: Number(r.dealCount || 0),
+      emailDigestOptIn: (r as { emailDigestOptIn?: boolean | null }).emailDigestOptIn ?? null,
+      consentStatus: (r as { consentStatus?: string }).consentStatus ?? "granted",
     }));
 }
 
-function buildSubject(rank: number, monthLabel: string): string {
+function buildSubject(rank: number, monthLabel: string, total: number): string {
   const tier = PRIZE_TIERS[rank];
-  if (tier) return `${tier.medal} You won ${tier.label} on the Realist leaderboard for ${monthLabel}`;
-  return `You placed #${rank} on the Realist leaderboard for ${monthLabel}`;
+  if (rank <= PRIZE_RANKS && tier) return `${tier.medal} You won ${tier.label} on the Realist leaderboard for ${monthLabel}`;
+  if (tier) return `${tier.medal} You took ${tier.label} on the Realist leaderboard for ${monthLabel}`;
+  return `You ranked #${rank} of ${total} on the Realist leaderboard for ${monthLabel}`;
 }
 
-function buildHtml(winner: WinnerRow, monthLabel: string): string {
+function buildHtml(winner: WinnerRow, monthLabel: string, total: number): string {
+  const isPrize = winner.rank <= PRIZE_RANKS;
   const tier = PRIZE_TIERS[winner.rank] || { medal: "🏆", label: `#${winner.rank}` };
   const firstName = winner.firstName || "there";
   const textLine = TEXT_PHONE
@@ -113,7 +123,7 @@ function buildHtml(winner: WinnerRow, monthLabel: string): string {
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
       <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 28px 24px; border-radius: 8px 8px 0 0; text-align: center;">
         <p style="margin: 0; font-size: 13px; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase;">Monthly Leaderboard</p>
-        <h1 style="margin: 6px 0 0 0; font-size: 24px; color: white; font-weight: 700;">${tier.medal} ${tier.label.toUpperCase()}</h1>
+        <h1 style="margin: 6px 0 0 0; font-size: 24px; color: white; font-weight: 700;">${tier.medal} ${isPrize ? tier.label.toUpperCase() : `RANK #${winner.rank} OF ${total}`}</h1>
         <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8;">${monthLabel}</p>
       </div>
 
@@ -121,15 +131,19 @@ function buildHtml(winner: WinnerRow, monthLabel: string): string {
         <p style="margin: 0 0 16px 0; font-size: 16px; color: #111827;">Hey ${firstName},</p>
 
         <p style="margin: 0 0 16px 0; font-size: 14px; color: #374151; line-height: 1.7;">
-          Congrats — you finished <strong>#${winner.rank}</strong> on the Realist.ca monthly leaderboard for <strong>${monthLabel}</strong> with <strong>${winner.dealCount} deal${winner.dealCount === 1 ? "" : "s"} analyzed</strong>. That puts you in real-life-prize territory.
+          ${isPrize ? `Congrats — you finished <strong>#${winner.rank}</strong> on the Realist.ca monthly leaderboard for <strong>${monthLabel}</strong> with <strong>${winner.dealCount} deal${winner.dealCount === 1 ? "" : "s"} analyzed</strong>. That puts you in real-life-prize territory.` : `You finished <strong>#${winner.rank} of ${total}</strong> on the Realist.ca monthly leaderboard for <strong>${monthLabel}</strong> with <strong>${winner.dealCount} deal${winner.dealCount === 1 ? "" : "s"} analyzed</strong>. The board resets on the 1st — every analysis counts, and #1 ships home a real prize.`}
         </p>
 
-        <div style="background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%); border: 1px solid #fed7aa; border-radius: 8px; padding: 18px; margin: 18px 0;">
+        ${isPrize ? `<div style="background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%); border: 1px solid #fed7aa; border-radius: 8px; padding: 18px; margin: 18px 0;">
           <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #9a3412;">How to claim your reward</p>
           <p style="margin: 0; font-size: 14px; color: #374151; line-height: 1.7;">
             ${textLine} so we can ship it out. Include your full name, mailing address, and (if you'd like a custom note) what name you want on the package.
           </p>
-        </div>
+        </div>` : `<div style="text-align: center; margin: 18px 0;">
+          <a href="https://realist.ca/tools/analyzer?source=monthly_rank_email" style="display: inline-block; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+            Analyze a deal — start climbing
+          </a>
+        </div>`}
 
         <p style="margin: 16px 0 0 0; font-size: 14px; color: #374151; line-height: 1.7;">
           Thanks for using Realist and helping keep the underwriting community sharp.
@@ -155,7 +169,8 @@ function buildHtml(winner: WinnerRow, monthLabel: string): string {
   `;
 }
 
-function buildText(winner: WinnerRow, monthLabel: string): string {
+function buildText(winner: WinnerRow, monthLabel: string, total: number): string {
+  const isPrize = winner.rank <= PRIZE_RANKS;
   const tier = PRIZE_TIERS[winner.rank];
   const place = tier ? tier.label : `#${winner.rank}`;
   const firstName = winner.firstName || "there";
@@ -166,11 +181,13 @@ function buildText(winner: WinnerRow, monthLabel: string): string {
   return [
     `Hey ${firstName},`,
     "",
-    `Congrats — you finished ${place} on the Realist.ca monthly leaderboard for ${monthLabel} with ${winner.dealCount} deal${winner.dealCount === 1 ? "" : "s"} analyzed.`,
+    isPrize
+      ? `Congrats — you finished ${place} on the Realist.ca monthly leaderboard for ${monthLabel} with ${winner.dealCount} deal${winner.dealCount === 1 ? "" : "s"} analyzed.`
+      : `You finished #${winner.rank} of ${total} on the Realist.ca monthly leaderboard for ${monthLabel} with ${winner.dealCount} deal${winner.dealCount === 1 ? "" : "s"} analyzed. The board resets on the 1st — #1 ships home a real prize.`,
     "",
-    "How to claim your reward:",
-    `${textLine} with your full name and mailing address so we can ship it out.`,
-    "",
+    ...(isPrize
+      ? ["How to claim your reward:", `${textLine} with your full name and mailing address so we can ship it out.`, ""]
+      : ["Start climbing: https://realist.ca/tools/analyzer?source=monthly_rank_email", ""]),
     "Leaderboard: https://realist.ca/community/leaderboard?source=monthly_winner_email",
     "",
     "— Daniel",
@@ -190,7 +207,7 @@ interface SendResult {
 
 export async function sendMonthlyWinnerEmails(options?: { dryRun?: boolean; limit?: number }): Promise<SendResult> {
   const dryRun = options?.dryRun ?? false;
-  const limit = options?.limit ?? WINNER_COUNT;
+  const limit = options?.limit ?? RANK_EMAIL_LIMIT;
   const { monthKey, label } = getLastMonthBoundsToronto();
   console.log(`[monthly-winner] Starting for ${label} (key=${monthKey}) limit=${limit} dryRun=${dryRun}`);
 
@@ -235,6 +252,12 @@ export async function sendMonthlyWinnerEmails(options?: { dryRun?: boolean; limi
   for (const winner of winners) {
     const dedupeKey = `monthly_winner:${winner.userId}:${monthKey}`;
     try {
+      // Consent gate: latest email_consent ledger row wins; digest opt-out also skips
+      if (winner.consentStatus === "revoked" || winner.emailDigestOptIn === false) {
+        result.winners.push({ rank: winner.rank, userId: winner.userId, email: winner.email, status: "skipped", reason: "consent" });
+        result.skipped++;
+        continue;
+      }
       if (dryRun) {
         result.winners.push({ rank: winner.rank, userId: winner.userId, email: winner.email, status: "skipped", reason: "dry_run" });
         result.skipped++;
@@ -262,9 +285,9 @@ export async function sendMonthlyWinnerEmails(options?: { dryRun?: boolean; limi
         continue;
       }
 
-      const subject = buildSubject(winner.rank, label);
-      const html = buildHtml(winner, label);
-      const text = buildText(winner, label);
+      const subject = buildSubject(winner.rank, label, winners.length);
+      const html = buildHtml(winner, label, winners.length);
+      const text = buildText(winner, label, winners.length);
 
       const { data, error } = await resendCtx!.client.emails.send({
         from: resendCtx!.fromEmail,
@@ -295,6 +318,7 @@ export async function sendMonthlyWinnerEmails(options?: { dryRun?: boolean; limi
       console.log(`[monthly-winner] Sent to ${winner.email} (rank ${winner.rank}, ${winner.dealCount} deals) — id=${(data as any)?.id || "?"}`);
       result.winners.push({ rank: winner.rank, userId: winner.userId, email: winner.email, status: "sent" });
       result.sent++;
+      await new Promise((r) => setTimeout(r, 600)); // throttle: ~100/min, gentle on Resend
     } catch (err: any) {
       console.error(`[monthly-winner] Error processing ${winner.email}:`, err);
       result.winners.push({ rank: winner.rank, userId: winner.userId, email: winner.email, status: "error", reason: err?.message || String(err) });

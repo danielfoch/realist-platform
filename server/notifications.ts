@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lte, ne, isNotNull } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lte, ne, isNotNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
 import {
@@ -368,6 +368,31 @@ export async function syncWatchersFromDiscoverySignals(params: {
   }));
 }
 
+/**
+ * Central unsubscribe gate. Every recipient must (a) not have turned off the
+ * users.email_digest_opt_in flag and (b) not have a latest email_consent
+ * ledger row of 'revoked' for the email channel (append-only CASL ledger —
+ * latest row per user wins; no rows = no objection on record). Applied here,
+ * in the single enqueue path, so every notification producer inherits it.
+ */
+async function filterUnsubscribedRecipients(userIds: string[]): Promise<Set<string>> {
+  if (!userIds.length) return new Set();
+  const rows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(
+      inArray(users.id, userIds),
+      sql`COALESCE(${users.emailDigestOptIn}, true) = true`,
+      sql`COALESCE((
+        SELECT ec.status FROM email_consent ec
+        WHERE ec.user_id = ${users.id} AND ec.channel = 'email'
+        ORDER BY ec.created_at DESC
+        LIMIT 1
+      ), 'granted') <> 'revoked'`,
+    ));
+  return new Set(rows.map((row) => row.id));
+}
+
 async function enqueueForRecipients(args: {
   eventType: NotificationKind;
   listingMlsNumber?: string;
@@ -381,6 +406,16 @@ async function enqueueForRecipients(args: {
     dedupeKey: string;
   }>;
 }): Promise<void> {
+  const allowedIds = await filterUnsubscribedRecipients(
+    Array.from(new Set(args.recipients.map((recipient) => recipient.userId))),
+  );
+  const allowedRecipients = args.recipients.filter((recipient) => allowedIds.has(recipient.userId));
+  const skipped = args.recipients.length - allowedRecipients.length;
+  if (skipped > 0) {
+    console.log(`[notifications] ${args.eventType}: skipped ${skipped} unsubscribed/revoked recipient(s)`);
+  }
+  if (!allowedRecipients.length) return;
+
   const event = await storage.createNotificationEvent({
     eventType: args.eventType,
     listingMlsNumber: args.listingMlsNumber || null,
@@ -390,7 +425,7 @@ async function enqueueForRecipients(args: {
     payloadJson: args.rawPayload,
   });
 
-  await Promise.all(args.recipients.map(async (recipient) => {
+  await Promise.all(allowedRecipients.map(async (recipient) => {
     await storage.createNotificationQueueItem({
       recipientUserId: recipient.userId,
       notificationEventId: event.id,
@@ -1384,7 +1419,7 @@ export async function queueCoAnalysisNotifications(params: {
 
     const dedupeKey = `co_analysis_alert:${userId}:${newAnalysis.listingMlsNumber}:${today}`;
 
-    const reasonText = `Another investor just underewrote ${address}${city ? ` in ${city}` : ""}${capRateText}${cocText}.`;
+    const reasonText = `Another investor just underwrote ${address}${city ? ` in ${city}` : ""}${capRateText}${cocText}.`;
     const emailBody = buildEmailBody(recipient.firstName || "there", [
       `Someone else just analyzed a property you've looked at:`,
       ``,
@@ -1400,7 +1435,7 @@ export async function queueCoAnalysisNotifications(params: {
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;background:#fff;">
         <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:24px;border-radius:8px 8px 0 0;">
           <p style="margin:0;font-size:11px;color:#94a3b8;letter-spacing:1px;text-transform:uppercase;">Realist.ca</p>
-          <h2 style="margin:4px 0 0;font-size:18px;color:#fff;font-weight:700;">Another investor just underewrote this deal</h2>
+          <h2 style="margin:4px 0 0;font-size:18px;color:#fff;font-weight:700;">Another investor just underwrote this deal</h2>
         </div>
         <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;">
           <p style="margin:0 0 16px;font-size:15px;color:#111827;">Hey ${recipient.firstName || "there"},</p>
@@ -1446,7 +1481,7 @@ export async function queueCoAnalysisNotifications(params: {
           reasonText,
           ctaLabel: "Compare your analysis",
           ctaUrl: listingUrl,
-          subjectLine: `Another investor just underewrote ${address}`,
+          subjectLine: `Another investor just underwrote ${address}`,
           previewText: `See how your numbers compare on this listing.`,
           listingMlsNumber: newAnalysis.listingMlsNumber,
           listingCity: city,
