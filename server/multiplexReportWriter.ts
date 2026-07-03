@@ -68,7 +68,7 @@ const REPORT_JSON_SCHEMA = {
 
 // ─── Prompt ──────────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are the narrative layer of realist.ca's Toronto multiplex underwriter. A deterministic engine has already computed every figure — zoning permissions, buildable envelope, build configurations, development costs, condo sellout, rental hold, CMHC MLI Select financing, residual land value, and variance risk. Your job is to explain the results the way a seasoned Toronto infill development analyst would brief an investor client.
+const SYSTEM_PROMPT = `You are the narrative layer of realist.ca's Toronto multiplex underwriter. A deterministic engine has already computed every figure — zoning permissions, buildable envelope, build configurations, development costs, residual land value, variance risk, and the two exit takeouts: a CMHC MLI Select rental hold and a condo termination (condo-townhouse vs condo-apartment form, registration and absorption costed). The engine's dual-takeout comparison (each config's "takeout.decision" and the site-level "recommendedTakeout") already picks the better exit in comparable dollars. Your job is to explain the results the way a seasoned Toronto infill development analyst would brief an investor client.
 
 Rules, in order of importance:
 1. Use ONLY facts and figures present in the provided data. Never invent, estimate, or adjust a number. If you reference a figure, copy it exactly as given.
@@ -82,7 +82,7 @@ Section guidance:
 - zoningSummary: 2-4 sentences — what's permitted as-of-right here and why (cite the by-law names given in the data).
 - varianceNarrative: 2-4 sentences — the variance risk read and its drivers.
 - riskNarrative: 2-4 sentences — trees, conservation, heritage, and screening gaps.
-- recommendation.bestPath: 2-4 sentences — which configuration and exit the numbers favour, and why.
+- recommendation.bestPath: 2-4 sentences — which configuration and takeout the numbers favour (follow recommendedTakeout: MLI Select hold vs condo termination, naming the condo form where relevant), and why.
 - recommendation.dealKillers: the 2-4 things that would kill this deal, each one sentence.
 - recommendation.verifyWithProfessionals: 3-5 items, each naming the professional and what they must confirm.
 - recommendation.nextSteps: 3-5 concrete diligence actions in order.`;
@@ -160,9 +160,17 @@ function templateReport(payload: ReportInput): MultiplexReport {
       ...(site.notes ?? []),
     ].filter(Boolean).join(" ") || "No screened risks were flagged; on-site verification is still required.",
     recommendation: {
-      bestPath: best
-        ? `The numbers favour the ${best.config.label} (${best.comparison.recommendedExit === "condo" ? "condo exit" : best.comparison.recommendedExit === "hold" ? "rental hold via MLI Select" : "neither exit pencils at these assumptions"}). Compare the configuration cards and adjust assumptions to your basis.`
-        : "Re-run with confirmed lot dimensions before drawing conclusions.",
+      bestPath: (() => {
+        const rec = underwrite.recommendedTakeout;
+        if (rec?.configKey) {
+          const recConfig = configs.find((c: any) => c.config.key === rec.configKey);
+          const takeoutLabel = rec.takeout === "mli_hold" ? "a CMHC MLI Select rental hold" : "condo termination";
+          return `The numbers favour the ${recConfig?.config.label ?? rec.configKey} taken out via ${takeoutLabel}. ${rec.reasons?.[0] ?? ""} Compare the configuration cards and adjust assumptions to your basis.`;
+        }
+        return best
+          ? `The numbers favour the ${best.config.label} (${best.comparison.recommendedExit === "condo" ? "condo exit" : best.comparison.recommendedExit === "hold" ? "rental hold via MLI Select" : "neither exit pencils at these assumptions"}). Compare the configuration cards and adjust assumptions to your basis.`
+          : "Re-run with confirmed lot dimensions before drawing conclusions.";
+      })(),
       dealKillers: [
         "Purchase price above the residual land value for your intended exit",
         "A variance or TRCA permit the Committee/authority won't grant",
