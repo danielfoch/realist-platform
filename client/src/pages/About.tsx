@@ -23,9 +23,9 @@ import {
 } from "lucide-react";
 import { SiX, SiTiktok } from "react-icons/si";
 import { Link } from "wouter";
-import nickImage from "@assets/ChatGPT_Image_Jan_6,_2026,_02_50_25_PM_1767729122931.png";
-import jonathanImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_15_PM_1767729800256.png";
-import danielImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_13_PM_1767729810400.png";
+import nickImage from "@assets/ChatGPT_Image_Jan_6,_2026,_02_50_25_PM_1767729122931.webp";
+import jonathanImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_15_PM_1767729800256.webp";
+import danielImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_13_PM_1767729810400.webp";
 
 const proofChips = [
   { label: "Canada's #1 real estate podcast", icon: Podcast },

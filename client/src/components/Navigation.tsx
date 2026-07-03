@@ -16,7 +16,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { track } from "@/lib/analytics";
 import { authPath } from "@/lib/authReturn";
-import logoImage from "@assets/Untitled_design_(4)_1773356428184.png";
+import logoImage from "@assets/Untitled_design_(4)_1773356428184.webp";
 
 interface NavItem {
   href: string;
