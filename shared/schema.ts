@@ -18,6 +18,9 @@ export * from "./models/auth";
 // Re-export native CRM models (contacts, activities, deals)
 export * from "./models/crm";
 
+// Re-export Live Deal Room + recorded-call ledger models
+export * from "./models/dealRoom";
+
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),

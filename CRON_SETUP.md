@@ -1,5 +1,21 @@
 # Cron Job Setup for Realist.ca
 
+## Live Deal Room Sweep (reminders, auto-schedule, recording ingest)
+
+Every 30 minutes. Idempotent — safe to run more often. Handles: 24h reminder
+emails, auto-scheduling next Monday's session, Google Meet recording ingest
+from Drive, and (when `DEAL_ROOM_AUTO_SEND_REPLAY=true`) the replay email
+blast after ingest.
+
+```bash
+*/30 * * * * curl -s -X POST -H "x-api-key: $DEAL_DESK_API_KEY" https://realist.ca/api/deal-room/sweep
+```
+
+Requires env: `DEAL_DESK_API_KEY`, `DEAL_ROOM_MEET_URL`,
+`DEAL_ROOM_GOOGLE_SA_JSON`, `DEAL_ROOM_DRIVE_FOLDER_ID` (share the Google
+"Meet Recordings" folder with the service-account email). Manual ingest run:
+`npm run deal-room:ingest`.
+
 ## Monthly Market Update Automation
 
 To set up automatic monthly market updates:

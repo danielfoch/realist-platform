@@ -28,6 +28,7 @@ import {
   BOOKED_CALL_LEAD_STATUSES,
 } from "@shared/bookedCallLeads";
 import { bldDestinationStatus, forwardLeadToBld } from "./bldLeadDestination";
+import { upsertPlatformCrmContact } from "./crmIngest";
 
 export function registerBookedCallLeadRoutes(app: Express): void {
   // Startup visibility, mirroring the GHL_WEBHOOK_URL log in auth.ts.
@@ -76,6 +77,25 @@ export function registerBookedCallLeadRoutes(app: Express): void {
           metadata: { lead_id: lead.id, intent: input.intent, underwriting_id: input.underwritingId ?? null },
         });
       }
+
+      // Every booked-call request lands in the native CRM as a contact with
+      // a timeline entry — best-effort, never blocks the submission.
+      upsertPlatformCrmContact({
+        name: input.fullName,
+        email: input.email,
+        phone: input.phone ?? null,
+        linkedUserId: userId,
+        source: "booked_call",
+        sourceDetail: input.sourcePage ?? input.intent,
+        consentEmail: true,
+        activityBody: `Requested a ${input.intent} call${input.sourcePage ? ` from ${input.sourcePage}` : ""}${input.message ? ` — "${input.message.slice(0, 300)}"` : ""}.`,
+        activityMetadata: {
+          bookedCallLeadId: lead.id,
+          intent: input.intent,
+          analysisId: input.analysisId ?? null,
+          underwritingId: input.underwritingId ?? null,
+        },
+      }).catch((err) => console.error("[booked-call-leads] CRM handoff failed:", err instanceof Error ? err.message : err));
 
       // Best-effort forward — never blocks or fails the submission. With the
       // BLD destination unconfigured (current state) this is a no-op log.
