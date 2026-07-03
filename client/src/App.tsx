@@ -123,6 +123,7 @@ import JoinMortgageBrokers from "@/pages/JoinMortgageBrokers";
 import PartnerOnboarding from "@/pages/PartnerOnboarding";
 import JoinLenders from "@/pages/JoinLenders";
 import MyPerformance from "@/pages/MyPerformance";
+import DailyGlance from "@/pages/DailyGlance";
 import Stats from "@/pages/Stats";
 import UsListings from "@/pages/UsListings";
 import PublicProfile from "@/pages/PublicProfile";
@@ -318,7 +319,7 @@ function Router() {
       <Route path="/podcast">{() => <Redirect to="/insights/podcast" />}</Route>
       <Route path="/blog">{() => <Redirect to="/insights/blog" />}</Route>
       <Route path="/shop">{() => <Redirect to="/about/shop" />}</Route>
-      <Route path="/dashboard">{() => <Redirect to="/my-performance" />}</Route>
+      <Route path="/dashboard" component={DailyGlance} />
       
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />

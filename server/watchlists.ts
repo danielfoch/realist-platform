@@ -297,7 +297,7 @@ export function registerWatchlistRoutes(app: Express): void {
 
 // ─── Alert sweep ─────────────────────────────────────────────────────────────
 
-type CurrentPrice = { price: number; address?: string | null; city?: string | null };
+export type CurrentPrice = { price: number; address?: string | null; city?: string | null };
 
 /**
  * Latest stored price for each watched listing key.
@@ -305,7 +305,7 @@ type CurrentPrice = { price: number; address?: string | null; city?: string | nu
  * CA keys resolve against the newest ddf_listing_snapshots row (crawler
  * cadence — see the module comment for what that honestly means).
  */
-async function resolveCurrentPrices(keys: string[]): Promise<Map<string, CurrentPrice>> {
+export async function resolveCurrentPrices(keys: string[]): Promise<Map<string, CurrentPrice>> {
   const prices = new Map<string, CurrentPrice>();
   if (!keys.length) return prices;
 
@@ -349,7 +349,7 @@ async function resolveCurrentPrices(keys: string[]): Promise<Map<string, Current
 }
 
 /** New-since-`since` listings across both countries, with first-seen stamps. */
-async function loadNewCandidates(since: Date): Promise<Array<CandidateListing & { firstSeenAt: Date }>> {
+export async function loadNewCandidates(since: Date): Promise<Array<CandidateListing & { firstSeenAt: Date }>> {
   const candidates: Array<CandidateListing & { firstSeenAt: Date }> = [];
 
   const usRows = await db.select().from(usListings)

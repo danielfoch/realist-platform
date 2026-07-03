@@ -103,6 +103,8 @@ import { z } from "zod";
 import { COMMUNITY_DEFAULTS, COMMUNITY_FLAGS, computeConsensusLabel, sanitizeUserText, summarizeCommunityMetrics, truncateText } from "@shared/community";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin, appBaseUrl } from "./auth";
+import { getDashboardGlanceCached } from "./dashboardGlance";
+import { ANALYST_BADGES, computeMilestoneProgress } from "@shared/milestones";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { passwordResetTokens } from "@shared/models/auth";
 import { normalizeEmail, SETUP_LINK_TTL_MS } from "@shared/authTokens";
@@ -9757,13 +9759,15 @@ export async function registerRoutes(
       const totalDeals = Number(userStats?.totalDeals || 0);
 
       const badges: { id: string; name: string; description: string; icon: string; earnedAt: string | null }[] = [];
-      const badgeDefs = [
-        { id: "analyst", name: "Analyst", description: "Analyzed 10 deals", icon: "search", threshold: 10 },
-        { id: "power-user", name: "Power User", description: "Analyzed 50 deals", icon: "zap", threshold: 50 },
-        { id: "deal-hunter", name: "Deal Hunter", description: "Analyzed 100 deals", icon: "target", threshold: 100 },
-        { id: "veteran", name: "Veteran", description: "Analyzed 250 deals", icon: "shield", threshold: 250 },
-        { id: "legend", name: "Legend", description: "Analyzed 500 deals", icon: "crown", threshold: 500 },
-      ];
+      // Derived from the shared badge ladder so thresholds/names/icons never
+      // drift from /api/user-performance and /api/dashboard/glance.
+      const badgeDefs = ANALYST_BADGES.map((b) => ({
+        id: b.name.toLowerCase().replace(/\s+/g, "-"),
+        name: b.name,
+        description: `Analyzed ${b.threshold} deals`,
+        icon: b.icon,
+        threshold: b.threshold,
+      }));
 
       for (const def of badgeDefs) {
         if (totalDeals >= def.threshold) {
@@ -9863,6 +9867,21 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching user stats:", error);
       res.status(500).json({ error: "Failed to fetch user stats" });
+    }
+  });
+
+  // Daily-glance dashboard: the signed-in home. One response, every card,
+  // parallel queries, briefly cached per user. Reuses the email producers'
+  // logic (see server/dashboardGlance.ts) so the in-app numbers match the
+  // alerts they were previously only sent by email.
+  app.get("/api/dashboard/glance", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const data = await getDashboardGlanceCached(userId);
+      res.json(data);
+    } catch (error) {
+      console.error("[dashboard-glance] error:", error);
+      res.status(500).json({ error: "Failed to load dashboard" });
     }
   });
 
@@ -9968,16 +9987,14 @@ export async function registerRoutes(
         .limit(3);
 
       const totalDeals = Number(userStats?.totalDeals || 0);
-      const badgeDefs = [
-        { threshold: 10, name: "Analyst" },
-        { threshold: 50, name: "Power User" },
-        { threshold: 100, name: "Deal Hunter" },
-        { threshold: 250, name: "Veteran" },
-        { threshold: 500, name: "Legend" },
-      ];
-      const currentBadge = badgeDefs.filter(b => totalDeals >= b.threshold).pop() || null;
-      const nextBadge = badgeDefs.find(b => totalDeals < b.threshold) || null;
-      const dealsToNext = nextBadge ? nextBadge.threshold - totalDeals : 0;
+      const milestone = computeMilestoneProgress(totalDeals);
+      const currentBadge = milestone.currentBadge
+        ? { threshold: milestone.currentBadge.threshold, name: milestone.currentBadge.name }
+        : null;
+      const nextBadge = milestone.nextBadge
+        ? { threshold: milestone.nextBadge.threshold, name: milestone.nextBadge.name }
+        : null;
+      const dealsToNext = milestone.dealsToNext;
 
       const monthlyBreakdown = await db
         .select({
