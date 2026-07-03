@@ -7,7 +7,7 @@ module.exports = {
   },
   plugins: ['@typescript-eslint'],
   extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
-  ignorePatterns: ['dist/', 'coverage/', 'frontend/', 'monitoring/', '.github/'],
+  ignorePatterns: ['dist/', 'coverage/', 'monitoring/', '.github/'],
   env: {
     node: true,
     es2022: true,

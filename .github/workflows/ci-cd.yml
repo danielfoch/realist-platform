@@ -42,6 +42,9 @@ jobs:
           fi
           echo "No sweep artifacts. Clean."
 
+      - name: Reject committed PII exports
+        run: bash scripts/check-no-pii.sh
+
   build-test:
     needs: hygiene
     runs-on: ubuntu-latest
@@ -90,6 +93,9 @@ jobs:
 
       - name: Run tests with coverage
         run: npm run idx:test
+
+      - name: Run unit tests (vitest)
+        run: npm run test:unit
 
       - name: Build
         run: npm run build

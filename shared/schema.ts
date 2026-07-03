@@ -543,12 +543,22 @@ export const notificationQueue = pgTable(
 export const notificationPreferences = pgTable("notification_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  // Master marketing switch — the emailGovernor denies ALL marketing streams
+  // when this is off (auth/transactional email is never affected).
   marketingEmailEnabled: boolean("marketing_email_enabled").default(true).notNull(),
-  productUpdatesEnabled: boolean("product_updates_enabled").default(true).notNull(),
-  listingWatchAlertsEnabled: boolean("listing_watch_alerts_enabled").default(true).notNull(),
+  // Per-category toggles, one per governed MarketingStream (shared/emailGovernor.ts).
+  productUpdatesEnabled: boolean("product_updates_enabled").default(true).notNull(),      // product announcements (also legacy kill-switch)
+  retentionTipsEnabled: boolean("retention_tips_enabled").default(true).notNull(),        // behavioural retention + onboarding nudges
+  listingWatchAlertsEnabled: boolean("listing_watch_alerts_enabled").default(true).notNull(), // watchlist price/status + saved-search alerts
   marketAlertsEnabled: boolean("market_alerts_enabled").default(true).notNull(),
-  communityAlertsEnabled: boolean("community_alerts_enabled").default(true).notNull(),
+  communityAlertsEnabled: boolean("community_alerts_enabled").default(true).notNull(),    // field-note votes + community engagement
+  weeklyDigestEnabled: boolean("weekly_digest_enabled").default(true).notNull(),          // weekly leaderboard/KPI digest
+  monthlyRankEnabled: boolean("monthly_rank_enabled").default(true).notNull(),            // monthly leaderboard rank/winner email
+  podcastDigestEnabled: boolean("podcast_digest_enabled").default(true).notNull(),        // podcast episode digest (feature ships later)
+  // Legacy daily/GHL-webhook digest switch, read by notifications.recipientAllows("digest").
   digestEnabled: boolean("digest_enabled").default(true).notNull(),
+  // Optional weekly frequency preference (rolling marketing cap override, per user).
+  weeklyEmailFrequency: integer("weekly_email_frequency"),
   quietHoursStart: text("quiet_hours_start"),
   quietHoursEnd: text("quiet_hours_end"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -4398,6 +4408,54 @@ export const insertUnderwritingShareSchema = createInsertSchema(underwritingShar
 });
 export type InsertUnderwritingShare = z.infer<typeof insertUnderwritingShareSchema>;
 export type UnderwritingShare = typeof underwritingShares.$inferSelect;
+
+// ============================================================================
+// BOOKED-CALL LEADS — the deal/coaching call funnel. A visitor (signed in or
+// not) asks to talk to a financing specialist about a deal, or requests a
+// coaching call. Each row keeps the context the call needs: source page,
+// underwriting/analysis snapshot ids, and a small deal snapshot. Admins work
+// the pipeline new → contacted → booked → flipped (handed to the BLD
+// Financial contact). Forwarding to BLD is env-driven and stubbed until
+// wired — see server/bldLeadDestination.ts.
+// ============================================================================
+
+export const bookedCallLeads = pgTable("booked_call_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  intent: text("intent").default("financing").notNull(), // financing | coaching
+  sourcePage: text("source_page"), // e.g. /tools/multiplex-underwriter
+  // multiplex_underwritings.id — that table is raw-SQL managed (see
+  // server/multiplexUnderwriter.ts ensureMultiplexTables), so no drizzle FK.
+  underwritingId: varchar("underwriting_id"),
+  analysisId: varchar("analysis_id").references(() => propertyAnalyses.id, { onDelete: "set null" }),
+  dealSnapshot: jsonb("deal_snapshot"), // allowlisted shape — shared/bookedCallLeads.ts dealSnapshotSchema
+  message: text("message"),
+  status: text("status").default("new").notNull(), // new → contacted → booked → flipped
+  notes: text("notes"), // internal admin notes — never forwarded to BLD
+  forwardedAt: timestamp("forwarded_at"), // set when a configured BLD destination accepted the lead
+  forwardedVia: text("forwarded_via"), // webhook | email
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_booked_call_leads_status").on(table.status, table.createdAt),
+  index("idx_booked_call_leads_user").on(table.userId),
+]);
+
+export const bookedCallLeadsRelations = relations(bookedCallLeads, ({ one }) => ({
+  user: one(users, { fields: [bookedCallLeads.userId], references: [users.id] }),
+  analysis: one(propertyAnalyses, { fields: [bookedCallLeads.analysisId], references: [propertyAnalyses.id] }),
+}));
+
+export const insertBookedCallLeadSchema = createInsertSchema(bookedCallLeads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBookedCallLead = z.infer<typeof insertBookedCallLeadSchema>;
+export type BookedCallLead = typeof bookedCallLeads.$inferSelect;
 
 export const appSettings = pgTable("app_settings", {
   key: varchar("key").primaryKey(),

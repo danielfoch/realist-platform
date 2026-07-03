@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Users, FileText, Webhook, Database, CheckCircle, XCircle, Clock, Shield, Hammer, GraduationCap, Phone, Mail, MessageSquare, PenLine, BookOpen, Plus, Pencil, Trash2, Building2 } from "lucide-react";
 import { Link } from "wouter";
-import type { Lead, MarketExpertApplication, RenoQuote, CoachingWaitlist, BlogPost, Guide } from "@shared/schema";
+import type { Lead, MarketExpertApplication, RenoQuote, CoachingWaitlist, BlogPost, Guide, BookedCallLead } from "@shared/schema";
 import { format } from "date-fns";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -85,7 +85,7 @@ type SaleResolution = {
 export default function Admin() {
   const { toast } = useToast();
 
-  const [currentTab, setCurrentTab] = usePersistedTab("admin.activeTab", "applications", ["applications", "users", "leads", "reno-quotes", "coaching", "blog", "guides", "sale-oracle"], { storage: "session", ttl: { days: 3 } });
+  const [currentTab, setCurrentTab] = usePersistedTab("admin.activeTab", "applications", ["applications", "users", "leads", "call-leads", "reno-quotes", "coaching", "blog", "guides", "sale-oracle"], { storage: "session", ttl: { days: 3 } });
   
   const { data: leads, isLoading: leadsLoading, refetch: refetchLeads, error: leadsError } = useQuery<Lead[]>({
     queryKey: ["/api/admin/leads"],
@@ -118,6 +118,11 @@ export default function Admin() {
 
   const { data: coachingWaitlist, isLoading: coachingLoading, refetch: refetchCoaching } = useQuery<CoachingWaitlist[]>({
     queryKey: ["/api/coaching-waitlist"],
+    retry: false,
+  });
+
+  const { data: bookedCallLeads, isLoading: bookedCallLoading, refetch: refetchBookedCalls } = useQuery<BookedCallLead[]>({
+    queryKey: ["/api/booked-call-leads"],
     retry: false,
   });
 
@@ -412,6 +417,19 @@ export default function Admin() {
     }
   };
 
+  const updateBookedCallMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      return apiRequest("PATCH", `/api/booked-call-leads/${id}`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/booked-call-leads"] });
+      toast({ title: "Call lead updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update call lead", variant: "destructive" });
+    },
+  });
+
   const updateCoachingMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       return apiRequest("PATCH", `/api/coaching-waitlist/${id}`, { status });
@@ -482,6 +500,7 @@ export default function Admin() {
 
   const pendingApplications = applications?.filter(a => a.status === "pending") || [];
   const pendingCoaching = coachingWaitlist?.filter(c => c.status === "pending") || [];
+  const newBookedCalls = bookedCallLeads?.filter(l => l.status === "new") || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -645,6 +664,11 @@ export default function Admin() {
               </TabsTrigger>
               <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
               <TabsTrigger value="leads" data-testid="tab-leads">Leads</TabsTrigger>
+              <TabsTrigger value="call-leads" data-testid="tab-call-leads">
+                Call Leads {newBookedCalls.length > 0 && (
+                  <Badge variant="destructive" className="ml-2">{newBookedCalls.length}</Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="reno-quotes" data-testid="tab-reno-quotes">RenoQuotes</TabsTrigger>
               <TabsTrigger value="coaching" data-testid="tab-coaching">
                 Coaching {pendingCoaching.length > 0 && (
@@ -1031,6 +1055,155 @@ export default function Admin() {
                       <p className="text-muted-foreground">No RenoQuote submissions yet</p>
                       <p className="text-sm text-muted-foreground">
                         Quotes will appear here when users submit the RenoQuote calculator.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="call-leads">
+              <Card data-testid="card-call-leads-table">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Phone className="h-5 w-5" />
+                    Booked-Call Leads
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchBookedCalls()}
+                    className="gap-2"
+                    data-testid="button-refresh-call-leads"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Pipeline: new → contacted → booked → flipped. Flipping a qualified financing lead hands
+                    it to the BLD Financial contact — until the BLD destination is configured
+                    (BLD_LEAD_WEBHOOK_URL / BLD_LEAD_EMAIL), flipped leads stay here and need manual follow-up.
+                  </p>
+                  {bookedCallLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                    </div>
+                  ) : bookedCallLeads && bookedCallLeads.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Context</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bookedCallLeads.map((lead) => {
+                          const snapshot = (lead.dealSnapshot ?? null) as { address?: string; purchasePrice?: number; verdict?: string } | null;
+                          return (
+                            <TableRow key={lead.id} data-testid={`row-call-lead-${lead.id}`}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{lead.fullName}</p>
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Mail className="h-3 w-3" />
+                                    <span>{lead.email}</span>
+                                  </div>
+                                  {lead.phone && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Phone className="h-3 w-3" />
+                                      <span>{lead.phone}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="max-w-xs space-y-1">
+                                  <Badge variant={lead.intent === "financing" ? "default" : "outline"}>{lead.intent}</Badge>
+                                  {snapshot?.address && (
+                                    <p className="text-sm font-medium truncate" title={snapshot.address}>{snapshot.address}</p>
+                                  )}
+                                  {lead.sourcePage && (
+                                    <p className="text-xs text-muted-foreground truncate" title={lead.sourcePage}>from {lead.sourcePage}</p>
+                                  )}
+                                  {lead.message && (
+                                    <p className="text-xs text-muted-foreground truncate" title={lead.message}>{lead.message}</p>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    lead.status === "flipped" ? "default" :
+                                    lead.status === "booked" ? "default" :
+                                    lead.status === "contacted" ? "secondary" :
+                                    "outline"
+                                  }
+                                >
+                                  {lead.status}
+                                </Badge>
+                                {lead.status === "flipped" && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {lead.forwardedAt ? `sent via ${lead.forwardedVia}` : "BLD unwired — follow up manually"}
+                                  </p>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : "N/A"}
+                              </TableCell>
+                              <TableCell>
+                                {lead.status === "new" && (
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => updateBookedCallMutation.mutate({ id: lead.id, status: "contacted" })}
+                                    disabled={updateBookedCallMutation.isPending}
+                                    data-testid={`button-call-lead-contacted-${lead.id}`}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Contacted
+                                  </Button>
+                                )}
+                                {lead.status === "contacted" && (
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => updateBookedCallMutation.mutate({ id: lead.id, status: "booked" })}
+                                    disabled={updateBookedCallMutation.isPending}
+                                    data-testid={`button-call-lead-booked-${lead.id}`}
+                                  >
+                                    Booked
+                                  </Button>
+                                )}
+                                {lead.status === "booked" && lead.intent === "financing" && (
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => updateBookedCallMutation.mutate({ id: lead.id, status: "flipped" })}
+                                    disabled={updateBookedCallMutation.isPending}
+                                    data-testid={`button-call-lead-flipped-${lead.id}`}
+                                  >
+                                    Flip to BLD
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Phone className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No booked-call leads yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Leads appear here when visitors use "Talk to a financing specialist" or /book-a-call.
                       </p>
                     </div>
                   )}

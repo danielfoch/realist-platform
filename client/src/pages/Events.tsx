@@ -21,8 +21,8 @@ import { marketExperts, type MarketExpert } from "@/lib/marketExperts";
 import { getHostByEventName } from "@/lib/meetupHosts";
 import { ContactHostDialog } from "@/components/ContactHostDialog";
 import { MarketExpertApplicationDialog } from "@/components/MarketExpertApplicationDialog";
-import unpackingMultiplexesEdmontonImg from "@assets/ChatGPT_Image_Jun_1,_2026,_04_10_07_PM_1780344719233.png";
-import unpackingMultiplexesTorontoImg from "@assets/ChatGPT_Image_Jun_1,_2026,_04_12_34_PM_1780344761775.png";
+import unpackingMultiplexesEdmontonImg from "@assets/ChatGPT_Image_Jun_1,_2026,_04_10_07_PM_1780344719233.webp";
+import unpackingMultiplexesTorontoImg from "@assets/ChatGPT_Image_Jun_1,_2026,_04_12_34_PM_1780344761775.webp";
 
 interface GroupedEvents {
   date: Date;

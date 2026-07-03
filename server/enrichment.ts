@@ -13,14 +13,18 @@
  * imported by scripts/import-quebec-roll.ts) matched to listings by a loose
  * civic-number + street-name key.
  *
- * GET /api/enrichment?lat=..&lng=..&address=..&city=..  → { neighbourhood, property }
+ * v3 adds building permits (Vancouver/Calgary/Montréal open data, imported by
+ * scripts/import-building-permits.ts): permit history at the address + issued
+ * activity within 1km over the trailing 24 months.
+ *
+ * GET /api/enrichment?lat=..&lng=..&address=..&city=..  → { neighbourhood, property, permits }
  * GET /api/enrichment/layers  → registry (freshness/licence per layer)
  */
 
 import type { Express, Request, Response } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
-import { pointInGeometry, type AreaGeometry } from "@shared/geoGeometry";
+import { haversineMeters, metersToDegreesLat, pointInGeometry, type AreaGeometry } from "@shared/geoGeometry";
 import {
   deriveNeighbourhoodStats,
   emptyDaProfile,
@@ -28,6 +32,7 @@ import {
   type NeighbourhoodStats,
 } from "@shared/censusProfile";
 import { looseKeyFromListingAddress, QUEBEC_ROLL_ATTRIBUTION } from "@shared/quebecRoll";
+import { PERMIT_CITY_ADAPTERS, permitLooseKey } from "@shared/buildingPermits";
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 
@@ -106,6 +111,36 @@ export async function ensureEnrichmentTables(): Promise<void> {
   await db.execute(sql`
     CREATE INDEX IF NOT EXISTS assessment_units_muni_idx
     ON assessment_units (municipality_code)
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS building_permits (
+      id                varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      source            text NOT NULL,
+      permit_number     text NOT NULL,
+      city              text,
+      province          text,
+      address           text,
+      loose_address_key text,
+      permit_type       text,
+      work_type         text,
+      status            text,
+      description       text,
+      units             integer,
+      estimated_value   double precision,
+      issued_date       date,
+      lat               double precision,
+      lng               double precision,
+      imported_at       timestamp NOT NULL DEFAULT now(),
+      UNIQUE (source, permit_number)
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS building_permits_loose_key_idx
+    ON building_permits (loose_address_key)
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS building_permits_latlng_idx
+    ON building_permits (lat, lng)
   `);
 }
 
@@ -245,6 +280,121 @@ export async function getPropertyAssessment(
   };
 }
 
+// ─── Building-permit activity ────────────────────────────────────────────────
+
+const NEARBY_RADIUS_M = 1000;
+const NEARBY_WINDOW_MONTHS = 24;
+
+export interface PermitAtAddress {
+  permitNumber: string;
+  issuedDate: string | null;
+  permitType: string | null;
+  workType: string | null;
+  status: string | null;
+  description: string | null;
+  estimatedValue: number | null;
+  units: number | null;
+}
+
+export interface PermitActivity {
+  atAddress: PermitAtAddress[];
+  nearby: {
+    radiusM: number;
+    windowMonths: number;
+    count: number;
+    totalValue: number | null;
+  } | null;
+  attribution: string | null;
+}
+
+export async function getPermitActivity(
+  address: string | null,
+  city: string | null,
+  lat: number | null,
+  lng: number | null,
+): Promise<PermitActivity | null> {
+  const key = address ? permitLooseKey(address) : null;
+  const cityFold = city ? foldName(city) : null;
+
+  let atAddress: PermitAtAddress[] = [];
+  let attribution: string | null = null;
+  if (key) {
+    const rows = await db.execute(sql`
+      SELECT source, permit_number, issued_date, permit_type, work_type, status,
+             description, estimated_value, units, city
+      FROM building_permits
+      WHERE loose_address_key = ${key}
+      ORDER BY issued_date DESC NULLS LAST
+      LIMIT 25
+    `);
+    let hits = rows.rows as Array<Record<string, unknown>>;
+    // Loose keys collide across cities — keep only rows whose city matches the
+    // listing's when we have one to compare.
+    if (cityFold) {
+      hits = hits.filter((r) => {
+        const permitCity = foldName(String(r.city ?? ""));
+        return permitCity && (cityFold.includes(permitCity) || permitCity.includes(cityFold));
+      });
+    }
+    atAddress = hits.slice(0, 10).map((r) => ({
+      permitNumber: String(r.permit_number),
+      issuedDate: r.issued_date ? String(r.issued_date).slice(0, 10) : null,
+      permitType: (r.permit_type as string) ?? null,
+      workType: (r.work_type as string) ?? null,
+      status: (r.status as string) ?? null,
+      description: typeof r.description === "string" ? r.description.slice(0, 280) : null,
+      estimatedValue: r.estimated_value === null || r.estimated_value === undefined ? null : Number(r.estimated_value),
+      units: r.units === null || r.units === undefined ? null : Number(r.units),
+    }));
+    if (hits.length) {
+      const src = String(hits[0].source);
+      const adapter = PERMIT_CITY_ADAPTERS.find((a) => a.key === src);
+      attribution = adapter?.attribution ?? null;
+    }
+  }
+
+  let nearby: PermitActivity["nearby"] = null;
+  if (lat !== null && lng !== null) {
+    const padLat = metersToDegreesLat(NEARBY_RADIUS_M) * 1.2;
+    const padLng = padLat / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    const rows = await db.execute(sql`
+      SELECT lat, lng, estimated_value, source
+      FROM building_permits
+      WHERE lat BETWEEN ${lat - padLat} AND ${lat + padLat}
+        AND lng BETWEEN ${lng - padLng} AND ${lng + padLng}
+        AND issued_date >= now() - interval '${sql.raw(String(NEARBY_WINDOW_MONTHS))} months'
+      LIMIT 5000
+    `);
+    let count = 0;
+    let totalValue = 0;
+    let anyValue = false;
+    let nearestSource: string | null = null;
+    for (const r of rows.rows as Array<{ lat: number; lng: number; estimated_value: number | null; source: string }>) {
+      if (haversineMeters(lat, lng, r.lat, r.lng) > NEARBY_RADIUS_M) continue;
+      count++;
+      nearestSource = nearestSource ?? r.source;
+      if (r.estimated_value !== null && r.estimated_value !== undefined) {
+        totalValue += Number(r.estimated_value);
+        anyValue = true;
+      }
+    }
+    if (count > 0) {
+      nearby = {
+        radiusM: NEARBY_RADIUS_M,
+        windowMonths: NEARBY_WINDOW_MONTHS,
+        count,
+        totalValue: anyValue ? Math.round(totalValue) : null,
+      };
+      if (!attribution && nearestSource) {
+        attribution = PERMIT_CITY_ADAPTERS.find((a) => a.key === nearestSource)?.attribution ?? null;
+      }
+    }
+  }
+
+  if (!atAddress.length && !nearby) return null;
+  return { atAddress, nearby, attribution };
+}
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
 export function registerEnrichmentRoutes(app: Express): void {
@@ -262,11 +412,12 @@ export function registerEnrichmentRoutes(app: Express): void {
       return res.status(400).json({ success: false, error: "lat+lng or address query params are required" });
     }
     try {
-      const [neighbourhood, property] = await Promise.all([
+      const [neighbourhood, property, permits] = await Promise.all([
         hasPoint ? getNeighbourhoodStats(lat, lng) : Promise.resolve(null),
         address ? getPropertyAssessment(address, city || null) : Promise.resolve(null),
+        getPermitActivity(address || null, city || null, hasPoint ? lat : null, hasPoint ? lng : null),
       ]);
-      return res.json({ success: true, data: { neighbourhood, property } });
+      return res.json({ success: true, data: { neighbourhood, property, permits } });
     } catch (err: any) {
       console.error("[enrichment] lookup failed:", err?.message ?? err);
       return res.status(500).json({ success: false, error: "Enrichment lookup failed" });

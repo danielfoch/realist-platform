@@ -6,8 +6,9 @@
  * Phase 3: POST /api/multiplex-underwriter — the orchestrator. Pipeline:
  *   resolveSite (geocode → zoning polygon → tree/heritage/TRCA screens)
  *   → permissions (multiplexFeasibility engine)
- *   → envelope → configurations → pro formas → MLI Select takeout
- *   → variance risk → condo-vs-hold comparison
+ *   → envelope → configurations → pro formas → dual-takeout comparison
+ *     (MLI Select hold vs condo termination, shared/multiplexTakeout.ts)
+ *   → variance risk → site-level recommended takeout
  *   → persisted to multiplex_underwritings with a share token.
  *
  * Deterministic math computes; the report writer (Phase 5) narrates. Every
@@ -39,6 +40,18 @@ import {
 } from "@shared/multiplexConfigs";
 import { TORONTO_ENVELOPE_RULES, PRACTICAL_GFA_HAIRCUT, computeEnvelope } from "@shared/multiplexEnvelope";
 import { computeMliTakeout, scoreMliPoints, type MliTakeoutResult } from "@shared/mliSelect";
+import {
+  TAKEOUT_ASSUMPTION_DEFAULTS,
+  compareTakeouts,
+  computeCondoTermination,
+  computeMliHold,
+  pickRecommendedTakeout,
+  type CondoTerminationResult,
+  type MliHoldResult,
+  type SiteTakeoutRecommendation,
+  type TakeoutAssumptions,
+  type TakeoutDecision,
+} from "@shared/multiplexTakeout";
 import { assessVarianceRisk, type VarianceRiskResult } from "@shared/multiplexVarianceRisk";
 import type { UnitType } from "@shared/multiplexTypes";
 
@@ -91,6 +104,7 @@ interface AssumptionSeed {
 }
 
 const d = DEV_ASSUMPTION_DEFAULTS;
+const t = TAKEOUT_ASSUMPTION_DEFAULTS;
 
 const ASSUMPTION_SEEDS: AssumptionSeed[] = [
   { key: "hard_cost_psf", value: d.hardCostPsf, label: "Hard cost per gross sqft (new-build multiplex, Toronto)", unit: "$/sqft", source: d.source, lastVerified: d.lastVerified },
@@ -116,6 +130,21 @@ const ASSUMPTION_SEEDS: AssumptionSeed[] = [
   { key: "practical_gfa_haircut", value: PRACTICAL_GFA_HAIRCUT, label: "Theoretical→practical GFA haircut", unit: "fraction", source: "Realist massing default (matches feasibility engine)", lastVerified: d.lastVerified },
   { key: "mli_interest_rate", value: 0.045, label: "MLI Select takeout interest rate (annual)", unit: "fraction", source: "Assumption — CMHC-insured multi pricing varies with bond yields", lastVerified: d.lastVerified },
   { key: "sixplex_opt_in_wards", value: [], label: "Toronto sixplex councillor opt-in wards (beyond the 654-2025 nine)", unit: "ward numbers", source: "By-law 654-2025 opt-in mechanism — update as councillors opt in", lastVerified: "2026-07" },
+  // Dual-takeout exit comparator (shared/multiplexTakeout.ts) — UNVERIFIED
+  // defaults are flagged in their labels for calibration.
+  { key: "condo_town_psf", value: t.condoTownPsf, label: "Condo-townhouse sale price per net sqft (UNVERIFIED — calibrate to comps)", unit: "$/sqft", source: t.source, lastVerified: t.lastVerified },
+  { key: "condo_apt_psf", value: t.condoAptPsf, label: "Condo-apartment sale price per net sqft (UNVERIFIED — TRREB Q1-2026 resale avg ~$859/sf)", unit: "$/sqft", source: t.source, lastVerified: t.lastVerified },
+  { key: "condo_apt_illiquidity_discount", value: t.condoAptIlliquidityDiscountPct, label: "Apartment-form clearance discount (UNVERIFIED — mid-2026 illiquidity)", unit: "fraction", source: t.source, lastVerified: t.lastVerified },
+  { key: "max_condo_town_units", value: t.maxCondoTownUnits, label: "Max units marketable as condo towns (UNVERIFIED judgement)", unit: "units", source: t.source, lastVerified: t.lastVerified },
+  { key: "min_condo_town_avg_sqft", value: t.minCondoTownAvgSqft, label: "Min average unit size for condo-town form (UNVERIFIED judgement)", unit: "sqft", source: t.source, lastVerified: t.lastVerified },
+  { key: "condo_registration_fixed_cost", value: t.condoRegistrationFixedCost, label: "Plan-of-condominium fixed cost: draft plan application + legal + OLS survey (UNVERIFIED)", unit: "$", source: t.source, lastVerified: t.lastVerified },
+  { key: "condo_registration_per_unit_cost", value: t.condoRegistrationPerUnitCost, label: "Condo registration extras per unit (UNVERIFIED)", unit: "$", source: t.source, lastVerified: t.lastVerified },
+  { key: "condo_registration_months", value: t.condoRegistrationMonths, label: "Completion → condo registration (UNVERIFIED — approvals lapse after 5 years)", unit: "months", source: t.source, lastVerified: t.lastVerified },
+  { key: "condo_town_absorption_months", value: t.condoTownAbsorptionMonths, label: "Sell-out period, condo-town form (UNVERIFIED)", unit: "months", source: t.source, lastVerified: t.lastVerified },
+  { key: "condo_apt_absorption_months", value: t.condoAptAbsorptionMonths, label: "Sell-out period, condo-apartment form (UNVERIFIED — 35-year sales low)", unit: "months", source: t.source, lastVerified: t.lastVerified },
+  { key: "capitalize_mli_premium", value: t.capitalizeMliPremium, label: "Capitalize the CMHC premium into the MLI loan", unit: "boolean", source: t.source, lastVerified: t.lastVerified },
+  { key: "hold_horizon_years", value: t.holdHorizonYears, label: "Hold-vs-condo comparison horizon (UNVERIFIED preference)", unit: "years", source: t.source, lastVerified: t.lastVerified },
+  { key: "form_preference_tolerance_pct", value: t.formPreferenceTolerancePct, label: "Town-form preference tolerance vs top score (UNVERIFIED preference)", unit: "fraction", source: t.source, lastVerified: t.lastVerified },
 ];
 
 async function seedAssumptions(): Promise<void> {
@@ -189,11 +218,15 @@ function num(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }
 
+function bool(v: unknown, fallback: boolean): boolean {
+  return typeof v === "boolean" ? v : fallback;
+}
+
 /** defaults <- admin-edited values <- per-request overrides. */
 function buildAssumptions(
   admin: Record<string, unknown>,
   overrides: Record<string, unknown> = {},
-): { dev: DevAssumptions; unitSizes: Record<UnitType, number>; netToGross: number; lotCoverage: number; frontSetbackM: number; mliRate: number } {
+): { dev: DevAssumptions; takeout: TakeoutAssumptions; unitSizes: Record<UnitType, number>; netToGross: number; lotCoverage: number; frontSetbackM: number; mliRate: number } {
   const pick = (key: string): unknown => (overrides[key] !== undefined ? overrides[key] : admin[key]);
 
   const rentsRaw = pick("monthly_rents");
@@ -228,8 +261,27 @@ function buildAssumptions(
     condoPsf: num(pick("condo_psf"), d.condoPsf),
   };
 
+  const takeout: TakeoutAssumptions = {
+    source: t.source,
+    lastVerified: t.lastVerified,
+    condoTownPsf: num(pick("condo_town_psf"), t.condoTownPsf),
+    condoAptPsf: num(pick("condo_apt_psf"), t.condoAptPsf),
+    condoAptIlliquidityDiscountPct: num(pick("condo_apt_illiquidity_discount"), t.condoAptIlliquidityDiscountPct),
+    maxCondoTownUnits: num(pick("max_condo_town_units"), t.maxCondoTownUnits),
+    minCondoTownAvgSqft: num(pick("min_condo_town_avg_sqft"), t.minCondoTownAvgSqft),
+    condoRegistrationFixedCost: num(pick("condo_registration_fixed_cost"), t.condoRegistrationFixedCost),
+    condoRegistrationPerUnitCost: num(pick("condo_registration_per_unit_cost"), t.condoRegistrationPerUnitCost),
+    condoRegistrationMonths: num(pick("condo_registration_months"), t.condoRegistrationMonths),
+    condoTownAbsorptionMonths: num(pick("condo_town_absorption_months"), t.condoTownAbsorptionMonths),
+    condoAptAbsorptionMonths: num(pick("condo_apt_absorption_months"), t.condoAptAbsorptionMonths),
+    capitalizeMliPremium: bool(pick("capitalize_mli_premium"), t.capitalizeMliPremium),
+    holdHorizonYears: num(pick("hold_horizon_years"), t.holdHorizonYears),
+    formPreferenceTolerancePct: num(pick("form_preference_tolerance_pct"), t.formPreferenceTolerancePct),
+  };
+
   return {
     dev,
+    takeout,
     unitSizes,
     netToGross: num(pick("net_to_gross"), NET_TO_GROSS_DEFAULT),
     lotCoverage: num(pick("lot_coverage"), TORONTO_ENVELOPE_RULES.defaultLotCoverage),
@@ -259,6 +311,12 @@ interface ConfigUnderwrite {
     holdCashOnCash: number | null;
     recommendedExit: "condo" | "hold" | "neither";
   };
+  /** Dual-takeout exit comparator: MLI Select hold vs condo termination. */
+  takeout: {
+    condo: CondoTerminationResult;
+    hold: MliHoldResult;
+    decision: TakeoutDecision;
+  };
 }
 
 async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Promise<{
@@ -267,6 +325,7 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   envelope: ReturnType<typeof computeEnvelope>;
   configs: ConfigUnderwrite[];
   winner: { flip: string | null; hold: string | null };
+  recommendedTakeout: SiteTakeoutRecommendation;
   assumptionNotes: string[];
 }> {
   const admin = await getAssumptionValues();
@@ -363,6 +422,15 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
           ? "condo"
           : "hold";
 
+    // Dual-takeout comparator: form-aware condo termination vs MLI Select hold
+    // in comparable dollars (shared/multiplexTakeout.ts).
+    const condoTermination = computeCondoTermination(config, costs, a.dev, a.takeout);
+    const mliHold = computeMliHold(
+      { config, costs, rentalHold, points, interestRate: a.mliRate },
+      a.takeout,
+    );
+    const takeoutDecision = compareTakeouts(condoTermination, mliHold, config);
+
     return {
       config,
       varianceRisk,
@@ -372,6 +440,7 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
       residualLandValue,
       mli,
       comparison: { condoProfit: condoExit.profit, holdEquityLeft, holdAnnualCashFlow, holdCashOnCash, recommendedExit },
+      takeout: { condo: condoTermination, hold: mliHold, decision: takeoutDecision },
     };
   });
 
@@ -386,12 +455,25 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
       .filter((u) => u.comparison.holdAnnualCashFlow > 0)
       .sort((x, y) => y.rentalHold.yieldOnCost - x.rentalHold.yieldOnCost)[0];
 
+  const recommendedTakeout = pickRecommendedTakeout(
+    underwrites.map((u) => ({
+      configKey: u.config.key,
+      configLabel: u.config.label,
+      units: u.config.units,
+      condo: u.takeout.condo,
+      hold: u.takeout.hold,
+      decision: u.takeout.decision,
+    })),
+    a.takeout,
+  );
+
   return {
     sixplex: { eligible: sixplexEligible, status: sixStatus, certainty: "inferred" },
     maxUnitsAsOfRight,
     envelope,
     configs: underwrites,
     winner: { flip: flipWinner?.config.key ?? null, hold: holdWinner?.config.key ?? null },
+    recommendedTakeout,
     assumptionNotes,
   };
 }

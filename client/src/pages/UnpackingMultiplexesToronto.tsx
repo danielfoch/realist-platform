@@ -31,9 +31,9 @@ import {
   UserRound,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import aledHeadshot from "@assets/image_1781720568994.png";
-import joshHeadshot from "@assets/image_1781720589907.png";
-import noamHeadshot from "@assets/image_1781720616832.png";
+import aledHeadshot from "@assets/image_1781720568994.webp";
+import joshHeadshot from "@assets/image_1781720589907.webp";
+import noamHeadshot from "@assets/image_1781720616832.webp";
 import ryanHeadshot from "@assets/image_1781720634648.png";
 
 const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";

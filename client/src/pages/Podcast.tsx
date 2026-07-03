@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { PodcastDigestSubscribe } from "@/components/PodcastDigestSubscribe";
 import { 
   Play, 
   Pause, 
@@ -174,6 +175,8 @@ export default function Podcast() {
             Expert analysis, market trends, and actionable strategies for Canadian real estate investors.
           </p>
         </div>
+
+        <PodcastDigestSubscribe />
 
         <Card className="mb-12">
           <CardContent className="p-6">
