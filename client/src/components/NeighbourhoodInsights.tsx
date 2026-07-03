@@ -117,6 +117,7 @@ export function NeighbourhoodInsights({
       permits: PermitActivity | null;
       development?: DevelopmentActivity | null;
       parcel?: { parcelId: string; lotAreaM2: number | null } | null;
+      ward?: { city: string; code: string; name: string | null } | null;
     };
   }>({
     queryKey: ["/api/enrichment", lat, lng, address, city],
@@ -142,18 +143,19 @@ export function NeighbourhoodInsights({
   const permits = data?.data?.permits ?? null;
   const development = data?.data?.development ?? null;
   const parcel = data?.data?.parcel ?? null;
+  const ward = data?.data?.ward ?? null;
   // Show the parcel lot size only when the assessment roll didn't already
   // provide one (e.g. Toronto, which has no open assessment roll).
   const parcelLot = parcel?.lotAreaM2 != null && !(property && property.lotAreaM2 != null) ? parcel.lotAreaM2 : null;
   // Render nothing until an enrichment layer is imported / the lookup matches.
-  if (!stats && !property && !permits && !development && parcelLot === null) return null;
+  if (!stats && !property && !permits && !development && parcelLot === null && !ward) return null;
   return (
     <>
       {property && <PropertyIntelligenceCard property={property} listPrice={listPrice ?? null} className={className} />}
       {parcelLot !== null && <ParcelLotCard lotAreaM2={parcelLot} className={className} />}
       {permits && <PermitsCard permits={permits} className={className} />}
       {development && <DevelopmentActivityCard development={development} className={className} />}
-      {stats && <NeighbourhoodCard stats={stats} className={className} />}
+      {(stats || ward) && <NeighbourhoodCard stats={stats ?? null} ward={ward} className={className} />}
     </>
   );
 }
@@ -329,28 +331,40 @@ function DevelopmentActivityCard({
   );
 }
 
-function NeighbourhoodCard({ stats, className }: { stats: NeighbourhoodStats; className?: string }) {
+function NeighbourhoodCard({
+  stats,
+  ward,
+  className,
+}: {
+  stats: NeighbourhoodStats | null;
+  ward: { city: string; code: string; name: string | null } | null;
+  className?: string;
+}) {
+  const facts: Array<{ label: string; value: string | null }> = stats
+    ? [
+        { label: "Renter share", value: pct(stats.renterSharePct) },
+        { label: "Median household income", value: money(stats.medianHouseholdIncome) },
+        { label: "Median home value (census)", value: money(stats.medianDwellingValue) },
+        { label: "Median rent paid", value: money(stats.medianRentedShelterCost) },
+        { label: "Avg household size", value: stats.avgHouseholdSize?.toString() ?? null },
+        {
+          label: "Most common dwelling",
+          value: stats.dominantDwellingType
+            ? `${DWELLING_TYPE_LABELS[stats.dominantDwellingType.type] ?? stats.dominantDwellingType.type} (${stats.dominantDwellingType.sharePct}%)`
+            : null,
+        },
+        { label: "Built since 2001", value: pct(stats.builtSince2001SharePct) },
+        {
+          label: "Population density",
+          value:
+            stats.populationDensityPerKm2 !== null
+              ? `${Math.round(stats.populationDensityPerKm2).toLocaleString()}/km²`
+              : null,
+        },
+      ].filter((f) => f.value !== null)
+    : [];
 
-  const facts: Array<{ label: string; value: string | null }> = [
-    { label: "Renter share", value: pct(stats.renterSharePct) },
-    { label: "Median household income", value: money(stats.medianHouseholdIncome) },
-    { label: "Median home value (census)", value: money(stats.medianDwellingValue) },
-    { label: "Median rent paid", value: money(stats.medianRentedShelterCost) },
-    { label: "Avg household size", value: stats.avgHouseholdSize?.toString() ?? null },
-    {
-      label: "Most common dwelling",
-      value: stats.dominantDwellingType
-        ? `${DWELLING_TYPE_LABELS[stats.dominantDwellingType.type] ?? stats.dominantDwellingType.type} (${stats.dominantDwellingType.sharePct}%)`
-        : null,
-    },
-    { label: "Built since 2001", value: pct(stats.builtSince2001SharePct) },
-    {
-      label: "Population density",
-      value: stats.populationDensityPerKm2 !== null ? `${Math.round(stats.populationDensityPerKm2).toLocaleString()}/km²` : null,
-    },
-  ].filter((f) => f.value !== null);
-
-  if (!facts.length) return null;
+  if (!facts.length && !ward) return null;
 
   return (
     <Card className={className}>
@@ -360,18 +374,30 @@ function NeighbourhoodCard({ stats, className }: { stats: NeighbourhoodStats; cl
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-3">
-          {facts.map((f) => (
-            <div key={f.label} className="rounded-lg border p-3">
-              <div className="text-xs text-muted-foreground">{f.label}</div>
-              <div className="font-semibold">{f.value}</div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
-          <Landmark className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          {stats.attribution.replace("Source: ", `${stats.censusYear} census dissemination area. Source: `)}
-        </p>
+        {ward && (
+          <div className="mb-3 flex items-center gap-2 text-sm">
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
+              {ward.city} Ward {ward.code}
+            </span>
+            {ward.name && <span className="text-muted-foreground">{ward.name}</span>}
+          </div>
+        )}
+        {facts.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            {facts.map((f) => (
+              <div key={f.label} className="rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground">{f.label}</div>
+                <div className="font-semibold">{f.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {stats && (
+          <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Landmark className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {stats.attribution.replace("Source: ", `${stats.censusYear} census dissemination area. Source: `)}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

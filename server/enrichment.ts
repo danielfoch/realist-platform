@@ -183,6 +183,25 @@ export async function ensureEnrichmentTables(): Promise<void> {
     CREATE INDEX IF NOT EXISTS toronto_parcels_bbox_idx
     ON toronto_parcels (min_lat, max_lat, min_lng, max_lng)
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS municipal_wards (
+      id          varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      city        text NOT NULL,
+      ward_code   text NOT NULL,
+      ward_name   text,
+      geojson     jsonb NOT NULL,
+      min_lng     double precision NOT NULL,
+      min_lat     double precision NOT NULL,
+      max_lng     double precision NOT NULL,
+      max_lat     double precision NOT NULL,
+      imported_at timestamp NOT NULL DEFAULT now(),
+      UNIQUE (city, ward_code)
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS municipal_wards_bbox_idx
+    ON municipal_wards (city, min_lat, max_lat, min_lng, max_lng)
+  `);
 }
 
 /** Upsert a layer's registry row after an import (called by import scripts). */
@@ -225,6 +244,29 @@ export async function resolveDauid(lat: number, lng: number): Promise<string | n
   `);
   for (const row of candidates.rows as Array<{ dauid: string; geojson: AreaGeometry }>) {
     if (pointInGeometry(lng, lat, row.geojson)) return row.dauid;
+  }
+  return null;
+}
+
+// ─── Ward resolution ─────────────────────────────────────────────────────────
+
+export interface WardResolution {
+  city: string;
+  code: string;
+  name: string | null;
+}
+
+/** Resolve a point to its municipal ward (bbox prefilter + point-in-polygon). */
+export async function resolveWard(lat: number, lng: number, city = "Toronto"): Promise<WardResolution | null> {
+  const candidates = await db.execute(sql`
+    SELECT ward_code, ward_name, geojson
+    FROM municipal_wards
+    WHERE city = ${city}
+      AND min_lat <= ${lat} AND max_lat >= ${lat} AND min_lng <= ${lng} AND max_lng >= ${lng}
+    LIMIT 25
+  `);
+  for (const row of candidates.rows as Array<{ ward_code: string; ward_name: string | null; geojson: AreaGeometry }>) {
+    if (pointInGeometry(lng, lat, row.geojson)) return { city, code: row.ward_code, name: row.ward_name };
   }
   return null;
 }
@@ -543,14 +585,15 @@ export function registerEnrichmentRoutes(app: Express): void {
       return res.status(400).json({ success: false, error: "lat+lng or address query params are required" });
     }
     try {
-      const [neighbourhood, property, permits, development, parcel] = await Promise.all([
+      const [neighbourhood, property, permits, development, parcel, ward] = await Promise.all([
         hasPoint ? getNeighbourhoodStats(lat, lng) : Promise.resolve(null),
         address ? getPropertyAssessment(address, city || null) : Promise.resolve(null),
         getPermitActivity(address || null, city || null, hasPoint ? lat : null, hasPoint ? lng : null),
         hasPoint ? getDevelopmentActivity(lat, lng) : Promise.resolve(null),
         hasPoint ? resolveParcel(lat, lng) : Promise.resolve(null),
+        hasPoint ? resolveWard(lat, lng) : Promise.resolve(null),
       ]);
-      return res.json({ success: true, data: { neighbourhood, property, permits, development, parcel } });
+      return res.json({ success: true, data: { neighbourhood, property, permits, development, parcel, ward } });
     } catch (err: any) {
       console.error("[enrichment] lookup failed:", err?.message ?? err);
       return res.status(500).json({ success: false, error: "Enrichment lookup failed" });
