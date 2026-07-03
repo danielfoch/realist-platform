@@ -23,6 +23,7 @@ import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 import { mediaLogos } from "@/lib/mediaLogos";
+import { ANALYZED_VOLUME_LABEL } from "@/lib/platformStats";
 
 const TORONTO_CENTER: [number, number] = [43.65, -79.38];
 
@@ -79,7 +80,7 @@ const QUICK_STARTS = [
 
 const stats = [
   { icon: Users, value: "11,000+", label: "investors" },
-  { icon: TrendingUp, value: "$2.6B", label: "deals analyzed" },
+  { icon: TrendingUp, value: ANALYZED_VOLUME_LABEL, label: "deals analyzed" },
   { icon: MapPin, value: "26", label: "Canadian cities" },
   { icon: GraduationCap, value: "1,200+", label: "Skool members" },
 ];

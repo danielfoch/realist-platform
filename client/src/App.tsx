@@ -222,7 +222,6 @@ const HousingCorrectionLockedOut2026Report = lazy(() => import("@/pages/HousingC
 const LabourMortgageStressApril2026Report = lazy(() => import("@/pages/LabourMortgageStressApril2026Report"));
 const MonthlyMarketReportMay2026 = lazy(() => import("@/pages/MonthlyMarketReportMay2026"));
 const InterprovincialMigrationCanada2026Report = lazy(() => import("@/pages/InterprovincialMigrationCanada2026Report"));
-const HomeBenchReport = lazy(() => import("@/pages/HomeBenchReport"));
 const SeoProjectDetail = lazy(() => import("@/pages/SeoProjectDetail"));
 const TorontoHousingMarketPage = lazy(() =>
   import("@/pages/seo/MarketPages").then((m) => ({ default: m.TorontoHousingMarketPage })),
@@ -383,7 +382,7 @@ function Router() {
       <Route path="/insights/labour-mortgage-stress-april-2026" component={LabourMortgageStressApril2026Report} />
       <Route path="/insights/monthly-market-report-may-2026" component={MonthlyMarketReportMay2026} />
       <Route path="/insights/canada-interprovincial-migration-2026" component={InterprovincialMigrationCanada2026Report} />
-      <Route path="/insights/market-report/homebench-ai-realtor-benchmark" component={HomeBenchReport} />
+      <Route path="/insights/market-report/homebench-ai-realtor-benchmark">{() => <Redirect to="/reports/realbench-ai-realtor-benchmark" />}</Route>
       {/* SEO landing pages — programmatic + query-driven */}
       <Route path="/canada-housing-market" component={CanadaHousingMarketPage} />
       <Route path="/toronto-housing-market" component={TorontoHousingMarketPage} />
