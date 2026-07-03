@@ -33,6 +33,7 @@ import {
 } from "@shared/censusProfile";
 import { looseKeyFromListingAddress, QUEBEC_ROLL_ATTRIBUTION } from "@shared/quebecRoll";
 import { PERMIT_CITY_ADAPTERS, permitLooseKey } from "@shared/buildingPermits";
+import { DEVELOPMENT_APPLICATIONS_ATTRIBUTION } from "@shared/developmentApplications";
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,29 @@ export async function ensureEnrichmentTables(): Promise<void> {
   await db.execute(sql`
     CREATE INDEX IF NOT EXISTS building_permits_latlng_idx
     ON building_permits (lat, lng)
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS development_applications (
+      id                 varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      source             text NOT NULL,
+      application_number text NOT NULL,
+      application_type   text,
+      status             text,
+      address            text,
+      description        text,
+      date_submitted     date,
+      ward_number        text,
+      ward_name          text,
+      application_url    text,
+      lat                double precision,
+      lng                double precision,
+      imported_at        timestamp NOT NULL DEFAULT now(),
+      UNIQUE (source, application_number)
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS development_applications_latlng_idx
+    ON development_applications (lat, lng)
   `);
 }
 
@@ -395,6 +419,73 @@ export async function getPermitActivity(
   return { atAddress, nearby, attribution };
 }
 
+// ─── Development activity ─────────────────────────────────────────────────────
+
+const DEV_RADIUS_M = 800;
+const DEV_WINDOW_MONTHS = 36;
+
+export interface DevelopmentActivity {
+  radiusM: number;
+  windowMonths: number;
+  count: number;
+  nearby: Array<{
+    applicationType: string | null;
+    status: string | null;
+    address: string | null;
+    description: string | null;
+    dateSubmitted: string | null;
+    applicationUrl: string | null;
+    distanceM: number;
+  }>;
+  attribution: string;
+}
+
+/** Development applications submitted within DEV_RADIUS_M over the trailing window. */
+export async function getDevelopmentActivity(lat: number, lng: number): Promise<DevelopmentActivity | null> {
+  const padLat = metersToDegreesLat(DEV_RADIUS_M) * 1.2;
+  const padLng = padLat / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+  const rows = await db.execute(sql`
+    SELECT application_type, status, address, description, date_submitted, application_url, lat, lng
+    FROM development_applications
+    WHERE lat BETWEEN ${lat - padLat} AND ${lat + padLat}
+      AND lng BETWEEN ${lng - padLng} AND ${lng + padLng}
+      AND date_submitted >= now() - interval '${sql.raw(String(DEV_WINDOW_MONTHS))} months'
+    LIMIT 2000
+  `);
+  const near: DevelopmentActivity["nearby"] = [];
+  for (const r of rows.rows as Array<{
+    application_type: string | null;
+    status: string | null;
+    address: string | null;
+    description: string | null;
+    date_submitted: string | null;
+    application_url: string | null;
+    lat: number;
+    lng: number;
+  }>) {
+    const d = haversineMeters(lat, lng, r.lat, r.lng);
+    if (d > DEV_RADIUS_M) continue;
+    near.push({
+      applicationType: r.application_type,
+      status: r.status,
+      address: r.address,
+      description: typeof r.description === "string" ? r.description.slice(0, 280) : null,
+      dateSubmitted: r.date_submitted ? String(r.date_submitted).slice(0, 10) : null,
+      applicationUrl: r.application_url,
+      distanceM: Math.round(d),
+    });
+  }
+  if (!near.length) return null;
+  near.sort((a, b) => (b.dateSubmitted ?? "").localeCompare(a.dateSubmitted ?? "") || a.distanceM - b.distanceM);
+  return {
+    radiusM: DEV_RADIUS_M,
+    windowMonths: DEV_WINDOW_MONTHS,
+    count: near.length,
+    nearby: near.slice(0, 5),
+    attribution: DEVELOPMENT_APPLICATIONS_ATTRIBUTION,
+  };
+}
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
 export function registerEnrichmentRoutes(app: Express): void {
@@ -412,12 +503,13 @@ export function registerEnrichmentRoutes(app: Express): void {
       return res.status(400).json({ success: false, error: "lat+lng or address query params are required" });
     }
     try {
-      const [neighbourhood, property, permits] = await Promise.all([
+      const [neighbourhood, property, permits, development] = await Promise.all([
         hasPoint ? getNeighbourhoodStats(lat, lng) : Promise.resolve(null),
         address ? getPropertyAssessment(address, city || null) : Promise.resolve(null),
         getPermitActivity(address || null, city || null, hasPoint ? lat : null, hasPoint ? lng : null),
+        hasPoint ? getDevelopmentActivity(lat, lng) : Promise.resolve(null),
       ]);
-      return res.json({ success: true, data: { neighbourhood, property, permits } });
+      return res.json({ success: true, data: { neighbourhood, property, permits, development } });
     } catch (err: any) {
       console.error("[enrichment] lookup failed:", err?.message ?? err);
       return res.status(500).json({ success: false, error: "Enrichment lookup failed" });

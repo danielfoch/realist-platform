@@ -87,6 +87,19 @@ display surface (the API returns the attribution string; the card shows it).
   city publishes it: Vancouver yes; Calgary/Montréal publish no cost column).
 - Adding a city = one adapter object (key, downloadUrl, licence, mapRow).
 
+## Toronto development activity
+
+Development applications (open.toronto.ca AIC, resource 8907d8ed) →
+`development_applications`; `getDevelopmentActivity(lat,lng)` returns "N
+applications within 800m in the last 3 years" + the recent few. `GET
+/api/enrichment` returns `development`; the listing shows a "Development activity
+nearby" card. Import: `npx tsx scripts/import-toronto-dev-apps.ts`.
+
+**Coordinate gotcha (verified):** the dataset's X/Y are **MTM Zone 10** (Ontario)
+easting/northing in metres — NOT UTM 17N. `shared/torontoMtm.ts` reprojects to
+WGS84 (validated: 3920/3920 geocoded records land inside Toronto; 1001 Sheppard
+Ave → 43.771, -79.375).
+
 ## Follow-ups (workplan §3)
 
 - Render neighbourhood facts into the listing SEO bot fallback + JSON-LD

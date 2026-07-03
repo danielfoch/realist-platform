@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Landmark, Users } from "lucide-react";
+import { Landmark, Users, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /** Mirrors NeighbourhoodStats from shared/censusProfile.ts (via GET /api/enrichment). */
@@ -76,6 +76,23 @@ type PermitActivity = {
   attribution: string | null;
 };
 
+/** Mirrors DevelopmentActivity from server/enrichment.ts (Toronto AIC). */
+type DevelopmentActivity = {
+  radiusM: number;
+  windowMonths: number;
+  count: number;
+  nearby: Array<{
+    applicationType: string | null;
+    status: string | null;
+    address: string | null;
+    description: string | null;
+    dateSubmitted: string | null;
+    applicationUrl: string | null;
+    distanceM: number;
+  }>;
+  attribution: string;
+};
+
 export function NeighbourhoodInsights({
   lat,
   lng,
@@ -98,6 +115,7 @@ export function NeighbourhoodInsights({
       neighbourhood: NeighbourhoodStats | null;
       property: PropertyAssessment | null;
       permits: PermitActivity | null;
+      development?: DevelopmentActivity | null;
     };
   }>({
     queryKey: ["/api/enrichment", lat, lng, address, city],
@@ -121,12 +139,14 @@ export function NeighbourhoodInsights({
   const stats = data?.data?.neighbourhood;
   const property = data?.data?.property ?? null;
   const permits = data?.data?.permits ?? null;
+  const development = data?.data?.development ?? null;
   // Render nothing until an enrichment layer is imported / the lookup matches.
-  if (!stats && !property && !permits) return null;
+  if (!stats && !property && !permits && !development) return null;
   return (
     <>
       {property && <PropertyIntelligenceCard property={property} listPrice={listPrice ?? null} className={className} />}
       {permits && <PermitsCard permits={permits} className={className} />}
+      {development && <DevelopmentActivityCard development={development} className={className} />}
       {stats && <NeighbourhoodCard stats={stats} className={className} />}
     </>
   );
@@ -238,6 +258,46 @@ function PropertyIntelligenceCard({
           Matched to the assessment roll for {property.address ?? "this address"}
           {property.municipality ? `, ${property.municipality}` : ""}. {property.attribution}
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DevelopmentActivityCard({
+  development,
+  className,
+}: {
+  development: DevelopmentActivity;
+  className?: string;
+}) {
+  const km = Math.round(development.radiusM / 100) / 10;
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-5 w-5" /> Development activity nearby
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="mb-3 text-sm text-muted-foreground">
+          {development.count} development application{development.count === 1 ? "" : "s"} within {km} km in the last{" "}
+          {Math.round(development.windowMonths / 12)} years.
+        </p>
+        <div className="space-y-2">
+          {development.nearby.map((d, i) => (
+            <div key={i} className="rounded-lg border p-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-medium">{d.address || d.applicationType || "Application"}</span>
+                <span className="text-xs text-muted-foreground">
+                  {[d.dateSubmitted, `${d.distanceM} m`].filter(Boolean).join(" · ")}
+                </span>
+              </div>
+              {d.status && <div className="text-xs text-muted-foreground">{d.status}</div>}
+              {d.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{d.description}</p>}
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">{development.attribution}</p>
       </CardContent>
     </Card>
   );
