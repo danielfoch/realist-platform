@@ -261,6 +261,12 @@ export function Navigation() {
                           API Keys & Claude
                         </DropdownMenuItem>
                       </Link>
+                      <Link href="/account/notifications">
+                        <DropdownMenuItem className="cursor-pointer" data-testid="link-notifications">
+                          <Bell className="mr-2 h-4 w-4" />
+                          Email Preferences
+                        </DropdownMenuItem>
+                      </Link>
                       <DropdownMenuSeparator />
                       <Link href="/investor">
                         <DropdownMenuItem className="cursor-pointer" data-testid="link-investor-portal">

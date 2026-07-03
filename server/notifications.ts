@@ -24,6 +24,7 @@ import {
   type NoteVoteMilestone,
 } from "@shared/fieldNotes";
 import type { ExpertFieldNote } from "@shared/schema";
+import { governMarketingSend } from "./emailGovernor";
 
 type NotificationKind =
   | "saved_search_match"
@@ -1509,6 +1510,19 @@ export async function queueMilestoneNotification(userId: string): Promise<boolea
   const recipient = await getRecipient(userId);
   if (!recipient?.email) return false;
 
+  // Unified governor: this is now the SINGLE milestone producer (the duplicate
+  // deal-analyzer sweep in retentionEmails.sweepMilestones was disabled in the
+  // email-governor consolidation). Gate it through the shared rolling cap +
+  // community preference + CASL consent. The per-milestone dedupeKey preserves
+  // one-email-per-milestone; the governor adds the global cap.
+  const milestoneGate = await governMarketingSend({
+    userId,
+    stream: "community",
+    emailType: "milestone_reached",
+    dedupeKey: `milestone_reached:${userId}:${milestone}`,
+  });
+  if (!milestoneGate.ok) return false;
+
   const ctaUrl = `https://realist.ca/tools/cap-rates?source=milestone-email`;
   const emailBody = buildEmailBody(recipient.firstName || "there", [copy.body, "", `Keep going: ${ctaUrl}`]);
   const html = `
@@ -1590,6 +1604,19 @@ export async function queueFieldNoteVoteNotification(params: {
 
   const recipient = await getRecipient(note.userId);
   if (!recipient?.email) return false;
+
+  // Unified governor: rolling marketing cap + community preference toggle +
+  // CASL consent, on top of the recipientAllows() check above. The per-note
+  // dedupeKey (max one email per note per UTC day) is preserved as the
+  // governor's dedupe key, so a note-vote email consumes one shared cap slot
+  // and won't fire when the user's weekly marketing quota is spent.
+  const voteGate = await governMarketingSend({
+    userId: note.userId,
+    stream: "community",
+    emailType: "note_vote_update",
+    dedupeKey: noteVoteDedupeKey(note.id),
+  });
+  if (!voteGate.ok) return false;
 
   // Best-effort listing label enrichment (city from the DDF snapshot).
   let city: string | null = null;

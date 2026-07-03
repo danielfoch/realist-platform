@@ -131,6 +131,7 @@ import WorkWithRealist from "@/pages/WorkWithRealist";
 import PitchDeck from "@/pages/PitchDeck";
 import UnderwritingShare from "@/pages/UnderwritingShare";
 import AccountApiKeys from "@/pages/AccountApiKeys";
+import NotificationPreferences from "@/pages/NotificationPreferences";
 import ThankYouVancouver from "@/pages/ThankYouVancouver";
 import EdmontonEvent from "@/pages/EdmontonEvent";
 import NotFound from "@/pages/not-found";
@@ -228,6 +229,7 @@ function Router() {
       <Route path="/analyses/:id/deck" component={PitchDeck} />
       <Route path="/underwriting/:token" component={UnderwritingShare} />
       <Route path="/account/api-keys" component={AccountApiKeys} />
+      <Route path="/account/notifications" component={NotificationPreferences} />
       <Route path="/insights/market-report" component={MarketReport} />
       <Route path="/insights/mortgage-rates" component={MortgageRates} />
       <Route path="/insights/market-report-builder" component={MarketReportBuilder} />
