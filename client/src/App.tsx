@@ -1,5 +1,6 @@
 import { Switch, Route } from "wouter";
-import { lazy, Suspense, useEffect } from "react";
+import { Suspense, useEffect } from "react";
+import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
 import { Loader2 } from "lucide-react";
 import { GetAppBanner } from "@/components/GetAppBanner";
 import { SiteFooter } from "@/components/SiteFooter";
