@@ -12102,9 +12102,13 @@ export async function registerRoutes(
       await db.update(users).set({ emailDigestOptIn: false }).where(eq(users.id, uid));
       res.send(`
         <html><head><title>Unsubscribed</title><style>body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f9fafb;}
-        .card{background:white;padding:40px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);text-align:center;max-width:400px;}
-        h2{color:#111827;margin:0 0 8px;}p{color:#6b7280;margin:0 0 16px;}a{color:#2563eb;}</style></head>
-        <body><div class="card"><h2>Unsubscribed</h2><p>You've been unsubscribed from the Realist.ca weekly digest.</p><a href="https://realist.ca">Back to Realist.ca</a></div></body></html>
+        .card{background:white;padding:40px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);text-align:center;max-width:420px;}
+        h2{color:#111827;margin:0 0 8px;}p{color:#6b7280;margin:0 0 16px;}a{color:#2563eb;}
+        .prefs{display:inline-block;margin-top:8px;background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;}</style></head>
+        <body><div class="card"><h2>Unsubscribed</h2><p>You've been unsubscribed from Realist.ca marketing emails. You'll still receive account and security emails.</p>
+        <p>Want to choose exactly which emails you get instead? Manage each category on your preferences page.</p>
+        <a class="prefs" href="https://realist.ca/account/notifications">Manage email preferences</a>
+        <p style="margin-top:16px;"><a href="https://realist.ca">Back to Realist.ca</a></p></div></body></html>
       `);
     } catch (error: any) {
       res.status(500).send("Something went wrong");
@@ -12118,6 +12122,94 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: "Failed to resubscribe" });
+    }
+  });
+
+  // ── Notification / email preferences (the /account/notifications page) ──────
+  // Reads/writes notification_preferences (the per-category toggles the
+  // emailGovernor consults) plus the users.email_digest_opt_in master
+  // unsubscribe flag. The row is created lazily on first write.
+  const NOTIFICATION_PREF_DEFAULTS = {
+    marketingEmailEnabled: true,
+    retentionTipsEnabled: true,
+    listingWatchAlertsEnabled: true,
+    communityAlertsEnabled: true,
+    weeklyDigestEnabled: true,
+    monthlyRankEnabled: true,
+    podcastDigestEnabled: true,
+    productUpdatesEnabled: true,
+  };
+
+  app.get("/api/account/notification-preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const [pref, [user]] = await Promise.all([
+        storage.getNotificationPreference(userId),
+        db.select({ emailDigestOptIn: users.emailDigestOptIn }).from(users).where(eq(users.id, userId)).limit(1),
+      ]);
+      res.json({
+        // Master unsubscribe flag lives on users; surface it here so the page
+        // owns the full email-preference story.
+        emailDigestOptIn: user?.emailDigestOptIn !== false,
+        marketingEmailEnabled: pref?.marketingEmailEnabled ?? NOTIFICATION_PREF_DEFAULTS.marketingEmailEnabled,
+        retentionTipsEnabled: pref?.retentionTipsEnabled ?? NOTIFICATION_PREF_DEFAULTS.retentionTipsEnabled,
+        listingWatchAlertsEnabled: pref?.listingWatchAlertsEnabled ?? NOTIFICATION_PREF_DEFAULTS.listingWatchAlertsEnabled,
+        communityAlertsEnabled: pref?.communityAlertsEnabled ?? NOTIFICATION_PREF_DEFAULTS.communityAlertsEnabled,
+        weeklyDigestEnabled: pref?.weeklyDigestEnabled ?? NOTIFICATION_PREF_DEFAULTS.weeklyDigestEnabled,
+        monthlyRankEnabled: pref?.monthlyRankEnabled ?? NOTIFICATION_PREF_DEFAULTS.monthlyRankEnabled,
+        podcastDigestEnabled: pref?.podcastDigestEnabled ?? NOTIFICATION_PREF_DEFAULTS.podcastDigestEnabled,
+        productUpdatesEnabled: pref?.productUpdatesEnabled ?? NOTIFICATION_PREF_DEFAULTS.productUpdatesEnabled,
+        weeklyEmailFrequency: pref?.weeklyEmailFrequency ?? null,
+      });
+    } catch (error: any) {
+      console.error("Error fetching notification preferences:", error);
+      res.status(500).json({ error: "Failed to fetch notification preferences" });
+    }
+  });
+
+  app.put("/api/account/notification-preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId as string;
+      const body = (req.body || {}) as Record<string, unknown>;
+
+      const asBool = (key: string, fallback: boolean): boolean =>
+        typeof body[key] === "boolean" ? (body[key] as boolean) : fallback;
+
+      const existing = await storage.getNotificationPreference(userId);
+
+      // Master email unsubscribe toggle → users.email_digest_opt_in. When the
+      // user turns marketing fully off we ALSO drop the global flag so the
+      // governor's consent gate (and every legacy opt-in query) honours it.
+      if (typeof body.emailDigestOptIn === "boolean") {
+        await db.update(users).set({ emailDigestOptIn: body.emailDigestOptIn as boolean }).where(eq(users.id, userId));
+      }
+
+      let weeklyEmailFrequency: number | null = existing?.weeklyEmailFrequency ?? null;
+      if (body.weeklyEmailFrequency === null) {
+        weeklyEmailFrequency = null;
+      } else if (typeof body.weeklyEmailFrequency === "number" && Number.isFinite(body.weeklyEmailFrequency)) {
+        weeklyEmailFrequency = Math.max(1, Math.min(14, Math.floor(body.weeklyEmailFrequency)));
+      }
+
+      const saved = await storage.upsertNotificationPreference({
+        userId,
+        marketingEmailEnabled: asBool("marketingEmailEnabled", existing?.marketingEmailEnabled ?? true),
+        retentionTipsEnabled: asBool("retentionTipsEnabled", existing?.retentionTipsEnabled ?? true),
+        listingWatchAlertsEnabled: asBool("listingWatchAlertsEnabled", existing?.listingWatchAlertsEnabled ?? true),
+        marketAlertsEnabled: asBool("marketAlertsEnabled", existing?.marketAlertsEnabled ?? true),
+        communityAlertsEnabled: asBool("communityAlertsEnabled", existing?.communityAlertsEnabled ?? true),
+        weeklyDigestEnabled: asBool("weeklyDigestEnabled", existing?.weeklyDigestEnabled ?? true),
+        monthlyRankEnabled: asBool("monthlyRankEnabled", existing?.monthlyRankEnabled ?? true),
+        podcastDigestEnabled: asBool("podcastDigestEnabled", existing?.podcastDigestEnabled ?? true),
+        productUpdatesEnabled: asBool("productUpdatesEnabled", existing?.productUpdatesEnabled ?? true),
+        digestEnabled: asBool("weeklyDigestEnabled", existing?.digestEnabled ?? true),
+        weeklyEmailFrequency,
+      });
+
+      res.json({ success: true, preferences: saved });
+    } catch (error: any) {
+      console.error("Error saving notification preferences:", error);
+      res.status(500).json({ error: "Failed to save notification preferences" });
     }
   });
 

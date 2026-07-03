@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { getResendClient } from "./resend";
 import { db } from "./db";
 import { generateUnsubscribeToken } from "./weeklyDigest";
+import { governMarketingSend } from "./emailGovernor";
 import { analyses, propertyAnalyses, users, type EmailTrigger } from "@shared/schema";
 
 async function getTeamNotifyEmails(): Promise<string[]> {
@@ -892,6 +893,20 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
           await storage.updateEmailTriggerStatus(trigger.id, "cancelled", undefined, "User not opted in or email consent revoked");
           return;
         }
+        // Unified governor: adds the rolling marketing cap + the
+        // listing-watch-alerts preference toggle on top of the consent gate
+        // above. dedupeKey is unique per trigger (each was already deduped to
+        // one-pending-per-user-per-type upstream) so it consumes one cap slot.
+        const wlGate = await governMarketingSend({
+          userId: trigger.userId,
+          stream: "watchlist_alerts",
+          emailType: trigger.triggerType,
+          dedupeKey: `${trigger.triggerType}:${trigger.userId}:${trigger.id}`,
+        });
+        if (!wlGate.ok) {
+          await storage.updateEmailTriggerStatus(trigger.id, "cancelled", undefined, `Governor blocked: ${wlGate.reason}`);
+          return;
+        }
         const enriched = { ...payload, userId: user.id, email: user.email, firstName: user.firstName };
         const { subject, html, to } = trigger.triggerType === "watchlist_price_change"
           ? buildWatchlistPriceChangeEmail(enriched)
@@ -911,6 +926,19 @@ async function processEmailTrigger(trigger: EmailTrigger): Promise<void> {
         const user = await getConsentedUser(trigger.userId);
         if (!user) {
           await storage.updateEmailTriggerStatus(trigger.id, "cancelled", undefined, "User not opted in or email consent revoked");
+          return;
+        }
+        // These are behavioural retention nudges — same 'retention' stream and
+        // shared weekly cap as retentionEmails/onboarding, so a user can't get
+        // deal-desk nudges on top of a full retention quota.
+        const nudgeGate = await governMarketingSend({
+          userId: trigger.userId,
+          stream: "retention",
+          emailType: trigger.triggerType,
+          dedupeKey: `${trigger.triggerType}:${trigger.userId}:${trigger.id}`,
+        });
+        if (!nudgeGate.ok) {
+          await storage.updateEmailTriggerStatus(trigger.id, "cancelled", undefined, `Governor blocked: ${nudgeGate.reason}`);
           return;
         }
         const dealRef = await getLatestDealRef(trigger.userId).catch(() => null);

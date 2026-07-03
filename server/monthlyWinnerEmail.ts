@@ -3,6 +3,7 @@ import { db } from "./db";
 import { users, analyses, notificationEvents, notificationQueue } from "@shared/schema";
 import { sql, count, desc } from "drizzle-orm";
 import { getResendClient } from "./resend";
+import { governMarketingSend } from "./emailGovernor";
 
 const REPLY_TO_EMAIL = process.env.MONTHLY_WINNER_REPLY_EMAIL || "danielfoch@gmail.com";
 const TEXT_PHONE = process.env.MONTHLY_WINNER_TEXT_PHONE || "";
@@ -252,14 +253,29 @@ export async function sendMonthlyWinnerEmails(options?: { dryRun?: boolean; limi
   for (const winner of winners) {
     const dedupeKey = `monthly_winner:${winner.userId}:${monthKey}`;
     try {
-      // Consent gate: latest email_consent ledger row wins; digest opt-out also skips
-      if (winner.consentStatus === "revoked" || winner.emailDigestOptIn === false) {
-        result.winners.push({ rank: winner.rank, userId: winner.userId, email: winner.email, status: "skipped", reason: "consent" });
+      if (dryRun) {
+        // Preview only — do NOT consume the cap or claim a send-log row.
+        result.winners.push({ rank: winner.rank, userId: winner.userId, email: winner.email, status: "skipped", reason: "dry_run" });
         result.skipped++;
         continue;
       }
-      if (dryRun) {
-        result.winners.push({ rank: winner.rank, userId: winner.userId, email: winner.email, status: "skipped", reason: "dry_run" });
+
+      // Unified governor: CASL consent + digest opt-in + monthly_rank
+      // preference toggle + rolling marketing cap, in one decision. The
+      // per-month dedupeKey preserves once-per-month dedupe while the governor
+      // adds the shared weekly cap. On allow it has claimed the canonical
+      // retention_email_log row; the notification_queue reservation below is
+      // the per-send status/delivery record.
+      const gate = await governMarketingSend({
+        userId: winner.userId,
+        stream: "monthly_rank",
+        emailType: "monthly_leaderboard_winner",
+        dedupeKey,
+      });
+      if (!gate.ok) {
+        const reason = gate.reason === "capped" ? "already_sent" : "consent";
+        console.log(`[monthly-winner] Governor blocked ${winner.email} for ${monthKey} (${gate.reason})`);
+        result.winners.push({ rank: winner.rank, userId: winner.userId, email: winner.email, status: "skipped", reason });
         result.skipped++;
         continue;
       }

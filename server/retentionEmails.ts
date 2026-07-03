@@ -24,6 +24,7 @@ import { and, desc, eq, gt, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import { sendNotificationEmail } from "./resend";
 import { generateUnsubscribeToken } from "./weeklyDigest";
+import { governMarketingSend } from "./emailGovernor";
 import {
   analyses,
   properties,
@@ -31,7 +32,6 @@ import {
   usListings,
   users,
 } from "@shared/schema";
-import { decideRetentionSend, newlyCrossedMilestone } from "@shared/retentionPolicy";
 
 export async function ensureRetentionTables(): Promise<void> {
   await db.execute(sql`
@@ -68,10 +68,15 @@ export function cta(href: string, label: string): string {
 }
 
 /**
- * Atomically claim a send: inserts the dedupe row first (unique index makes
- * concurrent sweeps collapse), checks the weekly cap, then sends.
- * Exported for reuse by the onboarding sequence (server/onboardingEmails.ts),
- * which shares the retention_email_log table and weekly cap.
+ * Claim + governed send. Delegates the dedupe-claim, the rolling weekly cap,
+ * the CASL consent gate AND the notification_preferences gate to the unified
+ * emailGovernor (server/emailGovernor.ts) so there is ONE cap definition and
+ * ONE consent/preference decision across every marketing producer. This module
+ * only wires the decision to the actual Resend send + unsubscribe footer.
+ *
+ * Retention + onboarding both ride the 'retention' stream (retention_tips
+ * toggle). Exported for reuse by the onboarding sequence
+ * (server/onboardingEmails.ts), which shares the same log, cap, and stream.
  */
 export async function trySend(
   recipient: Recipient,
@@ -80,27 +85,13 @@ export async function trySend(
   subject: string,
   html: string,
 ): Promise<boolean> {
-  const inserted = await db.execute(sql`
-    INSERT INTO retention_email_log (user_id, dedupe_key, email_type)
-    VALUES (${recipient.id}, ${dedupeKey}, ${emailType})
-    ON CONFLICT (user_id, dedupe_key) DO NOTHING
-    RETURNING id
-  `);
-  if (!(inserted as any).rows?.length) return false; // duplicate trigger — already handled
-
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const [count] = await db.execute(sql`
-    SELECT COUNT(*)::int AS n FROM retention_email_log
-    WHERE user_id = ${recipient.id} AND sent_at > ${weekAgo} AND email_type != 'capped'
-  `).then((r: any) => r.rows);
-  const decision = decideRetentionSend({
-    dedupeRowInserted: true,
-    recentLogCount: Number(count?.n || 0),
+  const gate = await governMarketingSend({
+    userId: recipient.id,
+    stream: "retention",
+    emailType,
+    dedupeKey,
   });
-  if (decision !== "send") {
-    // Capped: keep the dedupe row (so we don't retry this exact trigger) but skip the send.
-    return false;
-  }
+  if (!gate.ok) return false; // duplicate, capped, consent-revoked, or preference-off
 
   await sendNotificationEmail({
     to: recipient.email,
@@ -244,47 +235,21 @@ export async function sweepPriceChanges(windowHours = 24): Promise<number> {
   return sent;
 }
 
-// ——— Trigger 3: milestones ————————————————————————————————
-
-export async function sweepMilestones(windowHours = 24): Promise<number> {
-  const since = new Date(Date.now() - windowHours * 60 * 60 * 1000);
-  const active = await db
-    .selectDistinct({ userId: analyses.userId })
-    .from(analyses)
-    .where(and(gt(analyses.createdAt, since), isNotNull(analyses.userId)))
-    .limit(1000);
-
-  let sent = 0;
-  for (const row of active) {
-    if (!row.userId) continue;
-    const [{ total, recent }] = await db
-      .execute(sql`
-        SELECT COUNT(*)::int AS total,
-               COUNT(*) FILTER (WHERE created_at > ${since})::int AS recent
-        FROM analyses WHERE user_id = ${row.userId}
-      `)
-      .then((r: any) => r.rows);
-    // Only celebrate milestones crossed WITHIN this sweep window
-    // (total - recent < m <= total). Without this, the first deploy would
-    // retroactively email every active user who ever passed 5+ analyses.
-    const milestone = newlyCrossedMilestone(Number(total || 0), Number(recent || 0));
-    if (!milestone) continue;
-
-    for (const recipient of await optedInUsers([row.userId])) {
-      const ok = await trySend(
-        recipient,
-        "milestone",
-        `milestone:${milestone}`,
-        `You've analyzed ${milestone} deals on Realist 🏆`,
-        `<h2 style="font-size:20px;">That's ${milestone} deals analyzed</h2>
-         <p>Hi ${recipient.firstName || "there"},</p>
-         <p>You just crossed <strong>${milestone} deal analyses</strong> on Realist. Every analysis sharpens your underwriting — and puts you higher on the monthly leaderboard (real prizes, real bragging rights).</p>
-         ${cta("https://realist.ca/community/leaderboard?utm_source=retention&utm_campaign=milestone", "See how you rank")}`,
-      );
-      if (ok) sent += 1;
-    }
-  }
-  return sent;
+// ——— Trigger 3: milestones (DISABLED — duplicate producer collapsed) ————————
+//
+// This deal-analyzer milestone sweep was a DUPLICATE of the event-driven
+// milestone producer in server/notifications.ts (queueMilestoneNotification),
+// which fires synchronously on every new community analysis and covers a
+// broader ladder (1/5/10/25/50/100/250/500 vs. 5/10/25/50/100 here). Both sent
+// a near-identical "You've analyzed N deals" email on overlapping thresholds,
+// so a user active in both surfaces received two milestone emails per
+// milestone. As part of the email-governor consolidation we keep the single
+// event-driven producer (now routed through the unified frequency governor)
+// and disable this sweep. Kept as an exported no-op so the route/interval
+// wiring and any tests referencing it don't break; safe to delete once no
+// caller references it.
+export async function sweepMilestones(_windowHours = 24): Promise<number> {
+  return 0;
 }
 
 // ——— Registration: hourly self-schedule + manual sweep endpoint ————————
