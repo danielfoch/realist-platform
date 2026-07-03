@@ -129,6 +129,7 @@ import { registerDealDeskRoutes } from "./dealDesk";
 import { scheduleAdminWeeklySummary } from "./adminWeeklySummary";
 import { registerRetentionEmailRoutes } from "./retentionEmails";
 import { registerOnboardingEmailRoutes } from "./onboardingEmails";
+import { registerPasswordlessActivationRoutes } from "./passwordlessActivation";
 import { registerAiDefaultsRoutes } from "./aiDefaults";
 import { registerCrmRoutes } from "./crm";
 import { registerPartnerNetworkRoutes, handoffClaimedLeadToCrm } from "./partnerNetwork";
@@ -796,6 +797,7 @@ export async function registerRoutes(
   scheduleAdminWeeklySummary();
   registerRetentionEmailRoutes(app);
   registerOnboardingEmailRoutes(app);
+  registerPasswordlessActivationRoutes(app);
   registerAiDefaultsRoutes(app);
   registerCrmRoutes(app);
   registerPartnerNetworkRoutes(app);
