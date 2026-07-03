@@ -4,6 +4,7 @@ import { db } from "./db";
 import { users, analyses, notificationEvents, notificationQueue } from "@shared/schema";
 import { sql, count, desc, and, isNotNull, ne } from "drizzle-orm";
 import { storage } from "./storage";
+import { governMarketingSend } from "./emailGovernor";
 
 const UNSUBSCRIBE_SECRET = process.env.SESSION_SECRET || "realist-digest-secret";
 
@@ -601,8 +602,20 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
 
   for (const recipient of recipients) {
     try {
-      const allowsDigest = await storage.getNotificationPreference(recipient.id);
-      if (allowsDigest && !allowsDigest.digestEnabled) {
+      // Unified governor: consent (CASL + digest opt-in) + weekly-digest
+      // preference toggle + rolling marketing cap, all in one decision. The
+      // dedupeKey is the per-week key so the governor's global cap composes
+      // with (does not replace) the once-per-week dedupe. On allow, the
+      // governor has already claimed the canonical retention_email_log row;
+      // the notification_queue insert below is the delivery record.
+      const dedupeKey = `weekly_leaderboard_digest:${recipient.id}:${weekKey}`;
+      const gate = await governMarketingSend({
+        userId: recipient.id,
+        stream: "weekly_digest",
+        emailType: "weekly_leaderboard_digest",
+        dedupeKey,
+      });
+      if (!gate.ok) {
         skipped++;
         continue;
       }
@@ -638,7 +651,6 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
       const previewText = userStats.rank
         ? `You ranked #${userStats.rank} this week. See who is moving on the Realist board.`
         : "See this week’s Realist leaderboard, platform stats, and tactical investor signal.";
-      const dedupeKey = `weekly_leaderboard_digest:${recipient.id}:${weekKey}`;
 
       const inserted = await db.insert(notificationQueue).values({
         recipientUserId: recipient.id,
