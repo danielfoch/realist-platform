@@ -53,6 +53,32 @@ interface ConfigResult {
   residualLandValue: { condoPath: number; rentalPath: number };
   mli: { eligible: boolean; reason?: string; premiumPct: number; maxLoan: number; actualDscr: number; amortYears: number; bindingConstraint: string };
   comparison: { condoProfit: number; holdEquityLeft: number; holdAnnualCashFlow: number; holdCashOnCash: number | null; recommendedExit: string };
+  /** Dual-takeout comparator (optional: absent on reports saved before it shipped). */
+  takeout?: {
+    condo: {
+      form: "condo_town" | "condo_apartment";
+      formReason: string;
+      pricePsf: number;
+      avgPricePerUnit: number;
+      profit: number;
+      marginOnCost: number;
+      monthsToExit: number;
+      flags: Array<{ key: string; message: string }>;
+    };
+    hold: {
+      eligible: boolean;
+      reason?: string;
+      loanBalance: number;
+      equityLeftIn: number;
+      annualCashFlow: number;
+      cashOnCash: number | null;
+      valueCreation: number;
+      horizonYears: number;
+      horizonProfit: number;
+      flags: Array<{ key: string; message: string }>;
+    };
+    decision: { recommended: "mli_hold" | "condo_termination" | "neither"; condoScore: number; holdScore: number | null; reasons: string[] };
+  };
 }
 
 interface UnderwriteResult {
@@ -61,6 +87,13 @@ interface UnderwriteResult {
   envelope: { practicalGfaSqft: { value: number; source: string; certainty: string }; theoreticalGfaSqft: { value: number }; flags: Array<{ key: string; message: string }> };
   configs: ConfigResult[];
   winner: { flip: string | null; hold: string | null };
+  recommendedTakeout?: {
+    configKey: string | null;
+    takeout: "mli_hold" | "condo_termination" | "neither";
+    score: number;
+    formPreferenceApplied: boolean;
+    reasons: string[];
+  };
   assumptionNotes: string[];
   report?: {
     siteSummary: string; zoningSummary: string; varianceNarrative: string; riskNarrative: string;
@@ -74,6 +107,16 @@ interface UnderwriteResult {
 const fmtMoney = (n: number) => `$${Math.round(n).toLocaleString()}`;
 const fmtPct = (n: number, d = 1) => `${(n * 100).toFixed(d)}%`;
 
+const TAKEOUT_LABEL: Record<string, string> = {
+  mli_hold: "MLI Select hold",
+  condo_termination: "Condo termination",
+  neither: "Neither pencils",
+};
+const FORM_LABEL: Record<string, string> = {
+  condo_town: "condo towns",
+  condo_apartment: "condo apartments",
+};
+
 function ProvenanceBadge({ kind }: { kind: string }) {
   const styles: Record<string, string> = {
     verified: "bg-green-100 text-green-800 border-green-300",
@@ -82,6 +125,30 @@ function ProvenanceBadge({ kind }: { kind: string }) {
     estimate: "bg-purple-100 text-purple-800 border-purple-300",
   };
   return <Badge variant="outline" className={`text-[10px] uppercase tracking-wide ${styles[kind] ?? ""}`}>{kind}</Badge>;
+}
+
+function TuneField({ label, placeholder, value, onChange }: { label: string; placeholder: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input type="number" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} className="h-9 font-mono text-sm" />
+    </div>
+  );
+}
+
+function TuneSelect({ label, value, onChange, options }: { label: string; value: number; onChange: (v: number) => void; options: Array<{ value: number; label: string }> }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <select
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+      >
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
 }
 
 function RiskChip({ level }: { level: "low" | "medium" | "high" }) {
@@ -143,6 +210,39 @@ export default function MultiplexUnderwriterPage() {
   });
   const [laneAccess, setLaneAccess] = useState(false);
 
+  // Fine-tune workflow: every takeout parameter is overridable per run.
+  // Empty string = platform default; percent fields are entered as percents.
+  const [tune, setTune] = useState({
+    condoTownPsf: "",
+    condoAptPsf: "",
+    aptDiscountPct: "",
+    hardCostPsf: "",
+    exitCapRatePct: "",
+    mliRatePct: "",
+    holdHorizonYears: "",
+    regMonths: "",
+    affordabilityLevel: 1,
+    energyLevel: 1,
+    accessibilityLevel: 0,
+  });
+
+  function buildAssumptionOverrides(): Record<string, number> {
+    const o: Record<string, number> = {};
+    const put = (key: string, raw: string, scale = 1) => {
+      const n = Number(raw);
+      if (raw.trim() !== "" && Number.isFinite(n)) o[key] = n * scale;
+    };
+    put("condo_town_psf", tune.condoTownPsf);
+    put("condo_apt_psf", tune.condoAptPsf);
+    put("condo_apt_illiquidity_discount", tune.aptDiscountPct, 0.01);
+    put("hard_cost_psf", tune.hardCostPsf);
+    put("exit_cap_rate", tune.exitCapRatePct, 0.01);
+    put("mli_interest_rate", tune.mliRatePct, 0.01);
+    put("hold_horizon_years", tune.holdHorizonYears);
+    put("condo_registration_months", tune.regMonths);
+    return o;
+  }
+
   const [result, setResult] = useState<UnderwriteResult | null>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -188,6 +288,7 @@ export default function MultiplexUnderwriterPage() {
     setError(null);
     track({ event: "calculator.started", address, strategy: "multiplex", source: "multiplex_underwriter" });
     try {
+      const overrides = buildAssumptionOverrides();
       const res = await apiRequest("POST", "/api/multiplex-underwriter", {
         address,
         postalCode: postalCode || undefined,
@@ -195,6 +296,12 @@ export default function MultiplexUnderwriterPage() {
         lotDepthFt: Number(depth),
         purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
         laneAccess,
+        mliCommitments: {
+          affordabilityLevel: tune.affordabilityLevel,
+          energyLevel: tune.energyLevel,
+          accessibilityLevel: tune.accessibilityLevel,
+        },
+        ...(Object.keys(overrides).length > 0 ? { assumptionOverrides: overrides } : {}),
       });
       const data = await res.json();
       if (data.status === "complete") {
@@ -367,6 +474,62 @@ export default function MultiplexUnderwriterPage() {
               </Card>
             )}
 
+            {/* Recommended takeout — the dual-takeout comparator's site-level pick */}
+            {result.recommendedTakeout && result.recommendedTakeout.configKey && (() => {
+              const rec = result.recommendedTakeout;
+              const rc = result.configs.find((c) => c.config.key === rec.configKey);
+              const tk = rc?.takeout;
+              return (
+                <Card className="border-emerald-300 bg-gradient-to-b from-emerald-50/60 to-transparent">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 flex-wrap text-lg">
+                      <Scale className="h-5 w-5 text-emerald-700" />
+                      Recommended takeout: {TAKEOUT_LABEL[rec.takeout]}
+                      {rc && <Badge variant="outline">{rc.config.label}</Badge>}
+                      {rec.formPreferenceApplied && <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">town form preferred</Badge>}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    {tk && (
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div className={`rounded-lg border p-3 space-y-1.5 ${rec.takeout === "condo_termination" ? "border-emerald-300 bg-emerald-50/50" : ""}`}>
+                          <p className="font-semibold">Condo termination <span className="font-normal text-muted-foreground">— as {FORM_LABEL[tk.condo.form]}</span></p>
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                            <span className="text-muted-foreground">Avg price / unit</span>
+                            <span className="font-mono text-right">{fmtMoney(tk.condo.avgPricePerUnit)}</span>
+                            <span className="text-muted-foreground">Profit</span>
+                            <span className={`font-mono text-right ${tk.condo.profit >= 0 ? "text-green-700" : "text-red-600"}`}>{fmtMoney(tk.condo.profit)} ({fmtPct(tk.condo.marginOnCost)})</span>
+                            <span className="text-muted-foreground">Registration + sell-out</span>
+                            <span className="font-mono text-right">{tk.condo.monthsToExit} months</span>
+                          </div>
+                        </div>
+                        <div className={`rounded-lg border p-3 space-y-1.5 ${rec.takeout === "mli_hold" ? "border-emerald-300 bg-emerald-50/50" : ""}`}>
+                          <p className="font-semibold">MLI Select hold</p>
+                          {tk.hold.eligible ? (
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                              <span className="text-muted-foreground">Insured loan</span>
+                              <span className="font-mono text-right">{fmtMoney(tk.hold.loanBalance)}</span>
+                              <span className="text-muted-foreground">Equity left in</span>
+                              <span className="font-mono text-right">{fmtMoney(tk.hold.equityLeftIn)}</span>
+                              <span className="text-muted-foreground">Cash flow / yr</span>
+                              <span className={`font-mono text-right ${tk.hold.annualCashFlow >= 0 ? "text-green-700" : "text-red-600"}`}>{fmtMoney(tk.hold.annualCashFlow)}</span>
+                              <span className="text-muted-foreground">{tk.hold.horizonYears}-yr value + cash flow</span>
+                              <span className={`font-mono text-right ${tk.hold.horizonProfit >= 0 ? "text-green-700" : "text-red-600"}`}>{fmtMoney(tk.hold.horizonProfit)}</span>
+                            </div>
+                          ) : (
+                            <p className="text-muted-foreground">{tk.hold.reason}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      {rec.reasons.map((r, i) => <li key={i}>• {r}</li>)}
+                    </ul>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
             {/* Envelope */}
             <Card>
               <CardContent className="pt-6 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
@@ -374,6 +537,68 @@ export default function MultiplexUnderwriterPage() {
                 <span className="text-muted-foreground">({result.envelope.practicalGfaSqft.source})</span>
               </CardContent>
             </Card>
+
+            {/* Fine-tune the takeout — every parameter is overridable per run */}
+            <details className="rounded-lg border bg-card">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+                Fine-tune the takeout — pricing, financing, and MLI Select commitments
+              </summary>
+              <div className="px-4 pb-4 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <TuneField label="Condo-town $/sqft" placeholder="1000" value={tune.condoTownPsf} onChange={(v) => setTune({ ...tune, condoTownPsf: v })} />
+                  <TuneField label="Condo-apt $/sqft" placeholder="900" value={tune.condoAptPsf} onChange={(v) => setTune({ ...tune, condoAptPsf: v })} />
+                  <TuneField label="Apt clearance discount %" placeholder="5" value={tune.aptDiscountPct} onChange={(v) => setTune({ ...tune, aptDiscountPct: v })} />
+                  <TuneField label="Registration months" placeholder="12" value={tune.regMonths} onChange={(v) => setTune({ ...tune, regMonths: v })} />
+                  <TuneField label="Hard cost $/sqft" placeholder="400" value={tune.hardCostPsf} onChange={(v) => setTune({ ...tune, hardCostPsf: v })} />
+                  <TuneField label="Exit cap rate %" placeholder="4.75" value={tune.exitCapRatePct} onChange={(v) => setTune({ ...tune, exitCapRatePct: v })} />
+                  <TuneField label="MLI rate %" placeholder="4.5" value={tune.mliRatePct} onChange={(v) => setTune({ ...tune, mliRatePct: v })} />
+                  <TuneField label="Hold horizon (years)" placeholder="5" value={tune.holdHorizonYears} onChange={(v) => setTune({ ...tune, holdHorizonYears: v })} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <TuneSelect
+                    label="MLI affordability commitment"
+                    value={tune.affordabilityLevel}
+                    onChange={(v) => setTune({ ...tune, affordabilityLevel: v })}
+                    options={[
+                      { value: 0, label: "None (0 pts)" },
+                      { value: 1, label: "10% affordable units (50 pts)" },
+                      { value: 2, label: "15% affordable units (70 pts)" },
+                      { value: 3, label: "25% affordable units (100 pts)" },
+                    ]}
+                  />
+                  <TuneSelect
+                    label="MLI energy commitment"
+                    value={tune.energyLevel}
+                    onChange={(v) => setTune({ ...tune, energyLevel: v })}
+                    options={[
+                      { value: 0, label: "None (0 pts)" },
+                      { value: 1, label: "20% better than code (20 pts)" },
+                      { value: 2, label: "25% better than code (35 pts)" },
+                      { value: 3, label: "40% better than code (50 pts)" },
+                    ]}
+                  />
+                  <TuneSelect
+                    label="MLI accessibility commitment"
+                    value={tune.accessibilityLevel}
+                    onChange={(v) => setTune({ ...tune, accessibilityLevel: v })}
+                    options={[
+                      { value: 0, label: "None (0 pts)" },
+                      { value: 1, label: "Min. accessibility (20 pts)" },
+                      { value: 2, label: "Universal design (30 pts)" },
+                    ]}
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button size="sm" disabled={busy || !Number(frontage) || !Number(depth)} onClick={runUnderwrite}>
+                    {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Re-running…</> : "Re-run with these assumptions"}
+                  </Button>
+                  {(!Number(frontage) || !Number(depth)) && (
+                    <span className="text-xs text-muted-foreground">Shared report — start a new underwrite to fine-tune.</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">Blank fields keep the platform defaults.</span>
+                </div>
+              </div>
+            </details>
 
             {/* Config cards */}
             <div className="grid md:grid-cols-2 gap-4">
@@ -390,6 +615,9 @@ export default function MultiplexUnderwriterPage() {
                       <div className="flex flex-wrap gap-1 mt-1">
                         {isFlipWinner && <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">best flip</Badge>}
                         {isHoldWinner && <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">best hold</Badge>}
+                        {result.recommendedTakeout?.configKey === c.config.key && (
+                          <Badge className="bg-violet-100 text-violet-800 hover:bg-violet-100">recommended: {TAKEOUT_LABEL[result.recommendedTakeout.takeout]}</Badge>
+                        )}
                         <Badge variant="outline">{c.config.approvalPath.replace(/_/g, " ")}</Badge>
                       </div>
                     </CardHeader>
@@ -400,10 +628,21 @@ export default function MultiplexUnderwriterPage() {
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                         <span className="text-muted-foreground">All-in cost</span>
                         <span className="font-mono text-right">{fmtMoney(c.costs.totalDevCost)}</span>
-                        <span className="text-muted-foreground">Condo exit</span>
-                        <span className={`font-mono text-right ${c.condoExit.profit >= 0 ? "text-green-700" : "text-red-600"}`}>
-                          {fmtMoney(c.condoExit.profit)} ({fmtPct(c.condoExit.marginOnCost)})
-                        </span>
+                        {c.takeout ? (
+                          <>
+                            <span className="text-muted-foreground">Condo termination <span className="text-xs">({FORM_LABEL[c.takeout.condo.form]})</span></span>
+                            <span className={`font-mono text-right ${c.takeout.condo.profit >= 0 ? "text-green-700" : "text-red-600"}`}>
+                              {fmtMoney(c.takeout.condo.profit)} ({fmtPct(c.takeout.condo.marginOnCost)})
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-muted-foreground">Condo exit</span>
+                            <span className={`font-mono text-right ${c.condoExit.profit >= 0 ? "text-green-700" : "text-red-600"}`}>
+                              {fmtMoney(c.condoExit.profit)} ({fmtPct(c.condoExit.marginOnCost)})
+                            </span>
+                          </>
+                        )}
                         <span className="text-muted-foreground">Stabilized NOI</span>
                         <span className="font-mono text-right">{fmtMoney(c.rentalHold.noi)}/yr</span>
                         <span className="text-muted-foreground">MLI Select</span>
@@ -416,6 +655,20 @@ export default function MultiplexUnderwriterPage() {
                           <>
                             <span className="text-muted-foreground">Hold cash-on-cash</span>
                             <span className="font-mono text-right">{fmtPct(c.comparison.holdCashOnCash)}</span>
+                          </>
+                        )}
+                        {c.takeout?.hold.eligible && (
+                          <>
+                            <span className="text-muted-foreground">Hold {c.takeout.hold.horizonYears}-yr value + cash flow</span>
+                            <span className={`font-mono text-right ${c.takeout.hold.horizonProfit >= 0 ? "text-green-700" : "text-red-600"}`}>
+                              {fmtMoney(c.takeout.hold.horizonProfit)}
+                            </span>
+                          </>
+                        )}
+                        {c.takeout && (
+                          <>
+                            <span className="text-muted-foreground">Better takeout</span>
+                            <span className="font-mono text-right">{TAKEOUT_LABEL[c.takeout.decision.recommended]}</span>
                           </>
                         )}
                         <span className="text-muted-foreground">Residual land value</span>
