@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Landmark, Users, Building2 } from "lucide-react";
+import { Landmark, Users, Building2, Ruler } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /** Mirrors NeighbourhoodStats from shared/censusProfile.ts (via GET /api/enrichment). */
@@ -116,6 +116,7 @@ export function NeighbourhoodInsights({
       property: PropertyAssessment | null;
       permits: PermitActivity | null;
       development?: DevelopmentActivity | null;
+      parcel?: { parcelId: string; lotAreaM2: number | null } | null;
     };
   }>({
     queryKey: ["/api/enrichment", lat, lng, address, city],
@@ -140,15 +141,40 @@ export function NeighbourhoodInsights({
   const property = data?.data?.property ?? null;
   const permits = data?.data?.permits ?? null;
   const development = data?.data?.development ?? null;
+  const parcel = data?.data?.parcel ?? null;
+  // Show the parcel lot size only when the assessment roll didn't already
+  // provide one (e.g. Toronto, which has no open assessment roll).
+  const parcelLot = parcel?.lotAreaM2 != null && !(property && property.lotAreaM2 != null) ? parcel.lotAreaM2 : null;
   // Render nothing until an enrichment layer is imported / the lookup matches.
-  if (!stats && !property && !permits && !development) return null;
+  if (!stats && !property && !permits && !development && parcelLot === null) return null;
   return (
     <>
       {property && <PropertyIntelligenceCard property={property} listPrice={listPrice ?? null} className={className} />}
+      {parcelLot !== null && <ParcelLotCard lotAreaM2={parcelLot} className={className} />}
       {permits && <PermitsCard permits={permits} className={className} />}
       {development && <DevelopmentActivityCard development={development} className={className} />}
       {stats && <NeighbourhoodCard stats={stats} className={className} />}
     </>
+  );
+}
+
+function ParcelLotCard({ lotAreaM2, className }: { lotAreaM2: number; className?: string }) {
+  const sqft = Math.round(lotAreaM2 * SQFT_PER_M2).toLocaleString();
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Ruler className="h-5 w-5" /> Lot size
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-semibold">{sqft} sq. ft.</div>
+        <div className="text-sm text-muted-foreground">{Math.round(lotAreaM2).toLocaleString()} m² · from the city parcel boundary</div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Contains information licensed under the Open Government Licence – Toronto.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

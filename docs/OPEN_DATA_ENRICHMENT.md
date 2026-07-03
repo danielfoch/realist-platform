@@ -124,6 +124,19 @@ WGS84 (validated: 3920/3920 geocoded records land inside Toronto; 1001 Sheppard
 Ave → 43.771, -79.375).
 >>>>>>> ea11bb3 (Toronto development activity: "N developments nearby" listing signal)
 
+## Toronto parcels (lot size)
+
+Toronto has no open assessment roll (MPAC is licensed), so the parcel fabric is
+the lot-size source. The "Property Boundaries – 4326" CSV ships each parcel as a
+WGS84 GeoJSON MultiPolygon + STATEDAREA ("271.68 sq.m"). `shared/parcels.ts`
+parses it; `toronto_parcels` stores geometry + bbox; `resolveParcel(lat,lng)`
+matches a listing by point-in-polygon and returns the lot area. `GET
+/api/enrichment` returns `parcel`; the listing shows a "Lot size" card (Toronto,
+where the assessment roll didn't supply one). Import:
+`npx tsx scripts/import-toronto-parcels.ts` (~500k parcels, streamed).
+Follow-up: frontend/depth via an oriented-bounding-box heuristic on the polygon
+(unlocks lot-split feasibility); STATEDAREA already gives area.
+
 ## Follow-ups (workplan §3)
 
 - Render neighbourhood facts into the listing SEO bot fallback + JSON-LD
