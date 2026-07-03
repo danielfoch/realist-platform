@@ -28,7 +28,9 @@ export default function Login() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const returnUrl = getAuthReturnUrl("/");
+  // Default post-login home is the daily-glance dashboard (the signed-in home).
+  // An explicit returnUrl — e.g. a deep link the user was sent to — still wins.
+  const returnUrl = getAuthReturnUrl("/dashboard");
   rememberAuthReturnUrl(returnUrl);
 
   // Set when a magic sign-in link redirect failed (expired/used/invalid).

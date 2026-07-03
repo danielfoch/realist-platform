@@ -231,6 +231,12 @@ export function Navigation() {
                         {user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : user?.email}
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      <Link href="/dashboard">
+                        <DropdownMenuItem className="cursor-pointer" data-testid="link-dashboard">
+                          <Gauge className="mr-2 h-4 w-4" />
+                          Dashboard
+                        </DropdownMenuItem>
+                      </Link>
                       <Link href="/tools/investor-os">
                         <DropdownMenuItem className="cursor-pointer" data-testid="link-my-deals">
                           <FolderOpen className="mr-2 h-4 w-4" />
@@ -397,6 +403,12 @@ export function Navigation() {
             <div className="border-t border-border/50 pt-4">
               {isAuthenticated ? (
                 <div className="space-y-1">
+                  <Button asChild variant="ghost" className="w-full justify-start h-9 text-sm" data-testid="link-mobile-dashboard">
+                    <Link href="/dashboard" onClick={closeMobile}>
+                      <Gauge className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </Button>
                   <Button asChild variant="ghost" className="w-full justify-start h-9 text-sm" data-testid="link-mobile-my-deals">
                     <Link href="/tools/investor-os" onClick={closeMobile}>
                       <FolderOpen className="mr-2 h-4 w-4" />
