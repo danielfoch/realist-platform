@@ -474,7 +474,8 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
     },
     onSuccess: () => {
       setLeadCapturedLocal(true);
-      setLeadCaptureOpen(false);
+      // The modal stays open here: LeadCaptureModal advances to its Deal Room
+      // step after submit and closes itself when the user picks a next step.
       setShowResults(true);
       track({
         event: "lead_captured",

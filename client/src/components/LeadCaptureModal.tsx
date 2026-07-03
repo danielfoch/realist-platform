@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -63,18 +65,20 @@ export function LeadCaptureModal({
     },
   });
 
-  // Deliberately no post-submit interstitial: the user asked for their
-  // analysis, so send them straight back to it. Community invites belong in
-  // the follow-up email, not between the user and the action they requested.
+  // Post-submit, offer one on-platform next step: the live Deal Room. No
+  // off-platform detours at the moment of highest intent.
+  const [step, setStep] = useState<"form" | "dealRoom">("form");
+
   const handleSubmit = async (data: LeadFormValues) => {
     await onSubmit(data);
     form.reset();
-    onOpenChange(false);
+    setStep("dealRoom");
   };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       form.reset();
+      setStep("form");
     }
     onOpenChange(newOpen);
   };
@@ -82,6 +86,38 @@ export function LeadCaptureModal({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
+        {step === "dealRoom" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">
+                Bring this deal to the Live Deal Room
+              </DialogTitle>
+              <DialogDescription className="text-base">
+                Free live deal review — Mondays 11:30am ET. Get this deal reviewed on the call.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2 pt-2">
+              <Link href="/deal-room">
+                <Button
+                  className="w-full h-12 text-base"
+                  onClick={() => handleOpenChange(false)}
+                  data-testid="button-lead-deal-room"
+                >
+                  Go to the Deal Room
+                </Button>
+              </Link>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={() => handleOpenChange(false)}
+                data-testid="button-lead-maybe-later"
+              >
+                Maybe later
+              </Button>
+            </div>
+          </>
+        ) : (
         <>
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold">
@@ -234,6 +270,7 @@ export function LeadCaptureModal({
               </form>
             </Form>
           </>
+        )}
       </DialogContent>
     </Dialog>
   );
