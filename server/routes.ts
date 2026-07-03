@@ -585,7 +585,9 @@ async function autoEnrollLeadAsUser(params: {
     }).returning();
     newUser = inserted;
   } catch (err: any) {
-    if (err?.code === "23505") {
+    // drizzle-orm >=0.44 wraps driver errors in DrizzleQueryError; the pg
+    // error (with .code) lives on .cause. Check both for compatibility.
+    if (err?.code === "23505" || err?.cause?.code === "23505") {
       const [existing] = await db.select().from(users).where(eq(users.email, emailLower)).limit(1);
       if (existing) return { userId: existing.id, isNew: false };
     }
@@ -2940,7 +2942,8 @@ export async function registerRoutes(
           results.imported++;
           results.details.push(email);
         } catch (err: any) {
-          if (err?.code === "23505") { results.existing++; }
+          // drizzle-orm >=0.44 wraps driver errors; pg code lives on .cause
+          if (err?.code === "23505" || err?.cause?.code === "23505") { results.existing++; }
           else { results.failed++; console.error(`Import failed for ${row.email}:`, err); }
         }
       }
@@ -2975,7 +2978,8 @@ export async function registerRoutes(
           });
           results.imported++;
         } catch (err: any) {
-          if (err?.code === "23505") { results.duplicate++; }
+          // drizzle-orm >=0.44 wraps driver errors; pg code lives on .cause
+          if (err?.code === "23505" || err?.cause?.code === "23505") { results.duplicate++; }
           else { results.failed++; }
         }
       }
