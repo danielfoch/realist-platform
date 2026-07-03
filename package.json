@@ -20,6 +20,7 @@
     "import:us": "tsx server/importUsListings.ts",
     "market-intel:rebuild": "tsx scripts/rebuild-market-intelligence.ts rebuild",
     "platform-learning:weekly": "tsx scripts/weekly-platform-learning-loop.ts",
+    "deal-room:ingest": "tsx scripts/deal-room-ingest.ts",
     "leaderboard:finalize-month": "tsx scripts/rebuild-market-intelligence.ts finalize-month",
     "idx:build": "tsc -p tsconfig.idx.json",
     "idx:dev": "tsx watch src/server.ts",

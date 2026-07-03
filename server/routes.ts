@@ -145,6 +145,7 @@ import { registerMobilePushRoutes } from "./mobilePush";
 import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import { registerBookedCallLeadRoutes } from "./bookedCallLeads";
+import { registerDealRoomRoutes } from "./dealRoom";
 import {
   getCurrentSaleEstimate,
   lookupSoldPriceForListing,
@@ -815,6 +816,7 @@ export async function registerRoutes(
   registerUserGoogleSheetsRoutes(app);
   registerUnderwritingShareRoutes(app);
   registerBookedCallLeadRoutes(app);
+  registerDealRoomRoutes(app);
   registerWatchlistRoutes(app);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");

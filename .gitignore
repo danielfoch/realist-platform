@@ -13,3 +13,4 @@ vite.config.ts.*
 # Legitimate CSV fixtures live under data/, server/data/, attached_assets/ and are unaffected.
 *_export.csv
 /*.csv
+.claude/worktrees/

@@ -74,6 +74,10 @@ export default function BookACall() {
 
         <BookCallCta key={intent} intent={intent} sourcePage="/book-a-call" />
 
+        <p className="text-xs text-muted-foreground text-center mt-4">
+          Calls are recorded for quality and to improve Realist's analysis tools. We confirm on the call before starting.
+        </p>
+
         {/* What happens next */}
         <div className="grid sm:grid-cols-3 gap-4 mt-10 text-center">
           <div>

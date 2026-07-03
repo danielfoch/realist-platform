@@ -74,6 +74,7 @@ const navCategories: NavCategory[] = [
     label: "Community",
     items: [
       { href: "/community", label: "Community Hub", description: "Everything happening across the Realist community", icon: <Users className="h-4 w-4" /> },
+      { href: "/deal-room", label: "Live Deal Room", description: "Free live deal review — Mondays 11:30am ET", icon: <Radio className="h-4 w-4" /> },
       { href: "/experts", label: "Find an Expert", description: "Vetted market experts and building pros", icon: <Briefcase className="h-4 w-4" /> },
       { href: "/community/events", label: "Events", description: "Workshops and investor meetups", icon: <Calendar className="h-4 w-4" /> },
       { href: "/meetups", label: "Meetups", description: "Local investor meetups with native RSVP", icon: <MapPin className="h-4 w-4" /> },
