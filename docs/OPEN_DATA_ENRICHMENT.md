@@ -106,8 +106,9 @@ full-file CSV export via `shared/streamingCsv.ts`:
   year built + living area + per-row municipal unit) from PVSC's Socrata portal
   thedatazone.ca. Assessed VALUE lives in a separate multi-year dataset
   (`bt58-qu28`, 3.2M rows) joined on `aan` — documented follow-up: load the
-  latest tax-year value into an in-memory `aan`→value map, then set `total_value`
-  on the NS rows.
+  latest tax-year value onto the NS rows via `scripts/enrich-ns-values.ts` (run
+  after the ns-pvsc base import: it stages that year's aan→value pairs in a temp
+  table and sets `total_value` in one UPDATE ... FROM).
 
 ## Follow-ups (workplan §3)
 
