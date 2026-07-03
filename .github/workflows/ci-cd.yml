@@ -91,6 +91,9 @@ jobs:
       - name: Run tests with coverage
         run: npm run idx:test
 
+      - name: Run unit tests (vitest)
+        run: npm run test:unit
+
       - name: Build
         run: npm run build
 
