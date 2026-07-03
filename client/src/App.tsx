@@ -1,5 +1,9 @@
 import { Switch, Route } from "wouter";
-import { lazy, Suspense, useEffect } from "react";
+import { Suspense, useEffect } from "react";
+// Route-level code splitting: every lazy() below is lazyWithRetry, so a
+// stale hashed chunk after a deploy (old tab, new manifest) triggers a
+// one-time full reload instead of a dead navigation. See lib/lazyWithRetry.
+import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
 import { Loader2 } from "lucide-react";
 import { GetAppBanner } from "@/components/GetAppBanner";
 import { SiteFooter } from "@/components/SiteFooter";
