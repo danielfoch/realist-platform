@@ -91,6 +91,8 @@ import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
 import MultiplexFeasibilityPage from "@/pages/MultiplexFeasibilityPage";
 import MultiplexUnderwriterPage from "@/pages/MultiplexUnderwriterPage";
 import PowerTeam from "@/pages/PowerTeam";
+import PowerTeamProfile from "@/pages/PowerTeamProfile";
+import AdminPowerTeam from "@/pages/AdminPowerTeam";
 import OntarioHstRebateCalculator from "@/pages/OntarioHstRebateCalculator";
 import Course from "@/pages/Course";
 import MarketReportBuilder from "@/pages/MarketReportBuilder";
@@ -214,6 +216,7 @@ function Router() {
       <Route path="/tools/multiplex-feasibility" component={MultiplexFeasibilityPage} />
       <Route path="/tools/multiplex-underwriter" component={MultiplexUnderwriterPage} />
       <Route path="/power-team" component={PowerTeam} />
+      <Route path="/power-team/profile" component={PowerTeamProfile} />
       <Route path="/work-with-realist" component={WorkWithRealist} />
       <Route path="/multiplex-investor-fit" component={MultiplexFit} />
       <Route path="/masterclass" component={MultiplexMasterclass} />
@@ -325,6 +328,7 @@ function Router() {
       <Route path="/compare" component={Compare} />
       <Route path="/admin" component={Admin} />
       <Route path="/admin/deal-desk" component={AdminDealDesk} />
+      <Route path="/admin/power-team" component={AdminPowerTeam} />
       <Route path="/admin/events" component={AdminEvents} />
       <Route path="/admin/events/new" component={AdminEventNew} />
       <Route path="/admin/events/:id/edit" component={AdminEventEdit} />
