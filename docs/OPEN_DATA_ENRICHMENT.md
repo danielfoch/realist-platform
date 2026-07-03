@@ -87,6 +87,25 @@ display surface (the API returns the attribution string; the card shows it).
   city publishes it: Vancouver yes; Calgary/Montréal publish no cost column).
 - Adding a city = one adapter object (key, downloadUrl, licence, mapRow).
 
+## Municipal assessment rolls — Winnipeg, Calgary, Edmonton
+
+Single-table Socrata CSV rolls into the SAME `assessment_units` table as the
+Québec roll (source-agnostic lookup). Adapters in `shared/assessmentRolls.ts`
+(columns verified against the live resources 2026-07); importer streams the
+full-file CSV export via `shared/streamingCsv.ts`:
+
+- `npx tsx scripts/import-assessment-rolls.ts all` (or a comma list; re-runnable,
+  upserts by (source, municipality_code, matricule) — schedule ~annually).
+- Coverage: Winnipeg (~245k, year built + living/lot area + assessed value),
+  Calgary (~604k, year + lot size + land-use district + assessed value),
+  Edmonton (~440k, address + assessed value + class; no year/area published).
+- Per-source attribution flows through `getPropertyAssessment` and the Property
+  intelligence card.
+- **Follow-up: Nova Scotia PVSC** — a province-wide open roll exists on
+  thedatazone.ca but is split across datasets joined on `aan` (386k dwelling
+  chars + 3.2M multi-year assessed-value rows); it needs its own streaming-join
+  importer (documented in the recon spec) and is the next roll to add.
+
 ## Follow-ups (workplan §3)
 
 - Render neighbourhood facts into the listing SEO bot fallback + JSON-LD
