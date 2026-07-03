@@ -1,7 +1,8 @@
 /**
  * Municipal assessment-roll importer (Socrata CSV exports) for the enrichment
  * spine. Companion to scripts/import-quebec-roll.ts — same assessment_units
- * table, but for the single-table CSV cities (Winnipeg, Calgary, Edmonton):
+ * table, but for the single-table CSV rolls (Winnipeg, Calgary, Edmonton, and
+ * the province-wide Nova Scotia / PVSC dwelling characteristics):
  *
  *   npx tsx scripts/import-assessment-rolls.ts winnipeg,calgary,edmonton
  *   npx tsx scripts/import-assessment-rolls.ts all
@@ -33,7 +34,7 @@ async function flushBatch(adapter: AssessmentRollAdapter, batch: AssessmentRollR
   // Dedupe within the batch so the multi-row upsert can't collide with itself.
   const unique = [...new Map(batch.map((r) => [r.matricule, r])).values()];
   const values = unique.map(
-    (r) => sql`(${adapter.key}, ${adapter.key}, ${adapter.name}, ${r.rollYear}, ${r.matricule}, ${r.address},
+    (r) => sql`(${adapter.key}, ${adapter.key}, ${r.municipalityName ?? adapter.name}, ${r.rollYear}, ${r.matricule}, ${r.address},
         ${r.looseAddressKey}, ${r.cubf}, ${r.frontageM}, ${r.lotAreaM2}, ${r.storeys}, ${r.yearBuilt},
         ${r.yearBuiltEstimated}, ${r.floorAreaM2}, ${r.dwellings}, ${r.marketRefDate}, ${r.landValue},
         ${r.buildingValue}, ${r.totalValue}, ${r.previousRollValue}, now())`,
