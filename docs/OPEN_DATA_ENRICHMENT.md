@@ -113,6 +113,16 @@ where the assessment roll didn't supply one). Import:
 Follow-up: frontend/depth via an oriented-bounding-box heuristic on the polygon
 (unlocks lot-split feasibility); STATEDAREA already gives area.
 
+## Toronto ward boundaries
+
+25-ward model (open.toronto.ca, already EPSG:4326 GeoJSON) into `municipal_wards`;
+`resolveWard(lat,lng)` uses the same bbox + point-in-polygon pattern as the
+census layer. `GET /api/enrichment` now returns `ward: {city, code, name}` and
+the neighbourhood card shows it. Import: `npx tsx scripts/import-toronto-wards.ts`.
+This is the verified geography the multiplex underwriter needs to replace its
+FSA-inferred sixplex-ward heuristic (By-law 654-2025) — that wiring is the
+follow-up.
+
 ## Follow-ups (workplan §3)
 
 - Render neighbourhood facts into the listing SEO bot fallback + JSON-LD
