@@ -703,6 +703,9 @@ async function ensureAppTables() {
       import("./monthlyWinnerEmail").then(({ scheduleMonthlyWinnerEmail }) => {
         scheduleMonthlyWinnerEmail();
       }).catch((err) => log(`Monthly winner email schedule error: ${err.message}`, "monthly-winner"));
+      import("./podcastDigest").then(({ schedulePodcastDigest }) => {
+        schedulePodcastDigest();
+      }).catch((err) => log(`Podcast digest schedule error: ${err.message}`, "podcast-digest"));
       scheduleNightlyTraining();
       if (!process.env.ANTHROPIC_API_KEY) {
         log("⚠️  ANTHROPIC_API_KEY is not set — Multiplex Underwriter narratives fall back to templates and Ask Realist (/api/ask) is DISABLED. Users are seeing zero live AI.", "startup");

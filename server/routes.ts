@@ -5266,6 +5266,58 @@ export async function registerRoutes(
     }
   });
 
+  // Public opt-in for the weekly podcast digest (its OWN consent, separate from
+  // transactional/deal email). Creates or finds the user, flips
+  // notification_preferences.podcast_digest_enabled on, and records a CASL
+  // email_consent row (source 'podcast_digest'). Deliberately unauthenticated:
+  // a listener can subscribe straight from the podcast hub / episode page.
+  app.post("/api/podcast/subscribe", async (req, res) => {
+    try {
+      const email = typeof req.body?.email === "string" ? req.body.email : "";
+      const firstName = typeof req.body?.firstName === "string" ? req.body.firstName : null;
+      if (!email || !email.includes("@")) {
+        res.status(400).json({ error: "A valid email is required" });
+        return;
+      }
+      const { ensurePodcastSubscriber } = await import("./podcastDigest");
+      const result = await ensurePodcastSubscriber(email, { firstName, source: "podcast_digest" });
+      res.json({
+        success: true,
+        alreadySubscribed: result.alreadySubscribed,
+        message: result.alreadySubscribed
+          ? "You're already on the list — we'll keep the episodes coming."
+          : "You're in. The weekly episode digest is on its way.",
+      });
+    } catch (error: any) {
+      console.error("Error subscribing to podcast digest:", error);
+      res.status(500).json({ error: error?.message || "Failed to subscribe" });
+    }
+  });
+
+  // Admin: preview the podcast digest (no send, no cap consumption).
+  app.get("/api/admin/podcast-digest/preview", isAdmin, async (_req, res) => {
+    try {
+      const { previewPodcastDigest } = await import("./podcastDigest");
+      res.json(await previewPodcastDigest());
+    } catch (error: any) {
+      console.error("Error previewing podcast digest:", error);
+      res.status(500).json({ error: error?.message || "Failed to preview podcast digest" });
+    }
+  });
+
+  // Admin: run the weekly sweep. Defaults to a dry run (dryRun !== false) so a
+  // manual trigger never blasts unless explicitly asked to send.
+  app.post("/api/admin/podcast-digest/sweep", isAdmin, async (req, res) => {
+    try {
+      const { runPodcastDigestSweep } = await import("./podcastDigest");
+      const dryRun = req.body?.dryRun !== false;
+      res.json(await runPodcastDigestSweep({ dryRun }));
+    } catch (error: any) {
+      console.error("Error running podcast digest sweep:", error);
+      res.status(500).json({ error: error?.message || "Failed to run podcast digest sweep" });
+    }
+  });
+
   // ============================================
   // COACHING WAITLIST API ROUTES
   // ============================================

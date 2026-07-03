@@ -12,6 +12,7 @@ import {
   PODCAST_SPOTIFY_URL,
   PODCAST_YOUTUBE_URL,
 } from "@shared/brand";
+import { PodcastDigestSubscribe } from "@/components/PodcastDigestSubscribe";
 
 const BASE_URL = "https://realist.ca";
 
@@ -244,6 +245,10 @@ export default function PodcastEpisodeDetail() {
               </a>
             </Button>
           </div>
+        </section>
+
+        <section className="mb-10">
+          <PodcastDigestSubscribe variant="compact" />
         </section>
 
         {episode.related.length > 0 && (
