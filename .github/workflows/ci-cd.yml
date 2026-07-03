@@ -42,6 +42,9 @@ jobs:
           fi
           echo "No sweep artifacts. Clean."
 
+      - name: Reject committed PII exports
+        run: bash scripts/check-no-pii.sh
+
   build-test:
     needs: hygiene
     runs-on: ubuntu-latest
