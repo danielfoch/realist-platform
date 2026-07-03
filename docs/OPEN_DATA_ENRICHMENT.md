@@ -101,10 +101,13 @@ full-file CSV export via `shared/streamingCsv.ts`:
   Edmonton (~440k, address + assessed value + class; no year/area published).
 - Per-source attribution flows through `getPropertyAssessment` and the Property
   intelligence card.
-- **Follow-up: Nova Scotia PVSC** — a province-wide open roll exists on
-  thedatazone.ca but is split across datasets joined on `aan` (386k dwelling
-  chars + 3.2M multi-year assessed-value rows); it needs its own streaming-join
-  importer (documented in the recon spec) and is the next roll to add.
+- **Nova Scotia (PVSC)** — province-wide, added via the same importer (`ns-pvsc`):
+  residential dwelling characteristics `a859-xvcs` (386k dwellings — address +
+  year built + living area + per-row municipal unit) from PVSC's Socrata portal
+  thedatazone.ca. Assessed VALUE lives in a separate multi-year dataset
+  (`bt58-qu28`, 3.2M rows) joined on `aan` — documented follow-up: load the
+  latest tax-year value into an in-memory `aan`→value map, then set `total_value`
+  on the NS rows.
 
 ## Follow-ups (workplan §3)
 

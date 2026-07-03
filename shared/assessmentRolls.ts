@@ -20,6 +20,8 @@ const SQFT_PER_M2 = 10.7639;
 
 export interface AssessmentRollRecord {
   matricule: string; // per-parcel roll/account number — the upsert key within a city
+  /** Per-row municipality override for province-wide sources (NS). Falls back to the adapter name. */
+  municipalityName?: string | null;
   address: string | null;
   looseAddressKey: string | null;
   rollYear: number | null;
@@ -179,6 +181,52 @@ export const ASSESSMENT_ROLL_ADAPTERS: AssessmentRollAdapter[] = [
         totalValue: money(row.assessed_value),
         previousRollValue: null,
       });
+    },
+  },
+  {
+    // Province-wide: PVSC's Socrata portal (thedatazone.ca), NOT data.novascotia.ca.
+    // Residential dwelling characteristics (a859-xvcs): address + year built +
+    // living area for ~386k NS dwellings. Assessed value lives in a separate
+    // multi-year dataset (bt58-qu28) joined on `aan` — a documented follow-up.
+    key: "ns-pvsc",
+    name: "Nova Scotia",
+    province: "Nova Scotia",
+    downloadUrl: "https://www.thedatazone.ca/api/views/a859-xvcs/rows.csv?accessType=DOWNLOAD",
+    licence: "Open Data and Information Government Licence – PVSC and Participating Municipalities",
+    attribution:
+      "Contains information from Property Valuation Services Corporation (PVSC), licensed under the Open Data and Information Government Licence – PVSC and Participating Municipalities.",
+    headers: { "User-Agent": "Mozilla/5.0 (realist.ca open-data importer; hello@realist.ca)" },
+    mapRow(row) {
+      const matricule = str(row.aan); // Assessment Account Number — province-unique key
+      if (!matricule) return null;
+      const address = [
+        str(row.address_num),
+        str(row.address_direction),
+        str(row.address_street),
+        str(row.address_suffix),
+      ]
+        .filter(Boolean)
+        .join(" ") || null;
+      return {
+        ...withAddress(address, {
+          matricule,
+          rollYear: null,
+          cubf: str(row.style),
+          frontageM: null,
+          lotAreaM2: null, // lot size is in a separate PVSC dataset (wg22-3ric)
+          storeys: null,
+          yearBuilt: yearBuilt(row.year_built),
+          yearBuiltEstimated: false,
+          floorAreaM2: sqftToM2(row.square_foot_living_area),
+          dwellings: int(row.living_units),
+          marketRefDate: null,
+          landValue: null,
+          buildingValue: null,
+          totalValue: null, // assessed value is in bt58-qu28 (aan-joined) — follow-up
+          previousRollValue: null,
+        }),
+        municipalityName: str(row.municipal_unit), // per-row: HRM, CBRM, etc.
+      };
     },
   },
 ];

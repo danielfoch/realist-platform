@@ -85,16 +85,45 @@ describe("Edmonton adapter", () => {
   });
 });
 
+describe("Nova Scotia (PVSC) adapter", () => {
+  // Verbatim from the live PVSC resource a859-xvcs on thedatazone.ca (2026-07).
+  it("assembles the address from parts, keeps the aan key and per-row municipality", () => {
+    const r = adapter("ns-pvsc").mapRow({
+      municipal_unit: "CAPE BRETON REGIONAL MUNICIPALITY (CBRM)",
+      aan: "00000485",
+      address_num: "10",
+      address_street: "CLARKE",
+      address_suffix: "AVE",
+      address_city: "COXHEATH",
+      living_units: "1",
+      year_built: "1980",
+      square_foot_living_area: "2066",
+      style: "1 Storey",
+    })!;
+    expect(r.matricule).toBe("00000485"); // aan keeps its leading zeros (string, not int)
+    expect(r.municipalityName).toBe("CAPE BRETON REGIONAL MUNICIPALITY (CBRM)");
+    expect(r.address).toBe("10 CLARKE AVE");
+    expect(r.looseAddressKey).toBe("10 clarke ave");
+    expect(r.yearBuilt).toBe(1980);
+    expect(r.floorAreaM2).toBeCloseTo(192, 0); // 2066 sqft
+    expect(r.dwellings).toBe(1);
+    expect(r.totalValue).toBeNull(); // assessed value is aan-joined from bt58 (follow-up)
+    expect(r.cubf).toBe("1 Storey");
+  });
+});
+
 describe("shared behaviour", () => {
   it("returns null when the roll/account id is missing", () => {
     expect(adapter("winnipeg").mapRow({ full_address: "1 Main St" })).toBeNull();
     expect(adapter("calgary").mapRow({ address: "1 Main St" })).toBeNull();
     expect(adapter("edmonton").mapRow({ house_number: "1", street_name: "MAIN ST" })).toBeNull();
+    expect(adapter("ns-pvsc").mapRow({ address_num: "1", address_street: "MAIN" })).toBeNull();
   });
 
   it("exposes an attribution string per source", () => {
     expect(ASSESSMENT_ROLL_ATTRIBUTION.winnipeg).toMatch(/Winnipeg/);
     expect(ASSESSMENT_ROLL_ATTRIBUTION.calgary).toMatch(/Calgary/);
     expect(ASSESSMENT_ROLL_ATTRIBUTION.edmonton).toMatch(/Edmonton/);
+    expect(ASSESSMENT_ROLL_ATTRIBUTION["ns-pvsc"]).toMatch(/PVSC/);
   });
 });
