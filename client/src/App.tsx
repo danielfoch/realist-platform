@@ -1,7 +1,8 @@
 import { Switch, Route } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { GetAppBanner } from "@/components/GetAppBanner";
 import { SiteFooter } from "@/components/SiteFooter";
-import { useEffect } from "react";
 import { initNativePush } from "@/lib/capacitorPush";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -10,163 +11,194 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme";
 import { Redirect } from "@/components/Redirect";
 
-// Pages
-import MapHomepage from "@/pages/MapHomepage";
-import Home from "@/pages/Home";
+// Eager pages — highest-traffic entry points stay in the main chunk so the
+// most common landings render with zero extra network round-trips:
+// - InvestorStart: "/" homepage
+// - Events / EventDetail / EventSuccess: event marketing + ticket purchase
+//   funnel (incl. the post-Stripe success redirect, which must never flash a
+//   loader after payment)
+// - Login / Signup: primary auth entries
+// - NotFound: tiny, avoids a spinner flash on bad URLs
 import InvestorStart from "@/pages/InvestorStart";
-import About from "@/pages/About";
 import Events from "@/pages/Events";
-import Notebook from "@/pages/Notebook";
-import NotebookPrint from "@/pages/NotebookPrint";
-import DanielFoch from "@/pages/DanielFoch";
-import NickHill from "@/pages/NickHill";
-import UnpackingMultiplexesToronto from "@/pages/UnpackingMultiplexesToronto";
-import Blog from "@/pages/Blog";
-import BlogPost from "@/pages/BlogPost";
-import Shop from "@/pages/Shop";
-import Compare from "@/pages/Compare";
-import Podcast from "@/pages/Podcast";
-import PodcastEpisodeDetail from "@/pages/PodcastEpisodeDetail";
-import Admin from "@/pages/Admin";
-import AdminDealDesk from "@/pages/AdminDealDesk";
-import AdminEvents from "@/pages/AdminEvents";
-import AdminEventRoster from "@/pages/AdminEventRoster";
-import AdminEventNew from "@/pages/AdminEventNew";
-import AdminEventEdit from "@/pages/AdminEventEdit";
 import EventDetail from "@/pages/EventDetail";
-import Meetups from "@/pages/Meetups";
 import EventSuccess from "@/pages/EventSuccess";
-import Privacy from "@/pages/Privacy";
-import Terms from "@/pages/Terms";
-import InvestorPortal from "@/pages/InvestorPortal";
-import PartnerPortal from "@/pages/PartnerPortal";
-import ProfessionalDashboard from "@/pages/ProfessionalDashboard";
-import Signup from "@/pages/Signup";
 import Login from "@/pages/Login";
-import CreateAccount from "@/pages/CreateAccount";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import SetPassword from "@/pages/SetPassword";
-import VerifyPhone from "@/pages/VerifyPhone";
-import BuyBox from "@/pages/BuyBox";
-import BuyBoxAgreement from "@/pages/BuyBoxAgreement";
-import BuyBoxCheckout from "@/pages/BuyBoxCheckout";
-import BuyBoxConfirmation from "@/pages/BuyBoxConfirmation";
-import RealtorBuyBoxes from "@/pages/RealtorBuyBoxes";
-import CoInvesting from "@/pages/CoInvesting";
-import CoInvestingOpportunities from "@/pages/CoInvestingOpportunities";
-import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
-import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
-import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
-import DealDesk from "@/pages/DealDesk";
-import Offer from "@/pages/Offer";
-import CrmHome from "@/pages/CrmHome";
-import MeetupNew from "@/pages/MeetupNew";
-import SponsorPackagePage from "@/pages/SponsorPackagePage";
-import AdminSponsors from "@/pages/AdminSponsors";
-import CrmContact from "@/pages/CrmContact";
-import TrueCost from "@/pages/TrueCost";
-import RentVsBuy from "@/pages/RentVsBuy";
-import RentToOwn from "@/pages/RentToOwn";
-import WillItPlex from "@/pages/WillItPlex";
-import Leaderboard from "@/pages/Leaderboard";
-import FullLeaderboard from "@/pages/FullLeaderboard";
-import Premium from "@/pages/Premium";
-import PremiumBranding from "@/pages/PremiumBranding";
-import CapRates from "@/pages/CapRates";
-import ListingIntelligence from "@/pages/ListingIntelligence";
-import ListingDetailPage from "@/pages/ListingDetailPage";
-import Experts from "@/pages/Experts";
-import ExpertProfile from "@/pages/ExpertProfile";
-import JoinExperts from "@/pages/JoinExperts";
-import RealtorNetwork from "@/pages/RealtorNetwork";
-import MarketReport from "@/pages/MarketReport";
-import MortgageRates from "@/pages/MortgageRates";
-import FixedVsVariable from "@/pages/FixedVsVariable";
-import LandClaimScreener from "@/pages/LandClaimScreener";
-import DistressDeals from "@/pages/DistressDeals";
-import DistressReport from "@/pages/DistressReport";
-import MultiplexFit from "@/pages/MultiplexFit";
-import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
-import MultiplexFeasibilityPage from "@/pages/MultiplexFeasibilityPage";
-import MultiplexUnderwriterPage from "@/pages/MultiplexUnderwriterPage";
-import PowerTeam from "@/pages/PowerTeam";
-import OntarioHstRebateCalculator from "@/pages/OntarioHstRebateCalculator";
-import Course from "@/pages/Course";
-import MarketReportBuilder from "@/pages/MarketReportBuilder";
-import BuildingPermitsReport from "@/pages/BuildingPermitsReport";
-import ProductivityGapReport from "@/pages/ProductivityGapReport";
-import NewConstructionCanadaReport from "@/pages/NewConstructionCanadaReport";
-import GtaPreconPricingReport from "@/pages/GtaPreconPricingReport";
-import CpiInflationReport from "@/pages/CpiInflationReport";
-import CreditSpreadEconomyReport from "@/pages/CreditSpreadEconomyReport";
-import SpringEconomicUpdate2026Report from "@/pages/SpringEconomicUpdate2026Report";
-import PreconResale1990sReport from "@/pages/PreconResale1990sReport";
-import BankOfCanadaApril2026Report, { BankOfCanadaApril2026ReportEmbed } from "@/pages/BankOfCanadaApril2026Report";
-import LabourForceSurveyApril2026Report from "@/pages/LabourForceSurveyApril2026Report";
-import LabourForceSurveyMay2026Report from "@/pages/LabourForceSurveyMay2026Report";
-import StatCanGdpQ12026Report from "@/pages/StatCanGdpQ12026Report";
-import HousingCorrectionLockedOut2026Report from "@/pages/HousingCorrectionLockedOut2026Report";
-import LabourMortgageStressApril2026Report from "@/pages/LabourMortgageStressApril2026Report";
-import MonthlyMarketReportMay2026 from "@/pages/MonthlyMarketReportMay2026";
-import InterprovincialMigrationCanada2026Report from "@/pages/InterprovincialMigrationCanada2026Report";
-import HomeBenchReport from "@/pages/HomeBenchReport";
-import SeoProjectDetail from "@/pages/SeoProjectDetail";
-import {
-  TorontoHousingMarketPage,
-  TorontoCondoPricesDroppingPage,
-  BiggestPriceDropsGtaPage,
-  CanadaHousingMarketPage,
-} from "@/pages/seo/MarketPages";
-import JoinRealtors from "@/pages/JoinRealtors";
-import JoinMortgageBrokers from "@/pages/JoinMortgageBrokers";
-import PartnerOnboarding from "@/pages/PartnerOnboarding";
-import JoinLenders from "@/pages/JoinLenders";
-import MyPerformance from "@/pages/MyPerformance";
-import Stats from "@/pages/Stats";
-import UsListings from "@/pages/UsListings";
-import PublicProfile from "@/pages/PublicProfile";
-import WorkWithRealist from "@/pages/WorkWithRealist";
-import PitchDeck from "@/pages/PitchDeck";
-import UnderwritingShare from "@/pages/UnderwritingShare";
-import AccountApiKeys from "@/pages/AccountApiKeys";
-import ThankYouVancouver from "@/pages/ThankYouVancouver";
-import EdmontonEvent from "@/pages/EdmontonEvent";
+import Signup from "@/pages/Signup";
 import NotFound from "@/pages/not-found";
 
+// Lazy pages — code-split into per-route chunks, fetched on first navigation.
+const MapHomepage = lazy(() => import("@/pages/MapHomepage"));
+const Home = lazy(() => import("@/pages/Home"));
+const About = lazy(() => import("@/pages/About"));
+const Notebook = lazy(() => import("@/pages/Notebook"));
+const NotebookPrint = lazy(() => import("@/pages/NotebookPrint"));
+const DanielFoch = lazy(() => import("@/pages/DanielFoch"));
+const NickHill = lazy(() => import("@/pages/NickHill"));
+const UnpackingMultiplexesToronto = lazy(() => import("@/pages/UnpackingMultiplexesToronto"));
+const Blog = lazy(() => import("@/pages/Blog"));
+const BlogPost = lazy(() => import("@/pages/BlogPost"));
+const Shop = lazy(() => import("@/pages/Shop"));
+const Compare = lazy(() => import("@/pages/Compare"));
+const Podcast = lazy(() => import("@/pages/Podcast"));
+const PodcastEpisodeDetail = lazy(() => import("@/pages/PodcastEpisodeDetail"));
+const Admin = lazy(() => import("@/pages/Admin"));
+const AdminDealDesk = lazy(() => import("@/pages/AdminDealDesk"));
+const AdminEvents = lazy(() => import("@/pages/AdminEvents"));
+const AdminEventRoster = lazy(() => import("@/pages/AdminEventRoster"));
+const AdminEventNew = lazy(() => import("@/pages/AdminEventNew"));
+const AdminEventEdit = lazy(() => import("@/pages/AdminEventEdit"));
+const Meetups = lazy(() => import("@/pages/Meetups"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const Terms = lazy(() => import("@/pages/Terms"));
+const InvestorPortal = lazy(() => import("@/pages/InvestorPortal"));
+const PartnerPortal = lazy(() => import("@/pages/PartnerPortal"));
+const ProfessionalDashboard = lazy(() => import("@/pages/ProfessionalDashboard"));
+const CreateAccount = lazy(() => import("@/pages/CreateAccount"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const SetPassword = lazy(() => import("@/pages/SetPassword"));
+const VerifyPhone = lazy(() => import("@/pages/VerifyPhone"));
+const BuyBox = lazy(() => import("@/pages/BuyBox"));
+const BuyBoxAgreement = lazy(() => import("@/pages/BuyBoxAgreement"));
+const BuyBoxCheckout = lazy(() => import("@/pages/BuyBoxCheckout"));
+const BuyBoxConfirmation = lazy(() => import("@/pages/BuyBoxConfirmation"));
+const RealtorBuyBoxes = lazy(() => import("@/pages/RealtorBuyBoxes"));
+const CoInvesting = lazy(() => import("@/pages/CoInvesting"));
+const CoInvestingOpportunities = lazy(() => import("@/pages/CoInvestingOpportunities"));
+const CoInvestingChecklist = lazy(() => import("@/pages/CoInvestingChecklist"));
+const CoInvestingGroupNew = lazy(() => import("@/pages/CoInvestingGroupNew"));
+const CoInvestingGroupDetail = lazy(() => import("@/pages/CoInvestingGroupDetail"));
+const DealDesk = lazy(() => import("@/pages/DealDesk"));
+const Offer = lazy(() => import("@/pages/Offer"));
+const CrmHome = lazy(() => import("@/pages/CrmHome"));
+const MeetupNew = lazy(() => import("@/pages/MeetupNew"));
+const SponsorPackagePage = lazy(() => import("@/pages/SponsorPackagePage"));
+const AdminSponsors = lazy(() => import("@/pages/AdminSponsors"));
+const CrmContact = lazy(() => import("@/pages/CrmContact"));
+const TrueCost = lazy(() => import("@/pages/TrueCost"));
+const RentVsBuy = lazy(() => import("@/pages/RentVsBuy"));
+const RentToOwn = lazy(() => import("@/pages/RentToOwn"));
+const WillItPlex = lazy(() => import("@/pages/WillItPlex"));
+const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
+const FullLeaderboard = lazy(() => import("@/pages/FullLeaderboard"));
+const Premium = lazy(() => import("@/pages/Premium"));
+const PremiumBranding = lazy(() => import("@/pages/PremiumBranding"));
+const CapRates = lazy(() => import("@/pages/CapRates"));
+const ListingIntelligence = lazy(() => import("@/pages/ListingIntelligence"));
+const ListingDetailPage = lazy(() => import("@/pages/ListingDetailPage"));
+const Experts = lazy(() => import("@/pages/Experts"));
+const ExpertProfile = lazy(() => import("@/pages/ExpertProfile"));
+const JoinExperts = lazy(() => import("@/pages/JoinExperts"));
+const RealtorNetwork = lazy(() => import("@/pages/RealtorNetwork"));
+const MarketReport = lazy(() => import("@/pages/MarketReport"));
+const MortgageRates = lazy(() => import("@/pages/MortgageRates"));
+const FixedVsVariable = lazy(() => import("@/pages/FixedVsVariable"));
+const LandClaimScreener = lazy(() => import("@/pages/LandClaimScreener"));
+const DistressDeals = lazy(() => import("@/pages/DistressDeals"));
+const DistressReport = lazy(() => import("@/pages/DistressReport"));
+const MultiplexFit = lazy(() => import("@/pages/MultiplexFit"));
+const MultiplexMasterclass = lazy(() => import("@/pages/MultiplexMasterclass"));
+const MultiplexFeasibilityPage = lazy(() => import("@/pages/MultiplexFeasibilityPage"));
+const MultiplexUnderwriterPage = lazy(() => import("@/pages/MultiplexUnderwriterPage"));
+const PowerTeam = lazy(() => import("@/pages/PowerTeam"));
+const OntarioHstRebateCalculator = lazy(() => import("@/pages/OntarioHstRebateCalculator"));
+const Course = lazy(() => import("@/pages/Course"));
+const MarketReportBuilder = lazy(() => import("@/pages/MarketReportBuilder"));
+const BuildingPermitsReport = lazy(() => import("@/pages/BuildingPermitsReport"));
+const ProductivityGapReport = lazy(() => import("@/pages/ProductivityGapReport"));
+const NewConstructionCanadaReport = lazy(() => import("@/pages/NewConstructionCanadaReport"));
+const GtaPreconPricingReport = lazy(() => import("@/pages/GtaPreconPricingReport"));
+const CpiInflationReport = lazy(() => import("@/pages/CpiInflationReport"));
+const CreditSpreadEconomyReport = lazy(() => import("@/pages/CreditSpreadEconomyReport"));
+const SpringEconomicUpdate2026Report = lazy(() => import("@/pages/SpringEconomicUpdate2026Report"));
+const PreconResale1990sReport = lazy(() => import("@/pages/PreconResale1990sReport"));
+const BankOfCanadaApril2026Report = lazy(() => import("@/pages/BankOfCanadaApril2026Report"));
+const BankOfCanadaApril2026ReportEmbed = lazy(() =>
+  import("@/pages/BankOfCanadaApril2026Report").then((m) => ({
+    default: m.BankOfCanadaApril2026ReportEmbed,
+  })),
+);
+const LabourForceSurveyApril2026Report = lazy(() => import("@/pages/LabourForceSurveyApril2026Report"));
+const LabourForceSurveyMay2026Report = lazy(() => import("@/pages/LabourForceSurveyMay2026Report"));
+const StatCanGdpQ12026Report = lazy(() => import("@/pages/StatCanGdpQ12026Report"));
+const HousingCorrectionLockedOut2026Report = lazy(() => import("@/pages/HousingCorrectionLockedOut2026Report"));
+const LabourMortgageStressApril2026Report = lazy(() => import("@/pages/LabourMortgageStressApril2026Report"));
+const MonthlyMarketReportMay2026 = lazy(() => import("@/pages/MonthlyMarketReportMay2026"));
+const InterprovincialMigrationCanada2026Report = lazy(() => import("@/pages/InterprovincialMigrationCanada2026Report"));
+const HomeBenchReport = lazy(() => import("@/pages/HomeBenchReport"));
+const SeoProjectDetail = lazy(() => import("@/pages/SeoProjectDetail"));
+const TorontoHousingMarketPage = lazy(() =>
+  import("@/pages/seo/MarketPages").then((m) => ({ default: m.TorontoHousingMarketPage })),
+);
+const TorontoCondoPricesDroppingPage = lazy(() =>
+  import("@/pages/seo/MarketPages").then((m) => ({ default: m.TorontoCondoPricesDroppingPage })),
+);
+const BiggestPriceDropsGtaPage = lazy(() =>
+  import("@/pages/seo/MarketPages").then((m) => ({ default: m.BiggestPriceDropsGtaPage })),
+);
+const CanadaHousingMarketPage = lazy(() =>
+  import("@/pages/seo/MarketPages").then((m) => ({ default: m.CanadaHousingMarketPage })),
+);
+const JoinRealtors = lazy(() => import("@/pages/JoinRealtors"));
+const JoinMortgageBrokers = lazy(() => import("@/pages/JoinMortgageBrokers"));
+const PartnerOnboarding = lazy(() => import("@/pages/PartnerOnboarding"));
+const JoinLenders = lazy(() => import("@/pages/JoinLenders"));
+const MyPerformance = lazy(() => import("@/pages/MyPerformance"));
+const Stats = lazy(() => import("@/pages/Stats"));
+const UsListings = lazy(() => import("@/pages/UsListings"));
+const PublicProfile = lazy(() => import("@/pages/PublicProfile"));
+const WorkWithRealist = lazy(() => import("@/pages/WorkWithRealist"));
+const PitchDeck = lazy(() => import("@/pages/PitchDeck"));
+const UnderwritingShare = lazy(() => import("@/pages/UnderwritingShare"));
+const AccountApiKeys = lazy(() => import("@/pages/AccountApiKeys"));
+const ThankYouVancouver = lazy(() => import("@/pages/ThankYouVancouver"));
+const EdmontonEvent = lazy(() => import("@/pages/EdmontonEvent"));
+
 // Hub Pages
-import ToolsHub from "@/pages/ToolsHub";
-import CommunityHub from "@/pages/CommunityHub";
-import InsightsHub from "@/pages/InsightsHub";
-import GuidesHub from "@/pages/GuidesHub";
-import EncyclopediaIndex from "@/pages/EncyclopediaIndex";
-import GuidePage from "@/pages/GuidePage";
-import EncyclopediaDetail from "@/pages/EncyclopediaDetail";
-import CapitalStackCanadaGuide from "@/pages/CapitalStackCanadaGuide";
-import ABCLendersCanadaGuide from "@/pages/ABCLendersCanadaGuide";
-import ReportsHub from "@/pages/ReportsHub";
-import ReportPage from "@/pages/ReportPage";
-import IrccImmigrationDashboardReport from "@/pages/IrccImmigrationDashboardReport";
-import RealBenchReport from "@/pages/RealBenchReport";
-import MarketsHub from "@/pages/MarketsHub";
-import ProgrammaticMarketPage from "@/pages/ProgrammaticMarketPage";
-import StrategiesHub from "@/pages/StrategiesHub";
-import ProgrammaticStrategyPage from "@/pages/ProgrammaticStrategyPage";
-import NetworkHub from "@/pages/NetworkHub";
-import ContactPage from "@/pages/ContactPage";
-import InvestorOperatingSystem from "@/pages/InvestorOperatingSystem";
-import Watchlist from "@/pages/Watchlist";
+const ToolsHub = lazy(() => import("@/pages/ToolsHub"));
+const CommunityHub = lazy(() => import("@/pages/CommunityHub"));
+const InsightsHub = lazy(() => import("@/pages/InsightsHub"));
+const GuidesHub = lazy(() => import("@/pages/GuidesHub"));
+const EncyclopediaIndex = lazy(() => import("@/pages/EncyclopediaIndex"));
+const GuidePage = lazy(() => import("@/pages/GuidePage"));
+const EncyclopediaDetail = lazy(() => import("@/pages/EncyclopediaDetail"));
+const CapitalStackCanadaGuide = lazy(() => import("@/pages/CapitalStackCanadaGuide"));
+const ABCLendersCanadaGuide = lazy(() => import("@/pages/ABCLendersCanadaGuide"));
+const ReportsHub = lazy(() => import("@/pages/ReportsHub"));
+const ReportPage = lazy(() => import("@/pages/ReportPage"));
+const IrccImmigrationDashboardReport = lazy(() => import("@/pages/IrccImmigrationDashboardReport"));
+const RealBenchReport = lazy(() => import("@/pages/RealBenchReport"));
+const MarketsHub = lazy(() => import("@/pages/MarketsHub"));
+const ProgrammaticMarketPage = lazy(() => import("@/pages/ProgrammaticMarketPage"));
+const StrategiesHub = lazy(() => import("@/pages/StrategiesHub"));
+const ProgrammaticStrategyPage = lazy(() => import("@/pages/ProgrammaticStrategyPage"));
+const NetworkHub = lazy(() => import("@/pages/NetworkHub"));
+const ContactPage = lazy(() => import("@/pages/ContactPage"));
+const InvestorOperatingSystem = lazy(() => import("@/pages/InvestorOperatingSystem"));
+const Watchlist = lazy(() => import("@/pages/Watchlist"));
+
+// Matches the full-page loading state used across pages
+// (e.g. CoInvestingGroupDetail, TrueCost).
+function PageFallback() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 function Router() {
   return (
     <>
     <GetAppBanner />
+    <Suspense fallback={<PageFallback />}>
     <Switch>
       {/* Main entry - simplified investor homepage */}
       <Route path="/" component={InvestorStart} />
       <Route path="/discover" component={MapHomepage} />
       <Route path="/deal-analyzer">{() => <Redirect to="/tools/analyzer" />}</Route>
-      
+
       {/* New Tools routes */}
       <Route path="/tools" component={ToolsHub} />
       <Route path="/tools/analyzer">{() => <Home />}</Route>
@@ -256,7 +288,7 @@ function Router() {
       <Route path="/projects/:slug" component={SeoProjectDetail} />
       <Route path="/premium" component={Premium} />
       <Route path="/premium/branding" component={PremiumBranding} />
-      
+
       {/* New Community routes */}
       <Route path="/community" component={CommunityHub} />
       <Route path="/community/events" component={Events} />
@@ -264,7 +296,7 @@ function Router() {
       <Route path="/community/meetups">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/community/events/unpacking-multiplexes-toronto" component={UnpackingMultiplexesToronto} />
       <Route path="/community/network" component={NetworkHub} />
-      
+
       {/* New Insights routes */}
       <Route path="/insights" component={InsightsHub} />
       <Route path="/insights/podcast" component={Podcast} />
@@ -285,7 +317,7 @@ function Router() {
       <Route path="/markets/:city" component={ProgrammaticMarketPage} />
       <Route path="/investing" component={StrategiesHub} />
       <Route path="/investing/:strategy" component={ProgrammaticStrategyPage} />
-      
+
       {/* New About routes */}
       <Route path="/about" component={About} />
       <Route path="/about/team">{() => <Redirect to="/about" />}</Route>
@@ -297,7 +329,7 @@ function Router() {
       {/* Event-day landing — Realist Multiplex Edmonton (QR target; /yeg is the stage-friendly alias) */}
       <Route path="/edmonton" component={EdmontonEvent} />
       <Route path="/yeg" component={EdmontonEvent} />
-      
+
       {/* Redirects from old routes to new routes */}
       <Route path="/buybox">{() => <Redirect to="/tools/buybox" />}</Route>
       <Route path="/buybox/agreement">{() => <Redirect to="/tools/buybox/agreement" />}</Route>
@@ -317,7 +349,7 @@ function Router() {
       <Route path="/blog">{() => <Redirect to="/insights/blog" />}</Route>
       <Route path="/shop">{() => <Redirect to="/about/shop" />}</Route>
       <Route path="/dashboard">{() => <Redirect to="/my-performance" />}</Route>
-      
+
       {/* Existing routes that remain unchanged */}
       <Route path="/compare" component={Compare} />
       <Route path="/admin" component={Admin} />
@@ -347,10 +379,11 @@ function Router() {
       <Route path="/join/realtors" component={JoinRealtors} />
       <Route path="/join/mortgage-brokers" component={JoinMortgageBrokers} />
       <Route path="/join/lenders" component={JoinLenders} />
-      
+
       {/* 404 */}
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
     <SiteFooter />
     </>
   );
