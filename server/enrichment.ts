@@ -32,6 +32,7 @@ import {
   type NeighbourhoodStats,
 } from "@shared/censusProfile";
 import { looseKeyFromListingAddress, QUEBEC_ROLL_ATTRIBUTION } from "@shared/quebecRoll";
+import { ASSESSMENT_ROLL_ATTRIBUTION } from "@shared/assessmentRolls";
 import { PERMIT_CITY_ADAPTERS, permitLooseKey } from "@shared/buildingPermits";
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ export async function getPropertyAssessment(
   const key = looseKeyFromListingAddress(address);
   if (!key) return null;
   const rows = await db.execute(sql`
-    SELECT address, municipality_name, roll_year, cubf, year_built, year_built_estimated,
+    SELECT source, address, municipality_name, roll_year, cubf, year_built, year_built_estimated,
            storeys, floor_area_m2, lot_area_m2, frontage_m, dwellings, market_ref_date,
            land_value, building_value, total_value, previous_roll_value
     FROM assessment_units
@@ -276,7 +277,7 @@ export async function getPropertyAssessment(
     buildingValue: n(r.building_value),
     totalValue: n(r.total_value),
     previousRollValue: n(r.previous_roll_value),
-    attribution: QUEBEC_ROLL_ATTRIBUTION,
+    attribution: ASSESSMENT_ROLL_ATTRIBUTION[String(r.source)] ?? QUEBEC_ROLL_ATTRIBUTION,
   };
 }
 
