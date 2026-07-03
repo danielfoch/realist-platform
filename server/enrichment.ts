@@ -166,6 +166,22 @@ export async function ensureEnrichmentTables(): Promise<void> {
     CREATE INDEX IF NOT EXISTS development_applications_latlng_idx
     ON development_applications (lat, lng)
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS toronto_parcels (
+      parcel_id   text PRIMARY KEY,
+      lot_area_m2 double precision,
+      geojson     jsonb NOT NULL,
+      min_lng     double precision NOT NULL,
+      min_lat     double precision NOT NULL,
+      max_lng     double precision NOT NULL,
+      max_lat     double precision NOT NULL,
+      imported_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS toronto_parcels_bbox_idx
+    ON toronto_parcels (min_lat, max_lat, min_lng, max_lng)
+  `);
 }
 
 /** Upsert a layer's registry row after an import (called by import scripts). */
@@ -419,6 +435,29 @@ export async function getPermitActivity(
   return { atAddress, nearby, attribution };
 }
 
+// ─── Parcel resolution ───────────────────────────────────────────────────────
+
+export interface ParcelMatch {
+  parcelId: string;
+  lotAreaM2: number | null;
+}
+
+/** Resolve a point to its Toronto parcel (bbox prefilter + point-in-polygon). */
+export async function resolveParcel(lat: number, lng: number): Promise<ParcelMatch | null> {
+  const candidates = await db.execute(sql`
+    SELECT parcel_id, lot_area_m2, geojson
+    FROM toronto_parcels
+    WHERE min_lat <= ${lat} AND max_lat >= ${lat} AND min_lng <= ${lng} AND max_lng >= ${lng}
+    LIMIT 25
+  `);
+  for (const row of candidates.rows as Array<{ parcel_id: string; lot_area_m2: number | null; geojson: AreaGeometry }>) {
+    if (pointInGeometry(lng, lat, row.geojson)) {
+      return { parcelId: row.parcel_id, lotAreaM2: row.lot_area_m2 === null ? null : Number(row.lot_area_m2) };
+    }
+  }
+  return null;
+}
+
 // ─── Development activity ─────────────────────────────────────────────────────
 
 const DEV_RADIUS_M = 800;
@@ -503,13 +542,14 @@ export function registerEnrichmentRoutes(app: Express): void {
       return res.status(400).json({ success: false, error: "lat+lng or address query params are required" });
     }
     try {
-      const [neighbourhood, property, permits, development] = await Promise.all([
+      const [neighbourhood, property, permits, development, parcel] = await Promise.all([
         hasPoint ? getNeighbourhoodStats(lat, lng) : Promise.resolve(null),
         address ? getPropertyAssessment(address, city || null) : Promise.resolve(null),
         getPermitActivity(address || null, city || null, hasPoint ? lat : null, hasPoint ? lng : null),
         hasPoint ? getDevelopmentActivity(lat, lng) : Promise.resolve(null),
+        hasPoint ? resolveParcel(lat, lng) : Promise.resolve(null),
       ]);
-      return res.json({ success: true, data: { neighbourhood, property, permits, development } });
+      return res.json({ success: true, data: { neighbourhood, property, permits, development, parcel } });
     } catch (err: any) {
       console.error("[enrichment] lookup failed:", err?.message ?? err);
       return res.status(500).json({ success: false, error: "Enrichment lookup failed" });
