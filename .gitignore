@@ -8,3 +8,8 @@ npm-debug.log*
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Customer data exports — never commit (PII).
+# Legitimate CSV fixtures live under data/, server/data/, attached_assets/ and are unaffected.
+*_export.csv
+/*.csv
