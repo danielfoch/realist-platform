@@ -158,6 +158,7 @@ import StrategiesHub from "@/pages/StrategiesHub";
 import ProgrammaticStrategyPage from "@/pages/ProgrammaticStrategyPage";
 import NetworkHub from "@/pages/NetworkHub";
 import ContactPage from "@/pages/ContactPage";
+import BookACall from "@/pages/BookACall";
 import InvestorOperatingSystem from "@/pages/InvestorOperatingSystem";
 import Watchlist from "@/pages/Watchlist";
 
@@ -298,6 +299,7 @@ function Router() {
       <Route path="/about/programs">{() => <Redirect to="/about" />}</Route>
       <Route path="/about/shop" component={Shop} />
       <Route path="/about/contact" component={ContactPage} />
+      <Route path="/book-a-call" component={BookACall} />
       <Route path="/thank-you/vancouver-multiplex-2026" component={ThankYouVancouver} />
 
       {/* Event-day landing — Realist Multiplex Edmonton (QR target; /yeg is the stage-friendly alias) */}
