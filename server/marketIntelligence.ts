@@ -66,8 +66,14 @@ export async function getLiveLeaderboardEntries(input: {
     totalDealsAnalyzed: sql`total_deals_analyzed`,
     monthlyDealsAnalyzed: sql`monthly_deals_analyzed`,
     confidence: sql`average_confidence_score`,
-    oracle: sql`market_oracle_score`,
+    // Oracle scoring is not computed in the live rollup yet (the ranked SELECT
+    // emits NULL::real AS market_oracle_score). A window ORDER BY cannot
+    // reference that output alias, so sort by the same constant directly.
+    oracle: sql`NULL::real`,
     yield: sql`user_underwritten_avg_yield`,
+    eligible: sql`eligible_analyses_count`,
+    excluded: sql`excluded_analyses_count`,
+    name: sql`COALESCE(u.first_name || ' ' || u.last_name, u.first_name, u.email, 'Anonymous')`,
   };
   const orderBy = sortExpressions[input.sort || "score"] || sortExpressions.score;
 

@@ -77,7 +77,7 @@ export default function BuyBoxCheckout() {
       sessionStorage.removeItem("buybox_polygon");
       sessionStorage.removeItem("buybox_centroid");
       sessionStorage.removeItem("buybox_mandate");
-      toast({ title: "Order submitted!", description: "We'll start processing your outreach campaigns shortly." });
+      toast({ title: "Request received", description: "We'll confirm scope with you before anything runs." });
     },
     onError: (error: any) => {
       toast({
@@ -118,12 +118,12 @@ export default function BuyBoxCheckout() {
           <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
             <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold mb-2" data-testid="text-success-heading">Order Submitted!</h2>
+          <h2 className="text-2xl font-bold mb-2" data-testid="text-success-heading">Campaign request received</h2>
           <p className="text-muted-foreground mb-2">
-            Your BuyBox has been created and your outreach services are being queued.
+            Your BuyBox has been created and your campaign request is with our team.
           </p>
           <p className="text-sm text-muted-foreground mb-8">
-            We'll process your campaigns and notify you as responses come in. You can track your BuyBox status from your investor dashboard.
+            We confirm scope and pricing with you before any payment is processed or any outreach runs. You can track your BuyBox status from your investor dashboard.
           </p>
           <div className="flex gap-3 justify-center">
             <Button variant="outline" onClick={() => setLocation("/buybox")} data-testid="button-new-buybox">
@@ -152,8 +152,8 @@ export default function BuyBoxCheckout() {
           Back to BuyBox
         </Button>
 
-        <h1 className="text-2xl font-bold mb-2" data-testid="text-checkout-heading">Confirm Your Order</h1>
-        <p className="text-muted-foreground mb-8">Review your BuyBox details and selected services before submitting.</p>
+        <h1 className="text-2xl font-bold mb-2" data-testid="text-checkout-heading">Review your campaign request</h1>
+        <p className="text-muted-foreground mb-8">Check your BuyBox details and selected services before sending the request.</p>
 
         <div className="space-y-6">
           <Card>
@@ -232,7 +232,7 @@ export default function BuyBoxCheckout() {
           <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">
-                By submitting this order, you authorize Realist Inc. to process payment and execute the selected outreach services in your target area. Campaigns typically begin within 2-3 business days. Results and responses will be delivered to your account email ({user?.email}).
+                Submitting this request does not charge you. We review your campaign, confirm scope and pricing with you, and process payment only after you approve. Campaigns typically begin within 2-3 business days of approval. Results and responses will be delivered to your account email ({user?.email}).
               </p>
             </CardContent>
           </Card>
@@ -251,10 +251,13 @@ export default function BuyBoxCheckout() {
             ) : (
               <>
                 <ShoppingCart className="h-5 w-5 mr-2" />
-                Submit Order — ${total.toFixed(2)}
+                Request campaign — ${total.toFixed(2)}
               </>
             )}
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            No payment is taken now. We confirm scope with you before any payment is processed.
+          </p>
         </div>
       </main>
     </div>

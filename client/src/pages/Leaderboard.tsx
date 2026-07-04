@@ -1,5 +1,6 @@
 import { Navigation } from "@/components/Navigation";
 import { LeaderboardEligibilityNotice } from "@/components/LeaderboardEligibilityNotice";
+import { HowScoringWorks } from "@/components/HowScoringWorks";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -533,7 +534,7 @@ function UserProfilePanel({ stats, isLoading }: { stats?: UserStats; isLoading: 
           <div className="flex items-center gap-2 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20" data-testid="notification-rank-down">
             <TrendingUp className="h-4 w-4 text-orange-500 shrink-0" />
             <p className="text-xs text-orange-600 dark:text-orange-400">
-              Analyze more deals to reclaim your ranking!
+              Your rank slipped this week. Careful, complete analyses move you up — confidence scores count, not volume.
             </p>
           </div>
         )}
@@ -736,8 +737,11 @@ export default function Leaderboard() {
           </div>
           <p className="text-muted-foreground max-w-lg mx-auto text-sm">
             Track your progress, earn badges, and compete with the community.
-            Every deal analyzed brings you closer to the top.
+            Rankings are weighted by analysis quality, not just count.
           </p>
+          <div className="mt-1 flex justify-center">
+            <HowScoringWorks />
+          </div>
         </div>
 
         {/* Diagnostics intentionally not rendered on the public leaderboard. */}

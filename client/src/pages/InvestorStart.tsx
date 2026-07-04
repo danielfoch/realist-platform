@@ -162,7 +162,7 @@ export default function InvestorStart() {
                 </p>
               )}
               <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.04] text-balance">
-                Canadian real estate investing, underwritten by AI.
+                Canadian real estate investing, underwritten in seconds.
               </h1>
               <p className="mt-5 text-lg md:text-xl text-muted-foreground max-w-[760px]">
                 Paste a listing or address and get cash flow, yield, and risk in seconds.
@@ -284,7 +284,7 @@ export default function InvestorStart() {
                 <CardHeader className="space-y-4">
                   <Badge className="w-fit gap-1 bg-primary text-primary-foreground hover:bg-primary">
                     <BarChart3 className="h-3.5 w-3.5" />
-                    Use AI underwriting
+                    Smart defaults built in
                   </Badge>
                   <div className="space-y-2">
                     <CardTitle className="text-2xl">Analyze a property</CardTitle>

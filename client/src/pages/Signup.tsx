@@ -31,6 +31,7 @@ export default function Signup() {
   const queryClient = useQueryClient();
   const [selectedRole, setSelectedRole] = useState<"investor" | "professional" | null>(null);
   const [step, setStep] = useState<"role" | "brokerage">("role");
+  const [autoCreating, setAutoCreating] = useState(false);
   const [brokerageInfo, setBrokerageInfo] = useState<BrokerageInfo>({
     brokerageName: "",
     brokerageCity: "",
@@ -69,6 +70,34 @@ export default function Signup() {
     }
   }, [authLoading, isAuthenticated, setLocation]);
 
+  // Role carry-through: /create-account already asked this question and left
+  // the answer in sessionStorage. Don't re-ask — act on it and clear the key.
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    const raw = sessionStorage.getItem("realist_signup_role");
+    if (!raw) return;
+    sessionStorage.removeItem("realist_signup_role");
+    try {
+      const carried = JSON.parse(raw) as { role?: string; professionalType?: string | null };
+      if (carried.role === "investor") {
+        setAutoCreating(true);
+        createProfileMutation.mutate({ role: "investor" });
+      } else if (carried.role === "partner") {
+        setSelectedRole("professional");
+        if (carried.professionalType === "contractor" || carried.professionalType === "inspector") {
+          setBrokerageInfo((prev) => ({
+            ...prev,
+            professionalType: carried.professionalType as BrokerageInfo["professionalType"],
+          }));
+        }
+        setStep("brokerage");
+      }
+    } catch {
+      // Malformed carry-over — fall back to asking.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated]);
+
   const handleRoleSelect = (role: "investor" | "professional") => {
     setSelectedRole(role);
   };
@@ -97,6 +126,22 @@ export default function Signup() {
           <div className="max-w-4xl mx-auto px-4 md:px-6">
             <Skeleton className="h-12 w-64 mb-4" />
             <Skeleton className="h-96 w-full" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (autoCreating && !createProfileMutation.isError) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="py-16 md:py-24">
+          <div className="max-w-lg mx-auto px-4 text-center space-y-3" data-testid="text-auto-creating-profile">
+            <h1 className="text-2xl font-bold tracking-tight">Setting up your profile</h1>
+            <p className="text-muted-foreground">
+              You already chose your account type — one moment while we finish up.
+            </p>
           </div>
         </main>
       </div>

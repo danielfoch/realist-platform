@@ -12,7 +12,7 @@ import { authPath } from "@/lib/authReturn";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Crown, Check, CreditCard, Users, Palette, FileDown, Percent, Loader2,
-  ExternalLink, ArrowRight,
+  ExternalLink, ArrowRight, KeyRound,
 } from "lucide-react";
 import { usePremiumGate } from "@/hooks/use-premium-gate";
 
@@ -208,6 +208,27 @@ export default function Premium() {
                   <CreditCard className="h-4 w-4 mr-2" />
                 )}
                 Subscribe for $10/month
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-8" data-testid="card-mcp-claude">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <KeyRound className="h-5 w-5" />
+                Use Realist inside Claude
+              </CardTitle>
+              <CardDescription>
+                Realist runs as an MCP server. Mint an API key and Claude can underwrite
+                listings, find deals, and pull market reports with your Realist account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" className="w-full" data-testid="button-mint-api-key">
+                <Link href="/account/api-keys">
+                  Mint an API key
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Link>
               </Button>
             </CardContent>
           </Card>
