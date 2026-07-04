@@ -26,7 +26,9 @@ export function GetAppBanner() {
   const url = platform === "ios" ? IOS_APP_URL : ANDROID_APP_URL;
 
   return (
-    <div className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-gray-900 px-4 py-2.5 text-white">
+    // Intentionally NOT sticky: Navigation is sticky top-0 z-50 and would paint
+    // over this banner on scroll. The banner scrolls away like iOS smart banners.
+    <div className="relative flex items-center justify-between gap-3 bg-gray-900 px-4 py-2.5 text-white">
       <div className="flex min-w-0 items-center gap-2">
         <span className="text-lg">📱</span>
         <p className="truncate text-sm">
