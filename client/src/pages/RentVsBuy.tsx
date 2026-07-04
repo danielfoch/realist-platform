@@ -1,4 +1,5 @@
 import { Navigation } from "@/components/Navigation";
+import { NextStepBlock } from "@/components/NextStepBlock";
 import { RentVsBuyCalculator } from "@/components/RentVsBuyCalculator";
 
 export default function RentVsBuy() {
@@ -13,6 +14,7 @@ export default function RentVsBuy() {
           </p>
         </div>
         <RentVsBuyCalculator country="canada" />
+        <NextStepBlock sourcePage="/tools/rent-vs-buy" className="mt-8" />
       </main>
     </div>
   );

@@ -1,6 +1,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
+import { NextStepBlock } from "@/components/NextStepBlock";
 import { apiRequest } from "@/lib/queryClient";
 import {
   calculateHstRebate,
@@ -322,6 +323,10 @@ export default function OntarioHstRebateCalculator() {
 
           <CollectorPanel collector={collector} />
         </section>
+
+        <div className="mx-auto max-w-6xl px-5 pb-12 md:px-8">
+          <NextStepBlock sourcePage="/tools/hst-rebate" className="mt-8" />
+        </div>
 
         <section className="border-y border-[#E6E2DC] bg-[#F6F4F1]">
           <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 md:grid-cols-[0.8fr_1.2fr] md:px-8">

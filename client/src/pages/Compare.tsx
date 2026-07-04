@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
+import { NextStepBlock } from "@/components/NextStepBlock";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -388,13 +389,15 @@ export default function Compare() {
                 values={results.map((r) => r.grossMonthlyIncome)} 
                 format="currency"
               />
-              <MetricComparison 
-                label="Effective Monthly Income" 
-                values={results.map((r) => r.effectiveMonthlyIncome)} 
+              <MetricComparison
+                label="Effective Monthly Income"
+                values={results.map((r) => r.effectiveMonthlyIncome)}
                 format="currency"
               />
             </CardContent>
           </Card>
+
+          <NextStepBlock sourcePage="/compare" className="mt-8" />
         </main>
 
       </div>
@@ -825,6 +828,8 @@ export default function Compare() {
             </TabsContent>
           </Tabs>
         )}
+
+        {!isLoading && deals.length > 0 && <NextStepBlock sourcePage="/compare" className="mt-8" />}
       </main>
 
     </div>

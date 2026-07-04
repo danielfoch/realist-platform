@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
+import { NextStepBlock } from "@/components/NextStepBlock";
 import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -707,6 +708,8 @@ export default function MultiplexUnderwriterPage() {
                 </Card>
               </div>
             )}
+
+            <NextStepBlock sourcePage="/tools/multiplex-underwriter" className="mt-8" />
 
             {/* Assumption notes */}
             {result.assumptionNotes.length > 0 && (
