@@ -115,10 +115,10 @@ function escHtml(str: string): string {
 }
 
 function DistressScoreBadge({ score, confidence }: { score: number; confidence: string }) {
-  let bgColor = "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
-  if (score >= 70) bgColor = "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300";
-  else if (score >= 40) bgColor = "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300";
-  else if (score >= 20) bgColor = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300";
+  let bgColor = "bg-gray-500/10 text-gray-600 dark:text-gray-400";
+  if (score >= 70) bgColor = "bg-red-500/10 text-red-600 dark:text-red-400";
+  else if (score >= 40) bgColor = "bg-orange-500/10 text-orange-600 dark:text-orange-400";
+  else if (score >= 20) bgColor = "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400";
 
   return (
     <div className="flex items-center gap-1.5" data-testid="distress-score-badge">

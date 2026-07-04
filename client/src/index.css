@@ -34,6 +34,8 @@
   --muted-foreground: 220 10% 45%;
   --accent: 16 100% 60%;
   --accent-foreground: 0 0% 100%;
+  --ai: 262 83% 58%; /* violet-600 — AI surface accent */
+  --ai-foreground: 0 0% 100%;
   --destructive: 0 84% 55%;
   --destructive-foreground: 0 0% 100%;
   --input: 220 15% 80%;
@@ -105,6 +107,8 @@
   --muted-foreground: 215 20% 55%;
   --accent: 16 100% 65%;
   --accent-foreground: 0 0% 100%;
+  --ai: 255 92% 76%; /* violet-400 — AI surface accent */
+  --ai-foreground: 222 47% 6%;
   --destructive: 0 72% 55%;
   --destructive-foreground: 0 0% 100%;
   --input: 217 33% 20%;

@@ -120,10 +120,10 @@ const FORM_LABEL: Record<string, string> = {
 
 function ProvenanceBadge({ kind }: { kind: string }) {
   const styles: Record<string, string> = {
-    verified: "bg-green-100 text-green-800 border-green-300",
-    inferred: "bg-blue-100 text-blue-800 border-blue-300",
-    assumption: "bg-amber-100 text-amber-800 border-amber-300",
-    estimate: "bg-purple-100 text-purple-800 border-purple-300",
+    verified: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30",
+    inferred: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+    assumption: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    estimate: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30",
   };
   return <Badge variant="outline" className={`text-[10px] uppercase tracking-wide ${styles[kind] ?? ""}`}>{kind}</Badge>;
 }
@@ -154,19 +154,19 @@ function TuneSelect({ label, value, onChange, options }: { label: string; value:
 
 function RiskChip({ level }: { level: "low" | "medium" | "high" }) {
   const styles = {
-    low: "bg-green-100 text-green-800",
-    medium: "bg-amber-100 text-amber-800",
-    high: "bg-red-100 text-red-800",
+    low: "bg-green-500/10 text-green-600 dark:text-green-400",
+    medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    high: "bg-red-500/10 text-red-600 dark:text-red-400",
   };
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${styles[level]}`}>{level.toUpperCase()} variance risk</span>;
 }
 
 function ScreenChip({ icon: Icon, label, flagged, unavailable }: { icon: any; label: string; flagged: boolean; unavailable?: boolean }) {
   const cls = unavailable
-    ? "bg-slate-100 text-slate-500 border-slate-200"
+    ? "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30"
     : flagged
-      ? "bg-red-50 text-red-700 border-red-200"
-      : "bg-green-50 text-green-700 border-green-200";
+      ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
+      : "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30";
   return (
     <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm ${cls}`}>
       <Icon className="h-4 w-4" />
@@ -330,9 +330,9 @@ export default function MultiplexUnderwriterPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <main className="max-w-5xl mx-auto px-4 py-10">
+      <main className="max-w-6xl mx-auto px-4 py-10">
         <div className="text-center mb-8">
-          <Badge variant="outline" className="mb-3"><Sparkles className="h-3 w-3 mr-1" /> AI Multiplex Underwriter — Toronto</Badge>
+          <Badge variant="outline" className="mb-3"><Sparkles className="h-3 w-3 mr-1 text-ai" /> AI Multiplex Underwriter — Toronto</Badge>
           <h1 className="text-3xl md:text-4xl font-bold mb-2">Spec out a multiplex build in seconds</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Zoning verdict with the by-law cited, tree and ravine screens with evidence, build configurations,
@@ -341,7 +341,7 @@ export default function MultiplexUnderwriterPage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+          <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
           </div>
         )}
@@ -371,7 +371,7 @@ export default function MultiplexUnderwriterPage() {
         {step === "confirm" && site && (
           <div className="max-w-2xl mx-auto space-y-6">
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" /> Site resolved</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" /> Site resolved</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="font-medium">{site.address}</span>
@@ -435,7 +435,7 @@ export default function MultiplexUnderwriterPage() {
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {site.zoning && <><Badge>{site.zoning.zoneCode}</Badge><ProvenanceBadge kind="verified" /></>}
                   <Badge variant="outline">up to {result.maxUnitsAsOfRight} units as-of-right</Badge>
-                  {result.sixplex.eligible && <Badge className="bg-violet-100 text-violet-800 hover:bg-violet-100">sixplex ward likely</Badge>}
+                  {result.sixplex.eligible && <Badge className="bg-ai/10 text-ai hover:bg-ai/10 border-ai/30">sixplex ward likely</Badge>}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -457,10 +457,10 @@ export default function MultiplexUnderwriterPage() {
 
             {/* AI narrative */}
             {result.report && (
-              <Card className="border-violet-200 bg-gradient-to-b from-violet-50/60 to-transparent">
+              <Card className="border-ai/30 bg-gradient-to-b from-ai/10 to-transparent">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Sparkles className="h-5 w-5 text-violet-600" /> The read
+                    <Sparkles className="h-5 w-5 text-ai" /> The read
                     {result.reportSource === "ai" && <ProvenanceBadge kind="estimate" />}
                   </CardTitle>
                 </CardHeader>
@@ -481,30 +481,30 @@ export default function MultiplexUnderwriterPage() {
               const rc = result.configs.find((c) => c.config.key === rec.configKey);
               const tk = rc?.takeout;
               return (
-                <Card className="border-emerald-300 bg-gradient-to-b from-emerald-50/60 to-transparent">
+                <Card className="border-emerald-500/30 bg-gradient-to-b from-emerald-500/10 to-transparent">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 flex-wrap text-lg">
-                      <Scale className="h-5 w-5 text-emerald-700" />
+                      <Scale className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                       Recommended takeout: {TAKEOUT_LABEL[rec.takeout]}
                       {rc && <Badge variant="outline">{rc.config.label}</Badge>}
-                      {rec.formPreferenceApplied && <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">town form preferred</Badge>}
+                      {rec.formPreferenceApplied && <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border-emerald-500/30">town form preferred</Badge>}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm">
                     {tk && (
                       <div className="grid sm:grid-cols-2 gap-3">
-                        <div className={`rounded-lg border p-3 space-y-1.5 ${rec.takeout === "condo_termination" ? "border-emerald-300 bg-emerald-50/50" : ""}`}>
+                        <div className={`rounded-lg border p-3 space-y-1.5 ${rec.takeout === "condo_termination" ? "border-emerald-500/40 bg-emerald-500/10" : ""}`}>
                           <p className="font-semibold">Condo termination <span className="font-normal text-muted-foreground">— as {FORM_LABEL[tk.condo.form]}</span></p>
                           <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                             <span className="text-muted-foreground">Avg price / unit</span>
                             <span className="font-mono text-right">{fmtMoney(tk.condo.avgPricePerUnit)}</span>
                             <span className="text-muted-foreground">Profit</span>
-                            <span className={`font-mono text-right ${tk.condo.profit >= 0 ? "text-green-700" : "text-red-600"}`}>{fmtMoney(tk.condo.profit)} ({fmtPct(tk.condo.marginOnCost)})</span>
+                            <span className={`font-mono text-right ${tk.condo.profit >= 0 ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>{fmtMoney(tk.condo.profit)} ({fmtPct(tk.condo.marginOnCost)})</span>
                             <span className="text-muted-foreground">Registration + sell-out</span>
                             <span className="font-mono text-right">{tk.condo.monthsToExit} months</span>
                           </div>
                         </div>
-                        <div className={`rounded-lg border p-3 space-y-1.5 ${rec.takeout === "mli_hold" ? "border-emerald-300 bg-emerald-50/50" : ""}`}>
+                        <div className={`rounded-lg border p-3 space-y-1.5 ${rec.takeout === "mli_hold" ? "border-emerald-500/40 bg-emerald-500/10" : ""}`}>
                           <p className="font-semibold">MLI Select hold</p>
                           {tk.hold.eligible ? (
                             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
@@ -513,9 +513,9 @@ export default function MultiplexUnderwriterPage() {
                               <span className="text-muted-foreground">Equity left in</span>
                               <span className="font-mono text-right">{fmtMoney(tk.hold.equityLeftIn)}</span>
                               <span className="text-muted-foreground">Cash flow / yr</span>
-                              <span className={`font-mono text-right ${tk.hold.annualCashFlow >= 0 ? "text-green-700" : "text-red-600"}`}>{fmtMoney(tk.hold.annualCashFlow)}</span>
+                              <span className={`font-mono text-right ${tk.hold.annualCashFlow >= 0 ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>{fmtMoney(tk.hold.annualCashFlow)}</span>
                               <span className="text-muted-foreground">{tk.hold.horizonYears}-yr value + cash flow</span>
-                              <span className={`font-mono text-right ${tk.hold.horizonProfit >= 0 ? "text-green-700" : "text-red-600"}`}>{fmtMoney(tk.hold.horizonProfit)}</span>
+                              <span className={`font-mono text-right ${tk.hold.horizonProfit >= 0 ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>{fmtMoney(tk.hold.horizonProfit)}</span>
                             </div>
                           ) : (
                             <p className="text-muted-foreground">{tk.hold.reason}</p>
@@ -607,17 +607,17 @@ export default function MultiplexUnderwriterPage() {
                 const isFlipWinner = result.winner.flip === c.config.key;
                 const isHoldWinner = result.winner.hold === c.config.key;
                 return (
-                  <Card key={c.config.key} className={isFlipWinner || isHoldWinner ? "border-violet-300 shadow-sm" : ""}>
+                  <Card key={c.config.key} className={isFlipWinner || isHoldWinner ? "border-ai/40 shadow-sm" : ""}>
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between gap-2">
                         <CardTitle className="text-base">{c.config.label}</CardTitle>
                         <RiskChip level={c.varianceRisk.level} />
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {isFlipWinner && <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">best flip</Badge>}
-                        {isHoldWinner && <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">best hold</Badge>}
+                        {isFlipWinner && <Badge className="bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 border-orange-500/30">best flip</Badge>}
+                        {isHoldWinner && <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border-emerald-500/30">best hold</Badge>}
                         {result.recommendedTakeout?.configKey === c.config.key && (
-                          <Badge className="bg-violet-100 text-violet-800 hover:bg-violet-100">recommended: {TAKEOUT_LABEL[result.recommendedTakeout.takeout]}</Badge>
+                          <Badge className="bg-ai/10 text-ai hover:bg-ai/10 border-ai/30">recommended: {TAKEOUT_LABEL[result.recommendedTakeout.takeout]}</Badge>
                         )}
                         <Badge variant="outline">{c.config.approvalPath.replace(/_/g, " ")}</Badge>
                       </div>
@@ -632,14 +632,14 @@ export default function MultiplexUnderwriterPage() {
                         {c.takeout ? (
                           <>
                             <span className="text-muted-foreground">Condo termination <span className="text-xs">({FORM_LABEL[c.takeout.condo.form]})</span></span>
-                            <span className={`font-mono text-right ${c.takeout.condo.profit >= 0 ? "text-green-700" : "text-red-600"}`}>
+                            <span className={`font-mono text-right ${c.takeout.condo.profit >= 0 ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                               {fmtMoney(c.takeout.condo.profit)} ({fmtPct(c.takeout.condo.marginOnCost)})
                             </span>
                           </>
                         ) : (
                           <>
                             <span className="text-muted-foreground">Condo exit</span>
-                            <span className={`font-mono text-right ${c.condoExit.profit >= 0 ? "text-green-700" : "text-red-600"}`}>
+                            <span className={`font-mono text-right ${c.condoExit.profit >= 0 ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                               {fmtMoney(c.condoExit.profit)} ({fmtPct(c.condoExit.marginOnCost)})
                             </span>
                           </>
@@ -661,7 +661,7 @@ export default function MultiplexUnderwriterPage() {
                         {c.takeout?.hold.eligible && (
                           <>
                             <span className="text-muted-foreground">Hold {c.takeout.hold.horizonYears}-yr value + cash flow</span>
-                            <span className={`font-mono text-right ${c.takeout.hold.horizonProfit >= 0 ? "text-green-700" : "text-red-600"}`}>
+                            <span className={`font-mono text-right ${c.takeout.hold.horizonProfit >= 0 ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                               {fmtMoney(c.takeout.hold.horizonProfit)}
                             </span>
                           </>
@@ -695,15 +695,15 @@ export default function MultiplexUnderwriterPage() {
             {result.report && (
               <div className="grid md:grid-cols-3 gap-4">
                 <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm text-red-700">What kills this deal</CardTitle></CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm text-red-700 dark:text-red-400">What kills this deal</CardTitle></CardHeader>
                   <CardContent><ul className="text-sm space-y-2">{result.report.recommendation.dealKillers.map((d, i) => <li key={i}>• {d}</li>)}</ul></CardContent>
                 </Card>
                 <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm text-blue-700">Verify with professionals</CardTitle></CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm text-blue-700 dark:text-blue-400">Verify with professionals</CardTitle></CardHeader>
                   <CardContent><ul className="text-sm space-y-2">{result.report.recommendation.verifyWithProfessionals.map((d, i) => <li key={i}>• {d}</li>)}</ul></CardContent>
                 </Card>
                 <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm text-emerald-700">Next steps</CardTitle></CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm text-emerald-700 dark:text-emerald-400">Next steps</CardTitle></CardHeader>
                   <CardContent><ol className="text-sm space-y-2">{result.report.recommendation.nextSteps.map((d, i) => <li key={i}>{i + 1}. {d}</li>)}</ol></CardContent>
                 </Card>
               </div>
@@ -713,9 +713,9 @@ export default function MultiplexUnderwriterPage() {
 
             {/* Assumption notes */}
             {result.assumptionNotes.length > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">Assumptions in play</p>
-                <ul className="text-sm text-amber-900 space-y-1">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">Assumptions in play</p>
+                <ul className="text-sm text-amber-900 dark:text-amber-200 space-y-1">
                   {result.assumptionNotes.map((n, i) => <li key={i}>• {n}</li>)}
                 </ul>
               </div>
