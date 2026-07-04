@@ -29,6 +29,7 @@ import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReportEndCta } from "@/components/ReportEndCta";
 
 const SOURCE_STUDY_URL =
   "https://www.fraserinstitute.org/studies/interprovincial-migration-in-canada-1995-2024-what-do-the-numbers-tell-us";
@@ -530,6 +531,8 @@ export default function InterprovincialMigrationCanada2026Report() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
+
+        <ReportEndCta sourcePage="/insights/canada-interprovincial-migration-2026" />
       </main>
     </div>
   );

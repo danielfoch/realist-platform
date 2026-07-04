@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { encyclopediaGuides } from "@shared/encyclopedia";
+import { reportsRegistry } from "@shared/reportsRegistry";
 import { getListingSitemapRecords, listingCanonicalPath, listingLastmod } from "./listingSeo";
 
 const BASE = "https://realist.ca";
@@ -83,22 +84,6 @@ export async function buildPagesSitemap() {
     { loc: `${BASE}/insights/market-report`, lastmod: now, changefreq: "weekly", priority: 0.9 },
     { loc: `${BASE}/insights/motivated-report`, lastmod: now, changefreq: "daily", priority: 0.85 },
     { loc: `${BASE}/insights/mortgage-rates`, lastmod: now, changefreq: "daily", priority: 0.85 },
-    { loc: `${BASE}/insights/building-permits`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/productivity-gap`, lastmod: now, changefreq: "monthly", priority: 0.7 },
-    { loc: `${BASE}/insights/new-construction-canada`, lastmod: now, changefreq: "weekly", priority: 0.85 },
-    { loc: `${BASE}/insights/gta-precon-pricing`, lastmod: now, changefreq: "weekly", priority: 0.85 },
-    { loc: `${BASE}/insights/cpi-march-2026`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/the-spread-that-ate-the-economy`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/spring-economic-update-2026`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/precon-vs-resale-1990s`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/bank-of-canada-april-2026`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/statcan-labour-force-survey-april-2026`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/statcan-labour-force-survey-may-2026`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/statcan-gdp-q1-2026`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/housing-correction-locked-out-2026`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/labour-mortgage-stress-april-2026`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    { loc: `${BASE}/insights/monthly-market-report-may-2026`, lastmod: now, changefreq: "monthly", priority: 0.85 },
-    { loc: `${BASE}/insights/canada-interprovincial-migration-2026`, lastmod: now, changefreq: "monthly", priority: 0.8 },
     { loc: `${BASE}/tools/multiplex-feasibility`, lastmod: now, changefreq: "monthly", priority: 0.8 },
     { loc: `${BASE}/tools/multiplex-underwriter`, lastmod: now, changefreq: "weekly", priority: 0.85 },
     { loc: `${BASE}/power-team`, lastmod: now, changefreq: "monthly", priority: 0.75 },
@@ -113,6 +98,19 @@ export async function buildPagesSitemap() {
     { loc: `${BASE}/join/realtors`, lastmod: now, changefreq: "monthly", priority: 0.7 },
     { loc: `${BASE}/join/lenders`, lastmod: now, changefreq: "monthly", priority: 0.7 },
   ];
+
+  // Every routed report page, straight from the registry (shared/reportsRegistry.ts).
+  // db-backed reports (/reports/:slug served from the blog-posts db) are skipped
+  // here because buildReportsSitemap already emits them.
+  for (const report of reportsRegistry) {
+    if (report.db) continue;
+    urls.push({
+      loc: `${BASE}${report.route}`,
+      lastmod: report.date,
+      changefreq: report.kind === "market" ? "weekly" : "monthly",
+      priority: 0.8,
+    });
+  }
 
   const { PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } = await import("@shared/programmaticSeo");
   for (const market of PROGRAMMATIC_MARKETS) {

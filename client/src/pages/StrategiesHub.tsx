@@ -9,14 +9,14 @@ export default function StrategiesHub() {
     <div className="min-h-screen bg-background">
       <SEO
         title="Canadian Real Estate Investing Strategies"
-        description="Crawlable strategy pages for multiplex, BRRR, buy-and-hold, and distress investing on Realist."
+        description="How to invest in Canadian real estate: multiplex, BRRR, buy-and-hold, and distressed-deal strategies with the data and tools to underwrite each one."
         canonicalUrl="/investing"
       />
       <Navigation />
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-12">
         <h1 className="text-4xl font-bold mb-4">Canadian Real Estate Investing Strategies</h1>
         <p className="text-lg text-muted-foreground max-w-3xl mb-10">
-          Strategy pages designed to connect investor intent with reports, markets, and product workflows.
+          Pick a strategy and get the playbook — what it is, where it works in Canada, and the tools to underwrite your first deal.
         </p>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {PROGRAMMATIC_STRATEGIES.map((strategy) => (

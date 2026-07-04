@@ -29,6 +29,7 @@ import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReportEndCta } from "@/components/ReportEndCta";
 
 const SOURCE_URL =
   "https://www150.statcan.gc.ca/n1/daily-quotidien/260605/dq260605a-eng.htm";
@@ -574,6 +575,8 @@ export default function LabourForceSurveyMay2026Report() {
             </Link>
           </div>
         </section>
+
+        <ReportEndCta sourcePage="/insights/statcan-labour-force-survey-may-2026" />
 
         <footer className="border-t pt-6 text-xs text-muted-foreground">
           <p>

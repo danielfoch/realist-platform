@@ -8,8 +8,21 @@ import { track } from "@/lib/analytics";
 import {
   Radio, BookOpen, FileText, TrendingUp, AlertTriangle, LineChart,
   Calculator, ArrowRight, BarChart3, ChevronRight, Building2, BriefcaseBusiness,
-  Landmark,
 } from "lucide-react";
+import { sortedReports, reportDateLabel, type ReportKind } from "@shared/reportsRegistry";
+
+const kindIcons: Record<ReportKind, typeof LineChart> = {
+  macro: LineChart,
+  market: Building2,
+  research: BriefcaseBusiness,
+};
+
+// Newest release overall drives the marquee slot — no baked month names.
+const allReports = sortedReports();
+const latestRelease = allReports[0];
+const featuredResearch = allReports
+  .filter((entry) => entry.kind === "research" && !entry.tags.includes("private") && entry.slug !== latestRelease.slug)
+  .slice(0, 3);
 
 const insightSections = [
   {
@@ -33,11 +46,11 @@ const insightSections = [
         cta: "View Report",
       },
       {
-        href: "/insights/cpi-march-2026",
-        title: "CPI Report — March 2026",
-        description: "Statistics Canada's latest inflation release with provincial breakdown and investor interpretation.",
-        icon: LineChart,
-        badge: "March 2026",
+        href: latestRelease.route,
+        title: latestRelease.title,
+        description: latestRelease.description,
+        icon: kindIcons[latestRelease.kind],
+        badge: `Latest · ${reportDateLabel(latestRelease)}`,
         cta: "Read Report",
       },
     ],
@@ -46,29 +59,21 @@ const insightSections = [
     title: "Deep Research Reports",
     description: "Long-form analysis and thesis-driven research notes.",
     items: [
-      {
-        href: "/insights/the-spread-that-ate-the-economy",
-        title: "The Spread That Ate the Economy",
-        description: "Interactive research on Canadian mortgage vs business credit spreads, yield compression, entrepreneurship, and productivity.",
-        icon: BriefcaseBusiness,
-        badge: "Research",
+      ...featuredResearch.map((entry) => ({
+        href: entry.route,
+        title: entry.title,
+        description: entry.description,
+        icon: kindIcons[entry.kind],
+        badge: reportDateLabel(entry),
         cta: "Open Report",
-      },
+      })),
       {
-        href: "/insights/spring-economic-update-2026",
-        title: "Spring Economic Update 2026",
-        description: "What Ottawa's Spring 2026 fiscal update says about housing prices, rents, supply, inflation, and rates — and what to change in your underwriting.",
-        icon: Landmark,
-        badge: "Spring 2026",
-        cta: "Read Report",
-      },
-      {
-        href: "/reports/cmhc-land-use-regulations-housing-canada-2026",
-        title: "CMHC Land Use Regulations Report",
-        description: "What CMHC's 2026 research says about zoning, approval rules, house prices, and housing supply growth in Canada.",
-        icon: Building2,
-        badge: "CMHC 2026",
-        cta: "Read Report",
+        href: "/reports",
+        title: "All Reports & Research",
+        description: "Every Realist report in one place — macro releases, market data, and long-form research, newest first.",
+        icon: FileText,
+        badge: `${allReports.length} reports`,
+        cta: "Browse All",
       },
     ],
   },
@@ -112,24 +117,25 @@ const insightSections = [
   },
 ];
 
-// Contextual bridges: content-specific prompts that route into product
+// Contextual bridges: content-specific prompts that route into product.
+// Keyed by card href so they survive title changes in the registry.
 const contextBridges: Record<string, { text: string; cta: string; href: string }> = {
-  "Mortgage Rates": {
+  "/insights/mortgage-rates": {
     text: "See how today's rates affect your deal returns",
     cta: "Model a Deal",
     href: "/tools/analyzer",
   },
-  "CPI Report — March 2026": {
-    text: "Run inflation assumptions through a live deal",
+  [latestRelease.route]: {
+    text: "Run this release's numbers through a live deal",
     cta: "Analyze a Deal",
     href: "/tools/analyzer",
   },
-  "The Spread That Ate the Economy": {
+  "/insights/the-spread-that-ate-the-economy": {
     text: "See how yield compression shows up on the map",
     cta: "Browse Yield Map",
     href: "/tools/cap-rates",
   },
-  "Motivated Report": {
+  "/insights/motivated-report": {
     text: "Search live motivated-seller opportunities in your market",
     cta: "Find Deals",
     href: "/tools/motivated-deals",
@@ -147,7 +153,7 @@ export default function InsightsHub() {
 
       <main className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="text-center mb-12">
-          <Badge variant="secondary" className="mb-3 text-xs">Updated Monthly</Badge>
+          <Badge variant="secondary" className="mb-3 text-xs">Latest release · {reportDateLabel(latestRelease)}</Badge>
           <h1 className="text-4xl font-bold mb-3">Market Intelligence</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Data and analysis interpreted for Canadian real estate investors. From macro trends to deal-level implications.
@@ -163,7 +169,7 @@ export default function InsightsHub() {
               </div>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {section.items.map((item) => {
-                  const bridge = contextBridges[item.title];
+                  const bridge = contextBridges[item.href];
                   return (
                     <Card
                       key={item.href}

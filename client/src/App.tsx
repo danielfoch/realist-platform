@@ -96,7 +96,6 @@ import HousingCorrectionLockedOut2026Report from "@/pages/HousingCorrectionLocke
 import LabourMortgageStressApril2026Report from "@/pages/LabourMortgageStressApril2026Report";
 import MonthlyMarketReportMay2026 from "@/pages/MonthlyMarketReportMay2026";
 import InterprovincialMigrationCanada2026Report from "@/pages/InterprovincialMigrationCanada2026Report";
-import HomeBenchReport from "@/pages/HomeBenchReport";
 import SeoProjectDetail from "@/pages/SeoProjectDetail";
 import {
   TorontoHousingMarketPage,
