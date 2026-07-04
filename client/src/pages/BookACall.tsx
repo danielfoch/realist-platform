@@ -64,10 +64,10 @@ export default function BookACall() {
             data-testid="button-intent-coaching"
           >
             <div className="flex items-center gap-2 font-semibold mb-1">
-              <GraduationCap className="h-4 w-4 text-violet-600" /> Coaching
+              <GraduationCap className="h-4 w-4 text-violet-600" /> Strategy with Dan or Nick
             </div>
             <p className="text-sm text-muted-foreground">
-              Get help going from "interested" to owning your first multiplex with the Realist coaching program.
+              Talk strategy, portfolio, or coaching directly with Daniel Foch or Nick Hill from the Realist team.
             </p>
           </button>
         </div>
@@ -92,7 +92,7 @@ export default function BookACall() {
               <PhoneCall className="h-5 w-5 text-primary" />
             </div>
             <p className="text-sm font-medium">2. We match you</p>
-            <p className="text-xs text-muted-foreground">Financing questions go to a commercial financing specialist; coaching goes to the Realist team.</p>
+            <p className="text-xs text-muted-foreground">Financing goes to a licensed specialist at our financing partner; strategy calls go to Dan or Nick.</p>
           </div>
           <div>
             <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-primary/10 flex items-center justify-center">
