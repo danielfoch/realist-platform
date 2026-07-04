@@ -1,4 +1,5 @@
 import { Navigation } from "@/components/Navigation";
+import { NextStepBlock } from "@/components/NextStepBlock";
 import { SEO } from "@/components/SEO";
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { RentToOwnCalculator } from "@/components/RentToOwnCalculator";
@@ -24,6 +25,7 @@ export default function RentToOwn() {
         </div>
 
         <RentToOwnCalculator />
+        <NextStepBlock sourcePage="/tools/rent-to-own" className="mt-8" />
       </main>
     </div>
   );

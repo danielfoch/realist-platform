@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
+import { NextStepBlock } from "@/components/NextStepBlock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -370,6 +371,8 @@ export default function FixedVsVariable() {
             )}
           </div>
         </div>
+
+        <NextStepBlock sourcePage="/tools/fixed-vs-variable" className="mt-8" />
       </main>
     </div>
   );

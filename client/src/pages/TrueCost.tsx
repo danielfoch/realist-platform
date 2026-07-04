@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Navigation } from "@/components/Navigation";
+import { NextStepBlock } from "@/components/NextStepBlock";
 import { Loader2, Calculator, DollarSign, Home, MapPin, HelpCircle, Lock, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -612,6 +613,8 @@ export default function TrueCost() {
             )}
           </div>
         </div>
+
+        {result && <NextStepBlock sourcePage="/tools/true-cost" className="mt-8" />}
       </div>
     </div>
   );
