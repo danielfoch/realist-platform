@@ -10,7 +10,7 @@ import {
   Calculator, MapPin, Users, Handshake, Calendar, Radio,
   FileText, TrendingUp, BarChart3, Shield, Gavel,
   Map, DollarSign, Layers, Building2, Inbox, Sparkles,
-  KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell,
+  KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell, PhoneCall,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -50,6 +50,7 @@ const navCategories: NavCategory[] = [
     label: "Analyze",
     items: [
       { href: "/tools/analyzer", label: "Deal Analyzer", description: "Full underwriting — buy & hold, BRRR, multiplex, flip", icon: <Calculator className="h-4 w-4" /> },
+      { href: "/tools/financing-readiness", label: "Financing Readiness", description: "Your stress-tested max purchase price in 30 seconds", icon: <Gauge className="h-4 w-4" />, badge: "New" },
       { href: "/tools/multiplex-underwriter", label: "Multiplex Underwriter", description: "Address-first AI underwrite with zoning and risk flags", icon: <Sparkles className="h-4 w-4" />, badge: "AI" },
       { href: "/tools/multiplex-feasibility", label: "Multiplex Feasibility", description: "Screen any property for development potential", icon: <Building2 className="h-4 w-4" /> },
       { href: "/tools/will-it-plex", label: "Will It Plex?", description: "Full multiplex financial pro forma", icon: <Layers className="h-4 w-4" /> },
@@ -196,10 +197,12 @@ export function Navigation() {
 
           {/* Right side: primary CTA + auth */}
           <div className="flex items-center gap-2">
-            {/* Primary CTA — always visible on desktop */}
-            <div className="hidden md:block">
+            {/* Primary CTAs — always visible on desktop. Book a Call is the
+                revenue CTA and holds the filled treatment. */}
+            <div className="hidden md:flex items-center gap-1.5">
               <Button
                 asChild
+                variant="outline"
                 size="sm"
                 className="h-9 px-4 gap-1.5"
                 data-testid="button-nav-analyze"
@@ -208,6 +211,18 @@ export function Navigation() {
                 <Link href="/tools/analyzer">
                   <Calculator className="h-3.5 w-3.5" />
                   Analyze a Deal
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="h-9 px-4 gap-1.5"
+                data-testid="button-nav-book-call"
+                onClick={() => track({ event: "cta_clicked", cta: "book_call", location: "nav" })}
+              >
+                <Link href="/book-a-call">
+                  <PhoneCall className="h-3.5 w-3.5" />
+                  Book a Call
                 </Link>
               </Button>
             </div>
@@ -352,8 +367,14 @@ export function Navigation() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border/50 glass max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="px-4 py-4 space-y-5">
-            {/* Primary CTA on mobile */}
-            <Button asChild className="w-full gap-2" data-testid="button-mobile-analyze">
+            {/* Primary CTAs on mobile — Book a Call first (revenue CTA) */}
+            <Button asChild className="w-full gap-2" data-testid="button-mobile-book-call">
+              <Link href="/book-a-call" onClick={closeMobile}>
+                <PhoneCall className="h-4 w-4" />
+                Book a Call
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full gap-2" data-testid="button-mobile-analyze">
               <Link href="/tools/analyzer" onClick={closeMobile}>
                 <Calculator className="h-4 w-4" />
                 Analyze a Deal

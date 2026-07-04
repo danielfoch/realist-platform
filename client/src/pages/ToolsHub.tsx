@@ -7,8 +7,9 @@ import { Link } from "wouter";
 import {
   Calculator, MapPin, Handshake, TrendingUp, FileSpreadsheet, DollarSign,
   Building2, Scale, ArrowLeftRight, Shield, Gavel, BriefcaseBusiness,
-  Sparkles, Layers, Inbox, ArrowRight, Bell,
+  Sparkles, Layers, Inbox, ArrowRight, Bell, Gauge,
 } from "lucide-react";
+import { NextStepBlock } from "@/components/NextStepBlock";
 
 interface Tool {
   href: string;
@@ -101,6 +102,14 @@ const sections: ToolSection[] = [
     description: "Understand what a purchase really costs and how to finance it.",
     tools: [
       {
+        href: "/tools/financing-readiness",
+        title: "Financing Readiness",
+        description: "Five inputs, thirty seconds: your stress-tested maximum purchase price, monthly payment, and readiness grade — then book a free consultation to make it real.",
+        icon: Gauge,
+        badge: "New",
+        primary: true,
+      },
+      {
         href: "/tools/true-cost",
         title: "True Cost Calculator",
         description: "Discover all the hidden costs when buying a home in Ontario — development charges, land transfer taxes, HST rebates, and more.",
@@ -178,12 +187,18 @@ export default function ToolsHub() {
       <Navigation />
 
       <main className="container mx-auto px-4 py-12 max-w-6xl">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Investment Tools</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Professional-grade calculators and tools to analyze, compare, and optimize your real estate investments.
           </p>
         </div>
+
+        <NextStepBlock
+          title="Not sure where to start?"
+          sourcePage="/tools"
+          className="mb-12"
+        />
 
         <div className="space-y-12">
           {sections.map((section) => (

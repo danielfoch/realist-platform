@@ -274,6 +274,7 @@ const InvestorOperatingSystem = lazy(() => import("@/pages/InvestorOperatingSyst
 const Watchlist = lazy(() => import("@/pages/Watchlist"));
 const BookACall = lazy(() => import("@/pages/BookACall"));
 const DealRoom = lazy(() => import("@/pages/DealRoom"));
+const FinancingReadiness = lazy(() => import("@/pages/FinancingReadiness"));
 const DailyGlance = lazy(() => import("@/pages/DailyGlance"));
 const NotificationPreferences = lazy(() => import("@/pages/NotificationPreferences"));
 const PowerTeamProfile = lazy(() => import("@/pages/PowerTeamProfile"));
@@ -429,6 +430,7 @@ function Router() {
       <Route path="/about/contact" component={ContactPage} />
       <Route path="/book-a-call" component={BookACall} />
       <Route path="/deal-room" component={DealRoom} />
+      <Route path="/tools/financing-readiness" component={FinancingReadiness} />
       <Route path="/thank-you/vancouver-multiplex-2026" component={ThankYouVancouver} />
 
       {/* Event-day landing — Realist Multiplex Edmonton (QR target; /yeg is the stage-friendly alias) */}

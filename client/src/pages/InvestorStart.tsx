@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { getSavedListingSignals, getSavedSearchSignals, syncDiscoverySignalsWithAccount, track, trackRealistEvent } from "@/lib/analytics";
-import { ArrowRight, BarChart3, Brain, Compass, Map, Radar, Save, Target } from "lucide-react";
+import { ArrowRight, BarChart3, Brain, Compass, Gauge, Map, PhoneCall, Radar, Radio, Save, Target } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { CANADA_SVG_PATH, CANADA_VIEWBOX } from "@/lib/canadaSilhouette";
 import { mediaLogos } from "@/lib/mediaLogos";
@@ -268,6 +268,62 @@ export default function InvestorStart() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Funnel band — the three doors into working with the team */}
+        <section className="py-10 md:py-14">
+          <div className="max-w-6xl mx-auto px-4 md:px-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Link
+                href="/tools/financing-readiness"
+                onClick={() => track({ event: "cta_clicked", cta: "financing_readiness", location: "homepage_funnel_band", destination: "/tools/financing-readiness" })}
+                data-testid="link-funnel-readiness"
+                className="block"
+              >
+                <Card className="h-full hover-elevate cursor-pointer">
+                  <CardContent className="pt-6">
+                    <Gauge className="h-6 w-6 text-primary mb-3" />
+                    <p className="font-semibold mb-1">Know your buying power</p>
+                    <p className="text-sm text-muted-foreground">
+                      Your stress-tested max purchase price in 30 seconds, then a free consultation to make it real.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link
+                href="/book-a-call"
+                onClick={() => track({ event: "cta_clicked", cta: "book_call", location: "homepage_funnel_band", destination: "/book-a-call" })}
+                data-testid="link-funnel-call"
+                className="block"
+              >
+                <Card className="h-full hover-elevate cursor-pointer border-primary/40 bg-primary/5">
+                  <CardContent className="pt-6">
+                    <PhoneCall className="h-6 w-6 text-primary mb-3" />
+                    <p className="font-semibold mb-1">Talk to the team</p>
+                    <p className="text-sm text-muted-foreground">
+                      A free call with Dan, Nick, or a financing specialist about your deal, financing, or strategy.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link
+                href="/deal-room"
+                onClick={() => track({ event: "cta_clicked", cta: "deal_room", location: "homepage_funnel_band", destination: "/deal-room" })}
+                data-testid="link-funnel-deal-room"
+                className="block"
+              >
+                <Card className="h-full hover-elevate cursor-pointer">
+                  <CardContent className="pt-6">
+                    <Radio className="h-6 w-6 text-primary mb-3" />
+                    <p className="font-semibold mb-1">Live Deal Room</p>
+                    <p className="text-sm text-muted-foreground">
+                      Real deals underwritten live, Mondays 11:30am ET. Free, and the replays are too.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
             </div>
           </div>
         </section>
