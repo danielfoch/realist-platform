@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
@@ -22,6 +22,7 @@ import {
   RefreshCw, ChevronDown, ChevronUp, List, Users, MessageSquare,
   Send, PenLine, Sparkles,
   Star, Target, AlertTriangle, Gavel, DollarSign, TrendingDown,
+  ExternalLink,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1564,6 +1565,9 @@ export default function CapRates() {
     enabled: isAuthenticated && listings.length > 0,
   });
 
+  // Toast once per outage, not once per pan — this fetch re-fires every time
+  // the listing set changes, and a down aggregates API shouldn't stack toasts.
+  const aggregatesErrorNotifiedRef = useRef(false);
   const fetchAggregatesBatch = useCallback(async (mlsNumbers: string[]) => {
     if (mlsNumbers.length === 0) return;
     try {
@@ -1572,9 +1576,21 @@ export default function CapRates() {
       const map: Record<string, ListingAnalysisAggregate> = {};
       data.forEach((agg) => { map[agg.listingMlsNumber] = agg; });
       setAggregatesMap((prev) => ({ ...prev, ...map }));
-    } catch {
+      aggregatesErrorNotifiedRef.current = false;
+    } catch (error) {
+      // Don't silently swallow this — community medians/consensus quietly
+      // vanishing looks like "nobody analyzed anything" instead of an outage.
+      console.error("Error fetching community aggregates:", error);
+      if (!aggregatesErrorNotifiedRef.current) {
+        aggregatesErrorNotifiedRef.current = true;
+        toast({
+          title: "Couldn't load community data",
+          description: "Community analysis counts and medians may be missing right now. They'll refresh on your next search.",
+          variant: "destructive",
+        });
+      }
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     const mlsNumbers = listings.map((l) => l.mlsNumber).filter(Boolean);
@@ -2168,6 +2184,21 @@ export default function CapRates() {
     setShowTopDealsOnly(false);
   };
 
+  // Removing an "Understood:" chip drops that parsed constraint from the echo
+  // and clears the matching workspace filter it was copied into, so the next
+  // map move / refresh searches without it.
+  const handleRemoveParsedFilter = (key: string) => {
+    setFindDealsFilters((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    if (key === "minPrice") setMinPrice("");
+    if (key === "maxPrice") setMaxPrice("");
+    if (key === "minBeds") setMinBeds("any");
+    if (key === "propertyType") setPropertyType("all");
+  };
+
   const handleSelectDealResult = (result: FindDealsResult) => {
     setSelectedDealResult(result);
     setSelectedListing(null);
@@ -2181,6 +2212,25 @@ export default function CapRates() {
       : findDealsResults;
     return results.slice(0, 20);
   }, [findDealsActive, findDealsResults, showTopDealsOnly]);
+
+  // Echo back everything the NL parser extracted so its limits are visible:
+  // a search that parsed nothing says so instead of silently degrading into
+  // an unfiltered result list.
+  const parsedFilterChips = useMemo(() => {
+    const f = findDealsFilters || {};
+    const chips: Array<{ key: string; label: string }> = [];
+    if (f.city) chips.push({ key: "city", label: String(f.city) });
+    if (f.propertyType) chips.push({ key: "propertyType", label: String(f.propertyType) });
+    if (f.minPrice) chips.push({ key: "minPrice", label: `Over ${formatPrice(f.minPrice)}` });
+    if (f.maxPrice) chips.push({ key: "maxPrice", label: `Under ${formatPrice(f.maxPrice)}` });
+    if (f.minBeds) chips.push({ key: "minBeds", label: `${f.minBeds}+ beds` });
+    const knownKeys = new Set(["city", "propertyType", "minPrice", "maxPrice", "minBeds"]);
+    for (const [key, value] of Object.entries(f)) {
+      if (knownKeys.has(key) || value == null || value === "" || typeof value === "object") continue;
+      chips.push({ key, label: `${key}: ${String(value)}` });
+    }
+    return chips;
+  }, [findDealsFilters]);
 
   const activeFilterCount = useMemo(() => {
     return [
@@ -2710,6 +2760,17 @@ export default function CapRates() {
               </Badge>
             </div>
             <div className="mt-1 flex flex-wrap gap-1.5">
+              {listing.mlsNumber && (
+                <Link
+                  href={`/listings/${encodeURIComponent(listing.mlsNumber)}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 rounded-full border border-border px-1.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                  data-testid={`link-listing-page-${listing.mlsNumber}`}
+                >
+                  <ExternalLink className="h-2.5 w-2.5" />
+                  Listing page
+                </Link>
+              )}
               <ListingCommentCountBadge
                 count={aggregatesMap[listing.mlsNumber]?.publicCommentCount}
                 hasRecent={Boolean(aggregatesMap[listing.mlsNumber]?.latestPublicCommentAt)}
@@ -2919,6 +2980,16 @@ export default function CapRates() {
                 <CardDescription className="text-xs">
                   {formatAddress(selectedListing.address)}
                 </CardDescription>
+                {selectedListing.mlsNumber && (
+                  <Link
+                    href={`/listings/${encodeURIComponent(selectedListing.mlsNumber)}`}
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    data-testid="link-detail-listing-page"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Full listing page
+                  </Link>
+                )}
                 <ListingEngagementStrip mlsNumber={selectedListing.mlsNumber} compact className="mt-1.5" />
               </div>
               <Button
@@ -3545,6 +3616,17 @@ export default function CapRates() {
           <Button size="sm" variant="outline" className="flex-1" onClick={() => handleSelectListing(selectedListing, "list")}>
             Open details
           </Button>
+          {selectedListing.mlsNumber && (
+            <Button size="sm" variant="outline" className="shrink-0 px-2" asChild>
+              <Link
+                href={`/listings/${encodeURIComponent(selectedListing.mlsNumber)}`}
+                aria-label="Open full listing page"
+                data-testid="link-quick-card-listing-page"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -3932,26 +4014,31 @@ export default function CapRates() {
             </Button>
           </div>
 
-          {findDealsActive && Object.keys(findDealsFilters).length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
+          {findDealsActive && (
+            <div className="flex items-center gap-2 flex-wrap" data-testid="parsed-filters-echo">
               <Badge variant="secondary" className="text-[10px] gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" data-testid="badge-ai-filters">
                 <Sparkles className="h-3 w-3" />
-                AI Filters Applied
+                Understood:
               </Badge>
-              {findDealsFilters.city && (
-                <Badge variant="outline" className="text-[10px]">{findDealsFilters.city}</Badge>
-              )}
-              {findDealsFilters.propertyType && (
-                <Badge variant="outline" className="text-[10px]">{findDealsFilters.propertyType}</Badge>
-              )}
-              {findDealsFilters.maxPrice && (
-                <Badge variant="outline" className="text-[10px]">Under {formatPrice(findDealsFilters.maxPrice)}</Badge>
-              )}
-              {findDealsFilters.minPrice && (
-                <Badge variant="outline" className="text-[10px]">Over {formatPrice(findDealsFilters.minPrice)}</Badge>
-              )}
-              {findDealsFilters.minBeds && (
-                <Badge variant="outline" className="text-[10px]">{findDealsFilters.minBeds}+ beds</Badge>
+              {parsedFilterChips.length > 0 ? (
+                parsedFilterChips.map(({ key, label }) => (
+                  <Badge key={key} variant="outline" className="text-[10px] gap-1 pr-0.5" data-testid={`chip-parsed-${key}`}>
+                    {label}
+                    <button
+                      type="button"
+                      className="rounded-full p-0.5 hover:bg-muted"
+                      onClick={() => handleRemoveParsedFilter(key)}
+                      aria-label={`Remove ${label} filter`}
+                      data-testid={`button-remove-parsed-${key}`}
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-[10px] text-muted-foreground" data-testid="text-parsed-filters-none">
+                  No specific filters recognized in your search — showing nearby matches ranked by deal score. Try adding a city, price cap, or bed count.
+                </span>
               )}
               <div className="ml-auto flex items-center gap-2">
                 <div className="flex items-center gap-1">
@@ -4251,8 +4338,11 @@ export default function CapRates() {
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
         <div className="relative flex-1 min-h-0" data-testid="map-container">
+          {/* Single top-right column so the Map-metric card and the Layers
+              button can never overlap, whatever height the explainer takes. */}
+          <div className="absolute right-3 top-3 z-[1000] flex max-w-[calc(100%-1.5rem)] flex-col items-end gap-2">
           {!findDealsActive && (
-            <div className="absolute right-3 top-3 z-[1000] flex max-w-[calc(100%-1.5rem)] flex-col gap-1 rounded-md border border-border/70 bg-background/95 p-2 shadow-sm backdrop-blur">
+            <div className="flex flex-col gap-1 rounded-md border border-border/70 bg-background/95 p-2 shadow-sm backdrop-blur">
               <div className="flex items-center gap-2">
                 <Label className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-normal text-muted-foreground">
                   Map metric
@@ -4279,6 +4369,8 @@ export default function CapRates() {
               </p>
             </div>
           )}
+          <MapLayersPanel layers={mapLayers} onLayersChange={setMapLayers} />
+          </div>
           <MapContainer
             center={TORONTO_CENTER}
             zoom={DEFAULT_ZOOM}
@@ -4356,8 +4448,6 @@ export default function CapRates() {
               {renderMapQuickCard()}
             </MapQuickCardOverlay>
           </MapContainer>
-
-          <MapLayersPanel layers={mapLayers} onLayersChange={setMapLayers} />
 
           <div className="lg:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000]">
             <Button

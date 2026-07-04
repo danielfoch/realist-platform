@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useRoute } from "wouter";
 import {
@@ -8,12 +8,17 @@ import {
   BedDouble,
   Building2,
   Calculator,
+  ChevronLeft,
+  ChevronRight,
   Home,
   Loader2,
   MapPin,
   Ruler,
   TrendingUp,
+  X,
 } from "lucide-react";
+import { CircleMarker, MapContainer, TileLayer } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { NeighbourhoodInsights } from "@/components/NeighbourhoodInsights";
@@ -49,6 +54,9 @@ type ListingDetail = {
   grossYield: string | number | null;
   cashFlowMonthly: string | number | null;
   photoUrl: string | null;
+  /** Full photo set when the feed provides it; today the DDF snapshot pipeline
+   *  stores a single primary photo, so this is usually absent. */
+  images?: string[] | null;
 };
 
 function toNumber(value: string | number | null | undefined): number | null {
@@ -95,6 +103,28 @@ export default function ListingDetailPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Gallery photos: primary photo plus the full images[] set when the API
+  // provides one, deduped. Hooks live above the early returns.
+  const listingData = data?.data;
+  const photos = useMemo(() => {
+    if (!listingData) return [] as string[];
+    const urls = [listingData.photoUrl, ...(listingData.images ?? [])]
+      .filter((url): url is string => Boolean(url && url.startsWith("http")));
+    return Array.from(new Set(urls));
+  }, [listingData]);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightboxIndex(null);
+      if (event.key === "ArrowRight") setLightboxIndex((i) => (i === null ? i : (i + 1) % photos.length));
+      if (event.key === "ArrowLeft") setLightboxIndex((i) => (i === null ? i : (i - 1 + photos.length) % photos.length));
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightboxIndex, photos.length]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -131,6 +161,9 @@ export default function ListingDetailPage() {
   }
 
   const listing = data.data;
+  const latitude = toNumber(listing.latitude);
+  const longitude = toNumber(listing.longitude);
+  const listPriceNumber = toNumber(listing.listPrice);
   const fullAddress = address(listing) || `MLS ${listing.mlsNumber}`;
   const description = `View Realist.ca's property analysis for ${fullAddress}: ${money(listing.listPrice)}, ${listing.bedrooms || "N/A"} bed, ${listing.bathroomsFull || "N/A"} bath, ${pct(listing.capRate)} cap rate, and investor due-diligence context.`;
   const canonicalUrl = `/listings/${encodeURIComponent(listing.mlsNumber)}`;
@@ -201,15 +234,75 @@ export default function ListingDetailPage() {
             </p>
             <ListingEngagementStrip mlsNumber={listing.mlsNumber} className="mb-6" />
 
-            {listing.photoUrl ? (
-              <img
-                src={listing.photoUrl}
-                alt={fullAddress}
-                className="aspect-[16/10] w-full rounded-lg object-cover"
-              />
+            {photos.length > 0 ? (
+              <div data-testid="listing-photo-gallery">
+                <button
+                  type="button"
+                  className="block w-full"
+                  onClick={() => setLightboxIndex(0)}
+                  aria-label="Open photo viewer"
+                  data-testid="button-open-lightbox"
+                >
+                  <img
+                    src={photos[0]}
+                    alt={fullAddress}
+                    className="aspect-[16/10] w-full rounded-lg object-cover"
+                  />
+                </button>
+                {photos.length > 1 && (
+                  <div className="mt-2 grid grid-cols-4 gap-2">
+                    {photos.slice(1, 9).map((url, idx) => (
+                      <button
+                        key={url}
+                        type="button"
+                        className="relative overflow-hidden rounded-md"
+                        onClick={() => setLightboxIndex(idx + 1)}
+                        aria-label={`Open photo ${idx + 2} of ${photos.length}`}
+                        data-testid={`button-gallery-thumb-${idx + 1}`}
+                      >
+                        <img
+                          src={url}
+                          alt={`${fullAddress} photo ${idx + 2}`}
+                          className="aspect-square w-full object-cover"
+                          loading="lazy"
+                        />
+                        {idx === 7 && photos.length > 9 && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-semibold text-white">
+                            +{photos.length - 9}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="flex aspect-[16/10] w-full items-center justify-center rounded-lg bg-muted">
                 <Building2 className="h-16 w-16 text-muted-foreground" />
+              </div>
+            )}
+
+            {latitude !== null && longitude !== null && (
+              <div className="mt-6" data-testid="listing-location-map">
+                <h2 className="mb-2 text-lg font-semibold">Location</h2>
+                <div className="overflow-hidden rounded-lg border">
+                  <MapContainer
+                    center={[latitude, longitude]}
+                    zoom={14}
+                    style={{ height: 280, width: "100%" }}
+                    scrollWheelZoom={false}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                    />
+                    <CircleMarker
+                      center={[latitude, longitude]}
+                      radius={10}
+                      pathOptions={{ color: "#2563eb", fillColor: "#2563eb", fillOpacity: 0.85, weight: 2 }}
+                    />
+                  </MapContainer>
+                </div>
               </div>
             )}
           </div>
@@ -236,9 +329,11 @@ export default function ListingDetailPage() {
                     tone={cashFlow === null ? "neutral" : cashFlow >= 0 ? "positive" : "negative"}
                   />
                 </div>
-                <Link href={`/tools/analyzer?mls=${encodeURIComponent(listing.mlsNumber)}&address=${encodeURIComponent(fullAddress)}`}>
-                  <Button className="w-full">
-                    Analyze this deal <TrendingUp className="ml-2 h-4 w-4" />
+                <Link
+                  href={`/tools/analyzer?mls=${encodeURIComponent(listing.mlsNumber)}&address=${encodeURIComponent(fullAddress)}${listPriceNumber ? `&price=${listPriceNumber}` : ""}`}
+                >
+                  <Button className="w-full" data-testid="button-analyze-property">
+                    Analyze this property <TrendingUp className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
                 <WatchListingButton
@@ -283,6 +378,66 @@ export default function ListingDetailPage() {
 
         <FieldNotes mlsNumber={listing.mlsNumber} />
       </main>
+
+      {lightboxIndex !== null && photos[lightboxIndex] && (
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/90 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo viewer"
+          onClick={() => setLightboxIndex(null)}
+          data-testid="listing-lightbox"
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+            onClick={() => setLightboxIndex(null)}
+            aria-label="Close photo viewer"
+            data-testid="button-close-lightbox"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {photos.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((i) => (i === null ? i : (i - 1 + photos.length) % photos.length));
+                }}
+                aria-label="Previous photo"
+                data-testid="button-lightbox-prev"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                type="button"
+                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((i) => (i === null ? i : (i + 1) % photos.length));
+                }}
+                aria-label="Next photo"
+                data-testid="button-lightbox-next"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+          <img
+            src={photos[lightboxIndex]}
+            alt={`${fullAddress} photo ${lightboxIndex + 1} of ${photos.length}`}
+            className="max-h-full max-w-full rounded-md object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {photos.length > 1 && (
+            <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white">
+              {lightboxIndex + 1} / {photos.length}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

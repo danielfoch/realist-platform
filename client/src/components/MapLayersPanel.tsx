@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import {
   Layers, X, Info, TrendingUp, Home, DollarSign,
@@ -187,12 +187,17 @@ interface MapLayersPanelProps {
 export function MapLayersPanel({ layers, onLayersChange }: MapLayersPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const activeLayers = layers.filter((l) => l.enabled);
+  const activeLayerId = activeLayers[0]?.id ?? "none";
 
-  const toggleLayer = (layerId: string) => {
+  // Radio-style single selection: only one overlay ever renders on the map
+  // (NeighbourhoodOverlay draws activeLayers[0]), so the control must not
+  // imply that layers composite.
+  const selectLayer = (layerId: string) => {
     onLayersChange(
-      layers.map((l) =>
-        l.id === layerId && !l.comingSoon ? { ...l, enabled: !l.enabled } : l
-      )
+      layers.map((l) => ({
+        ...l,
+        enabled: layerId !== "none" && l.id === layerId && !l.comingSoon,
+      }))
     );
   };
 
@@ -214,8 +219,10 @@ export function MapLayersPanel({ layers, onLayersChange }: MapLayersPanelProps) 
 
   return (
     <TooltipProvider>
-      {/* top-24 clears the "Map metric" selector card that owns the top-right corner */}
-      <div className="absolute top-24 right-3 z-[1000]" data-testid="map-layers-panel">
+      {/* Positioned by the parent (CapRates stacks this under the Map-metric
+          card in a single top-right column); only the dropdown/legend anchor
+          off this wrapper. */}
+      <div className="relative" data-testid="map-layers-panel">
         <Button
           size="sm"
           variant={activeLayers.length > 0 ? "default" : "secondary"}
@@ -241,47 +248,65 @@ export function MapLayersPanel({ layers, onLayersChange }: MapLayersPanelProps) 
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Toggle data overlays on the map</p>
+              <p className="text-[11px] text-muted-foreground">Show one data overlay at a time</p>
             </CardHeader>
 
-            <CardContent className="px-4 pb-4 space-y-4">
-              {groupedLayers.map(([category, categoryLayers]) => (
-                <div key={category}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                    {CATEGORY_LABELS[category] || category}
-                  </p>
-                  <div className="space-y-2">
-                    {categoryLayers.map((layer) => (
-                      <div
-                        key={layer.id}
-                        className={`rounded-lg border p-2.5 transition-colors ${
-                          layer.enabled ? "border-primary/30 bg-primary/5" : "border-border/50"
-                        }`}
-                        data-testid={`layer-${layer.id}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-6 h-6 rounded flex items-center justify-center"
-                              style={{ backgroundColor: layer.color + "20", color: layer.color }}
-                            >
-                              {layer.icon}
+            <CardContent className="px-4 pb-4">
+              <RadioGroup value={activeLayerId} onValueChange={selectLayer} className="block space-y-4">
+                <label
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2.5 transition-colors ${
+                    activeLayerId === "none" ? "border-primary/30 bg-primary/5" : "border-border/50"
+                  }`}
+                  data-testid="layer-none"
+                >
+                  <RadioGroupItem value="none" data-testid="radio-layer-none" />
+                  <span className="text-xs font-medium">No overlay</span>
+                </label>
+                {groupedLayers.map(([category, categoryLayers]) => (
+                  <div key={category}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                      {CATEGORY_LABELS[category] || category}
+                    </p>
+                    <div className="space-y-2">
+                      {categoryLayers.map((layer) => (
+                        <div
+                          key={layer.id}
+                          className={`rounded-lg border p-2.5 transition-colors ${
+                            layer.enabled ? "border-primary/30 bg-primary/5" : "border-border/50"
+                          } ${layer.comingSoon ? "opacity-70" : "cursor-pointer"}`}
+                          onClick={() => !layer.comingSoon && selectLayer(layer.id)}
+                          data-testid={`layer-${layer.id}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <RadioGroupItem
+                                value={layer.id}
+                                disabled={layer.comingSoon}
+                                data-testid={`radio-${layer.id}`}
+                              />
+                              <div
+                                className="w-6 h-6 rounded flex items-center justify-center"
+                                style={{ backgroundColor: layer.color + "20", color: layer.color }}
+                              >
+                                {layer.icon}
+                              </div>
+                              <span className="text-xs font-medium">{layer.name}</span>
+                              {layer.comingSoon ? (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 text-muted-foreground">
+                                  Coming soon
+                                </Badge>
+                              ) : layer.badge ? (
+                                <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
+                                  {layer.badge}
+                                </Badge>
+                              ) : null}
                             </div>
-                            <span className="text-xs font-medium">{layer.name}</span>
-                            {layer.comingSoon ? (
-                              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 text-muted-foreground">
-                                Coming soon
-                              </Badge>
-                            ) : layer.badge ? (
-                              <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
-                                {layer.badge}
-                              </Badge>
-                            ) : null}
-                          </div>
-                          <div className="flex items-center gap-1.5">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button className="text-muted-foreground hover:text-foreground">
+                                <button
+                                  className="text-muted-foreground hover:text-foreground"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <Info className="h-3 w-3" />
                                 </button>
                               </TooltipTrigger>
@@ -289,39 +314,32 @@ export function MapLayersPanel({ layers, onLayersChange }: MapLayersPanelProps) 
                                 {layer.description}
                               </TooltipContent>
                             </Tooltip>
-                            <Switch
-                              checked={layer.enabled}
-                              disabled={layer.comingSoon}
-                              onCheckedChange={() => toggleLayer(layer.id)}
-                              className="scale-75"
-                              data-testid={`switch-${layer.id}`}
-                            />
                           </div>
-                        </div>
-                        {layer.enabled && (
-                          <div className="mt-2 px-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] text-muted-foreground">Opacity</span>
-                              <span className="text-[10px] text-muted-foreground">
-                                {Math.round(layer.opacity * 100)}%
-                              </span>
+                          {layer.enabled && (
+                            <div className="mt-2 px-1" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-muted-foreground">Opacity</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {Math.round(layer.opacity * 100)}%
+                                </span>
+                              </div>
+                              <Slider
+                                value={[layer.opacity]}
+                                onValueChange={([val]) => setOpacity(layer.id, val)}
+                                min={0.1}
+                                max={1}
+                                step={0.05}
+                                className="w-full"
+                                data-testid={`slider-${layer.id}`}
+                              />
                             </div>
-                            <Slider
-                              value={[layer.opacity]}
-                              onValueChange={([val]) => setOpacity(layer.id, val)}
-                              min={0.1}
-                              max={1}
-                              step={0.05}
-                              className="w-full"
-                              data-testid={`slider-${layer.id}`}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </RadioGroup>
             </CardContent>
           </Card>
         )}
