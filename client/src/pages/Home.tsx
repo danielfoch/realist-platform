@@ -1179,7 +1179,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
               <Card className="mb-8 border-primary/25 bg-gradient-to-r from-primary/8 via-background to-accent/8">
                 <CardContent className="p-5 md:p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">AI Search Brief</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Search Brief</p>
                     <p className="text-sm md:text-base font-medium">“{nlPrompt}”</p>
                     <p className="text-sm text-muted-foreground">
                       You were routed into underwriting. If you want sourcing instead, jump directly into deal discovery tools.

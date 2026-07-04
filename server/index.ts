@@ -580,7 +580,13 @@ async function ensureAppTables() {
   });
 
   app.get(
-    ["/tools/distress-deals", "/insights/distress-report", "/deal-analyzer", "/podcast"],
+    [
+      "/tools/distress-deals",
+      "/insights/distress-report",
+      "/deal-analyzer",
+      "/podcast",
+      "/insights/market-report/homebench-ai-realtor-benchmark",
+    ],
     (req, res, next) => {
     const map: Record<string, string> = {
       "/tools/distress-deals": "/tools/motivated-deals",
@@ -591,6 +597,10 @@ async function ensureAppTables() {
       // the duplicates.
       "/deal-analyzer": "/tools/analyzer",
       "/podcast": "/insights/podcast",
+      // Pre-rename benchmark path — the client redirects for humans, but
+      // crawlers need the 301 (the old path shipped in shared hub links).
+      "/insights/market-report/homebench-ai-realtor-benchmark":
+        "/reports/realbench-ai-realtor-benchmark",
     };
     const target = map[req.path];
     if (!target) return next();
