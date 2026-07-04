@@ -63,6 +63,7 @@ function CurrencyInput({
         <Input
           id={id}
           type="number"
+          inputMode="decimal"
           value={value || ""}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
           className="h-12 pl-9 font-mono"
@@ -92,11 +93,50 @@ function PercentInput({
   max?: number;
   step?: number;
 }) {
+  // Local text state so users can type intermediate values ("4.", "4.2")
+  // without the parent clamping/reformatting on every keystroke. Slider and
+  // typed field stay paired: either one updates the shared value.
+  const [text, setText] = useState<string>(String(value));
+  useEffect(() => {
+    setText(String(value));
+  }, [value]);
+
+  const commit = (raw: string) => {
+    const parsed = parseFloat(raw);
+    if (!Number.isFinite(parsed)) {
+      setText(String(value));
+      return;
+    }
+    const clamped = Math.min(max, Math.max(min, parsed));
+    onChange(clamped);
+    setText(String(clamped));
+  };
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label htmlFor={id}>{label}</Label>
-        <span className="text-sm font-mono text-muted-foreground">{value.toFixed(1)}%</span>
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor={`${id}-value`}>{label}</Label>
+        <div className="relative shrink-0">
+          <Input
+            id={`${id}-value`}
+            type="number"
+            inputMode="decimal"
+            min={min}
+            max={max}
+            step={step}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={(e) => commit(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            className="h-8 w-24 pr-6 text-right font-mono text-sm"
+            data-testid={`${testId}-value`}
+          />
+          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+            %
+          </span>
+        </div>
       </div>
       <Slider
         id={id}
@@ -134,6 +174,7 @@ function NumberInput({
         <Input
           id={id}
           type="number"
+          inputMode="decimal"
           value={value || ""}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
           className="h-12 font-mono"
@@ -270,6 +311,7 @@ function ConstructionBudget({
             <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="number"
+              inputMode="decimal"
               value={item.cost || ""}
               onChange={(e) => updateItem(item.id, { cost: parseFloat(e.target.value) || 0 })}
               className="pl-7 font-mono"
@@ -405,11 +447,11 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
-              <Input id="amortization" type="number" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
+              <Input id="amortization" type="number" inputMode="numeric" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="term">Term (Years)</Label>
-              <Input id="term" type="number" value={inputs.loanTermYears} onChange={(e) => updateInput("loanTermYears", parseInt(e.target.value) || 5)} className="h-12 font-mono" data-testid="input-term" />
+              <Input id="term" type="number" inputMode="numeric" value={inputs.loanTermYears} onChange={(e) => updateInput("loanTermYears", parseInt(e.target.value) || 5)} className="h-12 font-mono" data-testid="input-term" />
             </div>
           </div>
           {country === "canada" && (
@@ -514,7 +556,7 @@ function BuyHoldInputs({ inputs, onChange, country, region, city, address, defau
               <PercentInput id="appreciation" label="Property Appreciation" value={inputs.appreciationPercent} onChange={(v) => updateInput("appreciationPercent", v)} testId="slider-appreciation" min={-5} max={15} step={0.5} />
               <div className="space-y-2">
                 <Label htmlFor="holdingPeriod">Holding Period (Years)</Label>
-                <Input id="holdingPeriod" type="number" value={inputs.holdingPeriodYears} onChange={(e) => updateInput("holdingPeriodYears", parseInt(e.target.value) || 10)} className="h-12 font-mono" data-testid="input-holding-period" />
+                <Input id="holdingPeriod" type="number" inputMode="numeric" value={inputs.holdingPeriodYears} onChange={(e) => updateInput("holdingPeriodYears", parseInt(e.target.value) || 10)} className="h-12 font-mono" data-testid="input-holding-period" />
               </div>
               <PercentInput id="sellingCosts" label="Selling Costs" value={inputs.sellingCostsPercent} onChange={(v) => updateInput("sellingCostsPercent", v)} testId="slider-selling-costs" min={0} max={10} step={0.5} />
               <CurrencyInput id="otherExpenses" label="Other Monthly Expenses" value={inputs.otherExpenses} onChange={(v) => updateInput("otherExpenses", v)} testId="input-other-expenses" />
@@ -769,11 +811,11 @@ function BRRRInputs({ inputs, onChange, country, region, city, address, defaultL
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
-              <Input id="amortization" type="number" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
+              <Input id="amortization" type="number" inputMode="numeric" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="term">Term (Years)</Label>
-              <Input id="term" type="number" value={inputs.loanTermYears} onChange={(e) => updateInput("loanTermYears", parseInt(e.target.value) || 5)} className="h-12 font-mono" data-testid="input-term" />
+              <Input id="term" type="number" inputMode="numeric" value={inputs.loanTermYears} onChange={(e) => updateInput("loanTermYears", parseInt(e.target.value) || 5)} className="h-12 font-mono" data-testid="input-term" />
             </div>
           </div>
         </CardContent>
@@ -857,11 +899,11 @@ function AirbnbInputs({ inputs, onChange, region, city, address, defaultLeadInfo
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
-              <Input id="amortization" type="number" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
+              <Input id="amortization" type="number" inputMode="numeric" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="term">Term (Years)</Label>
-              <Input id="term" type="number" value={inputs.loanTermYears} onChange={(e) => updateInput("loanTermYears", parseInt(e.target.value) || 5)} className="h-12 font-mono" data-testid="input-term" />
+              <Input id="term" type="number" inputMode="numeric" value={inputs.loanTermYears} onChange={(e) => updateInput("loanTermYears", parseInt(e.target.value) || 5)} className="h-12 font-mono" data-testid="input-term" />
             </div>
           </div>
         </CardContent>
@@ -971,6 +1013,7 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
                       <span className="text-xs text-muted-foreground">Draw {i + 1}</span>
                       <Input
                         type="number"
+                        inputMode="numeric"
                         value={draw}
                         onChange={(e) => {
                           const newSchedule = [...drawSchedule];
@@ -1017,11 +1060,11 @@ function MultiplexInputs({ inputs, onChange, country, region, city, address, def
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amortization">Amortization (Years)</Label>
-              <Input id="amortization" type="number" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
+              <Input id="amortization" type="number" inputMode="numeric" value={inputs.amortizationYears} onChange={(e) => updateInput("amortizationYears", parseInt(e.target.value) || 25)} className="h-12 font-mono" data-testid="input-amortization" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="term">Term (Years)</Label>
-              <Input id="term" type="number" value={inputs.loanTermYears} onChange={(e) => updateInput("loanTermYears", parseInt(e.target.value) || 5)} className="h-12 font-mono" data-testid="input-term" />
+              <Input id="term" type="number" inputMode="numeric" value={inputs.loanTermYears} onChange={(e) => updateInput("loanTermYears", parseInt(e.target.value) || 5)} className="h-12 font-mono" data-testid="input-term" />
             </div>
           </div>
           {country === "canada" && numUnits >= 5 && (
