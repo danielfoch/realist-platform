@@ -2,6 +2,8 @@ import { FormEvent, useMemo, useState } from "react";
 import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { NextStepBlock } from "@/components/NextStepBlock";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
 import {
   calculateHstRebate,
@@ -25,12 +27,9 @@ function parsePrice(value: string) {
 
 function Metric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="border border-[#E6E2DC] bg-white p-4">
-      <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#737373]">{label}</p>
-      <p
-        className={`mt-2 text-2xl font-semibold tracking-normal ${accent ? "text-[#D71920]" : "text-[#050505]"}`}
-        style={{ fontFamily: '"IBM Plex Mono", "JetBrains Mono", monospace' }}
-      >
+    <div className="rounded-lg border bg-card p-4">
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      <p className={`mt-2 font-mono text-2xl font-semibold tracking-normal ${accent ? "text-primary" : "text-foreground"}`}>
         {value}
       </p>
     </div>
@@ -54,12 +53,12 @@ function CollectorPanel({ collector }: { collector: RebateCollector }) {
       ];
 
   return (
-    <aside className="border border-[#E6E2DC] bg-[#F6F4F1] p-6 md:p-7">
-      <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#737373]">Who collects the rebate?</p>
-      <h2 className="mt-3 text-2xl font-semibold text-[#050505]">
+    <aside className="rounded-lg border bg-muted/50 p-6 md:p-7">
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Who collects the rebate?</p>
+      <h2 className="mt-3 text-2xl font-semibold text-foreground">
         {buyer ? "If the buyer collects the rebate" : "If the builder collects or credits the rebate"}
       </h2>
-      <div className="mt-4 space-y-3 text-sm leading-6 text-[#363636]">
+      <div className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
         {buyer ? (
           <>
             <p>Confirm final eligibility once legislation receives royal assent.</p>
@@ -85,25 +84,23 @@ function CollectorPanel({ collector }: { collector: RebateCollector }) {
           </>
         )}
       </div>
-      <h3 className="mt-6 text-sm font-semibold text-[#050505]">Likely next steps</h3>
-      <ol className="mt-3 space-y-2 text-sm leading-6 text-[#363636]">
+      <h3 className="mt-6 text-sm font-semibold text-foreground">Likely next steps</h3>
+      <ol className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
         {steps.map((step, index) => (
           <li key={step} className="flex gap-3">
-            <span className="text-[#737373]" style={{ fontFamily: '"IBM Plex Mono", "JetBrains Mono", monospace' }}>
-              {index + 1}
-            </span>
+            <span className="font-mono text-muted-foreground">{index + 1}</span>
             <span>{step}</span>
           </li>
         ))}
       </ol>
-      <p className="mt-5 border-t border-[#E6E2DC] pt-4 text-xs leading-5 text-[#737373]">
+      <p className="mt-5 border-t pt-4 text-xs leading-5 text-muted-foreground">
         This section is informational only and based on the current FTHB / GST-HST rebate framework. It is not legal or tax advice.
       </p>
       <div className="mt-5 flex flex-col gap-2 text-sm">
-        <a className="font-medium text-[#050505] underline underline-offset-4" href={POLICY_URL} target="_blank" rel="noreferrer">
+        <a className="font-medium text-foreground underline underline-offset-4" href={POLICY_URL} target="_blank" rel="noreferrer">
           Read the policy announcement
         </a>
-        <a className="font-medium text-[#050505] underline underline-offset-4" href={CRA_URL} target="_blank" rel="noreferrer">
+        <a className="font-medium text-foreground underline underline-offset-4" href={CRA_URL} target="_blank" rel="noreferrer">
           Review the current CRA GST/HST rebate guidance
         </a>
       </div>
@@ -168,7 +165,7 @@ export default function OntarioHstRebateCalculator() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#050505]" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-background text-foreground">
       <SEO
         title="Ontario New Home HST Rebate Calculator"
         description="Estimate Ontario new home HST rebate savings under the proposed 2026 relief policy. Calculate buyer savings and register for updates."
@@ -176,27 +173,26 @@ export default function OntarioHstRebateCalculator() {
       />
 
       <Navigation />
-      <header className="border-b border-[#E6E2DC] bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-end px-5 py-4 md:px-8">
-          <img
-            src="/ohba-logo.png"
-            alt="Ontario Home Builders' Association"
-            className="h-9 w-auto grayscale contrast-200 brightness-0"
-          />
-        </div>
-      </header>
 
       <main>
         <section className="mx-auto max-w-6xl px-5 py-10 md:px-8 md:py-14">
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#D71920]">Ontario new homes</p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-normal text-[#050505] md:text-6xl">
+            <Badge variant="outline" className="mb-4 gap-1.5 py-1">
+              <img
+                src="/ohba-logo.png"
+                alt="Ontario Home Builders' Association"
+                className="h-4 w-auto grayscale contrast-200 brightness-0 dark:invert"
+              />
+              OHBA × Realist
+            </Badge>
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Ontario new homes</p>
+            <h1 className="mt-4 text-3xl font-bold md:text-4xl">
               Ontario New Home HST Rebate Calculator
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#4a4a4a]">
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
               Estimate how much a buyer could save under the proposed Ontario HST relief policy for new homes.
             </p>
-            <div className="mt-6 border border-[#E6E2DC] bg-[#F6F4F1] px-4 py-3 text-sm leading-6 text-[#363636]">
+            <div className="mt-6 rounded-md border bg-muted/50 px-4 py-3 text-sm leading-6 text-muted-foreground">
               Prototype only. Based on the March 30, 2026 federal/Ontario announcement and current CRA rebate mechanics.
               Final rules may change pending royal assent and formal implementation guidance.
             </div>
@@ -204,44 +200,43 @@ export default function OntarioHstRebateCalculator() {
         </section>
 
         <section className="mx-auto grid max-w-6xl gap-6 px-5 pb-12 md:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] md:px-8">
-          <div className="border border-[#E6E2DC] bg-white p-5 shadow-[0_10px_30px_rgba(5,5,5,0.04)] md:p-7">
-            <div className="flex flex-col justify-between gap-3 border-b border-[#E6E2DC] pb-5 md:flex-row md:items-end">
+          <div className="rounded-lg border bg-card p-5 shadow-sm md:p-7">
+            <div className="flex flex-col justify-between gap-3 border-b pb-5 md:flex-row md:items-end">
               <div>
                 <h2 className="text-2xl font-semibold">Calculate estimated buyer savings</h2>
-                <p className="mt-2 text-sm text-[#737373]">Default example uses a $550,000 current sale price.</p>
+                <p className="mt-2 text-sm text-muted-foreground">Default example uses a $550,000 current sale price.</p>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
+                className="self-start"
                 onClick={() => setSalePrice("550000")}
-                className="self-start border border-[#E6E2DC] px-3 py-2 text-sm font-medium text-[#050505] hover:bg-[#F6F4F1]"
               >
                 Reset example
-              </button>
+              </Button>
             </div>
 
             <div className="mt-6 grid gap-5">
               <label className="block">
-                <span className="text-sm font-medium text-[#050505]">Current sale price</span>
-                <span className="mt-2 flex items-center border border-[#E6E2DC] bg-white px-4 py-3 focus-within:border-[#050505]">
-                  <span className="mr-2 text-[#737373]" style={{ fontFamily: '"IBM Plex Mono", "JetBrains Mono", monospace' }}>
-                    $
-                  </span>
+                <span className="text-sm font-medium text-foreground">Current sale price</span>
+                <span className="mt-2 flex items-center rounded-md border border-input bg-background px-4 py-3 focus-within:border-ring">
+                  <span className="mr-2 font-mono text-muted-foreground">$</span>
                   <input
                     value={salePrice}
                     onChange={(event) => setSalePrice(event.target.value)}
                     inputMode="decimal"
-                    className="w-full bg-transparent text-xl outline-none"
-                    style={{ fontFamily: '"IBM Plex Mono", "JetBrains Mono", monospace' }}
+                    className="w-full bg-transparent font-mono text-xl outline-none"
                     aria-describedby="sale-price-help"
                   />
                 </span>
-                <span id="sale-price-help" className="mt-2 block text-xs text-[#737373]">
+                <span id="sale-price-help" className="mt-2 block text-xs text-muted-foreground">
                   Enter the purchaser-facing price or the pre-HST home value, then choose the price mode.
                 </span>
               </label>
 
               <fieldset>
-                <legend className="text-sm font-medium text-[#050505]">Price mode</legend>
+                <legend className="text-sm font-medium text-foreground">Price mode</legend>
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {[
                     ["includes_hst", "Entered price includes HST"],
@@ -249,8 +244,8 @@ export default function OntarioHstRebateCalculator() {
                   ].map(([value, label]) => (
                     <label
                       key={value}
-                      className={`flex cursor-pointer items-center gap-3 border px-4 py-3 text-sm ${
-                        priceMode === value ? "border-[#050505] bg-[#F6F4F1]" : "border-[#E6E2DC] bg-white"
+                      className={`flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3 text-sm ${
+                        priceMode === value ? "border-primary bg-muted" : "bg-card"
                       }`}
                     >
                       <input
@@ -259,7 +254,7 @@ export default function OntarioHstRebateCalculator() {
                         value={value}
                         checked={priceMode === value}
                         onChange={() => setPriceMode(value as PriceMode)}
-                        className="h-4 w-4 accent-[#D71920]"
+                        className="h-4 w-4 accent-primary"
                       />
                       {label}
                     </label>
@@ -268,8 +263,8 @@ export default function OntarioHstRebateCalculator() {
               </fieldset>
 
               <fieldset>
-                <legend className="text-sm font-medium text-[#050505]">Who collects the rebate?</legend>
-                <div className="mt-2 grid grid-cols-2 border border-[#E6E2DC]">
+                <legend className="text-sm font-medium text-foreground">Who collects the rebate?</legend>
+                <div className="mt-2 grid grid-cols-2 overflow-hidden rounded-md border">
                   {[
                     ["buyer", "Buyer"],
                     ["builder", "Builder"],
@@ -279,7 +274,7 @@ export default function OntarioHstRebateCalculator() {
                       type="button"
                       onClick={() => setCollector(value as RebateCollector)}
                       className={`px-4 py-3 text-sm font-medium ${
-                        collector === value ? "bg-[#050505] text-white" : "bg-white text-[#050505] hover:bg-[#F6F4F1]"
+                        collector === value ? "bg-foreground text-background" : "bg-card text-foreground hover:bg-muted"
                       }`}
                       aria-pressed={collector === value}
                     >
@@ -289,34 +284,26 @@ export default function OntarioHstRebateCalculator() {
                 </div>
               </fieldset>
 
-              <button
-                type="button"
-                onClick={() => setSalePrice(String(parsePrice(salePrice)))}
-                className="bg-[#D71920] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b9151b] focus:outline-none focus:ring-2 focus:ring-[#D71920] focus:ring-offset-2"
-              >
+              <Button type="button" onClick={() => setSalePrice(String(parsePrice(salePrice)))}>
                 Calculate
-              </button>
+              </Button>
             </div>
 
-            <section className="mt-7 border-t border-[#E6E2DC] pt-6" aria-live="polite">
+            <section className="mt-7 border-t pt-6" aria-live="polite">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Metric label="Estimated buyer savings" value={formatCad(result.rebate)} accent />
                 <Metric label="Effective purchaser price" value={formatCad(result.effectivePurchaserPrice)} />
                 <Metric label="Home value used for calculation" value={formatCad(result.basePrice)} />
                 <Metric label="Estimated HST before rebate" value={formatCad(result.estimatedHst)} />
               </div>
-              <div className="mt-4 border border-[#E6E2DC] bg-[#F6F4F1] p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#737373]">Rebate path / policy band</p>
+              <div className="mt-4 rounded-lg border bg-muted/50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Rebate path / policy band</p>
                 <p className="mt-2 text-lg font-semibold">{result.policyBand}</p>
-                <p className="mt-3 text-sm leading-6 text-[#363636]">{summary}</p>
-                <p className="mt-2 text-xs text-[#737373]">This estimate is based on public policy announcements and may change.</p>
-                <button
-                  type="button"
-                  onClick={copyResult}
-                  className="mt-4 border border-[#050505] px-3 py-2 text-sm font-medium text-[#050505] hover:bg-white"
-                >
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{summary}</p>
+                <p className="mt-2 text-xs text-muted-foreground">This estimate is based on public policy announcements and may change.</p>
+                <Button type="button" variant="outline" size="sm" className="mt-4" onClick={copyResult}>
                   {copied ? "Copied" : "Copy result"}
-                </button>
+                </Button>
               </div>
             </section>
           </div>
@@ -328,12 +315,12 @@ export default function OntarioHstRebateCalculator() {
           <NextStepBlock sourcePage="/tools/hst-rebate" className="mt-8" />
         </div>
 
-        <section className="border-y border-[#E6E2DC] bg-[#F6F4F1]">
+        <section className="border-y bg-muted/50">
           <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 md:grid-cols-[0.8fr_1.2fr] md:px-8">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#D71920]">Updates</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">Updates</p>
               <h2 className="mt-3 text-3xl font-semibold">Register for the HST Info Session</h2>
-              <p className="mt-4 text-sm leading-6 text-[#4a4a4a]">
+              <p className="mt-4 text-sm leading-6 text-muted-foreground">
                 Want updates when the final rules and process are confirmed? Register for the HST info session and we'll send you the details.
               </p>
             </div>
@@ -346,7 +333,7 @@ export default function OntarioHstRebateCalculator() {
                     required
                     value={form.firstName}
                     onChange={(event) => setForm({ ...form, firstName: event.target.value })}
-                    className="border border-[#E6E2DC] bg-white px-3 py-3 outline-none focus:border-[#050505]"
+                    className="rounded-md border border-input bg-background px-3 py-3 outline-none focus:border-ring"
                   />
                 </label>
                 <label className="grid gap-2 text-sm font-medium">
@@ -355,7 +342,7 @@ export default function OntarioHstRebateCalculator() {
                     required
                     value={form.lastName}
                     onChange={(event) => setForm({ ...form, lastName: event.target.value })}
-                    className="border border-[#E6E2DC] bg-white px-3 py-3 outline-none focus:border-[#050505]"
+                    className="rounded-md border border-input bg-background px-3 py-3 outline-none focus:border-ring"
                   />
                 </label>
               </div>
@@ -367,15 +354,15 @@ export default function OntarioHstRebateCalculator() {
                     type="email"
                     value={form.email}
                     onChange={(event) => setForm({ ...form, email: event.target.value })}
-                    className="border border-[#E6E2DC] bg-white px-3 py-3 outline-none focus:border-[#050505]"
+                    className="rounded-md border border-input bg-background px-3 py-3 outline-none focus:border-ring"
                   />
                 </label>
                 <label className="grid gap-2 text-sm font-medium">
-                  Company <span className="text-[#737373]">(optional)</span>
+                  Company <span className="text-muted-foreground">(optional)</span>
                   <input
                     value={form.company}
                     onChange={(event) => setForm({ ...form, company: event.target.value })}
-                    className="border border-[#E6E2DC] bg-white px-3 py-3 outline-none focus:border-[#050505]"
+                    className="rounded-md border border-input bg-background px-3 py-3 outline-none focus:border-ring"
                   />
                 </label>
               </div>
@@ -384,7 +371,7 @@ export default function OntarioHstRebateCalculator() {
                 <select
                   value={form.role}
                   onChange={(event) => setForm({ ...form, role: event.target.value })}
-                  className="border border-[#E6E2DC] bg-white px-3 py-3 outline-none focus:border-[#050505]"
+                  className="rounded-md border border-input bg-background px-3 py-3 outline-none focus:border-ring"
                 >
                   {roles.map((role) => (
                     <option key={role} value={role}>
@@ -393,27 +380,23 @@ export default function OntarioHstRebateCalculator() {
                   ))}
                 </select>
               </label>
-              <button
-                type="submit"
-                disabled={formStatus === "submitting" || formStatus === "success"}
-                className="bg-[#D71920] px-5 py-3 text-sm font-semibold text-white hover:bg-[#b9151b] disabled:cursor-not-allowed disabled:opacity-70"
-              >
+              <Button type="submit" disabled={formStatus === "submitting" || formStatus === "success"}>
                 {formStatus === "submitting" ? "Registering..." : "Register for HST Info Session"}
-              </button>
+              </Button>
               {formStatus === "success" && (
-                <p className="border border-[#E6E2DC] bg-white px-4 py-3 text-sm text-[#050505]">
+                <p className="rounded-md border bg-card px-4 py-3 text-sm text-foreground">
                   You're registered. We'll send the HST info session details once available.
                 </p>
               )}
               {formStatus === "error" && (
-                <p className="border border-[#D71920] bg-white px-4 py-3 text-sm text-[#D71920]">{errorMessage}</p>
+                <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{errorMessage}</p>
               )}
             </form>
           </div>
         </section>
       </main>
 
-      <footer className="mx-auto max-w-6xl px-5 py-8 text-xs leading-5 text-[#737373] md:px-8">
+      <footer className="mx-auto max-w-6xl px-5 py-8 text-xs leading-5 text-muted-foreground md:px-8">
         <p>
           This calculator is a prototype for public education and planning. It is not tax, legal, accounting, or
           financial advice. Eligibility, application mechanics, builder credit treatment, and final rebate amounts may

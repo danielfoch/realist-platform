@@ -11,9 +11,9 @@ import { ArrowLeft, ArrowRight, Clock, BookOpen, ChevronRight } from "lucide-rea
 import type { Guide } from "@shared/schema";
 
 const difficultyColors: Record<string, string> = {
-  beginner: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  intermediate: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  advanced: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  beginner: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30",
+  intermediate: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
+  advanced: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30",
 };
 
 interface TocItem {

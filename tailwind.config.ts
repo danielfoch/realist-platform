@@ -46,6 +46,13 @@ export default {
           foreground: "hsl(var(--accent-foreground) / <alpha-value>)",
           border: "var(--accent-border)",
         },
+        /* AI surface accent — violet, used for AI-labeled elements (badges,
+           narrative cards, provenance highlights). Light/dark values live in
+           index.css (--ai / --ai-foreground). */
+        ai: {
+          DEFAULT: "hsl(var(--ai) / <alpha-value>)",
+          foreground: "hsl(var(--ai-foreground) / <alpha-value>)",
+        },
         destructive: {
           DEFAULT: "hsl(var(--destructive) / <alpha-value>)",
           foreground: "hsl(var(--destructive-foreground) / <alpha-value>)",

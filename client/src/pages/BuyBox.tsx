@@ -772,7 +772,7 @@ export default function BuyBox() {
                               {service.provider}
                             </Badge>
                             {isEnabled && (
-                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-[10px]">
+                              <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 text-[10px]">
                                 Selected
                               </Badge>
                             )}

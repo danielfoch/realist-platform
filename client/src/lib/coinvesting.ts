@@ -167,17 +167,17 @@ export const ownershipStructureLabels: Record<string, string> = {
 export const tierLabels: Record<string, { label: string; color: string; description: string }> = {
   simple_coownership: {
     label: "Simple Co-Ownership",
-    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    color: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30",
     description: "This arrangement appears consistent with traditional co-ownership structures.",
   },
   borderline: {
     label: "Borderline",
-    color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    color: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
     description: "This arrangement has some characteristics that may warrant additional review.",
   },
   likely_complex: {
     label: "Likely Complex",
-    color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30",
     description: "This arrangement has characteristics commonly associated with securities or complex structures.",
   },
 };

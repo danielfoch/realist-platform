@@ -91,7 +91,7 @@ export default function Premium() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
               <Crown className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold">You're a Premium Member</h1>
+            <h1 className="text-3xl md:text-4xl font-bold">You're a Premium Member</h1>
             <p className="text-muted-foreground max-w-md mx-auto">
               You have full access to all premium features including custom branding,
               advanced calculator tools, and weekly calls.
@@ -121,13 +121,13 @@ export default function Premium() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="max-w-5xl mx-auto px-4 py-12 md:py-20">
+      <main className="max-w-6xl mx-auto px-4 py-12 md:py-20">
         <div className="text-center mb-12">
           <Badge variant="secondary" className="mb-4" data-testid="badge-premium">
             <Crown className="h-3 w-3 mr-1" />
             Premium
           </Badge>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">
             Unlock the Full Power of Realist
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
