@@ -122,7 +122,6 @@ nearby" card. Import: `npx tsx scripts/import-toronto-dev-apps.ts`.
 easting/northing in metres — NOT UTM 17N. `shared/torontoMtm.ts` reprojects to
 WGS84 (validated: 3920/3920 geocoded records land inside Toronto; 1001 Sheppard
 Ave → 43.771, -79.375).
->>>>>>> ea11bb3 (Toronto development activity: "N developments nearby" listing signal)
 
 ## Toronto parcels (lot size)
 
