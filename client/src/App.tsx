@@ -332,7 +332,7 @@ function Router() {
       <Route path="/experts" component={Experts} />
       <Route path="/experts/:userId" component={ExpertProfile} />
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
-      <Route path="/deals" component={Watchlist} />
+      <Route path="/deals">{() => <Redirect to="/watchlist" />}</Route>
       <Route path="/watchlist" component={Watchlist} />
       <Route path="/deal-challenge">{() => <Redirect to="/tools/investor-os" />}</Route>
       <Route path="/professionals">{() => <Redirect to="/power-team" />}</Route>
@@ -446,7 +446,7 @@ function Router() {
       <Route path="/coinvesting/checklist">{() => <Redirect to="/tools/coinvest/checklist" />}</Route>
       <Route path="/coinvesting/groups/new">{() => <Redirect to="/tools/coinvest/groups/new" />}</Route>
       <Route path="/coinvesting/groups/:id">{(props: any) => <Redirect to={`/tools/coinvest/groups/${props.params?.id}`} />}</Route>
-      <Route path="/events" component={Events} />
+      <Route path="/events">{() => <Redirect to="/community/events" />}</Route>
       <Route path="/notebook" component={Notebook} />
       <Route path="/notebook/print" component={NotebookPrint} />
       <Route path="/danielfoch" component={DanielFoch} />
