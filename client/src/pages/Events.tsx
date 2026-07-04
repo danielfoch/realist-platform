@@ -391,7 +391,7 @@ export default function Events() {
         title="Real Estate Investor Events - Toronto & Canada Networking"
         description="Join 11,000+ Canadian real estate investors at our exclusive events. Network with Daniel Foch and the Canadian Real Estate Investor Podcast community. Workshops, meetups, and conferences in Toronto and across Canada."
         keywords="real estate investor events toronto, canadian real estate meetup, real estate networking canada, daniel foch events, investor conference canada, real estate workshop toronto"
-        canonicalUrl="/events"
+        canonicalUrl="/community/events"
         structuredData={eventsSchema}
       />
       <Navigation />

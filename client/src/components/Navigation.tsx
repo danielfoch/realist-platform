@@ -10,7 +10,7 @@ import {
   Calculator, MapPin, Users, Handshake, Calendar, Radio,
   FileText, TrendingUp, BarChart3, Shield, Gavel,
   Map, DollarSign, Layers, Building2, Inbox, Sparkles,
-  KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell, PhoneCall,
+  KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell, PhoneCall, PenLine,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,6 +29,13 @@ interface NavItem {
 
 interface NavCategory {
   label: string;
+  /**
+   * Hub page for this category. Wired in two places: the mobile section
+   * header is a link to it, and on desktop the hub appears as a browsable
+   * dropdown item (first "…Hub"/"All Tools" row) since a Radix
+   * DropdownMenuTrigger can't be both a link and a menu toggle.
+   */
+  href?: string;
   items: NavItem[];
 }
 
@@ -38,6 +45,7 @@ interface NavCategory {
 const navCategories: NavCategory[] = [
   {
     label: "Find Deals",
+    href: "/tools",
     items: [
       { href: "/tools/cap-rates", label: "Yield Map", description: "Browse listings by cap rate and rental yield", icon: <Map className="h-4 w-4" /> },
       { href: "/tools/motivated-deals", label: "Motivated Deals", description: "Motivated sellers, power of sale, VTB finder", icon: <Gavel className="h-4 w-4" /> },
@@ -48,7 +56,9 @@ const navCategories: NavCategory[] = [
   },
   {
     label: "Analyze",
+    href: "/tools",
     items: [
+      { href: "/tools", label: "All Tools", description: "Browse every calculator", icon: <FolderOpen className="h-4 w-4" /> },
       { href: "/tools/analyzer", label: "Deal Analyzer", description: "Full underwriting — buy & hold, BRRR, multiplex, flip", icon: <Calculator className="h-4 w-4" /> },
       { href: "/tools/financing-readiness", label: "Financing Readiness", description: "Your stress-tested max purchase price in 30 seconds", icon: <Gauge className="h-4 w-4" />, badge: "New" },
       { href: "/tools/multiplex-underwriter", label: "Multiplex Underwriter", description: "Address-first AI underwrite with zoning and risk flags", icon: <Sparkles className="h-4 w-4" />, badge: "AI" },
@@ -57,22 +67,25 @@ const navCategories: NavCategory[] = [
       { href: "/tools/true-cost", label: "True Cost", description: "Complete cost breakdown for Ontario buyers", icon: <DollarSign className="h-4 w-4" /> },
       { href: "/tools/rent-vs-buy", label: "Rent vs. Buy", description: "Compare renting vs. owning over time", icon: <BarChart3 className="h-4 w-4" /> },
       { href: "/tools/deal-desk", label: "Deal Desk", description: "Submit a deal for our team to review with you", icon: <Inbox className="h-4 w-4" /> },
-      { href: "/tools", label: "All Tools", description: "Browse every calculator", icon: <FolderOpen className="h-4 w-4" /> },
     ],
   },
   {
     label: "Market Intel",
+    href: "/insights",
     items: [
       { href: "/insights", label: "Market Intelligence Hub", description: "All research, dashboards, and analysis in one place", icon: <Gauge className="h-4 w-4" /> },
       { href: "/insights/market-report", label: "Market Reports", description: "Monthly yield, rates, motivated-seller, and research coverage", icon: <BarChart3 className="h-4 w-4" /> },
       { href: "/reports", label: "Research Reports", description: "Deep-dive reports and interactive dashboards", icon: <Newspaper className="h-4 w-4" /> },
       { href: "/markets", label: "Markets", description: "City-level prices, yields, and policy", icon: <Globe2 className="h-4 w-4" /> },
+      { href: "/investing", label: "Strategies", description: "Investing strategy playbooks — BRRRR, house hack, multiplex, and more", icon: <TrendingUp className="h-4 w-4" /> },
       { href: "/insights/podcast", label: "Podcast", description: "Real estate investor conversations", icon: <Radio className="h-4 w-4" /> },
+      { href: "/insights/blog", label: "Blog", description: "Essays and research notes from the Realist team", icon: <PenLine className="h-4 w-4" /> },
       { href: "/insights/guides", label: "Guides & Encyclopedia", description: "How-to guides, definitions, formulas, and underwriting specs", icon: <FileText className="h-4 w-4" /> },
     ],
   },
   {
     label: "Community",
+    href: "/community",
     items: [
       { href: "/community", label: "Community Hub", description: "Everything happening across the Realist community", icon: <Users className="h-4 w-4" /> },
       { href: "/deal-room", label: "Live Deal Room", description: "Free live deal review — Mondays 11:30am ET", icon: <Radio className="h-4 w-4" /> },
@@ -383,9 +396,20 @@ export function Navigation() {
 
             {navCategories.map((category) => (
               <div key={category.label} className="space-y-1">
-                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pb-1">
-                  {category.label}
-                </div>
+                {category.href ? (
+                  <Link
+                    href={category.href}
+                    onClick={closeMobile}
+                    className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pb-1 hover:text-foreground"
+                    data-testid={`link-mobile-category-${category.label.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    {category.label}
+                  </Link>
+                ) : (
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pb-1">
+                    {category.label}
+                  </div>
+                )}
                 {category.items.map((item) =>
                   item.external ? (
                     <Button
@@ -443,10 +467,28 @@ export function Navigation() {
                       My Deals
                     </Link>
                   </Button>
+                  <Button asChild variant="ghost" className="w-full justify-start h-9 text-sm" data-testid="link-mobile-my-watchlist">
+                    <Link href="/watchlist" onClick={closeMobile}>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Watchlist & Alerts
+                    </Link>
+                  </Button>
                   <Button asChild variant="ghost" className="w-full justify-start h-9 text-sm" data-testid="link-mobile-my-performance">
                     <Link href="/my-performance" onClick={closeMobile}>
                       <TrendingUp className="mr-2 h-4 w-4" />
                       My Performance
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" className="w-full justify-start h-9 text-sm" data-testid="link-mobile-api-keys">
+                    <Link href="/account/api-keys" onClick={closeMobile}>
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      API Keys & Claude
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" className="w-full justify-start h-9 text-sm" data-testid="link-mobile-notifications">
+                    <Link href="/account/notifications" onClick={closeMobile}>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Email Preferences
                     </Link>
                   </Button>
                   <Button asChild variant="ghost" className="w-full justify-start h-9 text-sm" data-testid="link-mobile-investor">
