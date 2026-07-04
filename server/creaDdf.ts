@@ -19,7 +19,8 @@ interface DdfListing {
   ListingId?: string;
   ListPrice?: number;
   StandardStatus?: string;
-  TransactionType?: string;
+  LeaseAmount?: number;
+  LeaseAmountFrequency?: string;
   PropertySubType?: string;
   StructureType?: string;
   BedroomsTotal?: number;
@@ -74,7 +75,7 @@ const DDF_API_BASE = "https://ddfapi.realtor.ca/odata/v1";
 
 const DDF_SELECT_FIELDS = [
   "ListingKey", "ListingId", "ListPrice", "StandardStatus",
-  "TransactionType",
+  "LeaseAmount", "LeaseAmountFrequency",
   "PropertySubType", "StructureType",
   "BedroomsTotal", "BathroomsTotalInteger", "BathroomsPartial",
   "LivingArea", "LivingAreaUnits", "BuildingAreaTotal", "BuildingAreaUnits",
@@ -142,7 +143,7 @@ export async function searchDdfListings(params: {
   excludeBusinessSales?: boolean;
   excludeParking?: boolean;
   excludeVacantLand?: boolean;
-  /** Restrict to rental/lease listings (TransactionType For rent/For lease). */
+  /** Restrict to rental/lease listings (LeaseAmount is only set on leases). */
   forLease?: boolean;
   latitudeMin?: number;
   latitudeMax?: number;
@@ -156,7 +157,9 @@ export async function searchDdfListings(params: {
   const filters: string[] = [];
   filters.push("StandardStatus eq 'Active'");
   if (params.forLease) {
-    filters.push("(TransactionType eq 'For rent' or TransactionType eq 'For lease' or TransactionType eq 'For sale or rent')");
+    // DDF dropped TransactionType (For sale/For rent); lease listings are now
+    // the ones carrying a LeaseAmount.
+    filters.push("LeaseAmount ne null");
   }
 
   if (params.city) {

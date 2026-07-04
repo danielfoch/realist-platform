@@ -11872,8 +11872,9 @@ export async function registerRoutes(
   });
 
   let distressScanInProgress = false;
+  let lastDistressScanError: { message: string; at: string } | null = null;
 
-  async function runDistressScan(): Promise<{ listings: any[]; totalDdfScanned: number }> {
+  async function runDistressScan(): Promise<{ listings: any[]; totalDdfScanned: number; failedTermCount: number }> {
     const { scoreDistress, isQualifiedDistressResult } = await import("@shared/distressScoring");
     const { searchDdfByRemarks, normalizeDdfToRepliersFormat } = await import("./creaDdf");
 
@@ -11886,6 +11887,7 @@ export async function registerRoutes(
 
     const allListings = new Map<string, any>();
     let totalDdfScanned = 0;
+    const failedTerms: string[] = [];
 
     const CONCURRENCY = 2;
     const TERM_TIMEOUT = 60000;
@@ -11914,11 +11916,24 @@ export async function registerRoutes(
           }
           console.log(`[distress-scan] "${termChunk[i]}": ${r.value.count} matches, ${r.value.listings.length} fetched`);
         } else {
+          failedTerms.push(termChunk[i]);
           console.error(`[distress-scan] "${termChunk[i]}" error:`, (r.reason as any)?.message || r.reason);
         }
       }
     }
     console.log(`[distress-scan] Total: ${allListings.size} unique listings from ${uniqueTerms.length} searches`);
+
+    // An empty result with search errors means the feed is broken, not that no
+    // distress listings exist — keep whatever cache we have instead of
+    // overwriting it with nothing.
+    if (failedTerms.length > 0 && allListings.size === 0) {
+      throw new Error(
+        `${failedTerms.length}/${uniqueTerms.length} DDF term searches failed and none returned listings; not caching an empty result set`
+      );
+    }
+    if (failedTerms.length > 0) {
+      console.error(`[distress-scan] ${failedTerms.length}/${uniqueTerms.length} term searches failed; caching partial results`);
+    }
 
     const allScored = Array.from(allListings.values()).map(raw => {
       const normalized = normalizeDdfToRepliersFormat(raw);
@@ -11931,7 +11946,7 @@ export async function registerRoutes(
     allScored.sort((a, b) => b.distress.distressScore - a.distress.distressScore);
 
     const cacheKey = `distress-v6:qualified`;
-    const cacheData = { listings: allScored, totalDdfScanned };
+    const cacheData = { listings: allScored, totalDdfScanned, failedTermCount: failedTerms.length };
 
     await db.insert(dataCache).values({
       key: cacheKey,
@@ -11950,8 +11965,14 @@ export async function registerRoutes(
     distressScanInProgress = true;
     console.log("[distress-scan] Starting background scan...");
     runDistressScan()
-      .then(data => console.log(`[distress-scan] Background scan complete: ${data.listings.length} listings cached`))
-      .catch(err => console.error("[distress-scan] Background scan failed:", err.message))
+      .then(data => {
+        lastDistressScanError = null;
+        console.log(`[distress-scan] Background scan complete: ${data.listings.length} listings cached`);
+      })
+      .catch(err => {
+        lastDistressScanError = { message: err.message, at: new Date().toISOString() };
+        console.error("[distress-scan] Background scan failed:", err.message);
+      })
       .finally(() => { distressScanInProgress = false; });
   }
 
@@ -12001,6 +12022,7 @@ export async function registerRoutes(
           listings: filteredListings,
           totalCount: filteredListings.length,
           totalDdfScanned: cachedData.totalDdfScanned || 0,
+          failedTermCount: cachedData.failedTermCount || 0,
         });
         return;
       }
@@ -12017,11 +12039,23 @@ export async function registerRoutes(
           totalCount: filteredListings.length,
           totalDdfScanned: staleData.totalDdfScanned || 0,
           stale: true,
+          scanError: lastDistressScanError?.message,
         });
         return;
       }
 
       triggerBackgroundScan();
+      if (lastDistressScanError) {
+        res.json({
+          listings: [],
+          totalCount: 0,
+          totalDdfScanned: 0,
+          scanError: lastDistressScanError.message,
+          scanErrorAt: lastDistressScanError.at,
+          message: "The DDF listing scan is failing. Retrying in the background.",
+        });
+        return;
+      }
       res.json({
         listings: [],
         totalCount: 0,
@@ -12057,8 +12091,10 @@ export async function registerRoutes(
     console.log("[distress-prewarm] Warming all distress deals...");
     try {
       const data = await runDistressScan();
+      lastDistressScanError = null;
       console.log(`[distress-prewarm] Warmed ${data.listings.length} listings`);
     } catch (err: any) {
+      lastDistressScanError = { message: err.message, at: new Date().toISOString() };
       console.error(`[distress-prewarm] Failed:`, err.message);
     } finally {
       distressScanInProgress = false;

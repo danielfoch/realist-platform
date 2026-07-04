@@ -508,6 +508,8 @@ export default function DistressDeals() {
     totalCount: number;
     totalDdfScanned: number;
     warming?: boolean;
+    stale?: boolean;
+    scanError?: string;
     message?: string;
   }>({
     queryKey: ["/api/distress-deals"],
@@ -519,11 +521,14 @@ export default function DistressDeals() {
     staleTime: 30 * 60 * 1000,
     refetchInterval: (query) => {
       const d = query.state.data as any;
-      return d?.warming ? 15000 : false;
+      if (d?.warming) return 15000;
+      if (d?.scanError && !d?.listings?.length) return 60000;
+      return false;
     },
   });
 
   const allListings = data?.listings || [];
+  const scanFailedEmpty = !!data?.scanError && allListings.length === 0;
 
   const categoryFiltered = useMemo(() => {
     if (categories.length === 0) return [];
@@ -730,7 +735,17 @@ export default function DistressDeals() {
                   </div>
                 )}
 
-                {!isLoading && listings.length === 0 && (
+                {!isLoading && !data?.warming && scanFailedEmpty && (
+                  <div className="flex flex-col items-center justify-center h-64 text-center p-8" data-testid="text-scan-error">
+                    <AlertTriangle className="h-10 w-10 text-destructive/60 mb-3" />
+                    <h3 className="font-medium mb-1">Listing scan is temporarily unavailable</h3>
+                    <p className="text-sm text-muted-foreground">
+                      We couldn't refresh motivated-seller listings from the MLS data feed. We're retrying automatically — check back in a few minutes.
+                    </p>
+                  </div>
+                )}
+
+                {!isLoading && !data?.warming && !scanFailedEmpty && listings.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-64 text-center p-8">
                     <Search className="h-10 w-10 text-muted-foreground/30 mb-3" />
                     <h3 className="font-medium mb-1">No motivated-seller listings in this area</h3>
