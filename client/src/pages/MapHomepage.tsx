@@ -311,7 +311,7 @@ export default function MapHomepage() {
                 className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed"
                 data-testid="text-map-hero-subhead"
               >
-                The real estate AI that gets smarter with every deal you analyze. Analyze any property,
+                Deal analysis that gets smarter with every deal you run. Analyze any property,
                 find listings worth underwriting, and let Realist learn your buy box from every search,
                 save, and analysis — so the next opportunity is easier to spot than the last.
               </p>

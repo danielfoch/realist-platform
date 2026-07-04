@@ -73,9 +73,15 @@ export default function CreateAccount() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Account created!", description: "Welcome to Realist." });
+      // The role question is answered here — carry it through so /signup
+      // doesn't re-ask it (it reads and clears this key on mount).
+      sessionStorage.setItem(
+        "realist_signup_role",
+        JSON.stringify({ role: variables.role, professionalType: variables.professionalType || null }),
+      );
       clearAuthReturnUrl();
       goToReturnUrl(returnUrl, setLocation);
     },

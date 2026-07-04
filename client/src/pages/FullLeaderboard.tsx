@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ArrowUpDown, Shield, Trophy } from "lucide-react";
 import { LeaderboardEligibilityNotice } from "@/components/LeaderboardEligibilityNotice";
+import { HowScoringWorks } from "@/components/HowScoringWorks";
 
 interface FullLeaderboardEntry {
   rank: number;
@@ -101,6 +102,7 @@ export default function FullLeaderboard() {
             </Link>
             <h1 className="text-3xl font-bold tracking-tight">Full Leaderboard</h1>
             <p className="text-sm text-muted-foreground">Detailed confidence-weighted rankings and market oracle KPIs.</p>
+            <HowScoringWorks className="-ml-2 mt-1" />
           </div>
           <Badge variant="outline" className="gap-2">
             <Shield className="h-3.5 w-3.5" />
@@ -127,9 +129,12 @@ export default function FullLeaderboard() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="score">Score</SelectItem>
+                <SelectItem value="name">User</SelectItem>
                 <SelectItem value="totalDealsAnalyzed">Total Deals</SelectItem>
                 <SelectItem value="monthlyDealsAnalyzed">Monthly Deals</SelectItem>
                 <SelectItem value="confidence">Confidence</SelectItem>
+                <SelectItem value="eligible">Eligible</SelectItem>
+                <SelectItem value="excluded">Excluded</SelectItem>
                 <SelectItem value="oracle">Oracle</SelectItem>
                 <SelectItem value="yield">Yield</SelectItem>
               </SelectContent>
@@ -153,13 +158,13 @@ export default function FullLeaderboard() {
                   <tr className="border-b text-xs text-muted-foreground">
                     {[
                       ["Rank", "rank"],
-                      ["User", "rank"],
+                      ["User", "name"],
                       ["Total Deals", "totalDealsAnalyzed"],
                       ["Monthly", "monthlyDealsAnalyzed"],
                       ["Score", "score"],
                       ["Confidence", "confidence"],
-                      ["Eligible", "score"],
-                      ["Excluded", "score"],
+                      ["Eligible", "eligible"],
+                      ["Excluded", "excluded"],
                       ["Oracle", "oracle"],
                       ["Median Error", "oracle"],
                       ["Auto Yield", "yield"],

@@ -366,12 +366,15 @@ async function getEventBundleById(id: string) {
 async function getPublishedEventBundleBySlug(slug: string, includeOnlineUrl: boolean) {
   const [event] = await db.select().from(realistEvents).where(and(eq(realistEvents.slug, slug), eq(realistEvents.status, "PUBLISHED"))).limit(1);
   if (!event) return null;
-  const [speakers, sponsors, ticketTypes] = await Promise.all([
+  const [speakers, sponsors, ticketTypes, rsvps] = await Promise.all([
     db.select().from(realistEventSpeakers).where(eq(realistEventSpeakers.eventId, event.id)).orderBy(asc(realistEventSpeakers.sortOrder)),
     db.select().from(realistEventSponsors).where(eq(realistEventSponsors.eventId, event.id)).orderBy(asc(realistEventSponsors.sortOrder)),
     db.select().from(realistEventTicketTypes).where(eq(realistEventTicketTypes.eventId, event.id)).orderBy(asc(realistEventTicketTypes.priceCents)),
+    db.select({ going: sql<number>`COUNT(*)` }).from(realistEventRsvps)
+      .where(and(eq(realistEventRsvps.eventId, event.id), eq(realistEventRsvps.status, "GOING"))),
   ]);
-  return { ...event, onlineUrl: includeOnlineUrl ? event.onlineUrl : null, speakers, sponsors, ticketTypes };
+  const rsvpCount = Number(rsvps[0]?.going || 0);
+  return { ...event, onlineUrl: includeOnlineUrl ? event.onlineUrl : null, speakers, sponsors, ticketTypes, rsvpCount };
 }
 
 async function saveEvent(payload: z.infer<typeof eventPayloadSchema>, createdByEmail: string, id?: string) {

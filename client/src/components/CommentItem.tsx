@@ -16,6 +16,12 @@ interface Props {
   onDelete?: () => void;
 }
 
+// "mortgage_broker" -> "Mortgage broker"
+function formatRole(role: string): string {
+  const label = role.replace(/_/g, " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export function CommentItem({ comment, canEdit, onHelpful, onReport, onReply, onEdit, onDelete }: Props) {
   const [showReply, setShowReply] = useState(false);
   return (
@@ -32,8 +38,15 @@ export function CommentItem({ comment, canEdit, onHelpful, onReport, onReply, on
             ) : (
               <p className="text-sm font-semibold">{comment.user?.displayName || comment.userDisplaySnapshot || "Community investor"}</p>
             )}
-            {comment.user?.role && comment.user.role !== "investor" && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{comment.user.role}</Badge>
+            {comment.user?.role && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0" data-testid="badge-comment-role">
+                {formatRole(comment.user.role)}
+              </Badge>
+            )}
+            {comment.user?.city && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0" data-testid="badge-comment-city">
+                {comment.user.city}
+              </Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground">

@@ -57,6 +57,12 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
                   <span>{soldOutByCapacity ? "Sold out" : `${Math.max(0, event.capacity - sold)} spots remaining`}</span>
                 </div>
               )}
+              {(event.rsvpCount ?? 0) > 0 && (
+                <div className="flex gap-2" data-testid="text-event-rsvp-count">
+                  <Users className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{event.rsvpCount} going</span>
+                </div>
+              )}
             </div>
           </div>
 

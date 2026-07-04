@@ -1835,6 +1835,17 @@ export class DatabaseStorage implements IStorage {
       user: {
         id: users.id,
         displayName: sql<string>`COALESCE(${listingComments.userDisplaySnapshot}, ${users.firstName} || ' ' || ${users.lastName}, ${users.firstName}, 'Anonymous')`,
+        role: sql<string>`COALESCE(${users.role}, 'investor')`,
+        // The author's most-analyzed market — same signal the public profile
+        // and leaderboard use. Small correlated subquery per distinct author.
+        city: sql<string | null>`(
+          SELECT INITCAP(TRIM(a.city)) FROM analyses a
+          WHERE a.user_id = ${users.id} AND a.deleted_at IS NULL
+            AND a.city IS NOT NULL AND TRIM(a.city) != ''
+          GROUP BY INITCAP(TRIM(a.city))
+          ORDER BY COUNT(*) DESC
+          LIMIT 1
+        )`,
       },
     }).from(listingComments)
       .innerJoin(users, eq(listingComments.userId, users.id))
