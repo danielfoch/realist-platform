@@ -52,6 +52,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { MapLayersPanel, DEFAULT_LAYERS, type MapLayer } from "@/components/MapLayersPanel";
+import { NextStepBlock } from "@/components/NextStepBlock";
 import { NeighbourhoodOverlay } from "@/components/NeighbourhoodOverlay";
 import { CommunityAnalysisBadge } from "@/components/CommunityAnalysisBadge";
 import { AnalysisVisibilityToggle } from "@/components/AnalysisVisibilityToggle";
@@ -3725,6 +3726,7 @@ export default function CapRates() {
       {selectedListing ? (
         <div className="h-full min-h-0 overflow-y-auto overscroll-contain p-3">
           {renderDetailPanel()}
+          <NextStepBlock sourcePage="/tools/cap-rates" className="mt-3" />
         </div>
       ) : selectedDistressListing ? (
         <div className="h-full min-h-0 overflow-y-auto overscroll-contain p-3">
