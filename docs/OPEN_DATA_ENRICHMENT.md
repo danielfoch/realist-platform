@@ -87,6 +87,65 @@ display surface (the API returns the attribution string; the card shows it).
   city publishes it: Vancouver yes; Calgary/Montréal publish no cost column).
 - Adding a city = one adapter object (key, downloadUrl, licence, mapRow).
 
+## Municipal assessment rolls — Winnipeg, Calgary, Edmonton
+
+Single-table Socrata CSV rolls into the SAME `assessment_units` table as the
+Québec roll (source-agnostic lookup). Adapters in `shared/assessmentRolls.ts`
+(columns verified against the live resources 2026-07); importer streams the
+full-file CSV export via `shared/streamingCsv.ts`:
+
+- `npx tsx scripts/import-assessment-rolls.ts all` (or a comma list; re-runnable,
+  upserts by (source, municipality_code, matricule) — schedule ~annually).
+- Coverage: Winnipeg (~245k, year built + living/lot area + assessed value),
+  Calgary (~604k, year + lot size + land-use district + assessed value),
+  Edmonton (~440k, address + assessed value + class; no year/area published).
+- Per-source attribution flows through `getPropertyAssessment` and the Property
+  intelligence card.
+- **Nova Scotia (PVSC)** — province-wide, added via the same importer (`ns-pvsc`):
+  residential dwelling characteristics `a859-xvcs` (386k dwellings — address +
+  year built + living area + per-row municipal unit) from PVSC's Socrata portal
+  thedatazone.ca. Assessed VALUE lives in a separate multi-year dataset
+  (`bt58-qu28`, 3.2M rows) joined on `aan` — documented follow-up: load the
+  latest tax-year value onto the NS rows via `scripts/enrich-ns-values.ts` (run
+  after the ns-pvsc base import: it stages that year's aan→value pairs in a temp
+  table and sets `total_value` in one UPDATE ... FROM).
+
+## Toronto development activity
+
+Development applications (open.toronto.ca AIC, resource 8907d8ed) →
+`development_applications`; `getDevelopmentActivity(lat,lng)` returns "N
+applications within 800m in the last 3 years" + the recent few. `GET
+/api/enrichment` returns `development`; the listing shows a "Development activity
+nearby" card. Import: `npx tsx scripts/import-toronto-dev-apps.ts`.
+
+**Coordinate gotcha (verified):** the dataset's X/Y are **MTM Zone 10** (Ontario)
+easting/northing in metres — NOT UTM 17N. `shared/torontoMtm.ts` reprojects to
+WGS84 (validated: 3920/3920 geocoded records land inside Toronto; 1001 Sheppard
+Ave → 43.771, -79.375).
+
+## Toronto parcels (lot size)
+
+Toronto has no open assessment roll (MPAC is licensed), so the parcel fabric is
+the lot-size source. The "Property Boundaries – 4326" CSV ships each parcel as a
+WGS84 GeoJSON MultiPolygon + STATEDAREA ("271.68 sq.m"). `shared/parcels.ts`
+parses it; `toronto_parcels` stores geometry + bbox; `resolveParcel(lat,lng)`
+matches a listing by point-in-polygon and returns the lot area. `GET
+/api/enrichment` returns `parcel`; the listing shows a "Lot size" card (Toronto,
+where the assessment roll didn't supply one). Import:
+`npx tsx scripts/import-toronto-parcels.ts` (~500k parcels, streamed).
+Follow-up: frontend/depth via an oriented-bounding-box heuristic on the polygon
+(unlocks lot-split feasibility); STATEDAREA already gives area.
+
+## Toronto ward boundaries
+
+25-ward model (open.toronto.ca, already EPSG:4326 GeoJSON) into `municipal_wards`;
+`resolveWard(lat,lng)` uses the same bbox + point-in-polygon pattern as the
+census layer. `GET /api/enrichment` now returns `ward: {city, code, name}` and
+the neighbourhood card shows it. Import: `npx tsx scripts/import-toronto-wards.ts`.
+This is the verified geography the multiplex underwriter needs to replace its
+FSA-inferred sixplex-ward heuristic (By-law 654-2025) — that wiring is the
+follow-up.
+
 ## Follow-ups (workplan §3)
 
 - Render neighbourhood facts into the listing SEO bot fallback + JSON-LD

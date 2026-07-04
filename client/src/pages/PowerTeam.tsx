@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
 import { track } from "@/lib/analytics";
 import { CheckCircle2, Loader2, Users, FileText, TrendingUp, Database } from "lucide-react";
+import { PowerTeamLeaders } from "@/components/PowerTeamLeaders";
 
 const ROLES = [
   { key: "planner", label: "Planner (RPP)" },
@@ -157,6 +158,7 @@ export default function PowerTeam() {
             </CardContent>
           </Card>
         )}
+        <PowerTeamLeaders />
       </main>
     </div>
   );

@@ -32,7 +32,9 @@ import {
   type NeighbourhoodStats,
 } from "@shared/censusProfile";
 import { looseKeyFromListingAddress, QUEBEC_ROLL_ATTRIBUTION } from "@shared/quebecRoll";
+import { ASSESSMENT_ROLL_ATTRIBUTION } from "@shared/assessmentRolls";
 import { PERMIT_CITY_ADAPTERS, permitLooseKey } from "@shared/buildingPermits";
+import { DEVELOPMENT_APPLICATIONS_ATTRIBUTION } from "@shared/developmentApplications";
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 
@@ -142,6 +144,64 @@ export async function ensureEnrichmentTables(): Promise<void> {
     CREATE INDEX IF NOT EXISTS building_permits_latlng_idx
     ON building_permits (lat, lng)
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS development_applications (
+      id                 varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      source             text NOT NULL,
+      application_number text NOT NULL,
+      application_type   text,
+      status             text,
+      address            text,
+      description        text,
+      date_submitted     date,
+      ward_number        text,
+      ward_name          text,
+      application_url    text,
+      lat                double precision,
+      lng                double precision,
+      imported_at        timestamp NOT NULL DEFAULT now(),
+      UNIQUE (source, application_number)
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS development_applications_latlng_idx
+    ON development_applications (lat, lng)
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS toronto_parcels (
+      parcel_id   text PRIMARY KEY,
+      lot_area_m2 double precision,
+      geojson     jsonb NOT NULL,
+      min_lng     double precision NOT NULL,
+      min_lat     double precision NOT NULL,
+      max_lng     double precision NOT NULL,
+      max_lat     double precision NOT NULL,
+      imported_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS toronto_parcels_bbox_idx
+    ON toronto_parcels (min_lat, max_lat, min_lng, max_lng)
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS municipal_wards (
+      id          varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      city        text NOT NULL,
+      ward_code   text NOT NULL,
+      ward_name   text,
+      geojson     jsonb NOT NULL,
+      min_lng     double precision NOT NULL,
+      min_lat     double precision NOT NULL,
+      max_lng     double precision NOT NULL,
+      max_lat     double precision NOT NULL,
+      imported_at timestamp NOT NULL DEFAULT now(),
+      UNIQUE (city, ward_code)
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS municipal_wards_bbox_idx
+    ON municipal_wards (city, min_lat, max_lat, min_lng, max_lng)
+  `);
 }
 
 /** Upsert a layer's registry row after an import (called by import scripts). */
@@ -184,6 +244,29 @@ export async function resolveDauid(lat: number, lng: number): Promise<string | n
   `);
   for (const row of candidates.rows as Array<{ dauid: string; geojson: AreaGeometry }>) {
     if (pointInGeometry(lng, lat, row.geojson)) return row.dauid;
+  }
+  return null;
+}
+
+// ─── Ward resolution ─────────────────────────────────────────────────────────
+
+export interface WardResolution {
+  city: string;
+  code: string;
+  name: string | null;
+}
+
+/** Resolve a point to its municipal ward (bbox prefilter + point-in-polygon). */
+export async function resolveWard(lat: number, lng: number, city = "Toronto"): Promise<WardResolution | null> {
+  const candidates = await db.execute(sql`
+    SELECT ward_code, ward_name, geojson
+    FROM municipal_wards
+    WHERE city = ${city}
+      AND min_lat <= ${lat} AND max_lat >= ${lat} AND min_lng <= ${lng} AND max_lng >= ${lng}
+    LIMIT 25
+  `);
+  for (const row of candidates.rows as Array<{ ward_code: string; ward_name: string | null; geojson: AreaGeometry }>) {
+    if (pointInGeometry(lng, lat, row.geojson)) return { city, code: row.ward_code, name: row.ward_name };
   }
   return null;
 }
@@ -237,7 +320,7 @@ export async function getPropertyAssessment(
   const key = looseKeyFromListingAddress(address);
   if (!key) return null;
   const rows = await db.execute(sql`
-    SELECT address, municipality_name, roll_year, cubf, year_built, year_built_estimated,
+    SELECT source, address, municipality_name, roll_year, cubf, year_built, year_built_estimated,
            storeys, floor_area_m2, lot_area_m2, frontage_m, dwellings, market_ref_date,
            land_value, building_value, total_value, previous_roll_value
     FROM assessment_units
@@ -276,7 +359,7 @@ export async function getPropertyAssessment(
     buildingValue: n(r.building_value),
     totalValue: n(r.total_value),
     previousRollValue: n(r.previous_roll_value),
-    attribution: QUEBEC_ROLL_ATTRIBUTION,
+    attribution: ASSESSMENT_ROLL_ATTRIBUTION[String(r.source)] ?? QUEBEC_ROLL_ATTRIBUTION,
   };
 }
 
@@ -395,6 +478,96 @@ export async function getPermitActivity(
   return { atAddress, nearby, attribution };
 }
 
+// ─── Parcel resolution ───────────────────────────────────────────────────────
+
+export interface ParcelMatch {
+  parcelId: string;
+  lotAreaM2: number | null;
+}
+
+/** Resolve a point to its Toronto parcel (bbox prefilter + point-in-polygon). */
+export async function resolveParcel(lat: number, lng: number): Promise<ParcelMatch | null> {
+  const candidates = await db.execute(sql`
+    SELECT parcel_id, lot_area_m2, geojson
+    FROM toronto_parcels
+    WHERE min_lat <= ${lat} AND max_lat >= ${lat} AND min_lng <= ${lng} AND max_lng >= ${lng}
+    LIMIT 25
+  `);
+  for (const row of candidates.rows as Array<{ parcel_id: string; lot_area_m2: number | null; geojson: AreaGeometry }>) {
+    if (pointInGeometry(lng, lat, row.geojson)) {
+      return { parcelId: row.parcel_id, lotAreaM2: row.lot_area_m2 === null ? null : Number(row.lot_area_m2) };
+    }
+  }
+  return null;
+}
+
+// ─── Development activity ─────────────────────────────────────────────────────
+
+const DEV_RADIUS_M = 800;
+const DEV_WINDOW_MONTHS = 36;
+
+export interface DevelopmentActivity {
+  radiusM: number;
+  windowMonths: number;
+  count: number;
+  nearby: Array<{
+    applicationType: string | null;
+    status: string | null;
+    address: string | null;
+    description: string | null;
+    dateSubmitted: string | null;
+    applicationUrl: string | null;
+    distanceM: number;
+  }>;
+  attribution: string;
+}
+
+/** Development applications submitted within DEV_RADIUS_M over the trailing window. */
+export async function getDevelopmentActivity(lat: number, lng: number): Promise<DevelopmentActivity | null> {
+  const padLat = metersToDegreesLat(DEV_RADIUS_M) * 1.2;
+  const padLng = padLat / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+  const rows = await db.execute(sql`
+    SELECT application_type, status, address, description, date_submitted, application_url, lat, lng
+    FROM development_applications
+    WHERE lat BETWEEN ${lat - padLat} AND ${lat + padLat}
+      AND lng BETWEEN ${lng - padLng} AND ${lng + padLng}
+      AND date_submitted >= now() - interval '${sql.raw(String(DEV_WINDOW_MONTHS))} months'
+    LIMIT 2000
+  `);
+  const near: DevelopmentActivity["nearby"] = [];
+  for (const r of rows.rows as Array<{
+    application_type: string | null;
+    status: string | null;
+    address: string | null;
+    description: string | null;
+    date_submitted: string | null;
+    application_url: string | null;
+    lat: number;
+    lng: number;
+  }>) {
+    const d = haversineMeters(lat, lng, r.lat, r.lng);
+    if (d > DEV_RADIUS_M) continue;
+    near.push({
+      applicationType: r.application_type,
+      status: r.status,
+      address: r.address,
+      description: typeof r.description === "string" ? r.description.slice(0, 280) : null,
+      dateSubmitted: r.date_submitted ? String(r.date_submitted).slice(0, 10) : null,
+      applicationUrl: r.application_url,
+      distanceM: Math.round(d),
+    });
+  }
+  if (!near.length) return null;
+  near.sort((a, b) => (b.dateSubmitted ?? "").localeCompare(a.dateSubmitted ?? "") || a.distanceM - b.distanceM);
+  return {
+    radiusM: DEV_RADIUS_M,
+    windowMonths: DEV_WINDOW_MONTHS,
+    count: near.length,
+    nearby: near.slice(0, 5),
+    attribution: DEVELOPMENT_APPLICATIONS_ATTRIBUTION,
+  };
+}
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
 export function registerEnrichmentRoutes(app: Express): void {
@@ -412,12 +585,15 @@ export function registerEnrichmentRoutes(app: Express): void {
       return res.status(400).json({ success: false, error: "lat+lng or address query params are required" });
     }
     try {
-      const [neighbourhood, property, permits] = await Promise.all([
+      const [neighbourhood, property, permits, development, parcel, ward] = await Promise.all([
         hasPoint ? getNeighbourhoodStats(lat, lng) : Promise.resolve(null),
         address ? getPropertyAssessment(address, city || null) : Promise.resolve(null),
         getPermitActivity(address || null, city || null, hasPoint ? lat : null, hasPoint ? lng : null),
+        hasPoint ? getDevelopmentActivity(lat, lng) : Promise.resolve(null),
+        hasPoint ? resolveParcel(lat, lng) : Promise.resolve(null),
+        hasPoint ? resolveWard(lat, lng) : Promise.resolve(null),
       ]);
-      return res.json({ success: true, data: { neighbourhood, property, permits } });
+      return res.json({ success: true, data: { neighbourhood, property, permits, development, parcel, ward } });
     } catch (err: any) {
       console.error("[enrichment] lookup failed:", err?.message ?? err);
       return res.status(500).json({ success: false, error: "Enrichment lookup failed" });
