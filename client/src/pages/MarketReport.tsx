@@ -9,10 +9,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
-import { TrendingUp, TrendingDown, Building2, DollarSign, MapPin, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Minus, X, Plus, Layers, FileText, Percent, Lock, Landmark, Users, AlertTriangle } from "lucide-react";
+import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, X, Plus, Layers, FileText, Lock, Landmark } from "lucide-react";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
 import { apiRequest } from "@/lib/queryClient";
+import { sortedReports, reportDateLabel, type ReportKind } from "@shared/reportsRegistry";
+
+// Registry-driven report grid: newest first, zero manual fan-out per publish.
+const macroReports = sortedReports();
+const REPORT_KIND_ICONS: Record<ReportKind, typeof BarChart3> = {
+  macro: Landmark,
+  market: Building2,
+  research: FileText,
+};
 
 interface MarketSnapshot {
   id: string;
@@ -431,349 +440,34 @@ export default function MarketReport() {
         </div>
 
         <div className="mb-12" data-testid="section-macro-reports">
-          <h2 className="text-2xl font-bold mb-2">Canadian Macro Reports</h2>
-          <p className="text-muted-foreground mb-6">National economic indicators relevant to real estate investors.</p>
+          <h2 className="text-2xl font-bold mb-2">Reports & Research</h2>
+          <p className="text-muted-foreground mb-6">Every Realist report — macro releases, market data, and long-form research, newest first.</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Link href="/reports/realbench-ai-realtor-benchmark">
-              <Card className="h-full hover:border-stone-900/60 hover:shadow-sm cursor-pointer transition-all border-stone-900/40 bg-stone-950 text-stone-50" data-testid="card-macro-homebench">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-amber-300/20 flex items-center justify-center">
-                      <BarChart3 className="h-4.5 w-4.5 text-amber-300" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px] border-amber-300/40 bg-amber-300/10 text-amber-200">New · Homies × Realist</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">HomeBench — AI Benchmark for Realtors</h3>
-                  <p className="text-xs text-stone-300 mb-2">
-                    Fable 5, GPT 5.5, Opus 4.8 and Gemini 3.1 scored on the work agents actually do — offers, showings, CRM, email, property research, marketing and valuation.
-                  </p>
-                  <span className="text-xs text-amber-300 font-medium">See the leaderboard →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/canada-interprovincial-migration-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-sky-300/60" data-testid="card-macro-interprovincial-migration-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
-                      <Users className="h-4.5 w-4.5 text-sky-600 dark:text-sky-400" />
-                    </div>
-                    <Badge variant="default" className="text-[10px]">New · Jun 12, 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Interprovincial Migration: Alberta Wins, Ontario Loses</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Fraser Institute&apos;s 1995/96-2024/25 migration study turned into an investor-facing report with interactive charts, age-group breakdowns, and housing implications.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/statcan-labour-force-survey-may-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-emerald-300/60" data-testid="card-macro-lfs-may-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                      <Users className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <Badge variant="default" className="text-[10px]">New · Jun 5, 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Labour Force Survey — May 2026</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Jobs jump 88,000 and unemployment falls to 6.6% as full-time work rebounds. What the latest StatCan jobs print means for buyers, sellers, investors, renewers and Realtors.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/housing-correction-locked-out-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-rose-300/60" data-testid="card-macro-housing-correction-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                      <TrendingDown className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
-                    </div>
-                    <Badge variant="default" className="text-[10px]">New · Jun 2, 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">A 20% Housing Drop — Still Locked Out</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Prices are down ~20% from peak (30%+ in some cities), yet 55% of Canadians want them lower still. Why affordability is barely improved, and what it means for buyers, sellers and investors.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/statcan-gdp-q1-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-rose-300/60" data-testid="card-macro-gdp-q1-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                      <BarChart3 className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
-                    </div>
-                    <Badge variant="default" className="text-[10px]">New · May 29, 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">GDP Q1 2026 — Economy Stalls</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Real GDP flatlines at 0.0% and the per-capita recession deepens. Residential investment is the biggest drag, with resale activity down 9.9%. All six StatCan charts recreated.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/monthly-market-report-may-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-primary/40" data-testid="card-macro-monthly-market-may-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                      <FileText className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <Badge variant="default" className="text-[10px]">New · Slide deck</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Monthly Market Report — May 2026</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    A 30-45 minute investor webinar deck covering labour, CPI, the oil shock, the Bank of Canada outlook, CMHC mortgage stress, supply, demographics, distress and the cycle playbook.
-                  </p>
-                  <span className="text-xs text-primary font-medium">Open slide deck →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/reports/cmhc-2025-annual-report-housing-market">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-cmhc-annual-report-2025">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                      <FileText className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">CMHC 2025</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">CMHC 2025 Annual Report</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Housing starts, rental vacancy, mortgage insurance, multi-unit financing, and federal supply programs through a market lens.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/reports/bank-of-canada-consumers-path-mortgage-delinquency-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-amber-300/60" data-testid="card-macro-boc-mortgage-delinquency-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                      <AlertTriangle className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">BoC · Feb 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Mortgage Delinquency Early Warning Signals</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Bank of Canada research shows credit-card utilization and arrears often rise one to two years before mortgage delinquency.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/reports/bank-of-canada-financial-stability-report-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-rose-300/60" data-testid="card-macro-boc-fsr-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                      <Landmark className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">BoC · May 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Financial Stability Report 2026</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Bank of Canada read-through on mortgage arrears, renewal shock, Toronto stress pockets, valuations, and funding-market risk.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/reports/equifax-consumer-credit-trends-q1-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-sky-300/60" data-testid="card-macro-equifax-q1-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
-                      <FileText className="h-4.5 w-4.5 text-sky-600 dark:text-sky-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">Equifax · Q1 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Equifax Consumer Credit Trends Q1 2026</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Ontario and BC mortgage holders are driving consumer-credit stress as insolvencies rise and renewal pressure persists.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/labour-mortgage-stress-april-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-labour-mortgage-stress">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                      <AlertTriangle className="h-4.5 w-4.5 text-red-600 dark:text-red-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">May 8, 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Labour + Mortgage Arrears Watch</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Compares StatCan's April jobs report with February payroll and vacancy data, then links unemployment to mortgage arrears risk using CBA context.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/statcan-labour-force-survey-april-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-lfs-april-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                      <Users className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">May 8, 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Labour Force Survey — April 2026</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Unemployment ticks to 6.9% as Quebec sheds 43,000 jobs. What the latest StatCan jobs print means for buyers, sellers, investors, renewers and Realtors.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/bank-of-canada-april-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-boc-april-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                      <Landmark className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">Apr 29, 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Bank of Canada April 2026 Report</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Inflation risk is back, but housing remains weak. What the latest Monetary Policy Report means for buyers, sellers, investors, renewers, and Realtors.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/spring-economic-update-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-spring-update-2026">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                      <FileText className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">Apr 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Spring Economic Update 2026</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    What Ottawa's spring fiscal update says about Canadian real estate — affordability, starts, inflation, rates, and the deficit through an investor lens.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/cpi-march-2026">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-cpi">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                      <Percent className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">Mar 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">CPI Report — March 2026</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Statistics Canada's latest inflation release with provincial breakdown and investor interpretation.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/building-permits">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-building-permits">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                      <Building2 className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">Feb 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Building Permits</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Total permits fell 8.4% to $12.1B. Non-residential down 24%, residential up 1.7%.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/gta-precon-pricing">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-precon-pricing">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                      <BarChart3 className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">Apr 2026</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">GTA Pre-Construction Pricing Movement</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Floorplan-level cuts vs raises across 1,000+ active GTA pre-con units. Builder pricing power, rebate benchmark, resale implications.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/new-construction-canada">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-new-construction">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                      <Building2 className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">Live CREA DDF</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Canada New Construction Market</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Live snapshot of active new construction listings across Canada. Pricing, regions, property types, pre-con signals.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/productivity-gap">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid="card-macro-productivity-gap">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                      <BarChart3 className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">Dec 2024</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Canada-US Productivity Gap</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Top 10% of earners account for 75% of the GDP gap. Implications for RE investors.
-                  </p>
-                  <span className="text-xs text-primary font-medium">View Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/insights/precon-vs-resale-1990s">
-              <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all border-dashed" data-testid="card-macro-precon-resale-1990s">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                      <Lock className="h-4.5 w-4.5 text-slate-600 dark:text-slate-300" />
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">Private</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm mb-1">Pre-Con vs Resale: 1990s Correction</h3>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Reconstructed 1985-2000 GTA condo PSF — pre-con vs resale, premium spread, and what it suggests for today. Private client report; access by share link.
-                  </p>
-                  <span className="text-xs text-primary font-medium">Open Report →</span>
-                </CardContent>
-              </Card>
-            </Link>
+            {macroReports.map((entry) => {
+              const Icon = REPORT_KIND_ICONS[entry.kind];
+              return (
+                <Link key={entry.slug} href={entry.route}>
+                  <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid={`card-macro-${entry.slug}`}>
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                          <Icon className="h-4.5 w-4.5 text-muted-foreground" />
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">{reportDateLabel(entry)}</Badge>
+                        {entry.tags.includes("private") && (
+                          <Badge variant="outline" className="text-[10px]">
+                            <Lock className="h-2.5 w-2.5 mr-1" /> Private
+                          </Badge>
+                        )}
+                      </div>
+                      <h3 className="font-bold text-sm mb-1">{entry.title}</h3>
+                      <p className="text-xs text-muted-foreground mb-2">{entry.description}</p>
+                      <span className="text-xs text-primary font-medium">View Report →</span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         </div>
 

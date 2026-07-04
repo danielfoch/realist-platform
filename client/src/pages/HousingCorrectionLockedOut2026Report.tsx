@@ -31,6 +31,7 @@ import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReportEndCta } from "@/components/ReportEndCta";
 
 const SOURCE_URL =
   "https://financialpost.com/real-estate/housing-drop-leaves-canadians-locked-out-market";
@@ -520,6 +521,8 @@ export default function HousingCorrectionLockedOut2026Report() {
             </Link>
           </div>
         </section>
+
+        <ReportEndCta sourcePage="/insights/housing-correction-locked-out-2026" />
 
         <footer className="border-t pt-6 text-xs text-muted-foreground">
           <p>

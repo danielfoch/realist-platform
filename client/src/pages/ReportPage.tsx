@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react";
+import { ReportEndCta } from "@/components/ReportEndCta";
 import { format } from "date-fns";
 import type { BlogPost } from "@shared/schema";
 
@@ -163,6 +164,8 @@ export default function ReportPage() {
               className="prose prose-neutral dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
+
+            <ReportEndCta sourcePage={canonicalPath} />
 
             {related.length > 0 && (
               <section className="mt-16 pt-8 border-t">

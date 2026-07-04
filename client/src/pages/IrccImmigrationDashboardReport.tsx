@@ -21,6 +21,7 @@ import { SEO, organizationSchema, websiteSchema } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ReportEndCta } from "@/components/ReportEndCta";
 import { immigrationDashboardData } from "@/data/immigrationDashboardData";
 
 const operationalColors = ["#b45309", "#d97706", "#ea580c", "#f59e0b", "#f97316", "#fb923c"];
@@ -470,6 +471,8 @@ export default function IrccImmigrationDashboardReport() {
             </CardContent>
           </Card>
         </section>
+
+        <ReportEndCta sourcePage="/reports/canada-immigration-dashboard-2026" />
       </main>
     </div>
   );

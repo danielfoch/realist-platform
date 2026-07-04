@@ -9,14 +9,14 @@ export default function MarketsHub() {
     <div className="min-h-screen bg-background">
       <SEO
         title="Canadian Real Estate Markets"
-        description="Programmatic market landing pages for Canadian real estate investors covering major cities and related investing workflows."
+        description="City-by-city Canadian real estate market guides — prices, yields, strategies, and underwriting starting points for investors."
         canonicalUrl="/markets"
       />
       <Navigation />
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-12">
         <h1 className="text-4xl font-bold mb-4">Canadian Real Estate Markets</h1>
         <p className="text-lg text-muted-foreground max-w-3xl mb-10">
-          Crawlable market pages designed to connect research, strategy, and underwriting around the cities Realist prioritizes first.
+          City-level research, strategies, and underwriting starting points for the markets Canadian investors ask about most.
         </p>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {PROGRAMMATIC_MARKETS.map((market) => (
