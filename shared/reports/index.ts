@@ -21,6 +21,7 @@ import {
   type ReportContent,
 } from "../reportContent";
 import type { ReportRegistryEntry } from "../reportsRegistry";
+import { canadaCpiMay2026ConfigReport } from "./canada-cpi-may-2026-config";
 import { interprovincialMigrationConfigReport } from "./interprovincial-migration-config";
 
 /**
@@ -28,6 +29,7 @@ import { interprovincialMigrationConfigReport } from "./interprovincial-migratio
  * file). Order does not matter — everything downstream sorts by publishDate.
  */
 export const configReports: ReportContent[] = [
+  canadaCpiMay2026ConfigReport,
   interprovincialMigrationConfigReport,
 ].map(assertValidReportContent);
 
