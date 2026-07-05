@@ -137,6 +137,8 @@ const Shop = lazy(() => import("@/pages/Shop"));
 const Compare = lazy(() => import("@/pages/Compare"));
 const Podcast = lazy(() => import("@/pages/Podcast"));
 const PodcastEpisodeDetail = lazy(() => import("@/pages/PodcastEpisodeDetail"));
+const Videos = lazy(() => import("@/pages/Videos"));
+const VideoDetail = lazy(() => import("@/pages/VideoDetail"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const AdminDealDesk = lazy(() => import("@/pages/AdminDealDesk"));
 const AdminEvents = lazy(() => import("@/pages/AdminEvents"));
@@ -404,6 +406,8 @@ function Router() {
       <Route path="/insights" component={InsightsHub} />
       <Route path="/insights/podcast" component={Podcast} />
       <Route path="/insights/podcast/:slug" component={PodcastEpisodeDetail} />
+      <Route path="/insights/videos" component={Videos} />
+      <Route path="/insights/videos/:slug" component={VideoDetail} />
       <Route path="/insights/blog" component={Blog} />
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />

@@ -2,7 +2,7 @@ import { storage } from "./storage";
 import { getAnalysesCountStats } from "./socialStats";
 import { encyclopediaGuides, getEncyclopediaGuide } from "@shared/encyclopedia";
 import { getProgrammaticMarket, getProgrammaticStrategy, PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } from "@shared/programmaticSeo";
-import { PODCAST_APPLE_URL, PODCAST_SPOTIFY_URL, PODCAST_YOUTUBE_URL } from "@shared/brand";
+import { PODCAST_APPLE_URL, PODCAST_SPOTIFY_URL, PODCAST_YOUTUBE_URL, YOUTUBE_CHANNEL_URL } from "@shared/brand";
 import {
   buildListingSeoDescription,
   formatListingAddress,
@@ -51,6 +51,7 @@ function renderFooterLinks() {
           { href: "/about", label: "About" },
           { href: "/about/contact", label: "Contact" },
           { href: "/insights/podcast", label: "Podcast" },
+          { href: "/insights/videos", label: "Videos" },
           { href: "/insights/encyclopedia", label: "Investor Encyclopedia" },
           { href: "https://thecanadianrealestateinvestor.substack.com/feed", label: "RSS" },
         ])}
@@ -958,6 +959,89 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
             <h2 style="font-size:22px;margin:0 0 8px;">Related Episodes</h2>
             ${renderLinkList(payload.related.map((related) => ({
               href: `/insights/podcast/${related.slug}`,
+              label: related.title,
+            })))}
+          </section>
+        ` : ""}
+      </article>
+      ${renderFooterLinks()}
+    `);
+  }
+
+  // Videos hub: crawlable video index so every /insights/videos/:slug page is
+  // discoverable from plain HTML anchors.
+  if (reqPath === "/insights/videos") {
+    const { getYouTubeVideos } = await import("./youtubeFeed");
+    const videos = await getYouTubeVideos().catch(() => []);
+    return renderShell(`
+      <header>
+        <h1 style="font-size:40px;margin:0 0 12px;">Daniel Foch on YouTube</h1>
+        <p style="font-size:18px;color:#4b5563;max-width:760px;line-height:1.7;">Data-driven breakdowns of the Canadian housing market, mortgages, and real estate investing strategy from Daniel Foch — every video below has its own page with an embedded player and the full description.</p>
+      </header>
+      <section style="margin:24px 0;">
+        <h2 style="font-size:28px;margin-bottom:12px;">Subscribe on YouTube</h2>
+        ${renderLinkList([{ href: YOUTUBE_CHANNEL_URL, label: "@daniel_foch on YouTube" }])}
+      </section>
+      <section style="margin-top:32px;">
+        <h2 style="font-size:28px;margin-bottom:12px;">All Videos</h2>
+        ${renderLinkList(videos.map((video) => ({
+          href: `/insights/videos/${video.slug}`,
+          label: video.title,
+        })))}
+      </section>
+      ${renderFooterLinks()}
+    `);
+  }
+
+  // Per-video YouTube pages: full description text, a watch link, topics,
+  // related videos, and the contextual tool CTA — all in the pre-hydration
+  // HTML. The crawler fallback contains the description text and a link (not
+  // just the iframe) so the page has real crawlable content.
+  const videoMatch = reqPath.match(/^\/insights\/videos\/([^/]+)$/);
+  if (videoMatch) {
+    const { getVideoPayload } = await import("./youtubeFeed");
+    const payload = await getVideoPayload(decodeURIComponent(videoMatch[1])).catch(() => null);
+    if (!payload) return null;
+    const uploadedDate = payload.pubDate ? new Date(payload.pubDate) : null;
+    const dateLabel = uploadedDate && !isNaN(uploadedDate.getTime())
+      ? uploadedDate.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })
+      : null;
+    return renderShell(`
+      ${renderBreadcrumbs([
+        { href: "/", label: "Home" },
+        { href: "/insights/videos", label: "Videos" },
+        { href: `/insights/videos/${payload.slug}`, label: payload.title },
+      ])}
+      <article>
+        <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">Daniel Foch on YouTube</p>
+        <h1 style="font-size:clamp(2rem,4vw,3.25rem);line-height:1.1;margin:8px 0 14px;">${escapeHtml(payload.title)}</h1>
+        <p style="font-size:14px;color:#6b7280;margin:0 0 14px;">
+          ${dateLabel ? `Published ${escapeHtml(dateLabel)}` : ""}
+        </p>
+        ${payload.topics.length ? `<p style="font-size:14px;color:#4b5563;margin:0 0 18px;"><strong>Topics:</strong> ${payload.topics.map(escapeHtml).join(", ")}</p>` : ""}
+        <div style="position:relative;width:100%;max-width:760px;aspect-ratio:16/9;margin:8px 0 20px;">
+          <iframe src="${escapeHtml(payload.embedUrl)}" title="${escapeHtml(payload.title)}" style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;" allowfullscreen loading="lazy"></iframe>
+        </div>
+        <p style="margin:0 0 20px;">
+          <a href="${escapeHtml(payload.link)}" style="color:#0f766e;text-decoration:none;font-weight:600;">Watch on YouTube</a>
+        </p>
+        <section style="font-size:16px;line-height:1.8;max-width:860px;margin:20px 0;">
+          <h2 style="font-size:28px;margin:0 0 12px;">About this video</h2>
+          ${payload.descriptionHtml}
+        </section>
+        <section style="border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:760px;margin:28px 0;">
+          <h2 style="font-size:22px;margin:0 0 8px;">Put this video to work</h2>
+          <p style="font-size:16px;color:#4b5563;margin:0 0 12px;">${escapeHtml(payload.cta.copy)}</p>
+          <p style="margin:0;">
+            <a href="${escapeHtml(payload.cta.primary.href)}" style="display:inline-block;background:#0f766e;color:#fff;border-radius:8px;padding:10px 20px;text-decoration:none;font-weight:600;">${escapeHtml(payload.cta.primary.label)}</a>
+            ${payload.cta.secondary ? `&nbsp; <a href="${escapeHtml(payload.cta.secondary.href)}" style="color:#0f766e;text-decoration:none;font-weight:600;">${escapeHtml(payload.cta.secondary.label)}</a>` : ""}
+          </p>
+        </section>
+        ${payload.related.length ? `
+          <section style="margin:28px 0;">
+            <h2 style="font-size:22px;margin:0 0 8px;">Related Videos</h2>
+            ${renderLinkList(payload.related.map((related) => ({
+              href: `/insights/videos/${related.slug}`,
               label: related.title,
             })))}
           </section>

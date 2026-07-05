@@ -47,7 +47,7 @@ function urlset(urls: SitemapUrl[]) {
 
 export function buildSitemapIndex() {
   const lastmod = today();
-  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-listings.xml", "sitemap-podcast.xml", "sitemap-encyclopedia.xml", "sitemap-events.xml"];
+  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-listings.xml", "sitemap-podcast.xml", "sitemap-videos.xml", "sitemap-encyclopedia.xml", "sitemap-events.xml"];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemaps.map((name) => `  <sitemap>\n    <loc>${BASE}/${name}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`).join("\n")}\n</sitemapindex>\n`;
 }
 
@@ -188,6 +188,29 @@ export async function buildPodcastSitemap() {
   } catch {}
   return urlset([
     { loc: `${BASE}/insights/podcast`, lastmod: hubLastmod, changefreq: "weekly", priority: 0.8 },
+    ...urls,
+  ]);
+}
+
+export async function buildVideoSitemap() {
+  const urls: SitemapUrl[] = [];
+  let hubLastmod = today();
+  try {
+    const { getYouTubeVideos } = await import("./youtubeFeed");
+    const videos = await getYouTubeVideos();
+    // Hub lastmod = newest video uploadDate; video lastmod = its real uploadDate.
+    if (videos[0]?.pubDate) hubLastmod = dateOnly(videos[0].pubDate);
+    for (const video of videos) {
+      urls.push({
+        loc: `${BASE}/insights/videos/${video.slug}`,
+        lastmod: dateOnly(video.pubDate || undefined),
+        changefreq: "monthly",
+        priority: 0.65,
+      });
+    }
+  } catch {}
+  return urlset([
+    { loc: `${BASE}/insights/videos`, lastmod: hubLastmod, changefreq: "weekly", priority: 0.8 },
     ...urls,
   ]);
 }

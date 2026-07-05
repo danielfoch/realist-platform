@@ -46,6 +46,29 @@ export const PODCAST_RSS_URL =
 export const PODCAST_SUBSTACK_URL =
   "https://thecanadianrealestateinvestor.substack.com/";
 
+// ---------------------------------------------------------------------------
+// YouTube channel (Daniel Foch — https://www.youtube.com/@daniel_foch)
+// ---------------------------------------------------------------------------
+
+/**
+ * Daniel Foch's YouTube channel id, resolved ONCE from the @daniel_foch handle
+ * page (the canonical `channel/UC…` link / `"channelId"` field) and hardcoded
+ * here as the default. Override with the YOUTUBE_CHANNEL_ID env var if the
+ * channel ever moves. YouTube publishes a keyless per-channel Atom feed keyed
+ * on this id (see YOUTUBE_FEED_URL). Resolution method, for the record:
+ *   curl -s https://www.youtube.com/@daniel_foch \
+ *     | grep -oE 'channel/UC[a-zA-Z0-9_-]{22}'
+ */
+export const YOUTUBE_DEFAULT_CHANNEL_ID = "UCeULGvCIbLn4eMpg-uGYkzQ";
+
+export const YOUTUBE_HANDLE = "@daniel_foch";
+export const YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@daniel_foch";
+
+/** Keyless per-channel Atom feed (~15 most recent videos). */
+export function youtubeFeedUrl(channelId: string): string {
+  return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+}
+
 /** sameAs set for the PodcastSeries node (show + shared network channels). */
 export const PODCAST_SAME_AS = [
   PODCAST_APPLE_URL,

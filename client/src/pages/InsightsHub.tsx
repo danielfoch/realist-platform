@@ -8,6 +8,7 @@ import { track } from "@/lib/analytics";
 import {
   Radio, BookOpen, FileText, TrendingUp, AlertTriangle, LineChart,
   Calculator, ArrowRight, BarChart3, ChevronRight, Building2, BriefcaseBusiness,
+  Youtube,
 } from "lucide-react";
 import { sortedReports, reportDateLabel, type ReportKind } from "@shared/reportsRegistry";
 
@@ -88,6 +89,14 @@ const insightSections = [
         icon: Radio,
         badge: "Audio",
         cta: "Listen Now",
+      },
+      {
+        href: "/insights/videos",
+        title: "Videos",
+        description: "Daniel Foch's latest YouTube videos on the Canadian housing market, mortgages, and investing strategy — with the full breakdown on every page.",
+        icon: Youtube,
+        badge: "Video",
+        cta: "Watch Now",
       },
       {
         href: "/insights/blog",
