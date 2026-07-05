@@ -6,8 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Award, FileText, Building2, MapPin, ChevronUp } from "lucide-react";
+import { Award, FileText, Building2, MapPin, ChevronUp, Globe, Linkedin, Instagram, Mail, Phone } from "lucide-react";
 import { format } from "date-fns";
+import { track } from "@/lib/analytics";
 import { EXPERT_CATEGORY_LABELS, isExpertCategory } from "@shared/contributorReputation";
 
 interface ExpertProfileData {
@@ -18,6 +19,9 @@ interface ExpertProfileData {
   bio: string | null;
   headshotUrl: string | null;
   serviceAreas: string[];
+  socialLinks: { website?: string; linkedin?: string; instagram?: string } | null;
+  publicEmail: string | null;
+  phone: string | null;
   points: number;
   rank: {
     tier: { label: string };
@@ -31,6 +35,44 @@ interface ExpertProfileData {
 
 function catLabel(category: string): string {
   return isExpertCategory(category) ? EXPERT_CATEGORY_LABELS[category] : "Industry Expert";
+}
+
+/**
+ * The professional's outbound business links — this is how a contributor
+ * turns field-note reputation into traffic to their own business. Links are
+ * nofollow (we're not vouching for the destination) and click-tracked so the
+ * contributor can see the referrals their notes earned.
+ */
+function ProfileLinks({ expert }: { expert: ExpertProfileData }) {
+  const links = expert.socialLinks || {};
+  const items: { key: string; href: string; label: string; icon: typeof Globe }[] = [];
+  if (links.website) items.push({ key: "website", href: links.website, label: "Website", icon: Globe });
+  if (links.linkedin) items.push({ key: "linkedin", href: links.linkedin, label: "LinkedIn", icon: Linkedin });
+  if (links.instagram) items.push({ key: "instagram", href: links.instagram, label: "Instagram", icon: Instagram });
+  if (expert.publicEmail) items.push({ key: "email", href: `mailto:${expert.publicEmail}`, label: "Email", icon: Mail });
+  if (expert.phone) items.push({ key: "phone", href: `tel:${expert.phone.replace(/[^\d+]/g, "")}`, label: "Call", icon: Phone });
+  if (items.length === 0) return null;
+
+  const isExternal = (href: string) => href.startsWith("http");
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {items.map(({ key, href, label, icon: Icon }) => (
+        <a
+          key={key}
+          href={href}
+          {...(isExternal(href) ? { target: "_blank", rel: "nofollow noopener noreferrer" } : {})}
+          onClick={() =>
+            track({ event: "cta_clicked", cta: `expert_link_${key}`, location: "expert_profile", destination: href })
+          }
+          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+          data-testid={`link-expert-${key}`}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </a>
+      ))}
+    </div>
+  );
 }
 
 export default function ExpertProfile() {
@@ -96,6 +138,7 @@ export default function ExpertProfile() {
               </p>
             )}
             {expert.bio && <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{expert.bio}</p>}
+            <ProfileLinks expert={expert} />
           </div>
         </div>
 
