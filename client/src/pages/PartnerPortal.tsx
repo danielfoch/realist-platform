@@ -24,6 +24,8 @@ import type { IndustryPartner, PartnerLead, Lead } from "@shared/schema";
 const PARTNER_TYPES = [
   { value: "realtor", label: "Realtor" },
   { value: "mortgage_broker", label: "Mortgage Broker" },
+  { value: "architect", label: "Architect" },
+  { value: "urban_planner", label: "Urban Planner" },
   { value: "lawyer", label: "Real Estate Lawyer" },
   { value: "accountant", label: "Accountant" },
   { value: "property_manager", label: "Property Manager" },
@@ -32,6 +34,17 @@ const PARTNER_TYPES = [
   { value: "inspector", label: "Inspector" },
   { value: "other", label: "Other" },
 ];
+
+// Knowledge professionals (design/planning/legal/etc.) join free and pay no
+// referral fee — their value is the field notes they contribute. Only the
+// deal-referral streams (realtor, mortgage broker) carry a referral agreement.
+const REFERRAL_PARTNER_TYPES = new Set(["realtor", "mortgage_broker"]);
+
+interface PartnerSocialLinks {
+  website?: string;
+  linkedin?: string;
+  instagram?: string;
+}
 
 const SERVICE_AREAS = [
   "Ontario", "British Columbia", "Alberta", "Quebec", "Manitoba", 
@@ -357,6 +370,7 @@ function PartnerProfileForm({
   onSubmit: (data: Partial<IndustryPartner>) => void;
   isPending: boolean;
 }) {
+  const partnerLinks = (partner?.socialLinks as PartnerSocialLinks | null) || {};
   const [formData, setFormData] = useState({
     partnerType: partner?.partnerType || "realtor",
     companyName: partner?.companyName || "",
@@ -367,7 +381,23 @@ function PartnerProfileForm({
     headshotUrl: partner?.headshotUrl || "",
     serviceAreas: partner?.serviceAreas || [],
     isPublic: partner?.isPublic || false,
+    website: partnerLinks.website || "",
+    linkedin: partnerLinks.linkedin || "",
+    instagram: partnerLinks.instagram || "",
   });
+
+  const isKnowledgePartner = !REFERRAL_PARTNER_TYPES.has(formData.partnerType);
+
+  // Fold the flat link inputs back into the socialLinks jsonb the API expects,
+  // dropping the stray keys so the insert schema doesn't reject them.
+  const buildPayload = (): Partial<IndustryPartner> => {
+    const { website, linkedin, instagram, ...rest } = formData;
+    const socialLinks: PartnerSocialLinks = {};
+    if (website.trim()) socialLinks.website = website.trim();
+    if (linkedin.trim()) socialLinks.linkedin = linkedin.trim();
+    if (instagram.trim()) socialLinks.instagram = instagram.trim();
+    return { ...rest, socialLinks };
+  };
 
   const toggleServiceArea = (area: string) => {
     setFormData(prev => ({
@@ -379,10 +409,10 @@ function PartnerProfileForm({
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit(formData);
+        onSubmit(buildPayload());
       }}
       className="space-y-6"
     >
@@ -461,6 +491,49 @@ function PartnerProfileForm({
             onChange={(e) => setFormData(prev => ({ ...prev, headshotUrl: e.target.value }))}
             placeholder="https://..."
             data-testid="input-headshot-url"
+          />
+        </div>
+      </div>
+
+      {isKnowledgePartner && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+          Architects, planners, and other knowledge professionals join free with no referral fee.
+          Your field notes on listings build your reputation and drive investors to your profile and business links below.
+        </div>
+      )}
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="website">Website</Label>
+          <Input
+            id="website"
+            type="url"
+            value={formData.website}
+            onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+            placeholder="https://yourfirm.com"
+            data-testid="input-website"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="linkedin">LinkedIn</Label>
+          <Input
+            id="linkedin"
+            type="url"
+            value={formData.linkedin}
+            onChange={(e) => setFormData(prev => ({ ...prev, linkedin: e.target.value }))}
+            placeholder="https://linkedin.com/in/…"
+            data-testid="input-linkedin"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="instagram">Instagram</Label>
+          <Input
+            id="instagram"
+            type="url"
+            value={formData.instagram}
+            onChange={(e) => setFormData(prev => ({ ...prev, instagram: e.target.value }))}
+            placeholder="https://instagram.com/…"
+            data-testid="input-instagram"
           />
         </div>
       </div>
