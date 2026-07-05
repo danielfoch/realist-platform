@@ -5,6 +5,22 @@ import { users, analyses, notificationEvents, notificationQueue } from "@shared/
 import { sql, count, desc, and, isNotNull, ne } from "drizzle-orm";
 import { storage } from "./storage";
 import { governMarketingSend } from "./emailGovernor";
+import { getTradeLeaders } from "./tradeLeaders";
+import { EXPERT_CATEGORIES, EXPERT_CATEGORY_LABELS } from "@shared/contributorReputation";
+import type { TradeLeader } from "@shared/tradeLeaderboard";
+
+/** "Architect" → "Architects"; leaves slashed/plural labels alone. */
+export function pluralTradeLabel(label: string): string {
+  return label.includes("/") || label.endsWith("s") ? label : `${label}s`;
+}
+
+/** Non-empty trades in the canonical category order, for stable rendering. */
+export function orderedTrades(tradeLeaders: Record<string, TradeLeader[]>): Array<{ label: string; leaders: TradeLeader[] }> {
+  return EXPERT_CATEGORIES.map((category) => ({
+    label: EXPERT_CATEGORY_LABELS[category],
+    leaders: tradeLeaders[category] ?? [],
+  })).filter((t) => t.leaders.length > 0);
+}
 
 const UNSUBSCRIBE_SECRET = process.env.SESSION_SECRET || "realist-digest-secret";
 
@@ -294,6 +310,7 @@ function buildDigestText(
   insight: string,
   unsubscribeUrl: string,
   dealOfWeek: DealOfTheWeek | null,
+  tradeLeaders: Record<string, TradeLeader[]>,
 ): string {
   const { start, end } = getWeekDateRange();
   const location = dealOfWeek ? [dealOfWeek.city, dealOfWeek.province].filter(Boolean).join(", ") : null;
@@ -325,6 +342,21 @@ function buildDigestText(
     "Top weekly analysts:",
     ...leaderboard.map((entry) => `#${entry.rank} ${entry.name} - ${entry.dealCount} deals${entry.avgCapRate != null ? ` - ${entry.avgCapRate.toFixed(1)}% avg cap` : ""}`),
     "",
+    ...(() => {
+      const trades = orderedTrades(tradeLeaders);
+      if (!trades.length) return [] as string[];
+      return [
+        "Power Team leaders (last 30 days, by trade):",
+        ...trades.flatMap(({ label, leaders }) => [
+          `Top ${pluralTradeLabel(label)}:`,
+          ...leaders.map(
+            (l, i) =>
+              `  #${i + 1} ${l.name}${l.verificationStatus === "verified" ? " (verified)" : ""} - ${l.notes} note${l.notes === 1 ? "" : "s"}`,
+          ),
+        ]),
+        "",
+      ];
+    })(),
     `Investor insight: ${insight}`,
     "",
     `All-time: ${allTime.totalDeals} deals analyzed across ${allTime.totalUsers} active analysts.`,
@@ -347,6 +379,7 @@ function buildDigestHtml(
   insight: string,
   unsubscribeUrl: string,
   dealOfWeek: DealOfTheWeek | null,
+  tradeLeaders: Record<string, TradeLeader[]>,
 ): string {
   const { start, end } = getWeekDateRange();
   const isQuietWeek = platform.totalDeals === 0;
@@ -452,6 +485,28 @@ function buildDigestHtml(
     </div>
   `;
 
+  const trades = orderedTrades(tradeLeaders);
+  const powerTeamSection = trades.length === 0 ? '' : `
+    <div style="background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%); border: 1px solid #ddd6fe; border-radius: 8px; padding: 16px; margin: 16px 0;">
+      <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #5b21b6;">Power Team Leaders</p>
+      <p style="margin: 0 0 12px 0; font-size: 12px; color: #6b7280;">Top field-note contributors by trade over the last 30 days.</p>
+      ${trades.map(({ label, leaders }) => `
+        <div style="margin: 0 0 12px 0;">
+          <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #7c3aed;">Top ${pluralTradeLabel(label)}</p>
+          ${leaders.map((l, i) => `
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; color: #374151;">
+              <span>#${i + 1} ${l.name}${l.verificationStatus === 'verified' ? ' <span style="color: #16a34a; font-size: 11px;">&#10003; Verified</span>' : ''}</span>
+              <span style="color: #6b7280;">${l.notes} note${l.notes === 1 ? '' : 's'}${l.endorsements > 0 ? ` &middot; ${l.endorsements} endorsement${l.endorsements === 1 ? '' : 's'}` : ''}</span>
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+      <div style="text-align: center; margin-top: 4px;">
+        <a href="https://realist.ca/power-team?source=email" style="font-size: 13px; color: #7c3aed; text-decoration: none; font-weight: 600;">See the full Power Team &rarr;</a>
+      </div>
+    </div>
+  `;
+
   const insightSection = `
     <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 16px 0;">
       <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #1d4ed8;">Tactical Investor Insight</p>
@@ -518,6 +573,7 @@ function buildDigestHtml(
         ${weeklySection}
         ${dealOfWeekSection}
         ${leaderboardSection}
+        ${powerTeamSection}
         ${allTimeSection}
         ${userSection}
         ${insightSection}
@@ -558,6 +614,15 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
   const allTime = await getAllTimeStats();
   const leaderboard = await getWeeklyTopAnalysts(5);
   const dealOfWeek = await getWeeklyDealOfTheWeek();
+  // Platform-wide (not per-recipient): top field-note contributors per trade,
+  // reusing the /api/leaderboard/by-trade aggregation. Fail soft — the digest
+  // must still send if this query hiccups.
+  let tradeLeaders: Record<string, TradeLeader[]> = {};
+  try {
+    tradeLeaders = await getTradeLeaders(3);
+  } catch (err) {
+    console.error("[weekly-digest] trade leaders lookup failed:", (err as Error).message);
+  }
   const insight = buildTacticalInsight(platform, leaderboard);
   console.log(`[weekly-digest] Platform stats: ${platform.totalDeals} weekly deals, ${allTime.totalDeals} all-time deals, cap rate ${platform.avgCapRate}%`);
   console.log(`[weekly-digest] Deal of the week: ${dealOfWeek ? `${dealOfWeek.city} — ${dealOfWeek.capRate}% cap / ${dealOfWeek.cashOnCash}% CoC / ${dealOfWeek.dscr}x DSCR` : 'none this week'}`);
@@ -633,6 +698,7 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
         insight,
         unsubscribeUrl,
         dealOfWeek,
+        tradeLeaders,
       );
       const text = buildDigestText(
         recipient.firstName || "",
@@ -643,6 +709,7 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
         insight,
         unsubscribeUrl,
         dealOfWeek,
+        tradeLeaders,
       );
 
       const subject = platform.totalDeals > 0
