@@ -24,6 +24,7 @@ import { handleStripeWebhook } from './stripe-integration';
 import { handleTrackEvent, handleGetEvents, handleGetEventSummary, handleGetBroadcastStats } from './event-tracking';
 import { savedListingsRouter } from './saved-listings-routes';
 import creaRouter from './crea-routes';
+import { isStaticAssetRequest } from './static-asset-request';
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ const limiter = rateLimit({
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: isStaticAssetRequest,
 });
 
 const metricsRegistry = new Registry();
