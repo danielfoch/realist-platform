@@ -325,28 +325,46 @@ export function registerExpertRoutes(app: Express): void {
         for (const v of voteRows) myVotes.set(v.targetId, v.value);
       }
 
-      res.json(
-        rows.map((r) => {
-          // Partner-authored notes show the expert's full name + company;
-          // member notes show first name + last initial only.
-          const isExpertNote = Boolean(r.partnerType);
-          return {
-            id: r.note.id,
-            userId: r.note.userId,
-            authorName: isExpertNote ? displayName(r) : anonymizeDisplayName(r.firstName, r.lastName, "Realist investor"),
-            authorCompany: isExpertNote ? r.companyName : null,
-            authorHeadshot: r.headshotUrl || r.profileImageUrl || null,
-            category: r.note.category,
-            isExpert: isExpertNote,
-            rank: computeRank(0).tier, // per-note rank badge filled client-side from profile if needed
-            body: r.note.body,
-            score: r.note.score,
-            myVote: myVotes.get(r.note.id) ?? 0,
-            createdAt: r.note.createdAt,
-            updatedAt: r.note.updatedAt,
-          };
-        }),
-      );
+      // FN-2: badge each author with their professional-profile verification tier
+      // (professional_profiles is self-migrating / not a Drizzle table — raw lookup,
+      // same pattern as /api/leaderboard/by-trade).
+      const authorIds = [...new Set(rows.map((r) => r.note.userId))];
+      const verifiedById = new Map<string, VerificationStatus>();
+      if (authorIds.length) {
+        const profs = await db.execute(sql`
+          SELECT user_id, verification_status FROM professional_profiles WHERE user_id = ANY(${authorIds})
+        `);
+        for (const p of profs.rows as Array<{ user_id: string; verification_status: string }>) {
+          verifiedById.set(p.user_id, p.verification_status as VerificationStatus);
+        }
+      }
+
+      const notes = rows.map((r) => {
+        // Partner-authored notes show the expert's full name + company;
+        // member notes show first name + last initial only.
+        const isExpertNote = Boolean(r.partnerType);
+        return {
+          id: r.note.id,
+          userId: r.note.userId,
+          authorName: isExpertNote ? displayName(r) : anonymizeDisplayName(r.firstName, r.lastName, "Realist investor"),
+          authorCompany: isExpertNote ? r.companyName : null,
+          authorHeadshot: r.headshotUrl || r.profileImageUrl || null,
+          category: r.note.category,
+          isExpert: isExpertNote,
+          verificationStatus: verifiedById.get(r.note.userId) ?? null,
+          rank: computeRank(0).tier, // per-note rank badge filled client-side from profile if needed
+          body: r.note.body,
+          score: r.note.score,
+          myVote: myVotes.get(r.note.id) ?? 0,
+          createdAt: r.note.createdAt,
+          updatedAt: r.note.updatedAt,
+        };
+      });
+      // Rank verified-pro notes above the rest; the DB already ordered by score,
+      // and this stable sort preserves that within each tier.
+      const verifiedRank = (s: string | null) => (s === "verified" ? 0 : 1);
+      notes.sort((a, b) => verifiedRank(a.verificationStatus) - verifiedRank(b.verificationStatus));
+      res.json(notes);
     } catch (error) {
       console.error("[experts] list field notes failed:", error);
       res.status(500).json({ error: "Failed to load field notes" });
