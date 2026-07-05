@@ -261,6 +261,7 @@ const CapitalStackCanadaGuide = lazy(() => import("@/pages/CapitalStackCanadaGui
 const ABCLendersCanadaGuide = lazy(() => import("@/pages/ABCLendersCanadaGuide"));
 const ReportsHub = lazy(() => import("@/pages/ReportsHub"));
 const ReportPage = lazy(() => import("@/pages/ReportPage"));
+const ConfigReportPage = lazy(() => import("@/pages/ConfigReportPage"));
 const IrccImmigrationDashboardReport = lazy(() => import("@/pages/IrccImmigrationDashboardReport"));
 const RealBenchReport = lazy(() => import("@/pages/RealBenchReport"));
 const MarketsHub = lazy(() => import("@/pages/MarketsHub"));
@@ -402,6 +403,8 @@ function Router() {
 
       {/* New Insights routes */}
       <Route path="/insights" component={InsightsHub} />
+      {/* Config-driven reports (data + narrative content files, no bespoke code) */}
+      <Route path="/insights/reports/:slug" component={ConfigReportPage} />
       <Route path="/insights/podcast" component={Podcast} />
       <Route path="/insights/podcast/:slug" component={PodcastEpisodeDetail} />
       <Route path="/insights/blog" component={Blog} />
