@@ -437,6 +437,59 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
     } catch {}
   }
 
+  // Config-driven reports (shared/reports/): /insights/reports/:slug gets a
+  // Report + Person(author) + BreadcrumbList JSON-LD graph built from the same
+  // content object the client and crawler fallback render.
+  const configReportMatch = path.match(/^\/insights\/reports\/([^\/]+)$/);
+  if (configReportMatch) {
+    const { getConfigReport } = await import("@shared/reports");
+    const report = getConfigReport(configReportMatch[1]);
+    if (report) {
+      const canonicalPath = `/insights/reports/${report.slug}`;
+      const url = `${BASE_URL}${canonicalPath}`;
+      return {
+        title: report.metaTitle || `${report.title} | Realist`,
+        description: report.metaDescription || report.dek,
+        ogImage: report.ogImage,
+        ogType: "article",
+        canonicalPath,
+        keywords: report.tags.join(", "),
+        structuredData: [
+          {
+            "@context": "https://schema.org",
+            "@type": "Report",
+            "@id": `${url}#report`,
+            headline: report.title,
+            description: report.metaDescription || report.dek,
+            url,
+            image: report.ogImage
+              ? (report.ogImage.startsWith("http") ? report.ogImage : `${BASE_URL}${report.ogImage}`)
+              : `${BASE_URL}/og-image.png`,
+            datePublished: `${report.publishDate}T00:00:00Z`,
+            author: {
+              "@type": "Person",
+              "@id": report.author.personId,
+              name: report.author.name,
+              ...(report.author.url ? { url: report.author.url } : {}),
+            },
+            publisher: { "@id": `${BASE_URL}/#organization` },
+            mainEntityOfPage: url,
+            keywords: report.tags.join(", "),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+              { "@type": "ListItem", position: 2, name: "Reports", item: `${BASE_URL}/reports` },
+              { "@type": "ListItem", position: 3, name: report.title, item: url },
+            ],
+          },
+        ],
+      };
+    }
+  }
+
   // Dynamic project landing
   const projectMatch = path.match(/^\/projects\/([^\/]+)$/);
   if (projectMatch) {
