@@ -9,14 +9,33 @@
  * so getPropertyAssessment stays source-agnostic.
  *
  * Column names + sample values verified against the live Socrata resources
- * (2026-07): Winnipeg d4mq-wa44, Calgary 4bsw-nn7w, Edmonton q7d6-ambg.
+ * (2026-07): Winnipeg d4mq-wa44, Calgary 4bsw-nn7w, Edmonton q7d6-ambg,
+ * Nova Scotia / PVSC a859-xvcs (thedatazone.ca).
  * Gotcha carried over from the permits work: Socrata JSON omits null fields, so
  * the importer streams the CSV export (authoritative column set), not the JSON.
+ * SECOND gotcha (caught 2026-07): the bulk `/api/views/<id>/rows.csv` export
+ * headers are DISPLAY names ("Assessment Account Number"), not the JSON field
+ * names — so adapters read the display headers normalized by normalizeHeaderKey.
  */
 
 import { looseKeyFromListingAddress } from "./quebecRoll";
 
 const SQFT_PER_M2 = 10.7639;
+
+/**
+ * Normalize a Socrata bulk-CSV-export header cell to the key the adapters read.
+ *
+ * The `/api/views/<id>/rows.csv` bulk export uses *display* column names
+ * ("Assessment Account Number", "Roll Number"), NOT the API field names the
+ * `/resource/<id>.json` endpoint returns. Lowercasing alone left spaces in the
+ * key, so `row.roll_number` / `row.aan` came back undefined and every row was
+ * skipped (NS/Winnipeg/Edmonton imported zero rows). Collapsing whitespace to
+ * underscores turns "Roll Number" → `roll_number`, matching the adapter reads.
+ * (Calgary's export already uses `ROLL_NUMBER`-style headers, so it is a no-op.)
+ */
+export function normalizeHeaderKey(name: string): string {
+  return name.replace(/^\uFEFF/, "").trim().toLowerCase().replace(/\s+/g, "_");
+}
 
 export interface AssessmentRollRecord {
   matricule: string; // per-parcel roll/account number — the upsert key within a city
@@ -167,7 +186,7 @@ export const ASSESSMENT_ROLL_ADAPTERS: AssessmentRollAdapter[] = [
       return withAddress(address, {
         matricule,
         rollYear: null, // dataset is the current calendar year; no per-row roll_year column
-        cubf: str(row.mill_class_1),
+        cubf: str(row.assessment_class_1), // display header "Assessment Class 1" (e.g. RESIDENTIAL)
         frontageM: null,
         lotAreaM2: null,
         storeys: null,
@@ -197,13 +216,16 @@ export const ASSESSMENT_ROLL_ADAPTERS: AssessmentRollAdapter[] = [
       "Contains information from Property Valuation Services Corporation (PVSC), licensed under the Open Data and Information Government Licence – PVSC and Participating Municipalities.",
     headers: { "User-Agent": "Mozilla/5.0 (realist.ca open-data importer; hello@realist.ca)" },
     mapRow(row) {
-      const matricule = str(row.aan); // Assessment Account Number — province-unique key
+      // Keys are the bulk-CSV *display* headers, normalized by normalizeHeaderKey
+      // ("Assessment Account Number" → assessment_account_number), NOT the
+      // /resource JSON field names (aan, address_num) — those differ for PVSC.
+      const matricule = str(row.assessment_account_number); // province-unique account number
       if (!matricule) return null;
       const address = [
-        str(row.address_num),
-        str(row.address_direction),
-        str(row.address_street),
-        str(row.address_suffix),
+        str(row.civic_number),
+        str(row.civic_direction),
+        str(row.civic_street_name),
+        str(row.civic_street_suffix),
       ]
         .filter(Boolean)
         .join(" ") || null;
