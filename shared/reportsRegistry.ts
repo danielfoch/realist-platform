@@ -10,7 +10,16 @@
  * publish dates and drive newest-first ordering everywhere.
  */
 
+import { configReportRegistryEntries } from "./reports";
+
 export type ReportKind = "macro" | "market" | "research";
+
+/**
+ * Config reports (data + narrative content files under shared/reports/, rendered
+ * by client/src/components/reports/ReportRenderer.tsx) register here too, so
+ * every hub + sitemap treats them exactly like code reports. They are appended
+ * via `configReportRegistryEntries` at the bottom of `reportsRegistry`.
+ */
 
 export interface ReportRegistryEntry {
   slug: string;
@@ -28,6 +37,12 @@ export interface ReportRegistryEntry {
    * so buildPagesSitemap skips them to avoid duplicate sitemap entries.
    */
   db?: boolean;
+  /**
+   * True for config-driven reports (shared/reports/, rendered by
+   * ReportRenderer at /insights/reports/:slug). Like `db`, these are emitted by
+   * buildReportsSitemap, so buildPagesSitemap skips them to avoid duplicates.
+   */
+  config?: boolean;
 }
 
 export const reportsRegistry: ReportRegistryEntry[] = [
@@ -266,6 +281,10 @@ export const reportsRegistry: ReportRegistryEntry[] = [
     tags: ["productivity", "gdp", "canada-us"],
     kind: "research",
   },
+  // Config reports (shared/reports/) — data + narrative content files rendered
+  // by ReportRenderer at /insights/reports/:slug. Appended here so InsightsHub,
+  // ReportsHub, MarketReport, and the sitemap pick them up automatically.
+  ...configReportRegistryEntries,
 ];
 
 /** All registry entries sorted newest-first. */

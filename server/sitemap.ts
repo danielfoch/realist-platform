@@ -103,7 +103,7 @@ export async function buildPagesSitemap() {
   // db-backed reports (/reports/:slug served from the blog-posts db) are skipped
   // here because buildReportsSitemap already emits them.
   for (const report of reportsRegistry) {
-    if (report.db) continue;
+    if (report.db || report.config) continue;
     urls.push({
       loc: `${BASE}${report.route}`,
       lastmod: report.date,
@@ -164,6 +164,18 @@ export async function buildReportsSitemap() {
       lastmod: dateOnly(post.updatedAt || post.publishedAt),
       changefreq: "monthly",
       priority: post.category === "market-analysis" ? 0.75 : 0.65,
+    });
+  }
+  // Config-driven reports (shared/reports/) live in committed files, not the
+  // blog-posts db, so emit them here from the content dir.
+  const { configReports } = await import("@shared/reports");
+  const { reportRoute } = await import("@shared/reportContent");
+  for (const report of configReports) {
+    urls.push({
+      loc: `${BASE}${reportRoute(report.slug)}`,
+      lastmod: report.publishDate,
+      changefreq: "monthly",
+      priority: 0.78,
     });
   }
   return urlset(urls);
