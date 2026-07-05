@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
 import { authPath } from "@/lib/authReturn";
 import { apiRequest } from "@/lib/queryClient";
-import { ChevronUp, ChevronDown, EyeOff, HardHat, Loader2, Pencil, Trash2 } from "lucide-react";
+import { ChevronUp, ChevronDown, EyeOff, HardHat, Loader2, Pencil, ShieldCheck, Trash2 } from "lucide-react";
+import type { VerificationStatus } from "@shared/professionalProfiles";
 import { format } from "date-fns";
 import { EXPERT_CATEGORY_LABELS, isExpertCategory } from "@shared/contributorReputation";
 import { FIELD_NOTE_LIMITS } from "@shared/fieldNotes";
@@ -21,6 +22,7 @@ interface FieldNote {
   authorHeadshot: string | null;
   category: string;
   isExpert?: boolean;
+  verificationStatus?: VerificationStatus | null;
   body: string;
   score: number;
   myVote: number;
@@ -216,6 +218,11 @@ export function FieldNotes({ mlsNumber }: { mlsNumber: string }) {
                   <Badge variant="secondary" className="text-[10px]">
                     {note.category === "investor" ? "Investor" : categoryLabel(note.category)}
                   </Badge>
+                  {note.verificationStatus === "verified" && (
+                    <Badge variant="default" className="gap-1 text-[10px]" data-testid={`verified-${note.id}`}>
+                      <ShieldCheck className="h-3 w-3" /> Verified
+                    </Badge>
+                  )}
                   <span className="text-xs text-muted-foreground">{format(new Date(note.createdAt), "MMM d, yyyy")}</span>
                   <span className="ml-auto flex items-center gap-1.5">
                     {user?.id === note.userId && (
