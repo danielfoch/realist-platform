@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationBell } from "@/components/NotificationBell";
 import { track } from "@/lib/analytics";
 import { authPath } from "@/lib/authReturn";
 import logoImage from "@assets/Untitled_design_(4)_1773356428184.webp";
@@ -239,6 +240,12 @@ export function Navigation() {
                 </Link>
               </Button>
             </div>
+
+            {/* Notification inbox bell — one instance serves desktop and
+                mobile (it sits outside the hidden md:flex blocks). Only
+                rendered when authenticated so the inbox query never fires
+                for anonymous visitors. */}
+            {!isLoading && isAuthenticated && <NotificationBell />}
 
             {/* Auth */}
             {!isLoading && (
