@@ -25,6 +25,8 @@ import {
 } from "@shared/fieldNotes";
 import type { ExpertFieldNote } from "@shared/schema";
 import { governMarketingSend } from "./emailGovernor";
+import { isEmailTriggerTemplateKey } from "@shared/emailTriggerTransport";
+import { sendEmailTrigger } from "./emailTriggerSender";
 
 type NotificationKind =
   | "saved_search_match"
@@ -694,6 +696,44 @@ export async function processPendingGhlNotifications(limit = 50): Promise<{ sent
   let skipped = 0;
 
   for (const item of queue) {
+    // Trigger-originated email rows (transport consolidation): rows enqueued
+    // by server/emailTriggerProducer.ts ride channel='email_resend' with the
+    // trigger type as templateKey. Deliver them through the shared trigger
+    // sender — identical recipient/consent/governor/Resend behavior to the
+    // legacy email_triggers worker — instead of the sheet-mirror/GHL path.
+    // Rows with unrecognized templateKeys (monthly_leaderboard_winner,
+    // podcast_digest — their producers send via Resend themselves and flip
+    // the row's status) keep the pre-existing behavior below untouched.
+    if (item.channel === "email_resend" && isEmailTriggerTemplateKey(item.templateKey)) {
+      const triggerPayload = (item.payloadJson || {}) as Record<string, any>;
+      const outcome = await sendEmailTrigger({
+        id: item.id,
+        triggerType: item.templateKey,
+        payload: triggerPayload,
+        userId: item.recipientUserId,
+        leadId: typeof triggerPayload.leadId === "string" ? triggerPayload.leadId : null,
+        opportunityId: typeof triggerPayload.opportunityId === "string" ? triggerPayload.opportunityId : null,
+        createdAt: item.createdAt,
+      });
+      if (outcome.status === "sent") {
+        sent++;
+        await storage.markNotificationQueueItemSent(item.id);
+      } else if (outcome.status === "failed") {
+        // Same single-attempt semantics as the drain's other channels (and
+        // the legacy worker): a failure is terminal for the row.
+        failed++;
+        await storage.markNotificationQueueItemFailed(item.id, outcome.reason);
+      } else if (outcome.status === "cancelled") {
+        // Mirror the legacy worker's 'cancelled' terminal state (consent
+        // revoked, governor block, lead already contacted, ...).
+        await db.update(notificationQueue)
+          .set({ status: "cancelled", failureReason: outcome.reason })
+          .where(eq(notificationQueue.id, item.id));
+      }
+      // 'not_due' (24h-delayed types): leave the row pending for a later cycle.
+      continue;
+    }
+
     // Always mirror the notification event to the owner's Google Sheet
     // (replaces GHL as the primary destination).
     const payload = (item.payloadJson || {}) as Record<string, any>;
