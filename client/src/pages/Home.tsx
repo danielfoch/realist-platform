@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch, useLocation } from "wouter";
 import { SEO, organizationSchema, websiteSchema, softwareSchema } from "@/components/SEO";
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
@@ -50,6 +50,7 @@ import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext"
 import { apiRequest } from "@/lib/queryClient";
 import type { BuyHoldInputs, AnalysisResults } from "@shared/schema";
 import { detectPossiblePlex } from "@shared/plexDetection";
+import type { SimilarListingCandidate } from "@shared/similarListings";
 import { Calculator, FileDown, BarChart3, Save, Loader2, FileSpreadsheet, Table, FileSignature, ArrowRight, Sparkles, MapPinned, Target, ClipboardCheck, Building2 } from "lucide-react";
 import { exportToPDF } from "@/lib/pdfExport";
 
@@ -88,10 +89,15 @@ const defaultInputs: BuyHoldInputs = {
   cmhcMliPoints: 0,
 };
 
-// Seam: the fabricated "similar deals" mock (invented comps with made-up
-// investor scores) was removed. Real similar-deals will be queried from
-// ddf_listing_snapshots (nearby active listings with comparable price/rent
-// profiles) when that surface ships.
+// The fabricated "similar deals" mock (invented comps with made-up investor
+// scores) was removed in PR #66. Its honest replacement is the "Similar
+// listings" strip below the metric cards: real active comparables from
+// ddf_listing_snapshots via GET /api/listings/similar, linking to real
+// listing pages — and rendering nothing at all when there are no genuine comps.
+type SimilarListingResult = SimilarListingCandidate & {
+  /** Site path to the live listing page (/listings/:mlsNumber). */
+  path: string;
+};
 
 type HomeProps = {
   embedded?: boolean;
@@ -117,6 +123,28 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
   const [calculatorType, setCalculatorType] = useState<CalculatorType>("deal_analyzer");
   const [inputs, setInputs] = useState<BuyHoldInputs>(defaultInputs);
   const [showResults, setShowResults] = useState(false);
+  // Snapshot of the ANALYZED inputs, captured when results are shown. The
+  // similar-listings query derives from this — never from live input state —
+  // so editing the form doesn't fire a request per keystroke (each city
+  // character would be a distinct server cache key = a DB query), and the
+  // strip always reflects the analysis on screen, not a half-typed price.
+  const [similarContext, setSimilarContext] = useState<{
+    city: string;
+    country: string;
+    type: string;
+    price: number;
+    address: string;
+    mlsNumber: string;
+  } | null>(null);
+  const snapshotSimilarContext = () =>
+    setSimilarContext({
+      city: city.trim(),
+      country,
+      type: propertyType.trim(),
+      price: inputs.purchasePrice,
+      address: address.trim(),
+      mlsNumber: mlsNumber.trim(),
+    });
   const [isCalculating, setIsCalculating] = useState(false);
   const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
   const [leadCapturedLocal, setLeadCapturedLocal] = useState(() => {
@@ -314,6 +342,38 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
     description: [address, propertyType, nlPrompt, strategy].filter(Boolean).join(" "),
   }), [address, propertyType, nlPrompt, strategy]);
 
+  // Real comparables for the results view — only fetched once an analysis has
+  // a city and a price, and only for Canadian analyses (the DDF snapshot
+  // store is CA-only). An empty response renders nothing: no placeholder
+  // ever stands in for a genuine comp. Derived from the analyzed snapshot,
+  // not live inputs (see similarContext above).
+  const similarListingsEnabled =
+    showResults &&
+    similarContext !== null &&
+    similarContext.country === "canada" &&
+    similarContext.city.length > 0 &&
+    similarContext.price > 0;
+  const similarListingsParams = new URLSearchParams({
+    city: similarContext?.city ?? "",
+    price: String(similarContext?.price ?? 0),
+  });
+  if (similarContext?.type) similarListingsParams.set("type", similarContext.type);
+  // Exclusion: exact MLS number when the analysis came from a listing page
+  // (loose address matching can miss abbreviation variants and show the
+  // subject as its own comp); typed address as the fallback.
+  if (similarContext?.mlsNumber) similarListingsParams.set("exclude", similarContext.mlsNumber);
+  else if (similarContext?.address) similarListingsParams.set("exclude", similarContext.address);
+  const { data: similarListingsData } = useQuery<{
+    success: boolean;
+    data: SimilarListingResult[];
+  }>({
+    queryKey: [`/api/listings/similar?${similarListingsParams.toString()}`],
+    enabled: similarListingsEnabled,
+  });
+  const similarListings = similarListingsEnabled
+    ? similarListingsData?.data ?? []
+    : [];
+
   const [listingPrice, setListingPrice] = useState<number | null>(null);
   const lastTrackedRef = useRef<string>("");
   const leadSavedAnalysisRef = useRef<boolean>(false);
@@ -478,6 +538,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
       // The modal stays open here: LeadCaptureModal advances to its Deal Room
       // step after submit and closes itself when the user picks a next step.
       setShowResults(true);
+      snapshotSimilarContext();
       track({
         event: "lead_captured",
         source: "deal_analyzer",
@@ -695,6 +756,7 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
     });
 
     setShowResults(true);
+    snapshotSimilarContext();
     setTimeout(() => {
       resultsRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 100);
@@ -1576,10 +1638,59 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                 />
               )}
 
-              {/* Seam: a real similar-deals card (live comps from
-                  ddf_listing_snapshots) will render here once built. The
-                  previous card here showed fabricated comparables with
-                  invented scores and was removed. */}
+              {/* Real comparables (live DDF snapshots) — the fabricated
+                  similar-deals card that used to sit here was removed in
+                  PR #66. This strip only ever shows genuine active listings
+                  linking to their real listing pages, and renders nothing
+                  when there are none. */}
+              {!isCalculating && similarListings.length > 0 && (
+                <Card data-testid="card-similar-listings">
+                  <CardHeader>
+                    <CardTitle>Similar listings</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Active listings in {city.trim()} within 25% of your purchase price, from live MLS data.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {similarListings.map((listing) => (
+                        <Link
+                          key={listing.mlsNumber}
+                          href={listing.path}
+                          className="block rounded-lg border overflow-hidden hover-elevate"
+                          data-testid={`link-similar-listing-${listing.mlsNumber}`}
+                        >
+                          {listing.photoUrl && (
+                            <img
+                              src={listing.photoUrl}
+                              alt={listing.address || `MLS ${listing.mlsNumber}`}
+                              className="h-32 w-full object-cover"
+                              loading="lazy"
+                            />
+                          )}
+                          <div className="p-4 space-y-1.5">
+                            {listing.price != null && (
+                              <div className="font-semibold">{formatCurrency(listing.price)}</div>
+                            )}
+                            <div className="text-sm font-medium truncate">
+                              {listing.address || `MLS ${listing.mlsNumber}`}
+                            </div>
+                            <div className="text-sm text-muted-foreground truncate">
+                              {[listing.city, listing.province].filter(Boolean).join(", ")}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              {listing.bedrooms != null && <span>{listing.bedrooms} bed</span>}
+                              {listing.bathrooms != null && <span>{listing.bathrooms} bath</span>}
+                              {listing.propertyType && <span className="truncate">{listing.propertyType}</span>}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {!isCalculating && (
                 <Card className="border-amber-500/25" data-testid="card-plex-detection">
                   <CardHeader>
