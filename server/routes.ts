@@ -108,6 +108,7 @@ import { ANALYST_BADGES, computeMilestoneProgress } from "@shared/milestones";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { passwordResetTokens } from "@shared/models/auth";
 import { normalizeEmail, SETUP_LINK_TTL_MS } from "@shared/authTokens";
+import { backlinkUserRecords } from "./personSpine";
 import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
 import { 
@@ -595,6 +596,11 @@ async function autoEnrollLeadAsUser(params: {
     }
     throw err;
   }
+
+  // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts rows
+  // with this email (including the lead row that triggered this enrollment).
+  // Best-effort, never fails the enrollment.
+  await backlinkUserRecords(newUser.id, emailLower);
 
   await db.update(passwordResetTokens)
     .set({ usedAt: new Date() })
@@ -2924,6 +2930,10 @@ export async function registerRoutes(
             phone: row.phone || null,
             role: row.role || "user",
           }).returning();
+
+          // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts
+          // rows carrying this email to the imported user.
+          await backlinkUserRecords(newUser.id, email);
 
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");

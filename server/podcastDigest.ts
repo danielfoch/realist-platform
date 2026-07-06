@@ -41,6 +41,7 @@ import crypto from "crypto";
 import cron from "node-cron";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { backlinkUserRecords } from "./personSpine";
 import { users, notificationQueue, notificationEvents, emailConsent } from "@shared/schema";
 import { normalizeEmail } from "@shared/authTokens";
 import { getResendClient } from "./resend";
@@ -312,6 +313,10 @@ export async function ensurePodcastSubscriber(
       .returning({ id: users.id });
     userId = user.id;
     created = true;
+
+    // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts rows
+    // with this email. Best-effort, never fails the subscribe.
+    await backlinkUserRecords(userId, email);
   }
 
   const existingPref = await storage.getNotificationPreference(userId);

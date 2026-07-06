@@ -221,12 +221,13 @@ import {
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
+import { linkPersonByEmail } from "./personSpine";
 import { eq, desc, sql, and, gte, lte, inArray, asc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { anonymizeDisplayName, sanitizeUserText, summarizeCommunityMetrics, truncateText, type AnalysisSentiment } from "@shared/community";
 
 export interface IStorage {
-  createLead(lead: InsertLead): Promise<Lead>;
+  createLead(lead: InsertLead & { userId?: string | null }): Promise<Lead>;
   getLead(id: string): Promise<Lead | undefined>;
   getLeadByEmail(email: string): Promise<Lead | undefined>;
   getLeadCountByEmail(email: string): Promise<number>;
@@ -588,8 +589,13 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async createLead(insertLead: InsertLead): Promise<Lead> {
-    const [lead] = await db.insert(leads).values(insertLead).returning();
+  async createLead(insertLead: InsertLead & { userId?: string | null }): Promise<Lead> {
+    // PERSON SPINE (phase 1): stamp the user link at write time so new lead
+    // rows are born linked. userId is server-authoritative (stripped from
+    // insertLeadSchema); trusted callers may pass it, everyone else gets
+    // email resolution. Best-effort — linkPersonByEmail never throws.
+    const userId = insertLead.userId ?? (await linkPersonByEmail(insertLead.email));
+    const [lead] = await db.insert(leads).values({ ...insertLead, userId }).returning();
     return lead;
   }
 
@@ -2538,6 +2544,9 @@ export class DatabaseStorage implements IStorage {
   async upsertLeadByEmail(data: { name: string; email: string; phone?: string | null; consent: boolean; consentSms: boolean; leadSource: string }): Promise<Lead> {
     const existing = await this.getLeadByEmail(data.email);
     if (existing) {
+      // PERSON SPINE (phase 1): opportunistically link an old unlinked row;
+      // an existing link is never overwritten.
+      const linkedUserId = existing.userId ?? (await linkPersonByEmail(data.email));
       const [updated] = await db.update(leads)
         .set({
           name: data.name,
@@ -2545,6 +2554,7 @@ export class DatabaseStorage implements IStorage {
           consent: data.consent || (existing.consent ?? false),
           consentSms: data.consentSms || (existing.consentSms ?? false),
           leadSource: data.leadSource,
+          ...(existing.userId == null && linkedUserId ? { userId: linkedUserId } : {}),
         })
         .where(eq(leads.id, existing.id))
         .returning();
@@ -2557,6 +2567,8 @@ export class DatabaseStorage implements IStorage {
       consent: data.consent,
       consentSms: data.consentSms,
       leadSource: data.leadSource,
+      // PERSON SPINE (phase 1): new lead rows are born linked when possible.
+      userId: await linkPersonByEmail(data.email),
     }).returning();
     return lead;
   }

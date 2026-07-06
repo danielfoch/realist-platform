@@ -18,6 +18,7 @@ import Stripe from "stripe";
 import { and, asc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
+import { backlinkUserRecords } from "./personSpine";
 import { getUncachableStripeClient } from "./stripeClient";
 import { sendNotificationEmail, sendWelcomeAccountEmail } from "./resend";
 import { logUserActivity } from "./userActivity";
@@ -77,6 +78,10 @@ async function ensureUserByEmail(email: string, name: string | null, leadSource:
     role: "investor",
     emailVerified: true,
   }).returning();
+
+  // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts rows
+  // with this email. Best-effort, never fails the RSVP.
+  await backlinkUserRecords(user.id, normalized);
 
   // CASL ledger: the RSVP/signup form is the express consent moment.
   await db.insert(emailConsent).values({
