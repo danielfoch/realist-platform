@@ -13,7 +13,7 @@
 
 import type { Express, Request, Response } from "express";
 import "express-session";
-import { and, count, desc, eq, inArray, isNull, lte, ne, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, lte, notInArray, or } from "drizzle-orm";
 import { db } from "./db";
 import { isAuthenticated } from "./auth";
 import { notificationQueue } from "@shared/schema";
@@ -26,12 +26,14 @@ export function registerNotificationInboxRoutes(app: Express): void {
     try {
       const userId = req.session.userId as string;
 
-      // Visible = not failed (a failed send is delivery plumbing, not a user
-      // notification) and not scheduled for the future (digests must not
-      // appear in-app before their send window).
+      // Visible = not failed/cancelled (a failed send is delivery plumbing;
+      // cancelled means the governor or a consent check blocked it — a
+      // consent-revoked user must not keep seeing nudge entries) and not
+      // scheduled for the future (digests must not appear in-app before
+      // their send window).
       const visible = and(
         eq(notificationQueue.recipientUserId, userId),
-        ne(notificationQueue.status, "failed"),
+        notInArray(notificationQueue.status, ["failed", "cancelled"]),
         or(
           isNull(notificationQueue.scheduledFor),
           lte(notificationQueue.scheduledFor, new Date()),
