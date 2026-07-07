@@ -1,12 +1,15 @@
 /**
- * Pure helpers for the weekly podcast digest (The Canadian Real Estate
- * Investor). No fetch, no DB, no DOM — everything here is unit-testable in
- * isolation and shared between the server producer (server/podcastDigest.ts)
- * and its tests (shared/podcastDigest.test.ts).
+ * Pure helpers for the weekly podcast digest / "everything Realist published
+ * this week" roundup (The Canadian Real Estate Investor). No fetch, no DB, no
+ * DOM — everything here is unit-testable in isolation and shared between the
+ * server producer (server/podcastDigest.ts) and its tests
+ * (shared/podcastDigest.test.ts).
  *
  * Responsibilities:
  *   - ISO-week dedupe key (one digest per user per ISO week).
  *   - Episode selection: which episodes are "new" since the user's last send.
+ *   - Roundup selection: which reports/videos fall inside the weekly send
+ *     window (the last 7 days before the send), and the send/skip decision.
  *   - Summary extraction/truncation from RSS show-notes (2-3 clean sentences).
  *
  * See server/podcastDigest.ts for the send loop, governor wiring, and the
@@ -121,6 +124,139 @@ export function selectEpisodesForDigest<T extends DigestEpisode>(
 
   eligible.sort((a, b) => b.t - a.t); // newest first
   return eligible.slice(0, Math.max(0, maxEpisodes)).map((entry) => entry.episode);
+}
+
+// ---------------------------------------------------------------------------
+// Weekly roundup: send window + report/video selection + skip decision
+// ---------------------------------------------------------------------------
+
+/**
+ * One non-episode content item in the weekly roundup ("New on Realist"):
+ * a config report today, a YouTube video once the rail lands. `date` is an
+ * ISO date (YYYY-MM-DD, parsed as UTC midnight) or any Date-parseable
+ * timestamp — config reports use their `publishDate`, videos will use their
+ * upload timestamp.
+ */
+export interface RoundupItem {
+  slug: string;
+  title: string;
+  /** Optional standfirst shown under the title in the email. */
+  dek?: string;
+  date: string;
+}
+
+/** The roundup covers everything published in the last 7 days before a send. */
+export const ROUNDUP_WINDOW_DAYS = 7;
+
+/** A half-open send window: items strictly after `start`, at-or-before `end`. */
+export interface SendWindow {
+  start: Date;
+  end: Date;
+}
+
+/** The weekly boundary the roundup window anchors to: Thursday 13:00 UTC —
+ * MUST match the sweep cron ("0 13 * * 4", scheduled in Etc/UTC). */
+export const ROUNDUP_BOUNDARY = { isoWeekday: 4, hourUtc: 13 } as const;
+
+/**
+ * The send window for a weekly roundup sent at `sendAt`: the 7 days ending at
+ * the most recent weekly boundary (Thursday 13:00 UTC) at-or-before `sendAt`
+ * — NOT the 7 days ending at `sendAt` itself. Anchoring to a stable boundary
+ * instead of the actual sweep time means an off-schedule run (manual admin
+ * sweep on a Monday, cron jitter, DST shift of the host clock) computes the
+ * SAME window as that week's scheduled send: consecutive weekly windows tile
+ * exactly by construction, and the dedupe key derived from window.end (see
+ * the sweep) suppresses off-schedule re-sends of the same window.
+ *
+ * Known limitation (accepted): the window has no memory of the last
+ * successful send, so a report whose code deploys AFTER its window closed
+ * (e.g. publishDate = this Thursday, deployed Thursday afternoon) is never
+ * featured. Date reports for the upcoming Thursday or deploy before
+ * Thursday 13:00 UTC.
+ */
+export function roundupSendWindow(sendAt: Date, days: number = ROUNDUP_WINDOW_DAYS): SendWindow {
+  const end = lastWeeklyBoundary(sendAt);
+  return {
+    start: new Date(end.getTime() - days * 24 * 60 * 60 * 1000),
+    end,
+  };
+}
+
+/** Most recent Thursday 13:00 UTC at-or-before `at` (fixed-ms UTC math). */
+export function lastWeeklyBoundary(at: Date): Date {
+  const candidate = new Date(Date.UTC(
+    at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate(), ROUNDUP_BOUNDARY.hourUtc,
+  ));
+  const dayDelta = (candidate.getUTCDay() - ROUNDUP_BOUNDARY.isoWeekday + 7) % 7;
+  candidate.setUTCDate(candidate.getUTCDate() - dayDelta);
+  if (candidate.getTime() > at.getTime()) {
+    candidate.setUTCDate(candidate.getUTCDate() - 7);
+  }
+  return candidate;
+}
+
+/**
+ * Pick the roundup items that fall inside the send window, newest first.
+ * Boundary semantics match episode selection: strictly after `start` (an item
+ * exactly on the previous send instant was already covered by last week's
+ * window), and at-or-before `end`. Items with an unparseable `date` are
+ * skipped — they can't be time-scoped safely. Capped at `maxItems`.
+ */
+export function selectItemsForWindow<T extends RoundupItem>(
+  items: T[],
+  window: SendWindow,
+  maxItems: number = 5,
+): T[] {
+  const start = window.start.getTime();
+  const end = window.end.getTime();
+  return items
+    .map((item) => ({ item, t: parsePubDate(item.date) }))
+    .filter((entry): entry is { item: T; t: number } => entry.t !== null)
+    .filter((entry) => entry.t > start && entry.t <= end)
+    .sort((a, b) => b.t - a.t)
+    .slice(0, Math.max(0, maxItems))
+    .map((entry) => entry.item);
+}
+
+/** The non-episode content selected for one week's roundup. */
+export interface RoundupExtras<R extends RoundupItem, V extends RoundupItem> {
+  reports: R[];
+  videos: V[];
+}
+
+/**
+ * Window-select every non-episode content type for the roundup in one pass.
+ * Videos flow through EXACTLY like reports — today the server passes an empty
+ * videos array (see the getNewVideos() seam in server/podcastDigest.ts); when
+ * the YouTube rail (PR #121) lands, its items are windowed here with no
+ * further changes.
+ */
+export function selectRoundupExtras<R extends RoundupItem, V extends RoundupItem>(
+  input: { reports: R[]; videos: V[] },
+  window: SendWindow,
+  opts: { maxReports?: number; maxVideos?: number } = {},
+): RoundupExtras<R, V> {
+  return {
+    reports: selectItemsForWindow(input.reports, window, opts.maxReports ?? 5),
+    videos: selectItemsForWindow(input.videos, window, opts.maxVideos ?? 5),
+  };
+}
+
+/**
+ * The empty-week rule: a roundup email is sent only when there is at least one
+ * new episode, report, or video. Otherwise the sweep skips the user and logs —
+ * never an empty email.
+ */
+export function hasRoundupContent(selection: {
+  episodes: readonly unknown[];
+  reports: readonly unknown[];
+  videos: readonly unknown[];
+}): boolean {
+  return (
+    selection.episodes.length > 0 ||
+    selection.reports.length > 0 ||
+    selection.videos.length > 0
+  );
 }
 
 // ---------------------------------------------------------------------------
