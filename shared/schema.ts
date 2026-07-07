@@ -551,12 +551,25 @@ export const notificationQueue = pgTable(
     status: text("status").default("pending").notNull(),
     scheduledFor: timestamp("scheduled_for").defaultNow().notNull(),
     sentAt: timestamp("sent_at"),
+    // In-app inbox read state. Null = unread. Set once via
+    // POST /api/notifications/read (server/notificationInbox.ts); never
+    // cleared, so an item can only move unread -> read.
+    readAt: timestamp("read_at"),
     failureReason: text("failure_reason"),
     payloadJson: jsonb("payload_json").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
     dedupeUnique: uniqueIndex("notification_queue_dedupe_idx").on(table.dedupeKey),
+    // Serve the inbox poll (GET /api/notifications, every 60s per tab):
+    // latest-50 by recipient, and the unread badge count.
+    recipientCreated: index("idx_notification_queue_recipient_created").on(
+      table.recipientUserId,
+      table.createdAt,
+    ),
+    recipientUnread: index("idx_notification_queue_recipient_unread")
+      .on(table.recipientUserId)
+      .where(sql`read_at IS NULL`),
   }),
 );
 
@@ -916,6 +929,7 @@ export const insertNotificationQueueSchema = createInsertSchema(notificationQueu
   id: true,
   createdAt: true,
   sentAt: true,
+  readAt: true,
 });
 
 export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({

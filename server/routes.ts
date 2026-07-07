@@ -143,6 +143,7 @@ import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
 import { registerRentBacktestRoutes } from "./rentBacktestRunner";
 import { registerMobilePushRoutes } from "./mobilePush";
+import { registerNotificationInboxRoutes } from "./notificationInbox";
 import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import { registerBookedCallLeadRoutes } from "./bookedCallLeads";
@@ -824,6 +825,7 @@ export async function registerRoutes(
   registerBookedCallLeadRoutes(app);
   registerDealRoomRoutes(app);
   registerWatchlistRoutes(app);
+  registerNotificationInboxRoutes(app);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
