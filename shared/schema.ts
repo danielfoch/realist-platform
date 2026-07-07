@@ -3500,9 +3500,14 @@ export const ddfListingSnapshots = pgTable("ddf_listing_snapshots", {
   rawJson: jsonb("raw_json"),
   snapshotMonth: varchar("snapshot_month", { length: 7 }).notNull(),
   capturedAt: timestamp("captured_at").defaultNow().notNull(),
-}, () => [
+}, (table) => [
   sql`CREATE INDEX IF NOT EXISTS ddf_snapshots_city_month_idx ON ddf_listing_snapshots(city, snapshot_month)`,
   sql`CREATE UNIQUE INDEX IF NOT EXISTS ddf_snapshots_listing_month_idx ON ddf_listing_snapshots(listing_key, snapshot_month)`,
+  // Serves /api/listings/similar (anonymous): LOWER(city) equality — the
+  // plain (city, snapshot_month) btree above cannot serve the lowered
+  // predicate, and an unindexed anonymous endpoint is a seq-scan-per-request
+  // DoS lever on the largest table in the database.
+  index("idx_ddf_snapshots_city_lower").on(sql`lower(${table.city})`),
 ]);
 
 export const insertDdfListingSnapshotSchema = createInsertSchema(ddfListingSnapshots).omit({
