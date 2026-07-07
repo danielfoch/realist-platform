@@ -157,6 +157,16 @@ interface ListingWithCapRate extends RepliersListing {
   dataSource?: "crea_ddf" | "repliers";
 }
 
+interface MultiplexListingScan {
+  label: string;
+  status: "likely" | "possible" | "underwrite";
+  confidence: number;
+  summary: string;
+  evidence: string[];
+  sourceNote: string;
+  href: string;
+}
+
 interface RentPulseData {
   city: string;
   province: string;
@@ -511,6 +521,113 @@ function buildListingSignal(listing: RepliersListing & {
     price: Number.isFinite(price) ? price : undefined,
     capRate: typeof listing.capRate === "number" ? listing.capRate : undefined,
     source,
+  };
+}
+
+function parseSqft(value?: string | number | null): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (!value) return null;
+  const parsed = Number(String(value).replace(/[^0-9.]/g, ""));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function buildMultiplexUnderwriterHref(listing: ListingWithCapRate): string {
+  const params = new URLSearchParams();
+  const address = formatAddress(listing.address);
+  const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+
+  params.set("address", address);
+  if (Number.isFinite(price) && price > 0) params.set("price", String(Math.round(price)));
+  if (listing.mlsNumber) params.set("mls", listing.mlsNumber);
+  if (listing.address?.city) params.set("city", listing.address.city);
+  if (listing.address?.state) params.set("state", listing.address.state);
+  if (listing.details?.numBedrooms) params.set("beds", String(listing.details.numBedrooms));
+  if (listing.details?.numBathrooms) params.set("baths", String(listing.details.numBathrooms));
+  if (listing.details?.sqft) params.set("sqft", listing.details.sqft);
+
+  return `/tools/multiplex-underwriter?${params.toString()}`;
+}
+
+function buildMultiplexListingScan(listing: ListingWithCapRate): MultiplexListingScan {
+  const evidence: string[] = [];
+  let confidence = 0;
+  const propertyType = [
+    listing.details?.propertyType,
+    listing.details?.style,
+    listing.type,
+    listing.class,
+  ].filter(Boolean).join(" ").toLowerCase();
+  const city = listing.address?.city?.trim();
+  const province = listing.address?.state?.trim();
+  const sqft = parseSqft(listing.details?.sqft);
+
+  if (listing.unitCount >= 3) {
+    confidence += 45;
+    evidence.push(`${listing.unitCount} units from listing/plex detection`);
+  } else if (listing.unitCount === 2) {
+    confidence += 28;
+    evidence.push("2-unit setup detected");
+  }
+
+  if ((listing.kitchenCount || 0) > 1) {
+    confidence += 18;
+    evidence.push(`${listing.kitchenCount} kitchens detected`);
+  }
+
+  if ((listing.plexConfidenceScore || 0) >= 60) {
+    confidence += 22;
+    evidence.push(listing.plexDetectionReason || "strong plex signal in remarks");
+  } else if ((listing.plexConfidenceScore || 0) >= 30) {
+    confidence += 12;
+    evidence.push(listing.plexDetectionReason || "possible plex signal in remarks");
+  }
+
+  if (/\b(duplex|triplex|fourplex|4plex|multiplex|multi[-\s]?family)\b/.test(propertyType)) {
+    confidence += 18;
+    evidence.push("plex property type/style");
+  } else if (/\b(detached|semi|single family|residential)\b/.test(propertyType)) {
+    confidence += 8;
+    evidence.push("ground-oriented residential form");
+  } else if (/\b(condo|apartment)\b/.test(propertyType)) {
+    confidence -= 25;
+    evidence.push("condo/apartment form needs extra caution");
+  }
+
+  if (sqft && sqft >= 2200) {
+    confidence += 7;
+    evidence.push(`${sqft.toLocaleString()} sqft reported`);
+  }
+
+  if (city && province) {
+    confidence += 5;
+    evidence.push(`${city}, ${province} listing`);
+  }
+
+  confidence = Math.max(0, Math.min(100, Math.round(confidence)));
+
+  const status: MultiplexListingScan["status"] =
+    confidence >= 70 ? "likely" : confidence >= 40 ? "possible" : "underwrite";
+  const label =
+    status === "likely"
+      ? "Multiplex scan: strong candidate"
+      : status === "possible"
+        ? "Multiplex scan: possible candidate"
+        : "Multiplex scan: needs address underwrite";
+  const summary =
+    status === "likely"
+      ? "Pre-screen flags this as worth a full multiplex build/hold/condo-exit run."
+      : status === "possible"
+        ? "Listing facts suggest enough signal to open the underwriter before dismissing it."
+        : "No strong plex signal from listing facts. Run the address-first underwriter for zoning, tree/ravine, and takeout math.";
+
+  return {
+    label,
+    status,
+    confidence,
+    summary,
+    evidence: evidence.slice(0, 3),
+    sourceNote: "Pre-screened from listing fields only. Full underwriter resolves zoning/by-law, tree/ravine screens, build configs, and CMHC MLI Select vs condo exit math.",
+    href: buildMultiplexUnderwriterHref(listing),
   };
 }
 
@@ -2634,6 +2751,12 @@ export default function CapRates() {
     const primaryMetricValue = getListingMetricValue(listing, sortMetric, aggregate, metricSource, myMetrics);
     const primaryMetricLabel = metricLabel(sortMetric);
     const primaryMetricConfidence = getMetricPrimaryConfidence(listing, sortMetric);
+    const multiplexScan = buildMultiplexListingScan(listing);
+    const multiplexScanTone = multiplexScan.status === "likely"
+      ? "border-ai/40 bg-ai/10 text-ai"
+      : multiplexScan.status === "possible"
+        ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+        : "border-border/70 bg-muted/35 text-muted-foreground";
 
     return (
       <div
@@ -2769,6 +2892,17 @@ export default function CapRates() {
               <span>CF: {formatCompactCurrency(listing.monthlyCashFlow)}</span>
             </div>
 
+            <div className={`mt-2 rounded-md border px-2 py-1.5 ${multiplexScanTone}`} data-testid={`multiplex-scan-${listing.mlsNumber}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold">
+                  <Sparkles className="h-3 w-3" />
+                  {multiplexScan.label}
+                </span>
+                <span className="text-[9px] font-semibold">{multiplexScan.confidence}/100</span>
+              </div>
+              <p className="mt-0.5 line-clamp-2 text-[9px] leading-snug opacity-90">{multiplexScan.summary}</p>
+            </div>
+
             <SalePriceEstimatePrompt listing={listing} isAuthenticated={isAuthenticated} />
             <ListingSentimentControls listing={listing} />
 
@@ -2817,6 +2951,26 @@ export default function CapRates() {
                   Listing page
                 </Link>
               )}
+              <Link
+                href={multiplexScan.href}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  track({
+                    event: "feature_used",
+                    feature: "multiplex_underwriter",
+                    details: {
+                      listing_id: listing.mlsNumber,
+                      source: "map_listing_card",
+                      confidence: multiplexScan.confidence,
+                    },
+                  });
+                }}
+                className="inline-flex items-center gap-1 rounded-full border border-ai/40 bg-ai/5 px-1.5 text-[10px] font-semibold text-ai transition-colors hover:bg-ai hover:text-white"
+                data-testid={`link-multiplex-underwriter-${listing.mlsNumber}`}
+              >
+                <Sparkles className="h-2.5 w-2.5" />
+                Full multiplex underwrite
+              </Link>
               <ListingCommentCountBadge
                 count={aggregatesMap[listing.mlsNumber]?.publicCommentCount}
                 hasRecent={Boolean(aggregatesMap[listing.mlsNumber]?.latestPublicCommentAt)}
@@ -3002,6 +3156,12 @@ export default function CapRates() {
     const primaryMetricValue = getListingMetricValue(selectedListing, sortMetric, agg, metricSource, myMetrics);
     const primaryMetricConfidence = getMetricPrimaryConfidence(selectedListing, sortMetric);
     const uwCalc = computeUwCapRate();
+    const multiplexScan = buildMultiplexListingScan(selectedListing);
+    const multiplexScanTone = multiplexScan.status === "likely"
+      ? "border-ai/40 bg-ai/10"
+      : multiplexScan.status === "possible"
+        ? "border-amber-500/40 bg-amber-500/10"
+        : "border-border/70 bg-muted/30";
 
     return (
       <div data-testid="panel-listing-detail">
@@ -3133,6 +3293,48 @@ export default function CapRates() {
                     {selectedListing.plexDetectionReason}
                   </div>
                 )}
+
+                <div className={`rounded-lg border p-3 ${multiplexScanTone}`} data-testid="panel-multiplex-scan">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-sm font-semibold">
+                        <Sparkles className="h-4 w-4 text-ai" />
+                        {multiplexScan.label}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{multiplexScan.summary}</p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 text-[10px]">
+                      {multiplexScan.confidence}/100
+                    </Badge>
+                  </div>
+                  {multiplexScan.evidence.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {multiplexScan.evidence.map((item) => (
+                        <Badge key={item} variant="outline" className="text-[10px]">
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-2 text-[10px] leading-snug text-muted-foreground">{multiplexScan.sourceNote}</p>
+                  <Button asChild className="mt-3 w-full" data-testid="button-open-multiplex-underwriter">
+                    <Link
+                      href={multiplexScan.href}
+                      onClick={() => track({
+                        event: "feature_used",
+                        feature: "multiplex_underwriter",
+                        details: {
+                          listing_id: selectedListing.mlsNumber,
+                          source: "map_detail_panel",
+                          confidence: multiplexScan.confidence,
+                        },
+                      })}
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Open full multiplex underwriter
+                    </Link>
+                  </Button>
+                </div>
 
                 <Button
                   className="w-full"
@@ -3616,6 +3818,7 @@ export default function CapRates() {
     const myMetrics = myAnalysisMetricsMap[selectedListing.mlsNumber];
     const primaryMetricValue = getListingMetricValue(selectedListing, sortMetric, aggregate, metricSource, myMetrics);
     const imgUrl = getImageUrl(selectedListing.images);
+    const multiplexScan = buildMultiplexListingScan(selectedListing);
 
     return (
       <div className="rounded-2xl border border-border/70 bg-background/96 p-3 shadow-2xl backdrop-blur">
@@ -3652,6 +3855,15 @@ export default function CapRates() {
               <span>CF: {formatCompactCurrency(selectedListing.monthlyCashFlow)}</span>
               <span>{aggregate?.publicAnalysisCount || 0} analyses</span>
             </div>
+            <div className="mt-2 rounded-md border border-ai/30 bg-ai/5 px-2 py-1.5">
+              <div className="flex items-center justify-between gap-2 text-[10px]">
+                <span className="inline-flex items-center gap-1 font-semibold text-ai">
+                  <Sparkles className="h-3 w-3" />
+                  {multiplexScan.status === "likely" ? "Strong multiplex scan" : multiplexScan.status === "possible" ? "Possible multiplex scan" : "Run address underwrite"}
+                </span>
+                <span className="font-semibold text-muted-foreground">{multiplexScan.confidence}/100</span>
+              </div>
+            </div>
           </div>
         </div>
         <div className="mt-3 flex gap-2">
@@ -3661,6 +3873,24 @@ export default function CapRates() {
           </Button>
           <Button size="sm" variant="outline" className="flex-1" onClick={() => handleSelectListing(selectedListing, "list")}>
             Open details
+          </Button>
+          <Button size="sm" variant="outline" className="shrink-0 px-2" asChild>
+            <Link
+              href={multiplexScan.href}
+              aria-label="Open full multiplex underwriter"
+              data-testid="link-quick-card-multiplex-underwriter"
+              onClick={() => track({
+                event: "feature_used",
+                feature: "multiplex_underwriter",
+                details: {
+                  listing_id: selectedListing.mlsNumber,
+                  source: "map_quick_card",
+                  confidence: multiplexScan.confidence,
+                },
+              })}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+            </Link>
           </Button>
           {selectedListing.mlsNumber && (
             <Button size="sm" variant="outline" className="shrink-0 px-2" asChild>
