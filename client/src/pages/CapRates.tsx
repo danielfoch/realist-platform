@@ -50,7 +50,6 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import "leaflet.markercluster";
 import { MapLayersPanel, DEFAULT_LAYERS, type MapLayer } from "@/components/MapLayersPanel";
 import { NextStepBlock } from "@/components/NextStepBlock";
 import { NeighbourhoodOverlay } from "@/components/NeighbourhoodOverlay";
@@ -223,6 +222,16 @@ interface UsMapListing {
 }
 
 const MAP_WORKSPACE_STATE_KEY = "realist_cap_rates_workspace_state";
+
+let markerClusterLoadPromise: Promise<void> | null = null;
+
+function loadLeafletMarkerCluster(): Promise<void> {
+  if ((L as any).markerClusterGroup) return Promise.resolve();
+
+  (globalThis as any).L = L;
+  markerClusterLoadPromise ??= import("leaflet.markercluster").then(() => undefined);
+  return markerClusterLoadPromise;
+}
 
 interface MapWorkspaceState {
   selectedMls?: string;
@@ -889,11 +898,16 @@ function ClusteredListingsLayer({
   const clusterRef = useRef<any>(null);
 
   useEffect(() => {
-    if (clusterRef.current) {
-      map.removeLayer(clusterRef.current);
-    }
+    let cancelled = false;
 
-    const cluster = (L as any).markerClusterGroup({
+    void loadLeafletMarkerCluster().then(() => {
+      if (cancelled) return;
+
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+      }
+
+      const cluster = (L as any).markerClusterGroup({
       maxClusterRadius: 70,
       spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
@@ -922,41 +936,48 @@ function ClusteredListingsLayer({
           dominantConsensus,
         );
       },
+      });
+
+      cluster.on("clusterclick", (event: any) => {
+        zoomToClusterBounds(map, event.layer, 14);
+      });
+
+      for (const listing of listings) {
+        if (!listing.map?.latitude || !listing.map?.longitude) continue;
+        const aggregate = aggregatesMap[listing.mlsNumber];
+        const metricValue = getListingMetricValue(listing, metric, aggregate, metricSource, myMetricsMap[listing.mlsNumber]);
+        const consensusLabel = aggregate?.consensusLabel || null;
+        const marker = L.marker(
+          [listing.map.latitude, listing.map.longitude],
+          {
+            icon: createMetricMarkerIcon({
+              metric,
+              numericValue: metricValue,
+              label: formatMetricValue(metric, metricValue, consensusLabel, aggregate?.publicAnalysisCount),
+              isSelected: false,
+              aggregate,
+              consensusLabel,
+              isDistress: Boolean(distressMap[listing.mlsNumber]),
+            }),
+            metricValue: metricValue ?? undefined,
+            consensusLabel: consensusLabel ?? undefined,
+          } as L.MarkerOptions & { metricValue?: number; consensusLabel?: string },
+        );
+        marker.on("click", () => onSelectListing(listing, "map"));
+        cluster.addLayer(marker);
+      }
+
+      if (cancelled) {
+        map.removeLayer(cluster);
+        return;
+      }
+
+      map.addLayer(cluster);
+      clusterRef.current = cluster;
     });
-
-    cluster.on("clusterclick", (event: any) => {
-      zoomToClusterBounds(map, event.layer, 14);
-    });
-
-    for (const listing of listings) {
-      if (!listing.map?.latitude || !listing.map?.longitude) continue;
-      const aggregate = aggregatesMap[listing.mlsNumber];
-      const metricValue = getListingMetricValue(listing, metric, aggregate, metricSource, myMetricsMap[listing.mlsNumber]);
-      const consensusLabel = aggregate?.consensusLabel || null;
-      const marker = L.marker(
-        [listing.map.latitude, listing.map.longitude],
-        {
-          icon: createMetricMarkerIcon({
-            metric,
-            numericValue: metricValue,
-            label: formatMetricValue(metric, metricValue, consensusLabel, aggregate?.publicAnalysisCount),
-            isSelected: false,
-            aggregate,
-            consensusLabel,
-            isDistress: Boolean(distressMap[listing.mlsNumber]),
-          }),
-          metricValue: metricValue ?? undefined,
-          consensusLabel: consensusLabel ?? undefined,
-        } as L.MarkerOptions & { metricValue?: number; consensusLabel?: string },
-      );
-      marker.on("click", () => onSelectListing(listing, "map"));
-      cluster.addLayer(marker);
-    }
-
-    map.addLayer(cluster);
-    clusterRef.current = cluster;
 
     return () => {
+      cancelled = true;
       if (clusterRef.current) {
         map.removeLayer(clusterRef.current);
       }
@@ -980,11 +1001,16 @@ function DistressListingsLayer({
   const clusterRef = useRef<any>(null);
 
   useEffect(() => {
-    if (clusterRef.current) {
-      map.removeLayer(clusterRef.current);
-    }
+    let cancelled = false;
 
-    const cluster = (L as any).markerClusterGroup({
+    void loadLeafletMarkerCluster().then(() => {
+      if (cancelled) return;
+
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+      }
+
+      const cluster = (L as any).markerClusterGroup({
       maxClusterRadius: 65,
       spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
@@ -1021,29 +1047,36 @@ function DistressListingsLayer({
           iconAnchor: [size / 2, size / 2],
         });
       },
+      });
+
+      cluster.on("clusterclick", (event: any) => {
+        zoomToClusterBounds(map, event.layer, 14);
+      });
+
+      for (const listing of listings) {
+        if (!listing.map?.latitude || !listing.map?.longitude) continue;
+        const marker = L.marker(
+          [listing.map.latitude, listing.map.longitude],
+          {
+            icon: createDistressMarkerIcon(listing.distress, selectedMlsNumber === listing.mlsNumber),
+            distressScore: listing.distress.distressScore,
+          } as L.MarkerOptions & { distressScore?: number },
+        );
+        marker.on("click", () => onSelectListing(listing));
+        cluster.addLayer(marker);
+      }
+
+      if (cancelled) {
+        map.removeLayer(cluster);
+        return;
+      }
+
+      map.addLayer(cluster);
+      clusterRef.current = cluster;
     });
-
-    cluster.on("clusterclick", (event: any) => {
-      zoomToClusterBounds(map, event.layer, 14);
-    });
-
-    for (const listing of listings) {
-      if (!listing.map?.latitude || !listing.map?.longitude) continue;
-      const marker = L.marker(
-        [listing.map.latitude, listing.map.longitude],
-        {
-          icon: createDistressMarkerIcon(listing.distress, selectedMlsNumber === listing.mlsNumber),
-          distressScore: listing.distress.distressScore,
-        } as L.MarkerOptions & { distressScore?: number },
-      );
-      marker.on("click", () => onSelectListing(listing));
-      cluster.addLayer(marker);
-    }
-
-    map.addLayer(cluster);
-    clusterRef.current = cluster;
 
     return () => {
+      cancelled = true;
       if (clusterRef.current) {
         map.removeLayer(clusterRef.current);
       }
@@ -1067,11 +1100,16 @@ function UsListingsLayer({
   const clusterRef = useRef<any>(null);
 
   useEffect(() => {
-    if (clusterRef.current) {
-      map.removeLayer(clusterRef.current);
-    }
+    let cancelled = false;
 
-    const cluster = (L as any).markerClusterGroup({
+    void loadLeafletMarkerCluster().then(() => {
+      if (cancelled) return;
+
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+      }
+
+      const cluster = (L as any).markerClusterGroup({
       maxClusterRadius: 65,
       spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
@@ -1104,46 +1142,53 @@ function UsListingsLayer({
           iconAnchor: [size / 2, size / 2],
         });
       },
-    });
+      });
 
-    cluster.on("clusterclick", (event: any) => {
-      zoomToClusterBounds(map, event.layer, 14);
-    });
+      cluster.on("clusterclick", (event: any) => {
+        zoomToClusterBounds(map, event.layer, 14);
+      });
 
-    for (const listing of listings) {
-      if (!Number.isFinite(listing.lat) || !Number.isFinite(listing.lng)) continue;
-      const marker = L.marker(
-        [listing.lat, listing.lng],
-        { icon: createUsListingMarkerIcon(listing, selectedListingId === listing.id) },
-      );
-      const details = [
-        listing.beds != null ? `${listing.beds} bd` : null,
-        listing.baths != null ? `${listing.baths} ba` : null,
-        listing.sqft ? `${listing.sqft.toLocaleString()} sqft` : null,
-      ].filter(Boolean).join(" · ");
-      const sourceLink = listing.sourceUrl
-        ? `<a href="${escapeHtml(listing.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-weight:700;">Open source listing</a>`
-        : "";
-      marker.bindPopup(`
-        <div style="min-width:220px;font-family:system-ui,-apple-system,sans-serif;">
-          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px;">
-            <strong style="font-size:14px;">${escapeHtml(listing.listPrice ? formatPriceFull(listing.listPrice) : "Price unavailable")}</strong>
-            <span style="font-size:10px;font-weight:800;color:#1d4ed8;">US beta</span>
+      for (const listing of listings) {
+        if (!Number.isFinite(listing.lat) || !Number.isFinite(listing.lng)) continue;
+        const marker = L.marker(
+          [listing.lat, listing.lng],
+          { icon: createUsListingMarkerIcon(listing, selectedListingId === listing.id) },
+        );
+        const details = [
+          listing.beds != null ? `${listing.beds} bd` : null,
+          listing.baths != null ? `${listing.baths} ba` : null,
+          listing.sqft ? `${listing.sqft.toLocaleString()} sqft` : null,
+        ].filter(Boolean).join(" · ");
+        const sourceLink = listing.sourceUrl
+          ? `<a href="${escapeHtml(listing.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-weight:700;">Open source listing</a>`
+          : "";
+        marker.bindPopup(`
+          <div style="min-width:220px;font-family:system-ui,-apple-system,sans-serif;">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px;">
+              <strong style="font-size:14px;">${escapeHtml(listing.listPrice ? formatPriceFull(listing.listPrice) : "Price unavailable")}</strong>
+              <span style="font-size:10px;font-weight:800;color:#1d4ed8;">US beta</span>
+            </div>
+            <div style="font-size:12px;color:#374151;margin-bottom:4px;">${escapeHtml(listing.formattedAddress)}</div>
+            ${details ? `<div style="font-size:11px;color:#4b5563;margin-bottom:4px;">${escapeHtml(details)}</div>` : ""}
+            <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">${escapeHtml([listing.propertyType, listing.status].filter(Boolean).join(" · ") || listing.source)}</div>
+            ${sourceLink}
           </div>
-          <div style="font-size:12px;color:#374151;margin-bottom:4px;">${escapeHtml(listing.formattedAddress)}</div>
-          ${details ? `<div style="font-size:11px;color:#4b5563;margin-bottom:4px;">${escapeHtml(details)}</div>` : ""}
-          <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">${escapeHtml([listing.propertyType, listing.status].filter(Boolean).join(" · ") || listing.source)}</div>
-          ${sourceLink}
-        </div>
-      `);
-      marker.on("click", () => onSelectListing(listing));
-      cluster.addLayer(marker);
-    }
+        `);
+        marker.on("click", () => onSelectListing(listing));
+        cluster.addLayer(marker);
+      }
 
-    map.addLayer(cluster);
-    clusterRef.current = cluster;
+      if (cancelled) {
+        map.removeLayer(cluster);
+        return;
+      }
+
+      map.addLayer(cluster);
+      clusterRef.current = cluster;
+    });
 
     return () => {
+      cancelled = true;
       if (clusterRef.current) {
         map.removeLayer(clusterRef.current);
       }
