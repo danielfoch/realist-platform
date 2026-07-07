@@ -95,6 +95,64 @@ export class RealistClient {
     return this.request<any>("POST", "/api/agent/find-deals", input);
   }
 
+  estimateRent(input: {
+    bedrooms: number | string;
+    city?: string;
+    province?: string;
+    lat?: number;
+    lng?: number;
+    units?: number;
+    listingKey?: string;
+    analysisId?: string;
+  }) {
+    return this.request<any>("POST", "/api/agent/estimate-rent", input);
+  }
+
+  underwriteMultiplex(input: {
+    address: string;
+    postalCode?: string;
+    lotFrontageFt?: number;
+    lotDepthFt?: number;
+    lotAreaSqft?: number;
+    purchasePrice?: number;
+    laneAccess?: boolean;
+    goal?: "flip" | "hold";
+    mliCommitments?: {
+      affordabilityLevel: number;
+      energyLevel: number;
+      accessibilityLevel: number;
+    };
+    assumptionOverrides?: Record<string, unknown>;
+  }) {
+    return this.request<any>("POST", "/api/agent/underwrite-multiplex", input);
+  }
+
+  submitToDealDesk(input: {
+    name: string;
+    email: string;
+    phone?: string | null;
+    address: string;
+    listingUrl?: string | null;
+    market?: string | null;
+    propertyType?: string | null;
+    purchasePrice?: number | null;
+    estimatedRent?: number | null;
+    financingHelpWanted?: boolean;
+    buyingHelpWanted?: boolean;
+    userNotes?: string | null;
+    consentEmail?: boolean;
+    consentSms?: boolean;
+    reportExported?: boolean;
+    dealSaved?: boolean;
+    financingChanged?: boolean;
+    returnThresholdHit?: boolean;
+    repeatMarketSearches?: boolean;
+    dealDeskCtaClicked?: boolean;
+    analysisId?: string | null;
+  }) {
+    return this.request<any>("POST", "/api/agent/deal-desk-submit", input);
+  }
+
   listAnalyses(limit = 25) {
     return this.request<any>("GET", "/api/agent/analyses", undefined, { limit });
   }

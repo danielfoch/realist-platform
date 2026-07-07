@@ -2604,21 +2604,100 @@ export const realtorIntroductions = pgTable("realtor_introductions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const referralOutcomes = pgTable("referral_outcomes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar("token", { length: 64 }).notNull(),
+  notificationId: varchar("notification_id").references(() => realtorLeadNotifications.id).notNull(),
+  introductionId: varchar("introduction_id").references(() => realtorIntroductions.id).notNull(),
+  realtorUserId: varchar("realtor_user_id").references(() => users.id).notNull(),
+  realtorClaimId: varchar("realtor_claim_id").references(() => realtorMarketClaims.id).notNull(),
+  leadId: varchar("lead_id").references(() => leads.id).notNull(),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  crmDealId: varchar("crm_deal_id"),
+  status: text("status").default("pending").notNull(),
+  lastAction: text("last_action"),
+  closePrice: numeric("close_price", { precision: 12, scale: 2 }),
+  gci: numeric("gci", { precision: 12, scale: 2 }),
+  referralFeePercent: real("referral_fee_percent").default(25).notNull(),
+  referralFeeAmount: numeric("referral_fee_amount", { precision: 12, scale: 2 }),
+  lostReason: text("lost_reason"),
+  notes: text("notes"),
+  reportedBy: text("reported_by"),
+  reportedAt: timestamp("reported_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("referral_outcomes_notification_id_idx").on(table.notificationId),
+  uniqueIndex("referral_outcomes_token_idx").on(table.token),
+  index("referral_outcomes_realtor_status_idx").on(table.realtorUserId, table.status),
+  index("referral_outcomes_claim_status_idx").on(table.realtorClaimId, table.status),
+  index("referral_outcomes_lead_idx").on(table.leadId),
+]);
+
+export const askRealistInteractions = pgTable("ask_realist_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id"),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  apiKeyId: varchar("api_key_id"),
+  channel: text("channel").default("ask_realist").notNull(),
+  question: text("question").notNull(),
+  answer: text("answer"),
+  toolCalls: jsonb("tool_calls"),
+  context: jsonb("context"),
+  status: text("status").default("ok").notNull(),
+  errorMessage: text("error_message"),
+  latencyMs: integer("latency_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("ask_realist_interactions_created_idx").on(table.createdAt),
+  index("ask_realist_interactions_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export const findDealsQueries = pgTable("find_deals_queries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id"),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  apiKeyId: varchar("api_key_id"),
+  channel: text("channel").default("web").notNull(),
+  rawQuery: text("raw_query").notNull(),
+  queryHash: varchar("query_hash", { length: 16 }).notNull(),
+  parsedFilters: jsonb("parsed_filters"),
+  resultCount: integer("result_count"),
+  source: text("source").default("web").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("find_deals_queries_hash_idx").on(table.queryHash),
+  index("find_deals_queries_created_idx").on(table.createdAt),
+  index("find_deals_queries_source_created_idx").on(table.source, table.createdAt),
+]);
+
 export const realtorMarketClaimsRelations = relations(realtorMarketClaims, ({ one, many }) => ({
   user: one(users, { fields: [realtorMarketClaims.userId], references: [users.id] }),
   partner: one(industryPartners, { fields: [realtorMarketClaims.partnerId], references: [industryPartners.id] }),
   notifications: many(realtorLeadNotifications),
+  outcomes: many(referralOutcomes),
 }));
 
 export const realtorLeadNotificationsRelations = relations(realtorLeadNotifications, ({ one }) => ({
   claim: one(realtorMarketClaims, { fields: [realtorLeadNotifications.realtorClaimId], references: [realtorMarketClaims.id] }),
   lead: one(leads, { fields: [realtorLeadNotifications.leadId], references: [leads.id] }),
   realtorUser: one(users, { fields: [realtorLeadNotifications.realtorUserId], references: [users.id] }),
+  outcome: one(referralOutcomes, { fields: [realtorLeadNotifications.id], references: [referralOutcomes.notificationId] }),
 }));
 
 export const realtorIntroductionsRelations = relations(realtorIntroductions, ({ one }) => ({
   notification: one(realtorLeadNotifications, { fields: [realtorIntroductions.notificationId], references: [realtorLeadNotifications.id] }),
   realtorUser: one(users, { fields: [realtorIntroductions.realtorUserId], references: [users.id] }),
+  outcome: one(referralOutcomes, { fields: [realtorIntroductions.id], references: [referralOutcomes.introductionId] }),
+}));
+
+export const referralOutcomesRelations = relations(referralOutcomes, ({ one }) => ({
+  notification: one(realtorLeadNotifications, { fields: [referralOutcomes.notificationId], references: [realtorLeadNotifications.id] }),
+  introduction: one(realtorIntroductions, { fields: [referralOutcomes.introductionId], references: [realtorIntroductions.id] }),
+  realtorUser: one(users, { fields: [referralOutcomes.realtorUserId], references: [users.id] }),
+  claim: one(realtorMarketClaims, { fields: [referralOutcomes.realtorClaimId], references: [realtorMarketClaims.id] }),
+  lead: one(leads, { fields: [referralOutcomes.leadId], references: [leads.id] }),
+  analysis: one(analyses, { fields: [referralOutcomes.analysisId], references: [analyses.id] }),
 }));
 
 export const insertRealtorMarketClaimSchema = createInsertSchema(realtorMarketClaims).omit({
@@ -2637,12 +2716,32 @@ export const insertRealtorIntroductionSchema = createInsertSchema(realtorIntrodu
   createdAt: true,
 });
 
+export const insertReferralOutcomeSchema = createInsertSchema(referralOutcomes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertAskRealistInteractionSchema = createInsertSchema(askRealistInteractions).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertFindDealsQuerySchema = createInsertSchema(findDealsQueries).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertRealtorMarketClaim = z.infer<typeof insertRealtorMarketClaimSchema>;
 export type RealtorMarketClaim = typeof realtorMarketClaims.$inferSelect;
 export type InsertRealtorLeadNotification = z.infer<typeof insertRealtorLeadNotificationSchema>;
 export type RealtorLeadNotification = typeof realtorLeadNotifications.$inferSelect;
 export type InsertRealtorIntroduction = z.infer<typeof insertRealtorIntroductionSchema>;
 export type RealtorIntroduction = typeof realtorIntroductions.$inferSelect;
+export type InsertReferralOutcome = z.infer<typeof insertReferralOutcomeSchema>;
+export type ReferralOutcome = typeof referralOutcomes.$inferSelect;
+export type InsertAskRealistInteraction = z.infer<typeof insertAskRealistInteractionSchema>;
+export type AskRealistInteraction = typeof askRealistInteractions.$inferSelect;
+export type InsertFindDealsQuery = z.infer<typeof insertFindDealsQuerySchema>;
+export type FindDealsQuery = typeof findDealsQueries.$inferSelect;
 
 // ============================================
 // COMMUNITY UNDERWRITING TABLES
@@ -2964,6 +3063,10 @@ export const userActivityEvents = pgTable("user_activity_events", {
   hashedIp: text("hashed_ip"),
   userAgentHash: text("user_agent_hash"),
   dealId: varchar("deal_id"),
+  apiKeyId: varchar("api_key_id"),
+  partnerId: varchar("partner_id"),
+  notificationId: varchar("notification_id"),
+  channel: text("channel"),
   source: text("source"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -4067,7 +4170,9 @@ export const apiKeys = pgTable("api_keys", {
   name: text("name").notNull(),
   keyPrefix: varchar("key_prefix", { length: 16 }).notNull(),
   keyHash: text("key_hash").notNull().unique(),
-  scopes: text("scopes").array().default(sql`ARRAY[]::text[]`),
+  scopes: text("scopes").array().default(sql`ARRAY['read','underwrite','deal:submit']::text[]`),
+  usagePayloadConsentAt: timestamp("usage_payload_consent_at"),
+  usagePayloadPolicyVersion: text("usage_payload_policy_version"),
   lastUsedAt: timestamp("last_used_at"),
   revokedAt: timestamp("revoked_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -4098,6 +4203,8 @@ export const apiUsageEvents = pgTable("api_usage_events", {
   status: integer("status").notNull(),
   latencyMs: integer("latency_ms").notNull(),
   inputHash: varchar("input_hash", { length: 16 }),
+  inputSummary: jsonb("input_summary"),
+  inputSummaryPolicyVersion: text("input_summary_policy_version"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("api_usage_events_key_created_idx").on(table.apiKeyId, table.createdAt),

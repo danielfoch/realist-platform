@@ -6,6 +6,9 @@
  *   realist underwrite <mls#>           [--rent N] [--strategy buyHold|brrr|...]
  *   realist analyze <address> <price>   [--rent N] [--units N] [--beds N]
  *   realist find "4-plex Hamilton under 900k"
+ *   realist rent <bedrooms> --city Hamilton [--province Ontario]
+ *   realist multiplex <address> [--frontage N --depth N --price N]
+ *   realist deal-desk --name Dan --email dan@example.com --address "123 Main"
  *   realist list                        [--limit N]
  *   realist get <analysis-id>
  *   realist submit <mls#> --analysis <id> [--title "..."] [--notes "..."]
@@ -118,6 +121,59 @@ async function main() {
         output(await client.findDeals({ query, limit: num("limit") }));
         return;
       }
+      case "rent": {
+        const [bedrooms] = positional();
+        if (!bedrooms) die("Usage: realist rent <bedrooms> --city <city> [--province <province>]");
+        output(await client.estimateRent({
+          bedrooms,
+          city: flag("city"),
+          province: flag("province"),
+          lat: num("lat"),
+          lng: num("lng"),
+          units: num("units"),
+          listingKey: flag("listing"),
+          analysisId: flag("analysis"),
+        }));
+        return;
+      }
+      case "multiplex": {
+        const address = positional().join(" ");
+        if (!address) die("Usage: realist multiplex <address> [--frontage N --depth N --area N --price N]");
+        output(await client.underwriteMultiplex({
+          address,
+          postalCode: flag("postal"),
+          lotFrontageFt: num("frontage"),
+          lotDepthFt: num("depth"),
+          lotAreaSqft: num("area"),
+          purchasePrice: num("price"),
+          goal: flag("goal") as any,
+        }));
+        return;
+      }
+      case "deal-desk": {
+        const name = flag("name");
+        const email = flag("email");
+        const address = flag("address");
+        if (!name || !email || !address) die('Usage: realist deal-desk --name "Name" --email email@example.com --address "123 Main"');
+        output(await client.submitToDealDesk({
+          name,
+          email,
+          phone: flag("phone"),
+          address,
+          listingUrl: flag("listing-url"),
+          market: flag("market"),
+          propertyType: flag("property-type"),
+          purchasePrice: num("price"),
+          estimatedRent: num("rent"),
+          financingHelpWanted: flag("financing") === "true",
+          buyingHelpWanted: flag("buying") === "true",
+          userNotes: flag("notes"),
+          consentEmail: flag("consent-email") === "true",
+          consentSms: flag("consent-sms") === "true",
+          analysisId: flag("analysis"),
+        }));
+        return;
+      }
       case "list": {
         output(await client.listAnalyses(num("limit") || 25));
         return;
@@ -161,6 +217,9 @@ Commands:
   underwrite <mls#> [--strategy ...]         Underwrite a Canadian MLS listing
   analyze <address> <price> [--rent N ...]   Underwrite a custom property
   find "<natural-language query>"            Search for deals
+  rent <bedrooms> --city <city>              Estimate market rent
+  multiplex <address> [--frontage N ...]     Run multiplex underwriter
+  deal-desk --name N --email E --address A   Submit to Deal Desk
   list [--limit N]                           List your saved underwritings
   get <analysis-id>                          Fetch one underwriting
   submit <mls#> [--analysis <id>]            Post to the community feed

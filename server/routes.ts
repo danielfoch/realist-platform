@@ -148,6 +148,8 @@ import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import { registerBookedCallLeadRoutes } from "./bookedCallLeads";
 import { registerDealRoomRoutes } from "./dealRoom";
+import { createOrGetReferralOutcomeForIntroduction, registerReferralOutcomeRoutes } from "./referralOutcomes";
+import { logFindDealsQuery } from "./demandLedger";
 import {
   getCurrentSaleEstimate,
   lookupSoldPriceForListing,
@@ -838,6 +840,7 @@ export async function registerRoutes(
   registerUnderwritingShareRoutes(app);
   registerBookedCallLeadRoutes(app);
   registerDealRoomRoutes(app);
+  registerReferralOutcomeRoutes(app);
   registerWatchlistRoutes(app);
   registerNotificationInboxRoutes(app);
 
@@ -5942,7 +5945,21 @@ export async function registerRoutes(
         notification,
       });
 
-      res.json({ success: true, introduction, crmContactId });
+      let outcomeToken: string | undefined;
+      let outcomeUrl: string | undefined;
+      try {
+        const outcomeResult = await createOrGetReferralOutcomeForIntroduction({
+          notification,
+          introduction,
+          referralFeePercent: marketClaim?.referralFeePercent ?? 25,
+        });
+        outcomeToken = outcomeResult.outcomeToken;
+        outcomeUrl = outcomeResult.outcomeUrl;
+      } catch (outcomeErr) {
+        console.error("[referral-outcomes] claim-lead wiring failed:", outcomeErr instanceof Error ? outcomeErr.message : outcomeErr);
+      }
+
+      res.json({ success: true, introduction, crmContactId, outcomeToken, outcomeUrl });
     } catch (error) {
       console.error("Error claiming lead:", error);
       res.status(500).json({ error: "Failed to claim lead" });
@@ -6666,10 +6683,27 @@ export async function registerRoutes(
         res.status(400).json({ error: "Query is required" });
         return;
       }
+      const trimmedQuery = query.trim();
+      const userId = req.session?.userId ?? null;
+      const sessionId = req.sessionID ?? req.session?.id ?? null;
+      const demandSource = req.body?.demandSource === "agent_api" ? "agent_api" : "web";
+      const demandChannel = typeof req.body?.demandChannel === "string" ? req.body.demandChannel.slice(0, 80) : demandSource;
+      const demandApiKeyId = typeof req.body?.demandApiKeyId === "string" ? req.body.demandApiKeyId : null;
+      const demandUserId = typeof req.body?.demandUserId === "string" ? req.body.demandUserId : userId;
 
-      const cacheKey = `find-deals:${query.toLowerCase().trim()}`;
+      const cacheKey = `find-deals:${trimmedQuery.toLowerCase()}`;
       const cached = findDealsCache.get(cacheKey);
       if (cached && Date.now() < cached.expiresAt) {
+        logFindDealsQuery({
+          rawQuery: trimmedQuery,
+          parsedFilters: cached.data?.filters_applied ?? null,
+          resultCount: Number(cached.data?.total ?? cached.data?.listings?.length ?? 0),
+          source: demandSource,
+          channel: demandChannel,
+          apiKeyId: demandApiKeyId,
+          sessionId,
+          userId: demandUserId,
+        });
         res.json(cached.data);
         return;
       }
@@ -6681,7 +6715,7 @@ export async function registerRoutes(
         return;
       }
 
-      const filters = parseNaturalLanguageQuery(query);
+      const filters = parseNaturalLanguageQuery(trimmedQuery);
 
       const cityKey = filters.city?.toLowerCase() || "";
       const cityCoords = CITY_COORDS[cityKey] || null;
@@ -6834,8 +6868,19 @@ export async function registerRoutes(
         bounds: responseBounds,
         filters_applied: filters,
         total: result.count || scoredListings.length,
-        query: query.trim(),
+        query: trimmedQuery,
       };
+
+      logFindDealsQuery({
+        rawQuery: trimmedQuery,
+        parsedFilters: filters,
+        resultCount: responseData.total,
+        source: demandSource,
+        channel: demandChannel,
+        apiKeyId: demandApiKeyId,
+        sessionId,
+        userId: demandUserId,
+      });
 
       findDealsCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + 600000 });
       if (findDealsCache.size > 100) {

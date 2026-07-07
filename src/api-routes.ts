@@ -3,6 +3,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { QueryResultRow } from 'pg';
 import { db as defaultDb } from './db';
 import { isDemoMode, getDemoListings, getDemoListingByMls, filterDemoListings } from './demo-data';
@@ -36,8 +37,65 @@ interface ListingQuery {
   maxCapRate?: number;
 }
 
+const KEY_PREFIX = 'realist_live_';
+const LEGACY_DEFAULT_SCOPES = new Set(['read', 'underwrite', 'deal:submit']);
+
+function hashApiKey(rawKey: string): string {
+  return crypto.createHash('sha256').update(rawKey).digest('hex');
+}
+
+function hasScope(scopes: unknown, required: string): boolean {
+  if (!Array.isArray(scopes) || scopes.length === 0) return LEGACY_DEFAULT_SCOPES.has(required);
+  return scopes.map((scope) => String(scope).trim()).includes(required);
+}
+
 export function createApiRouter(database: DatabaseAdapter = defaultDb): Router {
   const router = Router();
+
+  async function requireReadApiKey(req: Request, res: Response, next: () => void) {
+    try {
+      const header = req.headers.authorization || '';
+      if (!header.startsWith('Bearer ')) {
+        res.status(401).json({
+          success: false,
+          error: 'missing_bearer_token',
+          message: 'Authorization: Bearer realist_live_<token> required',
+        });
+        return;
+      }
+      const token = header.slice('Bearer '.length).trim();
+      if (!token.startsWith(KEY_PREFIX)) {
+        res.status(401).json({ success: false, error: 'invalid_token_format' });
+        return;
+      }
+      const result = await database.query<{
+        id: string;
+        user_id: string;
+        scopes: string[] | null;
+      }>(
+        `SELECT id, user_id, scopes
+         FROM api_keys
+         WHERE key_hash = $1 AND revoked_at IS NULL
+         LIMIT 1`,
+        [hashApiKey(token)],
+      );
+      const key = result.rows[0];
+      if (!key) {
+        res.status(401).json({ success: false, error: 'invalid_or_revoked_token' });
+        return;
+      }
+      if (!hasScope(key.scopes, 'read')) {
+        res.status(403).json({ success: false, error: 'scope_required', requiredScope: 'read' });
+        return;
+      }
+      next();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: message });
+    }
+  }
+
+  router.use(['/listings', '/stats'], requireReadApiKey);
 
   router.get('/listings', validateListingQuery, async (req: Request<unknown, unknown, unknown, ListingQuery>, res: Response) => {
     // Demo mode - return mock data without database

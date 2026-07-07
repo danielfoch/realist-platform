@@ -4,8 +4,9 @@
  * Mounted on /api/agent/* AFTER bearerAuth (both middlewares rely on
  * req.agentKeyId / req.agentUserId that bearerAuth sets). Every request gets
  * one api_usage_events row — including 429s — so quota disputes and abuse
- * investigations have a complete record. Request bodies are never stored;
- * only a truncated SHA-256 hash for correlating repeated identical calls.
+ * investigations have a complete record. Raw request bodies are never stored.
+ * Keys minted with usage-payload consent also record an allowlisted structured
+ * summary so underwriting/deal-submit demand can be reconstructed.
  */
 import type { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
@@ -13,6 +14,9 @@ import { and, eq, gte, sql as dsql } from "drizzle-orm";
 import { db } from "../db";
 import { apiUsageEvents } from "@shared/schema";
 import { createKeyRateLimiter } from "./rateLimiter";
+import { summarizeToolInput } from "../demandLedger";
+
+const INPUT_SUMMARY_POLICY_VERSION = "agent-usage-structured-v1";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = Number.parseInt(process.env[name] || "", 10);
@@ -64,6 +68,7 @@ export function usageMeter(req: Request, res: Response, next: NextFunction) {
     const keyId = req.agentKeyId;
     const userId = req.agentUserId;
     if (!keyId || !userId) return;
+    const inputSummary = req.agentStructuredUsageAllowed ? summarizeToolInput(req.body) : null;
     db.insert(apiUsageEvents).values({
       apiKeyId: keyId,
       userId,
@@ -72,6 +77,8 @@ export function usageMeter(req: Request, res: Response, next: NextFunction) {
       status: res.statusCode,
       latencyMs: Date.now() - start,
       inputHash: hashInput(req.body),
+      inputSummary: inputSummary as any,
+      inputSummaryPolicyVersion: inputSummary ? INPUT_SUMMARY_POLICY_VERSION : null,
     }).catch((err) => {
       console.error("[agent-usage] failed to record usage event:", err?.message || err);
     });

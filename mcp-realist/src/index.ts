@@ -11,6 +11,9 @@
  *   realist_submit_for_review        — post to community feed
  *   realist_get_market_report        — city-level market report
  *   realist_get_mortgage_rates       — current Canadian mortgage rates
+ *   estimate_rent                    — Realist rent estimate + accuracy loop
+ *   underwrite_multiplex             — Toronto multiplex underwriter
+ *   submit_to_deal_desk              — submit a lead/deal into Deal Desk
  *
  * Auth: set REALIST_API_KEY (mint at https://realist.ca/account/api-keys).
  * Optional: REALIST_BASE_URL (defaults to https://realist.ca).
@@ -102,6 +105,82 @@ const TOOLS = [
     },
   },
   {
+    name: "estimate_rent",
+    description: "Estimate monthly market rent using Realist's prediction-ledger-backed rent estimator. Provide bedrooms plus either city/province or lat/lng. Returns rent, confidence, method, comps, and range where available.",
+    inputSchema: {
+      type: "object",
+      required: ["bedrooms"],
+      properties: {
+        bedrooms: { type: ["number", "string"], description: "Bedroom count or band, e.g. 2, '2', '3+1'" },
+        city: { type: "string", description: "Canadian city, e.g. Hamilton" },
+        province: { type: "string", description: "Province, e.g. Ontario or ON" },
+        lat: { type: "number" },
+        lng: { type: "number" },
+        units: { type: "integer", default: 1, minimum: 1, maximum: 100 },
+        listingKey: { type: "string", description: "Optional listing key for prediction ledger lineage" },
+        analysisId: { type: "string", description: "Optional analysis id for prediction ledger lineage" },
+      },
+    },
+  },
+  {
+    name: "underwrite_multiplex",
+    description: "Run Realist's Toronto multiplex underwriter: zoning/site screen, build configurations, condo exit vs rental hold math, MLI Select assumptions, and report narrative. Address is required; lot dimensions unlock the full underwrite.",
+    inputSchema: {
+      type: "object",
+      required: ["address"],
+      properties: {
+        address: { type: "string", description: "Toronto property address" },
+        postalCode: { type: "string" },
+        lotFrontageFt: { type: "number" },
+        lotDepthFt: { type: "number" },
+        lotAreaSqft: { type: "number" },
+        purchasePrice: { type: "number" },
+        laneAccess: { type: "boolean" },
+        goal: { type: "string", enum: ["flip", "hold"] },
+        mliCommitments: {
+          type: "object",
+          properties: {
+            affordabilityLevel: { type: "integer", minimum: 0, maximum: 3 },
+            energyLevel: { type: "integer", minimum: 0, maximum: 3 },
+            accessibilityLevel: { type: "integer", minimum: 0, maximum: 2 },
+          },
+        },
+        assumptionOverrides: { type: "object" },
+      },
+    },
+  },
+  {
+    name: "submit_to_deal_desk",
+    description: "Submit a property and contact into Realist Deal Desk for human follow-up. Use when an investor wants financing help, buyer-agent help, or a sanity check on a deal. Creates a lead, deal, opportunity, and email-trigger queue rows.",
+    inputSchema: {
+      type: "object",
+      required: ["name", "email", "address"],
+      properties: {
+        name: { type: "string" },
+        email: { type: "string" },
+        phone: { type: "string" },
+        address: { type: "string" },
+        listingUrl: { type: "string" },
+        market: { type: "string" },
+        propertyType: { type: "string" },
+        purchasePrice: { type: "number" },
+        estimatedRent: { type: "number" },
+        financingHelpWanted: { type: "boolean", default: false },
+        buyingHelpWanted: { type: "boolean", default: false },
+        userNotes: { type: "string" },
+        consentEmail: { type: "boolean", default: false },
+        consentSms: { type: "boolean", default: false },
+        reportExported: { type: "boolean" },
+        dealSaved: { type: "boolean" },
+        financingChanged: { type: "boolean" },
+        returnThresholdHit: { type: "boolean" },
+        repeatMarketSearches: { type: "boolean" },
+        dealDeskCtaClicked: { type: "boolean" },
+        analysisId: { type: "string" },
+      },
+    },
+  },
+  {
     name: "realist_get_analysis",
     description: "Fetch a single underwriting by ID, including full inputs and computed results. The caller must own the analysis.",
     inputSchema: {
@@ -165,7 +244,7 @@ function formatError(err: unknown): { content: Array<{ type: "text"; text: strin
   };
 }
 
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
+server.setRequestHandler(CallToolRequestSchema, async (req: any) => {
   const { name, arguments: args = {} } = req.params;
   try {
     switch (name) {
@@ -175,6 +254,12 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         return formatResult(await client.underwriteCustom(args as any));
       case "realist_find_deals":
         return formatResult(await client.findDeals(args as any));
+      case "estimate_rent":
+        return formatResult(await client.estimateRent(args as any));
+      case "underwrite_multiplex":
+        return formatResult(await client.underwriteMultiplex(args as any));
+      case "submit_to_deal_desk":
+        return formatResult(await client.submitToDealDesk(args as any));
       case "realist_list_my_analyses":
         return formatResult(await client.listAnalyses((args as any).limit));
       case "realist_get_analysis":

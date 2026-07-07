@@ -17,9 +17,28 @@ import { apiKeys, analyses, propertyAnalyses, users } from "@shared/schema";
 import { calculateInvestmentMetrics } from "@shared/investmentMetrics";
 import { isAuthenticated } from "./auth";
 import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
+import { getRentEstimate } from "./rentIntelligence";
+import { executeMultiplexUnderwriter, underwriteRequestSchema } from "./multiplexUnderwriter";
+import { dealDeskSubmitSchema, submitDealDesk } from "./routes/dealDesk";
+import {
+  REFERRAL_OUTCOME_ACTIONS,
+  getSafeReferralOutcomeForAgent,
+  updateReferralOutcomeForAgent,
+} from "./referralOutcomes";
 
 // ---------- key helpers ----------
 const KEY_PREFIX = "realist_live_";
+export const AGENT_API_SCOPES = [
+  "read",
+  "underwrite",
+  "community:write",
+  "deal:submit",
+  "partner:referrals",
+] as const;
+export type AgentApiScope = (typeof AGENT_API_SCOPES)[number];
+const AGENT_API_SCOPE_SET = new Set<string>(AGENT_API_SCOPES);
+const DEFAULT_AGENT_API_SCOPES: AgentApiScope[] = ["read", "underwrite", "deal:submit"];
+const STRUCTURED_USAGE_POLICY_VERSION = "agent-usage-structured-v1";
 
 function hashKey(rawKey: string): string {
   return crypto.createHash("sha256").update(rawKey).digest("hex");
@@ -32,12 +51,41 @@ function generateKey(): { raw: string; prefix: string; hash: string } {
   return { raw, prefix, hash: hashKey(raw) };
 }
 
+function normalizeScopes(value: unknown): AgentApiScope[] {
+  if (!Array.isArray(value) || value.length === 0) return [...DEFAULT_AGENT_API_SCOPES];
+  const scopes = value
+    .map((scope) => String(scope).trim())
+    .filter((scope): scope is AgentApiScope => AGENT_API_SCOPE_SET.has(scope));
+  return scopes.length ? Array.from(new Set(scopes)) : [...DEFAULT_AGENT_API_SCOPES];
+}
+
+const createApiKeySchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  scopes: z.array(z.enum(AGENT_API_SCOPES)).optional(),
+  structuredUsageConsent: z.boolean().optional(),
+});
+
+function requireScope(scope: AgentApiScope) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.agentScopes?.includes(scope)) {
+      return res.status(403).json({
+        error: "scope_required",
+        requiredScope: scope,
+        message: `This API key needs the ${scope} scope.`,
+      });
+    }
+    next();
+  };
+}
+
 // ---------- bearer auth middleware ----------
 declare global {
   namespace Express {
     interface Request {
       agentUserId?: string;
       agentKeyId?: string;
+      agentScopes?: AgentApiScope[];
+      agentStructuredUsageAllowed?: boolean;
     }
   }
 }
@@ -59,6 +107,8 @@ export async function bearerAuth(req: Request, res: Response, next: NextFunction
     }
     req.agentUserId = row.userId;
     req.agentKeyId = row.id;
+    req.agentScopes = normalizeScopes(row.scopes);
+    req.agentStructuredUsageAllowed = Boolean((row as any).usagePayloadConsentAt);
     // best-effort lastUsed touch (don't block request)
     db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, row.id)).catch(() => {});
     next();
@@ -197,6 +247,19 @@ const submitForReviewSchema = z.object({
   market: z.string().optional(),
 });
 
+const estimateRentSchema = z.object({
+  bedrooms: z.union([z.number().int().nonnegative(), z.string().min(1)]),
+  city: z.string().optional().nullable(),
+  province: z.string().optional().nullable(),
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
+  units: z.number().int().min(1).max(100).optional(),
+  listingKey: z.string().optional().nullable(),
+  analysisId: z.string().optional().nullable(),
+}).refine((value) => Boolean(value.city) || (value.lat != null && value.lng != null), {
+  message: "Provide city or lat/lng",
+});
+
 // ---------- API key management (session-authenticated) ----------
 export function registerApiKeyManagementRoutes(app: Express) {
   app.get("/api/api-keys", isAuthenticated, async (req: any, res) => {
@@ -206,11 +269,14 @@ export function registerApiKeyManagementRoutes(app: Express) {
         id: apiKeys.id,
         name: apiKeys.name,
         keyPrefix: apiKeys.keyPrefix,
+        scopes: apiKeys.scopes,
+        usagePayloadConsentAt: apiKeys.usagePayloadConsentAt,
+        usagePayloadPolicyVersion: apiKeys.usagePayloadPolicyVersion,
         lastUsedAt: apiKeys.lastUsedAt,
         revokedAt: apiKeys.revokedAt,
         createdAt: apiKeys.createdAt,
       }).from(apiKeys).where(eq(apiKeys.userId, userId)).orderBy(desc(apiKeys.createdAt));
-      res.json({ keys: rows });
+      res.json({ keys: rows.map((row) => ({ ...row, scopes: normalizeScopes(row.scopes) })) });
     } catch (err) {
       console.error("[api-keys] list error:", err);
       res.status(500).json({ error: "Failed to list API keys" });
@@ -220,20 +286,29 @@ export function registerApiKeyManagementRoutes(app: Express) {
   app.post("/api/api-keys", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const name = (req.body?.name || "").toString().trim().slice(0, 80);
-      if (!name) return res.status(400).json({ error: "Name is required" });
+      const parsed = createApiKeySchema.safeParse(req.body || {});
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const { name } = parsed.data;
+      const scopes = normalizeScopes(parsed.data.scopes);
+      const structuredUsageConsent = parsed.data.structuredUsageConsent !== false;
       const { raw, prefix, hash } = generateKey();
       const [row] = await db.insert(apiKeys).values({
         userId,
         name,
         keyPrefix: prefix,
         keyHash: hash,
+        scopes,
+        usagePayloadConsentAt: structuredUsageConsent ? new Date() : null,
+        usagePayloadPolicyVersion: structuredUsageConsent ? STRUCTURED_USAGE_POLICY_VERSION : null,
       }).returning();
       // Return plaintext key ONCE, never again.
       res.json({
         id: row.id,
         name: row.name,
         keyPrefix: row.keyPrefix,
+        scopes: normalizeScopes(row.scopes),
+        usagePayloadConsentAt: row.usagePayloadConsentAt,
+        usagePayloadPolicyVersion: row.usagePayloadPolicyVersion,
         createdAt: row.createdAt,
         key: raw,
       });
@@ -277,7 +352,7 @@ export function registerAgentRoutes(app: Express) {
   app.use("/api/agent", bearerAuth, agentRateLimit, usageMeter);
 
   /** Verify the key works and return the owning user. */
-  app.get("/api/agent/me", async (req, res) => {
+  app.get("/api/agent/me", requireScope("read"), async (req, res) => {
     try {
       const [user] = await db.select({
         id: users.id,
@@ -289,6 +364,7 @@ export function registerAgentRoutes(app: Express) {
         ok: true,
         user: user || { id: req.agentUserId },
         keyId: req.agentKeyId,
+        scopes: req.agentScopes,
       });
     } catch (err) {
       console.error("[agent] me error:", err);
@@ -297,7 +373,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Underwrite a CREA-listed property by MLS number. */
-  app.post("/api/agent/underwrite/listing", async (req, res) => {
+  app.post("/api/agent/underwrite/listing", requireScope("underwrite"), async (req, res) => {
     try {
       const parsed = underwriteListingSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
@@ -380,7 +456,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Underwrite a custom address with caller-provided price + assumptions. */
-  app.post("/api/agent/underwrite/custom", async (req, res) => {
+  app.post("/api/agent/underwrite/custom", requireScope("underwrite"), async (req, res) => {
     try {
       const parsed = underwriteCustomSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
@@ -417,7 +493,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Natural-language deal search over CREA DDF. Internally proxies /api/find-deals logic. */
-  app.post("/api/agent/find-deals", async (req, res) => {
+  app.post("/api/agent/find-deals", requireScope("read"), async (req, res) => {
     try {
       const query = (req.body?.query || "").toString().trim();
       if (!query) return res.status(400).json({ error: "query_required" });
@@ -428,7 +504,13 @@ export function registerAgentRoutes(app: Express) {
       const upstream = await fetch(`${baseUrl}/api/find-deals`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({
+          query,
+          demandSource: "agent_api",
+          demandChannel: "api",
+          demandApiKeyId: req.agentKeyId,
+          demandUserId: req.agentUserId,
+        }),
       });
       if (!upstream.ok) {
         const text = await upstream.text();
@@ -459,8 +541,67 @@ export function registerAgentRoutes(app: Express) {
     }
   });
 
+  /** Rent estimate from the same prediction-ledger-backed engine as /api/intelligence/rent-estimate. */
+  app.post("/api/agent/estimate-rent", requireScope("underwrite"), async (req, res) => {
+    try {
+      const parsed = estimateRentSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const input = parsed.data;
+      const estimate = await getRentEstimate({
+        bedrooms: input.bedrooms,
+        city: input.city ?? null,
+        province: input.province ?? null,
+        lat: input.lat ?? null,
+        lng: input.lng ?? null,
+        units: input.units,
+        subjectType: input.listingKey ? "listing" : input.analysisId ? "analysis" : "adhoc",
+        subjectId: input.listingKey ?? input.analysisId ?? null,
+        userId: req.agentUserId ?? null,
+      });
+      res.json({ success: true, estimate, reason: estimate ? null : "no_data_for_market" });
+    } catch (err: any) {
+      console.error("[agent] estimate rent error:", err);
+      res.status(500).json({ error: "estimate_rent_failed", message: err?.message });
+    }
+  });
+
+  /** Multiplex underwriter for AI agents. Same engine as /api/multiplex-underwriter, metered under bearer auth. */
+  app.post("/api/agent/underwrite-multiplex", requireScope("underwrite"), async (req, res) => {
+    try {
+      const parsed = underwriteRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const result = await executeMultiplexUnderwriter(parsed.data, {
+        userId: req.agentUserId ?? null,
+        sessionId: null,
+      });
+      res.json(result);
+    } catch (err: any) {
+      console.error("[agent] underwrite multiplex error:", err);
+      res.status(500).json({ error: "underwrite_multiplex_failed", message: err?.message });
+    }
+  });
+
+  /** Submit a deal to Deal Desk from an authorized agent workflow. */
+  app.post("/api/agent/deal-desk-submit", requireScope("deal:submit"), async (req, res) => {
+    try {
+      const parsed = dealDeskSubmitSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const result = await submitDealDesk(parsed.data, {
+        req,
+        userId: req.agentUserId ?? null,
+        sessionId: null,
+        source: "agent_api",
+        sourcePage: "/api/agent/deal-desk-submit",
+      });
+      res.json(result);
+    } catch (err: any) {
+      console.error("[agent] deal desk submit error:", err);
+      res.status(500).json({ error: "deal_desk_submit_failed", message: err?.message });
+    }
+  });
+
   /** List the calling user's saved underwritings. */
-  app.get("/api/agent/analyses", async (req, res) => {
+  app.get("/api/agent/analyses", requireScope("read"), async (req, res) => {
     try {
       const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 25, 1), 100);
       const rows = await storage.getAnalysesByUser(req.agentUserId!);
@@ -487,7 +628,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Fetch a single analysis the caller owns. */
-  app.get("/api/agent/analyses/:id", async (req, res) => {
+  app.get("/api/agent/analyses/:id", requireScope("read"), async (req, res) => {
     try {
       const analysis = await storage.getAnalysis(req.params.id);
       if (!analysis) return res.status(404).json({ error: "not_found" });
@@ -511,7 +652,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Submit an underwriting to the community feed for upvotes / comments. */
-  app.post("/api/agent/community/submit", async (req, res) => {
+  app.post("/api/agent/community/submit", requireScope("community:write"), async (req, res) => {
     try {
       const parsed = submitForReviewSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
@@ -562,7 +703,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** Mortgage rates (no auth required at the source, but we keep it under the bearer for usage tracking). */
-  app.get("/api/agent/mortgage-rates", async (_req, res) => {
+  app.get("/api/agent/mortgage-rates", requireScope("read"), async (_req, res) => {
     try {
       const baseUrl = process.env.AGENT_INTERNAL_BASE_URL
         || `http://127.0.0.1:${process.env.PORT || 5000}`;
@@ -577,7 +718,7 @@ export function registerAgentRoutes(app: Express) {
   });
 
   /** City-level market report. */
-  app.get("/api/agent/market-report", async (req, res) => {
+  app.get("/api/agent/market-report", requireScope("read"), async (req, res) => {
     try {
       const city = (req.query.city as string || "").trim();
       const baseUrl = process.env.AGENT_INTERNAL_BASE_URL
@@ -595,6 +736,43 @@ export function registerAgentRoutes(app: Express) {
     } catch (err: any) {
       console.error("[agent] market report error:", err);
       res.status(500).json({ error: "report_failed", message: err?.message });
+    }
+  });
+
+  /** Partner-owned referral outcome surface. This is the first A2A scope. */
+  app.get("/api/agent/referrals/:outcomeId", requireScope("partner:referrals"), async (req, res) => {
+    try {
+      const result = await getSafeReferralOutcomeForAgent(req.params.outcomeId, req.agentUserId!);
+      if (!result) return res.status(404).json({ error: "referral_not_found" });
+      res.json(result);
+    } catch (err: any) {
+      console.error("[agent] referral get error:", err);
+      res.status(500).json({ error: "referral_fetch_failed", message: err?.message });
+    }
+  });
+
+  app.post("/api/agent/referrals/:outcomeId", requireScope("partner:referrals"), async (req, res) => {
+    try {
+      const parsed = z.object({
+        action: z.enum(REFERRAL_OUTCOME_ACTIONS),
+        closePrice: z.coerce.number().finite().nonnegative().optional(),
+        gci: z.coerce.number().finite().positive().optional(),
+        lostReason: z.string().trim().min(1).max(500).optional(),
+        notes: z.string().trim().max(2000).optional(),
+        reportedBy: z.string().trim().max(160).optional(),
+      }).strict().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+
+      const result = await updateReferralOutcomeForAgent(req.params.outcomeId, req.agentUserId!, parsed.data);
+      if (!result) return res.status(404).json({ error: "referral_not_found" });
+      res.json(result);
+    } catch (err: any) {
+      const status = err?.name === "ReferralOutcomeValidationError" ? 400 : 500;
+      console.error("[agent] referral update error:", err?.message || err);
+      res.status(status).json({
+        error: status === 400 ? "invalid_referral_update" : "referral_update_failed",
+        message: err?.message,
+      });
     }
   });
 }

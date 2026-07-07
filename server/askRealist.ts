@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { underwriteSimple } from "./agentApi";
+import { logAskRealistInteraction, summarizeToolInput } from "./demandLedger";
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -183,6 +184,7 @@ export function registerAskRealistRoutes(app: Express): void {
   });
 
   app.post("/api/ask", async (req: Request, res: Response) => {
+    const startedAt = Date.now();
     if (!askRealistConfigured()) {
       res.status(503).json({ error: "ask_unavailable", message: "Ask Realist isn't configured on this server yet." });
       return;
@@ -197,7 +199,16 @@ export function registerAskRealistRoutes(app: Express): void {
     const session: any = (req as any).session;
     const isAuthed = Boolean(session?.userId);
     const rateKey = session?.userId || session?.id || req.ip || "anon";
+    const questionForLog = parsed.data.question;
     if (!checkRateLimit(String(rateKey), isAuthed ? DAILY_LIMIT_AUTHED : DAILY_LIMIT_ANON)) {
+      logAskRealistInteraction({
+        sessionId: session?.id || (req as any).sessionID || null,
+        userId: session?.userId || null,
+        question: questionForLog,
+        context: parsed.data.context as any ?? null,
+        status: "rate_limited",
+        latencyMs: Date.now() - startedAt,
+      });
       res.status(429).json({
         error: "rate_limited",
         message: isAuthed
@@ -267,13 +278,37 @@ export function registerAskRealistRoutes(app: Express): void {
         .map((block) => block.text)
         .join("\n")
         .trim();
+      const finalAnswer = answer || "I couldn't produce an answer — try rephrasing the question.";
+
+      logAskRealistInteraction({
+        sessionId: session?.id || (req as any).sessionID || null,
+        userId: session?.userId || null,
+        question,
+        answer: finalAnswer,
+        toolCalls: toolCallLog.map((t) => ({
+          name: t.name,
+          argsSummary: summarizeToolInput(t.input),
+        })) as any,
+        context: context as any ?? null,
+        status: "ok",
+        latencyMs: Date.now() - startedAt,
+      });
 
       res.json({
-        answer: answer || "I couldn't produce an answer — try rephrasing the question.",
+        answer: finalAnswer,
         toolCalls: toolCallLog.map((t) => ({ name: t.name })),
       });
     } catch (err: any) {
       console.error("[ask-realist] error:", err?.message || err);
+      logAskRealistInteraction({
+        sessionId: session?.id || (req as any).sessionID || null,
+        userId: session?.userId || null,
+        question,
+        context: context as any ?? null,
+        status: "error",
+        errorMessage: String(err?.message || "ask_failed").slice(0, 500),
+        latencyMs: Date.now() - startedAt,
+      });
       res.status(500).json({ error: "ask_failed", message: "Something went wrong answering that — try again." });
     }
   });

@@ -6,7 +6,7 @@ import { isAdmin } from "../auth";
 import { scoreLeadInput, selectEmailTriggers } from "@shared/leadScoring";
 import { queueEmailTrigger } from "../emailTriggerProducer";
 
-const dealDeskSubmitSchema = z.object({
+export const dealDeskSubmitSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email required"),
   phone: z.string().optional().nullable(),
@@ -30,116 +30,132 @@ const dealDeskSubmitSchema = z.object({
   analysisId: z.string().optional().nullable(),
 });
 
+export type DealDeskSubmitInput = z.infer<typeof dealDeskSubmitSchema>;
+
+export async function submitDealDesk(input: DealDeskSubmitInput, opts: {
+  req?: any;
+  userId?: string | null;
+  sessionId?: string | null;
+  source?: string;
+  sourcePage?: string;
+} = {}) {
+  const sessionUserId = opts.userId ?? opts.req?.session?.userId ?? null;
+  const source = opts.source || "deal_desk";
+  const sourcePage = opts.sourcePage || "/deal-desk";
+
+  const lead = await storage.upsertLeadByEmail({
+    name: input.name,
+    email: input.email,
+    phone: input.phone || null,
+    consent: input.consentEmail,
+    consentSms: input.consentSms,
+    leadSource: source === "agent_api" ? "Deal Desk Agent API" : "Deal Desk",
+  });
+
+  const deal = await storage.createDeal({
+    leadId: lead.id,
+    userId: sessionUserId,
+    analysisId: input.analysisId || null,
+    address: input.address,
+    listingUrl: input.listingUrl || null,
+    market: input.market || null,
+    propertyType: input.propertyType || null,
+    purchasePrice: input.purchasePrice ?? null,
+    estimatedRent: input.estimatedRent ?? null,
+    financingHelpWanted: input.financingHelpWanted,
+    buyingHelpWanted: input.buyingHelpWanted,
+    userNotes: input.userNotes || null,
+  });
+
+  const scoreResult = scoreLeadInput({
+    dealSubmitted: true,
+    dealDeskCtaClicked: input.dealDeskCtaClicked,
+    reportExported: input.reportExported,
+    dealSaved: input.dealSaved,
+    financingChanged: input.financingChanged,
+    returnThresholdHit: input.returnThresholdHit,
+    repeatMarketSearches: input.repeatMarketSearches,
+    phoneProvided: !!(input.phone && input.phone.trim().length > 0),
+    financingHelpWanted: input.financingHelpWanted,
+    buyingHelpWanted: input.buyingHelpWanted,
+  });
+
+  const opportunity = await storage.createOpportunity({
+    leadId: lead.id,
+    userId: sessionUserId,
+    dealId: deal.id,
+    intentScore: scoreResult.intentScore,
+    status: scoreResult.status,
+    suggestedNextAction: scoreResult.suggestedNextAction,
+    source,
+  });
+
+  if (opts.req) {
+    await logUserActivity(opts.req, {
+      userId: sessionUserId,
+      sessionId: opts.sessionId ?? opts.req.sessionID ?? null,
+      eventName: "deal_submitted",
+      sourcePage,
+      dealId: deal.id,
+      source,
+      metadata: {
+        leadId: lead.id,
+        opportunityId: opportunity.id,
+        intentScore: scoreResult.intentScore,
+        status: scoreResult.status,
+        market: input.market,
+        propertyType: input.propertyType,
+      },
+    });
+  }
+
+  const triggerTypes = selectEmailTriggers(
+    scoreResult.status as "hot" | "warm" | "nurture" | "audience",
+    input.financingHelpWanted,
+  );
+  await Promise.all(
+    triggerTypes.map(triggerType =>
+      queueEmailTrigger({
+        leadId: lead.id,
+        userId: sessionUserId,
+        opportunityId: opportunity.id,
+        triggerType,
+        payload: {
+          name: input.name,
+          email: input.email,
+          phone: input.phone || null,
+          address: input.address,
+          market: input.market || null,
+          propertyType: input.propertyType || null,
+          intentScore: scoreResult.intentScore,
+          status: scoreResult.status,
+          suggestedNextAction: scoreResult.suggestedNextAction,
+          analysisId: input.analysisId || null,
+        },
+        // Legacy-transport parity: this site historically used a plain
+        // insert (storage.createEmailTrigger), surfacing a pending
+        // duplicate as a constraint error instead of silently skipping.
+        onDuplicate: "throw",
+      })
+    )
+  );
+
+  return {
+    ok: true,
+    leadId: lead.id,
+    dealId: deal.id,
+    opportunityId: opportunity.id,
+    intentScore: scoreResult.intentScore,
+    status: scoreResult.status,
+    suggestedNextAction: scoreResult.suggestedNextAction,
+  };
+}
+
 export function registerDealDeskRoutes(app: Express) {
   app.post("/api/deal-desk/submit", async (req, res) => {
     try {
       const input = dealDeskSubmitSchema.parse(req.body);
-      const sessionUserId = (req as any).session?.userId || null;
-
-      const lead = await storage.upsertLeadByEmail({
-        name: input.name,
-        email: input.email,
-        phone: input.phone || null,
-        consent: input.consentEmail,
-        consentSms: input.consentSms,
-        leadSource: "Deal Desk",
-      });
-
-      const deal = await storage.createDeal({
-        leadId: lead.id,
-        userId: sessionUserId,
-        analysisId: input.analysisId || null,
-        address: input.address,
-        listingUrl: input.listingUrl || null,
-        market: input.market || null,
-        propertyType: input.propertyType || null,
-        purchasePrice: input.purchasePrice ?? null,
-        estimatedRent: input.estimatedRent ?? null,
-        financingHelpWanted: input.financingHelpWanted,
-        buyingHelpWanted: input.buyingHelpWanted,
-        userNotes: input.userNotes || null,
-      });
-
-      const scoreResult = scoreLeadInput({
-        dealSubmitted: true,
-        dealDeskCtaClicked: input.dealDeskCtaClicked,
-        reportExported: input.reportExported,
-        dealSaved: input.dealSaved,
-        financingChanged: input.financingChanged,
-        returnThresholdHit: input.returnThresholdHit,
-        repeatMarketSearches: input.repeatMarketSearches,
-        phoneProvided: !!(input.phone && input.phone.trim().length > 0),
-        financingHelpWanted: input.financingHelpWanted,
-        buyingHelpWanted: input.buyingHelpWanted,
-      });
-
-      const opportunity = await storage.createOpportunity({
-        leadId: lead.id,
-        userId: sessionUserId,
-        dealId: deal.id,
-        intentScore: scoreResult.intentScore,
-        status: scoreResult.status,
-        suggestedNextAction: scoreResult.suggestedNextAction,
-        source: "deal_desk",
-      });
-
-      await logUserActivity(req, {
-        userId: sessionUserId,
-        sessionId: (req as any).sessionID || null,
-        eventName: "deal_submitted",
-        sourcePage: "/deal-desk",
-        dealId: deal.id,
-        source: "deal_desk",
-        metadata: {
-          leadId: lead.id,
-          opportunityId: opportunity.id,
-          intentScore: scoreResult.intentScore,
-          status: scoreResult.status,
-          market: input.market,
-          propertyType: input.propertyType,
-        },
-      });
-
-      const triggerTypes = selectEmailTriggers(
-        scoreResult.status as "hot" | "warm" | "nurture" | "audience",
-        input.financingHelpWanted,
-      );
-      await Promise.all(
-        triggerTypes.map(triggerType =>
-          queueEmailTrigger({
-            leadId: lead.id,
-            userId: sessionUserId,
-            opportunityId: opportunity.id,
-            triggerType,
-            payload: {
-              name: input.name,
-              email: input.email,
-              phone: input.phone || null,
-              address: input.address,
-              market: input.market || null,
-              propertyType: input.propertyType || null,
-              intentScore: scoreResult.intentScore,
-              status: scoreResult.status,
-              suggestedNextAction: scoreResult.suggestedNextAction,
-              analysisId: input.analysisId || null,
-            },
-            // Legacy-transport parity: this site historically used a plain
-            // insert (storage.createEmailTrigger), surfacing a pending
-            // duplicate as a constraint error instead of silently skipping.
-            onDuplicate: "throw",
-          })
-        )
-      );
-
-      res.json({
-        ok: true,
-        leadId: lead.id,
-        dealId: deal.id,
-        opportunityId: opportunity.id,
-        intentScore: scoreResult.intentScore,
-        status: scoreResult.status,
-        suggestedNextAction: scoreResult.suggestedNextAction,
-      });
+      res.json(await submitDealDesk(input, { req }));
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ ok: false, errors: err.errors });
