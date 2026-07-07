@@ -1,5 +1,6 @@
 import { users, type User, type UpsertUser } from "@shared/models/auth";
 import { db } from "../../db";
+import { backlinkUserRecords } from "../../personSpine";
 import { eq } from "drizzle-orm";
 
 // Interface for auth storage operations
@@ -16,6 +17,10 @@ class AuthStorage implements IAuthStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // PERSON SPINE (phase 1): backlink only on genuine creation — this upsert
+    // also runs on every Replit-auth login, and rows created after signup are
+    // forward-linked at insert time, so re-running the backlink adds nothing.
+    const isNewUser = userData.id ? !(await this.getUser(userData.id)) : true;
     const [user] = await db
       .insert(users)
       .values(userData)
@@ -27,6 +32,9 @@ class AuthStorage implements IAuthStorage {
         },
       })
       .returning();
+    if (isNewUser) {
+      await backlinkUserRecords(user.id, user.email);
+    }
     return user;
   }
 }

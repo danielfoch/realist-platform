@@ -12,6 +12,7 @@ import type { Express, Request, Response } from "express";
 import "express-session";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "./db";
+import { linkPersonByEmail } from "./personSpine";
 import { logUserActivity } from "./userActivity";
 import { isAuthenticated } from "./auth";
 import {
@@ -168,9 +169,12 @@ export function registerCrmRoutes(app: Express): void {
         res.status(400).json({ success: false, error: parsed.error.issues[0]?.message ?? "Invalid contact" });
         return;
       }
+      // PERSON SPINE (phase 1): linked_user_id is server-authoritative —
+      // resolved from the contact email, never accepted from the client.
+      const linkedUserId = await linkPersonByEmail(parsed.data.email);
       const [contact] = await db
         .insert(crmContacts)
-        .values({ ...parsed.data, ownerUserId: userId })
+        .values({ ...parsed.data, ownerUserId: userId, linkedUserId })
         .returning();
       await logActivity({
         contactId: contact.id,
@@ -210,6 +214,12 @@ export function registerCrmRoutes(app: Express): void {
       ]);
 
       // The platform advantage: surface the linked user's recent analyses.
+      // Gated to deal-desk provenance: a Deal Desk submission is an express
+      // request for representation, so exposing that investor's analyses to
+      // the owner is consented. Person-spine auto-links (email match) are
+      // identity-only and must NOT unlock another user's analyses — without
+      // this gate, any authenticated user could read a victim's analysis
+      // titles/cities/prices just by creating a contact with their email.
       let analyses: Array<{
         id: string;
         title: string | null;
@@ -217,7 +227,7 @@ export function registerCrmRoutes(app: Express): void {
         listingPrice: number | null;
         createdAt: Date;
       }> = [];
-      if (contact.linkedUserId) {
+      if (contact.linkedUserId && contact.source === "deal_desk") {
         analyses = await db
           .select({
             id: propertyAnalyses.id,
@@ -264,9 +274,21 @@ export function registerCrmRoutes(app: Express): void {
         return;
       }
       const updates = parsed.data;
+      // PERSON SPINE (phase 1): linked_user_id is server-authoritative and
+      // never overwritten — re-resolve only when the contact is unlinked and
+      // the email is changing (insertCrmContactSchema omits linkedUserId, so
+      // client payloads can never set or clear it).
+      const relinkedUserId =
+        contact.linkedUserId == null && updates.email
+          ? await linkPersonByEmail(updates.email)
+          : null;
       const [updated] = await db
         .update(crmContacts)
-        .set({ ...updates, updatedAt: new Date() })
+        .set({
+          ...updates,
+          ...(relinkedUserId ? { linkedUserId: relinkedUserId } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(crmContacts.id, contact.id))
         .returning();
 
@@ -586,6 +608,31 @@ export function registerCrmRoutes(app: Express): void {
           )
           .limit(1);
         if (existing) {
+          // The contact may pre-exist as a person-spine auto-link (identity
+          // only). A Deal Desk import is the consent event, so upgrade the
+          // provenance — the analyses view on the contact page is gated to
+          // source === "deal_desk".
+          if (existing.source !== "deal_desk") {
+            const [upgraded] = await db
+              .update(crmContacts)
+              .set({
+                source: "deal_desk",
+                sourceDetail: existing.sourceDetail ?? opp.market ?? opp.propertyAddress ?? null,
+                consentEmail: true,
+                updatedAt: new Date(),
+              })
+              .where(eq(crmContacts.id, existing.id))
+              .returning();
+            await logActivity({
+              contactId: existing.id,
+              userId,
+              kind: "system",
+              body: `Linked to Deal Desk (intent score ${opp.intentScore}, status ${opp.status})${opp.propertyAddress ? ` — ${opp.propertyAddress}` : ""}`,
+              metadata: { opportunityId: opp.id },
+            });
+            res.json({ success: true, contact: upgraded, created: false });
+            return;
+          }
           res.json({ success: true, contact: existing, created: false });
           return;
         }

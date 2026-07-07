@@ -10,6 +10,7 @@
 
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "./db";
+import { linkPersonByEmail } from "./personSpine";
 import { crmActivities, crmContacts, users } from "@shared/schema";
 
 let cachedOwnerUserId: string | null | undefined;
@@ -76,7 +77,9 @@ export async function upsertPlatformCrmContact(
         .insert(crmContacts)
         .values({
           ownerUserId,
-          linkedUserId: input.linkedUserId ?? null,
+          // PERSON SPINE (phase 1): resolve email → user at write time when
+          // the caller didn't already know the linked user.
+          linkedUserId: input.linkedUserId ?? (await linkPersonByEmail(email)),
           name: input.name,
           email,
           phone: input.phone ?? null,
@@ -89,6 +92,12 @@ export async function upsertPlatformCrmContact(
         })
         .returning();
     } else {
+      // PERSON SPINE (phase 1): opportunistically link an old unlinked
+      // contact on re-touch; an existing link is never overwritten.
+      const linkedUserId =
+        contact.linkedUserId ??
+        input.linkedUserId ??
+        (await linkPersonByEmail(email));
       await db
         .update(crmContacts)
         .set({
@@ -98,6 +107,7 @@ export async function upsertPlatformCrmContact(
           ...(input.consentEmail ? { consentEmail: true } : {}),
           ...(input.consentSms ? { consentSms: true } : {}),
           ...(!contact.phone && input.phone ? { phone: input.phone } : {}),
+          ...(contact.linkedUserId == null && linkedUserId ? { linkedUserId } : {}),
         })
         .where(eq(crmContacts.id, contact.id));
     }

@@ -34,10 +34,27 @@ export const leads = pgTable("leads", {
   utmCampaign: text("utm_campaign"),
   utmContent: text("utm_content"),
   utmTerm: text("utm_term"),
+  // PERSON SPINE (phase 1): nullable link to the users row for the same
+  // human, set at write time (linkPersonByEmail) and by the backfill script
+  // (scripts/backfill-person-spine.ts). Additive only — leads stay
+  // append-only; convergence/dedup is a later phase. Requires `npm run
+  // db:push` on deploy (adds a nullable FK column + index; non-destructive).
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_leads_user_id").on(table.userId),
+  // Serves the person-spine email matches (backlinkUserRecords /
+  // getPersonByEmail filter on lower(trim(email))) — without it every user
+  // creation seq-scans this append-only table.
+  index("idx_leads_email_norm").on(sql`lower(trim(${table.email}))`),
+]);
 
-export const leadsRelations = relations(leads, ({ many }) => ({
+export const leadsRelations = relations(leads, ({ one, many }) => ({
+  // PERSON SPINE (phase 1): the user this lead row was linked to by email.
+  user: one(users, {
+    fields: [leads.userId],
+    references: [users.id],
+  }),
   properties: many(properties),
   analyses: many(analyses),
   webhookLogs: many(webhookLogs),
@@ -534,6 +551,10 @@ export const notificationQueue = pgTable(
     status: text("status").default("pending").notNull(),
     scheduledFor: timestamp("scheduled_for").defaultNow().notNull(),
     sentAt: timestamp("sent_at"),
+    // In-app inbox read state. Null = unread. Set once via
+    // POST /api/notifications/read (server/notificationInbox.ts); never
+    // cleared, so an item can only move unread -> read.
+    readAt: timestamp("read_at"),
     failureReason: text("failure_reason"),
     payloadJson: jsonb("payload_json").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -549,6 +570,15 @@ export const notificationQueue = pgTable(
     pendingTriggerUnique: uniqueIndex("uq_notification_queue_pending_trigger")
       .on(table.recipientUserId, table.templateKey)
       .where(sql`status = 'pending' AND dedupe_key LIKE 'email_trigger:%'`),
+    // Serve the inbox poll (GET /api/notifications, every 60s per tab):
+    // latest-50 by recipient, and the unread badge count.
+    recipientCreated: index("idx_notification_queue_recipient_created").on(
+      table.recipientUserId,
+      table.createdAt,
+    ),
+    recipientUnread: index("idx_notification_queue_recipient_unread")
+      .on(table.recipientUserId)
+      .where(sql`read_at IS NULL`),
   }),
 );
 
@@ -824,6 +854,9 @@ export type UsRent = typeof usRents.$inferSelect;
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
   createdAt: true,
+  // PERSON SPINE (phase 1): user_id is server-authoritative — set by
+  // linkPersonByEmail/backfill, never accepted from request bodies.
+  userId: true,
 });
 
 export const insertPropertySchema = createInsertSchema(properties).omit({
@@ -905,6 +938,7 @@ export const insertNotificationQueueSchema = createInsertSchema(notificationQueu
   id: true,
   createdAt: true,
   sentAt: true,
+  readAt: true,
 });
 
 export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({
@@ -3489,9 +3523,14 @@ export const ddfListingSnapshots = pgTable("ddf_listing_snapshots", {
   rawJson: jsonb("raw_json"),
   snapshotMonth: varchar("snapshot_month", { length: 7 }).notNull(),
   capturedAt: timestamp("captured_at").defaultNow().notNull(),
-}, () => [
+}, (table) => [
   sql`CREATE INDEX IF NOT EXISTS ddf_snapshots_city_month_idx ON ddf_listing_snapshots(city, snapshot_month)`,
   sql`CREATE UNIQUE INDEX IF NOT EXISTS ddf_snapshots_listing_month_idx ON ddf_listing_snapshots(listing_key, snapshot_month)`,
+  // Serves /api/listings/similar (anonymous): LOWER(city) equality — the
+  // plain (city, snapshot_month) btree above cannot serve the lowered
+  // predicate, and an unindexed anonymous endpoint is a seq-scan-per-request
+  // DoS lever on the largest table in the database.
+  index("idx_ddf_snapshots_city_lower").on(sql`lower(${table.city})`),
 ]);
 
 export const insertDdfListingSnapshotSchema = createInsertSchema(ddfListingSnapshots).omit({
