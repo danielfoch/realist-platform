@@ -5,9 +5,9 @@ Plan step 1, schema:
 - Ask Realist table stores current question/answer/tool summaries/status/latency/context, with no history column.
 - Find Deals table stores raw query, 16-char query hash, parsed filters, result count, source, user/session, and timestamps.
 
-Plan step 2, migration:
-- Added `migrations/0014_demand_ledger.sql` matching the schema tables and indexes.
-- Applied the migration to a temporary local Postgres database with the minimum `users` dependency and queried both new tables successfully.
+Plan step 2, schema deployment path:
+- Kept the new tables in `shared/schema.ts`.
+- Removed ad hoc SQL migration files after reconciling with `DEAL_DESK.md`; production Deal Desk schema changes deploy via `npm run db:push`.
 
 Plan step 3, Ask Realist logging:
 - Added `server/demandLedger.ts`.
@@ -52,7 +52,7 @@ Plan step 10, commit/push:
 
 - Did not add a new Deal Desk attribution column; used existing `opportunities.source = "agent_api"` and lead source attribution so the ledger can ship without widening the schema.
 - Did not publish `@realist/mcp`; only made it buildable/publish-ready.
-- Did not apply the migration to staging/prod; that remains a deploy smoke step.
+- Did not apply `npm run db:push` to staging/prod; that remains a deploy smoke step.
 
 ## Verification results
 
@@ -63,19 +63,17 @@ Plan step 10, commit/push:
   - Vitest: 65 files passed, 737 tests passed.
 - `cd mcp-realist && npm run build`: passed.
 - Targeted tests: `npx vitest run server/aiDefaults.test.ts server/agentApi.test.ts server/demandLedger.test.ts server/referralOutcomes.test.ts`: passed, 22 tests passed.
-- Migration proof:
-  - Created a temporary local database.
-  - Created `pgcrypto` and the minimum `users` table dependency.
-  - Applied `migrations/0014_demand_ledger.sql` with `ON_ERROR_STOP=1`.
-  - Queried both new tables successfully: `ask_rows = 0`, `find_rows = 0`.
+- Schema rollout note:
+  - The schema is defined in `shared/schema.ts`.
+  - Per `DEAL_DESK.md`, staging/prod rollout should use `npm run db:push`, not `npm run migrate` or ad hoc SQL.
 - `git diff --cached --check`: passed before commit.
 - PR #138 description updated with Phase 2 scope, TTL/redaction follow-up, and Deal Desk attribution note.
 - PR #138 CI after final push: pending at report time.
 
 ## Unresolved
 
-- Need staging/prod deploy smoke after migration:
-  - Apply migration.
+- Need staging/prod deploy smoke after `npm run db:push`:
+  - Push schema.
   - POST `/api/ask` and confirm `ask_realist_interactions` row.
   - POST `/api/find-deals` twice and confirm two query rows with same hash.
   - Run AI defaults training and confirm fresh `model_predictions` rows where `model_key='market_defaults'`.
@@ -86,4 +84,4 @@ Plan step 10, commit/push:
 
 - Fable calls: plan + one clarification/ask.
 - Middle 80% executed locally by Codex.
-- No npm publish, no production DB migration, no outbound comms.
+- No npm publish, no production DB push, no outbound comms.

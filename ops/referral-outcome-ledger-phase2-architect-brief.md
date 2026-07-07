@@ -11,7 +11,7 @@ Extend the open `clyde/referral-outcome-ledger` PR so Realist stops losing deman
 - Base: `origin/main` at merge commit `b46828f`
 - Current commit: `0636021 feat: add referral outcome ledger`
 - PR #138 adds:
-  - `referral_outcomes` table + migration `0013_referral_outcomes.sql`
+  - `referral_outcomes` table in `shared/schema.ts`
   - `server/referralOutcomes.ts`
   - public `GET/POST /api/referral-outcome/:token`
   - claim-lead flow returns `outcomeToken` and `outcomeUrl`
@@ -65,12 +65,13 @@ Extend the open `clyde/referral-outcome-ledger` PR so Realist stops losing deman
 - Preserve existing privacy posture:
   - For Ask Realist, store enough to learn demand and debug, but avoid leaking sensitive contact info or public exposure.
   - For API usage, the existing design stores input hashes, not raw request bodies. New query-ledger rows can store raw query only where the product explicitly needs a demand corpus.
-- Do not send outbound comms, publish npm, or apply DB migrations against production.
+- Do not send outbound comms, publish npm, or apply DB changes against production.
+- Deal Desk production schema changes are deployed via `npm run db:push`, per `DEAL_DESK.md`; do not add or run ad hoc SQL migrations for this work.
 - Tests/build required before PR update.
 
 ## Desired Done Bar
 
-- A migration + schema definitions persist Ask Realist interactions and Find Deals queries.
+- Drizzle schema definitions persist Ask Realist interactions and Find Deals queries and are ready for `npm run db:push`.
 - Ask Realist writes a best-effort row after each successful/failed request without breaking responses if logging fails.
 - Find Deals writes/updates a best-effort demand row including raw query, parsed filters, result count, source, user/session if known, and query hash for dedupe/analytics.
 - `aiDefaults.ts` records market-default priors into `model_predictions` or an equivalent measurable ledger row during training, without compromising training if ledger writes fail.
