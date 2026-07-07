@@ -5,7 +5,9 @@
  * an alert sweep that runs on the hourly lifecycle-job cadence
  * (server/index.ts runLifecycleJobs) and enqueues batched, consent-gated
  * alert emails through the email_triggers queue (server/emailQueue.ts,
- * trigger types `watchlist_price_change` / `saved_search_matches`).
+ * trigger types `watchlist_price_change` / `saved_search_matches`). The same
+ * sweep also fires best-effort FCM pushes (server/fcm.ts) to registered
+ * devices — same recipients, same preference gate, fire-and-forget.
  *
  * Consent + volume rules:
  *  - Watches are created ONLY by an explicit Watch click. The old passive
@@ -51,13 +53,13 @@ import { isAuthenticated, isAdmin } from "./auth";
 import { storage } from "./storage";
 import {
   ddfListingSnapshots,
-  emailTriggers,
   listingWatchers,
   savedSearches,
   usListings,
   type ListingWatcher,
   type SavedSearch,
 } from "@shared/schema";
+import { queueEmailTrigger } from "./emailTriggerProducer";
 import {
   buildCapRatesSearchUrl,
   detectPriceChange,
@@ -66,6 +68,8 @@ import {
   type CandidateListing,
   type SavedSearchCriteria,
 } from "@shared/watchlistAlerts";
+import { buildPushContent, shouldSendWatchAlert, type PushKind, type PushPayload } from "@shared/fcmPayload";
+import { sendPushToUser } from "./fcm";
 import type { SavedSearchMatchesItem, WatchlistPriceChangeItem } from "./emailQueue";
 
 const MAX_WATCHES_PER_USER = 200;
@@ -130,11 +134,32 @@ function searchJson(search: SavedSearch) {
  * Same preference rule as notifications.ts recipientAllows("listing"):
  * absent row = allowed (prefs default on), otherwise both the master
  * product-updates switch and the listing-watch switch must be enabled.
+ * The pure rule lives in shared/fcmPayload.ts shouldSendWatchAlert so email and
+ * push can never drift apart — one gate, two channels.
  */
 async function allowsWatchAlerts(userId: string): Promise<boolean> {
   const pref = await storage.getNotificationPreference(userId).catch(() => null);
-  if (!pref) return true;
-  return Boolean(pref.productUpdatesEnabled && pref.listingWatchAlertsEnabled);
+  return shouldSendWatchAlert(pref);
+}
+
+/**
+ * FCM push mirroring the alert email — same recipient, same payload, behind
+ * the same allowsWatchAlerts gate the caller already passed. Fire-and-forget:
+ * sendPushToUser never throws (and is a silent no-op when FCM_SERVICE_ACCOUNT
+ * is not configured), so push can never affect the email path. Deliberately
+ * NOT routed through the email governor — push is not email, and these are
+ * explicit user-requested alerts.
+ */
+function firePushAlert(userId: string, kind: PushKind, payload: PushPayload): void {
+  // The builder runs synchronously — keep it inside the try so a payload edge
+  // case can never throw into the sweep loop (which has already advanced
+  // lastKnownPrice/lastRunAt and would drop the remaining users' alerts).
+  try {
+    void sendPushToUser(userId, { ...buildPushContent(kind, payload), kind })
+      .catch((error) => console.warn(`[watchlists] push alert failed for ${userId}:`, error?.message || error));
+  } catch (error: any) {
+    console.warn(`[watchlists] push alert failed for ${userId}:`, error?.message || error);
+  }
 }
 
 export function registerWatchlistRoutes(app: Express): void {
@@ -411,17 +436,14 @@ export async function loadNewCandidates(since: Date): Promise<Array<CandidateLis
   return candidates;
 }
 
-/** Batched enqueue: one pending trigger per (user, type); dupes collapse via the partial index. */
+/** Batched enqueue: one pending trigger per (user, type); dupes collapse in the transport producer. */
 async function enqueueAlertTrigger(
   userId: string,
   triggerType: "watchlist_price_change" | "saved_search_matches",
   payload: Record<string, unknown>,
 ): Promise<boolean> {
-  const inserted = await db.insert(emailTriggers)
-    .values({ userId, triggerType, payload, status: "pending" })
-    .onConflictDoNothing()
-    .returning({ id: emailTriggers.id });
-  return inserted.length > 0;
+  const { enqueued } = await queueEmailTrigger({ userId, triggerType, payload });
+  return enqueued;
 }
 
 export interface WatchlistSweepResult {
@@ -489,6 +511,10 @@ export async function runWatchlistAlertSweep(now: Date = new Date()): Promise<Wa
       if (await enqueueAlertTrigger(userId, "watchlist_price_change", { items })) {
         result.priceAlertUsers++;
       }
+      // Push rides beside the email (not gated on the enqueue dedupe: a
+      // pending unsent email would silently drop these NEW changes, and the
+      // sweep only re-detects a change after lastKnownPrice moved).
+      firePushAlert(userId, "watchlist_price_change", { items });
     }
   }
 
@@ -542,6 +568,7 @@ export async function runWatchlistAlertSweep(now: Date = new Date()): Promise<Wa
       if (await enqueueAlertTrigger(userId, "saved_search_matches", { searches: items })) {
         result.searchAlertUsers++;
       }
+      firePushAlert(userId, "saved_search_matches", { searches: items });
     }
   }
 

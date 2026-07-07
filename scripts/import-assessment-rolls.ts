@@ -23,6 +23,7 @@ import { ensureEnrichmentTables, recordDataLayer } from "../server/enrichment";
 import { createCsvStreamParser } from "../shared/streamingCsv";
 import {
   ASSESSMENT_ROLL_ADAPTERS,
+  normalizeHeaderKey,
   type AssessmentRollAdapter,
   type AssessmentRollRecord,
 } from "../shared/assessmentRolls";
@@ -78,7 +79,9 @@ async function importCity(adapter: AssessmentRollAdapter): Promise<number> {
   const handleRows = async (rows: string[][]): Promise<void> => {
     for (const cells of rows) {
       if (!header) {
-        header = cells.map((c) => c.replace(/^\uFEFF/, "").trim().toLowerCase());
+        // Bulk CSV export headers are display names with spaces ("Roll Number");
+        // normalize to the underscore keys the adapters read (see assessmentRolls.ts).
+        header = cells.map(normalizeHeaderKey);
         continue;
       }
       if (cells.length < 2) continue;

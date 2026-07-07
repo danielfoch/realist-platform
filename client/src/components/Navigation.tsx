@@ -11,9 +11,11 @@ import {
   FileText, TrendingUp, BarChart3, Shield, Gavel,
   Map, DollarSign, Layers, Building2, Inbox, Sparkles,
   KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell, PhoneCall, PenLine,
+  Youtube,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationBell } from "@/components/NotificationBell";
 import { track } from "@/lib/analytics";
 import { authPath } from "@/lib/authReturn";
 import logoImage from "@assets/Untitled_design_(4)_1773356428184.webp";
@@ -79,6 +81,7 @@ const navCategories: NavCategory[] = [
       { href: "/markets", label: "Markets", description: "City-level prices, yields, and policy", icon: <Globe2 className="h-4 w-4" /> },
       { href: "/investing", label: "Strategies", description: "Investing strategy playbooks — BRRRR, house hack, multiplex, and more", icon: <TrendingUp className="h-4 w-4" /> },
       { href: "/insights/podcast", label: "Podcast", description: "Real estate investor conversations", icon: <Radio className="h-4 w-4" /> },
+      { href: "/insights/videos", label: "Videos", description: "Daniel Foch's latest YouTube videos", icon: <Youtube className="h-4 w-4" /> },
       { href: "/insights/blog", label: "Blog", description: "Essays and research notes from the Realist team", icon: <PenLine className="h-4 w-4" /> },
       { href: "/insights/guides", label: "Guides & Encyclopedia", description: "How-to guides, definitions, formulas, and underwriting specs", icon: <FileText className="h-4 w-4" /> },
     ],
@@ -239,6 +242,12 @@ export function Navigation() {
                 </Link>
               </Button>
             </div>
+
+            {/* Notification inbox bell — one instance serves desktop and
+                mobile (it sits outside the hidden md:flex blocks). Only
+                rendered when authenticated so the inbox query never fires
+                for anonymous visitors. */}
+            {!isLoading && isAuthenticated && <NotificationBell />}
 
             {/* Auth */}
             {!isLoading && (

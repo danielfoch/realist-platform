@@ -28,9 +28,11 @@ import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "./db";
 import { isAdmin, isAuthenticated } from "./auth";
 import { logUserActivity } from "./userActivity";
-import { queueFieldNoteVoteNotification } from "./notifications";
+import { queueFieldNoteLeadNotification, queueFieldNoteVoteNotification } from "./notifications";
 import {
   contributionEvents,
+  crmActivities,
+  crmContacts,
   expertFieldNotes,
   industryPartners,
   users,
@@ -38,12 +40,18 @@ import {
 } from "@shared/schema";
 import {
   REPUTATION_POINTS,
+  EXPERT_CATEGORY_LABELS,
   categoryFromPartnerType,
   computeRank,
   isExpertCategory,
 } from "@shared/contributorReputation";
 import { anonymizeDisplayName } from "@shared/community";
 import { getTradeLeaders } from "./tradeLeaders";
+import {
+  resolveEndorsement,
+  buildFieldNoteLeadCrm,
+  type EndorsementStance,
+} from "@shared/fieldNoteIncentives";
 import type { VerificationStatus } from "@shared/professionalProfiles";
 import {
   decideNoteVoteMilestone,
@@ -62,6 +70,15 @@ const editNoteSchema = z.object({ body: z.string() });
 const hideNoteSchema = z.object({ hidden: z.boolean() });
 
 const voteSchema = z.object({ value: z.number().int().min(-1).max(1) });
+
+const endorseSchema = z.object({ stance: z.enum(["agree", "disagree"]).default("agree") });
+
+const leadSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(120),
+  email: z.string().trim().email("A valid email is required").max(200),
+  phone: z.string().trim().max(40).optional(),
+  message: z.string().trim().max(1000).optional(),
+});
 
 async function getSessionUser(req: Request) {
   const userId = (req as any).session?.userId;
@@ -88,7 +105,68 @@ function displayName(u: { firstName: string | null; lastName: string | null; ema
   return `${u.firstName || ""} ${u.lastName || ""}`.trim() || "Realist expert";
 }
 
+// Simple per-IP daily cap for the (unauthenticated) lead CTA to blunt CRM spam.
+const leadHits = new Map<string, { day: string; count: number }>();
+function leadRateLimited(ip: string): boolean {
+  const day = new Date().toISOString().slice(0, 10);
+  const entry = leadHits.get(ip);
+  if (!entry || entry.day !== day) {
+    leadHits.set(ip, { day, count: 1 });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > 10;
+}
+
+/** FN-3 incentive tables (self-migrating; same pattern as professional_profiles). */
+async function ensureFieldNoteIncentiveTables(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS field_note_endorsements (
+      id                varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      note_id           varchar NOT NULL,
+      endorser_user_id  varchar NOT NULL,
+      stance            text NOT NULL DEFAULT 'agree',
+      created_at        timestamp NOT NULL DEFAULT now(),
+      UNIQUE (note_id, endorser_user_id)
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS field_note_endorsements_note_idx ON field_note_endorsements (note_id)
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS field_note_leads (
+      id                 varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      note_id            varchar NOT NULL,
+      author_user_id     varchar NOT NULL,
+      requester_user_id  varchar,
+      crm_contact_id     varchar,
+      listing_mls_number text,
+      name               text NOT NULL,
+      email              text NOT NULL,
+      phone              text,
+      message            text,
+      created_at         timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS field_note_leads_author_idx ON field_note_leads (author_user_id)
+  `);
+}
+
+/** Is this user a Power Team professional (has a claimed profile)? Endorsements are pro-only. */
+async function isProfessional(userId: string): Promise<{ isPro: boolean; leadCtaEnabled: boolean }> {
+  const rows = await db.execute(sql`
+    SELECT lead_cta_enabled FROM professional_profiles WHERE user_id = ${userId} LIMIT 1
+  `);
+  const row = rows.rows[0] as { lead_cta_enabled: boolean } | undefined;
+  return { isPro: !!row, leadCtaEnabled: row?.lead_cta_enabled ?? false };
+}
+
 export function registerExpertRoutes(app: Express): void {
+  ensureFieldNoteIncentiveTables().catch((err) =>
+    console.error("[experts] ensure FN-3 tables failed:", err?.message ?? err),
+  );
+
   // Public directory of experts (approved + public industry partners) with
   // reputation + rank. Optional ?category= and ?market= filters.
   app.get("/api/experts", async (req: Request, res: Response) => {
@@ -310,12 +388,42 @@ export function registerExpertRoutes(app: Express): void {
       // same pattern as /api/leaderboard/by-trade).
       const authorIds = [...new Set(rows.map((r) => r.note.userId))];
       const verifiedById = new Map<string, VerificationStatus>();
+      const leadCtaById = new Map<string, boolean>();
       if (authorIds.length) {
         const profs = await db.execute(sql`
-          SELECT user_id, verification_status FROM professional_profiles WHERE user_id = ANY(${authorIds})
+          SELECT user_id, verification_status, lead_cta_enabled
+          FROM professional_profiles WHERE user_id = ANY(${authorIds})
         `);
-        for (const p of profs.rows as Array<{ user_id: string; verification_status: string }>) {
+        for (const p of profs.rows as Array<{ user_id: string; verification_status: string; lead_cta_enabled: boolean }>) {
           verifiedById.set(p.user_id, p.verification_status as VerificationStatus);
+          leadCtaById.set(p.user_id, p.lead_cta_enabled);
+        }
+      }
+
+      // FN-3: per-note professional endorsement tallies (+ the viewer's own stance).
+      const noteIds = rows.map((r) => r.note.id);
+      const agreeById = new Map<string, number>();
+      const disagreeById = new Map<string, number>();
+      const myEndorsementById = new Map<string, EndorsementStance>();
+      if (noteIds.length) {
+        const tallies = await db.execute(sql`
+          SELECT note_id,
+                 COUNT(*) FILTER (WHERE stance = 'agree')::int AS agree,
+                 COUNT(*) FILTER (WHERE stance = 'disagree')::int AS disagree
+          FROM field_note_endorsements WHERE note_id = ANY(${noteIds}) GROUP BY note_id
+        `);
+        for (const t of tallies.rows as Array<{ note_id: string; agree: number; disagree: number }>) {
+          agreeById.set(t.note_id, Number(t.agree));
+          disagreeById.set(t.note_id, Number(t.disagree));
+        }
+        if (sessionUser) {
+          const mine = await db.execute(sql`
+            SELECT note_id, stance FROM field_note_endorsements
+            WHERE endorser_user_id = ${sessionUser.id} AND note_id = ANY(${noteIds})
+          `);
+          for (const m of mine.rows as Array<{ note_id: string; stance: string }>) {
+            myEndorsementById.set(m.note_id, m.stance as EndorsementStance);
+          }
         }
       }
 
@@ -336,6 +444,10 @@ export function registerExpertRoutes(app: Express): void {
           body: r.note.body,
           score: r.note.score,
           myVote: myVotes.get(r.note.id) ?? 0,
+          endorsements: { agree: agreeById.get(r.note.id) ?? 0, disagree: disagreeById.get(r.note.id) ?? 0 },
+          myEndorsement: myEndorsementById.get(r.note.id) ?? null,
+          // Only expert-authored notes with the CTA left on can be lead sources.
+          leadCtaEnabled: isExpertNote && (leadCtaById.get(r.note.userId) ?? false),
           createdAt: r.note.createdAt,
           updatedAt: r.note.updatedAt,
         };
@@ -497,6 +609,163 @@ export function registerExpertRoutes(app: Express): void {
     } catch (error) {
       console.error("[experts] vote failed:", error);
       res.status(500).json({ error: "Failed to record vote" });
+    }
+  });
+
+  // FN-3: professional peer endorsement (agree/disagree). Pro-only — a Power
+  // Team professional vouching for another's note. Distinct from member votes:
+  // it doesn't touch `score`, it rewards the author through the shared ledger
+  // and is surfaced as its own trust signal (and ML label).
+  app.post("/api/field-notes/:id/endorse", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.session.userId as string;
+      const parsed = endorseSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid endorsement" });
+      const incoming = parsed.data.stance as EndorsementStance;
+
+      const [note] = await db.select().from(expertFieldNotes).where(eq(expertFieldNotes.id, req.params.id)).limit(1);
+      if (!note || note.status !== "visible") return res.status(404).json({ error: "Field note not found" });
+      if (note.userId === userId) return res.status(400).json({ error: "You can't endorse your own note" });
+
+      const { isPro } = await isProfessional(userId);
+      if (!isPro) return res.status(403).json({ error: "Only Power Team professionals can endorse notes" });
+
+      const existingRows = await db.execute(sql`
+        SELECT stance FROM field_note_endorsements WHERE note_id = ${note.id} AND endorser_user_id = ${userId} LIMIT 1
+      `);
+      const existing = (existingRows.rows[0] as { stance: string } | undefined)?.stance as EndorsementStance | undefined;
+      const resolution = resolveEndorsement(existing ?? null, incoming);
+
+      if (resolution.action === "removed") {
+        await db.execute(sql`DELETE FROM field_note_endorsements WHERE note_id = ${note.id} AND endorser_user_id = ${userId}`);
+      } else {
+        await db.execute(sql`
+          INSERT INTO field_note_endorsements (note_id, endorser_user_id, stance)
+          VALUES (${note.id}, ${userId}, ${incoming})
+          ON CONFLICT (note_id, endorser_user_id) DO UPDATE SET stance = EXCLUDED.stance, created_at = now()
+        `);
+      }
+
+      // Reward the author through the same ledger the votes use (agree only).
+      if (resolution.authorPointsDelta !== 0) {
+        await db.insert(contributionEvents).values({
+          userId: note.userId,
+          type: "field_note_endorsement_received",
+          points: resolution.authorPointsDelta,
+          targetType: "expert_field_note",
+          targetId: note.id,
+        });
+      }
+
+      const tally = await db.execute(sql`
+        SELECT COUNT(*) FILTER (WHERE stance = 'agree')::int AS agree,
+               COUNT(*) FILTER (WHERE stance = 'disagree')::int AS disagree
+        FROM field_note_endorsements WHERE note_id = ${note.id}
+      `);
+      const counts = tally.rows[0] as { agree: number; disagree: number };
+      return res.json({
+        endorsements: { agree: Number(counts.agree), disagree: Number(counts.disagree) },
+        myEndorsement: resolution.newStance,
+      });
+    } catch (error) {
+      console.error("[experts] endorse failed:", error);
+      res.status(500).json({ error: "Failed to record endorsement" });
+    }
+  });
+
+  // FN-3: lead CTA — "work with this pro" turns into a crm_contacts lead owned
+  // by the note's author (a Power Team pro), attributed to the exact note +
+  // listing. Same handoff shape as the partner-network lead capture (PR #43).
+  app.post("/api/field-notes/:id/lead", async (req: any, res: Response) => {
+    try {
+      if (leadRateLimited(req.ip || "anon")) {
+        return res.status(429).json({ error: "Too many requests — try again tomorrow." });
+      }
+      const parsed = leadSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid request" });
+      const { name, email, phone, message } = parsed.data;
+
+      const [note] = await db.select().from(expertFieldNotes).where(eq(expertFieldNotes.id, req.params.id)).limit(1);
+      if (!note || note.status !== "visible") return res.status(404).json({ error: "Field note not found" });
+
+      const author = await isProfessional(note.userId);
+      if (!author.isPro || !author.leadCtaEnabled) {
+        return res.status(403).json({ error: "This author isn't accepting leads" });
+      }
+      const requesterUserId = (req.session?.userId as string | undefined) ?? null;
+      if (requesterUserId && requesterUserId === note.userId) {
+        return res.status(400).json({ error: "You can't request to work with yourself" });
+      }
+
+      const categoryLabel = isExpertCategory(note.category) ? EXPERT_CATEGORY_LABELS[note.category] : "professional";
+      const mapping = buildFieldNoteLeadCrm(
+        { noteId: note.id, listingMlsNumber: note.listingMlsNumber, category: note.category, message },
+        categoryLabel,
+      );
+
+      // Upsert the contact under the author's CRM (dedupe by owner + email).
+      let [contact] = await db
+        .select()
+        .from(crmContacts)
+        .where(and(eq(crmContacts.ownerUserId, note.userId), eq(crmContacts.email, email)))
+        .limit(1);
+      if (!contact) {
+        [contact] = await db
+          .insert(crmContacts)
+          .values({
+            ownerUserId: note.userId,
+            linkedUserId: requesterUserId,
+            name,
+            email,
+            phone: phone ?? null,
+            contactType: "investor",
+            stage: "new",
+            source: mapping.source,
+            sourceDetail: mapping.sourceDetail,
+            tags: mapping.tags,
+            consentEmail: true, // the requester is asking to be contacted
+            data: mapping.data,
+          })
+          .returning();
+      }
+
+      await db.insert(crmActivities).values({
+        contactId: contact.id,
+        userId: note.userId,
+        kind: "system",
+        body: mapping.activityBody,
+        metadata: mapping.data,
+      });
+
+      await db.execute(sql`
+        INSERT INTO field_note_leads
+          (note_id, author_user_id, requester_user_id, crm_contact_id, listing_mls_number, name, email, phone, message)
+        VALUES (${note.id}, ${note.userId}, ${requesterUserId}, ${contact.id}, ${note.listingMlsNumber},
+                ${name}, ${email}, ${phone ?? null}, ${message ?? null})
+      `);
+
+      logUserActivity(req, {
+        userId: requesterUserId ?? note.userId,
+        eventName: "field_note_lead_submitted",
+        source: "field_note",
+        metadata: { noteId: note.id, authorUserId: note.userId, crmContactId: contact.id, listingMlsNumber: note.listingMlsNumber },
+      });
+
+      // Tell the pro a lead landed (email + in-app inbox). Fire-and-forget:
+      // the lead is already captured in the CRM; a notification hiccup must
+      // not fail the request.
+      queueFieldNoteLeadNotification({
+        note,
+        leadName: name,
+        leadEmail: email,
+        message,
+        crmContactId: contact.id,
+      }).catch((err) => console.error("[experts] field-note lead notification failed:", err));
+
+      return res.json({ ok: true });
+    } catch (error) {
+      console.error("[experts] field-note lead failed:", error);
+      res.status(500).json({ error: "Failed to submit request" });
     }
   });
 

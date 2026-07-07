@@ -2,7 +2,7 @@ import { storage } from "./storage";
 import { getAnalysesCountStats } from "./socialStats";
 import { encyclopediaGuides, getEncyclopediaGuide } from "@shared/encyclopedia";
 import { getProgrammaticMarket, getProgrammaticStrategy, PROGRAMMATIC_MARKETS, PROGRAMMATIC_STRATEGIES } from "@shared/programmaticSeo";
-import { PODCAST_APPLE_URL, PODCAST_SPOTIFY_URL, PODCAST_YOUTUBE_URL } from "@shared/brand";
+import { PODCAST_APPLE_URL, PODCAST_SPOTIFY_URL, PODCAST_YOUTUBE_URL, YOUTUBE_CHANNEL_URL } from "@shared/brand";
 import {
   buildListingSeoDescription,
   formatListingAddress,
@@ -51,6 +51,7 @@ function renderFooterLinks() {
           { href: "/about", label: "About" },
           { href: "/about/contact", label: "Contact" },
           { href: "/insights/podcast", label: "Podcast" },
+          { href: "/insights/videos", label: "Videos" },
           { href: "/insights/encyclopedia", label: "Investor Encyclopedia" },
           { href: "https://thecanadianrealestateinvestor.substack.com/feed", label: "RSS" },
         ])}
@@ -962,6 +963,170 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
             })))}
           </section>
         ` : ""}
+      </article>
+      ${renderFooterLinks()}
+    `);
+  }
+
+  // Videos hub: crawlable video index so every /insights/videos/:slug page is
+  // discoverable from plain HTML anchors.
+  if (reqPath === "/insights/videos") {
+    const { getYouTubeVideos } = await import("./youtubeFeed");
+    const videos = await getYouTubeVideos().catch(() => []);
+    return renderShell(`
+      <header>
+        <h1 style="font-size:40px;margin:0 0 12px;">Daniel Foch on YouTube</h1>
+        <p style="font-size:18px;color:#4b5563;max-width:760px;line-height:1.7;">Data-driven breakdowns of the Canadian housing market, mortgages, and real estate investing strategy from Daniel Foch — every video below has its own page with an embedded player and the full description.</p>
+      </header>
+      <section style="margin:24px 0;">
+        <h2 style="font-size:28px;margin-bottom:12px;">Subscribe on YouTube</h2>
+        ${renderLinkList([{ href: YOUTUBE_CHANNEL_URL, label: "@daniel_foch on YouTube" }])}
+      </section>
+      <section style="margin-top:32px;">
+        <h2 style="font-size:28px;margin-bottom:12px;">All Videos</h2>
+        ${renderLinkList(videos.map((video) => ({
+          href: `/insights/videos/${video.slug}`,
+          label: video.title,
+        })))}
+      </section>
+      ${renderFooterLinks()}
+    `);
+  }
+
+  // Per-video YouTube pages: full description text, a watch link, topics,
+  // related videos, and the contextual tool CTA — all in the pre-hydration
+  // HTML. The crawler fallback contains the description text and a link (not
+  // just the iframe) so the page has real crawlable content.
+  const videoMatch = reqPath.match(/^\/insights\/videos\/([^/]+)$/);
+  if (videoMatch) {
+    const { getVideoPayload } = await import("./youtubeFeed");
+    const payload = await getVideoPayload(decodeURIComponent(videoMatch[1])).catch(() => null);
+    if (!payload) return null;
+    const uploadedDate = payload.pubDate ? new Date(payload.pubDate) : null;
+    const dateLabel = uploadedDate && !isNaN(uploadedDate.getTime())
+      ? uploadedDate.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })
+      : null;
+    return renderShell(`
+      ${renderBreadcrumbs([
+        { href: "/", label: "Home" },
+        { href: "/insights/videos", label: "Videos" },
+        { href: `/insights/videos/${payload.slug}`, label: payload.title },
+      ])}
+      <article>
+        <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">Daniel Foch on YouTube</p>
+        <h1 style="font-size:clamp(2rem,4vw,3.25rem);line-height:1.1;margin:8px 0 14px;">${escapeHtml(payload.title)}</h1>
+        <p style="font-size:14px;color:#6b7280;margin:0 0 14px;">
+          ${dateLabel ? `Published ${escapeHtml(dateLabel)}` : ""}
+        </p>
+        ${payload.topics.length ? `<p style="font-size:14px;color:#4b5563;margin:0 0 18px;"><strong>Topics:</strong> ${payload.topics.map(escapeHtml).join(", ")}</p>` : ""}
+        <div style="position:relative;width:100%;max-width:760px;aspect-ratio:16/9;margin:8px 0 20px;">
+          <iframe src="${escapeHtml(payload.embedUrl)}" title="${escapeHtml(payload.title)}" style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;" allowfullscreen loading="lazy"></iframe>
+        </div>
+        <p style="margin:0 0 20px;">
+          <a href="${escapeHtml(payload.link)}" style="color:#0f766e;text-decoration:none;font-weight:600;">Watch on YouTube</a>
+        </p>
+        <section style="font-size:16px;line-height:1.8;max-width:860px;margin:20px 0;">
+          <h2 style="font-size:28px;margin:0 0 12px;">About this video</h2>
+          ${payload.descriptionHtml}
+        </section>
+        <section style="border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:760px;margin:28px 0;">
+          <h2 style="font-size:22px;margin:0 0 8px;">Put this video to work</h2>
+          <p style="font-size:16px;color:#4b5563;margin:0 0 12px;">${escapeHtml(payload.cta.copy)}</p>
+          <p style="margin:0;">
+            <a href="${escapeHtml(payload.cta.primary.href)}" style="display:inline-block;background:#0f766e;color:#fff;border-radius:8px;padding:10px 20px;text-decoration:none;font-weight:600;">${escapeHtml(payload.cta.primary.label)}</a>
+            ${payload.cta.secondary ? `&nbsp; <a href="${escapeHtml(payload.cta.secondary.href)}" style="color:#0f766e;text-decoration:none;font-weight:600;">${escapeHtml(payload.cta.secondary.label)}</a>` : ""}
+          </p>
+        </section>
+        ${payload.related.length ? `
+          <section style="margin:28px 0;">
+            <h2 style="font-size:22px;margin:0 0 8px;">Related Videos</h2>
+            ${renderLinkList(payload.related.map((related) => ({
+              href: `/insights/videos/${related.slug}`,
+              label: related.title,
+            })))}
+          </section>
+        ` : ""}
+      </article>
+      ${renderFooterLinks()}
+    `);
+  }
+
+  // Config-driven reports (shared/reports/): a full crawlable / no-JS fallback —
+  // H1, dek, narrative section text, and every ChartBlock rendered as an
+  // accessible data table (the visual charts are recharts SVG, invisible to
+  // crawlers). Mirrors what ReportRenderer draws for real users.
+  const configReportMatch = reqPath.match(/^\/insights\/reports\/([^/]+)$/);
+  if (configReportMatch) {
+    const { getConfigReport } = await import("@shared/reports");
+    const { chartToTableRows } = await import("@shared/reportContent");
+    const report = getConfigReport(configReportMatch[1]);
+    if (!report) return null;
+
+    const publishLabel = (() => {
+      const [y, m, d] = report.publishDate.split("-").map(Number);
+      return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-CA", {
+        year: "numeric", month: "long", day: "numeric",
+      });
+    })();
+
+    const sectionsHtml = report.sections.map((section) => {
+      if (section.type === "narrative") {
+        const heading = section.heading ? `<h2 style="font-size:28px;margin:28px 0 10px;">${escapeHtml(section.heading)}</h2>` : "";
+        const paras = section.body.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean).map((block) => {
+          if (block.startsWith("## ")) return `<h3 style="font-size:20px;margin:20px 0 8px;">${escapeHtml(block.slice(3).trim())}</h3>`;
+          const lines = block.split("\n");
+          if (lines.every((l) => l.trimStart().startsWith("- "))) {
+            return `<ul style="padding-left:18px;line-height:1.8;">${lines.map((l) => `<li>${escapeHtml(l.trimStart().slice(2))}</li>`).join("")}</ul>`;
+          }
+          // Strip the markdown-ish inline markers for the plain-text fallback.
+          const plain = block.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\[([^\]]+)\]\((?:https?:\/\/|\/)[^)]+\)/g, "$1");
+          return `<p style="font-size:16px;line-height:1.8;color:#111827;margin:12px 0;">${escapeHtml(plain)}</p>`;
+        }).join("");
+        return `<section>${heading}${paras}</section>`;
+      }
+      if (section.type === "chart") {
+        const rows = chartToTableRows(section);
+        const head = `<tr><th style="text-align:left;padding:6px 12px;border-bottom:2px solid #e5e7eb;">${escapeHtml(section.xAxisLabel || section.xKey)}</th>${section.series.map((s) => `<th style="text-align:right;padding:6px 12px;border-bottom:2px solid #e5e7eb;">${escapeHtml(s.label)}</th>`).join("")}</tr>`;
+        const body = rows.map((row) => `<tr><td style="padding:6px 12px;border-bottom:1px solid #f0f0f0;">${escapeHtml(row.x)}</td>${row.cells.map((c) => `<td style="text-align:right;padding:6px 12px;border-bottom:1px solid #f0f0f0;">${escapeHtml(c.formatted)}</td>`).join("")}</tr>`).join("");
+        return `
+          <section style="margin:28px 0;">
+            <h2 style="font-size:24px;margin:0 0 10px;">${escapeHtml(section.title)}</h2>
+            <table style="border-collapse:collapse;width:100%;max-width:760px;font-size:14px;">
+              <caption style="text-align:left;color:#6b7280;font-size:13px;margin-bottom:8px;">${escapeHtml(section.caption || "")}</caption>
+              <thead>${head}</thead>
+              <tbody>${body}</tbody>
+            </table>
+          </section>`;
+      }
+      if (section.type === "statGrid") {
+        const heading = section.heading ? `<h2 style="font-size:24px;margin:28px 0 10px;">${escapeHtml(section.heading)}</h2>` : "";
+        return `${heading}<ul style="padding-left:18px;line-height:1.8;">${section.stats.map((s) => `<li><strong>${escapeHtml(s.value)}</strong> — ${escapeHtml(s.label)}${s.detail ? ` (${escapeHtml(s.detail)})` : ""}</li>`).join("")}</ul>`;
+      }
+      if (section.type === "callout") {
+        const plain = section.body.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\[([^\]]+)\]\((?:https?:\/\/|\/)[^)]+\)/g, "$1");
+        return `<section style="border-left:3px solid #0f766e;padding:8px 16px;margin:20px 0;background:#f9fafb;">${section.heading ? `<h3 style="font-size:18px;margin:0 0 6px;">${escapeHtml(section.heading)}</h3>` : ""}<p style="font-size:15px;line-height:1.7;margin:0;color:#111827;">${escapeHtml(plain)}</p></section>`;
+      }
+      return "";
+    }).join("");
+
+    return renderShell(`
+      ${renderBreadcrumbs([{ href: "/", label: "Home" }, { href: "/reports", label: "Reports" }, { href: `/insights/reports/${report.slug}`, label: report.title }])}
+      <article>
+        <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">Report</p>
+        <h1 style="font-size:clamp(2rem,4vw,3.25rem);line-height:1.1;margin:8px 0 14px;">${escapeHtml(report.title)}</h1>
+        <p style="font-size:18px;color:#4b5563;line-height:1.7;max-width:760px;">${escapeHtml(report.dek)}</p>
+        <div style="margin:14px 0 28px;font-size:14px;color:#6b7280;">${escapeHtml(report.author.name)} · ${escapeHtml(publishLabel)}</div>
+        ${report.heroStat ? `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin:0 0 24px;max-width:520px;"><div style="font-size:13px;color:#6b7280;">${escapeHtml(report.heroStat.label)}</div><div style="font-size:34px;font-weight:700;color:#0f766e;">${escapeHtml(report.heroStat.value)}</div>${report.heroStat.detail ? `<p style="font-size:14px;color:#4b5563;margin:6px 0 0;">${escapeHtml(report.heroStat.detail)}</p>` : ""}</div>` : ""}
+        ${sectionsHtml}
+        <section style="margin-top:32px;">
+          <h2 style="font-size:24px;margin:0 0 10px;">Sources</h2>
+          ${renderLinkList(report.sources.map((s) => ({ href: s.url, label: s.publisher ? `${s.label} — ${s.publisher}` : s.label })))}
+        </section>
+        <section style="border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:760px;margin:28px 0;">
+          <h2 style="font-size:22px;margin:0 0 8px;">${escapeHtml(report.cta.headline)}</h2>
+          <p style="font-size:16px;color:#4b5563;margin:0 0 12px;">${escapeHtml(report.cta.body)}</p>
+          <p style="margin:0;"><a href="${escapeHtml(report.cta.toolUrl)}" style="display:inline-block;background:#0f766e;color:#fff;border-radius:8px;padding:10px 20px;text-decoration:none;font-weight:600;">Open the free deal analyzer</a></p>
+        </section>
       </article>
       ${renderFooterLinks()}
     `);

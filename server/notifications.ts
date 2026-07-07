@@ -24,7 +24,10 @@ import {
   type NoteVoteMilestone,
 } from "@shared/fieldNotes";
 import type { ExpertFieldNote } from "@shared/schema";
+import { buildFieldNoteLeadCopy } from "@shared/fieldNoteIncentives";
 import { governMarketingSend } from "./emailGovernor";
+import { isEmailTriggerTemplateKey } from "@shared/emailTriggerTransport";
+import { sendEmailTrigger } from "./emailTriggerSender";
 
 type NotificationKind =
   | "saved_search_match"
@@ -43,7 +46,8 @@ type NotificationKind =
   | "weekly_leaderboard_digest"
   | "co_analysis_alert"
   | "milestone_reached"
-  | "note_vote_update";
+  | "note_vote_update"
+  | "field_note_lead";
 
 export type GhlNotificationPayload = {
   sendEmail: true;
@@ -694,6 +698,44 @@ export async function processPendingGhlNotifications(limit = 50): Promise<{ sent
   let skipped = 0;
 
   for (const item of queue) {
+    // Trigger-originated email rows (transport consolidation): rows enqueued
+    // by server/emailTriggerProducer.ts ride channel='email_resend' with the
+    // trigger type as templateKey. Deliver them through the shared trigger
+    // sender — identical recipient/consent/governor/Resend behavior to the
+    // legacy email_triggers worker — instead of the sheet-mirror/GHL path.
+    // Rows with unrecognized templateKeys (monthly_leaderboard_winner,
+    // podcast_digest — their producers send via Resend themselves and flip
+    // the row's status) keep the pre-existing behavior below untouched.
+    if (item.channel === "email_resend" && isEmailTriggerTemplateKey(item.templateKey)) {
+      const triggerPayload = (item.payloadJson || {}) as Record<string, any>;
+      const outcome = await sendEmailTrigger({
+        id: item.id,
+        triggerType: item.templateKey,
+        payload: triggerPayload,
+        userId: item.recipientUserId,
+        leadId: typeof triggerPayload.leadId === "string" ? triggerPayload.leadId : null,
+        opportunityId: typeof triggerPayload.opportunityId === "string" ? triggerPayload.opportunityId : null,
+        createdAt: item.createdAt,
+      });
+      if (outcome.status === "sent") {
+        sent++;
+        await storage.markNotificationQueueItemSent(item.id);
+      } else if (outcome.status === "failed") {
+        // Same single-attempt semantics as the drain's other channels (and
+        // the legacy worker): a failure is terminal for the row.
+        failed++;
+        await storage.markNotificationQueueItemFailed(item.id, outcome.reason);
+      } else if (outcome.status === "cancelled") {
+        // Mirror the legacy worker's 'cancelled' terminal state (consent
+        // revoked, governor block, lead already contacted, ...).
+        await db.update(notificationQueue)
+          .set({ status: "cancelled", failureReason: outcome.reason })
+          .where(eq(notificationQueue.id, item.id));
+      }
+      // 'not_due' (24h-delayed types): leave the row pending for a later cycle.
+      continue;
+    }
+
     // Always mirror the notification event to the owner's Google Sheet
     // (replaces GHL as the primary destination).
     const payload = (item.payloadJson || {}) as Record<string, any>;
@@ -1662,6 +1704,76 @@ export async function queueFieldNoteVoteNotification(params: {
         leadScoreDelta: milestone === "first_downvote" ? 0 : 2,
       }),
       dedupeKey: noteVoteDedupeKey(note.id),
+    }],
+  });
+
+  return true;
+}
+
+/**
+ * FN-3: tell a Power Team pro a lead just landed in their CRM from one of
+ * their field notes. Transactional like the comment notifications above —
+ * user-directed, so it gets the central unsubscribe/CASL gate (inside
+ * enqueueForRecipients) and the community preference toggle, but NOT the
+ * rolling weekly marketing cap: a pro must not miss a lead because a digest
+ * already spent their quota. lead_cta_enabled on the profile is the explicit
+ * opt-in for receiving these. Deduped per note+lead-email per UTC day so a
+ * double-submit can't double-email.
+ */
+export async function queueFieldNoteLeadNotification(params: {
+  note: ExpertFieldNote;
+  leadName: string;
+  leadEmail: string;
+  message?: string | null;
+  crmContactId: string;
+}): Promise<boolean> {
+  const { note, leadName, leadEmail, message, crmContactId } = params;
+  if (!(await recipientAllows(note.userId, "community"))) return false;
+
+  const recipient = await getRecipient(note.userId);
+  if (!recipient?.email) return false;
+
+  // Best-effort listing label enrichment (city from the DDF snapshot).
+  let city: string | null = null;
+  try {
+    const [snapshot] = await db
+      .select({ city: ddfListingSnapshots.city })
+      .from(ddfListingSnapshots)
+      .where(eq(ddfListingSnapshots.mlsNumber, note.listingMlsNumber))
+      .orderBy(desc(ddfListingSnapshots.capturedAt))
+      .limit(1);
+    city = snapshot?.city || null;
+  } catch {
+    city = null;
+  }
+  const listingLabel = city ? `MLS ${note.listingMlsNumber} (${city})` : `MLS ${note.listingMlsNumber}`;
+
+  const copy = buildFieldNoteLeadCopy({ leadName, listingLabel, message });
+  const ctaUrl = `https://realist.ca/crm/contacts/${encodeURIComponent(crmContactId)}?source=field-note-lead-email`;
+  const day = new Date().toISOString().slice(0, 10);
+  const dedupeKey = `field_note_lead:${note.id}:${leadEmail.toLowerCase()}:${day}`;
+
+  await enqueueForRecipients({
+    eventType: "field_note_lead",
+    listingMlsNumber: note.listingMlsNumber,
+    city,
+    rawPayload: { fieldNoteId: note.id, crmContactId, listingMlsNumber: note.listingMlsNumber },
+    recipients: [{
+      userId: note.userId,
+      payload: buildPayload({
+        recipient,
+        eventType: "field_note_lead",
+        reasonText: copy.reasonText,
+        ctaLabel: "Open the lead in your CRM",
+        ctaUrl,
+        subjectLine: copy.subjectLine,
+        previewText: copy.previewText,
+        listingMlsNumber: note.listingMlsNumber,
+        listingCity: city,
+        ghlTags: ["realist-user", "power-team", "field-note-lead"],
+        leadScoreDelta: 0,
+      }),
+      dedupeKey,
     }],
   });
 

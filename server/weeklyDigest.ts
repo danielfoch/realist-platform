@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import cron from "node-cron";
 import { db } from "./db";
 import { users, analyses, notificationEvents, notificationQueue } from "@shared/schema";
@@ -8,6 +7,10 @@ import { governMarketingSend } from "./emailGovernor";
 import { getTradeLeaders } from "./tradeLeaders";
 import { EXPERT_CATEGORIES, EXPERT_CATEGORY_LABELS } from "@shared/contributorReputation";
 import type { TradeLeader } from "@shared/tradeLeaderboard";
+// Unsubscribe token minting moved to shared/emailTriggerTemplates.ts (the
+// nudge templates embed it); re-exported here so existing importers keep
+// working. Same HMAC scheme and secret as before.
+import { generateUnsubscribeToken } from "@shared/emailTriggerTemplates";
 
 /** "Architect" → "Architects"; leaves slashed/plural labels alone. */
 export function pluralTradeLabel(label: string): string {
@@ -22,17 +25,7 @@ export function orderedTrades(tradeLeaders: Record<string, TradeLeader[]>): Arra
   })).filter((t) => t.leaders.length > 0);
 }
 
-const UNSUBSCRIBE_SECRET = process.env.SESSION_SECRET || "realist-digest-secret";
-
-export function generateUnsubscribeToken(userId: string): string {
-  return crypto.createHmac("sha256", UNSUBSCRIBE_SECRET).update(userId).digest("hex");
-}
-
-export function verifyUnsubscribeToken(userId: string, token: string): boolean {
-  const expected = generateUnsubscribeToken(userId);
-  if (token.length !== expected.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
-}
+export { generateUnsubscribeToken, verifyUnsubscribeToken } from "@shared/emailTriggerTemplates";
 
 interface WeeklyStats {
   totalDeals: number;

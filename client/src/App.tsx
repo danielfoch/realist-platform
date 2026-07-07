@@ -137,6 +137,8 @@ const Shop = lazy(() => import("@/pages/Shop"));
 const Compare = lazy(() => import("@/pages/Compare"));
 const Podcast = lazy(() => import("@/pages/Podcast"));
 const PodcastEpisodeDetail = lazy(() => import("@/pages/PodcastEpisodeDetail"));
+const Videos = lazy(() => import("@/pages/Videos"));
+const VideoDetail = lazy(() => import("@/pages/VideoDetail"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const AdminDealDesk = lazy(() => import("@/pages/AdminDealDesk"));
 const AdminEvents = lazy(() => import("@/pages/AdminEvents"));
@@ -261,6 +263,7 @@ const CapitalStackCanadaGuide = lazy(() => import("@/pages/CapitalStackCanadaGui
 const ABCLendersCanadaGuide = lazy(() => import("@/pages/ABCLendersCanadaGuide"));
 const ReportsHub = lazy(() => import("@/pages/ReportsHub"));
 const ReportPage = lazy(() => import("@/pages/ReportPage"));
+const ConfigReportPage = lazy(() => import("@/pages/ConfigReportPage"));
 const IrccImmigrationDashboardReport = lazy(() => import("@/pages/IrccImmigrationDashboardReport"));
 const RealBenchReport = lazy(() => import("@/pages/RealBenchReport"));
 const MarketsHub = lazy(() => import("@/pages/MarketsHub"));
@@ -402,8 +405,12 @@ function Router() {
 
       {/* New Insights routes */}
       <Route path="/insights" component={InsightsHub} />
+      {/* Config-driven reports (data + narrative content files, no bespoke code) */}
+      <Route path="/insights/reports/:slug" component={ConfigReportPage} />
       <Route path="/insights/podcast" component={Podcast} />
       <Route path="/insights/podcast/:slug" component={PodcastEpisodeDetail} />
+      <Route path="/insights/videos" component={Videos} />
+      <Route path="/insights/videos/:slug" component={VideoDetail} />
       <Route path="/insights/blog" component={Blog} />
       <Route path="/insights/blog/:slug" component={BlogPost} />
       <Route path="/insights/guides" component={GuidesHub} />

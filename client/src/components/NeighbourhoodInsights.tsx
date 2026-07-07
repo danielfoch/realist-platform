@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Landmark, Users, Building2, Ruler } from "lucide-react";
+import { Landmark, Users, Building2, Ruler, Gavel } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /** Mirrors NeighbourhoodStats from shared/censusProfile.ts (via GET /api/enrichment). */
@@ -93,6 +93,31 @@ type DevelopmentActivity = {
   attribution: string;
 };
 
+/** Mirrors VarianceHistory from server/enrichment.ts (Toronto Committee of Adjustment). */
+type VarianceHistory = {
+  summary: {
+    total: number;
+    minorVariances: number;
+    consents: number;
+    approved: number;
+    refused: number;
+    withOmbAppeal: number;
+    mostRecent: { referenceFile: string; applicationType: string | null; decision: string | null; date: string | null } | null;
+  };
+  applications: Array<{
+    referenceFile: string;
+    applicationType: string | null;
+    decision: string | null;
+    status: string | null;
+    date: string | null;
+    description: string | null;
+    applicationUrl: string | null;
+  }>;
+  attribution: string;
+};
+
+const COA_TYPE_LABELS: Record<string, string> = { MV: "Minor variance", CO: "Consent / severance" };
+
 export function NeighbourhoodInsights({
   lat,
   lng,
@@ -118,6 +143,7 @@ export function NeighbourhoodInsights({
       development?: DevelopmentActivity | null;
       parcel?: { parcelId: string; lotAreaM2: number | null } | null;
       ward?: { city: string; code: string; name: string | null } | null;
+      variance?: VarianceHistory | null;
     };
   }>({
     queryKey: ["/api/enrichment", lat, lng, address, city],
@@ -144,19 +170,80 @@ export function NeighbourhoodInsights({
   const development = data?.data?.development ?? null;
   const parcel = data?.data?.parcel ?? null;
   const ward = data?.data?.ward ?? null;
+  const variance = data?.data?.variance ?? null;
   // Show the parcel lot size only when the assessment roll didn't already
   // provide one (e.g. Toronto, which has no open assessment roll).
   const parcelLot = parcel?.lotAreaM2 != null && !(property && property.lotAreaM2 != null) ? parcel.lotAreaM2 : null;
   // Render nothing until an enrichment layer is imported / the lookup matches.
-  if (!stats && !property && !permits && !development && parcelLot === null && !ward) return null;
+  if (!stats && !property && !permits && !development && parcelLot === null && !ward && !variance) return null;
   return (
     <>
       {property && <PropertyIntelligenceCard property={property} listPrice={listPrice ?? null} className={className} />}
       {parcelLot !== null && <ParcelLotCard lotAreaM2={parcelLot} className={className} />}
+      {variance && <VarianceHistoryCard variance={variance} className={className} />}
       {permits && <PermitsCard permits={permits} className={className} />}
       {development && <DevelopmentActivityCard development={development} className={className} />}
       {(stats || ward) && <NeighbourhoodCard stats={stats ?? null} ward={ward} className={className} />}
     </>
+  );
+}
+
+function VarianceHistoryCard({ variance, className }: { variance: VarianceHistory; className?: string }) {
+  const { summary, applications } = variance;
+  if (!summary.total) return null;
+  const outcome = (decision: string | null): { label: string; tone: string } => {
+    if (decision && /approv/i.test(decision)) return { label: decision, tone: "text-emerald-600" };
+    if (decision && /refus/i.test(decision)) return { label: decision, tone: "text-red-600" };
+    return { label: decision || "—", tone: "text-muted-foreground" };
+  };
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Gavel className="h-5 w-5" /> Variance history
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="mb-3 text-sm text-muted-foreground">
+          {summary.total} Committee of Adjustment application{summary.total === 1 ? "" : "s"} on record
+          {summary.minorVariances > 0 ? ` — ${summary.minorVariances} minor variance${summary.minorVariances === 1 ? "" : "s"}` : ""}
+          {summary.consents > 0 ? `, ${summary.consents} consent${summary.consents === 1 ? "" : "s"}` : ""}
+          {summary.approved > 0 || summary.refused > 0
+            ? ` (${summary.approved} approved, ${summary.refused} refused)`
+            : ""}
+          .
+        </p>
+        <div className="space-y-2">
+          {applications.map((a) => {
+            const o = outcome(a.decision);
+            return (
+              <div key={a.referenceFile} className="rounded-lg border p-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-medium">
+                    {COA_TYPE_LABELS[a.applicationType ?? ""] ?? a.applicationType ?? "Application"}
+                    <span className="ml-1.5 text-xs font-normal text-muted-foreground">{a.referenceFile}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">{a.date ?? ""}</span>
+                </div>
+                <div className={`text-xs font-medium ${o.tone}`}>{o.label}</div>
+                {a.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{a.description}</p>}
+                {a.applicationUrl && (
+                  <a
+                    href={a.applicationUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-block text-xs text-primary underline"
+                  >
+                    View application
+                  </a>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">{variance.attribution}</p>
+      </CardContent>
+    </Card>
   );
 }
 

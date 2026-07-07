@@ -108,6 +108,7 @@ import { ANALYST_BADGES, computeMilestoneProgress } from "@shared/milestones";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { passwordResetTokens } from "@shared/models/auth";
 import { normalizeEmail, SETUP_LINK_TTL_MS } from "@shared/authTokens";
+import { backlinkUserRecords } from "./personSpine";
 import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
 import { 
@@ -142,6 +143,7 @@ import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
 import { registerRentBacktestRoutes } from "./rentBacktestRunner";
 import { registerMobilePushRoutes } from "./mobilePush";
+import { registerNotificationInboxRoutes } from "./notificationInbox";
 import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import { registerBookedCallLeadRoutes } from "./bookedCallLeads";
@@ -596,6 +598,11 @@ async function autoEnrollLeadAsUser(params: {
     throw err;
   }
 
+  // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts rows
+  // with this email (including the lead row that triggered this enrollment).
+  // Best-effort, never fails the enrollment.
+  await backlinkUserRecords(newUser.id, emailLower);
+
   await db.update(passwordResetTokens)
     .set({ usedAt: new Date() })
     .where(and(
@@ -704,6 +711,20 @@ export async function registerRoutes(
       res.status(200).end(await buildPodcastSitemap());
     } catch (err: any) {
       console.error("[sitemap-podcast] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
+  app.get("/sitemap-videos.xml", async (_req, res) => {
+    try {
+      const { buildVideoSitemap } = await import("./sitemap");
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(await buildVideoSitemap());
+    } catch (err: any) {
+      console.error("[sitemap-videos] error:", err.message);
       res.status(500).type("text/plain").send("sitemap error");
     }
   });
@@ -818,6 +839,7 @@ export async function registerRoutes(
   registerBookedCallLeadRoutes(app);
   registerDealRoomRoutes(app);
   registerWatchlistRoutes(app);
+  registerNotificationInboxRoutes(app);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
@@ -2924,6 +2946,10 @@ export async function registerRoutes(
             phone: row.phone || null,
             role: row.role || "user",
           }).returning();
+
+          // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts
+          // rows carrying this email to the imported user.
+          await backlinkUserRecords(newUser.id, email);
 
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -5208,6 +5234,39 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching podcast episode:", error);
       res.status(500).json({ error: "Failed to fetch podcast episode" });
+    }
+  });
+
+  // YouTube videos — the exact mirror of the podcast episode endpoints, backed
+  // by the keyless channel Atom feed (server/youtubeFeed.ts, 1h cache).
+  app.get("/api/youtube/videos", async (_req, res) => {
+    try {
+      const { getYouTubeVideos } = await import("./youtubeFeed");
+      const videos = await getYouTubeVideos();
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.json(videos.slice(0, 50));
+    } catch (error) {
+      console.error("Error fetching YouTube videos:", error);
+      res.status(500).json({ error: "Failed to fetch YouTube videos" });
+    }
+  });
+
+  // Single video payload for the /insights/videos/:slug page — description as
+  // safe HTML, embed URL, topics, contextual tool CTA, related videos, and the
+  // (currently null) enrichment seam.
+  app.get("/api/youtube/videos/:slug", async (req, res) => {
+    try {
+      const { getVideoPayload } = await import("./youtubeFeed");
+      const payload = await getVideoPayload(req.params.slug);
+      if (!payload) {
+        res.status(404).json({ error: "Video not found" });
+        return;
+      }
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.json(payload);
+    } catch (error) {
+      console.error("Error fetching YouTube video:", error);
+      res.status(500).json({ error: "Failed to fetch YouTube video" });
     }
   });
 

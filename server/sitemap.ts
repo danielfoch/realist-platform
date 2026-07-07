@@ -47,7 +47,7 @@ function urlset(urls: SitemapUrl[]) {
 
 export function buildSitemapIndex() {
   const lastmod = today();
-  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-listings.xml", "sitemap-podcast.xml", "sitemap-encyclopedia.xml", "sitemap-events.xml"];
+  const sitemaps = ["sitemap-pages.xml", "sitemap-reports.xml", "sitemap-listings.xml", "sitemap-podcast.xml", "sitemap-videos.xml", "sitemap-encyclopedia.xml", "sitemap-events.xml"];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemaps.map((name) => `  <sitemap>\n    <loc>${BASE}/${name}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`).join("\n")}\n</sitemapindex>\n`;
 }
 
@@ -103,7 +103,7 @@ export async function buildPagesSitemap() {
   // db-backed reports (/reports/:slug served from the blog-posts db) are skipped
   // here because buildReportsSitemap already emits them.
   for (const report of reportsRegistry) {
-    if (report.db) continue;
+    if (report.db || report.config) continue;
     urls.push({
       loc: `${BASE}${report.route}`,
       lastmod: report.date,
@@ -166,6 +166,18 @@ export async function buildReportsSitemap() {
       priority: post.category === "market-analysis" ? 0.75 : 0.65,
     });
   }
+  // Config-driven reports (shared/reports/) live in committed files, not the
+  // blog-posts db, so emit them here from the content dir.
+  const { configReports } = await import("@shared/reports");
+  const { reportRoute } = await import("@shared/reportContent");
+  for (const report of configReports) {
+    urls.push({
+      loc: `${BASE}${reportRoute(report.slug)}`,
+      lastmod: report.publishDate,
+      changefreq: "monthly",
+      priority: 0.78,
+    });
+  }
   return urlset(urls);
 }
 
@@ -188,6 +200,29 @@ export async function buildPodcastSitemap() {
   } catch {}
   return urlset([
     { loc: `${BASE}/insights/podcast`, lastmod: hubLastmod, changefreq: "weekly", priority: 0.8 },
+    ...urls,
+  ]);
+}
+
+export async function buildVideoSitemap() {
+  const urls: SitemapUrl[] = [];
+  let hubLastmod = today();
+  try {
+    const { getYouTubeVideos } = await import("./youtubeFeed");
+    const videos = await getYouTubeVideos();
+    // Hub lastmod = newest video uploadDate; video lastmod = its real uploadDate.
+    if (videos[0]?.pubDate) hubLastmod = dateOnly(videos[0].pubDate);
+    for (const video of videos) {
+      urls.push({
+        loc: `${BASE}/insights/videos/${video.slug}`,
+        lastmod: dateOnly(video.pubDate || undefined),
+        changefreq: "monthly",
+        priority: 0.65,
+      });
+    }
+  } catch {}
+  return urlset([
+    { loc: `${BASE}/insights/videos`, lastmod: hubLastmod, changefreq: "weekly", priority: 0.8 },
     ...urls,
   ]);
 }

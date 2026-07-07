@@ -16,11 +16,17 @@ import {
   listingCanonicalPath,
 } from "./listingSeo";
 import { deriveEpisodeKeywords } from "@shared/podcastEpisodes";
+import { deriveVideoKeywords } from "@shared/youtubeVideos";
 import {
   durationToIso8601,
   stripShowNotes,
   type PodcastEpisode as PodcastFeedEpisode,
 } from "./podcastFeed";
+import {
+  stripDescription,
+  videoEmbedUrl,
+  type YouTubeVideo as YouTubeFeedVideo,
+} from "./youtubeFeed";
 
 const BASE_URL = "https://realist.ca";
 const RSS_FEED_URL = "https://thecanadianrealestateinvestor.substack.com/feed";
@@ -77,6 +83,75 @@ const STATIC_META: Record<string, PageMeta> = {
   "/community/events": {
     title: "Canadian Real Estate Investor Events - Realist.ca",
     description: "Meetups, masterminds, podcast tapings, and live events for Canadian real estate investors.",
+  },
+  "/community/events/unpacking-multiplexes-toronto": {
+    title: "Toronto Missing Middle & Multiplex Event | Realist",
+    description: "Toronto's missing middle housing and multiplex development event. Join investors, architects, planners, lenders and builders at The Terminal Theatre on September 15, 2026.",
+    canonicalPath: "/community/events/unpacking-multiplexes-toronto",
+    ogImage: "/events/unpacking-multiplexes-toronto-og.png",
+    keywords: "Toronto missing middle, Toronto multiplexes, Toronto multiplex event, missing middle housing Toronto, multiplex development Toronto, Toronto fourplex event, Toronto multiplex conference, Unpacking Multiplexes Toronto, Toronto housing policy event, Toronto real estate investor event",
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        "@id": `${BASE_URL}/community/events/unpacking-multiplexes-toronto#event`,
+        name: "Unpacking Multiplexes Toronto",
+        description: "Toronto's missing middle housing and multiplex development event. Join investors, architects, planners, lenders and builders at The Terminal Theatre on September 15, 2026.",
+        url: `${BASE_URL}/community/events/unpacking-multiplexes-toronto`,
+        image: `${BASE_URL}/events/unpacking-multiplexes-toronto-og.png`,
+        startDate: "2026-09-15T17:00:00-04:00",
+        endDate: "2026-09-15T22:00:00-04:00",
+        eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+        eventStatus: "https://schema.org/EventScheduled",
+        inLanguage: "en-CA",
+        location: {
+          "@type": "Place",
+          name: "The Terminal Theatre",
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: "207 Queens Quay West, Third Floor",
+            addressLocality: "Toronto",
+            addressRegion: "ON",
+            postalCode: "M5J 1A7",
+            addressCountry: "CA",
+          },
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: 43.639526,
+            longitude: -79.379194,
+          },
+        },
+        organizer: {
+          "@type": "Organization",
+          name: "Realist.ca",
+          url: BASE_URL,
+        },
+        offers: {
+          "@type": "Offer",
+          url: "https://ci.ovationtix.com/37003/production/1277443",
+          availability: "https://schema.org/InStock",
+          priceCurrency: "CAD",
+          validFrom: "2026-07-01T00:00:00-04:00",
+        },
+        about: [
+          "Toronto missing middle housing",
+          "Toronto multiplexes",
+          "Multiplex development",
+          "Fourplex development",
+          "Housing supply",
+          "Real estate investing",
+        ],
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "Events", item: `${BASE_URL}/community/events` },
+          { "@type": "ListItem", position: 3, name: "Unpacking Multiplexes Toronto", item: `${BASE_URL}/community/events/unpacking-multiplexes-toronto` },
+        ],
+      },
+    ],
   },
   "/community/network": {
     title: "Realist Network - Connect with Canadian Real Estate Investors",
@@ -185,6 +260,23 @@ const STATIC_META: Record<string, PageMeta> = {
             jobTitle: "Mortgage Expert",
           },
         ],
+        publisher: { "@id": `${BASE_URL}/#organization` },
+      },
+    ],
+  },
+  "/insights/videos": {
+    title: "Daniel Foch on YouTube - Canadian Real Estate Videos",
+    description: "Watch Daniel Foch's latest videos on the Canadian housing market, mortgages, and real estate investing. Every video has its own page with the full description.",
+    canonicalPath: "/insights/videos",
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "@id": `${BASE_URL}/insights/videos#collection`,
+        name: "Daniel Foch on YouTube",
+        url: `${BASE_URL}/insights/videos`,
+        description: "Daniel Foch's latest YouTube videos on the Canadian housing market, mortgages, and real estate investing.",
+        inLanguage: "en-CA",
         publisher: { "@id": `${BASE_URL}/#organization` },
       },
     ],
@@ -414,6 +506,59 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
     } catch {}
   }
 
+  // Config-driven reports (shared/reports/): /insights/reports/:slug gets a
+  // Report + Person(author) + BreadcrumbList JSON-LD graph built from the same
+  // content object the client and crawler fallback render.
+  const configReportMatch = path.match(/^\/insights\/reports\/([^\/]+)$/);
+  if (configReportMatch) {
+    const { getConfigReport } = await import("@shared/reports");
+    const report = getConfigReport(configReportMatch[1]);
+    if (report) {
+      const canonicalPath = `/insights/reports/${report.slug}`;
+      const url = `${BASE_URL}${canonicalPath}`;
+      return {
+        title: report.metaTitle || `${report.title} | Realist`,
+        description: report.metaDescription || report.dek,
+        ogImage: report.ogImage,
+        ogType: "article",
+        canonicalPath,
+        keywords: report.tags.join(", "),
+        structuredData: [
+          {
+            "@context": "https://schema.org",
+            "@type": "Report",
+            "@id": `${url}#report`,
+            headline: report.title,
+            description: report.metaDescription || report.dek,
+            url,
+            image: report.ogImage
+              ? (report.ogImage.startsWith("http") ? report.ogImage : `${BASE_URL}${report.ogImage}`)
+              : `${BASE_URL}/og-image.png`,
+            datePublished: `${report.publishDate}T00:00:00Z`,
+            author: {
+              "@type": "Person",
+              "@id": report.author.personId,
+              name: report.author.name,
+              ...(report.author.url ? { url: report.author.url } : {}),
+            },
+            publisher: { "@id": `${BASE_URL}/#organization` },
+            mainEntityOfPage: url,
+            keywords: report.tags.join(", "),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+              { "@type": "ListItem", position: 2, name: "Reports", item: `${BASE_URL}/reports` },
+              { "@type": "ListItem", position: 3, name: report.title, item: url },
+            ],
+          },
+        ],
+      };
+    }
+  }
+
   // Dynamic project landing
   const projectMatch = path.match(/^\/projects\/([^\/]+)$/);
   if (projectMatch) {
@@ -538,6 +683,17 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
       const { getEpisodeBySlug } = await import("./podcastFeed");
       const episode = await getEpisodeBySlug(decodeURIComponent(podcastEpisodeMatch[1]));
       if (episode) return buildPodcastEpisodeMeta(episode);
+    } catch { /* fall through */ }
+  }
+
+  // Per-video YouTube pages: /insights/videos/:slug gets real meta,
+  // VideoObject JSON-LD, and BreadcrumbList. Unknown slugs fall through.
+  const videoMatch = path.match(/^\/insights\/videos\/([^\/]+)$/);
+  if (videoMatch) {
+    try {
+      const { getYouTubeVideoBySlug } = await import("./youtubeFeed");
+      const video = await getYouTubeVideoBySlug(decodeURIComponent(videoMatch[1]));
+      if (video) return buildVideoMeta(video);
     } catch { /* fall through */ }
   }
 
@@ -723,6 +879,51 @@ function buildPodcastEpisodeMeta(episode: PodcastFeedEpisode): PageMeta {
           { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
           { "@type": "ListItem", position: 2, name: "Podcast", item: `${BASE_URL}/insights/podcast` },
           { "@type": "ListItem", position: 3, name: episode.title, item: url },
+        ],
+      },
+    ],
+  };
+}
+
+function buildVideoMeta(video: YouTubeFeedVideo): PageMeta {
+  const canonicalPath = `/insights/videos/${video.slug}`;
+  const url = `${BASE_URL}${canonicalPath}`;
+  const description = stripDescription(video.description, 158)
+    || `${video.title} — a YouTube video from Daniel Foch.`;
+  const uploadedDate = video.pubDate ? new Date(video.pubDate) : null;
+  const uploadDate = uploadedDate && !isNaN(uploadedDate.getTime())
+    ? uploadedDate.toISOString()
+    : undefined;
+
+  return {
+    title: `${video.title} - Daniel Foch`,
+    description,
+    ogImage: video.thumbnailUrl || undefined,
+    ogType: "article",
+    canonicalPath,
+    keywords: deriveVideoKeywords(video.title),
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        "@id": `${url}#video`,
+        name: video.title,
+        description: stripDescription(video.description, 500) || description,
+        ...(video.thumbnailUrl ? { thumbnailUrl: [video.thumbnailUrl] } : {}),
+        ...(uploadDate ? { uploadDate } : {}),
+        embedUrl: videoEmbedUrl(video.videoId),
+        contentUrl: video.link,
+        url,
+        publisher: { "@id": `${BASE_URL}/#organization` },
+        inLanguage: "en-CA",
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "Videos", item: `${BASE_URL}/insights/videos` },
+          { "@type": "ListItem", position: 3, name: video.title, item: url },
         ],
       },
     ],
@@ -947,6 +1148,7 @@ const KNOWN_APP_ROUTES = new Set<string>([
   "/community/network",
   "/insights",
   "/insights/podcast",
+  "/insights/videos",
   "/insights/blog",
   "/insights/guides",
   "/insights/encyclopedia",

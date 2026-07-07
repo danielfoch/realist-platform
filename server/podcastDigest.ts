@@ -25,6 +25,16 @@
  * server/podcastFeed.ts (getPodcastEpisodes) — this module NEVER re-fetches or
  * re-parses the RSS itself. Slugs match the episode pages and sitemap exactly.
  *
+ * WEEKLY ROUNDUP: the digest is "everything Realist published this week" —
+ * episodes first (format unchanged), then a "New on Realist" section with
+ * every config report (shared/reports/) whose publishDate falls in the 7-day
+ * send window, and (dormant seam, see getNewVideos) YouTube videos once the
+ * videos rail (PR #121) lands. Pure selection lives in shared/podcastDigest.ts
+ * (roundupSendWindow / selectRoundupExtras / hasRoundupContent). Empty-week
+ * rule: no new episodes AND no new reports/videos → skip + log, never an
+ * empty email. Cron, stream key, consent, governor path, and dedupe-key
+ * semantics are IDENTICAL to the episode-only digest.
+ *
  * ── FUTURE: seeded subscriber import (Dan's Substack list) ──────────────────
  * Importing Dan's existing Substack subscribers is a future ONE-OFF (not built
  * here). A future admin importer would accept a CSV of the shape:
@@ -41,6 +51,7 @@ import crypto from "crypto";
 import cron from "node-cron";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { backlinkUserRecords } from "./personSpine";
 import { users, notificationQueue, notificationEvents, emailConsent } from "@shared/schema";
 import { normalizeEmail } from "@shared/authTokens";
 import { getResendClient } from "./resend";
@@ -53,8 +64,14 @@ import {
   summarizeShowNotes,
   podcastDigestDedupeKey,
   isoWeekKey,
+  roundupSendWindow,
+  selectRoundupExtras,
+  hasRoundupContent,
   type DigestEpisode,
+  type RoundupItem,
 } from "@shared/podcastDigest";
+import { configReports } from "@shared/reports";
+import { reportRoute } from "@shared/reportContent";
 
 const REPLY_TO_EMAIL = process.env.PODCAST_DIGEST_REPLY_EMAIL || "danielfoch@gmail.com";
 /** First-ever digest for a subscriber looks back this far so they get recent
@@ -63,6 +80,9 @@ const REPLY_TO_EMAIL = process.env.PODCAST_DIGEST_REPLY_EMAIL || "danielfoch@gma
 const FIRST_SEND_LOOKBACK_DAYS = 21;
 /** Max episodes surfaced in a single digest (a busy catch-up week is capped). */
 const MAX_EPISODES_PER_DIGEST = 3;
+/** Max reports / videos in the "New on Realist" roundup section. */
+const MAX_REPORTS_PER_DIGEST = 5;
+const MAX_VIDEOS_PER_DIGEST = 5;
 const UNSUBSCRIBE_SECRET = process.env.SESSION_SECRET || "realist-digest-secret";
 
 function unsubscribeToken(userId: string): string {
@@ -85,6 +105,42 @@ function unsubscribeToken(userId: string): string {
  */
 function getEpisodeSummary(episode: PodcastEpisode): string {
   return summarizeShowNotes(episode.description, { maxSentences: 3, maxChars: 320 });
+}
+
+// ---------------------------------------------------------------------------
+// Weekly roundup sources: config reports (live) + YouTube videos (seam)
+// ---------------------------------------------------------------------------
+
+/**
+ * Every config report as a windowable roundup item. Reports register in
+ * shared/reports/index.ts (the same directory that powers
+ * /insights/reports/:slug and the sitemap) — this NEVER re-declares report
+ * metadata, it just reshapes {slug, title, dek, publishDate} for selection.
+ */
+function getReportRoundupItems(): RoundupItem[] {
+  return configReports.map((report) => ({
+    slug: report.slug,
+    title: report.title,
+    dek: report.dek,
+    date: report.publishDate,
+  }));
+}
+
+/** A video in the roundup: a RoundupItem plus its watch URL. */
+interface VideoItem extends RoundupItem {
+  url: string;
+}
+
+/**
+ * SEAM (dormant — do NOT build YouTube ingestion now): returns the candidate
+ * videos for the roundup. Activates when the YouTube rail (PR #121) lands:
+ * swap the empty array for server/youtubeFeed.ts getYouTubeVideos() mapped to
+ * VideoItem ({slug: videoId, title, date: publishedAt, url: watchUrl}). The
+ * selection (selectRoundupExtras) and both email renderers already handle a
+ * non-empty videos array, so activation is a one-line change here.
+ */
+async function getNewVideos(): Promise<VideoItem[]> {
+  return [];
 }
 
 // ---------------------------------------------------------------------------
@@ -162,8 +218,21 @@ interface RenderedEpisode {
   episodeUrl: string;
 }
 
+/** The non-episode content rendered in the "New on Realist" section. */
+interface RenderedExtras {
+  reports: RoundupItem[];
+  videos: VideoItem[];
+}
+
+const NO_EXTRAS: RenderedExtras = { reports: [], videos: [] };
+
 function episodeUrl(slug: string): string {
   return `${BRAND_BASE_URL}/insights/podcast/${slug}?source=podcast_digest`;
+}
+
+/** Canonical absolute URL for a config report (site is canonical). */
+function reportUrl(slug: string): string {
+  return `${BRAND_BASE_URL}${reportRoute(slug)}?source=podcast_digest`;
 }
 
 function prettyDate(pubDate: string): string {
@@ -177,14 +246,68 @@ function prettyDate(pubDate: string): string {
   });
 }
 
-function buildSubject(rendered: RenderedEpisode[]): string {
+function buildSubject(rendered: RenderedEpisode[], extras: RenderedExtras = NO_EXTRAS): string {
   const lead = rendered[0]?.episode.title;
+  // Episodes lead the subject — this branch is byte-identical to the
+  // episode-only digest so existing subscribers see no change.
   if (rendered.length === 1 && lead) return `New episode: ${lead}`;
   if (rendered.length > 1 && lead) return `${rendered.length} new episodes — ${lead}`;
+  // No new episode this week: lead with the newest report (or video).
+  const extraLead = extras.reports[0]?.title || extras.videos[0]?.title;
+  if (extraLead) return `New on realist.ca: ${extraLead}`;
   return `This week on ${PODCAST_NAME}`;
 }
 
-function buildHtml(firstName: string, rendered: RenderedEpisode[], unsubscribeUrl: string): string {
+/**
+ * The "New on Realist" roundup section: every config report (title + dek +
+ * canonical /insights/reports/<slug> link) published this week, then any new
+ * videos (dormant until the YouTube rail lands — see getNewVideos). Returns ""
+ * when the week has neither, so episode-only emails render byte-identically to
+ * the pre-roundup digest.
+ */
+// Report/video titles and deks are config-authored today but the pipeline is
+// explicitly agent-fed (shared/reports/index.ts) — treat them as untrusted in
+// HTML. Same table as server/seoRender.ts escapeHtml.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildExtrasHtml(extras: RenderedExtras): string {
+  const cards = [
+    ...extras.reports.map(({ slug, title, dek }) => ({ url: reportUrl(slug), title, dek, cta: "Read the report" })),
+    ...extras.videos.map(({ url, title, dek }) => ({ url, title, dek, cta: "Watch the video" })),
+  ];
+  if (cards.length === 0) return "";
+  const cardHtml = cards
+    .map(
+      ({ url, title, dek, cta }) => `
+      <div style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 20px; margin: 0 0 12px 0; background: #ffffff;">
+        <h3 style="margin: 0 0 6px 0; font-size: 15px; line-height: 1.4; color: #0f172a; font-weight: 700;">
+          <a href="${escapeHtml(url)}" style="color: #0f172a; text-decoration: none;">${escapeHtml(title)}</a>
+        </h3>
+        ${dek ? `<p style="margin: 0 0 10px 0; font-size: 13px; line-height: 1.6; color: #374151;">${escapeHtml(dek)}</p>` : ""}
+        <a href="${escapeHtml(url)}" style="color: #2563eb; text-decoration: none; font-size: 13px; font-weight: 600;">${cta} &rarr;</a>
+      </div>`,
+    )
+    .join("");
+  return `
+        <div style="margin: 24px 0 0 0;">
+          <p style="margin: 0 0 12px 0; font-size: 12px; color: #6b7280; letter-spacing: 1px; text-transform: uppercase; font-weight: 700;">New on Realist</p>
+          ${cardHtml}
+        </div>`;
+}
+
+function buildHtml(
+  firstName: string,
+  rendered: RenderedEpisode[],
+  unsubscribeUrl: string,
+  extras: RenderedExtras = NO_EXTRAS,
+): string {
   const episodeCards = rendered
     .map(({ episode, summary, episodeUrl: url }) => {
       const meta = [prettyDate(episode.pubDate), episode.duration].filter(Boolean).join(" · ");
@@ -219,10 +342,15 @@ function buildHtml(firstName: string, rendered: RenderedEpisode[], unsubscribeUr
       <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none;">
         <p style="margin: 0 0 16px 0; font-size: 15px; color: #111827;">Hey ${firstName || "there"},</p>
         <p style="margin: 0 0 20px 0; font-size: 14px; color: #374151; line-height: 1.6;">
-          Here's what dropped this week on Canada's #1 real estate podcast. Tap through to listen on realist.ca — every episode page has the show notes, the topics we covered, and a tool to run the numbers yourself.
+          ${
+            rendered.length > 0
+              ? "Here's what dropped this week on Canada's #1 real estate podcast. Tap through to listen on realist.ca — every episode page has the show notes, the topics we covered, and a tool to run the numbers yourself."
+              : "No new episode this week — but here's what's new on realist.ca: fresh research and reports you can act on."
+          }
         </p>
 
         ${episodeCards}
+        ${buildExtrasHtml(extras)}
 
         <div style="text-align: center; margin: 24px 0 8px 0;">
           <a href="${BRAND_BASE_URL}/insights/podcast?source=podcast_digest" style="color: #2563eb; text-decoration: none; font-size: 13px;">
@@ -244,20 +372,38 @@ function buildHtml(firstName: string, rendered: RenderedEpisode[], unsubscribeUr
     </div>`;
 }
 
-function buildText(firstName: string, rendered: RenderedEpisode[], unsubscribeUrl: string): string {
-  const lines = [
-    `Hey ${firstName || "there"},`,
-    "",
-    `This week on ${PODCAST_NAME} (Daniel Foch & Nick Hill):`,
-    "",
-  ];
-  for (const { episode, summary, episodeUrl: url } of rendered) {
-    const meta = [prettyDate(episode.pubDate), episode.duration].filter(Boolean).join(" · ");
-    lines.push(`• ${episode.title}${meta ? ` (${meta})` : ""}`);
-    if (summary) lines.push(`  ${summary}`);
-    lines.push(`  Listen: ${url}`);
-    lines.push(`  Or: Apple ${PODCAST_APPLE_URL} | Spotify ${PODCAST_SPOTIFY_URL}`);
-    lines.push("");
+function buildText(
+  firstName: string,
+  rendered: RenderedEpisode[],
+  unsubscribeUrl: string,
+  extras: RenderedExtras = NO_EXTRAS,
+): string {
+  const lines = [`Hey ${firstName || "there"},`, ""];
+  if (rendered.length > 0) {
+    lines.push(`This week on ${PODCAST_NAME} (Daniel Foch & Nick Hill):`, "");
+    for (const { episode, summary, episodeUrl: url } of rendered) {
+      const meta = [prettyDate(episode.pubDate), episode.duration].filter(Boolean).join(" · ");
+      lines.push(`• ${episode.title}${meta ? ` (${meta})` : ""}`);
+      if (summary) lines.push(`  ${summary}`);
+      lines.push(`  Listen: ${url}`);
+      lines.push(`  Or: Apple ${PODCAST_APPLE_URL} | Spotify ${PODCAST_SPOTIFY_URL}`);
+      lines.push("");
+    }
+  }
+  if (extras.reports.length > 0 || extras.videos.length > 0) {
+    lines.push("New on Realist:", "");
+    for (const report of extras.reports) {
+      lines.push(`• ${report.title}`);
+      if (report.dek) lines.push(`  ${report.dek}`);
+      lines.push(`  Read: ${reportUrl(report.slug)}`);
+      lines.push("");
+    }
+    for (const video of extras.videos) {
+      lines.push(`• ${video.title}`);
+      if (video.dek) lines.push(`  ${video.dek}`);
+      lines.push(`  Watch: ${video.url}`);
+      lines.push("");
+    }
   }
   lines.push(`Browse every episode: ${BRAND_BASE_URL}/insights/podcast?source=podcast_digest`);
   lines.push("");
@@ -312,6 +458,10 @@ export async function ensurePodcastSubscriber(
       .returning({ id: users.id });
     userId = user.id;
     created = true;
+
+    // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts rows
+    // with this email. Best-effort, never fails the subscribe.
+    await backlinkUserRecords(userId, email);
   }
 
   const existingPref = await storage.getNotificationPreference(userId);
@@ -354,7 +504,24 @@ export interface DigestPreview {
   week: string;
   subscriberCount: number;
   latestEpisodes: Array<{ slug: string; title: string; pubDate: string; summary: string; episodeUrl: string }>;
+  /** Config reports published inside this week's send window ("New on Realist"). */
+  newReports: Array<{ slug: string; title: string; dek?: string; date: string; reportUrl: string }>;
+  /** New videos (always [] until the YouTube rail / PR #121 lands). */
+  newVideos: Array<{ slug: string; title: string; date: string; url: string }>;
   subjectExample: string;
+}
+
+/**
+ * This week's non-episode roundup content: config reports (and, once the
+ * YouTube rail lands, videos) published inside the send window.
+ */
+async function getRoundupExtras(now: Date): Promise<RenderedExtras> {
+  const window = roundupSendWindow(now);
+  return selectRoundupExtras(
+    { reports: getReportRoundupItems(), videos: await getNewVideos() },
+    window,
+    { maxReports: MAX_REPORTS_PER_DIGEST, maxVideos: MAX_VIDEOS_PER_DIGEST },
+  );
 }
 
 /**
@@ -363,7 +530,11 @@ export interface DigestPreview {
  * sends, no cap consumption, no send-log rows.
  */
 export async function previewPodcastDigest(now: Date = new Date()): Promise<DigestPreview> {
-  const [episodes, subscribers] = await Promise.all([getPodcastEpisodes(), getSubscribedUsers()]);
+  const [episodes, subscribers, extras] = await Promise.all([
+    getPodcastEpisodes(),
+    getSubscribedUsers(),
+    getRoundupExtras(now),
+  ]);
   const lookback = new Date(now.getTime() - FIRST_SEND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
   const selected = selectEpisodesForDigest(episodes.map(toDigestEpisode), {
     firstSendLookback: lookback,
@@ -383,7 +554,9 @@ export async function previewPodcastDigest(now: Date = new Date()): Promise<Dige
       summary: r.summary,
       episodeUrl: r.episodeUrl,
     })),
-    subjectExample: buildSubject(rendered),
+    newReports: extras.reports.map((r) => ({ ...r, reportUrl: reportUrl(r.slug) })),
+    newVideos: extras.videos.map((v) => ({ slug: v.slug, title: v.title, date: v.date, url: v.url })),
+    subjectExample: buildSubject(rendered, extras),
   };
 }
 
@@ -410,7 +583,12 @@ export async function runPodcastDigestSweep(
 ): Promise<SweepResult> {
   const dryRun = options.dryRun === true;
   const now = options.now ?? new Date();
-  const week = isoWeekKey(now);
+  // Week identity comes from the roundup window BOUNDARY (last Thursday
+  // 13:00 UTC), not the sweep clock: a manual sweep on a Monday computes the
+  // same window AND the same dedupe keys as that week's scheduled send, so
+  // the governor suppresses off-schedule duplicates instead of re-mailing.
+  const windowEnd = roundupSendWindow(now).end;
+  const week = isoWeekKey(windowEnd);
   console.log(`[podcast-digest] Starting weekly sweep for ${week} (dryRun=${dryRun})`);
 
   const episodes = await getPodcastEpisodes();
@@ -418,10 +596,19 @@ export async function runPodcastDigestSweep(
   const subscribers = await getSubscribedUsers();
   console.log(`[podcast-digest] ${subscribers.length} subscribed users`);
 
+  // Weekly roundup extras ("New on Realist"): config reports published in the
+  // last 7 days, plus videos once the YouTube rail (PR #121) lands. Global per
+  // sweep — the window tiles week-over-week, unlike per-user episode `since`.
+  const extras = await getRoundupExtras(now);
+  console.log(
+    `[podcast-digest] Roundup extras this week: ${extras.reports.length} report(s), ${extras.videos.length} video(s)`,
+  );
+
   const result: SweepResult = { week, subscribers: subscribers.length, sent: 0, skipped: 0, errors: 0, dryRun };
   if (subscribers.length === 0) return result;
 
   const lookback = new Date(now.getTime() - FIRST_SEND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+  let emptyWeekSkips = 0;
 
   // One notification event groups this sweep's deliveries (like weeklyDigest).
   let eventId: string | null = null;
@@ -451,8 +638,10 @@ export async function runPodcastDigestSweep(
         firstSendLookback: lookback,
         maxEpisodes: MAX_EPISODES_PER_DIGEST,
       });
-      if (selected.length === 0) {
-        // Nothing new since we last emailed them — no send this week.
+      if (!hasRoundupContent({ episodes: selected, reports: extras.reports, videos: extras.videos })) {
+        // Empty week for this user: no new episodes since their last digest
+        // AND no new reports or videos — never send an empty email.
+        emptyWeekSkips++;
         result.skipped++;
         continue;
       }
@@ -469,7 +658,7 @@ export async function runPodcastDigestSweep(
 
       // Governor: claims podcast_digest:<uid>:<week> in retention_email_log,
       // applies CASL consent + podcast_digest toggle + rolling weekly cap.
-      const dedupeKey = podcastDigestDedupeKey(recipient.id, now);
+      const dedupeKey = podcastDigestDedupeKey(recipient.id, windowEnd);
       const gate = await governMarketingSend({
         userId: recipient.id,
         stream: "podcast_digest",
@@ -484,9 +673,9 @@ export async function runPodcastDigestSweep(
 
       const token = unsubscribeToken(recipient.id);
       const unsubscribeUrl = `${BRAND_BASE_URL}/api/email/unsubscribe?uid=${encodeURIComponent(recipient.id)}&token=${token}`;
-      const subject = buildSubject(rendered);
-      const html = buildHtml(recipient.firstName || "", rendered, unsubscribeUrl);
-      const text = buildText(recipient.firstName || "", rendered, unsubscribeUrl);
+      const subject = buildSubject(rendered, extras);
+      const html = buildHtml(recipient.firstName || "", rendered, unsubscribeUrl, extras);
+      const text = buildText(recipient.firstName || "", rendered, unsubscribeUrl, extras);
 
       const reservation = await db
         .insert(notificationQueue)
@@ -497,7 +686,12 @@ export async function runPodcastDigestSweep(
           templateKey: "podcast_digest",
           dedupeKey,
           status: "pending",
-          payloadJson: { week, episodeSlugs: selected.map((e) => e.slug) },
+          payloadJson: {
+            week,
+            episodeSlugs: selected.map((e) => e.slug),
+            reportSlugs: extras.reports.map((r) => r.slug),
+            videoSlugs: extras.videos.map((v) => v.slug),
+          },
         })
         .onConflictDoNothing({ target: notificationQueue.dedupeKey })
         .returning({ id: notificationQueue.id });
@@ -532,7 +726,9 @@ export async function runPodcastDigestSweep(
         .update(notificationQueue)
         .set({ status: "sent", sentAt: new Date() })
         .where(sql`${notificationQueue.id} = ${reservation[0].id}`);
-      console.log(`[podcast-digest] Sent to ${recipient.email} (${selected.length} ep) id=${(data as any)?.id || "?"}`);
+      console.log(
+        `[podcast-digest] Sent to ${recipient.email} (${selected.length} ep, ${extras.reports.length} rpt, ${extras.videos.length} vid) id=${(data as any)?.id || "?"}`,
+      );
       result.sent++;
       await new Promise((r) => setTimeout(r, 600)); // throttle: gentle on Resend
     } catch (err: any) {
@@ -541,6 +737,11 @@ export async function runPodcastDigestSweep(
     }
   }
 
+  if (emptyWeekSkips > 0) {
+    console.log(
+      `[podcast-digest] Empty week for ${emptyWeekSkips} user(s) (no new episodes, reports, or videos) — no email sent to them`,
+    );
+  }
   console.log(
     `[podcast-digest] Sweep complete for ${week}: sent=${result.sent} skipped=${result.skipped} errors=${result.errors}`,
   );
@@ -553,9 +754,12 @@ export async function runPodcastDigestSweep(
  * one-hour DST drift never double-sends). Mirrors scheduleWeeklyDigest.
  */
 export function schedulePodcastDigest() {
+  // Etc/UTC pinned: the roundup window anchors to Thursday 13:00 UTC
+  // (shared ROUNDUP_BOUNDARY) — the cron must fire in the same frame
+  // regardless of host timezone.
   cron.schedule("0 13 * * 4", () => {
     console.log("[podcast-digest] Cron triggered");
     runPodcastDigestSweep().catch((err) => console.error("[podcast-digest] Cron error:", err));
-  });
+  }, { timezone: "Etc/UTC" });
   console.log("[podcast-digest] Scheduled: Thursdays ~9am Toronto (13:00 UTC)");
 }

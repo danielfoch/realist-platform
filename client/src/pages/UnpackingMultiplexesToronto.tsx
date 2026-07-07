@@ -40,8 +40,24 @@ const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
 // Meta Pixel scoped to this event page only (loaded in a useEffect below).
 const FB_PIXEL_ID = "1661103374140663";
 const EVENT_TITLE = "Unpacking Multiplexes Toronto";
-const EVENT_TAGLINE = "Toronto's Premier Multiplex Development Conference";
+const EVENT_TAGLINE = "Toronto's missing middle and multiplex development conference";
 const EVENT_HERO_IMAGE = "/events/unpacking-multiplexes-toronto-ai-hero.png";
+const EVENT_OG_IMAGE = "/events/unpacking-multiplexes-toronto-og.png";
+const EVENT_URL = "https://realist.ca/community/events/unpacking-multiplexes-toronto";
+const EVENT_DESCRIPTION =
+  "Toronto's missing middle housing and multiplex development event. Join investors, architects, planners, lenders and builders at The Terminal Theatre on September 15, 2026.";
+const EVENT_KEYWORDS = [
+  "Toronto missing middle",
+  "Toronto multiplexes",
+  "Toronto multiplex event",
+  "missing middle housing Toronto",
+  "multiplex development Toronto",
+  "Toronto fourplex event",
+  "Toronto multiplex conference",
+  "Unpacking Multiplexes Toronto",
+  "Toronto housing policy event",
+  "Toronto real estate investor event",
+].join(", ");
 
 const VENUE = {
   name: "The Terminal Theatre",
@@ -155,31 +171,90 @@ const faqs = [
 export default function UnpackingMultiplexesToronto() {
   const { toast } = useToast();
   const eventDate = new Date("2026-09-15T17:00:00-04:00");
+  const eventSchema = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Event",
+      "@id": `${EVENT_URL}#event`,
+      name: EVENT_TITLE,
+      description: EVENT_DESCRIPTION,
+      url: EVENT_URL,
+      image: `https://realist.ca${EVENT_OG_IMAGE}`,
+      startDate: "2026-09-15T17:00:00-04:00",
+      endDate: "2026-09-15T22:00:00-04:00",
+      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+      eventStatus: "https://schema.org/EventScheduled",
+      inLanguage: "en-CA",
+      location: {
+        "@type": "Place",
+        name: VENUE.name,
+        address: {
+          "@type": "PostalAddress",
+          streetAddress: "207 Queens Quay West, Third Floor",
+          addressLocality: "Toronto",
+          addressRegion: "ON",
+          postalCode: "M5J 1A7",
+          addressCountry: "CA",
+        },
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: VENUE.lat,
+          longitude: VENUE.lng,
+        },
+      },
+      organizer: {
+        "@type": "Organization",
+        name: "Realist.ca",
+        url: "https://realist.ca",
+      },
+      offers: {
+        "@type": "Offer",
+        url: TICKET_URL,
+        availability: "https://schema.org/InStock",
+        priceCurrency: "CAD",
+        validFrom: "2026-07-01T00:00:00-04:00",
+      },
+      about: [
+        "Toronto missing middle housing",
+        "Toronto multiplexes",
+        "Multiplex development",
+        "Fourplex development",
+        "Housing supply",
+        "Real estate investing",
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://realist.ca/" },
+        { "@type": "ListItem", position: 2, name: "Events", item: "https://realist.ca/community/events" },
+        { "@type": "ListItem", position: 3, name: EVENT_TITLE, item: EVENT_URL },
+      ],
+    },
+  ];
 
-  // Load the Meta (Facebook) Pixel on this page only. The base snippet is
-  // idempotent (bails if window.fbq already exists), so it's safe across SPA
-  // re-mounts; we still (re-)init and fire PageView each time the page mounts.
+  // Load the Meta (Facebook) Pixel on this page only.
+  // Uses document.head.appendChild — more reliable in lazy-loaded React SPAs
+  // than the standard snippet's insertBefore(first-script) pattern, which can
+  // fail if no synchronous script tag is in scope when the effect runs.
+  // The stub (n.queue) captures fbq() calls made before fbevents.js finishes
+  // loading, so init + PageView fire correctly even before the async load.
   useEffect(() => {
     const w = window as any;
     if (!w.fbq) {
-      /* eslint-disable */
-      (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
-        if (f.fbq) return;
-        n = f.fbq = function () {
-          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-        };
-        if (!f._fbq) f._fbq = n;
-        n.push = n;
-        n.loaded = !0;
-        n.version = "2.0";
-        n.queue = [];
-        t = b.createElement(e);
-        t.async = !0;
-        t.src = v;
-        s = b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t, s);
-      })(w, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
-      /* eslint-enable */
+      const n: any = (w.fbq = function (...args: any[]) {
+        n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args);
+      });
+      if (!w._fbq) w._fbq = n;
+      n.push = n;
+      n.loaded = true;
+      n.version = "2.0";
+      n.queue = [];
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://connect.facebook.net/en_US/fbevents.js";
+      document.head.appendChild(script);
     }
     w.fbq("init", FB_PIXEL_ID);
     w.fbq("track", "PageView");
@@ -221,9 +296,12 @@ export default function UnpackingMultiplexesToronto() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Unpacking Multiplexes — Toronto | Realist"
-        description="Toronto's premier multiplex development conference. Join developers, architects, planners and investors at The Terminal Theatre, Queens Quay Terminal on Tuesday, September 15, 2026."
-        ogImage={EVENT_HERO_IMAGE}
+        title="Toronto Missing Middle & Multiplex Event | Realist"
+        description={EVENT_DESCRIPTION}
+        keywords={EVENT_KEYWORDS}
+        canonicalUrl="/community/events/unpacking-multiplexes-toronto"
+        ogImage={EVENT_OG_IMAGE}
+        structuredData={eventSchema}
       />
       {/* Meta Pixel noscript fallback (JS-disabled visitors still register a view) */}
       <noscript>
@@ -273,6 +351,11 @@ export default function UnpackingMultiplexesToronto() {
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl">
             {EVENT_TAGLINE}
+          </p>
+          <p className="text-base md:text-lg text-muted-foreground mb-8 max-w-3xl leading-relaxed">
+            A focused Toronto multiplex event for people trying to turn missing middle
+            housing policy into real projects: site selection, zoning, architecture,
+            financing, construction, exit strategy, and underwriting.
           </p>
 
           <div className="grid sm:grid-cols-2 gap-3 max-w-2xl mb-8">
@@ -340,15 +423,17 @@ export default function UnpackingMultiplexesToronto() {
             <div>
               <h2 className="text-2xl md:text-3xl font-bold mb-4">Overview</h2>
               <p className="text-lg text-muted-foreground leading-relaxed mb-4">
-                Join us for an evening as we dive into the world of multiplexing.
+                Toronto's missing middle moment is here. The harder question is
+                whether the next wave of multiplexes can actually underwrite.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                Whether you're developing your first fourplex or managing a portfolio of
-                multi-unit residential properties, this conference delivers actionable
-                strategies to maximize returns and navigate Toronto's evolving housing
-                landscape. Connect with Toronto's leading developers, architects, urban
-                planners, and real estate investors for an evening of expert insights on
-                multiplex development, housing policy, and investment strategies.
+                Whether you're developing your first fourplex, advising a client on a
+                Toronto multiplex conversion, or trying to understand where upzoning is
+                creating real land value, this conference is built around practical
+                execution. Connect with developers, architects, planners, lenders,
+                builders, and real estate investors for an evening on Toronto
+                multiplexes, missing middle housing policy, financing, design,
+                construction, and investment strategy.
               </p>
             </div>
 
