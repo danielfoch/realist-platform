@@ -42,6 +42,8 @@ export function logFindDealsQuery(input: {
   parsedFilters?: unknown;
   resultCount?: number | null;
   source: "web" | "agent_api";
+  channel?: string | null;
+  apiKeyId?: string | null;
   sessionId?: string | null;
   userId?: string | null;
 }): void {
@@ -53,6 +55,8 @@ export function logFindDealsQuery(input: {
     parsedFilters: input.parsedFilters as any ?? null,
     resultCount: input.resultCount ?? null,
     source: input.source,
+    channel: input.channel ?? input.source,
+    apiKeyId: input.apiKeyId ?? null,
     sessionId: input.sessionId ?? null,
     userId: input.userId ?? null,
   }).catch((error) => {

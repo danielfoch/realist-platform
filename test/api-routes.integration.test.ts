@@ -1,9 +1,22 @@
 import express from 'express';
 import request from 'supertest';
+import crypto from 'crypto';
 import { createApiRouter } from '../src/api-routes';
 
+const RAW_KEY = 'realist_live_testtoken';
+const AUTH_HEADER = `Bearer ${RAW_KEY}`;
+const KEY_HASH = crypto.createHash('sha256').update(RAW_KEY).digest('hex');
+
 function createMockDb() {
-  const query = jest.fn(async (text: string) => {
+  const query = jest.fn(async (text: string, params?: readonly unknown[]) => {
+    if (text.includes('FROM api_keys')) {
+      return {
+        rows: params?.[0] === KEY_HASH
+          ? [{ id: 'key-1', user_id: 'user-1', scopes: ['read'] }]
+          : [],
+      };
+    }
+
     if (text.includes('COUNT(*) AS total')) {
       return { rows: [{ total: '1' }] };
     }
@@ -37,6 +50,18 @@ describe('api routes integration', () => {
     app.use('/api', createApiRouter(createMockDb()));
 
     const response = await request(app).get('/api/listings?limit=1000');
+    expect(response.status).toBe(401);
+    expect(response.body.success).toBe(false);
+  });
+
+  it('returns 400 for invalid query params after API key auth', async () => {
+    const app = express();
+    app.use('/api', createApiRouter(createMockDb()));
+
+    const response = await request(app)
+      .get('/api/listings?limit=1000')
+      .set('Authorization', AUTH_HEADER);
+
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
   });
@@ -45,7 +70,9 @@ describe('api routes integration', () => {
     const app = express();
     app.use('/api', createApiRouter(createMockDb()));
 
-    const response = await request(app).get('/api/listings?city=Toronto&limit=20&page=1');
+    const response = await request(app)
+      .get('/api/listings?city=Toronto&limit=20&page=1')
+      .set('Authorization', AUTH_HEADER);
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data).toHaveLength(1);

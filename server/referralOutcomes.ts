@@ -50,6 +50,11 @@ const updateReferralOutcomeSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
   reportedBy: z.string().trim().max(160).optional(),
 }).strict();
+type UpdateReferralOutcomeInput = z.infer<typeof updateReferralOutcomeSchema>;
+
+export class ReferralOutcomeValidationError extends Error {
+  name = "ReferralOutcomeValidationError";
+}
 
 export function isReferralOutcomeStatus(value: unknown): value is ReferralOutcomeStatus {
   return typeof value === "string" && (REFERRAL_OUTCOME_STATUSES as readonly string[]).includes(value);
@@ -165,6 +170,75 @@ async function getOutcomeByToken(token: string): Promise<OutcomeJoinedRow | null
   return row ?? null;
 }
 
+async function getOutcomeByIdForRealtor(outcomeId: string, realtorUserId: string): Promise<OutcomeJoinedRow | null> {
+  const [row] = await db.select({
+    outcome: referralOutcomes,
+    notification: realtorLeadNotifications,
+    introduction: realtorIntroductions,
+  })
+    .from(referralOutcomes)
+    .leftJoin(realtorLeadNotifications, eq(referralOutcomes.notificationId, realtorLeadNotifications.id))
+    .leftJoin(realtorIntroductions, eq(referralOutcomes.introductionId, realtorIntroductions.id))
+    .where(and(
+      eq(referralOutcomes.id, outcomeId),
+      eq(referralOutcomes.realtorUserId, realtorUserId),
+    ))
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function getSafeReferralOutcomeForAgent(outcomeId: string, realtorUserId: string) {
+  const row = await getOutcomeByIdForRealtor(outcomeId, realtorUserId);
+  return row ? toSafeOutcomeResponse(row) : null;
+}
+
+async function applyOutcomeUpdate(row: OutcomeJoinedRow, input: UpdateReferralOutcomeInput): Promise<OutcomeJoinedRow> {
+  const currentStatus = isReferralOutcomeStatus(row.outcome.status) ? row.outcome.status : "pending";
+  const transition = validateOutcomeTransition({
+    currentStatus,
+    action: input.action,
+    gci: input.gci,
+    lostReason: input.lostReason,
+  });
+  if (!transition.ok) {
+    throw new ReferralOutcomeValidationError(transition.error);
+  }
+
+  const referralFeeAmount = transition.nextStatus === "closed"
+    ? computeReferralFee(input.gci!, row.outcome.referralFeePercent)
+    : undefined;
+
+  const [updated] = await db.update(referralOutcomes).set({
+    status: transition.nextStatus,
+    lastAction: input.action,
+    closePrice: moneyToDb(input.closePrice),
+    gci: moneyToDb(input.gci),
+    referralFeeAmount: moneyToDb(referralFeeAmount),
+    lostReason: input.lostReason ?? null,
+    notes: input.notes ?? row.outcome.notes,
+    reportedBy: input.reportedBy ?? row.outcome.reportedBy,
+    reportedAt: new Date(),
+    updatedAt: new Date(),
+  }).where(eq(referralOutcomes.id, row.outcome.id)).returning();
+
+  if (!updated) {
+    throw new Error("Referral outcome update conflicted");
+  }
+
+  return { ...row, outcome: updated };
+}
+
+export async function updateReferralOutcomeForAgent(
+  outcomeId: string,
+  realtorUserId: string,
+  input: UpdateReferralOutcomeInput,
+) {
+  const row = await getOutcomeByIdForRealtor(outcomeId, realtorUserId);
+  if (!row) return null;
+  return toSafeOutcomeResponse(await applyOutcomeUpdate(row, input));
+}
+
 export async function createOrGetReferralOutcomeForIntroduction(input: {
   notification: RealtorLeadNotification;
   introduction: RealtorIntroduction;
@@ -241,45 +315,12 @@ export function registerReferralOutcomeRoutes(app: Express): void {
         return;
       }
 
-      const currentStatus = isReferralOutcomeStatus(row.outcome.status) ? row.outcome.status : "pending";
-      const transition = validateOutcomeTransition({
-        currentStatus,
-        action: parsed.data.action,
-        gci: parsed.data.gci,
-        lostReason: parsed.data.lostReason,
-      });
-      if (!transition.ok) {
-        res.status(400).json({ success: false, error: transition.error });
-        return;
-      }
-
-      const referralFeeAmount = transition.nextStatus === "closed"
-        ? computeReferralFee(parsed.data.gci!, row.outcome.referralFeePercent)
-        : undefined;
-
-      const [updated] = await db.update(referralOutcomes).set({
-        status: transition.nextStatus,
-        lastAction: parsed.data.action,
-        closePrice: moneyToDb(parsed.data.closePrice),
-        gci: moneyToDb(parsed.data.gci),
-        referralFeeAmount: moneyToDb(referralFeeAmount),
-        lostReason: parsed.data.lostReason ?? null,
-        notes: parsed.data.notes ?? row.outcome.notes,
-        reportedBy: parsed.data.reportedBy ?? row.outcome.reportedBy,
-        reportedAt: new Date(),
-        updatedAt: new Date(),
-      }).where(and(
-        eq(referralOutcomes.id, row.outcome.id),
-        eq(referralOutcomes.token, req.params.token),
-      )).returning();
-
-      if (!updated) {
-        res.status(409).json({ success: false, error: "Referral outcome update conflicted" });
-        return;
-      }
-
-      res.json(toSafeOutcomeResponse({ ...row, outcome: updated }));
+      res.json(toSafeOutcomeResponse(await applyOutcomeUpdate(row, parsed.data)));
     } catch (err) {
+      if (err instanceof ReferralOutcomeValidationError) {
+        res.status(400).json({ success: false, error: err.message });
+        return;
+      }
       console.error("[referral-outcomes] update failed:", err instanceof Error ? err.message : err);
       res.status(500).json({ success: false, error: "Failed to update referral outcome" });
     }

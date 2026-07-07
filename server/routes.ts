@@ -6687,6 +6687,9 @@ export async function registerRoutes(
       const userId = req.session?.userId ?? null;
       const sessionId = req.sessionID ?? req.session?.id ?? null;
       const demandSource = req.body?.demandSource === "agent_api" ? "agent_api" : "web";
+      const demandChannel = typeof req.body?.demandChannel === "string" ? req.body.demandChannel.slice(0, 80) : demandSource;
+      const demandApiKeyId = typeof req.body?.demandApiKeyId === "string" ? req.body.demandApiKeyId : null;
+      const demandUserId = typeof req.body?.demandUserId === "string" ? req.body.demandUserId : userId;
 
       const cacheKey = `find-deals:${trimmedQuery.toLowerCase()}`;
       const cached = findDealsCache.get(cacheKey);
@@ -6696,8 +6699,10 @@ export async function registerRoutes(
           parsedFilters: cached.data?.filters_applied ?? null,
           resultCount: Number(cached.data?.total ?? cached.data?.listings?.length ?? 0),
           source: demandSource,
+          channel: demandChannel,
+          apiKeyId: demandApiKeyId,
           sessionId,
-          userId,
+          userId: demandUserId,
         });
         res.json(cached.data);
         return;
@@ -6871,8 +6876,10 @@ export async function registerRoutes(
         parsedFilters: filters,
         resultCount: responseData.total,
         source: demandSource,
+        channel: demandChannel,
+        apiKeyId: demandApiKeyId,
         sessionId,
-        userId,
+        userId: demandUserId,
       });
 
       findDealsCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + 600000 });

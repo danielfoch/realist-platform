@@ -68,11 +68,11 @@ function app() {
   return app;
 }
 
-function mockDbAuth() {
+function mockDbAuth(scopes: string[] = []) {
   mocks.selectMock.mockReturnValue({
     from: () => ({
       where: () => ({
-        limit: async () => [{ id: "key-1", userId: "user-1", revokedAt: null }],
+        limit: async () => [{ id: "key-1", userId: "user-1", revokedAt: null, scopes }],
       }),
     }),
   });
@@ -160,10 +160,23 @@ describe("agent API new endpoints", () => {
 
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
       query: "duplexes in Hamilton under 900k",
       demandSource: "agent_api",
+      demandChannel: "api",
+      demandApiKeyId: "key-1",
+      demandUserId: "user-1",
     });
     vi.unstubAllGlobals();
+  });
+
+  it("blocks community publishing without community:write", async () => {
+    const response = await request(app())
+      .post("/api/agent/community/submit")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({ mlsNumber: "X123", visibility: "public" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.requiredScope).toBe("community:write");
   });
 });
