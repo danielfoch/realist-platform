@@ -23,6 +23,7 @@ import { db } from "./db";
 import { isAdmin } from "./auth";
 import { users } from "@shared/models/auth";
 import { resolveSite, type ResolvedSite } from "./torontoGeo";
+import { resolveWard } from "./enrichment";
 import { computeMultiplexFeasibility, TORONTO_SIXPLEX_WARDS } from "./multiplexFeasibility";
 import {
   DEV_ASSUMPTION_DEFAULTS,
@@ -347,11 +348,51 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
     floodplainFlag: site.trca.regulated,
   });
 
-  const sixStatus = feasibility.permissions.six_unit_area_status;
+  const fsaSixStatus = feasibility.permissions.six_unit_area_status;
   const optInWards = Array.isArray(admin["sixplex_opt_in_wards"]) ? (admin["sixplex_opt_in_wards"] as number[]) : [];
+
+  // Prefer the ACTUAL ward (point-in-polygon against municipal_wards) over the
+  // FSA-prefix heuristic baked into the feasibility engine. By-law 654-2025
+  // makes six units as-of-right in nine named wards (plus councillor opt-ins),
+  // so a resolved ward is a verified determination, not a guess. Fall back to
+  // the FSA inference when the point can't be resolved to a ward (no geocode,
+  // wards layer not imported, or the point lands outside every ward polygon).
+  const eligibleWardNumbers = new Set<number>([
+    ...TORONTO_SIXPLEX_WARDS.asOfRightWards.map((w) => w.ward),
+    ...TORONTO_SIXPLEX_WARDS.optInWards.map((w) => w.ward),
+    ...optInWards,
+  ]);
+  let resolvedWard: Awaited<ReturnType<typeof resolveWard>> = null;
+  if (fsaSixStatus !== "not_applicable" && typeof site.lat === "number" && typeof site.lng === "number") {
+    try {
+      resolvedWard = await resolveWard(site.lat, site.lng, "Toronto");
+    } catch (err) {
+      console.error("[multiplex-underwriter] ward resolution failed:", (err as Error).message);
+    }
+  }
+  const resolvedWardNumber = resolvedWard ? Number.parseInt(resolvedWard.code, 10) : NaN;
+  const wardResolved = resolvedWard != null && Number.isFinite(resolvedWardNumber);
+
+  let sixStatus = fsaSixStatus;
+  let sixplexCertainty: "verified" | "inferred" = "inferred";
+  if (wardResolved) {
+    // Ward is known: verified as-of-right if it's a 654-2025 ward, otherwise a
+    // verified "not as-of-right here" (six units would need opt-in / variance).
+    sixplexCertainty = "verified";
+    sixStatus = eligibleWardNumbers.has(resolvedWardNumber) ? "more_likely_area" : "possible_unverified";
+  }
+
   const sixplexEligible = sixStatus === "more_likely_area";
   const maxUnitsAsOfRight = sixplexEligible ? 6 : Math.max(4, feasibility.permissions.effective_baseline_units);
-  if (sixStatus === "possible_unverified") {
+
+  if (wardResolved) {
+    const wardLabel = `Ward ${resolvedWardNumber}${resolvedWard!.name ? ` (${resolvedWard!.name})` : ""}`;
+    assumptionNotes.push(
+      sixplexEligible
+        ? `${wardLabel} is a By-law 654-2025 six-unit ward — six units modelled as-of-right (ward verified from boundary polygons).`
+        : `${wardLabel} is not a By-law 654-2025 six-unit ward — modelled at ${maxUnitsAsOfRight} units (ward verified; six units would need a councillor opt-in or minor variance).`,
+    );
+  } else if (sixStatus === "possible_unverified") {
     assumptionNotes.push(
       `Five/six-unit permission not inferred for this location — modelled at ${maxUnitsAsOfRight} units. If the property is in Wards ${TORONTO_SIXPLEX_WARDS.asOfRightWards.map((w) => w.ward).join(", ")}${optInWards.length ? ` or opt-in wards ${optInWards.join(", ")}` : ""}, six units may be as-of-right — verify the ward.`,
     );
@@ -375,7 +416,7 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   const configs = generateConfigurations({
     envelope,
     maxUnitsAsOfRight,
-    sixplexCertainty: "inferred",
+    sixplexCertainty,
     lanewayEligible: !!input.laneAccess && feasibility.permissions.laneway_suite_possible,
     gardenSuiteEligible: feasibility.permissions.garden_suite_possible,
     unitSizes: a.unitSizes,
@@ -468,7 +509,7 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   );
 
   return {
-    sixplex: { eligible: sixplexEligible, status: sixStatus, certainty: "inferred" },
+    sixplex: { eligible: sixplexEligible, status: sixStatus, certainty: sixplexCertainty },
     maxUnitsAsOfRight,
     envelope,
     configs: underwrites,
