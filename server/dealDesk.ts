@@ -20,8 +20,8 @@ import {
   users,
   opportunities,
   assignments,
-  emailTriggers,
 } from "@shared/schema";
+import { queueEmailTrigger as queueEmailTriggerTransport } from "./emailTriggerProducer";
 import {
   computeIntentScore,
   intentBand,
@@ -80,13 +80,11 @@ async function queueEmailTrigger(
   triggerType: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  // Partial unique index dedupes pending triggers per (user, type)
-  await db.insert(emailTriggers).values({
-    userId,
-    opportunityId,
-    triggerType,
-    payload,
-  }).onConflictDoNothing();
+  // Unified transport producer (server/emailTriggerProducer.ts): writes a
+  // notification_queue row by default, an email_triggers row under
+  // EMAIL_TRIGGER_TRANSPORT=legacy. One pending trigger per (user, type) is
+  // preserved on both paths.
+  await queueEmailTriggerTransport({ userId, opportunityId, triggerType, payload });
 }
 
 export interface IntentResult {

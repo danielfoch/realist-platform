@@ -561,6 +561,15 @@ export const notificationQueue = pgTable(
   },
   (table) => ({
     dedupeUnique: uniqueIndex("notification_queue_dedupe_idx").on(table.dedupeKey),
+    // Transport consolidation: the DB-enforced replacement for the legacy
+    // uq_email_triggers_pending_user_type partial index — at most one PENDING
+    // trigger email per (user, type); overlapping enqueues collapse here, not
+    // in the producer's (non-atomic) NOT EXISTS. Scoped by dedupe_key prefix
+    // so it can never collide with monthlyWinner/podcastDigest reservation
+    // rows that share the email_resend channel.
+    pendingTriggerUnique: uniqueIndex("uq_notification_queue_pending_trigger")
+      .on(table.recipientUserId, table.templateKey)
+      .where(sql`status = 'pending' AND dedupe_key LIKE 'email_trigger:%'`),
     // Serve the inbox poll (GET /api/notifications, every 60s per tab):
     // latest-50 by recipient, and the unread badge count.
     recipientCreated: index("idx_notification_queue_recipient_created").on(

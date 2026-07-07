@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { logUserActivity } from "../userActivity";
 import { isAdmin } from "../auth";
 import { scoreLeadInput, selectEmailTriggers } from "@shared/leadScoring";
+import { queueEmailTrigger } from "../emailTriggerProducer";
 
 const dealDeskSubmitSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -105,7 +106,7 @@ export function registerDealDeskRoutes(app: Express) {
       );
       await Promise.all(
         triggerTypes.map(triggerType =>
-          storage.createEmailTrigger({
+          queueEmailTrigger({
             leadId: lead.id,
             userId: sessionUserId,
             opportunityId: opportunity.id,
@@ -122,7 +123,10 @@ export function registerDealDeskRoutes(app: Express) {
               suggestedNextAction: scoreResult.suggestedNextAction,
               analysisId: input.analysisId || null,
             },
-            status: "pending",
+            // Legacy-transport parity: this site historically used a plain
+            // insert (storage.createEmailTrigger), surfacing a pending
+            // duplicate as a constraint error instead of silently skipping.
+            onDuplicate: "throw",
           })
         )
       );
@@ -273,7 +277,7 @@ export function registerDealDeskRoutes(app: Express) {
       });
 
       if (updates.status === "lost" && updates.lostReason && opportunity.leadId) {
-        await storage.createEmailTrigger({
+        await queueEmailTrigger({
           leadId: opportunity.leadId,
           userId: opportunity.userId,
           opportunityId: id,
@@ -282,7 +286,8 @@ export function registerDealDeskRoutes(app: Express) {
             lostReason: updates.lostReason,
             opportunityId: id,
           },
-          status: "pending",
+          // Legacy-transport parity with the old plain insert (see above).
+          onDuplicate: "throw",
         });
       }
 

@@ -53,13 +53,13 @@ import { isAuthenticated, isAdmin } from "./auth";
 import { storage } from "./storage";
 import {
   ddfListingSnapshots,
-  emailTriggers,
   listingWatchers,
   savedSearches,
   usListings,
   type ListingWatcher,
   type SavedSearch,
 } from "@shared/schema";
+import { queueEmailTrigger } from "./emailTriggerProducer";
 import {
   buildCapRatesSearchUrl,
   detectPriceChange,
@@ -436,17 +436,14 @@ export async function loadNewCandidates(since: Date): Promise<Array<CandidateLis
   return candidates;
 }
 
-/** Batched enqueue: one pending trigger per (user, type); dupes collapse via the partial index. */
+/** Batched enqueue: one pending trigger per (user, type); dupes collapse in the transport producer. */
 async function enqueueAlertTrigger(
   userId: string,
   triggerType: "watchlist_price_change" | "saved_search_matches",
   payload: Record<string, unknown>,
 ): Promise<boolean> {
-  const inserted = await db.insert(emailTriggers)
-    .values({ userId, triggerType, payload, status: "pending" })
-    .onConflictDoNothing()
-    .returning({ id: emailTriggers.id });
-  return inserted.length > 0;
+  const { enqueued } = await queueEmailTrigger({ userId, triggerType, payload });
+  return enqueued;
 }
 
 export interface WatchlistSweepResult {
