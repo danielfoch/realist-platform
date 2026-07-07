@@ -46,7 +46,7 @@ import {
   isExpertCategory,
 } from "@shared/contributorReputation";
 import { anonymizeDisplayName } from "@shared/community";
-import { rankByTrade, type TradeAggRow } from "@shared/tradeLeaderboard";
+import { getTradeLeaders } from "./tradeLeaders";
 import {
   resolveEndorsement,
   buildFieldNoteLeadCrm,
@@ -270,32 +270,7 @@ export function registerExpertRoutes(app: Express): void {
   // /api/experts/leaderboard?category=).
   app.get("/api/leaderboard/by-trade", async (_req: Request, res: Response) => {
     try {
-      const agg = await db.execute(sql`
-        SELECT category, user_id, COUNT(*)::int AS notes, COALESCE(SUM(score), 0)::int AS endorsements
-        FROM expert_field_notes
-        WHERE status = 'visible' AND created_at >= now() - interval '30 days'
-        GROUP BY category, user_id
-      `);
-      const rows: TradeAggRow[] = (agg.rows as Array<{ category: string; user_id: string; notes: number; endorsements: number }>).map(
-        (r) => ({ category: r.category, userId: r.user_id, notes: Number(r.notes), endorsements: Number(r.endorsements) }),
-      );
-      const userIds = [...new Set(rows.map((r) => r.userId))];
-      const nameById = new Map<string, string>();
-      const statusById = new Map<string, VerificationStatus>();
-      if (userIds.length) {
-        const us = await db
-          .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
-          .from(users)
-          .where(inArray(users.id, userIds));
-        for (const u of us) nameById.set(u.id, anonymizeDisplayName(u.firstName, u.lastName));
-        const profs = await db.execute(sql`
-          SELECT user_id, verification_status FROM professional_profiles WHERE user_id = ANY(${userIds})
-        `);
-        for (const p of profs.rows as Array<{ user_id: string; verification_status: string }>) {
-          statusById.set(p.user_id, p.verification_status as VerificationStatus);
-        }
-      }
-      res.json({ windowDays: 30, byTrade: rankByTrade(rows, { nameById, statusById, topN: 5 }) });
+      res.json({ windowDays: 30, byTrade: await getTradeLeaders(5) });
     } catch (error) {
       console.error("[experts] by-trade leaderboard failed:", error);
       res.status(500).json({ error: "Failed to load per-trade leaderboard" });
