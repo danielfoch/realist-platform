@@ -35,6 +35,12 @@ import { looseKeyFromListingAddress, QUEBEC_ROLL_ATTRIBUTION } from "@shared/que
 import { ASSESSMENT_ROLL_ATTRIBUTION } from "@shared/assessmentRolls";
 import { PERMIT_CITY_ADAPTERS, permitLooseKey } from "@shared/buildingPermits";
 import { DEVELOPMENT_APPLICATIONS_ATTRIBUTION } from "@shared/developmentApplications";
+import {
+  summarizeVarianceHistory,
+  COA_APPLICATIONS_ATTRIBUTION,
+  type CoaApplication,
+  type VarianceHistorySummary,
+} from "@shared/coaApplications";
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 
@@ -201,6 +207,38 @@ export async function ensureEnrichmentTables(): Promise<void> {
   await db.execute(sql`
     CREATE INDEX IF NOT EXISTS municipal_wards_bbox_idx
     ON municipal_wards (city, min_lat, max_lat, min_lng, max_lng)
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS coa_applications (
+      id                     varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      source                 text NOT NULL,
+      reference_file         text NOT NULL,
+      sys_id                 text,
+      application_type       text,
+      sub_type               text,
+      work_type              text,
+      status                 text,
+      decision               text,
+      omb_decision           text,
+      address                text,
+      loose_address_key      text,
+      ward_number            text,
+      ward_name              text,
+      zoning_review          text,
+      zoning_designation     text,
+      description            text,
+      in_date                text,
+      hearing_date           text,
+      final_date             text,
+      number_of_lots_created integer,
+      application_url        text,
+      imported_at            timestamp NOT NULL DEFAULT now(),
+      UNIQUE (source, reference_file)
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS coa_applications_loose_key_idx
+    ON coa_applications (loose_address_key)
   `);
 }
 
@@ -568,6 +606,79 @@ export async function getDevelopmentActivity(lat: number, lng: number): Promise<
   };
 }
 
+// ─── Committee of Adjustment (variance history) ──────────────────────────────
+
+export interface VarianceHistory {
+  summary: VarianceHistorySummary;
+  applications: Array<{
+    referenceFile: string;
+    applicationType: string | null;
+    decision: string | null;
+    status: string | null;
+    date: string | null;
+    description: string | null;
+    applicationUrl: string | null;
+  }>;
+  attribution: string;
+}
+
+/**
+ * A property's Committee of Adjustment history, matched by loose address key
+ * (the CoA dataset is address-only). Same key strategy as getPropertyAssessment.
+ * The data layer only — variance-risk calibration reads coa_applications directly.
+ */
+export async function getVarianceHistory(address: string): Promise<VarianceHistory | null> {
+  const key = looseKeyFromListingAddress(address);
+  if (!key) return null;
+  const rows = await db.execute(sql`
+    SELECT reference_file, application_type, sub_type, work_type, status, decision, omb_decision,
+           address, loose_address_key, ward_number, ward_name, zoning_review, zoning_designation,
+           description, in_date, hearing_date, final_date, number_of_lots_created, application_url
+    FROM coa_applications
+    WHERE loose_address_key = ${key}
+    LIMIT 100
+  `);
+  if (!rows.rows.length) return null;
+  const apps: CoaApplication[] = (rows.rows as Array<Record<string, unknown>>).map((r) => ({
+    referenceFile: String(r.reference_file),
+    sysId: null,
+    applicationType: (r.application_type as string) ?? null,
+    subType: (r.sub_type as string) ?? null,
+    workType: (r.work_type as string) ?? null,
+    status: (r.status as string) ?? null,
+    decision: (r.decision as string) ?? null,
+    ombDecision: (r.omb_decision as string) ?? null,
+    address: (r.address as string) ?? null,
+    looseAddressKey: (r.loose_address_key as string) ?? null,
+    wardNumber: (r.ward_number as string) ?? null,
+    wardName: (r.ward_name as string) ?? null,
+    zoningReview: (r.zoning_review as string) ?? null,
+    zoningDesignation: (r.zoning_designation as string) ?? null,
+    description: (r.description as string) ?? null,
+    inDate: (r.in_date as string) ?? null,
+    hearingDate: (r.hearing_date as string) ?? null,
+    finalDate: (r.final_date as string) ?? null,
+    numberOfLotsCreated: r.number_of_lots_created == null ? null : Number(r.number_of_lots_created),
+    applicationUrl: (r.application_url as string) ?? null,
+  }));
+  const summary = summarizeVarianceHistory(apps);
+  const applications = [...apps]
+    .sort((a, b) =>
+      (b.hearingDate ?? b.finalDate ?? b.inDate ?? "").localeCompare(a.hearingDate ?? a.finalDate ?? a.inDate ?? ""),
+    )
+    .slice(0, 8)
+    .map((a) => ({
+      referenceFile: a.referenceFile,
+      applicationType: a.applicationType,
+      decision: a.decision,
+      status: a.status,
+      date: a.hearingDate ?? a.finalDate ?? a.inDate,
+      description: a.description ? a.description.slice(0, 280) : null,
+      applicationUrl: a.applicationUrl,
+    }));
+  return { summary, applications, attribution: COA_APPLICATIONS_ATTRIBUTION };
+}
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
 export function registerEnrichmentRoutes(app: Express): void {
@@ -585,15 +696,16 @@ export function registerEnrichmentRoutes(app: Express): void {
       return res.status(400).json({ success: false, error: "lat+lng or address query params are required" });
     }
     try {
-      const [neighbourhood, property, permits, development, parcel, ward] = await Promise.all([
+      const [neighbourhood, property, permits, development, parcel, ward, variance] = await Promise.all([
         hasPoint ? getNeighbourhoodStats(lat, lng) : Promise.resolve(null),
         address ? getPropertyAssessment(address, city || null) : Promise.resolve(null),
         getPermitActivity(address || null, city || null, hasPoint ? lat : null, hasPoint ? lng : null),
         hasPoint ? getDevelopmentActivity(lat, lng) : Promise.resolve(null),
         hasPoint ? resolveParcel(lat, lng) : Promise.resolve(null),
         hasPoint ? resolveWard(lat, lng) : Promise.resolve(null),
+        address ? getVarianceHistory(address) : Promise.resolve(null),
       ]);
-      return res.json({ success: true, data: { neighbourhood, property, permits, development, parcel, ward } });
+      return res.json({ success: true, data: { neighbourhood, property, permits, development, parcel, ward, variance } });
     } catch (err: any) {
       console.error("[enrichment] lookup failed:", err?.message ?? err);
       return res.status(500).json({ success: false, error: "Enrichment lookup failed" });
