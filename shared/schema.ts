@@ -99,6 +99,16 @@ export const analyses = pgTable("analyses", {
   expenseAssumptions: jsonb("expense_assumptions"),
   inputsJson: jsonb("inputs_json").notNull(),
   resultsJson: jsonb("results_json"),
+  // Typed metric columns — DERIVED from inputs_json/results_json by
+  // extractTypedMetrics() at write time (see shared/analysisMetrics.ts).
+  // Nullable; NULL means "not yet backfilled" (pre-backfill rows) or
+  // "no valid metric in the blob". Never hand-set via the API — they are
+  // omitted from insertAnalysisSchema so producers cannot spoof them.
+  capRateNum: real("cap_rate_num"),
+  cashFlowMonthlyNum: real("cash_flow_monthly_num"),
+  dscrNum: real("dscr_num"),
+  purchasePriceNum: real("purchase_price_num"),
+  monthlyRentNum: real("monthly_rent_num"),
   shareToken: varchar("share_token").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -867,6 +877,13 @@ export const insertPropertySchema = createInsertSchema(properties).omit({
 export const insertAnalysisSchema = createInsertSchema(analyses).omit({
   id: true,
   createdAt: true,
+  // Derived typed metric columns — populated by extractTypedMetrics() in the
+  // storage layer, never accepted from API producers.
+  capRateNum: true,
+  cashFlowMonthlyNum: true,
+  dscrNum: true,
+  purchasePriceNum: true,
+  monthlyRentNum: true,
 });
 
 export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({
