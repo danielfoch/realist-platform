@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
+import { backlinkUserRecords } from "./personSpine";
 import { getUncachableStripeClient } from "./stripeClient";
 import { sendNotificationEmail, sendWelcomeAccountEmail } from "./resend";
 import { sendCrmWebhook, buildCrmWebhookPayload } from "./crmWebhook";
@@ -718,6 +719,10 @@ async function createOrUpdateEventUser(session: Stripe.Checkout.Session) {
     emailVerified: true,
     stripeCustomerId,
   }).returning();
+
+  // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts rows
+  // with this email. Best-effort, never fails the checkout.
+  await backlinkUserRecords(user.id, email);
 
   const baseUrl = process.env.PUBLIC_BASE_URL || "https://realist.ca";
   const rawToken = crypto.randomBytes(32).toString("hex");

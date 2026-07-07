@@ -34,10 +34,27 @@ export const leads = pgTable("leads", {
   utmCampaign: text("utm_campaign"),
   utmContent: text("utm_content"),
   utmTerm: text("utm_term"),
+  // PERSON SPINE (phase 1): nullable link to the users row for the same
+  // human, set at write time (linkPersonByEmail) and by the backfill script
+  // (scripts/backfill-person-spine.ts). Additive only — leads stay
+  // append-only; convergence/dedup is a later phase. Requires `npm run
+  // db:push` on deploy (adds a nullable FK column + index; non-destructive).
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_leads_user_id").on(table.userId),
+  // Serves the person-spine email matches (backlinkUserRecords /
+  // getPersonByEmail filter on lower(trim(email))) — without it every user
+  // creation seq-scans this append-only table.
+  index("idx_leads_email_norm").on(sql`lower(trim(${table.email}))`),
+]);
 
-export const leadsRelations = relations(leads, ({ many }) => ({
+export const leadsRelations = relations(leads, ({ one, many }) => ({
+  // PERSON SPINE (phase 1): the user this lead row was linked to by email.
+  user: one(users, {
+    fields: [leads.userId],
+    references: [users.id],
+  }),
   properties: many(properties),
   analyses: many(analyses),
   webhookLogs: many(webhookLogs),
@@ -815,6 +832,9 @@ export type UsRent = typeof usRents.$inferSelect;
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,
   createdAt: true,
+  // PERSON SPINE (phase 1): user_id is server-authoritative — set by
+  // linkPersonByEmail/backfill, never accepted from request bodies.
+  userId: true,
 });
 
 export const insertPropertySchema = createInsertSchema(properties).omit({
