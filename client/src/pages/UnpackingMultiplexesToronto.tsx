@@ -36,6 +36,8 @@ import aledHeadshot from "@assets/image_1781720568994.webp";
 import joshHeadshot from "@assets/image_1781720589907.webp";
 import noamHeadshot from "@assets/image_1781720616832.webp";
 import ryanHeadshot from "@assets/image_1781720634648.png";
+import hoomanHeadshot from "@assets/Hooman_1783450593275.png";
+import benHeadshot from "@assets/Ben_Singer_1783452380339.jpg";
 
 const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
 // Meta Pixel scoped to this event page only (loaded in a useEffect below).
@@ -134,6 +136,20 @@ const SPEAKERS = [
     title: "Founder",
     bio: "Active multiplex developer and investor building and operating multi-unit residential properties across the GTA.",
     photo: ryanHeadshot,
+  },
+  {
+    name: "Hooman Tabesh",
+    org: "Alliance REIT",
+    title: "Founder & CEO",
+    bio: "Over 20 years of experience developing and operating residential rental real estate, focusing on premium boutique multifamily residences across the Toronto core.",
+    photo: hoomanHeadshot,
+  },
+  {
+    name: "Ben Singer",
+    org: "SR Law",
+    title: "Lawyer",
+    bio: "Commercial real estate lawyer with 8 years of experience in acquisitions, dispositions, financing, and a focus on condominium and subdivision development.",
+    photo: benHeadshot,
   },
 ];
 
@@ -701,6 +717,8 @@ export default function UnpackingMultiplexesToronto() {
               { src: "/partners/bld-financial.png", alt: "BLD Financial" },
               { src: "/partners/reside-properties.png", alt: "Reside Properties" },
               { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio" },
+              { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT" },
+              { src: "/partners/sr-law.jpg", alt: "SR Law" },
             ].map((sponsor) => (
               <img
                 key={sponsor.alt}
