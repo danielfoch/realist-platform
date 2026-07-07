@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ASSESSMENT_ROLL_ADAPTERS, ASSESSMENT_ROLL_ATTRIBUTION } from "./assessmentRolls";
+import {
+  ASSESSMENT_ROLL_ADAPTERS,
+  ASSESSMENT_ROLL_ATTRIBUTION,
+  normalizeHeaderKey,
+} from "./assessmentRolls";
 
 const adapter = (key: string) => {
   const a = ASSESSMENT_ROLL_ADAPTERS.find((c) => c.key === key);
@@ -72,7 +76,7 @@ describe("Edmonton adapter", () => {
       street_name: "ABBOTTSFIELD ROAD NW",
       assessed_value: "165000",
       tax_class: "Residential",
-      mill_class_1: "RESIDENTIAL",
+      assessment_class_1: "RESIDENTIAL",
       latitude: "53.57632901357068",
       longitude: "-113.39230350026378",
     })!;
@@ -86,21 +90,22 @@ describe("Edmonton adapter", () => {
 });
 
 describe("Nova Scotia (PVSC) adapter", () => {
-  // Verbatim from the live PVSC resource a859-xvcs on thedatazone.ca (2026-07).
-  it("assembles the address from parts, keeps the aan key and per-row municipality", () => {
+  // Keys are the bulk-CSV *display* headers normalized by normalizeHeaderKey
+  // (a859-xvcs on thedatazone.ca, 2026-07) — NOT the /resource JSON field names.
+  it("assembles the address from parts, keeps the account key and per-row municipality", () => {
     const r = adapter("ns-pvsc").mapRow({
       municipal_unit: "CAPE BRETON REGIONAL MUNICIPALITY (CBRM)",
-      aan: "00000485",
-      address_num: "10",
-      address_street: "CLARKE",
-      address_suffix: "AVE",
-      address_city: "COXHEATH",
+      assessment_account_number: "00000485",
+      civic_number: "10",
+      civic_street_name: "CLARKE",
+      civic_street_suffix: "AVE",
+      civic_city_name: "COXHEATH",
       living_units: "1",
       year_built: "1980",
       square_foot_living_area: "2066",
       style: "1 Storey",
     })!;
-    expect(r.matricule).toBe("00000485"); // aan keeps its leading zeros (string, not int)
+    expect(r.matricule).toBe("00000485"); // account number keeps its leading zeros (string, not int)
     expect(r.municipalityName).toBe("CAPE BRETON REGIONAL MUNICIPALITY (CBRM)");
     expect(r.address).toBe("10 CLARKE AVE");
     expect(r.looseAddressKey).toBe("10 clarke ave");
@@ -112,12 +117,56 @@ describe("Nova Scotia (PVSC) adapter", () => {
   });
 });
 
+describe("bulk-CSV header path (the real importer contract)", () => {
+  // Build a row the way scripts/import-assessment-rolls.ts does: normalize the
+  // verbatim display-name header, then zip it against a data row. This is the
+  // path that actually runs in prod — the per-field unit tests above pass keys
+  // directly and so never caught that the export uses display headers, which
+  // silently skipped every NS/Winnipeg/Edmonton row (matricule came back null).
+  const rowFromCsv = (headerLine: string, dataLine: string): Record<string, string> => {
+    const header = headerLine.split(",").map(normalizeHeaderKey);
+    const cells = dataLine.split(",");
+    const row: Record<string, string> = {};
+    header.forEach((name, i) => (row[name] = cells[i] ?? ""));
+    return row;
+  };
+
+  it("normalizes display headers to the underscore keys adapters read", () => {
+    expect(normalizeHeaderKey("Assessment Account Number")).toBe("assessment_account_number");
+    expect(normalizeHeaderKey("Roll Number")).toBe("roll_number");
+    expect(normalizeHeaderKey("  Full Address ")).toBe("full_address");
+    expect(normalizeHeaderKey("ROLL_NUMBER")).toBe("roll_number"); // Calgary: already underscored
+  });
+
+  it("populates matricule from the NS a859-xvcs display-header export", () => {
+    // Verbatim header + row from https://www.thedatazone.ca/api/views/a859-xvcs/rows.csv (2026-07).
+    const header =
+      "Municipal Unit,Assessment Account Number,Civic Number,Civic Additional,Civic Direction,Civic Street Name,Civic Street Suffix,Civic City Name,Living Units,Year Built,Square Foot Living Area,Style";
+    const data = "MUNICIPALITY OF THE DISTRICT OF CLARE,01286048,358,,,LITTLE BROOK,RD,LITTLE BROOK STATION,1,1976,2392,2 Storey";
+    const r = adapter("ns-pvsc").mapRow(rowFromCsv(header, data))!;
+    expect(r).not.toBeNull();
+    expect(r.matricule).toBe("01286048");
+    expect(r.address).toBe("358 LITTLE BROOK RD");
+    expect(r.municipalityName).toBe("MUNICIPALITY OF THE DISTRICT OF CLARE");
+    expect(r.yearBuilt).toBe(1976);
+  });
+
+  it("populates matricule from the Winnipeg display-header export", () => {
+    const header = "Roll Number,Full Address,Total Living Area,Year Built,Total Assessed Value,Current Assessment Year";
+    const data = "01000001000,1636 MCCREARY ROAD,1313,1991,893000,2027";
+    const r = adapter("winnipeg").mapRow(rowFromCsv(header, data))!;
+    expect(r.matricule).toBe("01000001000");
+    expect(r.address).toBe("1636 MCCREARY ROAD");
+    expect(r.totalValue).toBe(893000);
+  });
+});
+
 describe("shared behaviour", () => {
   it("returns null when the roll/account id is missing", () => {
     expect(adapter("winnipeg").mapRow({ full_address: "1 Main St" })).toBeNull();
     expect(adapter("calgary").mapRow({ address: "1 Main St" })).toBeNull();
     expect(adapter("edmonton").mapRow({ house_number: "1", street_name: "MAIN ST" })).toBeNull();
-    expect(adapter("ns-pvsc").mapRow({ address_num: "1", address_street: "MAIN" })).toBeNull();
+    expect(adapter("ns-pvsc").mapRow({ civic_number: "1", civic_street_name: "MAIN" })).toBeNull();
   });
 
   it("exposes an attribution string per source", () => {
