@@ -139,6 +139,7 @@ import { registerCrmRoutes } from "./crm";
 import { registerPartnerNetworkRoutes, handoffClaimedLeadToCrm } from "./partnerNetwork";
 import { registerExpertRoutes } from "./experts";
 import { registerSocialStatsRoutes } from "./socialStats";
+import { registerTrafficAnalyticsRoutes } from "./trafficAnalytics";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerEventsCommunityRoutes } from "./eventsCommunity";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
@@ -832,6 +833,7 @@ export async function registerRoutes(
   registerPartnerNetworkRoutes(app);
   registerExpertRoutes(app);
   registerSocialStatsRoutes(app);
+  registerTrafficAnalyticsRoutes(app, isAdmin);
   registerEventsGrowthRoutes(app);
   registerEventsCommunityRoutes(app);
   registerRentIntelligenceRoutes(app);

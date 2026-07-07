@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme";
 import { Redirect } from "@/components/Redirect";
+import { TrafficAnalyticsTracker } from "@/components/TrafficAnalyticsTracker";
 
 // Eager pages — highest-traffic entry points stay in the main chunk so the
 // most common landings render with zero extra network round-trips:
@@ -513,6 +514,7 @@ function App() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
+          <TrafficAnalyticsTracker />
           <Toaster />
           <Router />
         </TooltipProvider>

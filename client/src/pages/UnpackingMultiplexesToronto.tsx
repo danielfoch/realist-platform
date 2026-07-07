@@ -31,6 +31,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { trackTrafficEvent } from "@/lib/trafficAnalytics";
 import aledHeadshot from "@assets/image_1781720568994.webp";
 import joshHeadshot from "@assets/image_1781720589907.webp";
 import noamHeadshot from "@assets/image_1781720616832.webp";
@@ -264,6 +265,17 @@ export default function UnpackingMultiplexesToronto() {
   // event for starting a purchase, so it can be optimized/reported in Ads
   // Manager. `location` distinguishes the hero / sidebar / footer buttons.
   const trackBuyTickets = (location: string) => {
+    trackTrafficEvent({
+      eventName: "ticket_cta_clicked",
+      path: window.location.pathname,
+      page: `${window.location.pathname}${window.location.search}`,
+      component: `buy_tickets_${location}`,
+      targetUrl: TICKET_URL,
+      metadata: {
+        eventTitle: EVENT_TITLE,
+        sourceButton: location,
+      },
+    });
     const fbq = (window as any).fbq;
     if (typeof fbq === "function") {
       fbq("track", "InitiateCheckout", {
