@@ -269,7 +269,7 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
   return { markets, metrics: written, analyses: Number(total) };
 }
 
-async function recordMarketDefaultPredictions(rows: any[]): Promise<void> {
+export async function recordMarketDefaultPredictions(rows: any[]): Promise<void> {
   const values = rows
     .filter((row) => row && Number.isFinite(Number(row.value)))
     .map((row) => {
