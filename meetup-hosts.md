@@ -1,117 +1,65 @@
-# Meetup Hosts - Realist.ca Onboarding
+# Local Experts / Meetup Hosts — Onboarding Tracker
 
-Priority: HIGH - These hosts pay $250/month and need accounts.
+**Program (updated 2026-07-07):** Meetup hosts are being repositioned as **Realist Local Experts** —
+the exclusive investor-referral partner for their market. This replaces the old
+"$250/month meetup-host" framing with the platform-wide model: **free to join, 25% referral
+on closed deals** (realtors, payable to Valery Real Estate Inc.) / 50% on funded deals
+(mortgage brokers, payable to BLD Financial). See `shared/partnerNetwork.ts` for terms and
+`client/src/pages/LocalExperts.tsx` for the recruiting page (`/local-experts`).
 
-## Hosts
+> **Pricing transition (Dan decision):** the $250/mo meetup-host fee is superseded by the
+> free referral model. Confirm how existing paying hosts are transitioned (grandfather /
+> refund / simply stop billing) before sending the invite.
 
-| Name | Location | Email | Status |
-|------|----------|-------|--------|
-| Daniel Foch | Toronto, ON | danielfoch@gmail.com | ✓ Has account |
-| James Anderson | Vancouver, BC | **NEEDED** | Pending |
-| Sylvia Castonguay | Calgary, AB | **NEEDED** | Pending |
-| LJ Aguinaga | Montreal, QC | **NEEDED** | Pending |
-| Cameron Biroux | Moncton, NB | **NEEDED** | Pending |
+## Routing context
 
-**⚠️ ACTION REQUIRED:** Only Daniel has email on file. Need contact info for 4 other hosts.
+Leads within ~2 hours' drive of Toronto (~160 km) are worked **in-house by Valery Real Estate Inc.**
+(`shared/leadRoutingPolicy.ts`). Everywhere else routes to the claimed-market Local Expert —
+so this roster is for markets **outside** the Toronto in-house zone.
 
-## Database Schema (to add to PostgreSQL)
+## Invite roster (2026-07-07)
 
-```sql
--- Meetup Hosts table
-CREATE TABLE meetup_hosts (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  location TEXT NOT NULL,
-  province TEXT NOT NULL,
-  bio TEXT,
-  photo_url TEXT,
-  is_active BOOLEAN DEFAULT TRUE,
-  monthly_fee_paid BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
+Invitation email drafted for Dan to send (see `docs/LOCAL_EXPERT_INVITE_EMAIL.md`).
+Markets are inferred from brokerage/domain where not yet confirmed — **Dan to confirm each market**.
 
--- Seed data
-INSERT INTO meetup_hosts (name, email, location, province, bio, photo_url) VALUES
-('Daniel Foch', 'danielfoch@gmail.com', 'Toronto', 'ON', 'Host & Lead - Canadian Real Estate Investor Podcast', '/images/hosts/daniel.jpg'),
-('James Anderson', 'JAMES_NEED_EMAIL', 'Vancouver', 'BC', 'BC Market Expert', '/images/hosts/james.jpg'),
-('Sylvia Castonguay', 'SYLVIA_NEED_EMAIL', 'Calgary', 'AB', 'Alberta Market Expert', '/images/hosts/sylvia.jpg'),
-('LJ Aguinaga', 'LJ_NEED_EMAIL', 'Montreal', 'QC', 'Quebec Market Expert', '/images/hosts/lj.jpg'),
-('Cameron Biroux', 'CAMERON_NEED_EMAIL', 'Moncton', 'NB', 'New Brunswick Market Expert', '/images/hosts/cameron.jpg');
-```
+| Name | Email | Inferred market / brokerage | Type | Market confirmed? |
+|------|-------|-----------------------------|------|-------------------|
+| Sylvia Castonguay | info@sylviacrealty.com | Calgary, AB | Realtor | ✓ (prior doc) |
+| LJ Aguinaga | lj@ljrealties.com | Montreal, QC | Realtor | ✓ (prior doc) |
+| Cameron Brioux | cameronbrioux@gmail.com | Moncton, NB | Realtor | ✓ (prior doc) |
+| Brandon Jimenez | brandon@medaloproperties.com | — (Medalo Properties) | Realtor | ✗ |
+| Bret Stankowski | bret@stanmtg.ca | — (Stan Mortgage) | Mortgage | ✗ |
+| Danny Cordeiro | danny@midurban.ca | — (MidUrban) | Realtor | ✗ |
+| Leonard Loiero | leo@midurban.ca | — (MidUrban) | Realtor | ✗ |
+| Paolo Castellano | paolo@midurban.ca | — (MidUrban) | Realtor | ✗ |
+| Jessica Kuan | jessica.kuan@cleartrust.ca | — (ClearTrust) | Mortgage | ✗ |
+| Cody Kelly | mightyirishhomeinvestors@outlook.com | — (Mighty Irish Home Investors) | Realtor | ✗ |
+| Michael Kardash | mike@wolfedenrealestate.com | — (Wolfeden Real Estate) | Realtor | ✗ |
+| Ryan MacNeil | ryan@keycap.ca | — (KeyCap) | Realtor | ✗ |
+| Trevor Nicolle | trevornicolle@royallepage.ca | — (Royal LePage) | Realtor | ✗ |
+| Serge Papineau | serge@sergepapineau.com | — | Realtor | ✗ |
+| Natasha Flemming | natashalflemming@gmail.com | — | Realtor | ✗ |
+| Trey Vives | trey.vives@gmail.com | — | Realtor | ✗ |
+| Zach Dejonge | zach.dejonge@gmail.com | — | Realtor | ✗ |
+| (Avowels) | avowels13@gmail.com | — (name unconfirmed) | ? | ✗ |
 
-## Events Page Updates
+**Note:** Danny, Leonard, and Paolo all use @midurban.ca — likely the same brokerage/market;
+decide whether one claims the market or they share.
 
-**Route:** `/community/events` or `/events`
+## Onboarding flow (new model)
 
-Add "Local Hosts" section:
-```jsx
-// Component: LocalHostsSection
-const hosts = await db.query('SELECT * FROM meetup_hosts WHERE is_active = true');
-
-return (
-  <section className="local-hosts">
-    <h2>🇨🇦 Local Hosts</h2>
-    <div className="hosts-grid">
-      {hosts.map(host => (
-        <HostCard 
-          name={host.name}
-          location={host.location}
-          bio={host.bio}
-          photo={host.photo_url}
-        />
-      ))}
-    </div>
-  </section>
-);
-```
-
-## Email Templates
-
-### Invitation Email (for hosts without accounts)
-
-**Subject:** Welcome to Realist.ca - Your Host Account
-
-**Body:**
-```
-Hi [NAME],
-
-As one of our valued meetup hosts paying $250/month, I wanted to personally invite you to Realist.ca.
-
-Your hosts:
-- Daniel Foch (Toronto) - already on platform
-- James Anderson (Vancouver)
-- Sylvia Castonguay (Calgary)
-- LJ Aguinaga (Montreal)
-- Cameron Biroux (Moncton)
-
-What you get:
-✓ Free premium access
-✓ Your profile displayed on realist.ca/community/events
-✓ Lead routing from investors in your market
-✓ Deal analysis tool for your events
-
-Next steps:
-1. Go to https://realist.ca/signup
-2. Use your email: [EMAIL]
-3. I'll upgrade you to premium manually
-
-Let me know if you have any questions!
-
-Best,
-Daniel
-
---
-Realist.ca - Canadian Real Estate Deal Intelligence
-```
+1. Dan sends the invite email (personalized `[First Name]`).
+2. Recipient visits `/local-experts` → **Claim Your Market** → `/partner/onboarding`.
+3. They sign the OREA Form 641-style referral agreement online (`shared/partnerNetwork.ts`,
+   version `2026-07-07.v2` — now includes the 14-day status-reporting condition in §4).
+4. On first lead claim, the signature snapshot is stored; leads route to them by market.
+5. Homie (GHL-backed partner CRM) is the eventual management surface; the Realist CRM
+   workspace covers it until then.
 
 ## Tasks
 
-- [ ] **CRITICAL:** Get email addresses for James, Sylvia, LJ, Cameron
-- [ ] Add meetup_hosts table to PostgreSQL (Replit DB)
-- [ ] Create seed data with hosts
-- [ ] Build Local Hosts section on /community/events page
-- [ ] Email each host personally (Daniel already has account)
-- [ ] Give premium access to all hosts
-- [ ] Verify hosts appear on events page
+- [ ] Dan: decide the $250/mo → free transition for existing paying hosts
+- [ ] Dan: confirm each invitee's market (fill the table)
+- [ ] Dan: resolve the 3 MidUrban invitees → one claim or shared
+- [ ] Send personalized invite email to the roster
+- [ ] Confirm the public about page (`/local-experts/about`) before the invite goes out

@@ -80,6 +80,8 @@ import Experts from "@/pages/Experts";
 import ExpertProfile from "@/pages/ExpertProfile";
 import JoinExperts from "@/pages/JoinExperts";
 import RealtorNetwork from "@/pages/RealtorNetwork";
+import LocalExperts from "@/pages/LocalExperts";
+import LocalExpertsAbout from "@/pages/LocalExpertsAbout";
 import MarketReport from "@/pages/MarketReport";
 import MortgageRates from "@/pages/MortgageRates";
 import FixedVsVariable from "@/pages/FixedVsVariable";
@@ -347,6 +349,9 @@ function Router() {
       <Route path="/join/realtors" component={JoinRealtors} />
       <Route path="/join/mortgage-brokers" component={JoinMortgageBrokers} />
       <Route path="/join/lenders" component={JoinLenders} />
+      <Route path="/local-experts" component={LocalExperts} />
+      <Route path="/local-experts/about" component={LocalExpertsAbout} />
+      <Route path="/meetup-hosts">{() => <Redirect to="/local-experts" />}</Route>
       
       {/* 404 */}
       <Route component={NotFound} />

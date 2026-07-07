@@ -2,7 +2,7 @@
 // Single source of truth for what realtors and mortgage brokers agree to when
 // they join the network. Pure module: no DB, no env, fully testable.
 
-export const PARTNER_NETWORK_AGREEMENT_VERSION = "2026-06-12.v1";
+export const PARTNER_NETWORK_AGREEMENT_VERSION = "2026-07-07.v2";
 
 export const NETWORK_PARTNER_TYPES = ["realtor", "mortgage_broker"] as const;
 export type NetworkPartnerType = (typeof NETWORK_PARTNER_TYPES)[number];
@@ -131,7 +131,7 @@ This agreement is between ${partnerIdentity} (the "Partner") and ${terms.payeeNa
 
 3. NO PLATFORM FEES. There are no monthly fees, seat fees, or subscription charges for participation in the Realist Partner Network. The referral fee in Section 2 is the only compensation owed.
 
-4. DEAL MANAGEMENT AND REPORTING. The Partner agrees to manage Referred Leads through the Realist CRM, keep lead and deal statuses reasonably current, and, upon a successful transaction, provide documentation of the result (such as the agreement of purchase and sale, commitment letter, or trade record sheet) sufficient to calculate the referral fee.
+4. DEAL MANAGEMENT AND REPORTING. The Partner agrees to manage Referred Leads through the Realist CRM, keep lead and deal statuses current, and, upon a successful transaction, provide documentation of the result (such as the agreement of purchase and sale, commitment letter, or trade record sheet) sufficient to calculate the referral fee. Timely reporting is a condition of continued participation: if statuses on the Partner's Referred Leads remain stale for more than 14 days after a status request from Realist, Realist may pause routing of new Referred Leads to the Partner until statuses are brought current.
 
 5. CONDUCT. The Partner will respond to Referred Leads promptly, act within the rules of their licensing body and board, and not redirect Referred Leads outside the platform to avoid the referral fee.
 
