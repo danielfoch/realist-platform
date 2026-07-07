@@ -28,7 +28,7 @@ import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "./db";
 import { isAdmin, isAuthenticated } from "./auth";
 import { logUserActivity } from "./userActivity";
-import { queueFieldNoteVoteNotification } from "./notifications";
+import { queueFieldNoteLeadNotification, queueFieldNoteVoteNotification } from "./notifications";
 import {
   contributionEvents,
   crmActivities,
@@ -775,6 +775,17 @@ export function registerExpertRoutes(app: Express): void {
         source: "field_note",
         metadata: { noteId: note.id, authorUserId: note.userId, crmContactId: contact.id, listingMlsNumber: note.listingMlsNumber },
       });
+
+      // Tell the pro a lead landed (email + in-app inbox). Fire-and-forget:
+      // the lead is already captured in the CRM; a notification hiccup must
+      // not fail the request.
+      queueFieldNoteLeadNotification({
+        note,
+        leadName: name,
+        leadEmail: email,
+        message,
+        crmContactId: contact.id,
+      }).catch((err) => console.error("[experts] field-note lead notification failed:", err));
 
       return res.json({ ok: true });
     } catch (error) {

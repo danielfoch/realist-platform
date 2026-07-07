@@ -44,6 +44,7 @@ export const DEFAULT_TITLES: Record<string, string> = {
   co_analysis_alert: "Another investor analyzed a listing you underwrote",
   milestone_reached: "You reached a new analyst milestone",
   note_vote_update: "Your field note is getting votes",
+  field_note_lead: "An investor wants to work with you",
   monthly_leaderboard_winner: "You made the monthly leaderboard",
   podcast_digest: "New Realist podcast episodes are live",
 };

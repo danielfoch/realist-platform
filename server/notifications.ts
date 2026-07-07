@@ -24,6 +24,7 @@ import {
   type NoteVoteMilestone,
 } from "@shared/fieldNotes";
 import type { ExpertFieldNote } from "@shared/schema";
+import { buildFieldNoteLeadCopy } from "@shared/fieldNoteIncentives";
 import { governMarketingSend } from "./emailGovernor";
 
 type NotificationKind =
@@ -43,7 +44,8 @@ type NotificationKind =
   | "weekly_leaderboard_digest"
   | "co_analysis_alert"
   | "milestone_reached"
-  | "note_vote_update";
+  | "note_vote_update"
+  | "field_note_lead";
 
 export type GhlNotificationPayload = {
   sendEmail: true;
@@ -1662,6 +1664,76 @@ export async function queueFieldNoteVoteNotification(params: {
         leadScoreDelta: milestone === "first_downvote" ? 0 : 2,
       }),
       dedupeKey: noteVoteDedupeKey(note.id),
+    }],
+  });
+
+  return true;
+}
+
+/**
+ * FN-3: tell a Power Team pro a lead just landed in their CRM from one of
+ * their field notes. Transactional like the comment notifications above —
+ * user-directed, so it gets the central unsubscribe/CASL gate (inside
+ * enqueueForRecipients) and the community preference toggle, but NOT the
+ * rolling weekly marketing cap: a pro must not miss a lead because a digest
+ * already spent their quota. lead_cta_enabled on the profile is the explicit
+ * opt-in for receiving these. Deduped per note+lead-email per UTC day so a
+ * double-submit can't double-email.
+ */
+export async function queueFieldNoteLeadNotification(params: {
+  note: ExpertFieldNote;
+  leadName: string;
+  leadEmail: string;
+  message?: string | null;
+  crmContactId: string;
+}): Promise<boolean> {
+  const { note, leadName, leadEmail, message, crmContactId } = params;
+  if (!(await recipientAllows(note.userId, "community"))) return false;
+
+  const recipient = await getRecipient(note.userId);
+  if (!recipient?.email) return false;
+
+  // Best-effort listing label enrichment (city from the DDF snapshot).
+  let city: string | null = null;
+  try {
+    const [snapshot] = await db
+      .select({ city: ddfListingSnapshots.city })
+      .from(ddfListingSnapshots)
+      .where(eq(ddfListingSnapshots.mlsNumber, note.listingMlsNumber))
+      .orderBy(desc(ddfListingSnapshots.capturedAt))
+      .limit(1);
+    city = snapshot?.city || null;
+  } catch {
+    city = null;
+  }
+  const listingLabel = city ? `MLS ${note.listingMlsNumber} (${city})` : `MLS ${note.listingMlsNumber}`;
+
+  const copy = buildFieldNoteLeadCopy({ leadName, listingLabel, message });
+  const ctaUrl = `https://realist.ca/crm/contacts/${encodeURIComponent(crmContactId)}?source=field-note-lead-email`;
+  const day = new Date().toISOString().slice(0, 10);
+  const dedupeKey = `field_note_lead:${note.id}:${leadEmail.toLowerCase()}:${day}`;
+
+  await enqueueForRecipients({
+    eventType: "field_note_lead",
+    listingMlsNumber: note.listingMlsNumber,
+    city,
+    rawPayload: { fieldNoteId: note.id, crmContactId, listingMlsNumber: note.listingMlsNumber },
+    recipients: [{
+      userId: note.userId,
+      payload: buildPayload({
+        recipient,
+        eventType: "field_note_lead",
+        reasonText: copy.reasonText,
+        ctaLabel: "Open the lead in your CRM",
+        ctaUrl,
+        subjectLine: copy.subjectLine,
+        previewText: copy.previewText,
+        listingMlsNumber: note.listingMlsNumber,
+        listingCity: city,
+        ghlTags: ["realist-user", "power-team", "field-note-lead"],
+        leadScoreDelta: 0,
+      }),
+      dedupeKey,
     }],
   });
 

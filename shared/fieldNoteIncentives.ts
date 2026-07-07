@@ -78,3 +78,31 @@ export function buildFieldNoteLeadCrm(
       (trimmed ? ` Message: "${trimmed}"` : ""),
   };
 }
+
+export interface FieldNoteLeadCopy {
+  subjectLine: string;
+  previewText: string;
+  reasonText: string;
+}
+
+/**
+ * Email/inbox copy for the "a lead arrived" notification to the note's author.
+ * Pure so the copy is unit-tested; the queue function adds recipient plumbing.
+ */
+export function buildFieldNoteLeadCopy(input: {
+  leadName: string;
+  listingLabel: string; // e.g. "MLS C7891234 (Toronto)"
+  message?: string | null;
+}): FieldNoteLeadCopy {
+  const name = input.leadName.trim() || "An investor";
+  const msg = input.message?.trim();
+  const excerpt = msg && msg.length > 140 ? `${msg.slice(0, 139).trimEnd()}…` : msg;
+  return {
+    subjectLine: `New lead: ${name} wants to work with you`,
+    previewText: `From your field note on ${input.listingLabel}`,
+    reasonText:
+      `${name} asked to work with you via your field note on ${input.listingLabel}. ` +
+      `They're in your Realist CRM now — reach out while it's warm.` +
+      (excerpt ? ` Their message: "${excerpt}"` : ""),
+  };
+}

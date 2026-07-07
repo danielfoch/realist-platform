@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveEndorsement,
   buildFieldNoteLeadCrm,
+  buildFieldNoteLeadCopy,
   ENDORSEMENT_POINTS,
 } from "./fieldNoteIncentives";
 
@@ -72,5 +73,35 @@ describe("buildFieldNoteLeadCrm", () => {
   it("omits the message clause when none is given", () => {
     const m = buildFieldNoteLeadCrm({ noteId: "n", listingMlsNumber: "X1", category: "architecture" }, "Architect");
     expect(m.activityBody).not.toContain("Message:");
+  });
+});
+
+describe("buildFieldNoteLeadCopy", () => {
+  it("names the lead and the listing, and quotes a trimmed message", () => {
+    const c = buildFieldNoteLeadCopy({
+      leadName: "  Jane Investor ",
+      listingLabel: "MLS C7891234 (Toronto)",
+      message: "  looking for a sixplex feasibility read  ",
+    });
+    expect(c.subjectLine).toBe("New lead: Jane Investor wants to work with you");
+    expect(c.previewText).toBe("From your field note on MLS C7891234 (Toronto)");
+    expect(c.reasonText).toContain("Jane Investor asked to work with you");
+    expect(c.reasonText).toContain('"looking for a sixplex feasibility read"');
+  });
+
+  it("falls back to a generic lead name and truncates long messages", () => {
+    const c = buildFieldNoteLeadCopy({
+      leadName: "   ",
+      listingLabel: "MLS X1",
+      message: "x".repeat(200),
+    });
+    expect(c.subjectLine).toBe("New lead: An investor wants to work with you");
+    expect(c.reasonText).toContain("…");
+    expect(c.reasonText).not.toContain("x".repeat(150));
+  });
+
+  it("omits the message clause when none is given", () => {
+    const c = buildFieldNoteLeadCopy({ leadName: "Sam", listingLabel: "MLS X1" });
+    expect(c.reasonText).not.toContain("Their message:");
   });
 });
