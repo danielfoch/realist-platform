@@ -5,21 +5,21 @@ const TERANET_REPORT_URL =
 
 export const teranetQ12026OntarioBuyerResetConfigReport: ReportContent = {
   slug: "teranet-q1-2026-ontario-buyer-reset",
-  title: "Teranet Q1 2026: First-Time Buyers Lead, Peak Buyers Take The Losses",
+  title: "Ontario First-Time Buyer Age Hits 40: Teranet Q1 2026",
   dek:
-    "Teranet's 2025 Ontario land registry data shows a market being reshaped by buyer composition, not a clean recovery. First-time buyers are now the largest buyer segment while the 2021-2022 cohort is showing the most visible loss pain.",
+    "Teranet's 2025 Ontario land registry data shows a market being reshaped by buyer composition, not a clean recovery. First-time buyers are now the largest buyer segment, their average age has reached 40, and multi-property owners have fallen from the top buyer group to third place.",
   author: DEFAULT_AUTHOR,
   publishDate: "2026-07-05",
   kind: "market",
-  tags: ["teranet", "ontario", "first-time-buyers", "loss-sales", "housing-market"],
+  tags: ["teranet", "ontario", "first-time-buyers", "multi-property-owners", "loss-sales", "housing-market"],
   ogImage: "/og-image.png",
-  metaTitle: "Teranet Q1 2026 Ontario Housing Report: First-Time Buyers Lead The Market | Realist",
+  metaTitle: "Ontario First-Time Buyer Age Hits 40: Teranet Q1 2026 | Realist",
   metaDescription:
-    "Realist analysis of Teranet's Q1 2026 Market Insight Report: first-time homebuyers became Ontario's largest buyer segment in 2025, movers stayed locked in, MPOs faded, and pandemic-peak buyers sold at elevated loss rates.",
+    "Teranet Q1 2026 report: Ontario first-time buyers are now the largest buyer segment, average age hit 40, and investors fell from 1st to 3rd.",
   heroStat: {
-    label: "Peak-buyer loss signal",
-    value: "36.6%",
-    detail: "Share of properties purchased in 2022 and sold in 2025 that registered a loss, according to Teranet.",
+    label: "Average first-time buyer age",
+    value: "40",
+    detail: "Average age of an Ontario first-time homebuyer in 2025, up from 36 in 2015, according to Teranet.",
   },
   sections: [
     {
@@ -42,7 +42,7 @@ export const teranetQ12026OntarioBuyerResetConfigReport: ReportContent = {
         {
           label: "MPO market share",
           value: "21.5%",
-          detail: "Multi-property owners fell to third place by share.",
+          detail: "Multi-property owners fell from first place to third by share.",
           trend: "down",
         },
         {
@@ -60,7 +60,7 @@ export const teranetQ12026OntarioBuyerResetConfigReport: ReportContent = {
         {
           label: "Power of sale transfers",
           value: "2,979",
-          detail: "Up from 2,123 in 2024.",
+          detail: "Up about 40% from 2,123 in 2024.",
           trend: "up",
         },
       ],
@@ -70,7 +70,24 @@ export const teranetQ12026OntarioBuyerResetConfigReport: ReportContent = {
       id: "bottom-line",
       heading: "Bottom line",
       body:
-        "The lazy read is that first-time buyers are back, so the market must be healing. I think that is too clean.\n\nTeranet's Q1 2026 Market Insight Report shows a market where the mix of buyers changed because the old buyer base got squeezed. Multi-property owners were the dominant segment during the investment peak. By 2025, they had faded to third place. Movers are still locked in by replacement cost, financing, and the tax of trading up in an expensive market. First-time buyers became the largest segment because prices corrected enough in some pockets to clear transactions, not because housing suddenly became cheap.\n\nThat distinction matters. This is not a simple bull-case volume recovery. It is price discovery creating entry points for the buyer pool that was locked out during the peak.",
+        "The lazy read is that first-time buyers are back, so the Ontario housing market must be healing. I think that is too clean.\n\nTeranet's Q1 2026 Market Insight Report shows a market where the buyer mix changed because the old buyer base got squeezed. First-time homebuyers became Ontario's largest buyer segment in 2025. The average age of a first-time homebuyer reached **40**. Multi-property owners, the investor-heavy group that led during the 2022 peak, fell from first place to third.\n\nThat is not a simple bull-case volume recovery. It is price discovery creating entry points for buyers who were locked out, while investors and movers deal with financing costs, replacement costs, and weaker exit math.",
+    },
+    {
+      type: "chart",
+      chartType: "line",
+      id: "first-time-buyer-age",
+      title: "How old is the average first-time homebuyer in Ontario?",
+      caption:
+        "Average first-time homebuyer age in Ontario. Source: Teranet Q1 2026 Market Insight Report, Figure 9.",
+      xKey: "year",
+      yAxisLabel: "Average age",
+      format: "number",
+      series: [{ key: "avgAge", label: "Average first-time buyer age", color: "#800000" }],
+      data: [
+        { year: "2015", avgAge: 36 },
+        { year: "2020", avgAge: 38 },
+        { year: "2025", avgAge: 40 },
+      ],
     },
     {
       type: "chart",
@@ -110,9 +127,50 @@ export const teranetQ12026OntarioBuyerResetConfigReport: ReportContent = {
     {
       type: "narrative",
       id: "first-time-buyer-read",
-      heading: "First-time buyers leading is not the same thing as a healthy market",
+      heading: "First-time buyers leading is not the same thing as easy ownership",
       body:
-        "First-time buyers leading the market sounds bullish until you ask what made the leadership possible.\n\nThe answer is not that ownership became easy. Teranet also reports that the average first-time homebuyer age reached 40 in 2025. For non-condo first-time purchases, nearly three-quarters involved two parties and the share with three or more parties was close to 19%. That is not a story about young buyers suddenly having a clean path into housing. It is a story about delayed entry, pooled incomes, family support, and price cuts finally making a small slice of the market transact.\n\nFor buyers, the signal is simple: patience has worked. For sellers, the signal is harsher: if the buyer pool is now more first-time-buyer-heavy, pricing has to clear against payment math, not against 2021 psychology.",
+        "First-time buyers leading the market sounds bullish until you ask what made the leadership possible.\n\nThe answer is not that ownership became easy. Teranet reports that the average first-time homebuyer age reached **40** in 2025. For non-condo first-time purchases, nearly three-quarters involved two parties and the share with three or more parties was close to **19%**. That is not a story about young buyers suddenly having a clean path into housing. It is a story about delayed entry, pooled incomes, family support, and price cuts finally making a small slice of the market transact.\n\nFor buyers, the signal is simple: patience has worked. For sellers, the signal is harsher: if the buyer pool is now more first-time-buyer-heavy, pricing has to clear against payment math, not against 2021 psychology.",
+    },
+    {
+      type: "statGrid",
+      id: "shared-ownership-stats",
+      heading: "Affordability is showing up as shared ownership",
+      stats: [
+        {
+          label: "Non-condo FTHB with 2 parties",
+          value: "~75%",
+          detail: "Nearly three-quarters of non-condo first-time purchases involved two parties in 2025.",
+          trend: "up",
+        },
+        {
+          label: "Non-condo FTHB with 3+ parties",
+          value: "~19%",
+          detail: "Teranet says the three-or-more-party share has grown meaningfully.",
+          trend: "up",
+        },
+        {
+          label: "New solo MPO purchases",
+          value: "~30%",
+          detail: "A new group of solo multi-property owners is emerging despite the broader investor pullback.",
+          trend: "up",
+        },
+      ],
+    },
+    {
+      type: "chart",
+      chartType: "bar",
+      id: "power-of-sale-transfers",
+      title: "Power of sale transfers rose in 2025",
+      caption:
+        "Ontario power of sale transfer volumes. Source: Teranet Q1 2026 Market Insight Report, Figure 4A.",
+      xKey: "year",
+      yAxisLabel: "Transfers",
+      format: "number",
+      series: [{ key: "transfers", label: "Power of sale transfers", color: "#d04a06" }],
+      data: [
+        { year: "2024", transfers: 2123 },
+        { year: "2025", transfers: 2979 },
+      ],
     },
     {
       type: "chart",
@@ -172,9 +230,26 @@ export const teranetQ12026OntarioBuyerResetConfigReport: ReportContent = {
     {
       type: "narrative",
       id: "mover-mpo-read",
-      heading: "Movers are locked in, investors got more selective",
+      heading: "Movers are locked in, investors fell to third",
       body:
-        "Mover share fell to **13.0%** in 2025. That is the replacement-cost problem in one number. People may want to move, but selling one home and buying another at today's rates and prices is a different trade than it was in the cheap-money period.\n\nMulti-property owners are also not behaving like 2021 anymore. They remain active, but Teranet shows their share falling from the 2022 peak. The easy investor bid is gone. Financing costs, rental market weakness, and lower return expectations have made the buyer base more selective.\n\nThat leaves the market with a strange mix: first-time buyers stepping in later and with more support, locked-in owners not moving, older equity-rich capital still active in pockets, and peak buyers absorbing the most obvious losses.",
+        "Mover share fell to **13.0%** in 2025. That is the replacement-cost problem in one number. People may want to move, but selling one home and buying another at today's rates and prices is a different trade than it was in the cheap-money period.\n\nMulti-property owners are also not behaving like 2021 anymore. Teranet says they were the largest buyer segment during the investment-driven 2022 peak. By 2025, they had fallen to **third place**, with a **21.5%** share of Ontario property transfers. The easy investor bid is gone. Financing costs, rental market weakness, and lower return expectations have made the buyer base more selective.\n\nThat leaves the market with a strange mix: first-time buyers stepping in later and with more support, locked-in owners not moving, older equity-rich capital still active in pockets, and peak buyers absorbing the most obvious losses.",
+    },
+    {
+      type: "chart",
+      chartType: "bar",
+      id: "mpo-property-count",
+      title: "Most multi-property owners are not giant landlords",
+      caption:
+        "Number of properties held by Ontario multi-property owners as of December 31, 2025. Source: Teranet Q1 2026 Market Insight Report, Figure 11.",
+      xKey: "portfolio",
+      yAxisLabel: "Share of multi-property owners",
+      format: "percent",
+      series: [{ key: "share", label: "Share of MPOs", color: "#55565b" }],
+      data: [
+        { portfolio: "2 properties", share: 55 },
+        { portfolio: "3 properties", share: 20 },
+        { portfolio: "10+ properties", share: 7.5 },
+      ],
     },
     {
       type: "callout",
