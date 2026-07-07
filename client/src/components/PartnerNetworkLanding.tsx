@@ -8,7 +8,7 @@ import {
   Users, TrendingUp, BarChart3, CheckCircle2, ArrowRight, Building2,
   MapPin, DollarSign, Mail, Kanban, PenTool, type LucideIcon,
 } from "lucide-react";
-import { getReferralTerms, type NetworkPartnerType } from "@shared/partnerNetwork";
+import { formatReferralPayee, getReferralTerms, type NetworkPartnerType } from "@shared/partnerNetwork";
 
 interface LandingCopy {
   badge: string;
@@ -27,7 +27,7 @@ const COPY: Record<NetworkPartnerType, LandingCopy> = {
     headline: "Join our realtor network.",
     headlineAccent: "Get more investor deals.",
     subhead:
-      "Thousands of investors underwrite deals on Realist every week. When one analyzes a property in your market, we send the lead to you — with the full analysis attached.",
+      "Thousands of investors underwrite deals on Realist every week. When one analyzes a property in your market, we send the lead to you with the full analysis attached.",
     leadDescription: "Investor-ready buyer leads with complete underwriting: purchase price, rents, cash flow, and strategy.",
     seoTitle: "Join the Realist Realtor Network — Get More Investor Deals",
     seoDescription:
@@ -57,7 +57,7 @@ export function PartnerNetworkLanding({ partnerType }: { partnerType: NetworkPar
 
   const valueProps: { icon: LucideIcon; label: string; desc: string }[] = [
     { icon: Users, label: "High-Intent Local Leads", desc: copy.leadDescription },
-    { icon: Kanban, label: "Free CRM Seat Included", desc: "Manage every referred lead and deal in your Realist CRM, with email alerts the moment a lead lands." },
+    { icon: Kanban, label: "CRM Seat Included", desc: "Manage every referred lead in the Realist partner CRM, backed by GHL workflows today and designed for Homie-managed follow-up over time." },
     { icon: DollarSign, label: "No Monthly Fees", desc: `Pay nothing to join. A ${terms.feePercent}% referral fee applies only when a referred deal ${terms.successEvent}.` },
   ];
 
@@ -72,7 +72,7 @@ export function PartnerNetworkLanding({ partnerType }: { partnerType: NetworkPar
     {
       icon: PenTool,
       title: "Sign the referral agreement online",
-      desc: `One simple agreement: ${terms.feePercent}% of your compensation on ${dealVerb} referred deals, payable to ${terms.payeeCompany}. No monthly fees, cancel anytime.`,
+      desc: `One simple agreement: ${terms.feePercent}% of your compensation on ${dealVerb} referred deals, payable to ${formatReferralPayee(terms)}. No monthly fees, cancel anytime.`,
     },
     {
       icon: TrendingUp,
@@ -151,9 +151,10 @@ export function PartnerNetworkLanding({ partnerType }: { partnerType: NetworkPar
             </h3>
             <ul className="space-y-3">
               {[
-                "Every lead comes from an investor who just analyzed a real property on Realist — you see the address, strategy, and full underwriting before you reach out.",
+                "Every lead comes from an investor who just analyzed a real property on Realist. You see the address, strategy, and full underwriting before you reach out.",
                 "Leads are routed by market, so you only get buyers in the city you serve.",
                 `Your included CRM tracks every lead from introduction to ${dealVerb} deal, with one clear next step at every stage.`,
+                "The operating layer is simple: GHL-backed CRM today, Homie workflows as the follow-up desk matures.",
                 "Warm introductions: when you claim a lead, we email you both together so the conversation starts immediately.",
               ].map((point) => (
                 <li key={point} className="flex items-start gap-2 text-sm text-muted-foreground">

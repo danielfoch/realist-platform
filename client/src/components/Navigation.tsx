@@ -103,6 +103,7 @@ const navCategories: NavCategory[] = [
     label: "For Professionals",
     items: [
       { href: "/power-team", label: "Power Team", description: "Join the professional network behind Realist deals", icon: <Briefcase className="h-4 w-4" /> },
+      { href: "/about/local-experts", label: "Local Experts", description: "Claim a market as an investor referral partner or meetup host", icon: <MapPin className="h-4 w-4" /> },
       { href: "/join/realtors", label: "Realtors", description: "Get matched with investors analyzing deals in your market", icon: <Building className="h-4 w-4" /> },
       { href: "/join/mortgage-brokers", label: "Mortgage Brokers", description: "Fund deals sourced and underwritten on Realist", icon: <DollarSign className="h-4 w-4" /> },
       { href: "/join/lenders", label: "Lenders", description: "Reach investors at the moment they need financing", icon: <Handshake className="h-4 w-4" /> },

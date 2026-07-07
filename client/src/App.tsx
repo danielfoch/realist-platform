@@ -130,6 +130,7 @@ const Notebook = lazy(() => import("@/pages/Notebook"));
 const NotebookPrint = lazy(() => import("@/pages/NotebookPrint"));
 const DanielFoch = lazy(() => import("@/pages/DanielFoch"));
 const NickHill = lazy(() => import("@/pages/NickHill"));
+const LocalExperts = lazy(() => import("@/pages/LocalExperts"));
 const UnpackingMultiplexesToronto = lazy(() => import("@/pages/UnpackingMultiplexesToronto"));
 const Blog = lazy(() => import("@/pages/Blog"));
 const BlogPost = lazy(() => import("@/pages/BlogPost"));
@@ -430,6 +431,7 @@ function Router() {
 
       {/* New About routes */}
       <Route path="/about" component={About} />
+      <Route path="/about/local-experts" component={LocalExperts} />
       <Route path="/about/team">{() => <Redirect to="/about" />}</Route>
       <Route path="/about/programs">{() => <Redirect to="/about" />}</Route>
       <Route path="/about/shop" component={Shop} />

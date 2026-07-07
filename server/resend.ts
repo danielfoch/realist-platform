@@ -471,6 +471,9 @@ export async function sendPartnerNetworkWelcomeEmail(params: {
   const { client, fromEmail } = await getResendClient();
 
   const subject = `Welcome to the Realist Partner Network — ${params.marketCity} is yours`;
+  const payeeDisplay = params.payeeName === params.payeeCompany
+    ? params.payeeName
+    : `${params.payeeName}, ${params.payeeCompany}`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -488,7 +491,7 @@ export async function sendPartnerNetworkWelcomeEmail(params: {
         <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0;">
           <p style="margin: 0 0 8px 0; color: #111827; font-size: 14px;"><strong>Your terms:</strong></p>
           <p style="margin: 0 0 4px 0; color: #374151; font-size: 13px;">• No monthly fees — ever</p>
-          <p style="margin: 0 0 4px 0; color: #374151; font-size: 13px;">• ${params.feePercent}% referral fee on closed referred deals, payable to ${params.payeeName}, ${params.payeeCompany}</p>
+          <p style="margin: 0 0 4px 0; color: #374151; font-size: 13px;">• ${params.feePercent}% referral fee on closed referred deals, payable to ${payeeDisplay}</p>
           <p style="margin: 0; color: #374151; font-size: 13px;">• Manage every referred lead in your included Realist CRM</p>
         </div>
 
