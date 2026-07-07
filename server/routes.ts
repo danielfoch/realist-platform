@@ -149,6 +149,7 @@ import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import { registerBookedCallLeadRoutes } from "./bookedCallLeads";
 import { registerDealRoomRoutes } from "./dealRoom";
 import { createOrGetReferralOutcomeForIntroduction, registerReferralOutcomeRoutes } from "./referralOutcomes";
+import { logFindDealsQuery } from "./demandLedger";
 import {
   getCurrentSaleEstimate,
   lookupSoldPriceForListing,
@@ -6682,10 +6683,22 @@ export async function registerRoutes(
         res.status(400).json({ error: "Query is required" });
         return;
       }
+      const trimmedQuery = query.trim();
+      const userId = req.session?.userId ?? null;
+      const sessionId = req.sessionID ?? req.session?.id ?? null;
+      const demandSource = req.body?.demandSource === "agent_api" ? "agent_api" : "web";
 
-      const cacheKey = `find-deals:${query.toLowerCase().trim()}`;
+      const cacheKey = `find-deals:${trimmedQuery.toLowerCase()}`;
       const cached = findDealsCache.get(cacheKey);
       if (cached && Date.now() < cached.expiresAt) {
+        logFindDealsQuery({
+          rawQuery: trimmedQuery,
+          parsedFilters: cached.data?.filters_applied ?? null,
+          resultCount: Number(cached.data?.total ?? cached.data?.listings?.length ?? 0),
+          source: demandSource,
+          sessionId,
+          userId,
+        });
         res.json(cached.data);
         return;
       }
@@ -6697,7 +6710,7 @@ export async function registerRoutes(
         return;
       }
 
-      const filters = parseNaturalLanguageQuery(query);
+      const filters = parseNaturalLanguageQuery(trimmedQuery);
 
       const cityKey = filters.city?.toLowerCase() || "";
       const cityCoords = CITY_COORDS[cityKey] || null;
@@ -6850,8 +6863,17 @@ export async function registerRoutes(
         bounds: responseBounds,
         filters_applied: filters,
         total: result.count || scoredListings.length,
-        query: query.trim(),
+        query: trimmedQuery,
       };
+
+      logFindDealsQuery({
+        rawQuery: trimmedQuery,
+        parsedFilters: filters,
+        resultCount: responseData.total,
+        source: demandSource,
+        sessionId,
+        userId,
+      });
 
       findDealsCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + 600000 });
       if (findDealsCache.size > 100) {

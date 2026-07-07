@@ -18,6 +18,8 @@ import type { Express, Request, Response } from "express";
 import cron from "node-cron";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
+import { modelPredictions } from "@shared/schema";
+import { MARKET_DEFAULTS_MODEL_KEY, MARKET_DEFAULTS_VERSION } from "./rentIntelligence";
 
 const MIN_SAMPLE = 5;
 
@@ -191,7 +193,7 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
     DO UPDATE SET value = EXCLUDED.value, p25 = EXCLUDED.p25, p75 = EXCLUDED.p75,
                   sample_size = EXCLUDED.sample_size, outliers_excluded = EXCLUDED.outliers_excluded,
                   trained_at = EXCLUDED.trained_at
-    RETURNING market
+    RETURNING market, strategy, metric, value, p25, p75, sample_size
   `);
 
   // Rent guidance from REAL asking rents (rent_listings, trailing 6 months) —
@@ -244,7 +246,7 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
     DO UPDATE SET value = EXCLUDED.value, p25 = EXCLUDED.p25, p75 = EXCLUDED.p75,
                   sample_size = EXCLUDED.sample_size, outliers_excluded = EXCLUDED.outliers_excluded,
                   trained_at = EXCLUDED.trained_at
-    RETURNING market
+    RETURNING market, strategy, metric, value, p25, p75, sample_size
   `);
 
   const written = (result.rows?.length || 0) + (rentResult.rows?.length || 0);
@@ -257,9 +259,48 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
     INSERT INTO ai_training_runs (analyses_total, markets_trained, metrics_written)
     VALUES (${Number(total)}, ${markets}, ${written})
   `);
+  try {
+    await recordMarketDefaultPredictions([...(result.rows || []), ...(rentResult.rows || [])]);
+  } catch (error: any) {
+    console.error("[ai-defaults] failed to record prediction ledger rows:", error?.message || error);
+  }
 
   console.log(`[ai-trainer] trained ${markets} markets, ${written} metrics from ${total} total analyses`);
   return { markets, metrics: written, analyses: Number(total) };
+}
+
+async function recordMarketDefaultPredictions(rows: any[]): Promise<void> {
+  const values = rows
+    .filter((row) => row && Number.isFinite(Number(row.value)))
+    .map((row) => {
+      const metric = String(row.metric || "");
+      const bedroomMatch = metric.match(/^market_rent_([0-9])br$/);
+      const sampleSize = Number(row.sample_size) || 0;
+      return {
+        modelKey: MARKET_DEFAULTS_MODEL_KEY,
+        modelVersion: MARKET_DEFAULTS_VERSION,
+        subjectType: "adhoc",
+        subjectId: `${row.market}:${row.strategy || "all"}:${metric}`,
+        inputs: {
+          source: "ai_market_defaults",
+          market: row.market,
+          strategy: row.strategy || "all",
+          metric,
+          sampleSize,
+        },
+        predictedValue: Number(row.value),
+        intervalLow: row.p25 != null ? Number(row.p25) : null,
+        intervalHigh: row.p75 != null ? Number(row.p75) : null,
+        confidence: sampleSize >= 50 ? "high" : sampleSize >= 15 ? "medium" : "low",
+        method: "ai_market_defaults",
+        compCount: sampleSize,
+        city: row.market ?? null,
+        province: null,
+        bedrooms: bedroomMatch ? bedroomMatch[1] : null,
+      };
+    });
+  if (!values.length) return;
+  await db.insert(modelPredictions).values(values);
 }
 
 export function registerAiDefaultsRoutes(app: Express): void {

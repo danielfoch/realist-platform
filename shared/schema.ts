@@ -2634,6 +2634,39 @@ export const referralOutcomes = pgTable("referral_outcomes", {
   index("referral_outcomes_lead_idx").on(table.leadId),
 ]);
 
+export const askRealistInteractions = pgTable("ask_realist_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id"),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  question: text("question").notNull(),
+  answer: text("answer"),
+  toolCalls: jsonb("tool_calls"),
+  context: jsonb("context"),
+  status: text("status").default("ok").notNull(),
+  errorMessage: text("error_message"),
+  latencyMs: integer("latency_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("ask_realist_interactions_created_idx").on(table.createdAt),
+  index("ask_realist_interactions_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export const findDealsQueries = pgTable("find_deals_queries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: text("session_id"),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  rawQuery: text("raw_query").notNull(),
+  queryHash: varchar("query_hash", { length: 16 }).notNull(),
+  parsedFilters: jsonb("parsed_filters"),
+  resultCount: integer("result_count"),
+  source: text("source").default("web").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("find_deals_queries_hash_idx").on(table.queryHash),
+  index("find_deals_queries_created_idx").on(table.createdAt),
+  index("find_deals_queries_source_created_idx").on(table.source, table.createdAt),
+]);
+
 export const realtorMarketClaimsRelations = relations(realtorMarketClaims, ({ one, many }) => ({
   user: one(users, { fields: [realtorMarketClaims.userId], references: [users.id] }),
   partner: one(industryPartners, { fields: [realtorMarketClaims.partnerId], references: [industryPartners.id] }),
@@ -2684,6 +2717,14 @@ export const insertReferralOutcomeSchema = createInsertSchema(referralOutcomes).
   createdAt: true,
   updatedAt: true,
 });
+export const insertAskRealistInteractionSchema = createInsertSchema(askRealistInteractions).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertFindDealsQuerySchema = createInsertSchema(findDealsQueries).omit({
+  id: true,
+  createdAt: true,
+});
 
 export type InsertRealtorMarketClaim = z.infer<typeof insertRealtorMarketClaimSchema>;
 export type RealtorMarketClaim = typeof realtorMarketClaims.$inferSelect;
@@ -2693,6 +2734,10 @@ export type InsertRealtorIntroduction = z.infer<typeof insertRealtorIntroduction
 export type RealtorIntroduction = typeof realtorIntroductions.$inferSelect;
 export type InsertReferralOutcome = z.infer<typeof insertReferralOutcomeSchema>;
 export type ReferralOutcome = typeof referralOutcomes.$inferSelect;
+export type InsertAskRealistInteraction = z.infer<typeof insertAskRealistInteractionSchema>;
+export type AskRealistInteraction = typeof askRealistInteractions.$inferSelect;
+export type InsertFindDealsQuery = z.infer<typeof insertFindDealsQuerySchema>;
+export type FindDealsQuery = typeof findDealsQueries.$inferSelect;
 
 // ============================================
 // COMMUNITY UNDERWRITING TABLES

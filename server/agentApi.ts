@@ -17,6 +17,9 @@ import { apiKeys, analyses, propertyAnalyses, users } from "@shared/schema";
 import { calculateInvestmentMetrics } from "@shared/investmentMetrics";
 import { isAuthenticated } from "./auth";
 import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
+import { getRentEstimate } from "./rentIntelligence";
+import { executeMultiplexUnderwriter, underwriteRequestSchema } from "./multiplexUnderwriter";
+import { dealDeskSubmitSchema, submitDealDesk } from "./routes/dealDesk";
 
 // ---------- key helpers ----------
 const KEY_PREFIX = "realist_live_";
@@ -195,6 +198,19 @@ const submitForReviewSchema = z.object({
   province: z.string().optional(),
   propertyType: z.string().optional(),
   market: z.string().optional(),
+});
+
+const estimateRentSchema = z.object({
+  bedrooms: z.union([z.number().int().nonnegative(), z.string().min(1)]),
+  city: z.string().optional().nullable(),
+  province: z.string().optional().nullable(),
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
+  units: z.number().int().min(1).max(100).optional(),
+  listingKey: z.string().optional().nullable(),
+  analysisId: z.string().optional().nullable(),
+}).refine((value) => Boolean(value.city) || (value.lat != null && value.lng != null), {
+  message: "Provide city or lat/lng",
 });
 
 // ---------- API key management (session-authenticated) ----------
@@ -428,7 +444,7 @@ export function registerAgentRoutes(app: Express) {
       const upstream = await fetch(`${baseUrl}/api/find-deals`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, demandSource: "agent_api" }),
       });
       if (!upstream.ok) {
         const text = await upstream.text();
@@ -456,6 +472,65 @@ export function registerAgentRoutes(app: Express) {
     } catch (err: any) {
       console.error("[agent] find-deals error:", err);
       res.status(500).json({ error: "find_deals_failed", message: err?.message });
+    }
+  });
+
+  /** Rent estimate from the same prediction-ledger-backed engine as /api/intelligence/rent-estimate. */
+  app.post("/api/agent/estimate-rent", async (req, res) => {
+    try {
+      const parsed = estimateRentSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const input = parsed.data;
+      const estimate = await getRentEstimate({
+        bedrooms: input.bedrooms,
+        city: input.city ?? null,
+        province: input.province ?? null,
+        lat: input.lat ?? null,
+        lng: input.lng ?? null,
+        units: input.units,
+        subjectType: input.listingKey ? "listing" : input.analysisId ? "analysis" : "adhoc",
+        subjectId: input.listingKey ?? input.analysisId ?? null,
+        userId: req.agentUserId ?? null,
+      });
+      res.json({ success: true, estimate, reason: estimate ? null : "no_data_for_market" });
+    } catch (err: any) {
+      console.error("[agent] estimate rent error:", err);
+      res.status(500).json({ error: "estimate_rent_failed", message: err?.message });
+    }
+  });
+
+  /** Multiplex underwriter for AI agents. Same engine as /api/multiplex-underwriter, metered under bearer auth. */
+  app.post("/api/agent/underwrite-multiplex", async (req, res) => {
+    try {
+      const parsed = underwriteRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const result = await executeMultiplexUnderwriter(parsed.data, {
+        userId: req.agentUserId ?? null,
+        sessionId: null,
+      });
+      res.json(result);
+    } catch (err: any) {
+      console.error("[agent] underwrite multiplex error:", err);
+      res.status(500).json({ error: "underwrite_multiplex_failed", message: err?.message });
+    }
+  });
+
+  /** Submit a deal to Deal Desk from an authorized agent workflow. */
+  app.post("/api/agent/deal-desk-submit", async (req, res) => {
+    try {
+      const parsed = dealDeskSubmitSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const result = await submitDealDesk(parsed.data, {
+        req,
+        userId: req.agentUserId ?? null,
+        sessionId: null,
+        source: "agent_api",
+        sourcePage: "/api/agent/deal-desk-submit",
+      });
+      res.json(result);
+    } catch (err: any) {
+      console.error("[agent] deal desk submit error:", err);
+      res.status(500).json({ error: "deal_desk_submit_failed", message: err?.message });
     }
   });
 

@@ -194,7 +194,7 @@ export async function getAssumptionValues(): Promise<Record<string, unknown>> {
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
 
-const underwriteRequestSchema = z.object({
+export const underwriteRequestSchema = z.object({
   address: z.string().min(5).max(200),
   postalCode: z.string().max(10).optional(),
   lotFrontageFt: z.number().positive().max(500).optional(),
@@ -213,7 +213,7 @@ const underwriteRequestSchema = z.object({
   assumptionOverrides: z.record(z.string(), z.unknown()).optional(),
 });
 
-type UnderwriteRequest = z.infer<typeof underwriteRequestSchema>;
+export type UnderwriteRequest = z.infer<typeof underwriteRequestSchema>;
 
 function num(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
@@ -543,6 +543,61 @@ function checkRateLimit(req: Request): { ok: boolean; limit: number } {
 const DISCLAIMER =
   "Preliminary screening only — not planning, legal, financial, or architectural advice. Zoning permissions, envelope figures, costs, rents, and financing terms are estimates that must be verified with the City of Toronto, a registered planner or architect, and your lender before acting.";
 
+export async function executeMultiplexUnderwriter(input: UnderwriteRequest, opts: {
+  userId?: string | null;
+  sessionId?: string | null;
+  persist?: boolean;
+} = {}) {
+  const workingInput = { ...input };
+  const site = await resolveSite(workingInput.address);
+
+  const hasDims = !!(workingInput.lotFrontageFt && workingInput.lotDepthFt) || !!workingInput.lotAreaSqft;
+  if (!hasDims) {
+    return {
+      status: "needs_lot_dimensions" as const,
+      site,
+      message: "Site resolved. Provide lotFrontageFt + lotDepthFt (or lotAreaSqft) to run the full underwrite.",
+      disclaimer: DISCLAIMER,
+    };
+  }
+
+  if (!workingInput.lotFrontageFt || !workingInput.lotDepthFt) {
+    const side = Math.sqrt(workingInput.lotAreaSqft!);
+    workingInput.lotFrontageFt = workingInput.lotFrontageFt ?? Math.round(side * 0.6);
+    workingInput.lotDepthFt = workingInput.lotDepthFt ?? Math.round(workingInput.lotAreaSqft! / workingInput.lotFrontageFt);
+  }
+
+  const underwrite = await runUnderwrite(workingInput, site);
+  if (!input.lotFrontageFt || !input.lotDepthFt) {
+    underwrite.assumptionNotes.push("Lot frontage/depth back-filled from area — confirm actual dimensions.");
+  }
+
+  const { writeMultiplexReport } = await import("./multiplexReportWriter");
+  const { report, source: reportSource } = await writeMultiplexReport({
+    address: workingInput.address,
+    site,
+    underwrite,
+  });
+  const result = { ...underwrite, report, reportSource };
+
+  if (opts.persist === false) {
+    return { status: "complete" as const, site, underwrite: result, disclaimer: DISCLAIMER };
+  }
+
+  const shareToken = crypto.randomBytes(12).toString("hex");
+  const inserted = await db.execute(sql`
+    INSERT INTO multiplex_underwritings (user_id, session_id, address, lat, lng, postal_fsa, inputs_json, site_json, result_json, share_token)
+    VALUES (
+      ${opts.userId ?? null}, ${opts.sessionId ?? null}, ${workingInput.address}, ${site.lat}, ${site.lng},
+      ${extractFsa(workingInput)}, ${JSON.stringify(workingInput)}::jsonb,
+      ${JSON.stringify(site)}::jsonb, ${JSON.stringify(result)}::jsonb, ${shareToken}
+    )
+    RETURNING id
+  `);
+  const id = (inserted.rows[0] as { id: string }).id;
+  return { status: "complete" as const, id, shareToken, site, underwrite: result, disclaimer: DISCLAIMER };
+}
+
 export function registerMultiplexUnderwriterRoutes(app: Express): void {
   ensureMultiplexTables()
     .then(seedAssumptions)
@@ -594,55 +649,10 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid request", details: parsed.error.issues });
       }
-      const input = parsed.data;
-
-      const site = await resolveSite(input.address);
-
-      const hasDims = !!(input.lotFrontageFt && input.lotDepthFt) || !!input.lotAreaSqft;
-      if (!hasDims) {
-        return res.json({
-          status: "needs_lot_dimensions",
-          site,
-          message: "Site resolved. Provide lotFrontageFt + lotDepthFt (or lotAreaSqft) to run the full underwrite.",
-          disclaimer: DISCLAIMER,
-        });
-      }
-      // The envelope needs frontage/depth for setback math; back-fill plausible
-      // dims from area when only area was given (surfaced as an assumption).
-      if (!input.lotFrontageFt || !input.lotDepthFt) {
-        const side = Math.sqrt(input.lotAreaSqft!);
-        input.lotFrontageFt = input.lotFrontageFt ?? Math.round(side * 0.6);
-        input.lotDepthFt = input.lotDepthFt ?? Math.round(input.lotAreaSqft! / input.lotFrontageFt);
-      }
-
-      const underwrite = await runUnderwrite(input, site);
-      if (!input.lotFrontageFt || !input.lotDepthFt) {
-        underwrite.assumptionNotes.push("Lot frontage/depth back-filled from area — confirm actual dimensions.");
-      }
-
-      // Narrative layer — deterministic math computes, the LLM narrates.
-      const { writeMultiplexReport } = await import("./multiplexReportWriter");
-      const { report, source: reportSource } = await writeMultiplexReport({
-        address: input.address,
-        site,
-        underwrite,
-      });
-      const result = { ...underwrite, report, reportSource };
-
-      const shareToken = crypto.randomBytes(12).toString("hex");
-      const userId = req.session?.userId ?? null;
-      const inserted = await db.execute(sql`
-        INSERT INTO multiplex_underwritings (user_id, session_id, address, lat, lng, postal_fsa, inputs_json, site_json, result_json, share_token)
-        VALUES (
-          ${userId}, ${req.sessionID ?? null}, ${input.address}, ${site.lat}, ${site.lng},
-          ${extractFsa(input)}, ${JSON.stringify(input)}::jsonb,
-          ${JSON.stringify(site)}::jsonb, ${JSON.stringify(result)}::jsonb, ${shareToken}
-        )
-        RETURNING id
-      `);
-      const id = (inserted.rows[0] as { id: string }).id;
-
-      res.json({ status: "complete", id, shareToken, site, underwrite: result, disclaimer: DISCLAIMER });
+      res.json(await executeMultiplexUnderwriter(parsed.data, {
+        userId: req.session?.userId ?? null,
+        sessionId: req.sessionID ?? null,
+      }));
     } catch (err: any) {
       console.error("[multiplex] underwrite failed:", err);
       res.status(500).json({ error: "Underwrite failed — please try again." });
