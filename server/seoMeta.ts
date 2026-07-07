@@ -16,11 +16,17 @@ import {
   listingCanonicalPath,
 } from "./listingSeo";
 import { deriveEpisodeKeywords } from "@shared/podcastEpisodes";
+import { deriveVideoKeywords } from "@shared/youtubeVideos";
 import {
   durationToIso8601,
   stripShowNotes,
   type PodcastEpisode as PodcastFeedEpisode,
 } from "./podcastFeed";
+import {
+  stripDescription,
+  videoEmbedUrl,
+  type YouTubeVideo as YouTubeFeedVideo,
+} from "./youtubeFeed";
 
 const BASE_URL = "https://realist.ca";
 const RSS_FEED_URL = "https://thecanadianrealestateinvestor.substack.com/feed";
@@ -254,6 +260,23 @@ const STATIC_META: Record<string, PageMeta> = {
             jobTitle: "Mortgage Expert",
           },
         ],
+        publisher: { "@id": `${BASE_URL}/#organization` },
+      },
+    ],
+  },
+  "/insights/videos": {
+    title: "Daniel Foch on YouTube - Canadian Real Estate Videos",
+    description: "Watch Daniel Foch's latest videos on the Canadian housing market, mortgages, and real estate investing. Every video has its own page with the full description.",
+    canonicalPath: "/insights/videos",
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "@id": `${BASE_URL}/insights/videos#collection`,
+        name: "Daniel Foch on YouTube",
+        url: `${BASE_URL}/insights/videos`,
+        description: "Daniel Foch's latest YouTube videos on the Canadian housing market, mortgages, and real estate investing.",
+        inLanguage: "en-CA",
         publisher: { "@id": `${BASE_URL}/#organization` },
       },
     ],
@@ -663,6 +686,17 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
     } catch { /* fall through */ }
   }
 
+  // Per-video YouTube pages: /insights/videos/:slug gets real meta,
+  // VideoObject JSON-LD, and BreadcrumbList. Unknown slugs fall through.
+  const videoMatch = path.match(/^\/insights\/videos\/([^\/]+)$/);
+  if (videoMatch) {
+    try {
+      const { getYouTubeVideoBySlug } = await import("./youtubeFeed");
+      const video = await getYouTubeVideoBySlug(decodeURIComponent(videoMatch[1]));
+      if (video) return buildVideoMeta(video);
+    } catch { /* fall through */ }
+  }
+
   // Dynamic event page (audit item 12): /events/:slug gets real meta, Event
   // JSON-LD with offers, and OG/Twitter tags so shared links unfurl.
   const eventMatch = path.match(/^\/events\/([^\/]+)$/);
@@ -845,6 +879,51 @@ function buildPodcastEpisodeMeta(episode: PodcastFeedEpisode): PageMeta {
           { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
           { "@type": "ListItem", position: 2, name: "Podcast", item: `${BASE_URL}/insights/podcast` },
           { "@type": "ListItem", position: 3, name: episode.title, item: url },
+        ],
+      },
+    ],
+  };
+}
+
+function buildVideoMeta(video: YouTubeFeedVideo): PageMeta {
+  const canonicalPath = `/insights/videos/${video.slug}`;
+  const url = `${BASE_URL}${canonicalPath}`;
+  const description = stripDescription(video.description, 158)
+    || `${video.title} — a YouTube video from Daniel Foch.`;
+  const uploadedDate = video.pubDate ? new Date(video.pubDate) : null;
+  const uploadDate = uploadedDate && !isNaN(uploadedDate.getTime())
+    ? uploadedDate.toISOString()
+    : undefined;
+
+  return {
+    title: `${video.title} - Daniel Foch`,
+    description,
+    ogImage: video.thumbnailUrl || undefined,
+    ogType: "article",
+    canonicalPath,
+    keywords: deriveVideoKeywords(video.title),
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        "@id": `${url}#video`,
+        name: video.title,
+        description: stripDescription(video.description, 500) || description,
+        ...(video.thumbnailUrl ? { thumbnailUrl: [video.thumbnailUrl] } : {}),
+        ...(uploadDate ? { uploadDate } : {}),
+        embedUrl: videoEmbedUrl(video.videoId),
+        contentUrl: video.link,
+        url,
+        publisher: { "@id": `${BASE_URL}/#organization` },
+        inLanguage: "en-CA",
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "Videos", item: `${BASE_URL}/insights/videos` },
+          { "@type": "ListItem", position: 3, name: video.title, item: url },
         ],
       },
     ],
@@ -1069,6 +1148,7 @@ const KNOWN_APP_ROUTES = new Set<string>([
   "/community/network",
   "/insights",
   "/insights/podcast",
+  "/insights/videos",
   "/insights/blog",
   "/insights/guides",
   "/insights/encyclopedia",

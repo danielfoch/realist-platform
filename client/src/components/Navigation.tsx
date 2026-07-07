@@ -11,6 +11,7 @@ import {
   FileText, TrendingUp, BarChart3, Shield, Gavel,
   Map, DollarSign, Layers, Building2, Inbox, Sparkles,
   KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell, PhoneCall, PenLine,
+  Youtube,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -80,6 +81,7 @@ const navCategories: NavCategory[] = [
       { href: "/markets", label: "Markets", description: "City-level prices, yields, and policy", icon: <Globe2 className="h-4 w-4" /> },
       { href: "/investing", label: "Strategies", description: "Investing strategy playbooks — BRRRR, house hack, multiplex, and more", icon: <TrendingUp className="h-4 w-4" /> },
       { href: "/insights/podcast", label: "Podcast", description: "Real estate investor conversations", icon: <Radio className="h-4 w-4" /> },
+      { href: "/insights/videos", label: "Videos", description: "Daniel Foch's latest YouTube videos", icon: <Youtube className="h-4 w-4" /> },
       { href: "/insights/blog", label: "Blog", description: "Essays and research notes from the Realist team", icon: <PenLine className="h-4 w-4" /> },
       { href: "/insights/guides", label: "Guides & Encyclopedia", description: "How-to guides, definitions, formulas, and underwriting specs", icon: <FileText className="h-4 w-4" /> },
     ],

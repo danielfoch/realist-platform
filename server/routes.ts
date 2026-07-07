@@ -715,6 +715,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/sitemap-videos.xml", async (_req, res) => {
+    try {
+      const { buildVideoSitemap } = await import("./sitemap");
+      res.removeHeader("Set-Cookie");
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.set("X-Content-Type-Options", "nosniff");
+      res.status(200).end(await buildVideoSitemap());
+    } catch (err: any) {
+      console.error("[sitemap-videos] error:", err.message);
+      res.status(500).type("text/plain").send("sitemap error");
+    }
+  });
+
   app.get("/sitemap-events.xml", async (_req, res) => {
     try {
       const { buildEventsSitemap } = await import("./sitemap");
@@ -5220,6 +5234,39 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching podcast episode:", error);
       res.status(500).json({ error: "Failed to fetch podcast episode" });
+    }
+  });
+
+  // YouTube videos — the exact mirror of the podcast episode endpoints, backed
+  // by the keyless channel Atom feed (server/youtubeFeed.ts, 1h cache).
+  app.get("/api/youtube/videos", async (_req, res) => {
+    try {
+      const { getYouTubeVideos } = await import("./youtubeFeed");
+      const videos = await getYouTubeVideos();
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.json(videos.slice(0, 50));
+    } catch (error) {
+      console.error("Error fetching YouTube videos:", error);
+      res.status(500).json({ error: "Failed to fetch YouTube videos" });
+    }
+  });
+
+  // Single video payload for the /insights/videos/:slug page — description as
+  // safe HTML, embed URL, topics, contextual tool CTA, related videos, and the
+  // (currently null) enrichment seam.
+  app.get("/api/youtube/videos/:slug", async (req, res) => {
+    try {
+      const { getVideoPayload } = await import("./youtubeFeed");
+      const payload = await getVideoPayload(req.params.slug);
+      if (!payload) {
+        res.status(404).json({ error: "Video not found" });
+        return;
+      }
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.json(payload);
+    } catch (error) {
+      console.error("Error fetching YouTube video:", error);
+      res.status(500).json({ error: "Failed to fetch YouTube video" });
     }
   });
 
