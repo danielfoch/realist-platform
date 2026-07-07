@@ -234,30 +234,27 @@ export default function UnpackingMultiplexesToronto() {
     },
   ];
 
-  // Load the Meta (Facebook) Pixel on this page only. The base snippet is
-  // idempotent (bails if window.fbq already exists), so it's safe across SPA
-  // re-mounts; we still (re-)init and fire PageView each time the page mounts.
+  // Load the Meta (Facebook) Pixel on this page only.
+  // Uses document.head.appendChild — more reliable in lazy-loaded React SPAs
+  // than the standard snippet's insertBefore(first-script) pattern, which can
+  // fail if no synchronous script tag is in scope when the effect runs.
+  // The stub (n.queue) captures fbq() calls made before fbevents.js finishes
+  // loading, so init + PageView fire correctly even before the async load.
   useEffect(() => {
     const w = window as any;
     if (!w.fbq) {
-      /* eslint-disable */
-      (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
-        if (f.fbq) return;
-        n = f.fbq = function () {
-          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-        };
-        if (!f._fbq) f._fbq = n;
-        n.push = n;
-        n.loaded = !0;
-        n.version = "2.0";
-        n.queue = [];
-        t = b.createElement(e);
-        t.async = !0;
-        t.src = v;
-        s = b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t, s);
-      })(w, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
-      /* eslint-enable */
+      const n: any = (w.fbq = function (...args: any[]) {
+        n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args);
+      });
+      if (!w._fbq) w._fbq = n;
+      n.push = n;
+      n.loaded = true;
+      n.version = "2.0";
+      n.queue = [];
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://connect.facebook.net/en_US/fbevents.js";
+      document.head.appendChild(script);
     }
     w.fbq("init", FB_PIXEL_ID);
     w.fbq("track", "PageView");
