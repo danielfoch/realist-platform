@@ -338,6 +338,14 @@ export default function MultiplexUnderwriterPage() {
             Zoning verdict with the by-law cited, tree and ravine screens with evidence, build configurations,
             and the sell-as-condos vs hold-on-CMHC-MLI-Select math — every number labelled by where it came from.
           </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button asChild variant="outline">
+              <Link href="/tools/cap-rates?strategy=multiplex">
+                <MapPin className="mr-2 h-4 w-4" />
+                Browse pre-screened map listings
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {error && (
