@@ -105,6 +105,9 @@ export const crmContacts = pgTable(
   (table) => [
     index("idx_crm_contacts_owner_stage").on(table.ownerUserId, table.stage),
     index("idx_crm_contacts_linked_user").on(table.linkedUserId),
+    // Serves the person-spine email matches (backlinkUserRecords /
+    // getPersonByEmail filter on lower(trim(email))).
+    index("idx_crm_contacts_email_norm").on(sql`lower(trim(${table.email}))`),
   ],
 );
 
@@ -178,7 +181,9 @@ export const crmDeals = pgTable(
 );
 
 export const insertCrmContactSchema = createInsertSchema(crmContacts)
-  .omit({ id: true, ownerUserId: true, createdAt: true, updatedAt: true })
+  // linkedUserId is server-authoritative (person spine): resolved from the
+  // contact email, never accepted from the client.
+  .omit({ id: true, ownerUserId: true, linkedUserId: true, createdAt: true, updatedAt: true })
   .extend({
     name: z.string().min(1).max(200),
     email: z.string().email().nullish(),

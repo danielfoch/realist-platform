@@ -21,13 +21,17 @@ import {
   type ReportContent,
 } from "../reportContent";
 import type { ReportRegistryEntry } from "../reportsRegistry";
+import { canadaCpiMay2026ConfigReport } from "./canada-cpi-may-2026-config";
 import { interprovincialMigrationConfigReport } from "./interprovincial-migration-config";
+import { teranetQ12026OntarioBuyerResetConfigReport } from "./teranet-q1-2026-ontario-buyer-reset-config";
 
 /**
  * Every config report. Add new report objects here (imported from their own
  * file). Order does not matter — everything downstream sorts by publishDate.
  */
 export const configReports: ReportContent[] = [
+  teranetQ12026OntarioBuyerResetConfigReport,
+  canadaCpiMay2026ConfigReport,
   interprovincialMigrationConfigReport,
 ].map(assertValidReportContent);
 

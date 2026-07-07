@@ -8,6 +8,7 @@ import { db } from "./db";
 import { users, passwordResetTokens, signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, userOAuthAccounts, phoneVerificationSchema, verifyPhoneCodeSchema } from "@shared/models/auth";
 import { eq, and, gt, sql } from "drizzle-orm";
 import { storage } from "./storage";
+import { backlinkUserRecords } from "./personSpine";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
 import { sendWelcomeAccountEmail, sendLoginLinkEmail, sendPasswordResetEmail } from "./resend";
 import { appendLead } from "./leadsSheet";
@@ -242,6 +243,10 @@ export function registerAuthRoutes(app: Express): void {
         lastName: data.lastName,
         role: data.role,
       }).returning();
+
+      // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts
+      // rows with this email. Best-effort, never fails the signup.
+      await backlinkUserRecords(newUser.id, newUser.email);
 
       if (data.role === "partner" && data.professionalType) {
         await storage.upsertProfessionalSubscription({
@@ -567,6 +572,10 @@ export function registerAuthRoutes(app: Express): void {
         firstName: nameParts[0] || firstName || null,
         lastName: lastName || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : null),
       }).returning();
+
+      // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts
+      // rows with this email (the enrolling lead row included).
+      await backlinkUserRecords(newUser.id, newUser.email);
 
       const rawToken = crypto.randomBytes(32).toString("hex");
       const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -974,6 +983,10 @@ export function registerAuthRoutes(app: Express): void {
         profileImageUrl,
         emailVerified: true, // Google emails are verified
       }).returning();
+
+      // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts
+      // rows with this email. Best-effort, never fails the OAuth flow.
+      await backlinkUserRecords(newUser.id, newUser.email);
 
       // Create OAuth account link
       await storage.createUserOAuthAccount({

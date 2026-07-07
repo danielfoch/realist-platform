@@ -14,6 +14,7 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
+import { linkPersonByEmail } from "./personSpine";
 import { isAuthenticated } from "./auth";
 import { logUserActivity } from "./userActivity";
 import { crmActivities, crmContacts, users, type Lead, type RealtorLeadNotification } from "@shared/schema";
@@ -179,6 +180,9 @@ export async function handoffClaimedLeadToCrm(params: {
         .insert(crmContacts)
         .values({
           ownerUserId: partnerUserId,
+          // PERSON SPINE (phase 1): carry the lead's user link through the
+          // handoff; fall back to email resolution at write time.
+          linkedUserId: lead.userId ?? (await linkPersonByEmail(lead.email)),
           name: lead.name,
           email: lead.email,
           phone: lead.phone ?? null,

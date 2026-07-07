@@ -608,6 +608,11 @@ async function ensureAppTables() {
     res.redirect(301, `${target}${query}`);
   });
 
+  // Registered BEFORE registerRoutes on purpose: routes.ts owns
+  // GET /api/listings/:mlsNumber, which would otherwise capture
+  // /api/listings/similar as an MLS number lookup.
+  const { registerSimilarListingsRoutes } = await import("./similarListings");
+  registerSimilarListingsRoutes(app);
   await registerRoutes(httpServer, app);
   const { registerMultiplexUnderwriterRoutes } = await import("./multiplexUnderwriter");
   registerMultiplexUnderwriterRoutes(app);

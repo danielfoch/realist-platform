@@ -27,6 +27,7 @@
 import fs from "fs";
 import { and, eq } from "drizzle-orm";
 import { db } from "../server/db";
+import { linkPersonByEmail } from "../server/personSpine";
 import { crmActivities, crmContacts, users } from "../shared/schema";
 
 function parseCsvLine(line: string): string[] {
@@ -120,6 +121,8 @@ async function main() {
       .insert(crmContacts)
       .values({
         ownerUserId: owner.id,
+        // PERSON SPINE (phase 1): link to an existing platform user by email.
+        linkedUserId: await linkPersonByEmail(email),
         name,
         email,
         contactType: "investor",
