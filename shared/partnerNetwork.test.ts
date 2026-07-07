@@ -5,16 +5,18 @@ import {
   REAL_ESTATE_BOARDS,
   REFERRAL_TERMS,
   buildReferralAgreement,
+  formatReferralPayee,
   getReferralTerms,
   isNetworkPartnerType,
 } from "./partnerNetwork";
 
 describe("referral terms", () => {
-  it("realtors owe 25% to Daniel Foch at Valery Real Estate Inc.", () => {
+  it("realtors owe 25% to Valery Real Estate Inc.", () => {
     const terms = getReferralTerms("realtor");
     expect(terms.feePercent).toBe(25);
-    expect(terms.payeeName).toBe("Daniel Foch");
+    expect(terms.payeeName).toBe("Valery Real Estate Inc.");
     expect(terms.payeeCompany).toBe("Valery Real Estate Inc.");
+    expect(formatReferralPayee(terms)).toBe("Valery Real Estate Inc.");
     expect(terms.monthlyFee).toBe(0);
   });
 
@@ -59,7 +61,7 @@ describe("buildReferralAgreement", () => {
     });
     expect(agreement.version).toBe(PARTNER_NETWORK_AGREEMENT_VERSION);
     expect(agreement.text).toContain("25% of the gross commission");
-    expect(agreement.text).toContain("Daniel Foch, Valery Real Estate Inc.");
+    expect(agreement.text).toContain("Valery Real Estate Inc.");
     expect(agreement.text).toContain("Hamilton, Ontario");
     expect(agreement.text).toContain("no monthly fees");
     expect(agreement.text).toContain("Cornerstone Association");

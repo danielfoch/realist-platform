@@ -26,7 +26,7 @@ export const REFERRAL_TERMS: Record<NetworkPartnerType, ReferralTerms> = {
     partnerType: "realtor",
     partnerLabel: "Realtor",
     feePercent: 25,
-    payeeName: "Daniel Foch",
+    payeeName: "Valery Real Estate Inc.",
     payeeCompany: "Valery Real Estate Inc.",
     compensationBasis:
       "the gross commission earned by the Partner on any purchase, sale, or lease transaction completed with a Referred Lead",
@@ -52,6 +52,12 @@ export function isNetworkPartnerType(value: unknown): value is NetworkPartnerTyp
 
 export function getReferralTerms(partnerType: NetworkPartnerType): ReferralTerms {
   return REFERRAL_TERMS[partnerType];
+}
+
+export function formatReferralPayee(terms: ReferralTerms): string {
+  return terms.payeeName === terms.payeeCompany
+    ? terms.payeeName
+    : `${terms.payeeName}, ${terms.payeeCompany}`;
 }
 
 /**
@@ -123,7 +129,7 @@ export function buildReferralAgreement(input: AgreementInput): RenderedAgreement
   const text = `${title}
 Version ${PARTNER_NETWORK_AGREEMENT_VERSION} — signed ${signedDate}
 
-This agreement is between ${partnerIdentity} (the "Partner") and ${terms.payeeName}, ${terms.payeeCompany} (the "Referring Party"), facilitated by Realist (realist.ca).
+This agreement is between ${partnerIdentity} (the "Partner") and ${formatReferralPayee(terms)} (the "Referring Party"), facilitated by Realist (realist.ca).
 
 1. REFERRED LEADS. Realist will route investor leads originating from realist.ca in the Partner's claimed market of ${input.marketCity}, ${input.marketRegion} (each a "Referred Lead") to the Partner via the Realist platform, including email notifications and the Partner's Realist CRM workspace.
 

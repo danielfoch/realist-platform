@@ -17,6 +17,7 @@ import { Handshake, CheckCircle, PenTool, ArrowRight, Loader2, Kanban, Mail } fr
 import {
   REAL_ESTATE_BOARDS,
   buildReferralAgreement,
+  formatReferralPayee,
   getReferralTerms,
   isNetworkPartnerType,
   type NetworkPartnerType,
@@ -386,7 +387,7 @@ export default function PartnerOnboarding() {
               <CardTitle>3. Referral agreement</CardTitle>
               <CardDescription>
                 {terms.feePercent}% of your compensation on {isRealtor ? "closed" : "funded"} referred deals, payable to{" "}
-                {terms.payeeName}, {terms.payeeCompany}. No monthly fees.
+                {formatReferralPayee(terms)}. No monthly fees.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

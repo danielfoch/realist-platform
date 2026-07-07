@@ -4,6 +4,8 @@ import crypto from "crypto";
 import { google } from "googleapis";
 import { appendLead } from "./leadsSheet";
 import { storage } from "./storage";
+import { getLeadRoutingChannel, shouldNotifyPartnerClaims } from "./referralRoutingPolicy";
+import { buildReferralAgreement, getReferralTerms } from "@shared/partnerNetwork";
 
 // Maps the formTag/source value already present on every lead payload to a
 // friendly tab name in the owner's Google Sheet. Anything not in this map
@@ -2405,10 +2407,31 @@ export async function registerRoutes(
         }).catch(err => console.error("Email notification error:", err));
       }
 
-      // Notify realtors who have claimed this market
+      // Notify partner claims only for markets outside the Valery service lane.
+      // Toronto-drive-zone Ontario leads stay with Valery; other Ontario leads
+      // are held for manual review instead of being auto-routed.
       if (property.city && property.region) {
         (async () => {
           try {
+            const routingChannel = getLeadRoutingChannel({
+              city: property.city,
+              region: property.region,
+            });
+            if (!shouldNotifyPartnerClaims({ city: property.city, region: property.region })) {
+              logUserActivity(null, {
+                userId: null,
+                eventName: "lead_routing_policy_applied",
+                source: "partner_network",
+                metadata: {
+                  routingChannel,
+                  leadId: lead.id,
+                  analysisId: analysis.id,
+                  dealCity: property.city,
+                  dealRegion: property.region,
+                },
+              }).catch(err => console.error("lead_routing_policy_applied event error:", err));
+              return;
+            }
             const activeClaims = await storage.getActiveClaimsForMarket(property.city!, property.region!);
             const baseUrl = process.env.REPLIT_DEV_DOMAIN
               ? `https://${process.env.REPLIT_DEV_DOMAIN}`
@@ -5777,6 +5800,7 @@ export async function registerRoutes(
 
       const partner = await storage.getIndustryPartner(userId);
       const signedNow = Boolean(signedName && signatureDataUrl);
+      const terms = getReferralTerms("realtor");
 
       const claim = await storage.createRealtorMarketClaim({
         userId,
@@ -5784,7 +5808,9 @@ export async function registerRoutes(
         marketCity,
         marketRegion,
         status: "active",
-        referralFeePercent: 25,
+        referralFeePercent: terms.feePercent,
+        referralPayeeName: terms.payeeName,
+        referralPayeeCompany: terms.payeeCompany,
         referralAgreementSignedAt: signedNow ? new Date() : null,
         referralAgreementSignature: signedNow ? signatureDataUrl : null,
         referralAgreementSignedName: signedNow ? signedName : null,
@@ -5822,7 +5848,23 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Agreement already signed" });
       }
 
+      const agreement = buildReferralAgreement({
+        partnerType: "realtor",
+        signedName,
+        brokerageName: claim.brokerageName || "Receiving Brokerage",
+        marketCity: claim.marketCity,
+        marketRegion: claim.marketRegion,
+        realEstateBoard: claim.realEstateBoard || null,
+        licenseNumber: claim.licenseNumber || null,
+        signedAtIso: new Date().toISOString(),
+      });
+      const terms = getReferralTerms("realtor");
       const updated = await storage.updateRealtorMarketClaim(claimId, {
+        referralFeePercent: terms.feePercent,
+        referralPayeeName: terms.payeeName,
+        referralPayeeCompany: terms.payeeCompany,
+        referralAgreementVersion: agreement.version,
+        referralAgreementText: agreement.text,
         referralAgreementSignedAt: new Date(),
         referralAgreementSignature: signatureDataUrl,
         referralAgreementSignedName: signedName,
