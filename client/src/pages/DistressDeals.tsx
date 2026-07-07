@@ -5,7 +5,6 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import "leaflet.markercluster";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +30,15 @@ import { authPath } from "@/lib/authReturn";
 const CANADA_CENTER: [number, number] = [51.0, -85.0];
 const DEFAULT_ZOOM = 5;
 
+let markerClusterLoadPromise: Promise<void> | null = null;
+
+function loadLeafletMarkerCluster(): Promise<void> {
+  if ((L as any).markerClusterGroup) return Promise.resolve();
+
+  (globalThis as any).L = L;
+  markerClusterLoadPromise ??= import("leaflet.markercluster").then(() => undefined);
+  return markerClusterLoadPromise;
+}
 
 const CATEGORY_ICONS: Record<string, any> = {
   foreclosure_pos: Gavel,
@@ -184,55 +192,69 @@ function MarkerClusterLayer({ listings, onListingClick }: { listings: DistressLi
   const clusterRef = useRef<any>(null);
 
   useEffect(() => {
-    if (clusterRef.current) {
-      map.removeLayer(clusterRef.current);
-    }
+    let cancelled = false;
 
-    const cluster = (L as any).markerClusterGroup({
-      maxClusterRadius: 50,
-      spiderfyOnMaxZoom: false,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      chunkedLoading: true,
-      disableClusteringAtZoom: 16,
-      iconCreateFunction: (c: any) => {
-        const count = c.getChildCount();
-        let size = "small";
-        let dim = 36;
-        if (count > 100) { size = "large"; dim = 50; }
-        else if (count > 30) { size = "medium"; dim = 44; }
-        return L.divIcon({
-          html: `<div style="background:rgba(220,38,38,0.85);color:#fff;border-radius:50%;width:${dim}px;height:${dim}px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${dim < 40 ? 12 : 14}px;border:2px solid rgba(255,255,255,0.8);box-shadow:0 2px 6px rgba(0,0,0,0.3)">${count}</div>`,
-          className: "marker-cluster-custom",
-          iconSize: L.point(dim, dim),
-        });
-      },
-    });
+    void loadLeafletMarkerCluster().then(() => {
+      if (cancelled) return;
 
-    const markers = listings
-      .filter(l => l.map?.latitude && l.map?.longitude)
-      .map(listing => {
-        const marker = L.marker(
-          [listing.map!.latitude, listing.map!.longitude],
-          { icon: getListingIcon(listing) }
-        );
-        marker.bindPopup(
-          `<div style="min-width:180px"><strong>${escHtml(formatPrice(listing.listPrice))}</strong><br/>` +
-          `<span style="font-size:0.85em">${escHtml(formatAddress(listing.address))}</span><br/>` +
-          `<span style="font-size:0.8em;color:#666">${escHtml(getPrimarySignal(listing).label)} · ${escHtml(listing.distress.confidence)} confidence</span></div>`
-        );
-        marker.on("click", () => onListingClick(listing));
-        return marker;
-      });
-
-    cluster.addLayers(markers);
-    map.addLayer(cluster);
-    clusterRef.current = cluster;
-
-    return () => {
       if (clusterRef.current) {
         map.removeLayer(clusterRef.current);
       }
+
+      const cluster = (L as any).markerClusterGroup({
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: false,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        chunkedLoading: true,
+        disableClusteringAtZoom: 16,
+        iconCreateFunction: (c: any) => {
+          const count = c.getChildCount();
+          let size = "small";
+          let dim = 36;
+          if (count > 100) { size = "large"; dim = 50; }
+          else if (count > 30) { size = "medium"; dim = 44; }
+          return L.divIcon({
+            html: `<div style="background:rgba(220,38,38,0.85);color:#fff;border-radius:50%;width:${dim}px;height:${dim}px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${dim < 40 ? 12 : 14}px;border:2px solid rgba(255,255,255,0.8);box-shadow:0 2px 6px rgba(0,0,0,0.3)">${count}</div>`,
+            className: "marker-cluster-custom",
+            iconSize: L.point(dim, dim),
+          });
+        },
+      });
+
+      const markers = listings
+        .filter(l => l.map?.latitude && l.map?.longitude)
+        .map(listing => {
+          const marker = L.marker(
+            [listing.map!.latitude, listing.map!.longitude],
+            { icon: getListingIcon(listing) }
+          );
+          marker.bindPopup(
+            `<div style="min-width:180px"><strong>${escHtml(formatPrice(listing.listPrice))}</strong><br/>` +
+            `<span style="font-size:0.85em">${escHtml(formatAddress(listing.address))}</span><br/>` +
+            `<span style="font-size:0.8em;color:#666">${escHtml(getPrimarySignal(listing).label)} · ${escHtml(listing.distress.confidence)} confidence</span></div>`
+          );
+          marker.on("click", () => onListingClick(listing));
+          return marker;
+        });
+
+      cluster.addLayers(markers);
+
+      if (cancelled) {
+        map.removeLayer(cluster);
+        return;
+      }
+
+      map.addLayer(cluster);
+      clusterRef.current = cluster;
+    });
+
+    return () => {
+      cancelled = true;
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+      }
+      clusterRef.current = null;
     };
   }, [listings, map, onListingClick]);
 
