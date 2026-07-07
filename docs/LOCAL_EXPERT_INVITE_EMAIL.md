@@ -73,6 +73,11 @@ exclusive Realist Local Expert. Recruiting page: **realist.ca/local-experts** (f
 **Routing guard:** only send to hosts whose market is **outside** the ~2-hour-from-Toronto
 in-house zone. Anyone inside routes to Valery in-house and shouldn't get this.
 
+**Meetup fee is separate:** this invite is about the **free** Realist Local Expert referral
+access only. Hosts keep paying their $250/mo meetup fee as usual — the email doesn't mention or
+change it. The "no monthly fee" line refers strictly to the referral access. If a recipient asks,
+be clear: meetup hosting is unchanged; the expert/referral access is a free add-on.
+
 **Warmth upgrade (high-leverage):** the first paragraph is generic on purpose. If you have a real
 shared moment — a talk they gave, a deal they mentioned, the last meetup you both spoke at —
 replace "Every time I think about [City]" with that specific memory. If they co-host, nod to it

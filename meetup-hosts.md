@@ -1,15 +1,18 @@
 # Local Experts / Meetup Hosts — Onboarding Tracker
 
-**Program (updated 2026-07-07):** Meetup hosts are being repositioned as **Realist Local Experts** —
-the exclusive investor-referral partner for their market. This replaces the old
-"$250/month meetup-host" framing with the platform-wide model: **free to join, 25% referral
-on closed deals** (realtors, payable to Valery Real Estate Inc.) / 50% on funded deals
-(mortgage brokers, payable to BLD Financial). See `shared/partnerNetwork.ts` for terms and
-`client/src/pages/LocalExperts.tsx` for the recruiting page (`/local-experts`).
+**Program (updated 2026-07-07):** Two decoupled things.
 
-> **Pricing transition (Dan decision):** the $250/mo meetup-host fee is superseded by the
-> free referral model. Confirm how existing paying hosts are transitioned (grandfather /
-> refund / simply stop billing) before sending the invite.
+1. **Meetup hosting — unchanged.** Hosts keep paying **$250/month to host the meetup** in
+   their city. This fee is not affected.
+2. **Realist.ca Local Expert access — free.** On top of hosting, each host gets **free**
+   access to being their market's exclusive Realist Local Expert (investor referrals):
+   **25% referral on closed deals** (realtors, payable to Valery Real Estate Inc.) / **50%
+   on funded deals** (mortgage brokers, payable to BLD Financial). No extra fee for the
+   referral access. See `shared/partnerNetwork.ts` for terms and
+   `client/src/pages/LocalExperts.tsx` for the recruiting page (`/local-experts`).
+
+The invite pitches the free referral benefit — it does **not** change or mention the $250/mo
+meetup fee.
 
 ## Routing context
 
@@ -58,7 +61,6 @@ decide whether one claims the market or they share.
 
 ## Tasks
 
-- [ ] Dan: decide the $250/mo → free transition for existing paying hosts
 - [ ] Dan: confirm each invitee's market (fill the table)
 - [ ] Dan: resolve the 3 MidUrban invitees → one claim or shared
 - [ ] Send personalized invite email to the roster
