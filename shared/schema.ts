@@ -2604,21 +2604,63 @@ export const realtorIntroductions = pgTable("realtor_introductions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const referralOutcomes = pgTable("referral_outcomes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar("token", { length: 64 }).notNull(),
+  notificationId: varchar("notification_id").references(() => realtorLeadNotifications.id).notNull(),
+  introductionId: varchar("introduction_id").references(() => realtorIntroductions.id).notNull(),
+  realtorUserId: varchar("realtor_user_id").references(() => users.id).notNull(),
+  realtorClaimId: varchar("realtor_claim_id").references(() => realtorMarketClaims.id).notNull(),
+  leadId: varchar("lead_id").references(() => leads.id).notNull(),
+  analysisId: varchar("analysis_id").references(() => analyses.id),
+  crmDealId: varchar("crm_deal_id"),
+  status: text("status").default("pending").notNull(),
+  lastAction: text("last_action"),
+  closePrice: numeric("close_price", { precision: 12, scale: 2 }),
+  gci: numeric("gci", { precision: 12, scale: 2 }),
+  referralFeePercent: real("referral_fee_percent").default(25).notNull(),
+  referralFeeAmount: numeric("referral_fee_amount", { precision: 12, scale: 2 }),
+  lostReason: text("lost_reason"),
+  notes: text("notes"),
+  reportedBy: text("reported_by"),
+  reportedAt: timestamp("reported_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("referral_outcomes_notification_id_idx").on(table.notificationId),
+  uniqueIndex("referral_outcomes_token_idx").on(table.token),
+  index("referral_outcomes_realtor_status_idx").on(table.realtorUserId, table.status),
+  index("referral_outcomes_claim_status_idx").on(table.realtorClaimId, table.status),
+  index("referral_outcomes_lead_idx").on(table.leadId),
+]);
+
 export const realtorMarketClaimsRelations = relations(realtorMarketClaims, ({ one, many }) => ({
   user: one(users, { fields: [realtorMarketClaims.userId], references: [users.id] }),
   partner: one(industryPartners, { fields: [realtorMarketClaims.partnerId], references: [industryPartners.id] }),
   notifications: many(realtorLeadNotifications),
+  outcomes: many(referralOutcomes),
 }));
 
 export const realtorLeadNotificationsRelations = relations(realtorLeadNotifications, ({ one }) => ({
   claim: one(realtorMarketClaims, { fields: [realtorLeadNotifications.realtorClaimId], references: [realtorMarketClaims.id] }),
   lead: one(leads, { fields: [realtorLeadNotifications.leadId], references: [leads.id] }),
   realtorUser: one(users, { fields: [realtorLeadNotifications.realtorUserId], references: [users.id] }),
+  outcome: one(referralOutcomes, { fields: [realtorLeadNotifications.id], references: [referralOutcomes.notificationId] }),
 }));
 
 export const realtorIntroductionsRelations = relations(realtorIntroductions, ({ one }) => ({
   notification: one(realtorLeadNotifications, { fields: [realtorIntroductions.notificationId], references: [realtorLeadNotifications.id] }),
   realtorUser: one(users, { fields: [realtorIntroductions.realtorUserId], references: [users.id] }),
+  outcome: one(referralOutcomes, { fields: [realtorIntroductions.id], references: [referralOutcomes.introductionId] }),
+}));
+
+export const referralOutcomesRelations = relations(referralOutcomes, ({ one }) => ({
+  notification: one(realtorLeadNotifications, { fields: [referralOutcomes.notificationId], references: [realtorLeadNotifications.id] }),
+  introduction: one(realtorIntroductions, { fields: [referralOutcomes.introductionId], references: [realtorIntroductions.id] }),
+  realtorUser: one(users, { fields: [referralOutcomes.realtorUserId], references: [users.id] }),
+  claim: one(realtorMarketClaims, { fields: [referralOutcomes.realtorClaimId], references: [realtorMarketClaims.id] }),
+  lead: one(leads, { fields: [referralOutcomes.leadId], references: [leads.id] }),
+  analysis: one(analyses, { fields: [referralOutcomes.analysisId], references: [analyses.id] }),
 }));
 
 export const insertRealtorMarketClaimSchema = createInsertSchema(realtorMarketClaims).omit({
@@ -2637,12 +2679,20 @@ export const insertRealtorIntroductionSchema = createInsertSchema(realtorIntrodu
   createdAt: true,
 });
 
+export const insertReferralOutcomeSchema = createInsertSchema(referralOutcomes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertRealtorMarketClaim = z.infer<typeof insertRealtorMarketClaimSchema>;
 export type RealtorMarketClaim = typeof realtorMarketClaims.$inferSelect;
 export type InsertRealtorLeadNotification = z.infer<typeof insertRealtorLeadNotificationSchema>;
 export type RealtorLeadNotification = typeof realtorLeadNotifications.$inferSelect;
 export type InsertRealtorIntroduction = z.infer<typeof insertRealtorIntroductionSchema>;
 export type RealtorIntroduction = typeof realtorIntroductions.$inferSelect;
+export type InsertReferralOutcome = z.infer<typeof insertReferralOutcomeSchema>;
+export type ReferralOutcome = typeof referralOutcomes.$inferSelect;
 
 // ============================================
 // COMMUNITY UNDERWRITING TABLES

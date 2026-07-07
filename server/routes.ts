@@ -148,6 +148,7 @@ import { registerUserGoogleSheetsRoutes } from "./userGoogleSheets";
 import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import { registerBookedCallLeadRoutes } from "./bookedCallLeads";
 import { registerDealRoomRoutes } from "./dealRoom";
+import { createOrGetReferralOutcomeForIntroduction, registerReferralOutcomeRoutes } from "./referralOutcomes";
 import {
   getCurrentSaleEstimate,
   lookupSoldPriceForListing,
@@ -838,6 +839,7 @@ export async function registerRoutes(
   registerUnderwritingShareRoutes(app);
   registerBookedCallLeadRoutes(app);
   registerDealRoomRoutes(app);
+  registerReferralOutcomeRoutes(app);
   registerWatchlistRoutes(app);
   registerNotificationInboxRoutes(app);
 
@@ -5942,7 +5944,21 @@ export async function registerRoutes(
         notification,
       });
 
-      res.json({ success: true, introduction, crmContactId });
+      let outcomeToken: string | undefined;
+      let outcomeUrl: string | undefined;
+      try {
+        const outcomeResult = await createOrGetReferralOutcomeForIntroduction({
+          notification,
+          introduction,
+          referralFeePercent: marketClaim?.referralFeePercent ?? 25,
+        });
+        outcomeToken = outcomeResult.outcomeToken;
+        outcomeUrl = outcomeResult.outcomeUrl;
+      } catch (outcomeErr) {
+        console.error("[referral-outcomes] claim-lead wiring failed:", outcomeErr instanceof Error ? outcomeErr.message : outcomeErr);
+      }
+
+      res.json({ success: true, introduction, crmContactId, outcomeToken, outcomeUrl });
     } catch (error) {
       console.error("Error claiming lead:", error);
       res.status(500).json({ error: "Failed to claim lead" });
