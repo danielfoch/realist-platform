@@ -1,13 +1,15 @@
 import crypto from "crypto";
 import type { Express, Request, Response } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import { appBaseUrl } from "./auth";
 import {
+  modelPredictions,
   referralOutcomes,
   realtorIntroductions,
   realtorLeadNotifications,
+  type ModelPrediction,
   type ReferralOutcome,
   type RealtorIntroduction,
   type RealtorLeadNotification,
@@ -18,6 +20,7 @@ export const REFERRAL_OUTCOME_STATUSES = [
   "responded",
   "showing_booked",
   "offer_submitted",
+  "under_contract",
   "closed",
   "lost",
 ] as const;
@@ -27,6 +30,7 @@ export const REFERRAL_OUTCOME_ACTIONS = [
   "responded",
   "showing_booked",
   "offer_submitted",
+  "under_contract",
   "closed",
   "lost",
 ] as const;
@@ -38,17 +42,21 @@ const STATUS_RANK: Record<ReferralOutcomeStatus, number> = {
   responded: 1,
   showing_booked: 2,
   offer_submitted: 3,
-  closed: 4,
-  lost: 4,
+  under_contract: 4,
+  closed: 5,
+  lost: 5,
 };
 
 const updateReferralOutcomeSchema = z.object({
-  action: z.enum(REFERRAL_OUTCOME_ACTIONS),
+  action: z.enum(REFERRAL_OUTCOME_ACTIONS).optional(),
   closePrice: z.coerce.number().finite().nonnegative().optional(),
   gci: z.coerce.number().finite().positive().optional(),
+  financingIntent: z.boolean().optional(),
+  buyingIntent: z.boolean().optional(),
   lostReason: z.string().trim().min(1).max(500).optional(),
   notes: z.string().trim().max(2000).optional(),
   reportedBy: z.string().trim().max(160).optional(),
+  partnerWritebackAt: z.coerce.date().optional(),
 }).strict();
 type UpdateReferralOutcomeInput = z.infer<typeof updateReferralOutcomeSchema>;
 
@@ -74,11 +82,12 @@ export function computeReferralFee(gci: number, referralFeePercent = 25): number
 
 export function validateOutcomeTransition(input: {
   currentStatus: ReferralOutcomeStatus;
-  action: ReferralOutcomeAction;
+  action?: ReferralOutcomeAction;
   gci?: number;
   lostReason?: string | null;
 }): { ok: true; nextStatus: ReferralOutcomeStatus } | { ok: false; error: string } {
   const { currentStatus, action } = input;
+  if (!action) return { ok: true, nextStatus: currentStatus };
   if (TERMINAL_STATUSES.has(currentStatus)) {
     return { ok: false, error: "This outcome is already terminal" };
   }
@@ -135,10 +144,13 @@ function toSafeOutcomeResponse(row: OutcomeJoinedRow) {
       closePrice: dbMoneyToNumber(outcome.closePrice),
       gci: dbMoneyToNumber(outcome.gci),
       referralFeeAmount: dbMoneyToNumber(outcome.referralFeeAmount),
+      financingIntent: outcome.financingIntent,
+      buyingIntent: outcome.buyingIntent,
       lostReason: outcome.lostReason,
       notes: outcome.notes,
       reportedBy: outcome.reportedBy,
       reportedAt: outcome.reportedAt,
+      partnerWritebackAt: outcome.partnerWritebackAt,
       createdAt: outcome.createdAt,
       updatedAt: outcome.updatedAt,
       context: {
@@ -188,6 +200,59 @@ async function getOutcomeByIdForRealtor(outcomeId: string, realtorUserId: string
   return row ?? null;
 }
 
+export function predictionMatchKeysForOutcome(outcome: Pick<ReferralOutcome, "analysisId" | "crmDealId">) {
+  const keys: Array<{ subjectType: string; subjectId: string }> = [];
+  if (outcome.analysisId) keys.push({ subjectType: "analysis", subjectId: outcome.analysisId });
+  if (outcome.crmDealId) keys.push({ subjectType: "deal", subjectId: outcome.crmDealId });
+  return keys;
+}
+
+export function pickMostRecentModelPrediction<T extends Pick<ModelPrediction, "createdAt">>(rows: T[]): T | null {
+  return [...rows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
+}
+
+export function predictionResolutionPatch(prediction: Pick<ModelPrediction, "predictedValue">, actualValue: number) {
+  const absError = Math.abs(Number(prediction.predictedValue) - actualValue);
+  const pctError = Number(prediction.predictedValue) === 0
+    ? null
+    : (absError / Math.abs(Number(prediction.predictedValue))) * 100;
+  return {
+    resolvedAt: new Date(),
+    actualValue,
+    actualSource: "referral_outcome_close",
+    absError,
+    pctError,
+  };
+}
+
+async function reconcileClosedOutcomePrediction(outcome: ReferralOutcome, closePrice: number | undefined) {
+  if (typeof closePrice !== "number" || !Number.isFinite(closePrice)) return null;
+  const keys = predictionMatchKeysForOutcome(outcome);
+  if (!keys.length) return null;
+
+  const conditions = keys.map((key) => and(
+    eq(modelPredictions.subjectType, key.subjectType),
+    eq(modelPredictions.subjectId, key.subjectId),
+  ));
+  const where = conditions.length === 1 ? conditions[0] : or(...conditions);
+  if (!where) return null;
+
+  const candidates = await db.select()
+    .from(modelPredictions)
+    .where(where)
+    .orderBy(desc(modelPredictions.createdAt))
+    .limit(10);
+  const latest = pickMostRecentModelPrediction(candidates);
+  if (!latest) return null;
+
+  const [updated] = await db.update(modelPredictions)
+    .set(predictionResolutionPatch(latest, closePrice))
+    .where(eq(modelPredictions.id, latest.id))
+    .returning();
+
+  return updated ?? null;
+}
+
 export async function getSafeReferralOutcomeForAgent(outcomeId: string, realtorUserId: string) {
   const row = await getOutcomeByIdForRealtor(outcomeId, realtorUserId);
   return row ? toSafeOutcomeResponse(row) : null;
@@ -209,21 +274,29 @@ async function applyOutcomeUpdate(row: OutcomeJoinedRow, input: UpdateReferralOu
     ? computeReferralFee(input.gci!, row.outcome.referralFeePercent)
     : undefined;
 
+  const closePrice = input.closePrice ?? dbMoneyToNumber(row.outcome.closePrice) ?? undefined;
   const [updated] = await db.update(referralOutcomes).set({
     status: transition.nextStatus,
-    lastAction: input.action,
+    lastAction: input.action ?? row.outcome.lastAction,
     closePrice: moneyToDb(input.closePrice),
     gci: moneyToDb(input.gci),
     referralFeeAmount: moneyToDb(referralFeeAmount),
+    financingIntent: input.financingIntent ?? row.outcome.financingIntent,
+    buyingIntent: input.buyingIntent ?? row.outcome.buyingIntent,
     lostReason: input.lostReason ?? null,
     notes: input.notes ?? row.outcome.notes,
     reportedBy: input.reportedBy ?? row.outcome.reportedBy,
     reportedAt: new Date(),
+    partnerWritebackAt: input.partnerWritebackAt ?? new Date(),
     updatedAt: new Date(),
   }).where(eq(referralOutcomes.id, row.outcome.id)).returning();
 
   if (!updated) {
     throw new Error("Referral outcome update conflicted");
+  }
+
+  if (transition.nextStatus === "closed") {
+    await reconcileClosedOutcomePrediction(updated, closePrice);
   }
 
   return { ...row, outcome: updated };

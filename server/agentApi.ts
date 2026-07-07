@@ -754,12 +754,15 @@ export function registerAgentRoutes(app: Express) {
   app.post("/api/agent/referrals/:outcomeId", requireScope("partner:referrals"), async (req, res) => {
     try {
       const parsed = z.object({
-        action: z.enum(REFERRAL_OUTCOME_ACTIONS),
+        action: z.enum(REFERRAL_OUTCOME_ACTIONS).optional(),
         closePrice: z.coerce.number().finite().nonnegative().optional(),
         gci: z.coerce.number().finite().positive().optional(),
+        financingIntent: z.boolean().optional(),
+        buyingIntent: z.boolean().optional(),
         lostReason: z.string().trim().min(1).max(500).optional(),
         notes: z.string().trim().max(2000).optional(),
         reportedBy: z.string().trim().max(160).optional(),
+        partnerWritebackAt: z.coerce.date().optional(),
       }).strict().safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
 
