@@ -257,6 +257,10 @@ export default function UnpackingMultiplexesToronto() {
   // fail if no synchronous script tag is in scope when the effect runs.
   // The stub (n.queue) captures fbq() calls made before fbevents.js finishes
   // loading, so init + PageView fire correctly even before the async load.
+  //
+  // Each event gets a UUID (event_id) that is shared with the Conversions API
+  // endpoint (/api/capi/event) for server-side deduplication — Meta sees one
+  // event per action, not two.
   useEffect(() => {
     const w = window as any;
     if (!w.fbq) {
@@ -274,12 +278,28 @@ export default function UnpackingMultiplexesToronto() {
       document.head.appendChild(script);
     }
     w.fbq("init", FB_PIXEL_ID);
-    w.fbq("track", "PageView");
+
+    // Generate a unique ID for this PageView so CAPI and browser pixel
+    // can be deduplicated by Meta.
+    const pageViewId = crypto.randomUUID();
+    w.fbq("track", "PageView", {}, { eventID: pageViewId });
+
+    // Mirror to Conversions API (server-to-server)
+    fetch("/api/capi/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventName: "PageView",
+        eventId: pageViewId,
+        eventSourceUrl: EVENT_URL,
+      }),
+    }).catch(() => {/* best-effort — never fail page load */});
   }, []);
 
   // Fire on every "Buy Tickets" click. InitiateCheckout is Meta's standard
   // event for starting a purchase, so it can be optimized/reported in Ads
   // Manager. `location` distinguishes the hero / sidebar / footer buttons.
+  // A shared event_id enables CAPI ↔ browser pixel deduplication.
   const trackBuyTickets = (location: string) => {
     trackTrafficEvent({
       eventName: "ticket_cta_clicked",
@@ -292,14 +312,34 @@ export default function UnpackingMultiplexesToronto() {
         sourceButton: location,
       },
     });
+    const checkoutId = crypto.randomUUID();
     const fbq = (window as any).fbq;
     if (typeof fbq === "function") {
-      fbq("track", "InitiateCheckout", {
-        content_name: EVENT_TITLE,
-        content_category: "Event Tickets",
-        source_button: location,
-      });
+      fbq(
+        "track",
+        "InitiateCheckout",
+        {
+          content_name: EVENT_TITLE,
+          content_category: "Event Tickets",
+          source_button: location,
+        },
+        { eventID: checkoutId },
+      );
     }
+    fetch("/api/capi/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventName: "InitiateCheckout",
+        eventId: checkoutId,
+        eventSourceUrl: EVENT_URL,
+        customData: {
+          content_name: EVENT_TITLE,
+          content_category: "Event Tickets",
+          source_button: location,
+        },
+      }),
+    }).catch(() => {/* best-effort */});
   };
 
   const handleTicketClick = (location: string) => {

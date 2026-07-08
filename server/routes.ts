@@ -13263,6 +13263,47 @@ export async function registerRoutes(
     }
   });
 
+  // ── Meta Conversions API proxy ──────────────────────────────────────────────
+  // Receives browser-fired event metadata and re-sends it server-to-server so
+  // Meta receives it even when the browser pixel is blocked. The shared
+  // event_id ties the two signals together for deduplication.
+  app.post("/api/capi/event", async (req, res) => {
+    try {
+      const { sendCapiEvent } = await import("./metaCapi");
+      const { eventName, eventId, eventSourceUrl, customData } = req.body as {
+        eventName: string;
+        eventId: string;
+        eventSourceUrl: string;
+        customData?: Record<string, unknown>;
+      };
+      if (!eventName || !eventId || !eventSourceUrl) {
+        return res.status(400).json({ error: "eventName, eventId, eventSourceUrl required" });
+      }
+      const rawIp =
+        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.socket.remoteAddress ||
+        "";
+      const fbp = (req.headers.cookie || "").match(/_fbp=([^;]+)/)?.[1];
+      const fbc = (req.headers.cookie || "").match(/_fbc=([^;]+)/)?.[1];
+      // Fire-and-forget — don't block the response on Meta's API latency
+      sendCapiEvent({
+        eventName,
+        eventId,
+        eventSourceUrl,
+        userData: {
+          clientIp: rawIp,
+          clientUserAgent: req.headers["user-agent"] || "",
+          fbp,
+          fbc,
+        },
+        customData,
+      }).catch((e) => console.error("[CAPI route] error:", e));
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   return httpServer;
 }
 
