@@ -272,27 +272,42 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   const admin = await getAssumptionValues();
   const a = buildAssumptions(admin, input.assumptionOverrides);
   const assumptionNotes: string[] = [];
+  const optInWards = Array.isArray(admin["sixplex_opt_in_wards"]) ? (admin["sixplex_opt_in_wards"] as number[]) : [];
 
-  // Permissions via the mature feasibility engine (rules + sources + status)
+  // Permissions via the mature feasibility engine (rules + sources + status).
+  // Verified open-data (parcel/overlay/ward) is threaded in where available so
+  // the engine upgrades heuristics to bylaw values.
   const feasibility = computeMultiplexFeasibility({
     address: input.address,
     city: "Toronto",
     province: "ON",
     postalCode: input.postalCode,
     zoneCode: site.zoning?.zoneCode,
-    lotFrontage: input.lotFrontageFt,
-    lotDepth: input.lotDepthFt,
-    lotArea: input.lotAreaSqft,
-    laneAccess: input.laneAccess,
+    lotFrontage: input.lotFrontageFt ?? site.parcel?.frontageFt ?? undefined,
+    lotDepth: input.lotDepthFt ?? site.parcel?.depthFt ?? undefined,
+    lotArea: input.lotAreaSqft ?? site.parcel?.lotAreaSqft ?? undefined,
+    cornerLot: site.parcel?.cornerLot ?? undefined,
+    laneAccess: input.laneAccess ?? site.parcel?.laneAccess ?? undefined,
     heritageFlag: site.heritage.listed,
-    floodplainFlag: site.trca.regulated,
+    floodplainFlag: site.conservation.regulated,
+    verifiedWard: site.ward?.wardNumber,
+    verifiedWardName: site.ward?.wardName ?? undefined,
+    verifiedLotCoverageRatio: site.overlays?.maxLotCoverageRatio ?? undefined,
+    verifiedMaxHeightM: site.overlays?.maxHeightM ?? undefined,
+    optInWards,
   });
 
   const sixStatus = feasibility.permissions.six_unit_area_status;
-  const optInWards = Array.isArray(admin["sixplex_opt_in_wards"]) ? (admin["sixplex_opt_in_wards"] as number[]) : [];
+  const sixVerified = feasibility.permissions.six_unit_certainty === "verified";
   const sixplexEligible = sixStatus === "more_likely_area";
   const maxUnitsAsOfRight = sixplexEligible ? 6 : Math.max(4, feasibility.permissions.effective_baseline_units);
-  if (sixStatus === "possible_unverified") {
+  if (sixVerified && site.ward) {
+    assumptionNotes.push(
+      sixplexEligible
+        ? `Confirmed in Ward ${site.ward.wardNumber} (${site.ward.wardName}) — five/six units as-of-right under By-law 654-2025.`
+        : `Confirmed in Ward ${site.ward.wardNumber} (${site.ward.wardName}), outside the nine sixplex wards — modelled at ${maxUnitsAsOfRight} units.`,
+    );
+  } else if (sixStatus === "possible_unverified") {
     assumptionNotes.push(
       `Five/six-unit permission not inferred for this location — modelled at ${maxUnitsAsOfRight} units. If the property is in Wards ${TORONTO_SIXPLEX_WARDS.asOfRightWards.map((w) => w.ward).join(", ")}${optInWards.length ? ` or opt-in wards ${optInWards.join(", ")}` : ""}, six units may be as-of-right — verify the ward.`,
     );
@@ -308,15 +323,18 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
     sixplexEligible,
     fivePlusUnits: maxUnitsAsOfRight >= 5,
     heritage: site.heritage.listed,
-    conservationConstraint: site.trca.regulated,
-    lotCoverage: a.lotCoverage,
+    conservationConstraint: site.conservation.regulated,
+    lotCoverage: site.overlays?.maxLotCoverageRatio ?? a.lotCoverage,
     frontSetbackM: a.frontSetbackM,
   });
+  if (site.overlays?.maxLotCoverageRatio != null) {
+    assumptionNotes.push(`Lot coverage ${Math.round(site.overlays.maxLotCoverageRatio * 100)}% from Toronto's verified Lot Coverage Overlay.`);
+  }
 
   const configs = generateConfigurations({
     envelope,
     maxUnitsAsOfRight,
-    sixplexCertainty: "inferred",
+    sixplexCertainty: sixVerified ? "verified" : "inferred",
     lanewayEligible: !!input.laneAccess && feasibility.permissions.laneway_suite_possible,
     gardenSuiteEligible: feasibility.permissions.garden_suite_possible,
     unitSizes: a.unitSizes,
@@ -387,7 +405,7 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
       .sort((x, y) => y.rentalHold.yieldOnCost - x.rentalHold.yieldOnCost)[0];
 
   return {
-    sixplex: { eligible: sixplexEligible, status: sixStatus, certainty: "inferred" },
+    sixplex: { eligible: sixplexEligible, status: sixStatus, certainty: sixVerified ? "verified" : "inferred" },
     maxUnitsAsOfRight,
     envelope,
     configs: underwrites,
@@ -424,6 +442,16 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
   ensureMultiplexTables()
     .then(seedAssumptions)
     .catch((err) => console.error("[multiplex] failed to ensure/seed tables:", err.message));
+
+  // Ensure the geo + Tier-1 data-layer tables exist so resolveSite degrades to
+  // "no data" (empty tables) rather than throwing on a fresh database.
+  Promise.all([
+    import("./torontoGeo").then((m) => m.ensureTorontoGeoTables()),
+    import("./torontoZoning").then((m) => m.ensureTorontoZoningTables()),
+    import("./parcels").then((m) => m.ensureParcelTables()),
+    import("./precedents").then((m) => m.ensurePrecedentTables()),
+    import("./geocodeToronto").then((m) => m.ensureAddressPointTables()),
+  ]).catch((err) => console.error("[multiplex] failed to ensure geo/tier-1 tables:", err.message));
 
   // Public read — the analyzer UI shows defaults with their sources.
   app.get("/api/multiplex-assumptions", async (_req: Request, res: Response) => {
@@ -477,15 +505,24 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
 
       const hasDims = !!(input.lotFrontageFt && input.lotDepthFt) || !!input.lotAreaSqft;
       if (!hasDims) {
+        // No caller dims. The site now carries parcel-derived dims (when the
+        // parcel fabric is loaded and matches), so the client can prefill the
+        // confirm form instead of sending the user off to hunt for dimensions.
         return res.json({
           status: "needs_lot_dimensions",
           site,
-          message: "Site resolved. Provide lotFrontageFt + lotDepthFt (or lotAreaSqft) to run the full underwrite.",
+          parcelDims: site.parcel && site.parcel.frontageFt && site.parcel.depthFt
+            ? { frontageFt: site.parcel.frontageFt, depthFt: site.parcel.depthFt, lotAreaSqft: site.parcel.lotAreaSqft, laneAccess: site.parcel.laneAccess }
+            : null,
+          message: site.parcel
+            ? "Site + lot resolved from the City parcel fabric. Confirm the dimensions (and add a price) to run the underwrite."
+            : "Site resolved. Provide lotFrontageFt + lotDepthFt (or lotAreaSqft) to run the full underwrite.",
           disclaimer: DISCLAIMER,
         });
       }
       // The envelope needs frontage/depth for setback math; back-fill plausible
       // dims from area when only area was given (surfaced as an assumption).
+      const hadBothDims = !!(input.lotFrontageFt && input.lotDepthFt);
       if (!input.lotFrontageFt || !input.lotDepthFt) {
         const side = Math.sqrt(input.lotAreaSqft!);
         input.lotFrontageFt = input.lotFrontageFt ?? Math.round(side * 0.6);
@@ -493,8 +530,20 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
       }
 
       const underwrite = await runUnderwrite(input, site);
-      if (!input.lotFrontageFt || !input.lotDepthFt) {
+      if (!hadBothDims) {
         underwrite.assumptionNotes.push("Lot frontage/depth back-filled from area — confirm actual dimensions.");
+      }
+
+      // Precedent signal — "your neighbours already did it": unit-adding permits
+      // + variance approval rate near this lot. Graceful: never blocks the underwrite.
+      let precedent = null;
+      if (site.lat != null && site.lng != null) {
+        try {
+          const { getPrecedents } = await import("./precedents");
+          precedent = await getPrecedents(site.lat, site.lng, 500);
+        } catch (err: any) {
+          console.error("[multiplex] precedent lookup failed:", err?.message ?? err);
+        }
       }
 
       // Narrative layer — deterministic math computes, the LLM narrates.
@@ -504,7 +553,7 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
         site,
         underwrite,
       });
-      const result = { ...underwrite, report, reportSource };
+      const result = { ...underwrite, report, reportSource, precedent };
 
       const shareToken = crypto.randomBytes(12).toString("hex");
       const userId = req.session?.userId ?? null;

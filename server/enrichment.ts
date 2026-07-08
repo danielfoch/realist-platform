@@ -245,6 +245,24 @@ export async function getPropertyAssessment(
   };
 }
 
+// ─── Parcel + planning enrichment (Tier-1 layers) ────────────────────────────
+
+/** Verified parcel metrics, zoning overlays, ward, conservation + precedent for a point. */
+async function getParcelAndPlanning(lat: number, lng: number): Promise<{
+  parcel: unknown; overlays: unknown; ward: unknown; conservation: unknown; precedent: unknown;
+} | null> {
+  const [{ getParcelMetrics }, { resolveZoningOverlays, resolveWard }, { screenConservation }, { getPrecedents }] =
+    await Promise.all([import("./parcels"), import("./torontoZoning"), import("./conservation"), import("./precedents")]);
+  const [parcel, overlays, ward, conservation, precedent] = await Promise.all([
+    getParcelMetrics(lat, lng).catch(() => null),
+    resolveZoningOverlays(lat, lng).catch(() => null),
+    resolveWard(lat, lng).catch(() => null),
+    screenConservation(lat, lng).catch(() => null),
+    getPrecedents(lat, lng, 500).catch(() => null),
+  ]);
+  return { parcel, overlays, ward, conservation, precedent };
+}
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
 export function registerEnrichmentRoutes(app: Express): void {
@@ -262,11 +280,12 @@ export function registerEnrichmentRoutes(app: Express): void {
       return res.status(400).json({ success: false, error: "lat+lng or address query params are required" });
     }
     try {
-      const [neighbourhood, property] = await Promise.all([
+      const [neighbourhood, property, parcelAndPlanning] = await Promise.all([
         hasPoint ? getNeighbourhoodStats(lat, lng) : Promise.resolve(null),
         address ? getPropertyAssessment(address, city || null) : Promise.resolve(null),
+        hasPoint ? getParcelAndPlanning(lat, lng) : Promise.resolve(null),
       ]);
-      return res.json({ success: true, data: { neighbourhood, property } });
+      return res.json({ success: true, data: { neighbourhood, property, ...parcelAndPlanning } });
     } catch (err: any) {
       console.error("[enrichment] lookup failed:", err?.message ?? err);
       return res.status(500).json({ success: false, error: "Enrichment lookup failed" });

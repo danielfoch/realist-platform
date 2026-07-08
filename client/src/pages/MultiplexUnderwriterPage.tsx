@@ -22,7 +22,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { track } from "@/lib/analytics";
 import {
   Building2, MapPin, TreeDeciduous, Landmark, Waves, AlertTriangle,
-  CheckCircle2, Loader2, Share2, ArrowRight, Sparkles, Scale,
+  CheckCircle2, Loader2, Share2, ArrowRight, Sparkles, Scale, Users,
 } from "lucide-react";
 
 // ─── Types (mirror the API result shape) ────────────────────────────────────
@@ -36,6 +36,10 @@ interface ResolvedSite {
   trees: { status: string; cityTreeConflict: boolean; treesWithinContextRadius: number; nearest: { distanceM: number; commonName: string | null } | null; privateTreeCaution: string };
   heritage: { status: string; listed: boolean };
   trca: { status: string; regulated: boolean; detail: string | null };
+  conservation?: { status: string; regulated: boolean; authority: string | null; detail: string | null };
+  parcel?: { lotAreaSqft: number; frontageFt: number | null; depthFt: number | null; cornerLot: boolean | null; laneAccess: boolean | null; precisionNote: string } | null;
+  overlays?: { maxLotCoverageRatio: number | null; maxHeightM: number | null } | null;
+  ward?: { wardNumber: number; wardName: string | null; sixplexAsOfRight: boolean } | null;
   notes: string[];
 }
 
@@ -67,6 +71,15 @@ interface UnderwriteResult {
     recommendation: { bestPath: string; dealKillers: string[]; verifyWithProfessionals: string[]; nextSteps: string[] };
   };
   reportSource?: string;
+  precedent?: {
+    radiusM: number;
+    permits: { unitAddingCount: number; totalUnitsCreated: number; laneWayOrGardenCount: number; byStructureType: Record<string, number>;
+      recentExamples: Array<{ address: string | null; structureType: string | null; unitsCreated: number | null; issuedDate: string | null; distanceM: number }> };
+    committeeOfAdjustment: { decided: number; approved: number; refused: number; approvalRate: number | null;
+      recentExamples: Array<{ address: string | null; applicationType: string | null; decision: string | null; hearingDate: string | null; distanceM: number }> };
+    dataAvailable: boolean;
+    note: string;
+  } | null;
 }
 
 // ─── Small pieces ────────────────────────────────────────────────────────────
@@ -174,6 +187,13 @@ export default function MultiplexUnderwriterPage() {
       const data = await res.json();
       if (data.status === "needs_lot_dimensions") {
         setSite(data.site);
+        // Prefill the confirm form from the verified parcel fabric so the user
+        // never has to look up their own lot dimensions.
+        if (data.parcelDims) {
+          if (data.parcelDims.frontageFt) setFrontage(String(data.parcelDims.frontageFt));
+          if (data.parcelDims.depthFt) setDepth(String(data.parcelDims.depthFt));
+          if (data.parcelDims.laneAccess) setLaneAccess(true);
+        }
         setStep("confirm");
       }
     } catch (e: any) {
@@ -275,9 +295,38 @@ export default function MultiplexUnderwriterPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <ScreenChip icon={TreeDeciduous} label="City trees" flagged={site.trees.cityTreeConflict} unavailable={site.trees.status === "no_data"} />
-                  <ScreenChip icon={Waves} label="TRCA regulated" flagged={site.trca.regulated} unavailable={site.trca.status === "unavailable"} />
+                  <ScreenChip icon={Waves} label={site.conservation?.authority ? `${site.conservation.authority} regulated` : "Conservation"} flagged={site.conservation?.regulated ?? site.trca.regulated} unavailable={(site.conservation?.status ?? site.trca.status) === "unavailable"} />
                   <ScreenChip icon={Landmark} label="Heritage" flagged={site.heritage.listed} unavailable={site.heritage.status === "no_data"} />
                 </div>
+                {(site.parcel || site.ward || site.overlays) && (
+                  <div className="rounded-lg border bg-muted/30 px-4 py-3 space-y-2 text-sm">
+                    <div className="flex items-center gap-2 font-medium"><CheckCircle2 className="h-4 w-4 text-green-600" /> Verified from City open data</div>
+                    {site.parcel && (
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+                        <span>Lot ~{site.parcel.lotAreaSqft.toLocaleString()} sqft</span>
+                        {site.parcel.frontageFt != null && <span>Frontage ~{site.parcel.frontageFt} ft</span>}
+                        {site.parcel.depthFt != null && <span>Depth ~{site.parcel.depthFt} ft</span>}
+                        {site.parcel.laneAccess && <span>· Rear lane ✓</span>}
+                        {site.parcel.cornerLot && <span>· Corner lot</span>}
+                      </div>
+                    )}
+                    {site.ward && (
+                      <div className="flex items-center gap-2">
+                        <Badge variant={site.ward.sixplexAsOfRight ? "default" : "secondary"}>Ward {site.ward.wardNumber}{site.ward.wardName ? ` · ${site.ward.wardName}` : ""}</Badge>
+                        <span className="text-xs text-muted-foreground">{site.ward.sixplexAsOfRight ? "5–6 units as-of-right (By-law 654-2025)" : "Up to 4 units (outside sixplex wards)"}</span>
+                      </div>
+                    )}
+                    {(site.overlays?.maxHeightM != null || site.overlays?.maxLotCoverageRatio != null) && (
+                      <div className="text-xs text-muted-foreground">
+                        {[
+                          site.overlays.maxHeightM != null ? `Height overlay: ${site.overlays.maxHeightM} m` : null,
+                          site.overlays.maxLotCoverageRatio != null ? `Lot coverage: ${Math.round(site.overlays.maxLotCoverageRatio * 100)}%` : null,
+                        ].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
+                    {site.parcel && <div className="text-xs text-muted-foreground italic">{site.parcel.precisionNote}</div>}
+                  </div>
+                )}
                 {site.notes.length > 0 && (
                   <ul className="text-xs text-muted-foreground space-y-1">
                     {site.notes.map((n, i) => <li key={i}>• {n}</li>)}
@@ -363,6 +412,38 @@ export default function MultiplexUnderwriterPage() {
                   <p>{result.report.riskNarrative}</p>
                   <Separator />
                   <p className="font-medium">{result.report.recommendation.bestPath}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Precedent — "your neighbours already did it" */}
+            {result.precedent?.dataAvailable && (result.precedent.permits.unitAddingCount > 0 || result.precedent.committeeOfAdjustment.decided > 0) && (
+              <Card className="border-emerald-200 bg-gradient-to-b from-emerald-50/60 to-transparent">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Users className="h-5 w-5 text-emerald-600" /> The neighbours already did it
+                    <ProvenanceBadge kind="verified" />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="flex flex-wrap gap-x-8 gap-y-2">
+                    <span><strong className="text-lg">{result.precedent.permits.unitAddingCount}</strong> permits added units within {Math.round(result.precedent.radiusM)}m
+                      {result.precedent.permits.totalUnitsCreated > 0 && <span className="text-muted-foreground"> · {result.precedent.permits.totalUnitsCreated} units total</span>}
+                      {result.precedent.permits.laneWayOrGardenCount > 0 && <span className="text-muted-foreground"> · {result.precedent.permits.laneWayOrGardenCount} laneway/garden/second-suite</span>}
+                    </span>
+                    {result.precedent.committeeOfAdjustment.approvalRate != null && (
+                      <span><strong className="text-lg">{Math.round(result.precedent.committeeOfAdjustment.approvalRate * 100)}%</strong> of nearby minor-variance decisions approved
+                        <span className="text-muted-foreground"> ({result.precedent.committeeOfAdjustment.approved}/{result.precedent.committeeOfAdjustment.decided})</span>
+                      </span>
+                    )}
+                  </div>
+                  {result.precedent.permits.recentExamples.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Closest: {result.precedent.permits.recentExamples.slice(0, 3).map((e) =>
+                        `${e.address ?? "—"} (${e.structureType ?? "unit"}, ${e.distanceM}m)`).join(" · ")}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground italic">{result.precedent.note}</p>
                 </CardContent>
               </Card>
             )}
