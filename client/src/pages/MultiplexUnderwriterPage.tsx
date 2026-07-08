@@ -71,6 +71,14 @@ interface UnderwriteResult {
     recommendation: { bestPath: string; dealKillers: string[]; verifyWithProfessionals: string[]; nextSteps: string[] };
   };
   reportSource?: string;
+  rentRegulation?: {
+    supported: boolean;
+    newSuiteUncapped: boolean;
+    exemptFromGuideline: boolean;
+    guidelinePct: number | null;
+    vacancyDecontrol: boolean;
+    summary: string;
+  };
   precedent?: {
     radiusM: number;
     permits: { unitAddingCount: number; totalUnitsCreated: number; laneWayOrGardenCount: number; byStructureType: Record<string, number>;
@@ -377,6 +385,9 @@ export default function MultiplexUnderwriterPage() {
                   {site.zoning && <><Badge>{site.zoning.zoneCode}</Badge><ProvenanceBadge kind="verified" /></>}
                   <Badge variant="outline">up to {result.maxUnitsAsOfRight} units as-of-right</Badge>
                   {result.sixplex.eligible && <Badge className="bg-violet-100 text-violet-800 hover:bg-violet-100">sixplex ward likely</Badge>}
+                  {result.rentRegulation?.newSuiteUncapped && (
+                    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100" title={result.rentRegulation.summary}>rent decontrolled</Badge>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
