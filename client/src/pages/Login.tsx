@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, ArrowRight, MailCheck, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { getLoginRedirectMessage } from "@/lib/authErrors";
 import { authPath, clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl, goToReturnUrl } from "@/lib/authReturn";
 
 const loginSchema = z.object({
@@ -33,10 +34,9 @@ export default function Login() {
   const returnUrl = getAuthReturnUrl("/dashboard");
   rememberAuthReturnUrl(returnUrl);
 
-  // Set when a magic sign-in link redirect failed (expired/used/invalid).
-  const [linkInvalid] = useState(() => {
+  const [redirectMessage] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("error") === "link_invalid";
+    return getLoginRedirectMessage(params);
   });
   // Set when password login failed because the account has no password
   // (created via lead capture, event ticket, RSVP, ...).
@@ -64,7 +64,7 @@ export default function Login() {
       goToReturnUrl(returnUrl, setLocation);
     },
     onError: (error: any) => {
-      if (typeof error?.message === "string" && error.message.includes("NO_PASSWORD_SET")) {
+      if (error?.code === "NO_PASSWORD_SET" || (typeof error?.message === "string" && error.message.includes("NO_PASSWORD_SET"))) {
         setNoPasswordAccount(true);
         toast({
           title: "No password on this account",
@@ -72,9 +72,14 @@ export default function Login() {
         });
         return;
       }
+      const status = typeof error?.status === "number" ? error.status : null;
+      const message =
+        status === 401
+          ? "Invalid email or password. If this account was created through a tool or event registration, use the email sign-in link instead."
+          : error.message || "Invalid email or password";
       toast({
         title: "Login failed",
-        description: error.message || "Invalid email or password",
+        description: message,
         variant: "destructive",
       });
     },
@@ -114,13 +119,12 @@ export default function Login() {
           <CardDescription>Sign in to your Realist account</CardDescription>
         </CardHeader>
         <CardContent>
-          {linkInvalid && !magicLinkSentTo && (
+          {redirectMessage && !magicLinkSentTo && (
             <div
               className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-foreground"
-              data-testid="banner-link-invalid"
+              data-testid="banner-login-redirect-message"
             >
-              That sign-in link is invalid or has expired. Enter your email below and choose{" "}
-              <span className="font-medium">"Email me a sign-in link"</span> to get a fresh one.
+              {redirectMessage}
             </div>
           )}
 
