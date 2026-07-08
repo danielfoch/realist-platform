@@ -1,7 +1,8 @@
 import { authPath } from "@/lib/authReturn";
 
 export function isUnauthorizedError(error: Error): boolean {
-  return /^401: .*Unauthorized/.test(error.message);
+  const status = (error as Error & { status?: number }).status;
+  return status === 401 || /^401: .*Unauthorized/.test(error.message);
 }
 
 // Redirect to login with a toast notification

@@ -286,6 +286,14 @@ export default function UnpackingMultiplexesToronto() {
     }
   };
 
+  const handleTicketClick = (location: string) => {
+    trackBuyTickets(location);
+    // Keep checkout in the same tab. Some mobile/in-app browsers block or
+    // swallow target=_blank external checkout links, which made the button
+    // appear dead for a subset of users.
+    window.location.assign(TICKET_URL);
+  };
+
   const handleShare = async () => {
     const url = window.location.href;
     const shareData = {
@@ -398,18 +406,16 @@ export default function UnpackingMultiplexesToronto() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <a
-              href={TICKET_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => trackBuyTickets("hero")}
-              data-testid="link-buy-tickets-hero"
+            <Button
+              type="button"
+              size="lg"
+              className="gap-2"
+              onClick={() => handleTicketClick("hero")}
+              data-testid="button-buy-tickets-hero"
             >
-              <Button size="lg" className="gap-2" data-testid="button-buy-tickets-hero">
-                <Ticket className="h-5 w-5" />
-                Buy Tickets
-              </Button>
-            </a>
+              <Ticket className="h-5 w-5" />
+              Buy Tickets
+            </Button>
             <Button
               size="lg"
               variant="outline"
@@ -603,23 +609,16 @@ export default function UnpackingMultiplexesToronto() {
                       partner.
                     </p>
                   </div>
-                  <a
-                    href={TICKET_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
-                    onClick={() => trackBuyTickets("sidebar")}
-                    data-testid="link-buy-tickets-sidebar"
+                  <Button
+                    type="button"
+                    className="w-full gap-2"
+                    size="lg"
+                    onClick={() => handleTicketClick("sidebar")}
+                    data-testid="button-buy-tickets-sidebar"
                   >
-                    <Button
-                      className="w-full gap-2"
-                      size="lg"
-                      data-testid="button-buy-tickets-sidebar"
-                    >
-                      <Ticket className="h-5 w-5" />
-                      Buy Tickets
-                    </Button>
-                  </a>
+                    <Ticket className="h-5 w-5" />
+                    Buy Tickets
+                  </Button>
                   <div className="text-xs text-muted-foreground text-center">
                     Ticketing handled by OvationTix
                   </div>
@@ -725,18 +724,16 @@ export default function UnpackingMultiplexesToronto() {
             Seats are limited. Reserve yours today and join Toronto's most active
             community of multiplex developers and investors.
           </p>
-          <a
-            href={TICKET_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => trackBuyTickets("footer")}
-            data-testid="link-buy-tickets-footer"
+          <Button
+            type="button"
+            size="lg"
+            className="gap-2"
+            onClick={() => handleTicketClick("footer")}
+            data-testid="button-buy-tickets-footer"
           >
-            <Button size="lg" className="gap-2" data-testid="button-buy-tickets-footer">
-              <Ticket className="h-5 w-5" />
-              Buy Tickets
-            </Button>
-          </a>
+            <Ticket className="h-5 w-5" />
+            Buy Tickets
+          </Button>
         </div>
       </section>
     </div>
