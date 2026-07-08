@@ -59,10 +59,10 @@ export const reportsRegistry: ReportRegistryEntry[] = [
   {
     slug: "realbench-ai-realtor-benchmark",
     route: "/reports/realbench-ai-realtor-benchmark",
-    title: "RealBench: AI Benchmark for Realtors",
+    title: "HomeBench: AI Model Benchmark for Realtor Workflows",
     description:
-      "Frontier AI models scored on the work agents actually do — offers, showings, CRM, email, property research, marketing, and valuation.",
-    date: "2026-06-10",
+      "Fable 5, GPT-5.6 Sol, Grok 4.5, and frontier models compared on reliability, agentic workflow ability, and cost per completed real estate job.",
+    date: "2026-07-08",
     tags: ["ai", "realtors", "benchmark"],
     kind: "research",
   },
