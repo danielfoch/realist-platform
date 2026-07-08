@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type ValidationStatus = "validated" | "projected";
-type ModelId = "fable-5" | "gpt-5.6-sol" | "grok-4.5" | "opus-4.8" | "gpt-5.5" | "gemini-3.1";
+type ModelId = "fable-5" | "gpt-5.6-sol" | "grok-4.5" | "glm-5.2" | "opus-4.8" | "gemini-3.1";
 
 interface BenchModel {
   id: ModelId;
@@ -107,6 +107,23 @@ const MODELS: BenchModel[] = [
     routingRole: "Low-cost agentic layer",
   },
   {
+    id: "glm-5.2",
+    name: "GLM 5.2",
+    vendor: "Zhipu AI",
+    rawScore: 84,
+    reliability: 0.88,
+    agentic: 79,
+    domainFit: 81,
+    priceInPerMTok: 0.25,
+    priceOutPerMTok: 0.75,
+    color: "#DC2626",
+    status: "projected",
+    pricingStatus: "projected",
+    bestUse: "Open-weight experimentation, private/on-prem workflow tests, sovereign-AI pilots, and low-cost batch jobs where data control matters.",
+    avoidUse: "Sensitive client workflows unless the deployment, hosting, privacy, and legal posture are explicitly approved.",
+    routingRole: "Open-weight cost hedge",
+  },
+  {
     id: "opus-4.8",
     name: "Opus 4.8",
     vendor: "Anthropic",
@@ -122,23 +139,6 @@ const MODELS: BenchModel[] = [
     bestUse: "Research-heavy writing, synthesis, and thoughtful first drafts.",
     avoidUse: "Cheap repetitive job execution at high volume.",
     routingRole: "Research and synthesis layer",
-  },
-  {
-    id: "gpt-5.5",
-    name: "GPT-5.5",
-    vendor: "OpenAI",
-    rawScore: 77.6,
-    reliability: 0.84,
-    agentic: 76,
-    domainFit: 78,
-    priceInPerMTok: 2,
-    priceOutPerMTok: 8,
-    color: "#22C55E",
-    status: "validated",
-    pricingStatus: "projected",
-    bestUse: "Balanced everyday drafting and automation where cost still matters.",
-    avoidUse: "The hardest valuation or negotiation problems.",
-    routingRole: "Balanced utility layer",
   },
   {
     id: "gemini-3.1",
@@ -169,6 +169,7 @@ const JOBS: JobSpec[] = [
 
 const ROUTING_ROWS: RoutingRow[] = [
   { work: "Routine showing coordination, brochure assembly, and background agent tasks", defaultModel: "grok-4.5", escalation: "Escalate if the message creates a binding commitment or touches legal advice." },
+  { work: "Private batch jobs, open-weight tests, and cost-sensitive workflows where you want leverage against vendor pricing", defaultModel: "glm-5.2", escalation: "Escalate to hosted frontier models when reliability, support, or compliance risk matters more than cost control." },
   { work: "CRM follow-up, client replies, listing summaries, and everyday brokerage workflows", defaultModel: "gpt-5.6-sol", escalation: "Escalate to Fable when judgment, persuasion, or risk framing matters." },
   { work: "Complex offers, pricing strategy, seller memos, and investor underwriting judgment", defaultModel: "fable-5", escalation: "Human approval before anything goes to a client or counterparty." },
 ];
@@ -177,6 +178,7 @@ const SOURCES = [
   { label: "OpenAI GPT-5.6 Sol preview", href: "https://openai.com/index/previewing-gpt-5-6-sol/" },
   { label: "Axios Grok 4.5 / Cursor reporting", href: "https://www.axios.com/2026/07/08/spacexai-grok-new-model" },
   { label: "CursorBench ranking source", href: "https://www.cursor.com/" },
+  { label: "Zhipu AI / GLM model family", href: "https://www.zhipuai.cn/" },
 ];
 
 function costPerJob(model: BenchModel, job: JobSpec) {
@@ -269,11 +271,12 @@ export default function RealBenchReport() {
           </p>
         </section>
 
-        <section className="mb-10 grid gap-4 md:grid-cols-3">
+        <section className="mb-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: Trophy, label: "Raw score leader", value: "Fable 5", body: "Best projected judgment model when quality matters more than spend." },
             { icon: ShieldCheck, label: "Reliability leader", value: "GPT-5.6 Sol", body: "Projected to finish the most routine workflows without human rescue." },
             { icon: CircleDollarSign, label: "Cost-per-job leader", value: "Grok 4.5", body: "Third on projected capability, but the economics get hard to ignore." },
+            { icon: Sparkles, label: "Open-weight hedge", value: "GLM 5.2", body: "The China/open-weight lane matters if model access, data control, and inference cost become strategic risks." },
           ].map((item) => {
             const Icon = item.icon;
             return (
@@ -306,6 +309,12 @@ export default function RealBenchReport() {
                 default for a lot of background work.
               </p>
               <p>
+                GLM 5.2 adds a different pressure point. Open-weight Chinese models are not just
+                cheaper alternatives. They are a hedge against closed-model pricing, vendor lock-in,
+                and the uncomfortable reality that every frontier lab wants the same inference
+                data its customers use to build their businesses.
+              </p>
+              <p>
                 That is the real shift for real estate AI. Brokerages do not need one magical
                 model. They need routing: cheap models for repetitive jobs, reliable models for
                 client workflow, premium models for judgment, and humans approving commitments.
@@ -317,9 +326,9 @@ export default function RealBenchReport() {
                 Caveat up front
               </div>
               <p className="mt-3 text-sm leading-relaxed text-stone-600">
-                The new Fable 5, GPT-5.6 Sol, and Grok 4.5 figures below are a Realist scenario,
-                not a final public benchmark. They are here to show the routing and economics
-                model we will validate in the next HomeBench run.
+                The new Fable 5, GPT-5.6 Sol, Grok 4.5, and GLM 5.2 figures below are a Realist
+                scenario, not a final public benchmark. They are here to show the routing,
+                sovereignty, and economics model we will validate in the next HomeBench run.
               </p>
             </div>
           </CardContent>
@@ -569,6 +578,47 @@ export default function RealBenchReport() {
 
         <Card className="mb-10 border-stone-200 bg-white">
           <CardHeader className="border-b border-stone-100">
+            <div className={SECTION_LABEL}>Open weights and sovereign AI</div>
+            <CardTitle className="mt-1 text-2xl text-stone-950">The next cost curve may come from models you can run yourself.</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-5 p-6 md:grid-cols-3">
+            {[
+              {
+                title: "Open source is the full recipe",
+                body: "Code, training method, and permission to inspect or modify the system. In AI, true open source is rare because training data and recipes are often missing.",
+              },
+              {
+                title: "Open weight is the useful middle",
+                body: "The model weights are available to run, host, fine-tune, or inspect more directly. You may still not get the full training data or recipe.",
+              },
+              {
+                title: "Why GLM 5.2 matters",
+                body: "Chinese open-weight models create a second supply chain for capable AI. That gives companies leverage against rising inference costs and closed-lab data capture.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="rounded-xl border border-stone-200 bg-[#FAF7F2] p-5">
+                <CheckCircle2 className="mb-3 h-5 w-5 text-emerald-700" />
+                <div className="font-semibold text-stone-950">{item.title}</div>
+                <p className="mt-2 text-sm leading-relaxed text-stone-600">{item.body}</p>
+              </div>
+            ))}
+            <div className="rounded-xl border border-red-200 bg-red-50 p-5 md:col-span-3">
+              <div className="font-semibold text-stone-950">The adoption shift</div>
+              <p className="mt-2 text-sm leading-relaxed text-stone-700">
+                A year ago, many North American companies were nervous about putting proprietary
+                workflow data into Chinese models. That concern is still real. But the counter-risk
+                is now obvious too: closed Western labs see the inference data, learn the workflows,
+                raise prices, and may eventually compete with the same customers using the model.
+                For real estate AI, the answer is not blind trust in any vendor. It is routing:
+                hosted frontier models where they are worth it, open-weight models where cost and
+                control matter, and private data kept inside the Realist ledger.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-10 border-stone-200 bg-white">
+          <CardHeader className="border-b border-stone-100">
             <div className={SECTION_LABEL}>Model Routing Strategy</div>
             <CardTitle className="mt-1 text-2xl text-stone-950">Pay for the model the job needs.</CardTitle>
           </CardHeader>
@@ -606,9 +656,10 @@ export default function RealBenchReport() {
               <div className={SECTION_LABEL.replace("text-stone-500", "text-stone-400")}>Plain-English takeaway</div>
               <p className="mt-3 text-lg leading-relaxed">
                 Fable is still the premium model. GPT-5.6 Sol is the reliability layer. Grok 4.5 is
-                the cost curve. A smart brokerage should not blindly run everything through the most
-                expensive model. Route the work, keep humans approving commitments, and measure cost
-                per completed job.
+                the cost curve. GLM 5.2 is the open-weight hedge. A smart brokerage should not
+                blindly run everything through the most expensive closed model. Route the work, keep
+                humans approving commitments, protect the private ledger, and measure cost per
+                completed job.
               </p>
             </CardContent>
           </Card>
@@ -620,10 +671,10 @@ export default function RealBenchReport() {
             </CardHeader>
             <CardContent className="space-y-4 p-6 text-sm leading-relaxed text-stone-600">
               <p>
-                Fable 5, GPT-5.6 Sol, and Grok 4.5 figures in this update are Realist scenario
-                projections pending validation. They are not vendor claims and not final HomeBench
-                scores. Legacy model rows are carried forward from the earlier HomeBench v0.1 public
-                scoring frame.
+                Fable 5, GPT-5.6 Sol, Grok 4.5, and GLM 5.2 figures in this update are Realist
+                scenario projections pending validation. They are not vendor claims and not final
+                HomeBench scores. Legacy model rows are carried forward from the earlier HomeBench
+                v0.1 public scoring frame.
               </p>
               <p>
                 Cost-per-job uses token estimates for full agentic runs, placeholder pricing, and
