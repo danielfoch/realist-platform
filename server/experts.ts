@@ -47,7 +47,7 @@ import {
   computeRank,
   isExpertCategory,
 } from "@shared/contributorReputation";
-import { EVENT_EXPERT_PROFILES, getEventExpertProfile, type EventExpertRelatedEvent } from "@shared/eventExpertProfiles";
+import { getEventExpertProfile, type EventExpertRelatedEvent } from "@shared/eventExpertProfiles";
 import { anonymizeDisplayName } from "@shared/community";
 import { getTradeLeaders } from "./tradeLeaders";
 import {
@@ -256,28 +256,6 @@ export function registerExpertRoutes(app: Express): void {
         const m = market.toLowerCase();
         experts = experts.filter((e) => (e.serviceAreas || []).some((area) => area.toLowerCase().includes(m)));
       }
-      const existingIds = new Set(experts.flatMap((expert) => [expert.userId, expert.name.toLowerCase()]));
-      for (const profile of EVENT_EXPERT_PROFILES) {
-        if (existingIds.has(profile.userId) || existingIds.has(profile.name.toLowerCase())) continue;
-        if (category && isExpertCategory(category) && profile.category !== category) continue;
-        if (market) {
-          const m = market.toLowerCase();
-          if (!profile.serviceAreas.some((area) => area.toLowerCase().includes(m))) continue;
-        }
-        experts.push({
-          userId: profile.slug,
-          name: profile.name,
-          category: profile.category,
-          partnerType: "event_expert",
-          companyName: profile.companyName,
-          bio: profile.bio,
-          headshotUrl: profile.headshotUrl,
-          serviceAreas: profile.serviceAreas,
-          points: 0,
-          rank: computeRank(0).tier,
-        });
-      }
-
       experts.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
       res.json(experts);
     } catch (error) {
