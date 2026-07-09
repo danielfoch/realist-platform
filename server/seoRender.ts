@@ -101,7 +101,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
       { href: "/tools/hst-rebate", label: "Ontario New Home HST Rebate Calculator" },
       { href: "/tools/hst-calculator", label: "Canadian HST Calculator" },
       { href: "/tools/land-claim-screener", label: "Indigenous Land Claim Screener" },
-      { href: "/tools/motivated-deals", label: "Motivated Deals Browser" },
+      { href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Motivated Deals Browser" },
       { href: "/tools/buybox", label: "BuyBox Builder" },
       { href: "/tools/coinvest", label: "Co-Investing Hub" },
       { href: "/insights/encyclopedia", label: "Real Estate Investor Encyclopedia" },
@@ -128,7 +128,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
       { href: "/tools/cap-rates", label: "Browse the Cap Rate Map of Canada" },
       { href: "/tools/will-it-plex", label: "Screen a multiplex conversion" },
       { href: "/tools/rent-vs-buy", label: "Compare rent vs buy" },
-      { href: "/tools/motivated-deals", label: "Find motivated-seller deals" },
+      { href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Find motivated-seller deals" },
       { href: "/insights/encyclopedia/cap-rate", label: "What is a cap rate?" },
     ],
   },
@@ -151,7 +151,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
     ],
     links: [
       { href: "/tools/analyzer", label: "Open the Deal Analyzer" },
-      { href: "/tools/motivated-deals", label: "Motivated Deals Browser" },
+      { href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Motivated Deals Browser" },
       { href: "/insights/market-report", label: "Canadian housing market report" },
       { href: "/insights/encyclopedia/cap-rate", label: "What is a cap rate?" },
     ],
@@ -247,7 +247,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
     ],
     links: [
       { href: "/tools/analyzer", label: "Real Estate Deal Analyzer" },
-      { href: "/tools/motivated-deals", label: "Motivated Deals Browser" },
+      { href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Motivated Deals Browser" },
       { href: "/tools", label: "All Realist tools" },
     ],
   },
@@ -386,7 +386,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
       { title: "How to use it", body: "Use this page to identify markets or patterns worth following, then inspect live listings in the Motivated Deals Browser." },
     ],
     links: [
-      { href: "/tools/motivated-deals", label: "Open Motivated Deals Browser" },
+      { href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Open Motivated Deals Browser" },
       { href: "/reports", label: "All reports" },
       { href: "/investing/distress", label: "Motivated-seller investing strategy page" },
     ],
@@ -532,7 +532,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
         ${[
           { title: "Analyze a Deal", body: "Turn an address, listing, or MLS number into cash flow, cap rate, cash-on-cash return, risk signals, financing sensitivity, and next steps.", href: "/tools/analyzer" },
           { title: "Explore the Map", body: "Search Canadian listings through an investor lens with yield, market fit, price movement, property type, and risk context.", href: "/tools/cap-rates" },
-          { title: "Motivated Deals", body: "Browse motivated seller, power of sale, foreclosure, court ordered sale, and related opportunity language before it becomes obvious to everyone else.", href: "/tools/motivated-deals" },
+          { title: "Motivated Deals", body: "Browse motivated seller, power of sale, foreclosure, court ordered sale, and related opportunity language before it becomes obvious to everyone else.", href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" },
           { title: "Market Intelligence", body: "Follow market reports, city pages, strategy pages, and housing data that shape underwriting assumptions for Canadian investors.", href: "/insights" },
         ].map((item) => `
           <article style="border:1px solid #e5e7eb;border-radius:16px;padding:18px;">

@@ -362,7 +362,7 @@ function generateDistressReportHtml(params: {
 
   sections.push(`
     <h2>Explore the Data</h2>
-    <p>Want to see the actual listings? Visit the <a href="/tools/motivated-deals">Motivated Deals Browser</a> on Realist.ca to search, filter, and map motivated-seller listings in real time across all Canadian provinces.</p>
+    <p>Want to see the actual listings? Visit the <a href="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1">Motivated Deals Browser</a> on Realist.ca to search, filter, and map motivated-seller listings in real time across all Canadian provinces.</p>
   `);
 
   return sections.join("\n");

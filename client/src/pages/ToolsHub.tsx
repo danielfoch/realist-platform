@@ -78,7 +78,7 @@ const sections: ToolSection[] = [
         icon: TrendingUp,
       },
       {
-        href: "/tools/motivated-deals",
+        href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1",
         title: "Motivated Deals",
         description: "Find power-of-sale, court-ordered, bank-owned, motivated sellers, and seller-financing opportunities across Canadian MLS listings.",
         icon: Gavel,

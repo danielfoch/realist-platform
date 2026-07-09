@@ -69,7 +69,6 @@ import MarketReport from "@/pages/MarketReport";
 import MortgageRates from "@/pages/MortgageRates";
 import FixedVsVariable from "@/pages/FixedVsVariable";
 import LandClaimScreener from "@/pages/LandClaimScreener";
-import DistressDeals from "@/pages/DistressDeals";
 import DistressReport from "@/pages/DistressReport";
 import MultiplexFit from "@/pages/MultiplexFit";
 import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
@@ -194,7 +193,6 @@ const MarketReport = lazy(() => import("@/pages/MarketReport"));
 const MortgageRates = lazy(() => import("@/pages/MortgageRates"));
 const FixedVsVariable = lazy(() => import("@/pages/FixedVsVariable"));
 const LandClaimScreener = lazy(() => import("@/pages/LandClaimScreener"));
-const DistressDeals = lazy(() => import("@/pages/DistressDeals"));
 const DistressReport = lazy(() => import("@/pages/DistressReport"));
 const MultiplexFit = lazy(() => import("@/pages/MultiplexFit"));
 const MultiplexMasterclass = lazy(() => import("@/pages/MultiplexMasterclass"));
@@ -346,8 +344,8 @@ function Router() {
       <Route path="/tools/fixed-vs-variable" component={FixedVsVariable} />
       <Route path="/tools/hst-rebate" component={OntarioHstRebateCalculator} />
       <Route path="/tools/land-claim-screener" component={LandClaimScreener} />
-      <Route path="/tools/distress-deals">{() => <Redirect to="/tools/motivated-deals" />}</Route>
-      <Route path="/tools/motivated-deals" component={DistressDeals} />
+      <Route path="/tools/distress-deals">{() => <Redirect to="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" />}</Route>
+      <Route path="/tools/motivated-deals">{() => <Redirect to="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" />}</Route>
       <Route path="/tools/multiplex-feasibility" component={MultiplexFeasibilityPage} />
       <Route path="/tools/multiplex-underwriter" component={MultiplexUnderwriterPage} />
       <Route path="/power-team" component={PowerTeam} />
