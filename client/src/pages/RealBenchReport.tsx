@@ -1,9 +1,18 @@
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, BriefcaseBusiness, CheckCircle2, CircleDollarSign, Info, Route, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, Calendar, CheckCircle2, CircleDollarSign, FileText, Home as HomeIcon, Info, Mail, Megaphone, Route, Search, ShieldCheck, Sparkles, Trophy, Users } from "lucide-react";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
   LabelList,
+  Legend,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
   ReferenceLine,
   ResponsiveContainer,
   Scatter,
@@ -49,6 +58,16 @@ interface RoutingRow {
   work: string;
   defaultModel: ModelId;
   escalation: string;
+}
+
+interface Category {
+  key: string;
+  label: string;
+  short: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  example: string;
+  scores: Record<ModelId, number>;
 }
 
 // Projected figures are Realist scenario estimates pending validation. They are
@@ -181,6 +200,72 @@ const SOURCES = [
   { label: "Zhipu AI / GLM model family", href: "https://www.zhipuai.cn/" },
 ];
 
+const BENCH_CATEGORIES: Category[] = [
+  {
+    key: "offers",
+    label: "Offers",
+    short: "OfferBench",
+    icon: FileText,
+    description: "Drafting competitive buyer offers, comparing seller offers, counteroffer strategy, and deadline math.",
+    example: "Buyer is preapproved to $875K. List price is $849K. Seller wants a 30-day close. Draft terms, deposit, conditions, and a buyer-facing explanation.",
+    scores: { "fable-5": 95, "gpt-5.6-sol": 91, "grok-4.5": 86, "glm-5.2": 83, "opus-4.8": 82, "gemini-3.1": 74 },
+  },
+  {
+    key: "showing",
+    label: "Showing",
+    short: "ShowBench",
+    icon: Calendar,
+    description: "Scheduling tours, routing for drive time, listing-agent outreach, reschedules, and confirmation notes.",
+    example: "Buyer is free Saturday 10-2. Five homes, two are 25 minutes apart, one listing agent needs two hours notice. Plan the route and draft the showing requests.",
+    scores: { "fable-5": 92, "gpt-5.6-sol": 93, "grok-4.5": 88, "glm-5.2": 84, "opus-4.8": 77, "gemini-3.1": 71 },
+  },
+  {
+    key: "crm",
+    label: "CRM Management",
+    short: "CRMBench",
+    icon: Users,
+    description: "Lead classification, dedupe, next-best-action, follow-up sequences, and pipeline summarization.",
+    example: "Fifty messy leads from Realtor.ca, open houses, referrals, and past clients. Classify, dedupe, assign next action, and draft the first follow-up.",
+    scores: { "fable-5": 92, "gpt-5.6-sol": 94, "grok-4.5": 87, "glm-5.2": 84, "opus-4.8": 80, "gemini-3.1": 72 },
+  },
+  {
+    key: "email",
+    label: "Email Response",
+    short: "EmailBench",
+    icon: Mail,
+    description: "Client-ready replies with useful tone, compliance guardrails, and no hallucinated commitments.",
+    example: "Past client asks whether to refinance into a variable mortgage. Draft a helpful, calibrated reply without pretending to be their mortgage broker.",
+    scores: { "fable-5": 96, "gpt-5.6-sol": 93, "grok-4.5": 86, "glm-5.2": 83, "opus-4.8": 87, "gemini-3.1": 78 },
+  },
+  {
+    key: "research",
+    label: "Property Research",
+    short: "ResearchBench",
+    icon: Search,
+    description: "Pulling listing facts, summarizing disclosures, spotting red flags, and contextualizing neighbourhoods.",
+    example: "Buyer sends a listing and disclosure package. Summarize facts, flag red flags, and prepare a showing brief for the agent.",
+    scores: { "fable-5": 93, "gpt-5.6-sol": 89, "grok-4.5": 85, "glm-5.2": 82, "opus-4.8": 83, "gemini-3.1": 81 },
+  },
+  {
+    key: "marketing",
+    label: "Property Marketing",
+    short: "MarketingBench",
+    icon: Megaphone,
+    description: "MLS remarks, social captions, listing decks, property brochures, and compliance cleanup.",
+    example: "Rewrite risky listing copy into compliant copy, then produce brochure text, room highlights, and five social captions.",
+    scores: { "fable-5": 94, "gpt-5.6-sol": 91, "grok-4.5": 87, "glm-5.2": 84, "opus-4.8": 85, "gemini-3.1": 76 },
+  },
+  {
+    key: "valuation",
+    label: "Property Valuation",
+    short: "ValBench",
+    icon: HomeIcon,
+    description: "Comp selection, adjustments, list-price range, uncertainty, and seller-ready CMA narratives.",
+    example: "From ten sold comps, pick the best four, adjust for condition and size, and recommend a price range with confidence level.",
+    scores: { "fable-5": 96, "gpt-5.6-sol": 86, "grok-4.5": 82, "glm-5.2": 78, "opus-4.8": 76, "gemini-3.1": 70 },
+  },
+];
+
 function costPerJob(model: BenchModel, job: JobSpec) {
   return ((job.tokensIn * model.priceInPerMTok + job.tokensOut * model.priceOutPerMTok) / 1_000_000) / model.reliability;
 }
@@ -209,6 +294,10 @@ function modelById(id: ModelId) {
   return MODELS.find((model) => model.id === id)!;
 }
 
+function categoryAverage(modelId: ModelId) {
+  return BENCH_CATEGORIES.reduce((sum, category) => sum + category.scores[modelId], 0) / BENCH_CATEGORIES.length;
+}
+
 const rankedModels = [...MODELS].sort((a, b) => b.rawScore - a.rawScore);
 const avgJobCostData = rankedModels.map((model) => ({
   ...model,
@@ -225,10 +314,40 @@ const jobCostRows = JOBS.map((job) => ({
   })),
 }));
 
+const categoryPerformanceData = BENCH_CATEGORIES.map((category) => ({
+  label: category.label,
+  "Fable 5": category.scores["fable-5"],
+  "GPT-5.6 Sol": category.scores["gpt-5.6-sol"],
+  "Grok 4.5": category.scores["grok-4.5"],
+  "GLM 5.2": category.scores["glm-5.2"],
+  "Opus 4.8": category.scores["opus-4.8"],
+  "Gemini 3.1": category.scores["gemini-3.1"],
+}));
+
+const radarData = BENCH_CATEGORIES.map((category) => ({
+  category: category.label,
+  "Fable 5": category.scores["fable-5"],
+  "GPT-5.6 Sol": category.scores["gpt-5.6-sol"],
+  "Grok 4.5": category.scores["grok-4.5"],
+  "GLM 5.2": category.scores["glm-5.2"],
+  "Opus 4.8": category.scores["opus-4.8"],
+  "Gemini 3.1": category.scores["gemini-3.1"],
+}));
+
 const SECTION_LABEL = "text-xs uppercase tracking-[0.18em] text-stone-500 font-semibold";
 
 export default function RealBenchReport() {
+  const [activeCategory, setActiveCategory] = useState("offers");
   const cheapestModel = MODELS.reduce((best, model) => (averageCostPerJob(model) < averageCostPerJob(best) ? model : best), MODELS[0]);
+  const categoryRanked = useMemo(
+    () =>
+      [...MODELS]
+        .map((model) => ({ ...model, score: categoryAverage(model.id) }))
+        .sort((a, b) => b.score - a.score)
+        .map((model, index) => ({ ...model, rank: index + 1 })),
+    [],
+  );
+  const activeBenchCategory = BENCH_CATEGORIES.find((category) => category.key === activeCategory) || BENCH_CATEGORIES[0];
 
   return (
     <div className="min-h-screen bg-[#FAF7F2]">
@@ -330,6 +449,226 @@ export default function RealBenchReport() {
                 scenario, not a final public benchmark. They are here to show the routing,
                 sovereignty, and economics model we will validate in the next HomeBench run.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <section className="mb-10">
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <div className={SECTION_LABEL}>Original benchmark view</div>
+              <h2 className="mt-1 text-3xl font-bold tracking-tight text-stone-950">Same sexy scorecard, new models.</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-600">
+                The earlier HomeBench page worked because it looked like a real benchmark, not a spreadsheet.
+                This brings back the leaderboard, task-category bars, model fingerprints, category leaders,
+                and deep-dive scorecards while keeping the new cost-per-job economics.
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+            {categoryRanked.map((model) => (
+              <Card
+                key={model.id}
+                className={`relative overflow-hidden border ${model.rank === 1 ? "border-stone-900 bg-stone-950 text-[#FAF7F2]" : "border-stone-200 bg-white"}`}
+              >
+                <CardContent className="p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className={`text-xs uppercase tracking-wider ${model.rank === 1 ? "text-amber-300" : "text-stone-500"}`}>
+                      Rank #{model.rank}
+                    </div>
+                    {model.rank === 1 && <Trophy className="h-4 w-4 text-amber-300" />}
+                  </div>
+                  <div className="text-base font-semibold leading-tight">{model.name}</div>
+                  <div className={`text-xs ${model.rank === 1 ? "text-stone-400" : "text-stone-500"}`}>{model.vendor}</div>
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-3xl font-bold tabular-nums">{model.score.toFixed(1)}</span>
+                    <span className={`text-xs ${model.rank === 1 ? "text-stone-400" : "text-stone-500"}`}>/ 100</span>
+                  </div>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-stone-200/70">
+                    <div className="h-full rounded-full" style={{ width: `${model.score}%`, backgroundColor: model.color }} />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Card className="mb-6 overflow-hidden border-stone-200 bg-white">
+            <CardHeader className="border-b border-stone-100">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className={SECTION_LABEL}>Task category benchmark</div>
+                  <CardTitle className="mt-1 text-2xl text-stone-950">Overall performance by task category</CardTitle>
+                  <p className="mt-1 text-sm text-stone-500">
+                    Higher is better. This is the original benchmark-style chart, now carrying the July model scenario.
+                  </p>
+                </div>
+                <div className="flex max-w-xl flex-wrap gap-3">
+                  {MODELS.map((model) => (
+                    <div key={model.id} className="flex items-center gap-2 text-xs text-stone-700">
+                      <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: model.color }} />
+                      {model.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <ResponsiveContainer width="100%" height={620}>
+                <BarChart data={categoryPerformanceData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }} barCategoryGap={8} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E7E2DA" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: "#78716C" }} />
+                  <YAxis type="category" dataKey="label" tick={{ fontSize: 12, fill: "#1C1917" }} width={150} />
+                  <Tooltip
+                    contentStyle={{ background: "#FAF7F2", border: "1px solid #E7E2DA", borderRadius: 8, fontSize: 12 }}
+                    formatter={(value) => `${Number(value).toFixed(0)} / 100`}
+                  />
+                  <Legend iconType="square" wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
+                  {MODELS.map((model) => (
+                    <Bar key={model.id} dataKey={model.name} name={model.name} fill={model.color} radius={[0, 3, 3, 0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="border-stone-200 bg-white">
+              <CardHeader className="border-b border-stone-100">
+                <div className={SECTION_LABEL}>Model fingerprints</div>
+                <CardTitle className="mt-1 text-xl text-stone-950">Shape of each model</CardTitle>
+                <p className="mt-1 text-sm text-stone-500">This brings back the original radar read: which models are balanced vs spiky.</p>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <ResponsiveContainer width="100%" height={360}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="#E7E2DA" />
+                    <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fill: "#44403C" }} />
+                    <PolarRadiusAxis domain={[60, 100]} tick={{ fontSize: 10, fill: "#A8A29E" }} angle={90} />
+                    {MODELS.map((model, index) => (
+                      <Radar
+                        key={model.id}
+                        name={model.name}
+                        dataKey={model.name}
+                        stroke={model.color}
+                        fill={model.color}
+                        fillOpacity={index === 0 ? 0.16 : 0.08}
+                      />
+                    ))}
+                    <Tooltip contentStyle={{ background: "#FAF7F2", border: "1px solid #E7E2DA", borderRadius: 8, fontSize: 12 }} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="border-stone-200 bg-white">
+              <CardHeader className="border-b border-stone-100">
+                <div className={SECTION_LABEL}>Category leaders</div>
+                <CardTitle className="mt-1 text-xl text-stone-950">Best at each realtor job</CardTitle>
+                <p className="mt-1 text-sm text-stone-500">The original report made this easy to scan. It is back.</p>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <ul className="divide-y divide-stone-100">
+                  {BENCH_CATEGORIES.map((category) => {
+                    const winnerEntry = (Object.entries(category.scores) as [ModelId, number][]).sort((a, b) => b[1] - a[1])[0];
+                    const winner = modelById(winnerEntry[0]);
+                    const Icon = category.icon;
+                    return (
+                      <li key={category.key} className="flex items-center justify-between gap-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-stone-100">
+                            <Icon className="h-4 w-4 text-stone-700" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-stone-900">{category.label}</div>
+                            <div className="text-xs text-stone-500">{category.short}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-right">
+                          <span className="inline-flex items-center gap-2 text-sm font-medium text-stone-900">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: winner.color }} />
+                            {winner.name}
+                          </span>
+                          <span className="text-sm font-semibold tabular-nums text-stone-900">{winnerEntry[1]}</span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <Card className="mb-10 border-stone-200 bg-white">
+          <CardHeader className="border-b border-stone-100">
+            <div className={SECTION_LABEL}>Original deep dive</div>
+            <CardTitle className="mt-1 text-2xl text-stone-950">How each task gets scored</CardTitle>
+            <p className="mt-1 text-sm text-stone-500">
+              Pick a category to see the task, sample prompt, and per-model scorecard.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="mb-6 flex flex-wrap gap-2">
+              {BENCH_CATEGORIES.map((category) => {
+                const Icon = category.icon;
+                const isActive = category.key === activeCategory;
+                return (
+                  <button
+                    key={category.key}
+                    type="button"
+                    onClick={() => setActiveCategory(category.key)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      isActive
+                        ? "border-stone-950 bg-stone-950 text-[#FAF7F2]"
+                        : "border-stone-200 bg-white text-stone-700 hover:border-stone-400"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {category.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-[1.05fr_1fr]">
+              <div>
+                <div className={SECTION_LABEL}>{activeBenchCategory.short}</div>
+                <h3 className="mb-3 mt-1 text-xl font-semibold text-stone-950">{activeBenchCategory.label}</h3>
+                <p className="mb-5 text-sm leading-relaxed text-stone-600">{activeBenchCategory.description}</p>
+                <div className="rounded-lg border border-stone-200 bg-[#FAF7F2] p-4">
+                  <div className="mb-1 text-[11px] uppercase tracking-wider text-stone-500">Sample task</div>
+                  <p className="text-sm leading-relaxed text-stone-800">{activeBenchCategory.example}</p>
+                </div>
+              </div>
+
+              <div>
+                <div className={SECTION_LABEL}>Per-model score</div>
+                <div className="mt-3 space-y-3">
+                  {([...MODELS]
+                    .map((model) => ({ ...model, score: activeBenchCategory.scores[model.id] }))
+                    .sort((a, b) => b.score - a.score)
+                  ).map((model, index) => (
+                    <div key={model.id}>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: model.color }} />
+                          <span className={`font-medium ${index === 0 ? "text-stone-950" : "text-stone-700"}`}>{model.name}</span>
+                          {index === 0 && (
+                            <Badge variant="outline" className="border-amber-400 bg-amber-50 px-1.5 py-0 text-[10px] text-amber-800">
+                              Best
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold tabular-nums text-stone-900">{model.score}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-stone-100">
+                        <div className="h-full rounded-full" style={{ width: `${model.score}%`, backgroundColor: model.color }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
