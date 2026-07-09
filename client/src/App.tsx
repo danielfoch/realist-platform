@@ -256,6 +256,7 @@ const EdmontonEvent = lazy(() => import("@/pages/EdmontonEvent"));
 // Hub Pages
 const ToolsHub = lazy(() => import("@/pages/ToolsHub"));
 const CommunityHub = lazy(() => import("@/pages/CommunityHub"));
+const PropertyQuestions = lazy(() => import("@/pages/PropertyQuestions"));
 const InsightsHub = lazy(() => import("@/pages/InsightsHub"));
 const GuidesHub = lazy(() => import("@/pages/GuidesHub"));
 const EncyclopediaIndex = lazy(() => import("@/pages/EncyclopediaIndex"));
@@ -399,6 +400,7 @@ function Router() {
 
       {/* New Community routes */}
       <Route path="/community" component={CommunityHub} />
+      <Route path="/community/questions" component={PropertyQuestions} />
       <Route path="/community/events" component={Events} />
       <Route path="/meetups" component={Meetups} />
       <Route path="/community/meetups">{() => <Redirect to="/meetups" />}</Route>

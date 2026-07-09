@@ -40,6 +40,8 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - `analyses` — id, userId, sessionId, address, city, province, rentalIncome, purchasePrice, capRate, cashOnCash, monthlyCashFlow, status, createdAt
 - `saved_deals` — id, userId, sessionId (localStorage bridge)
 - `lead_submissions` — investor leads from landing pages
+- `listing_comments` — public/private listing comments; question forum extension adds `thread_type`, `question_status`, `requested_expert_categories`, and `listing_snapshot` for listing-linked property Q&A
+- `notification_preferences` — per-email-category preferences; question forum extension adds `expert_question_digest_enabled` and `expert_question_live_alerts_enabled`
 
 ### Key API Routes
 - `POST /api/auth/signup` — investor signup
@@ -47,6 +49,9 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - `POST /api/leads/submit` — investor lead submission (creates user + analysis)
 - `POST /api/events/track` — event tracking (2026-04-11, Clyde)
 - `GET /api/events`, `GET /api/events/summary` — event retrieval
+- `GET /api/community/questions` — public outstanding listing questions
+- `POST /api/community/questions` — authenticated listing question creation
+- `POST /api/community/questions/:id/answers` — authenticated public answer creation
 
 ### Pending/Recent Work
 - `ef7766e` (Clyde) — /api/deals/join, user_sessions table for session→user linking

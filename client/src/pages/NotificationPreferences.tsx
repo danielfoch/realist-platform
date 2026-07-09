@@ -14,6 +14,8 @@ interface Prefs {
   retentionTipsEnabled: boolean;
   listingWatchAlertsEnabled: boolean;
   communityAlertsEnabled: boolean;
+  expertQuestionDigestEnabled: boolean;
+  expertQuestionLiveAlertsEnabled: boolean;
   weeklyDigestEnabled: boolean;
   monthlyRankEnabled: boolean;
   podcastDigestEnabled: boolean;
@@ -48,6 +50,16 @@ const CATEGORY_ROWS: Array<{ key: keyof Prefs; title: string; description: strin
     key: "communityAlertsEnabled",
     title: "Community activity",
     description: "Votes on your field notes and other community engagement.",
+  },
+  {
+    key: "expertQuestionDigestEnabled",
+    title: "Expert question digest",
+    description: "Outstanding property questions by expert category in the weekly Realist email.",
+  },
+  {
+    key: "expertQuestionLiveAlertsEnabled",
+    title: "Live expert questions",
+    description: "Immediate emails when investors tag your category on a property question. Useful for business development.",
   },
   {
     key: "podcastDigestEnabled",

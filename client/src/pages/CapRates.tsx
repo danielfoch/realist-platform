@@ -61,6 +61,7 @@ import { CommunityAnalysisModal } from "@/components/CommunityAnalysisModal";
 import { ListingCommentsSection } from "@/components/ListingCommentsSection";
 import { ListingEngagementStrip } from "@/components/ListingEngagementStats";
 import { ListingCommentCountBadge } from "@/components/ListingCommentCountBadge";
+import { PropertyQuestionWidget } from "@/components/PropertyQuestionWidget";
 import {
   Sheet,
   SheetContent,
@@ -2975,6 +2976,20 @@ export default function CapRates() {
                 count={aggregatesMap[listing.mlsNumber]?.publicCommentCount}
                 hasRecent={Boolean(aggregatesMap[listing.mlsNumber]?.latestPublicCommentAt)}
               />
+              <div onClick={(e) => e.stopPropagation()} className="min-w-[120px]">
+                <PropertyQuestionWidget
+                  listingMlsNumber={listing.mlsNumber}
+                  compact
+                  listingSnapshot={{
+                    address: `${formatShortAddress(listing.address)}, ${listing.address?.city || ""}`.replace(/, $/, ""),
+                    city: listing.address?.city,
+                    province: (listing.address as any)?.province,
+                    price,
+                    beds: listing.details?.numBedrooms,
+                    baths: listing.details?.numBathrooms,
+                  }}
+                />
+              </div>
               {(aggregatesMap[listing.mlsNumber]?.publicAnalysisCount || 0) > 0 && (
                 <Badge
                   variant="outline"

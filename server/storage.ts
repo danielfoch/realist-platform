@@ -868,6 +868,8 @@ export class DatabaseStorage implements IStorage {
           listingWatchAlertsEnabled: pref.listingWatchAlertsEnabled ?? true,
           marketAlertsEnabled: pref.marketAlertsEnabled ?? true,
           communityAlertsEnabled: pref.communityAlertsEnabled ?? true,
+          expertQuestionDigestEnabled: pref.expertQuestionDigestEnabled ?? true,
+          expertQuestionLiveAlertsEnabled: pref.expertQuestionLiveAlertsEnabled ?? false,
           weeklyDigestEnabled: pref.weeklyDigestEnabled ?? true,
           monthlyRankEnabled: pref.monthlyRankEnabled ?? true,
           podcastDigestEnabled: pref.podcastDigestEnabled ?? true,
