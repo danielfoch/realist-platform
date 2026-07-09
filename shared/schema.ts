@@ -238,6 +238,8 @@ export const realistEvents = pgTable("realist_events", {
 export const realistEventSpeakers = pgTable("realist_event_speakers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: varchar("event_id").references(() => realistEvents.id, { onDelete: "cascade" }).notNull(),
+  expertUserId: varchar("expert_user_id").references(() => users.id, { onDelete: "set null" }),
+  expertProfileSlug: text("expert_profile_slug"),
   name: text("name").notNull(),
   title: text("title"),
   company: text("company"),

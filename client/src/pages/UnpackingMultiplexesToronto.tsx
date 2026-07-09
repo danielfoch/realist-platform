@@ -28,10 +28,11 @@ import {
   ChevronLeft,
   Sparkles,
   Share2,
-  UserRound,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { trackTrafficEvent } from "@/lib/trafficAnalytics";
+import { SpeakerCard } from "@/components/events/SpeakerCard";
+import type { RealistEventSpeaker } from "@/components/events/types";
 import aledHeadshot from "@assets/image_1781720568994.webp";
 import joshHeadshot from "@assets/image_1781720589907.webp";
 import noamHeadshot from "@assets/image_1781720616832.webp";
@@ -108,48 +109,54 @@ const highlights = [
   { icon: Sparkles, label: "Actionable takeaways you can implement immediately" },
 ];
 
-const SPEAKERS = [
+const SPEAKERS: RealistEventSpeaker[] = [
   {
     name: "Aled Ab Iorwerth",
-    org: "CMHC",
+    company: "CMHC",
     title: "Deputy Chief Economist",
     bio: "Leading housing economics research at Canada's national housing agency, focused on affordability, supply, and policy.",
-    photo: aledHeadshot,
+    imageUrl: aledHeadshot,
+    expertProfileSlug: "aled-ab-iorwerth",
   },
   {
     name: "Josh Findlay",
-    org: "BLD Financial",
+    company: "BLD Financial",
     title: "Principal",
     bio: "Specialist in construction financing and CMHC MLI Select programs for multiplex and purpose-built rental projects.",
-    photo: joshHeadshot,
+    imageUrl: joshHeadshot,
+    expertProfileSlug: "josh-findlay",
   },
   {
     name: "Noam Hazan",
-    org: "Noam Hazan Design Studio",
+    company: "Noam Hazan Design Studio",
     title: "Principal Architect",
     bio: "Award-winning architect with deep expertise in multiplex design, infill development, and cost-effective construction detailing.",
-    photo: noamHeadshot,
+    imageUrl: noamHeadshot,
+    expertProfileSlug: "noam-hazan",
   },
   {
     name: "Ryan Valente",
-    org: "Reside Properties",
+    company: "Reside Properties",
     title: "Founder",
     bio: "Active multiplex developer and investor building and operating multi-unit residential properties across the GTA.",
-    photo: ryanHeadshot,
+    imageUrl: ryanHeadshot,
+    expertProfileSlug: "ryan-valente",
   },
   {
     name: "Hooman Tabesh",
-    org: "Alliance REIT",
+    company: "Alliance REIT",
     title: "Founder & CEO",
     bio: "Over 20 years of experience developing and operating residential rental real estate, focusing on premium boutique multifamily residences across the Toronto core.",
-    photo: hoomanHeadshot,
+    imageUrl: hoomanHeadshot,
+    expertProfileSlug: "hooman-tabesh",
   },
   {
     name: "Ben Singer",
-    org: "SR Law",
+    company: "SR Law",
     title: "Lawyer",
     bio: "Commercial real estate lawyer with 8 years of experience in acquisitions, dispositions, financing, and a focus on condominium and subdivision development.",
-    photo: benHeadshot,
+    imageUrl: benHeadshot,
+    expertProfileSlug: "ben-singer",
   },
 ];
 
@@ -519,25 +526,7 @@ export default function UnpackingMultiplexesToronto() {
               </p>
               <div className="grid sm:grid-cols-2 gap-4">
                 {SPEAKERS.map((s) => (
-                  <Card key={s.name} className="hover-elevate" data-testid={`card-speaker-${s.name.split(" ")[0].toLowerCase()}`}>
-                    <CardContent className="p-5">
-                      <div className="flex items-start gap-4">
-                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
-                          {s.photo ? (
-                            <img src={s.photo} alt={s.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <UserRound className="h-6 w-6 text-primary" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-semibold text-base leading-tight">{s.name}</div>
-                          <div className="text-sm text-primary font-medium mt-0.5">{s.title}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{s.org}</div>
-                          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{s.bio}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <SpeakerCard key={s.name} speaker={s} />
                 ))}
               </div>
             </div>

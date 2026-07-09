@@ -12,7 +12,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { AgendaSection, RealistEventPayload, RealistEventSponsor, RealistEventSpeaker, RealistEventTicketType } from "./types";
 
-const emptySpeaker: RealistEventSpeaker = { name: "", title: "", company: "", bio: "", imageUrl: "", sortOrder: 0 };
+const emptySpeaker: RealistEventSpeaker = { name: "", title: "", company: "", bio: "", imageUrl: "", expertUserId: "", expertProfileSlug: "", sortOrder: 0 };
 const emptySponsor: RealistEventSponsor = { name: "", logoUrl: "", websiteUrl: "", tier: "partner", sortOrder: 0 };
 const emptyTicket: RealistEventTicketType = {
   name: "General Admission",
@@ -310,6 +310,8 @@ export function EventForm({ event }: { event?: RealistEventPayload }) {
               <Input placeholder="Name" value={speaker.name} onChange={(e) => updateArray<RealistEventSpeaker>("speakers", index, { name: e.target.value })} />
               <Input placeholder="Title" value={speaker.title || ""} onChange={(e) => updateArray<RealistEventSpeaker>("speakers", index, { title: e.target.value })} />
               <Input placeholder="Company" value={speaker.company || ""} onChange={(e) => updateArray<RealistEventSpeaker>("speakers", index, { company: e.target.value })} />
+              <Input placeholder="Expert user ID" value={speaker.expertUserId || ""} onChange={(e) => updateArray<RealistEventSpeaker>("speakers", index, { expertUserId: e.target.value })} />
+              <Input placeholder="Expert profile slug" value={speaker.expertProfileSlug || ""} onChange={(e) => updateArray<RealistEventSpeaker>("speakers", index, { expertProfileSlug: e.target.value })} />
               <Input className="md:col-span-2" placeholder="Image URL" value={speaker.imageUrl || ""} onChange={(e) => updateArray<RealistEventSpeaker>("speakers", index, { imageUrl: e.target.value })} />
               <Input type="number" placeholder="Sort" value={speaker.sortOrder || 0} onChange={(e) => updateArray<RealistEventSpeaker>("speakers", index, { sortOrder: Number(e.target.value) })} />
               <Textarea className="md:col-span-3" placeholder="Bio" value={speaker.bio || ""} onChange={(e) => updateArray<RealistEventSpeaker>("speakers", index, { bio: e.target.value })} />

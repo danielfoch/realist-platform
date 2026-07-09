@@ -1,5 +1,7 @@
 export type RealistEventSpeaker = {
   id?: string;
+  expertUserId?: string | null;
+  expertProfileSlug?: string | null;
   name: string;
   title?: string | null;
   company?: string | null;
