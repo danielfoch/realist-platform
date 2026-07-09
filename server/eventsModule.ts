@@ -46,6 +46,8 @@ const agendaSectionSchema = z.object({
 
 const speakerSchema = z.object({
   id: z.string().optional(),
+  expertUserId: z.string().trim().optional().nullable(),
+  expertProfileSlug: z.string().trim().optional().nullable(),
   name: z.string().min(1),
   title: z.string().optional().nullable(),
   company: z.string().optional().nullable(),
@@ -186,6 +188,8 @@ export async function ensureRealistEventTables() {
     CREATE TABLE IF NOT EXISTS "realist_event_speakers" (
       "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
       "event_id" varchar NOT NULL REFERENCES "realist_events"("id") ON DELETE CASCADE,
+      "expert_user_id" varchar REFERENCES "users"("id") ON DELETE SET NULL,
+      "expert_profile_slug" text,
       "name" text NOT NULL,
       "title" text,
       "company" text,
@@ -193,6 +197,20 @@ export async function ensureRealistEventTables() {
       "image_url" text,
       "sort_order" integer NOT NULL DEFAULT 0
     )
+  `);
+  await db.execute(sql`
+    ALTER TABLE "realist_event_speakers"
+      ADD COLUMN IF NOT EXISTS "expert_user_id" varchar REFERENCES "users"("id") ON DELETE SET NULL
+  `);
+  await db.execute(sql`
+    ALTER TABLE "realist_event_speakers"
+      ADD COLUMN IF NOT EXISTS "expert_profile_slug" text
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "realist_event_speakers_expert_user_id_idx" ON "realist_event_speakers" ("expert_user_id")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "realist_event_speakers_expert_profile_slug_idx" ON "realist_event_speakers" ("expert_profile_slug")
   `);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "realist_event_ticket_types" (
@@ -414,6 +432,8 @@ async function saveEvent(payload: z.infer<typeof eventPayloadSchema>, createdByE
   if (payload.speakers.length) {
     await db.insert(realistEventSpeakers).values(payload.speakers.map((speaker) => ({
       eventId: event.id,
+      expertUserId: speaker.expertUserId || null,
+      expertProfileSlug: speaker.expertProfileSlug || null,
       name: speaker.name,
       title: speaker.title || null,
       company: speaker.company || null,

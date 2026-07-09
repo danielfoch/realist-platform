@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Award, FileText, Building2, MapPin, ChevronUp, Globe, Linkedin, Instagram, Mail, Phone } from "lucide-react";
+import { Award, FileText, Building2, MapPin, ChevronUp, Globe, Linkedin, Instagram, Mail, Phone, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { track } from "@/lib/analytics";
 import { EXPERT_CATEGORY_LABELS, isExpertCategory } from "@shared/contributorReputation";
@@ -30,6 +30,16 @@ interface ExpertProfileData {
     progressPct: number;
   };
   stats: { fieldNotes: number; dealsContributed: number };
+  relatedEvents?: {
+    eventId?: string;
+    title: string;
+    slug: string;
+    path?: string;
+    startsAt?: string | null;
+    timezone?: string | null;
+    speakerTitle?: string | null;
+    role: "speaker" | "moderator" | "panelist";
+  }[];
   fieldNotes: { id: string; listingMlsNumber: string; category: string; body: string; score: number; createdAt: string }[];
 }
 
@@ -173,6 +183,35 @@ export default function ExpertProfile() {
             </CardContent>
           </Card>
         </div>
+
+        {expert.relatedEvents && expert.relatedEvents.length > 0 && (
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-2xl font-bold">
+              <CalendarDays className="h-5 w-5" />
+              Realist Events
+            </h2>
+            <div className="space-y-3">
+              {expert.relatedEvents.map((event) => (
+                <Card key={event.eventId || event.path || event.slug} data-testid={`profile-event-${event.slug}`}>
+                  <CardContent className="pt-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary">{event.role === "speaker" ? "Speaker" : event.role}</Badge>
+                      {event.speakerTitle && <span className="text-sm text-muted-foreground">{event.speakerTitle}</span>}
+                    </div>
+                    <Link href={event.path || `/events/${event.slug}`} className="mt-2 block text-lg font-semibold text-primary hover:underline">
+                      {event.title}
+                    </Link>
+                    {event.startsAt && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {format(new Date(event.startsAt), "MMM d, yyyy")}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-2xl font-bold">
