@@ -62,6 +62,7 @@ import { ListingCommentsSection } from "@/components/ListingCommentsSection";
 import { ListingEngagementStrip } from "@/components/ListingEngagementStats";
 import { ListingCommentCountBadge } from "@/components/ListingCommentCountBadge";
 import { PropertyQuestionWidget } from "@/components/PropertyQuestionWidget";
+import { PropertyQuestionsPanel } from "@/components/PropertyQuestionsPanel";
 import {
   Sheet,
   SheetContent,
@@ -522,6 +523,30 @@ function buildListingSignal(listing: RepliersListing & {
     price: Number.isFinite(price) ? price : undefined,
     capRate: typeof listing.capRate === "number" ? listing.capRate : undefined,
     source,
+  };
+}
+
+function buildListingQuestionSnapshot(listing: ListingWithCapRate): Record<string, unknown> {
+  const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+  return {
+    address: formatAddress(listing.address),
+    shortAddress: formatShortAddress(listing.address),
+    city: listing.address?.city,
+    province: listing.address?.state,
+    neighbourhood: listing.address?.neighborhood,
+    price: Number.isFinite(price) ? price : undefined,
+    beds: listing.details?.numBedrooms,
+    baths: listing.details?.numBathrooms,
+    sqft: listing.details?.sqft,
+    propertyType: listing.details?.propertyType || listing.type,
+    unitCount: listing.unitCount,
+    capRate: listing.capRate,
+    grossYield: listing.grossYield,
+    monthlyCashFlow: listing.monthlyCashFlow,
+    estimatedMonthlyRent: listing.estimatedMonthlyRent,
+    latitude: listing.map?.latitude,
+    longitude: listing.map?.longitude,
+    sourcePage: "/tools/cap-rates",
   };
 }
 
@@ -2758,6 +2783,7 @@ export default function CapRates() {
       : multiplexScan.status === "possible"
         ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
         : "border-border/70 bg-muted/35 text-muted-foreground";
+    const questionSnapshot = buildListingQuestionSnapshot(listing);
 
     return (
       <div
@@ -2976,18 +3002,12 @@ export default function CapRates() {
                 count={aggregatesMap[listing.mlsNumber]?.publicCommentCount}
                 hasRecent={Boolean(aggregatesMap[listing.mlsNumber]?.latestPublicCommentAt)}
               />
-              <div onClick={(e) => e.stopPropagation()} className="min-w-[120px]">
+              <div onClick={(e) => e.stopPropagation()} className="min-w-[132px]">
                 <PropertyQuestionWidget
                   listingMlsNumber={listing.mlsNumber}
                   compact
-                  listingSnapshot={{
-                    address: `${formatShortAddress(listing.address)}, ${listing.address?.city || ""}`.replace(/, $/, ""),
-                    city: listing.address?.city,
-                    province: (listing.address as any)?.province,
-                    price,
-                    beds: listing.details?.numBedrooms,
-                    baths: listing.details?.numBathrooms,
-                  }}
+                  buttonLabel="Ask question"
+                  listingSnapshot={questionSnapshot}
                 />
               </div>
               {(aggregatesMap[listing.mlsNumber]?.publicAnalysisCount || 0) > 0 && (
@@ -3172,6 +3192,7 @@ export default function CapRates() {
     const primaryMetricConfidence = getMetricPrimaryConfidence(selectedListing, sortMetric);
     const uwCalc = computeUwCapRate();
     const multiplexScan = buildMultiplexListingScan(selectedListing);
+    const questionSnapshot = buildListingQuestionSnapshot(selectedListing);
     const multiplexScanTone = multiplexScan.status === "likely"
       ? "border-ai/40 bg-ai/10"
       : multiplexScan.status === "possible"
@@ -3368,6 +3389,13 @@ export default function CapRates() {
                   <Star className="h-4 w-4 mr-2" />
                   Save to shortlist
                 </Button>
+                {selectedListing.mlsNumber && (
+                  <PropertyQuestionWidget
+                    listingMlsNumber={selectedListing.mlsNumber}
+                    listingSnapshot={questionSnapshot}
+                    buttonLabel="Ask a public question"
+                  />
+                )}
                 {selectedListing.mlsNumber && (
                   <WatchListingButton
                     className="w-full"
@@ -3780,6 +3808,13 @@ export default function CapRates() {
 
                 <CommunityMetricsSummary aggregate={agg} />
 
+                {selectedListing.mlsNumber && (
+                  <PropertyQuestionsPanel
+                    listingMlsNumber={selectedListing.mlsNumber}
+                    listingSnapshot={questionSnapshot}
+                  />
+                )}
+
                 {myAnalyses.length > 0 && (
                   <div className="rounded-lg border border-border/60 p-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Your saved analyses</p>
@@ -3834,6 +3869,7 @@ export default function CapRates() {
     const primaryMetricValue = getListingMetricValue(selectedListing, sortMetric, aggregate, metricSource, myMetrics);
     const imgUrl = getImageUrl(selectedListing.images);
     const multiplexScan = buildMultiplexListingScan(selectedListing);
+    const questionSnapshot = buildListingQuestionSnapshot(selectedListing);
 
     return (
       <div className="rounded-2xl border border-border/70 bg-background/96 p-3 shadow-2xl backdrop-blur">
@@ -3919,6 +3955,16 @@ export default function CapRates() {
             </Button>
           )}
         </div>
+        {selectedListing.mlsNumber && (
+          <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+            <PropertyQuestionWidget
+              listingMlsNumber={selectedListing.mlsNumber}
+              listingSnapshot={questionSnapshot}
+              buttonLabel="Ask a public question"
+              compact
+            />
+          </div>
+        )}
       </div>
     );
   };
