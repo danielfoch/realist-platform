@@ -221,6 +221,7 @@ import {
 } from "@shared/schema";
 import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount, type InsertUserOAuthAccount, type PhoneVerificationCode, type InsertPhoneVerificationCode } from "@shared/models/auth";
 import { db } from "./db";
+import { extractTypedMetrics } from "@shared/analysisMetrics";
 import { linkPersonByEmail } from "./personSpine";
 import { eq, desc, sql, and, gte, lte, inArray, asc } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -649,9 +650,14 @@ export class DatabaseStorage implements IStorage {
 
   async createAnalysis(insertAnalysis: InsertAnalysis): Promise<Analysis> {
     const shareToken = randomUUID().slice(0, 8);
+    // Derive the typed metric columns from the same inputs/results blobs being
+    // written. All 4 analyses write sites funnel through here, so this single
+    // choke point keeps every new row's typed columns in sync with its jsonb.
+    // Never throws — a bad blob yields nulls, never a failed insert.
+    const typed = extractTypedMetrics(insertAnalysis);
     const [analysis] = await db
       .insert(analyses)
-      .values({ ...insertAnalysis, shareToken })
+      .values({ ...insertAnalysis, ...typed, shareToken })
       .returning();
     return analysis;
   }

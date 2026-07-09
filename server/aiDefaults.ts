@@ -117,14 +117,28 @@ export async function trainMarketDefaults(): Promise<{ markets: number; metrics:
         CASE WHEN (inputs_json->>'maintenancePercent') ~ '^[0-9]+(\\.[0-9]+)?$'
              AND (inputs_json->>'maintenancePercent')::numeric BETWEEN 0 AND 50
              THEN (inputs_json->>'maintenancePercent')::numeric END AS maint_pct,
-        CASE WHEN (results_json->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$'
-             AND (results_json->>'capRate')::numeric BETWEEN -10 AND 25
-             THEN (results_json->>'capRate')::numeric END AS cap_rate,
+        -- ANALYSES CONVERGENCE (Task 4): prefer the typed cap_rate_num /
+        -- cash_flow_monthly_num columns, falling back to the identical jsonb
+        -- regex+range expression for rows not yet backfilled. The typed
+        -- columns are written by shared/analysisMetrics.ts extractTypedMetrics
+        -- with the SAME -10..25 clamp (cap rate) and regex-only guard (cash
+        -- flow) used here, so COALESCE agrees with the jsonb path to float32
+        -- precision at every backfill state (the columns are real/float4; the
+        -- sub-epsilon rounding is immaterial to the medians/Tukey fences below).
+        COALESCE(cap_rate_num,
+          CASE WHEN (results_json->>'capRate') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+               AND (results_json->>'capRate')::numeric BETWEEN -10 AND 25
+               THEN (results_json->>'capRate')::numeric END) AS cap_rate,
+        -- purchase_price stays on jsonb: purchase_price_num additionally falls
+        -- back to results_json.price (agent rows), which this trainer
+        -- intentionally excludes (input-price-only), so the column's semantics
+        -- differ from this expression — do not COALESCE it.
         CASE WHEN (inputs_json->>'purchasePrice') ~ '^[0-9]+(\\.[0-9]+)?$'
              AND (inputs_json->>'purchasePrice')::numeric BETWEEN 50000 AND 20000000
              THEN (inputs_json->>'purchasePrice')::numeric END AS price,
-        CASE WHEN (results_json->>'monthlyCashFlow') ~ '^-?[0-9]+(\\.[0-9]+)?$'
-             THEN (results_json->>'monthlyCashFlow')::numeric END AS cash_flow
+        COALESCE(cash_flow_monthly_num,
+          CASE WHEN (results_json->>'monthlyCashFlow') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+               THEN (results_json->>'monthlyCashFlow')::numeric END) AS cash_flow
       FROM analyses
       WHERE city IS NOT NULL AND TRIM(city) != ''
         AND created_at > NOW() - INTERVAL '18 months'
