@@ -12,6 +12,9 @@ import {
   computeReferralFee,
   isReferralOutcomeAction,
   isReferralOutcomeStatus,
+  pickMostRecentModelPrediction,
+  predictionMatchKeysForOutcome,
+  predictionResolutionPatch,
   validateOutcomeTransition,
 } from "./referralOutcomes";
 
@@ -43,7 +46,9 @@ describe("computeReferralFee", () => {
 describe("referral outcome transition validation", () => {
   it("accepts known statuses and actions", () => {
     expect(isReferralOutcomeStatus("pending")).toBe(true);
+    expect(isReferralOutcomeStatus("under_contract")).toBe(true);
     expect(isReferralOutcomeStatus("closed")).toBe(true);
+    expect(isReferralOutcomeAction("under_contract")).toBe(true);
     expect(isReferralOutcomeAction("showing_booked")).toBe(true);
     expect(isReferralOutcomeAction("pending")).toBe(false);
   });
@@ -58,6 +63,11 @@ describe("referral outcome transition validation", () => {
       currentStatus: "responded",
       action: "offer_submitted",
     })).toEqual({ ok: true, nextStatus: "offer_submitted" });
+
+    expect(validateOutcomeTransition({
+      currentStatus: "offer_submitted",
+      action: "under_contract",
+    })).toEqual({ ok: true, nextStatus: "under_contract" });
   });
 
   it("rejects backward moves", () => {
@@ -65,6 +75,17 @@ describe("referral outcome transition validation", () => {
       currentStatus: "offer_submitted",
       action: "responded",
     })).toEqual({ ok: false, error: "Referral outcomes cannot move backward" });
+
+    expect(validateOutcomeTransition({
+      currentStatus: "under_contract",
+      action: "offer_submitted",
+    })).toEqual({ ok: false, error: "Referral outcomes cannot move backward" });
+  });
+
+  it("allows intent-only writebacks without moving status", () => {
+    expect(validateOutcomeTransition({
+      currentStatus: "responded",
+    })).toEqual({ ok: true, nextStatus: "responded" });
   });
 
   it("treats closed and lost as terminal", () => {
@@ -105,5 +126,31 @@ describe("referral outcome transition validation", () => {
       action: "closed",
       gci: 10000,
     })).toEqual({ ok: true, nextStatus: "closed" });
+  });
+});
+
+describe("post-close model prediction reconciliation helpers", () => {
+  it("matches referral outcomes to related analysis and deal predictions", () => {
+    expect(predictionMatchKeysForOutcome({
+      analysisId: "analysis-1",
+      crmDealId: "deal-1",
+    } as any)).toEqual([
+      { subjectType: "analysis", subjectId: "analysis-1" },
+      { subjectType: "deal", subjectId: "deal-1" },
+    ]);
+  });
+
+  it("uses the most recent matching model prediction row", () => {
+    const older = { id: "older", createdAt: new Date("2026-01-01T00:00:00Z") };
+    const newer = { id: "newer", createdAt: new Date("2026-02-01T00:00:00Z") };
+    expect(pickMostRecentModelPrediction([older, newer])).toBe(newer);
+  });
+
+  it("builds prediction resolution metrics from close price", () => {
+    const patch = predictionResolutionPatch({ predictedValue: 900000 } as any, 1_000_000);
+    expect(patch.actualValue).toBe(1_000_000);
+    expect(patch.actualSource).toBe("referral_outcome_close");
+    expect(patch.absError).toBe(100000);
+    expect(patch.pctError).toBeCloseTo(11.111, 3);
   });
 });

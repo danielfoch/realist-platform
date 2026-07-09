@@ -2637,10 +2637,13 @@ export const referralOutcomes = pgTable("referral_outcomes", {
   gci: numeric("gci", { precision: 12, scale: 2 }),
   referralFeePercent: real("referral_fee_percent").default(25).notNull(),
   referralFeeAmount: numeric("referral_fee_amount", { precision: 12, scale: 2 }),
+  financingIntent: boolean("financing_intent"),
+  buyingIntent: boolean("buying_intent"),
   lostReason: text("lost_reason"),
   notes: text("notes"),
   reportedBy: text("reported_by"),
   reportedAt: timestamp("reported_at"),
+  partnerWritebackAt: timestamp("partner_writeback_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
