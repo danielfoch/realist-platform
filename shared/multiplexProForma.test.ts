@@ -42,29 +42,25 @@ describe("computeCostStack", () => {
     // Hand math (defaults): net 4300 sqft -> gross 4300/0.85 = 5059
     // hard = 5059 x $400 = 2,023,600
     // soft = 15% = 303,540 ; contingency = 10% x (hard+soft) = 232,714
-    // DCs = (6-3 exempt) x 141,139 = 423,417 ; LTT(1.2M) = 40,950
-    // carry = 2,983,271 x 0.75 x 0.5 x 6.5% x 14/12 = 84,837
-    // total = 4,309,058
+    // DCs: MM32.5 exempts units 2-6 -> 1 unit x $80,690 (apt 2+bed) ; LTT(1.2M) = 40,950
+    // carry = (hard+soft+cont+dc)=2,640,544 x 0.75 x 0.5 x 6.5% x 14/12 = 75,090
+    // total = 3,956,584
     const costs = computeCostStack(config, 1200000, a);
     expect(config.netSqft).toBe(4300);
     expect(config.grossGfaSqft).toBe(5059);
     expect(costs.hardCosts).toBe(2023600);
     expect(costs.softCosts).toBe(303540);
     expect(costs.contingency).toBe(232714);
-    expect(costs.developmentCharges).toBe(423417);
-    expect(costs.dcUnitsCharged).toBe(3);
+    // Corrected: a sixplex pays DC on ONE unit (units 2-6 exempt under MM32.5),
+    // not (6-3) single-detached charges. Was $423,417 -> now $80,690.
+    expect(costs.developmentCharges).toBe(80690);
+    expect(costs.dcUnitsCharged).toBe(1);
+    expect(costs.dcExemptUnits).toBe(5);
+    expect(costs.dcExemptionBasis).toBe("toronto_multiplex_mm32_5");
     expect(costs.landTransferTax).toBe(40950);
-    expect(costs.financingCarry).toBe(84837);
-    expect(costs.totalDevCost).toBe(4309058);
-    expect(costs.costPerUnit).toBe(Math.round(4309058 / 6));
-  });
-
-  it("respects the DC exemption boundary", () => {
-    const config = sixplexFixture();
-    const noExempt = computeCostStack(config, 1200000, { ...a, dcExemptUnits: 0 });
-    expect(noExempt.developmentCharges).toBe(6 * a.dcPerUnit);
-    const allExempt = computeCostStack(config, 1200000, { ...a, dcExemptUnits: 10 });
-    expect(allExempt.developmentCharges).toBe(0);
+    expect(costs.financingCarry).toBe(75090);
+    expect(costs.totalDevCost).toBe(3956584);
+    expect(costs.costPerUnit).toBe(Math.round(3956584 / 6));
   });
 });
 
@@ -77,8 +73,8 @@ describe("condo exit vs rental hold", () => {
     const exit = computeCondoExit(config, costs, a);
     expect(exit.grossSellout).toBe(4515000);
     expect(exit.netSellout).toBe(4289250);
-    expect(exit.profit).toBe(4289250 - 4309058);
-    expect(exit.marginOnCost).toBeCloseTo(exit.profit / 4309058, 3);
+    expect(exit.profit).toBe(4289250 - 3956584); // lower DCs -> more profit
+    expect(exit.marginOnCost).toBeCloseTo(exit.profit / 3956584, 3);
   });
 
   it("rental hold golden numbers", () => {
@@ -90,7 +86,7 @@ describe("condo exit vs rental hold", () => {
     expect(hold.noi).toBe(114817);
     // Value at 4.75% cap
     expect(hold.stabilizedValue).toBe(2417199);
-    expect(hold.yieldOnCost).toBeCloseTo(114816.96 / 4309057.98, 4);
+    expect(hold.yieldOnCost).toBeCloseTo(114817 / 3956584, 4); // yield rises on lower cost
   });
 });
 
@@ -98,11 +94,12 @@ describe("computeResidualLandValue", () => {
   const config = sixplexFixture();
 
   it("condo path lands in the hand-checked band and rental path floors at zero", () => {
-    // Condo: netSellout 4,289,250 / 1.15 - nonLand(~3.07M + LTT) -> ~643k
+    // With the corrected (much lower) DCs, the condo path supports more land.
+    // Condo: netSellout 4,289,250 / 1.15 - nonLand(now ~2.73M + LTT) -> ~982k
     // Rental: NOI/5.25% = ~2.19M < non-land costs -> 0 (does not pencil)
     const rlv = computeResidualLandValue(config, a);
-    expect(rlv.condoPath).toBeGreaterThan(600000);
-    expect(rlv.condoPath).toBeLessThan(700000);
+    expect(rlv.condoPath).toBeGreaterThan(950000);
+    expect(rlv.condoPath).toBeLessThan(1010000);
     expect(rlv.rentalPath).toBe(0);
   });
 
