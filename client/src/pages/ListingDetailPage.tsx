@@ -23,6 +23,7 @@ import { SEO } from "@/components/SEO";
 import { Navigation } from "@/components/Navigation";
 import { NeighbourhoodInsights } from "@/components/NeighbourhoodInsights";
 import { FieldNotes } from "@/components/experts/FieldNotes";
+import { PropertyQuestionsPanel } from "@/components/PropertyQuestionsPanel";
 import { WatchListingButton } from "@/components/WatchListingButton";
 import { ListingEngagementStrip } from "@/components/ListingEngagementStats";
 import { Badge } from "@/components/ui/badge";
@@ -196,6 +197,14 @@ export default function ListingDetailPage() {
       },
     },
   ];
+  const listingSnapshot = {
+    address: fullAddress,
+    city: listing.addressCity,
+    province: listing.addressProvince,
+    price: listPriceNumber,
+    beds: listing.bedrooms,
+    baths: listing.bathroomsFull,
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -375,6 +384,10 @@ export default function ListingDetailPage() {
             <p className="leading-8 text-muted-foreground">{remarks}</p>
           </section>
         )}
+
+        <section className="mt-10 max-w-4xl">
+          <PropertyQuestionsPanel listingMlsNumber={listing.mlsNumber} listingSnapshot={listingSnapshot} />
+        </section>
 
         <FieldNotes mlsNumber={listing.mlsNumber} />
       </main>

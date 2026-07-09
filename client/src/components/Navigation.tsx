@@ -11,7 +11,7 @@ import {
   FileText, TrendingUp, BarChart3, Shield, Gavel,
   Map, DollarSign, Layers, Building2, Inbox, Sparkles,
   KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell, PhoneCall, PenLine,
-  Youtube,
+  Youtube, MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -91,6 +91,7 @@ const navCategories: NavCategory[] = [
     href: "/community",
     items: [
       { href: "/community", label: "Community Hub", description: "Everything happening across the Realist community", icon: <Users className="h-4 w-4" /> },
+      { href: "/community/questions", label: "Property Questions", description: "Open deal questions routed to expert categories", icon: <MessageSquare className="h-4 w-4" /> },
       { href: "/deal-room", label: "Live Deal Room", description: "Free live deal review — Mondays 11:30am ET", icon: <Radio className="h-4 w-4" /> },
       { href: "/experts", label: "Find an Expert", description: "Vetted market experts and building pros", icon: <Briefcase className="h-4 w-4" /> },
       { href: "/community/events", label: "Events", description: "Workshops and investor meetups", icon: <Calendar className="h-4 w-4" /> },

@@ -604,6 +604,8 @@ export const notificationPreferences = pgTable("notification_preferences", {
   listingWatchAlertsEnabled: boolean("listing_watch_alerts_enabled").default(true).notNull(), // watchlist price/status + saved-search alerts
   marketAlertsEnabled: boolean("market_alerts_enabled").default(true).notNull(),
   communityAlertsEnabled: boolean("community_alerts_enabled").default(true).notNull(),    // field-note votes + community engagement
+  expertQuestionDigestEnabled: boolean("expert_question_digest_enabled").default(true).notNull(), // weekly prompts for property questions by trade
+  expertQuestionLiveAlertsEnabled: boolean("expert_question_live_alerts_enabled").default(false).notNull(), // immediate expert question alerts
   weeklyDigestEnabled: boolean("weekly_digest_enabled").default(true).notNull(),          // weekly leaderboard/KPI digest
   monthlyRankEnabled: boolean("monthly_rank_enabled").default(true).notNull(),            // monthly leaderboard rank/winner email
   podcastDigestEnabled: boolean("podcast_digest_enabled").default(true).notNull(),        // podcast episode digest (feature ships later)
@@ -2788,6 +2790,10 @@ export const listingComments = pgTable("listing_comments", {
   parentCommentId: varchar("parent_comment_id"),
   referencedAnalysisId: varchar("referenced_analysis_id"),
   body: text("body").notNull(),
+  threadType: text("thread_type").default("comment").notNull(),
+  questionStatus: text("question_status").default("none").notNull(),
+  requestedExpertCategories: jsonb("requested_expert_categories").$type<any>(),
+  listingSnapshot: jsonb("listing_snapshot").$type<any>(),
   visibility: text("visibility").default("public").notNull(),
   status: text("status").default("active").notNull(),
   score: integer("score").default(0),
@@ -2801,7 +2807,10 @@ export const listingComments = pgTable("listing_comments", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   editedAt: timestamp("edited_at"),
   deletedAt: timestamp("deleted_at"),
-});
+}, (table) => [
+  index("idx_listing_comments_thread_status").on(table.threadType, table.questionStatus, table.createdAt),
+  index("idx_listing_comments_listing_thread").on(table.listingMlsNumber, table.threadType, table.createdAt),
+]);
 
 export const propertyAnalyses = pgTable("property_analyses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

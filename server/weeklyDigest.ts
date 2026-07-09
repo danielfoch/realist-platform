@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { db } from "./db";
-import { users, analyses, notificationEvents, notificationQueue } from "@shared/schema";
-import { sql, count, desc, and, isNotNull, ne } from "drizzle-orm";
+import { users, analyses, listingComments, notificationEvents, notificationQueue } from "@shared/schema";
+import { sql, count, desc, and, eq, isNotNull, ne } from "drizzle-orm";
 import { storage } from "./storage";
 import { governMarketingSend } from "./emailGovernor";
 import { getTradeLeaders } from "./tradeLeaders";
@@ -60,6 +60,55 @@ interface DealOfTheWeek {
   dscr: number;
   purchasePrice: number | null;
   analysisId: string;
+}
+
+interface ExpertQuestionDigestItem {
+  id: string;
+  listingMlsNumber: string;
+  body: string;
+  categoryLabels: string[];
+  answerCount: number;
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function getOutstandingExpertQuestions(limit = 5): Promise<ExpertQuestionDigestItem[]> {
+  const rows = await db
+    .select({
+      id: listingComments.id,
+      listingMlsNumber: listingComments.listingMlsNumber,
+      body: listingComments.body,
+      requestedExpertCategories: listingComments.requestedExpertCategories,
+      replyCount: listingComments.replyCount,
+    })
+    .from(listingComments)
+    .where(and(
+      eq(listingComments.threadType, "question"),
+      eq(listingComments.visibility, "public"),
+      eq(listingComments.status, "active"),
+      ne(listingComments.questionStatus, "resolved"),
+    ))
+    .orderBy(desc(listingComments.createdAt))
+    .limit(limit);
+
+  return rows.map((row) => {
+    const categories = Array.isArray(row.requestedExpertCategories)
+      ? row.requestedExpertCategories.filter((category) => category in EXPERT_CATEGORY_LABELS)
+      : [];
+    return {
+      id: row.id,
+      listingMlsNumber: row.listingMlsNumber,
+      body: row.body,
+      categoryLabels: categories.map((category) => EXPERT_CATEGORY_LABELS[category as keyof typeof EXPERT_CATEGORY_LABELS]),
+      answerCount: Number(row.replyCount || 0),
+    };
+  });
 }
 
 function getLastWeekBounds(): { weekStart: string; weekEnd: string } {
@@ -304,6 +353,7 @@ function buildDigestText(
   unsubscribeUrl: string,
   dealOfWeek: DealOfTheWeek | null,
   tradeLeaders: Record<string, TradeLeader[]>,
+  expertQuestions: ExpertQuestionDigestItem[],
 ): string {
   const { start, end } = getWeekDateRange();
   const location = dealOfWeek ? [dealOfWeek.city, dealOfWeek.province].filter(Boolean).join(", ") : null;
@@ -350,6 +400,17 @@ function buildDigestText(
         "",
       ];
     })(),
+    ...(() => {
+      if (!expertQuestions.length) return [] as string[];
+      return [
+        "Open property questions for the Power Team:",
+        ...expertQuestions.map((question) =>
+          `- MLS ${question.listingMlsNumber}: ${question.body.slice(0, 160)}${question.body.length > 160 ? "..." : ""}${question.categoryLabels.length ? ` (${question.categoryLabels.join(", ")})` : ""}`,
+        ),
+        "Answer questions: https://realist.ca/community/questions?source=weekly-digest",
+        "",
+      ];
+    })(),
     `Investor insight: ${insight}`,
     "",
     `All-time: ${allTime.totalDeals} deals analyzed across ${allTime.totalUsers} active analysts.`,
@@ -373,6 +434,7 @@ function buildDigestHtml(
   unsubscribeUrl: string,
   dealOfWeek: DealOfTheWeek | null,
   tradeLeaders: Record<string, TradeLeader[]>,
+  expertQuestions: ExpertQuestionDigestItem[],
 ): string {
   const { start, end } = getWeekDateRange();
   const isQuietWeek = platform.totalDeals === 0;
@@ -507,6 +569,22 @@ function buildDigestHtml(
     </div>
   `;
 
+  const expertQuestionsSection = expertQuestions.length === 0 ? '' : `
+    <div style="background: linear-gradient(180deg, #ecfeff 0%, #ffffff 100%); border: 1px solid #a5f3fc; border-radius: 8px; padding: 16px; margin: 16px 0;">
+      <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #0e7490;">Open Property Questions</p>
+      <p style="margin: 0 0 12px 0; font-size: 12px; color: #64748b;">Investors are tagging Power Team categories for property-specific answers.</p>
+      ${expertQuestions.map((question) => `
+        <div style="padding: 10px 0; border-top: 1px solid #cffafe;">
+          <p style="margin: 0 0 4px 0; font-size: 12px; color: #0891b2; font-weight: 700;">MLS ${escapeHtml(question.listingMlsNumber)}${question.categoryLabels.length ? ` &middot; ${escapeHtml(question.categoryLabels.join(", "))}` : ''}</p>
+          <p style="margin: 0; font-size: 13px; color: #334155; line-height: 1.5;">${escapeHtml(question.body.slice(0, 220))}${question.body.length > 220 ? '...' : ''}</p>
+        </div>
+      `).join('')}
+      <div style="text-align: center; margin-top: 12px;">
+        <a href="https://realist.ca/community/questions?source=weekly-digest" style="font-size: 13px; color: #0e7490; text-decoration: none; font-weight: 600;">Answer open questions &rarr;</a>
+      </div>
+    </div>
+  `;
+
   const dealOfWeekLocation = dealOfWeek ? [dealOfWeek.city, dealOfWeek.province].filter(Boolean).join(", ") : null;
   const dealOfWeekSection = dealOfWeek ? `
     <div style="background: linear-gradient(135deg, #fff7ed 0%, #fffbf5 100%); border: 2px solid #f97316; border-radius: 10px; padding: 20px; margin: 16px 0;">
@@ -567,6 +645,7 @@ function buildDigestHtml(
         ${dealOfWeekSection}
         ${leaderboardSection}
         ${powerTeamSection}
+        ${expertQuestionsSection}
         ${allTimeSection}
         ${userSection}
         ${insightSection}
@@ -611,10 +690,16 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
   // reusing the /api/leaderboard/by-trade aggregation. Fail soft — the digest
   // must still send if this query hiccups.
   let tradeLeaders: Record<string, TradeLeader[]> = {};
+  let expertQuestions: ExpertQuestionDigestItem[] = [];
   try {
     tradeLeaders = await getTradeLeaders(3);
   } catch (err) {
     console.error("[weekly-digest] trade leaders lookup failed:", (err as Error).message);
+  }
+  try {
+    expertQuestions = await getOutstandingExpertQuestions(5);
+  } catch (err) {
+    console.error("[weekly-digest] property questions lookup failed:", (err as Error).message);
   }
   const insight = buildTacticalInsight(platform, leaderboard);
   console.log(`[weekly-digest] Platform stats: ${platform.totalDeals} weekly deals, ${allTime.totalDeals} all-time deals, cap rate ${platform.avgCapRate}%`);
@@ -692,6 +777,7 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
         unsubscribeUrl,
         dealOfWeek,
         tradeLeaders,
+        expertQuestions,
       );
       const text = buildDigestText(
         recipient.firstName || "",
@@ -703,6 +789,7 @@ export async function sendWeeklyDigest(): Promise<{ sent: number; skipped: numbe
         unsubscribeUrl,
         dealOfWeek,
         tradeLeaders,
+        expertQuestions,
       );
 
       const subject = platform.totalDeals > 0

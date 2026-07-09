@@ -138,6 +138,7 @@ import { registerAiDefaultsRoutes } from "./aiDefaults";
 import { registerCrmRoutes } from "./crm";
 import { registerPartnerNetworkRoutes, handoffClaimedLeadToCrm } from "./partnerNetwork";
 import { registerExpertRoutes } from "./experts";
+import { registerPropertyQuestionRoutes } from "./propertyQuestions";
 import { registerSocialStatsRoutes } from "./socialStats";
 import { registerTrafficAnalyticsRoutes } from "./trafficAnalytics";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
@@ -832,6 +833,7 @@ export async function registerRoutes(
   registerCrmRoutes(app);
   registerPartnerNetworkRoutes(app);
   registerExpertRoutes(app);
+  registerPropertyQuestionRoutes(app);
   registerSocialStatsRoutes(app);
   registerTrafficAnalyticsRoutes(app, isAdmin);
   registerEventsGrowthRoutes(app);
@@ -12395,6 +12397,8 @@ export async function registerRoutes(
     retentionTipsEnabled: true,
     listingWatchAlertsEnabled: true,
     communityAlertsEnabled: true,
+    expertQuestionDigestEnabled: true,
+    expertQuestionLiveAlertsEnabled: false,
     weeklyDigestEnabled: true,
     monthlyRankEnabled: true,
     podcastDigestEnabled: true,
@@ -12416,6 +12420,8 @@ export async function registerRoutes(
         retentionTipsEnabled: pref?.retentionTipsEnabled ?? NOTIFICATION_PREF_DEFAULTS.retentionTipsEnabled,
         listingWatchAlertsEnabled: pref?.listingWatchAlertsEnabled ?? NOTIFICATION_PREF_DEFAULTS.listingWatchAlertsEnabled,
         communityAlertsEnabled: pref?.communityAlertsEnabled ?? NOTIFICATION_PREF_DEFAULTS.communityAlertsEnabled,
+        expertQuestionDigestEnabled: pref?.expertQuestionDigestEnabled ?? NOTIFICATION_PREF_DEFAULTS.expertQuestionDigestEnabled,
+        expertQuestionLiveAlertsEnabled: pref?.expertQuestionLiveAlertsEnabled ?? NOTIFICATION_PREF_DEFAULTS.expertQuestionLiveAlertsEnabled,
         weeklyDigestEnabled: pref?.weeklyDigestEnabled ?? NOTIFICATION_PREF_DEFAULTS.weeklyDigestEnabled,
         monthlyRankEnabled: pref?.monthlyRankEnabled ?? NOTIFICATION_PREF_DEFAULTS.monthlyRankEnabled,
         podcastDigestEnabled: pref?.podcastDigestEnabled ?? NOTIFICATION_PREF_DEFAULTS.podcastDigestEnabled,
@@ -12459,6 +12465,8 @@ export async function registerRoutes(
         listingWatchAlertsEnabled: asBool("listingWatchAlertsEnabled", existing?.listingWatchAlertsEnabled ?? true),
         marketAlertsEnabled: asBool("marketAlertsEnabled", existing?.marketAlertsEnabled ?? true),
         communityAlertsEnabled: asBool("communityAlertsEnabled", existing?.communityAlertsEnabled ?? true),
+        expertQuestionDigestEnabled: asBool("expertQuestionDigestEnabled", existing?.expertQuestionDigestEnabled ?? true),
+        expertQuestionLiveAlertsEnabled: asBool("expertQuestionLiveAlertsEnabled", existing?.expertQuestionLiveAlertsEnabled ?? false),
         weeklyDigestEnabled: asBool("weeklyDigestEnabled", existing?.weeklyDigestEnabled ?? true),
         monthlyRankEnabled: asBool("monthlyRankEnabled", existing?.monthlyRankEnabled ?? true),
         podcastDigestEnabled: asBool("podcastDigestEnabled", existing?.podcastDigestEnabled ?? true),
