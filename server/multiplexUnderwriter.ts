@@ -37,6 +37,7 @@ import {
   generateConfigurations,
   type BuildConfiguration,
 } from "@shared/multiplexConfigs";
+import { assessRentRegulation, type RentRegulationResult } from "@shared/rentRegulation";
 import { TORONTO_ENVELOPE_RULES, PRACTICAL_GFA_HAIRCUT, computeEnvelope } from "@shared/multiplexEnvelope";
 import { computeMliTakeout, scoreMliPoints, type MliTakeoutResult } from "@shared/mliSelect";
 import { assessVarianceRisk, type VarianceRiskResult } from "@shared/multiplexVarianceRisk";
@@ -267,6 +268,7 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   envelope: ReturnType<typeof computeEnvelope>;
   configs: ConfigUnderwrite[];
   winner: { flip: string | null; hold: string | null };
+  rentRegulation: RentRegulationResult;
   assumptionNotes: string[];
 }> {
   const admin = await getAssumptionValues();
@@ -329,6 +331,16 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   });
   if (site.overlays?.maxLotCoverageRatio != null) {
     assumptionNotes.push(`Lot coverage ${Math.round(site.overlays.maxLotCoverageRatio * 100)}% from Toronto's verified Lot Coverage Overlay.`);
+  }
+
+  // Rent regulation — a newly-built/newly-created multiplex suite is exempt
+  // from Ontario's rent-increase guideline (first occupied after Nov 15 2018),
+  // so its rent grows at market, not the ~2% cap. That's the revenue edge.
+  const rentRegulation = assessRentRegulation({ province: "ON", isNewSuite: true });
+  if (rentRegulation.newSuiteUncapped) {
+    assumptionNotes.push(
+      `New suites here are exempt from Ontario's rent-increase guideline (post-Nov-15-2018 first occupancy) — rent grows at market, not the ${assessRentRegulation({ province: "ON" }).guidelinePct ?? "~2"}% guideline that caps older units.`,
+    );
   }
 
   const configs = generateConfigurations({
@@ -410,6 +422,7 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
     envelope,
     configs: underwrites,
     winner: { flip: flipWinner?.config.key ?? null, hold: holdWinner?.config.key ?? null },
+    rentRegulation,
     assumptionNotes,
   };
 }
