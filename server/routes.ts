@@ -1563,6 +1563,28 @@ export async function registerRoutes(
     }
   });
 
+  // ─── Planning precedent (permits + Committee of Adjustment near a point) ───
+  // "Your neighbours already did it" — unit-adding permits + variance approval
+  // rate within a radius. GET /api/precedents?lat=..&lng=..&radius=..
+  app.get("/api/precedents", async (req, res) => {
+    try {
+      const lat = Number(req.query.lat);
+      const lng = Number(req.query.lng);
+      // A malformed radius must fall back to the 500m default, not pass NaN
+      // through (NaN comparisons yield a silent empty result).
+      const parsedRadius = Number(req.query.radius);
+      const radius = Number.isFinite(parsedRadius) ? Math.min(2000, Math.max(100, parsedRadius)) : 500;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+        return res.status(400).json({ error: "Valid lat and lng query params are required" });
+      }
+      const { getPrecedents } = await import("./precedents");
+      res.json(await getPrecedents(lat, lng, radius));
+    } catch (err) {
+      console.error("Precedents error:", err);
+      res.status(500).json({ error: "Failed to load precedents" });
+    }
+  });
+
   // ── US Listings ingest endpoint ───────────────────────────────────────
   // Auth: shared secret in `X-Ingest-Token` header (env: US_LISTINGS_INGEST_TOKEN)
   // Body: { listings: InsertUsListing[] }  — batches of up to 1000

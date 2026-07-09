@@ -26,6 +26,9 @@ import {
   pointInGeometry,
   type AreaGeometry,
 } from "@shared/geoGeometry";
+import { resolveZoningOverlays, resolveWard, type ZoningOverlays, type WardResolution } from "./torontoZoning";
+import { getParcelMetrics, type ParcelMetrics } from "./parcels";
+import { screenConservation, type ConservationScreen } from "./conservation";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -352,6 +355,14 @@ export interface ResolvedSite {
   trees: TreeScreenResult;
   heritage: HeritageScreenResult;
   trca: TrcaScreenResult;
+  /** Generalized conservation-authority screen (TRCA + other GTA authorities). */
+  conservation: ConservationScreen;
+  /** Verified lot metrics derived from the parcel fabric (null if not loaded / no match). */
+  parcel: ParcelMetrics | null;
+  /** Verified zoning overlays (coverage %, height m) — null when neither covers the point. */
+  overlays: ZoningOverlays | null;
+  /** Verified ward + sixplex-as-of-right status. */
+  ward: WardResolution | null;
   notes: string[];
 }
 
@@ -360,20 +371,36 @@ export async function resolveSite(address: string): Promise<ResolvedSite> {
   const geo = await geocodeAddress(address);
   if (!geo) notes.push("Address could not be geocoded — location-based screens skipped.");
 
-  const [zoning, zoningAvailable, trees, heritage, trca] = await Promise.all([
+  const noConservation: ConservationScreen = { status: "unavailable", regulated: false, authority: null, detail: null, fromCache: false };
+  const [zoning, zoningAvailable, trees, heritage, conservation, parcel, overlays, ward] = await Promise.all([
     geo ? resolveZoning(geo.lat, geo.lng) : Promise.resolve(null),
     zoningDataLoaded(),
     geo
       ? screenStreetTrees(geo.lat, geo.lng)
       : Promise.resolve<TreeScreenResult>({ status: "no_data", cityTreeConflict: false, treesWithinTightRadius: 0, treesWithinContextRadius: 0, nearest: null, privateTreeCaution: PRIVATE_TREE_CAUTION }),
     screenHeritage(address),
-    geo ? screenTrca(geo.lat, geo.lng) : Promise.resolve<TrcaScreenResult>({ status: "unavailable", regulated: false, detail: null, fromCache: false }),
+    geo ? screenConservation(geo.lat, geo.lng) : Promise.resolve(noConservation),
+    geo ? getParcelMetrics(geo.lat, geo.lng) : Promise.resolve(null),
+    geo ? resolveZoningOverlays(geo.lat, geo.lng) : Promise.resolve(null),
+    geo ? resolveWard(geo.lat, geo.lng) : Promise.resolve(null),
   ]);
+
+  // Backward-compatible TRCA view derived from the generalized conservation
+  // screen. "out_of_coverage" is a CLEAN screen (point is outside every
+  // registered authority) → treat as screened/not-regulated, not "unavailable"
+  // (which is reserved for a service that could not be reached).
+  const trca: TrcaScreenResult = {
+    status: conservation.status === "unavailable" ? "unavailable" : "screened",
+    regulated: conservation.regulated,
+    detail: conservation.detail,
+    fromCache: conservation.fromCache,
+  };
 
   if (geo && zoningAvailable && !zoning) notes.push("Point did not land in any imported zoning polygon — zone must be confirmed manually.");
   if (!zoningAvailable) notes.push("Zoning layer not imported yet — run scripts/import-toronto-geodata.ts.");
   if (trees.status === "no_data") notes.push("Street tree inventory not imported yet — city-tree screen skipped.");
   if (heritage.status === "no_data") notes.push("Heritage register not imported yet — heritage screen skipped.");
+  if (geo && !parcel) notes.push("Parcel fabric has no match here — lot metrics not derived (import parcels or enter dimensions).");
 
   return {
     address,
@@ -385,6 +412,10 @@ export async function resolveSite(address: string): Promise<ResolvedSite> {
     trees,
     heritage,
     trca,
+    conservation,
+    parcel,
+    overlays,
+    ward,
     notes,
   };
 }

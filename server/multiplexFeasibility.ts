@@ -39,7 +39,30 @@ export interface FeasibilityInput {
   laneAccess?: boolean;
   heritageFlag?: boolean;
   floodplainFlag?: boolean;
+
+  // ── Verified open-data inputs (from server/torontoZoning + parcels) ──────────
+  // When present these replace the corresponding heuristic and lift confidence.
+  /** Exact City ward number (point-in-ward-polygon) — makes sixplex status certain. */
+  verifiedWard?: number;
+  verifiedWardName?: string;
+  /** Councillor opt-in wards (post-654-2025), e.g. from the admin assumption. */
+  optInWards?: number[];
+  /** Max lot coverage from the Zoning Lot Coverage Overlay, as a 0–1 fraction. */
+  verifiedLotCoverageRatio?: number;
+  /** Max building height (m) from the Zoning Height Overlay. */
+  verifiedMaxHeightM?: number;
+  /**
+   * Apply Ontario's provincial ARU performance standards (O.Reg 299/19 as
+   * amended by O.Reg 462/24), which override stricter municipal zoning for
+   * additional residential units. Defaults to true for serviced Ontario lots.
+   */
+  applyProvincialAruStandards?: boolean;
 }
+
+/** O.Reg 462/24 minimum lot-coverage entitlement for ARU scenarios (45%). */
+const PROVINCIAL_ARU_COVERAGE_FLOOR = 0.45;
+/** Typical storey height (m) for converting a verified height limit to storeys. */
+const STOREY_HEIGHT_M = 3.0;
 
 export interface PolicySource {
   type: "legislation" | "bylaw" | "official_plan" | "policy_document" | "inference";
@@ -121,6 +144,11 @@ export interface MultiplexFeasibilityResult {
     laneway_suite_possible: boolean;
     six_unit_area_possible: boolean;
     six_unit_area_status: "not_applicable" | "possible_unverified" | "more_likely_area";
+    /** "verified" when the ward was resolved from ward-polygon data, else "inferred". */
+    six_unit_certainty: "verified" | "inferred";
+    ward_number: number | null;
+    ward_name: string | null;
+    provincial_aru_standard_applied: boolean;
     approval_path: "as_of_right" | "minor_variance_likely" | "rezoning_required" | "complex" | "unknown";
     scenarios: FeasibilityScenario[];
     approval_notes: string[];
@@ -136,6 +164,8 @@ export interface MultiplexFeasibilityResult {
     coverage_basis: "bylaw" | "zone_rule" | "municipality_fallback" | "province_fallback";
     estimated_max_footprint_sqft: number | null;
     estimated_storeys: number;
+    max_height_m: number | null;
+    height_basis: "overlay" | "assumed";
     estimated_theoretical_gfa_sqft: number | null;
     estimated_practical_gfa_sqft: number | null;
     practical_haircut_reason: string;
@@ -227,6 +257,15 @@ const SOURCES: Record<string, PolicySource> = {
     url: "https://www.ontario.ca/page/additional-residential-units",
     jurisdiction: "Ontario",
     date: "2023-06-01",
+    confidence: "high",
+  },
+  oreg46224: {
+    type: "legislation",
+    name: "O. Reg. 462/24 amending O. Reg. 299/19 — Additional Residential Unit provincial standards (override stricter municipal zoning: ≥45% lot coverage, no angular plane, reduced setbacks, max 1 parking space/ARU)",
+    url: "https://www.ontario.ca/laws/regulation/190299",
+    section: "Additional Residential Units — performance standards",
+    jurisdiction: "Ontario (serviced urban residential lots)",
+    date: "2025-01-01",
     confidence: "high",
   },
   inferred: {
@@ -779,8 +818,29 @@ export const TORONTO_SIXPLEX_WARDS = {
   lastVerified: "2026-07",
 };
 
-function inferTorontoSixUnitStatus(input: FeasibilityInput, munRule: MunicipalityRule | null): "not_applicable" | "possible_unverified" | "more_likely_area" {
-  if (munRule?.name !== "City of Toronto" || !munRule.six_unit_area_possible) return "not_applicable";
+interface SixUnitDetermination {
+  status: "not_applicable" | "possible_unverified" | "more_likely_area";
+  certainty: "verified" | "inferred";
+}
+
+function inferTorontoSixUnitStatus(input: FeasibilityInput, munRule: MunicipalityRule | null): SixUnitDetermination {
+  if (munRule?.name !== "City of Toronto" || !munRule.six_unit_area_possible) {
+    return { status: "not_applicable", certainty: "inferred" };
+  }
+
+  const eligibleWards = [
+    ...TORONTO_SIXPLEX_WARDS.asOfRightWards.map((w) => w.ward),
+    ...TORONTO_SIXPLEX_WARDS.optInWards.map((w) => w.ward),
+    ...(input.optInWards ?? []),
+  ];
+
+  // Verified ward (point-in-ward-polygon) makes sixplex status certain: an
+  // eligible ward → as-of-right (more_likely_area); any other ward → not
+  // available here (not_applicable), and we skip the "verify the ward" nudge.
+  if (input.verifiedWard != null) {
+    const eligible = eligibleWards.includes(input.verifiedWard);
+    return { status: eligible ? "more_likely_area" : "not_applicable", certainty: "verified" };
+  }
 
   const city = (input.city || "").toLowerCase().trim();
   const address = (input.address || "").toLowerCase();
@@ -789,7 +849,7 @@ function inferTorontoSixUnitStatus(input: FeasibilityInput, munRule: Municipalit
 
   const fsa = postal.slice(0, 3);
   if (fsa && TORONTO_SIXPLEX_WARDS.likelyFsaPrefixes.includes(fsa)) {
-    return "more_likely_area";
+    return { status: "more_likely_area", certainty: "inferred" };
   }
 
   if (
@@ -797,23 +857,30 @@ function inferTorontoSixUnitStatus(input: FeasibilityInput, munRule: Municipalit
     search.includes("east york") ||
     search.includes("toronto and east york")
   ) {
-    return "more_likely_area";
+    return { status: "more_likely_area", certainty: "inferred" };
   }
 
   // Named ward references in the address string
   const wardMatch = search.match(/ward\s+(\d{1,2})/);
   if (wardMatch) {
     const wardNum = parseInt(wardMatch[1], 10);
-    const eligible = [
-      ...TORONTO_SIXPLEX_WARDS.asOfRightWards,
-      ...TORONTO_SIXPLEX_WARDS.optInWards,
-    ].some((w) => w.ward === wardNum);
-    if (eligible) return "more_likely_area";
+    if (eligibleWards.includes(wardNum)) return { status: "more_likely_area", certainty: "inferred" };
   }
 
   // Everywhere else in Toronto: only via councillor opt-in or minor variance —
   // report as possible-but-unverified rather than likely.
-  return "possible_unverified";
+  return { status: "possible_unverified", certainty: "inferred" };
+}
+
+/**
+ * Whether five/six-unit outputs (range, scenario, GFA row, headline suffix)
+ * should be offered. True when six is confirmed or plausible; a VERIFIED
+ * not_applicable (ward resolved and outside the nine) is a hard cap at the
+ * baseline. This is the single source of truth for every six-unit-dependent
+ * output so they can never contradict the resolved status.
+ */
+function sixUnitAllowsSix(six: SixUnitDetermination): boolean {
+  return six.status === "more_likely_area" || six.status === "possible_unverified";
 }
 
 // ─── Confidence Scoring ─────────────────────────────────────────────────────
@@ -876,6 +943,17 @@ function computeConfidence(
     breakdown.lot_context = { score: 0, reason: "Lot context unknown" };
   }
 
+  // Verified open-data overlays (coverage/height/ward from municipal GIS) — the
+  // strongest signal available, since it replaces heuristics with bylaw values.
+  const verifiedBits: string[] = [];
+  let verifiedScore = 0;
+  if (input.verifiedLotCoverageRatio != null) { verifiedScore += 8; verifiedBits.push("lot coverage overlay"); }
+  if (input.verifiedMaxHeightM != null) { verifiedScore += 4; verifiedBits.push("height overlay"); }
+  if (input.verifiedWard != null) { verifiedScore += 6; verifiedBits.push(`ward ${input.verifiedWard}`); }
+  if (verifiedScore > 0) {
+    breakdown.verified_overlays = { score: verifiedScore, reason: `Verified municipal GIS: ${verifiedBits.join(", ")}` };
+  }
+
   const total = Object.values(breakdown).reduce((sum, b) => sum + b.score, 0);
   // Cap at 100
   return { score: Math.min(100, total), breakdown };
@@ -929,18 +1007,29 @@ function computeEnvelope(
   coverage_basis: "bylaw" | "zone_rule" | "municipality_fallback" | "province_fallback";
   footprint: number | null;
   storeys: number;
+  max_height_m: number | null;
+  height_basis: "overlay" | "assumed";
   theoretical_gfa: number | null;
   practical_gfa: number | null;
   practical_haircut_reason: string;
   calc_notes: string[];
 } {
   const notes: string[] = [];
+  const applyProvincial = input.applyProvincialAruStandards ?? false;
 
-  // Determine lot coverage ratio
+  // Determine lot coverage ratio. Precedence: verified overlay > zone rule >
+  // municipality fallback > province fallback. Ontario's provincial ARU
+  // standards (O.Reg 462/24) then set a ≥45% floor for the multiplex+ARU
+  // program — computed as max(source coverage, 45%) so a low municipal figure
+  // no longer under-states what an ARU build can actually cover.
   let coverageRatio: number;
   let coverageBasis: "bylaw" | "zone_rule" | "municipality_fallback" | "province_fallback";
 
-  if (zoneHint?.typical_coverage) {
+  if (input.verifiedLotCoverageRatio != null) {
+    coverageRatio = input.verifiedLotCoverageRatio;
+    coverageBasis = "bylaw";
+    notes.push(`Lot coverage ${Math.round(coverageRatio * 100)}% is the verified value from Toronto's Lot Coverage Overlay (by-law data).`);
+  } else if (zoneHint?.typical_coverage) {
     coverageRatio = zoneHint.typical_coverage;
     coverageBasis = "zone_rule";
     notes.push(`Lot coverage ratio ${Math.round(coverageRatio * 100)}% estimated from zone category "${zoneHint.category}" — verify exact by-law value`);
@@ -955,9 +1044,31 @@ function computeEnvelope(
     notes.push("Lot coverage ratio 38% is a conservative province-level fallback — verify with local zoning by-law");
   }
 
-  // Storey estimate
-  const storeys = zoneHint?.typical_storeys || munRule?.typical_storeys || 2;
-  notes.push(`${storeys} storey${storeys !== 1 ? "s" : ""} assumed for GFA calculation — verify height limit with local zoning`);
+  // O.Reg 462/24 raises the screening coverage floor to 45% for ARU builds —
+  // but ONLY as a fallback: a verified overlay value is the real by-law figure
+  // and must never be overwritten, and the statutory floor is labelled
+  // province_fallback (not "bylaw") so it is never displayed as this parcel's
+  // confirmed coverage.
+  if (applyProvincial && input.verifiedLotCoverageRatio == null && coverageRatio < PROVINCIAL_ARU_COVERAGE_FLOOR) {
+    notes.push(`O.Reg 462/24 provincial ARU standards raise the screening coverage floor to ${Math.round(PROVINCIAL_ARU_COVERAGE_FLOOR * 100)}% (overrides the stricter ${Math.round(coverageRatio * 100)}% municipal estimate for additional-residential-unit builds).`);
+    coverageRatio = PROVINCIAL_ARU_COVERAGE_FLOOR;
+    coverageBasis = "province_fallback";
+  }
+
+  // Storey estimate — prefer a verified height overlay (height ÷ ~3m/storey).
+  let storeys: number;
+  let maxHeightM: number | null = null;
+  let heightBasis: "overlay" | "assumed";
+  if (input.verifiedMaxHeightM != null && input.verifiedMaxHeightM > 0) {
+    maxHeightM = input.verifiedMaxHeightM;
+    storeys = Math.max(1, Math.floor(input.verifiedMaxHeightM / STOREY_HEIGHT_M));
+    heightBasis = "overlay";
+    notes.push(`${storeys} storeys from the verified Height Overlay (${maxHeightM} m ÷ ~${STOREY_HEIGHT_M} m/storey).`);
+  } else {
+    storeys = zoneHint?.typical_storeys || munRule?.typical_storeys || 2;
+    heightBasis = "assumed";
+    notes.push(`${storeys} storey${storeys !== 1 ? "s" : ""} assumed for GFA calculation — verify height limit with local zoning`);
+  }
 
   if (!lotArea) {
     return {
@@ -965,6 +1076,8 @@ function computeEnvelope(
       coverage_basis: coverageBasis,
       footprint: null,
       storeys,
+      max_height_m: maxHeightM,
+      height_basis: heightBasis,
       theoretical_gfa: null,
       practical_gfa: null,
       practical_haircut_reason: "Cannot estimate without lot area",
@@ -995,13 +1108,16 @@ function computeEnvelope(
     notes.push("Floodplain flag detected — conservation authority approval required, major feasibility risk");
   }
 
-  // Frontage check
+  // Frontage check. O.Reg 462/24 reduces ARU setbacks and drops parking minimums,
+  // so a narrow lot is less penalising for an ARU program than for a conventional
+  // build — soften the haircut (but never remove it) when provincial standards apply.
+  const narrowPenalty = (base: number) => (applyProvincial ? base / 2 : base);
   if (lotFrontage && lotFrontage < 20) {
-    haircutFactor = Math.max(0.60, haircutFactor - 0.12);
-    haircutReason += `; very narrow frontage (${lotFrontage}ft) limits building form`;
+    haircutFactor = Math.max(0.60, haircutFactor - narrowPenalty(0.12));
+    haircutReason += `; very narrow frontage (${lotFrontage}ft) limits building form${applyProvincial ? " (eased by O.Reg 462/24 reduced setbacks)" : ""}`;
     notes.push(`Frontage of ${lotFrontage}ft is very narrow — may constrain building form and parking access`);
   } else if (lotFrontage && lotFrontage < 25) {
-    haircutFactor = Math.max(0.65, haircutFactor - 0.07);
+    haircutFactor = Math.max(0.65, haircutFactor - narrowPenalty(0.07));
     haircutReason += `; narrow frontage (${lotFrontage}ft) adds design constraints`;
   }
 
@@ -1015,6 +1131,8 @@ function computeEnvelope(
     coverage_basis: coverageBasis,
     footprint,
     storeys,
+    max_height_m: maxHeightM,
+    height_basis: heightBasis,
     theoretical_gfa: theoreticalGfa,
     practical_gfa: practicalGfa,
     practical_haircut_reason: haircutReason,
@@ -1029,6 +1147,7 @@ function buildScenarios(
   provRule: ProvinceRule | null,
   practicalGfa: number | null,
   input: FeasibilityInput,
+  allowSix: boolean,
 ): FeasibilityScenario[] {
   const scenarios: FeasibilityScenario[] = [];
   const baseUnits = munRule ? munRule.baseline_units : (provRule?.baseline_units || 2);
@@ -1066,8 +1185,9 @@ function buildScenarios(
     });
   }
 
-  // Scenario 3: 6-unit if in applicable Toronto area
-  if (munRule?.six_unit_area_possible && baseUnits < 6) {
+  // Scenario 3: 6-unit only when the resolved sixplex status allows it (a
+  // verified non-sixplex ward suppresses this scenario entirely).
+  if (allowSix && baseUnits < 6) {
     scenarios.push({
       name: "6-Unit Multiplex (Toronto & East York / Ward 23)",
       units: 6,
@@ -1203,9 +1323,14 @@ function buildRuleHierarchy(
   provRule: ProvinceRule | null,
   munRule: MunicipalityRule | null,
   zoneHint: ZoneHint | null,
-  sixUnitStatus: "not_applicable" | "possible_unverified" | "more_likely_area",
+  six: SixUnitDetermination,
 ): RuleLayerTrace[] {
   const layers: RuleLayerTrace[] = [];
+  const sixText = six.certainty === "verified"
+    ? (six.status === "more_likely_area"
+        ? "confirmed as-of-right (verified ward, By-law 654-2025)"
+        : "confirmed not available (verified ward outside the nine sixplex wards)")
+    : (six.status === "more_likely_area" ? "more likely" : "possible but unverified");
 
   layers.push({
     layer: "province_baseline",
@@ -1224,7 +1349,7 @@ function buildRuleHierarchy(
     status: munRule ? (munRule.supportLevel === "province_only" ? "heuristic" : "direct") : "missing",
     impact: munRule
       ? munRule.name === "City of Toronto"
-        ? `Toronto city-wide 4-unit permissions are applied. 6-unit status is ${sixUnitStatus === "more_likely_area" ? "more likely" : "possible but unverified"} based on limited location data.`
+        ? `Toronto city-wide 4-unit permissions are applied. 6-unit status is ${sixText}.`
         : `${munRule.name} currently uses ${munRule.supportLevel === "province_only" ? "province-level baseline logic with municipality fallbacks" : "municipality-specific rules"} in this screening model.`
       : "Municipality not yet normalized, so only province logic and generic heuristics were used.",
     confidence: munRule ? (munRule.supportLevel === "province_only" ? "medium" : "high") : "low",
@@ -1276,9 +1401,11 @@ function buildAssumptions(
     coverage_ratio: number;
     coverage_basis: "bylaw" | "zone_rule" | "municipality_fallback" | "province_fallback";
     storeys: number;
+    height_basis: "overlay" | "assumed";
   },
-  sixUnitStatus: "not_applicable" | "possible_unverified" | "more_likely_area",
+  six: SixUnitDetermination,
 ): AssumptionTrace[] {
+  const sixVerified = six.certainty === "verified";
   return [
     {
       label: "Lot area basis",
@@ -1288,22 +1415,26 @@ function buildAssumptions(
     {
       label: "Lot coverage ratio",
       value: `${Math.round(envelope.coverage_ratio * 100)}% (${envelope.coverage_basis.replace(/_/g, " ")})`,
-      certainty: envelope.coverage_basis === "zone_rule" ? "direct" : envelope.coverage_basis === "municipality_fallback" ? "inferred" : "unknown",
+      certainty: envelope.coverage_basis === "bylaw" ? "direct" : envelope.coverage_basis === "zone_rule" ? "direct" : envelope.coverage_basis === "municipality_fallback" ? "inferred" : "unknown",
     },
     {
       label: "Storey assumption",
-      value: `${envelope.storeys} storeys assumed for GFA screening`,
-      certainty: "inferred",
+      value: envelope.height_basis === "overlay" ? `${envelope.storeys} storeys from verified Height Overlay` : `${envelope.storeys} storeys assumed for GFA screening`,
+      certainty: envelope.height_basis === "overlay" ? "direct" : "inferred",
     },
     {
       label: "Toronto 6-unit status",
       value:
-        sixUnitStatus === "more_likely_area"
-          ? "Address context suggests Toronto & East York linkage, but still verify."
-          : sixUnitStatus === "possible_unverified"
+        six.status === "more_likely_area"
+          ? sixVerified
+            ? "Confirmed in a sixplex-eligible ward (By-law 654-2025) — five/six units as-of-right."
+            : "Address context suggests a sixplex-eligible ward, but still verify."
+          : six.status === "possible_unverified"
             ? "6-unit permissions may apply in limited Toronto subareas; location not confirmed."
-            : "Not applicable to this property.",
-      certainty: sixUnitStatus === "not_applicable" ? "direct" : "unknown",
+            : sixVerified
+              ? "Confirmed outside the nine sixplex wards — capped at four units."
+              : "Not applicable to this property.",
+      certainty: sixVerified || six.status === "not_applicable" ? "direct" : "unknown",
     },
     {
       label: "Overlay status",
@@ -1320,18 +1451,23 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
 
   // 1. Detect jurisdiction
   const { rule: munRule, key: munKey } = detectMunicipality(input);
-  const { rule: provRule } = detectProvince(input);
+  const { rule: provRule, key: provKey } = detectProvince(input);
+
+  // Ontario's provincial ARU standards (O.Reg 462/24) apply by default on
+  // serviced Ontario lots; a caller can force it off (e.g. rural/unserviced).
+  const applyProvincial = provKey === "ON" && (input.applyProvincialAruStandards ?? true);
+  const resolvedInput: FeasibilityInput = { ...input, applyProvincialAruStandards: applyProvincial };
 
   // 2. Classify zone
   const zoneHint = input.zoneCode ? classifyZone(input.zoneCode) : null;
 
   // 3. Compute confidence
-  const { score: confidenceScore, breakdown } = computeConfidence(input, munRule, provRule, zoneHint);
+  const { score: confidenceScore, breakdown } = computeConfidence(resolvedInput, munRule, provRule, zoneHint);
   const confidenceLevel: "high" | "medium" | "low" =
     confidenceScore >= 65 ? "high" : confidenceScore >= 35 ? "medium" : "low";
 
   // 4. Compute lot area
-  const lotAreaResult = computeLotArea(input);
+  const lotAreaResult = computeLotArea(resolvedInput);
 
   // 5. Compute envelope
   const envelope = computeEnvelope(
@@ -1339,7 +1475,7 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
     lotAreaResult.frontage,
     munRule,
     zoneHint,
-    input,
+    resolvedInput,
   );
 
   // 6. Determine effective baseline unit count
@@ -1347,26 +1483,31 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
   const munBaseline = munRule?.baseline_units || provBaseline;
   const effectiveBaseline = Math.max(munBaseline, provBaseline);
 
+  // Resolve sixplex status FIRST — every six-unit-dependent output below gates
+  // on it (not the static municipality flag) so a verified non-sixplex ward is
+  // never contradicted by the range/scenarios/GFA/headline.
+  const sixUnit = inferTorontoSixUnitStatus(resolvedInput, munRule);
+  const allowSix = (munRule?.six_unit_area_possible ?? false) && sixUnitAllowsSix(sixUnit);
+
   // 7. Unit count range
   const unitsLow = Math.min(2, effectiveBaseline);
-  const unitsHigh = munRule?.six_unit_area_possible ? effectiveBaseline + 2 : effectiveBaseline;
+  const unitsHigh = allowSix ? effectiveBaseline + 2 : effectiveBaseline;
   const likelyRangeLabel = `${unitsLow}-${unitsHigh} units`;
 
   // 8. Build scenarios
-  const scenarios = buildScenarios(munRule, provRule, envelope.practical_gfa, input);
-  const sixUnitStatus = inferTorontoSixUnitStatus(input, munRule);
+  const scenarios = buildScenarios(munRule, provRule, envelope.practical_gfa, resolvedInput, allowSix);
 
   // 9. Unit GFA scenarios
-  const unitScenarios = [2, effectiveBaseline, ...(munRule?.six_unit_area_possible ? [6] : [])].map(u => ({
+  const unitScenarios = [2, effectiveBaseline, ...(allowSix ? [6] : [])].map(u => ({
     units: u,
     avg_unit_sqft: envelope.practical_gfa ? Math.round(envelope.practical_gfa / u) : 0,
     total_gfa: envelope.practical_gfa || 0,
   }));
 
   // 10. Detect risk flags
-  const riskFlags = detectRiskFlags(input, munRule ? { ...munRule, key: munKey } as any : null, lotAreaResult);
-  const rulesHierarchy = buildRuleHierarchy(input, provRule, munRule, zoneHint, sixUnitStatus);
-  const assumptions = buildAssumptions(input, lotAreaResult, envelope, sixUnitStatus);
+  const riskFlags = detectRiskFlags(resolvedInput, munRule ? { ...munRule, key: munKey } as any : null, lotAreaResult);
+  const rulesHierarchy = buildRuleHierarchy(resolvedInput, provRule, munRule, zoneHint, sixUnit);
+  const assumptions = buildAssumptions(resolvedInput, lotAreaResult, envelope, sixUnit);
 
   // 11. Approval path assessment
   let approvalPath: "as_of_right" | "minor_variance_likely" | "rezoning_required" | "complex" | "unknown" = "unknown";
@@ -1389,7 +1530,12 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
   if (!provRule && !munRule) {
     headline = "Municipality not yet in our database — Ontario baseline may apply";
   } else if (isToronto) {
-    headline = `Toronto: up to ${effectiveBaseline} units likely as-of-right${munRule?.six_unit_area_possible ? ` (up to 6 in T&EY area)` : ""} — subject to zoning standards`;
+    const sixSuffix = sixUnit.status === "more_likely_area"
+      ? (sixUnit.certainty === "verified" ? ` (up to 6 — sixplex ward confirmed)` : ` (up to 6 in this sixplex area)`)
+      : sixUnit.status === "possible_unverified"
+        ? ` (6 possible if the ward permits — verify)`
+        : "";
+    headline = `Toronto: up to ${effectiveBaseline} units likely as-of-right${sixSuffix} — subject to zoning standards`;
   } else {
     headline = `Ontario: up to ${effectiveBaseline} units likely as baseline — subject to local zoning`;
   }
@@ -1401,7 +1547,16 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
   if (envelope.practical_gfa) keyFacts.push(`Rough practical GFA: ~${envelope.practical_gfa.toLocaleString()} sqft (see envelope math)`);
   if (munRule?.laneway_suite_possible) keyFacts.push("Laneway suite possible (verify lane access)");
   if (munRule?.garden_suite_possible || provRule?.garden_suite_possible) keyFacts.push("Garden suite likely possible");
-  if (sixUnitStatus === "more_likely_area") keyFacts.push("Toronto 6-unit subarea looks more plausible from address context");
+  if (sixUnit.status === "more_likely_area") {
+    keyFacts.push(
+      sixUnit.certainty === "verified"
+        ? `Confirmed in Ward ${input.verifiedWard} — five/six units as-of-right (By-law 654-2025)`
+        : "Toronto 6-unit subarea looks more plausible from address context",
+    );
+  }
+  if (applyProvincial && input.verifiedLotCoverageRatio == null && envelope.coverage_basis === "province_fallback" && envelope.coverage_ratio >= PROVINCIAL_ARU_COVERAGE_FLOOR) {
+    keyFacts.push("O.Reg 462/24 provincial ARU standards applied (≥45% coverage, reduced setbacks)");
+  }
 
   const keyBlockers: string[] = [];
   if (input.heritageFlag) keyBlockers.push("Heritage flag — major constraint");
@@ -1414,6 +1569,7 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
     ...(provRule?.sources || []),
     ...(munRule?.sources || []),
   ];
+  if (applyProvincial) allSources.push(SOURCES.oreg46224);
   if (!munRule) allSources.push(SOURCES.inferred);
 
   return {
@@ -1453,8 +1609,12 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
       aru_possible: munRule?.aru_possible || provRule?.aru_possible || false,
       garden_suite_possible: munRule?.garden_suite_possible || provRule?.garden_suite_possible || false,
       laneway_suite_possible: munRule?.laneway_suite_possible || false,
-      six_unit_area_possible: munRule?.six_unit_area_possible || false,
-      six_unit_area_status: sixUnitStatus,
+      six_unit_area_possible: allowSix,
+      six_unit_area_status: sixUnit.status,
+      six_unit_certainty: sixUnit.certainty,
+      ward_number: input.verifiedWard ?? null,
+      ward_name: input.verifiedWardName ?? null,
+      provincial_aru_standard_applied: applyProvincial,
       approval_path: approvalPath,
       scenarios,
       approval_notes: munRule?.approval_notes || provRule?.baseline_notes || [],
@@ -1469,6 +1629,8 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
       coverage_basis: envelope.coverage_basis,
       estimated_max_footprint_sqft: envelope.footprint,
       estimated_storeys: envelope.storeys,
+      max_height_m: envelope.max_height_m,
+      height_basis: envelope.height_basis,
       estimated_theoretical_gfa_sqft: envelope.theoretical_gfa,
       estimated_practical_gfa_sqft: envelope.practical_gfa,
       practical_haircut_reason: envelope.practical_haircut_reason,
