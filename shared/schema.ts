@@ -2812,6 +2812,75 @@ export const listingComments = pgTable("listing_comments", {
   index("idx_listing_comments_listing_thread").on(table.listingMlsNumber, table.threadType, table.createdAt),
 ]);
 
+// Structured ML/AI capture layer for the public property-question product.
+// listing_comments remains the public forum surface; these rows make the same
+// behaviour queryable for expert routing, response-quality scoring, and future
+// underwrite→question→expert-answer outcome models.
+export const propertyQuestionSignals = pgTable("property_question_signals", {
+  questionId: varchar("question_id").primaryKey().references(() => listingComments.id, { onDelete: "cascade" }),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  listingKey: text("listing_key"),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  referencedAnalysisId: varchar("referenced_analysis_id"),
+  questionText: text("question_text").notNull(),
+  normalizedQuestion: text("normalized_question"),
+  questionIntent: text("question_intent").default("general").notNull(),
+  questionLength: integer("question_length").default(0).notNull(),
+  requestedExpertCategories: jsonb("requested_expert_categories").$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+  requestedExpertCategoryCount: integer("requested_expert_category_count").default(0).notNull(),
+  listingSnapshot: jsonb("listing_snapshot").$type<Record<string, unknown> | null>(),
+  address: text("address"),
+  city: text("city"),
+  province: text("province"),
+  postalCode: text("postal_code"),
+  propertyType: text("property_type"),
+  priceCents: bigint("price_cents", { mode: "number" }),
+  bedrooms: real("bedrooms"),
+  bathrooms: real("bathrooms"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  answerCount: integer("answer_count").default(0).notNull(),
+  expertAnswerCount: integer("expert_answer_count").default(0).notNull(),
+  firstAnswerAt: timestamp("first_answer_at"),
+  firstExpertAnswerAt: timestamp("first_expert_answer_at"),
+  answeredAt: timestamp("answered_at"),
+  resolvedAt: timestamp("resolved_at"),
+  status: text("status").default("open").notNull(),
+  source: text("source").default("web").notNull(),
+  sourcePage: text("source_page"),
+  channel: text("channel").default("web").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("property_question_signals_listing_idx").on(table.listingMlsNumber, table.createdAt),
+  index("property_question_signals_status_idx").on(table.status, table.createdAt),
+  index("property_question_signals_intent_idx").on(table.questionIntent, table.createdAt),
+  index("property_question_signals_city_idx").on(table.province, table.city, table.createdAt),
+]);
+
+export const propertyQuestionEvents = pgTable("property_question_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  questionId: varchar("question_id").references(() => listingComments.id, { onDelete: "cascade" }).notNull(),
+  answerId: varchar("answer_id").references(() => listingComments.id, { onDelete: "set null" }),
+  eventName: text("event_name").notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  expertUserId: varchar("expert_user_id").references(() => users.id, { onDelete: "set null" }),
+  expertCategory: text("expert_category"),
+  isExpertAnswer: boolean("is_expert_answer").default(false).notNull(),
+  listingMlsNumber: text("listing_mls_number").notNull(),
+  latencySeconds: integer("latency_seconds"),
+  source: text("source").default("web").notNull(),
+  channel: text("channel").default("web").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("property_question_events_question_idx").on(table.questionId, table.createdAt),
+  index("property_question_events_name_idx").on(table.eventName, table.createdAt),
+  index("property_question_events_expert_idx").on(table.expertCategory, table.createdAt),
+  index("property_question_events_listing_idx").on(table.listingMlsNumber, table.createdAt),
+]);
+
 export const propertyAnalyses = pgTable("property_analyses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   listingMlsNumber: text("listing_mls_number").notNull(),
