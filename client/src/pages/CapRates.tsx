@@ -550,6 +550,28 @@ function buildListingQuestionSnapshot(listing: ListingWithCapRate): Record<strin
   };
 }
 
+function buildDistressQuestionSnapshot(listing: DistressListing): Record<string, unknown> {
+  return {
+    address: formatAddress(listing.address as RepliersListing["address"]),
+    shortAddress: formatShortAddress(listing.address as RepliersListing["address"]),
+    city: listing.address?.city,
+    province: listing.address?.state,
+    neighbourhood: listing.address?.neighborhood,
+    price: listing.listPrice,
+    beds: listing.details?.numBedrooms,
+    baths: listing.details?.numBathrooms,
+    sqft: listing.details?.sqft,
+    propertyType: listing.details?.propertyType,
+    latitude: listing.map?.latitude,
+    longitude: listing.map?.longitude,
+    sourcePage: "/tools/cap-rates",
+    distressScore: listing.distress.distressScore,
+    distressConfidence: listing.distress.confidence,
+    distressCategories: listing.distress.categoriesTriggered,
+    matchedDistressTerms: listing.distress.matchedTerms.slice(0, 8).map((term) => term.term),
+  };
+}
+
 function parseSqft(value?: string | number | null): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (!value) return null;
@@ -812,6 +834,42 @@ function createDistressMarkerIcon(distress: DistressResult, isSelected: boolean)
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
+}
+
+type DealCategory = "power_of_sale" | "motivated" | "vtb";
+
+const DEAL_CATEGORY_CONFIG: Array<{ id: DealCategory; label: string; description: string }> = [
+  { id: "power_of_sale", label: "Power of Sale", description: "POS, foreclosure, bank-owned, court ordered" },
+  { id: "motivated", label: "Motivated Seller", description: "Motivated, as-is, reduced, seller says sell" },
+  { id: "vtb", label: "Vendor Take-Back", description: "Seller financing / VTB language" },
+];
+
+const DEAL_CATEGORY_URL_VALUES = new Set<DealCategory>(DEAL_CATEGORY_CONFIG.map((category) => category.id));
+
+function parseDealCategoriesFromParams(params: URLSearchParams): DealCategory[] {
+  const raw = params.get("deals") || params.get("dealCategories") || "";
+  const normalized = raw
+    .split(",")
+    .map((value) => value.trim().toLowerCase().replace(/-/g, "_"))
+    .map((value) => value === "pos" || value === "foreclosure" || value === "foreclosure_pos" ? "power_of_sale" : value)
+    .filter((value): value is DealCategory => DEAL_CATEGORY_URL_VALUES.has(value as DealCategory));
+  return Array.from(new Set(normalized));
+}
+
+function parseBooleanParam(value: string | null): boolean {
+  return value === "1" || value === "true" || value === "yes";
+}
+
+function categoryMatchesDistress(listing: DistressListing, category: DealCategory): boolean {
+  if (category === "power_of_sale") return Boolean(listing.distress?.categoriesTriggered?.foreclosure_pos);
+  if (category === "motivated") return Boolean(listing.distress?.categoriesTriggered?.motivated);
+  if (category === "vtb") return Boolean(listing.distress?.categoriesTriggered?.vtb);
+  return false;
+}
+
+function matchesDealCategories(listing: DistressListing, categories: DealCategory[]): boolean {
+  if (categories.length === 0) return true;
+  return categories.some((category) => categoryMatchesDistress(listing, category));
 }
 
 interface FindDealsResult {
@@ -1615,8 +1673,14 @@ export default function CapRates() {
   const [showTopDealsOnly, setShowTopDealsOnly] = useState(false);
   const [selectedDealResult, setSelectedDealResult] = useState<FindDealsResult | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const initialDealCategories = useMemo(() => (
+    typeof window === "undefined" ? [] : parseDealCategoriesFromParams(new URLSearchParams(window.location.search))
+  ), []);
+  const [dealCategories, setDealCategories] = useState<DealCategory[]>(initialDealCategories);
   const [showDistressOverlay, setShowDistressOverlay] = useState(true);
-  const [showDistressOnly, setShowDistressOnly] = useState(false);
+  const [showDistressOnly, setShowDistressOnly] = useState(() => (
+    typeof window === "undefined" ? false : parseBooleanParam(new URLSearchParams(window.location.search).get("distressOnly"))
+  ));
   // Unified country filter: Canadian listings come from CREA DDF / Repliers,
   // US listings from the us_listings table (HomeHarvest). "all" shows both.
   const [countryFilter, setCountryFilter] = useState<"all" | "ca" | "us">("all");
@@ -2135,22 +2199,26 @@ export default function CapRates() {
     sortMetric,
   ]);
 
+  const filteredDistressListings = useMemo(() => {
+    return (distressData?.listings || []).filter((listing) => matchesDealCategories(listing, dealCategories));
+  }, [dealCategories, distressData]);
+
   const distressMap = useMemo(() => {
-    const entries = (distressData?.listings || [])
+    const entries = filteredDistressListings
       .filter((listing) => Boolean(listing.mlsNumber))
       .map((listing) => [listing.mlsNumber, listing] as const);
     return Object.fromEntries(entries) as Record<string, DistressListing>;
-  }, [distressData]);
+  }, [filteredDistressListings]);
 
   const distressListingsInView = useMemo(() => {
     if (!mapBounds) return [];
-    return (distressData?.listings || []).filter((listing) => {
+    return filteredDistressListings.filter((listing) => {
       const lat = listing.map?.latitude;
       const lng = listing.map?.longitude;
       if (typeof lat !== "number" || typeof lng !== "number") return false;
       return lat >= mapBounds.south && lat <= mapBounds.north && lng >= mapBounds.west && lng <= mapBounds.east;
     });
-  }, [distressData, mapBounds]);
+  }, [filteredDistressListings, mapBounds]);
 
   const distressOnlyListingsInView = useMemo(() => {
     const normalMls = new Set(listingsWithCapRates.map((listing) => listing.mlsNumber));
@@ -2302,6 +2370,15 @@ export default function CapRates() {
     const consensus = params.get("consensusLabel");
     if (consensus === "bullish" || consensus === "neutral" || consensus === "bearish") setConsensusLabelFilter(consensus);
     setIncludeUnavailableMetrics(params.get("includeUnavailableMetrics") === "true");
+    const initialDeals = parseDealCategoriesFromParams(params);
+    if (initialDeals.length > 0) {
+      setDealCategories(initialDeals);
+      setShowDistressOverlay(true);
+    }
+    if (parseBooleanParam(params.get("distressOnly"))) {
+      setShowDistressOnly(true);
+      setShowDistressOverlay(true);
+    }
     if (!q) {
       initialQueryHandledRef.current = true;
       return;
@@ -2341,12 +2418,15 @@ export default function CapRates() {
     if (minAnalysisCount) params.set("minAnalysisCount", minAnalysisCount);
     if (consensusLabelFilter !== "any") params.set("consensusLabel", consensusLabelFilter);
     if (includeUnavailableMetrics) params.set("includeUnavailableMetrics", "true");
+    if (dealCategories.length > 0) params.set("deals", dealCategories.join(","));
+    if (showDistressOnly) params.set("distressOnly", "1");
     if (selectedListing?.mlsNumber) params.set("selectedMls", selectedListing.mlsNumber);
     if (analyzerSheetMeta) params.set("analyze", "1");
     window.history.replaceState(null, "", `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`);
   }, [
     analyzerSheetMeta,
     consensusLabelFilter,
+    dealCategories,
     findDealsQuery,
     includeUnavailableMetrics,
     maxCapRate,
@@ -2360,6 +2440,7 @@ export default function CapRates() {
     minIrr,
     minMonthlyCashFlow,
     selectedListing?.mlsNumber,
+    showDistressOnly,
     sortDirection,
     sortMetric,
   ]);
@@ -2371,6 +2452,17 @@ export default function CapRates() {
     setFindDealsQuery("");
     setSelectedDealResult(null);
     setShowTopDealsOnly(false);
+  };
+
+  const toggleDealCategory = (category: DealCategory) => {
+    setDealCategories((current) => {
+      const hasCategory = current.includes(category);
+      const next = hasCategory
+        ? current.filter((item) => item !== category)
+        : [...current, category];
+      if (next.length > 0) setShowDistressOverlay(true);
+      return next;
+    });
   };
 
   // Removing an "Understood:" chip drops that parsed constraint from the echo
@@ -2439,6 +2531,7 @@ export default function CapRates() {
       Boolean(minAnalysisCount),
       consensusLabelFilter !== "any",
       includeUnavailableMetrics,
+      dealCategories.length > 0,
       !showDistressOverlay,
       showDistressOnly,
       countryFilter !== "all",
@@ -2449,6 +2542,7 @@ export default function CapRates() {
   }, [
     consensusLabelFilter,
     countryFilter,
+    dealCategories.length,
     includeUnavailableMetrics,
     maxCapRate,
     maxGrossYield,
@@ -3393,7 +3487,7 @@ export default function CapRates() {
                   <PropertyQuestionWidget
                     listingMlsNumber={selectedListing.mlsNumber}
                     listingSnapshot={questionSnapshot}
-                    buttonLabel="Ask a public question"
+                    buttonLabel="Ask the experts"
                   />
                 )}
                 {selectedListing.mlsNumber && (
@@ -3960,7 +4054,7 @@ export default function CapRates() {
             <PropertyQuestionWidget
               listingMlsNumber={selectedListing.mlsNumber}
               listingSnapshot={questionSnapshot}
-              buttonLabel="Ask a public question"
+              buttonLabel="Ask the experts"
               compact
             />
           </div>
@@ -3972,6 +4066,7 @@ export default function CapRates() {
   const renderDistressDetailPanel = () => {
     if (!selectedDistressListing) return null;
     const imgUrl = getImageUrl(selectedDistressListing.images);
+    const questionSnapshot = buildDistressQuestionSnapshot(selectedDistressListing);
     return (
       <div data-testid="panel-distress-detail">
         <Card>
@@ -4018,17 +4113,26 @@ export default function CapRates() {
               </p>
             </div>
 
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button className="w-full" onClick={() => handleAnalyzeDistressListing(selectedDistressListing)}>
+                <Calculator className="h-4 w-4 mr-2" />
+                Analyze this distress deal
+              </Button>
+              {selectedDistressListing.mlsNumber && (
+                <PropertyQuestionWidget
+                  listingMlsNumber={selectedDistressListing.mlsNumber}
+                  listingSnapshot={questionSnapshot}
+                  buttonLabel="Ask the experts"
+                />
+              )}
+            </div>
+
             <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
               <p className="font-medium mb-1">Listing remarks</p>
               <p className="text-muted-foreground whitespace-pre-wrap">
                 {selectedDistressListing.rawRemarks || selectedDistressListing.details?.description || "No remarks available."}
               </p>
             </div>
-
-            <Button className="w-full" onClick={() => handleAnalyzeDistressListing(selectedDistressListing)}>
-              <Calculator className="h-4 w-4 mr-2" />
-              Analyze this distress deal
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -4352,6 +4456,61 @@ export default function CapRates() {
             </Button>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-2" data-testid="deal-quick-filters">
+            <div className="mr-1 min-w-[92px]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Quick search</p>
+              <p className="text-[10px] text-muted-foreground">One map, deal flags on top.</p>
+            </div>
+            {DEAL_CATEGORY_CONFIG.map((category) => {
+              const active = dealCategories.includes(category.id);
+              const Icon = category.id === "power_of_sale" ? Gavel : category.id === "vtb" ? DollarSign : TrendingDown;
+              return (
+                <Button
+                  key={category.id}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  className="h-8 gap-1.5 text-xs"
+                  title={category.description}
+                  onClick={() => toggleDealCategory(category.id)}
+                  data-testid={`button-deal-filter-${category.id}`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {category.label}
+                </Button>
+              );
+            })}
+            <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 py-1.5">
+              <Switch
+                checked={showDistressOnly}
+                onCheckedChange={(checked) => {
+                  setShowDistressOnly(checked);
+                  if (checked) setShowDistressOverlay(true);
+                }}
+                data-testid="switch-motivated-only"
+              />
+              <div>
+                <p className="text-[11px] font-medium">Motivated only</p>
+                <p className="text-[10px] text-muted-foreground">Hide unflagged yield listings.</p>
+              </div>
+            </div>
+            {(dealCategories.length > 0 || showDistressOnly) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 text-xs"
+                onClick={() => {
+                  setDealCategories([]);
+                  setShowDistressOnly(false);
+                }}
+                data-testid="button-clear-deal-filters"
+              >
+                Clear deal filters
+              </Button>
+            )}
+          </div>
+
           {findDealsActive && (
             <div className="flex items-center gap-2 flex-wrap" data-testid="parsed-filters-echo">
               <Badge variant="secondary" className="text-[10px] gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" data-testid="badge-ai-filters">
@@ -4660,6 +4819,7 @@ export default function CapRates() {
                 setMinAnalysisCount("");
                 setConsensusLabelFilter("any");
                 setIncludeUnavailableMetrics(false);
+                setDealCategories([]);
                 setShowDistressOverlay(true);
                 setShowDistressOnly(false);
                 setCountryFilter("all");

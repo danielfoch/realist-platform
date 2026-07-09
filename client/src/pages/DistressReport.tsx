@@ -386,7 +386,7 @@ export default function DistressReport() {
                 </SelectContent>
               </Select>
             )}
-            <Link href="/tools/motivated-deals">
+            <Link href="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1">
               <Button variant="outline" data-testid="browse-deals-btn">
                 Browse Deals <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -410,7 +410,7 @@ export default function DistressReport() {
               <p className="text-muted-foreground mb-6">
                 There was an error fetching the motivated-deals report data. Please try again later.
               </p>
-              <Link href="/tools/motivated-deals">
+              <Link href="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1">
                 <Button variant="outline" data-testid="browse-deals-error">Browse Live Motivated Deals</Button>
               </Link>
             </CardContent>
@@ -425,7 +425,7 @@ export default function DistressReport() {
               <p className="text-muted-foreground mb-6">
                 Motivated-deals report snapshots haven't been generated yet. Reports are auto-generated on the 2nd of each month.
               </p>
-              <Link href="/tools/motivated-deals">
+              <Link href="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1">
                 <Button data-testid="browse-deals-empty">Browse Live Motivated Deals</Button>
               </Link>
             </CardContent>
@@ -796,7 +796,7 @@ export default function DistressReport() {
                   <p className="text-muted-foreground mb-4">
                     Search and filter motivated-seller listings in real time across all Canadian provinces. Updated continuously from CREA DDF.
                   </p>
-                  <Link href="/tools/motivated-deals">
+                  <Link href="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1">
                     <Button data-testid="browse-live-btn">
                       Open Motivated Deals Browser <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>

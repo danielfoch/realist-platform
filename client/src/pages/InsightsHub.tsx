@@ -147,7 +147,7 @@ const contextBridges: Record<string, { text: string; cta: string; href: string }
   "/insights/motivated-report": {
     text: "Search live motivated-seller opportunities in your market",
     cta: "Find Deals",
-    href: "/tools/motivated-deals",
+    href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1",
   },
 };
 

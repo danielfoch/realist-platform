@@ -30,8 +30,8 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
     description: "Analyze any Canadian rental property in seconds. Calculate cap rate, cash-on-cash, IRR, BRRR returns, multiplex viability and more. Free, no signup.",
   },
   "/tools/cap-rates": {
-    title: "Cap Rate Map of Canada - Browse Listings by Cap Rate & Rental Yield",
-    description: "Live cap rates and rental yields by Canadian city and neighbourhood. Toronto, Vancouver, Calgary, Edmonton, Halifax, Montreal and more.",
+    title: "Canadian Listing Map - Cap Rates, Yield & Motivated Deals",
+    description: "One Canadian listing map for cap rates, rental yields, power of sale, motivated sellers, vendor take-back deals, and investor underwriting signals.",
   },
   "/tools/buybox": {
     title: "Build Your Real Estate Buy Box - Realist.ca",
@@ -67,7 +67,7 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   },
   "/tools/motivated-deals": {
     title: "Canadian Motivated Deals - Motivated Sellers, Power of Sale & VTB Tracker",
-    description: "Live tracker of motivated Canadian listings: motivated sellers, power of sale, foreclosure, court order sale, and VTB opportunities. Updated daily.",
+    description: "Motivated-deal quick filters inside the unified Realist listing map: power of sale, foreclosure, court order sale, motivated seller, and VTB opportunities.",
   },
   "/tools/hst-rebate": {
     title: "Ontario New Home HST Rebate Calculator | Realist",

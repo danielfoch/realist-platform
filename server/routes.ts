@@ -8243,7 +8243,6 @@ export async function registerRoutes(
         { path: "/tools/will-it-plex", priority: 0.7, changefreq: "monthly" },
         { path: "/tools/fixed-vs-variable", priority: 0.7, changefreq: "weekly" },
         { path: "/tools/land-claim-screener", priority: 0.7, changefreq: "monthly" },
-        { path: "/tools/motivated-deals", priority: 0.8, changefreq: "daily" },
         { path: "/course", priority: 0.9, changefreq: "weekly" },
         { path: "/community", priority: 0.8, changefreq: "weekly" },
         { path: "/community/leaderboard", priority: 0.8, changefreq: "daily" },

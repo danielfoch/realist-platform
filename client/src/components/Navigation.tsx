@@ -49,8 +49,8 @@ const navCategories: NavCategory[] = [
     label: "Find Deals",
     href: "/tools",
     items: [
-      { href: "/tools/cap-rates", label: "Yield Map", description: "Browse listings by cap rate and rental yield", icon: <Map className="h-4 w-4" /> },
-      { href: "/tools/motivated-deals", label: "Motivated Deals", description: "Motivated sellers, power of sale, VTB finder", icon: <Gavel className="h-4 w-4" /> },
+      { href: "/tools/cap-rates", label: "Yield Map", description: "Browse listings by cap rate, rental yield, and deal signals", icon: <Map className="h-4 w-4" /> },
+      { href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Motivated Deals", description: "Same map filtered to power of sale, motivated sellers, and VTB", icon: <Gavel className="h-4 w-4" /> },
       { href: "/tools/buybox", label: "BuyBox Builder", description: "Define and share your investment criteria", icon: <MapPin className="h-4 w-4" /> },
       { href: "/tools/coinvest", label: "Co-Invest", description: "Find investment partners", icon: <Handshake className="h-4 w-4" /> },
       { href: "/tools/land-claim-screener", label: "Land Claim Screener", description: "Treaty area screening for any property", icon: <Shield className="h-4 w-4" /> },

@@ -1248,12 +1248,12 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                    <Link href="/tools/motivated-deals">
+                    <Link href="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1">
                       <Button
                         variant="outline"
                         size="sm"
                         className="gap-2"
-                        onClick={() => track({ event: "cta_clicked", cta: "find_deals_from_nl_prompt", location: "analyzer_entry", destination: "/tools/motivated-deals" })}
+                        onClick={() => track({ event: "cta_clicked", cta: "find_deals_from_nl_prompt", location: "analyzer_entry", destination: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" })}
                       >
                         Find Deals
                         <ArrowRight className="h-4 w-4" />
@@ -1299,11 +1299,11 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-                <Link href="/tools/motivated-deals">
+                <Link href="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1">
                   <Button
                     variant="ghost"
                     className="gap-2"
-                    onClick={() => track({ event: "cta_clicked", cta: "switch_to_motivated_from_analyzer", location: "analyzer_header", destination: "/tools/motivated-deals" })}
+                    onClick={() => track({ event: "cta_clicked", cta: "switch_to_motivated_from_analyzer", location: "analyzer_header", destination: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" })}
                   >
                     Browse motivated deals
                   </Button>
@@ -1448,11 +1448,11 @@ export default function Home({ embedded, seedQuery }: HomeProps = {}) {
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Link href="/tools/motivated-deals">
+                        <Link href="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1">
                           <Button
                             variant="ghost"
                             className="w-full justify-between"
-                            onClick={() => track({ event: "cta_clicked", cta: "open_motivated_from_sidebar", location: "analyzer_sidebar", destination: "/tools/motivated-deals" })}
+                            onClick={() => track({ event: "cta_clicked", cta: "open_motivated_from_sidebar", location: "analyzer_sidebar", destination: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" })}
                           >
                             Browse motivated deals
                             <ArrowRight className="h-4 w-4" />

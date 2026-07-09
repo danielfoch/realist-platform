@@ -368,7 +368,7 @@ function generateReportHtml(params: {
   sections.push(`
     <h2>Past Reports & Related Resources</h2>
     <p>This report is part of the Realist.ca Monthly Market Report series covering 30 Canadian cities. Browse the full archive of past reports in the <a href="/insights/blog">Blog &amp; Research</a> section, or explore the interactive <a href="/insights/market-report">Market Report Dashboard</a> for city-by-city comparisons.</p>
-    <p>Related tools: <a href="/tools/analyzer">Deal Analyzer</a> · <a href="/tools/motivated-deals">Motivated Deals Browser</a> · <a href="/insights/motivated-report">Monthly Motivated Deals Report</a> · <a href="/tools/cap-rates">Cap Rates Explorer</a></p>
+    <p>Related tools: <a href="/tools/analyzer">Deal Analyzer</a> · <a href="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1">Motivated Deals Browser</a> · <a href="/insights/motivated-report">Monthly Motivated Deals Report</a> · <a href="/tools/cap-rates">Cap Rates Explorer</a></p>
   `);
 
   return sections.join("\n");

@@ -98,7 +98,7 @@ const sourcingPaths = [
     icon: Building2,
     title: "Browse motivated deals",
     description: "Look for power of sale, motivated sellers, and off-consensus entry points worth underwriting.",
-    href: "/tools/motivated-deals",
+    href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1",
     cta: "Search motivated",
   },
   {

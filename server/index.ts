@@ -582,6 +582,7 @@ async function ensureAppTables() {
   app.get(
     [
       "/tools/distress-deals",
+      "/tools/motivated-deals",
       "/insights/distress-report",
       "/deal-analyzer",
       "/podcast",
@@ -589,7 +590,8 @@ async function ensureAppTables() {
     ],
     (req, res, next) => {
     const map: Record<string, string> = {
-      "/tools/distress-deals": "/tools/motivated-deals",
+      "/tools/distress-deals": "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1",
+      "/tools/motivated-deals": "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1",
       "/insights/distress-report": "/insights/motivated-report",
       // Duplicate-URL consolidation: both legacy URLs rendered the same page
       // with self-canonicals, splitting equity with /tools/analyzer and

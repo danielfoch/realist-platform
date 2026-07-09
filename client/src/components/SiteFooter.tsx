@@ -10,7 +10,7 @@ const COLUMNS: FooterColumn[] = [
     title: "Find deals",
     links: [
       { label: "Yield Map", href: "/tools/cap-rates" },
-      { label: "Motivated Deals", href: "/tools/motivated-deals" },
+      { label: "Motivated Deals", href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" },
       { label: "Watchlist & Alerts", href: "/watchlist" },
       { label: "BuyBox", href: "/tools/buybox" },
       { label: "Co-Investing", href: "/tools/coinvest" },

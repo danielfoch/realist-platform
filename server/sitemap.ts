@@ -72,7 +72,6 @@ export async function buildPagesSitemap() {
     { loc: `${BASE}/tools/will-it-plex`, lastmod: now, changefreq: "monthly", priority: 0.7 },
     { loc: `${BASE}/tools/fixed-vs-variable`, lastmod: now, changefreq: "weekly", priority: 0.7 },
     { loc: `${BASE}/tools/land-claim-screener`, lastmod: now, changefreq: "monthly", priority: 0.7 },
-    { loc: `${BASE}/tools/motivated-deals`, lastmod: now, changefreq: "daily", priority: 0.8 },
     { loc: `${BASE}/course`, lastmod: now, changefreq: "weekly", priority: 0.9 },
     { loc: `${BASE}/community`, lastmod: now, changefreq: "weekly", priority: 0.8 },
     { loc: `${BASE}/community/leaderboard`, lastmod: now, changefreq: "daily", priority: 0.8 },
