@@ -19,8 +19,11 @@ import {
   industryPartners,
   listingComments,
   notificationPreferences,
+  propertyQuestionEvents,
+  propertyQuestionSignals,
   users,
 } from "@shared/schema";
+import { logUserActivity } from "./userActivity";
 import { anonymizeDisplayName, sanitizeUserText, truncateText } from "@shared/community";
 import {
   categoryFromPartnerType,
@@ -64,6 +67,8 @@ type QuestionRow = typeof listingComments.$inferSelect & {
   answerCount?: number | string | null;
 };
 
+type ListingSnapshot = Record<string, unknown> | null | undefined;
+
 function getSessionUserId(req: Request): string | null {
   return (req as any).session?.userId ?? null;
 }
@@ -79,6 +84,73 @@ function normalizeCategories(input: string[]): ExpertCategory[] {
     categories.push(raw);
   }
   return categories.slice(0, 6);
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function asNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/[$,\s]/g, ""));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function priceToCents(value: unknown): number | null {
+  const dollars = asNumber(value);
+  return dollars === null ? null : Math.round(dollars * 100);
+}
+
+function getSnapshotValue(snapshot: ListingSnapshot, keys: string[]): unknown {
+  if (!snapshot) return null;
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(snapshot, key)) return snapshot[key];
+  }
+  return null;
+}
+
+function normalizeQuestionText(body: string): string {
+  return body.toLowerCase().replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
+function inferQuestionIntent(body: string, categories: ExpertCategory[]): string {
+  const text = body.toLowerCase();
+  if (categories.includes("urban_planning") || /\b(zoning|by-?law|planning|variance|severance|permit|density|setback)\b/.test(text)) return "zoning_planning";
+  if (categories.includes("architecture") || /\b(layout|design|addition|floor plan|convert|suite|garden suite|laneway)\b/.test(text)) return "design_feasibility";
+  if (categories.includes("mortgage") || /\b(mortgage|financing|rate|loan|dscr|mli|cmhc|debt)\b/.test(text)) return "financing";
+  if (categories.includes("legal") || /\b(legal|title|easement|contract|clause|liability|tenant right)\b/.test(text)) return "legal";
+  if (categories.includes("accounting_tax") || /\b(tax|hst|capital gain|deduct|expense|corporation|incorporate)\b/.test(text)) return "tax";
+  if (categories.includes("construction") || /\b(build|renovation|repair|cost|contractor|foundation|structural)\b/.test(text)) return "construction";
+  if (categories.includes("inspection") || /\b(inspect|condition|roof|foundation|mould|electrical|plumbing)\b/.test(text)) return "condition";
+  if (categories.includes("property_management") || /\b(rent|tenant|vacancy|turnover|management)\b/.test(text)) return "operations";
+  if (categories.includes("realtor") || /\b(offer|comps|price|sold|neighbourhood|market|showing)\b/.test(text)) return "market_execution";
+  return "general";
+}
+
+function structuredListingSnapshot(snapshot: ListingSnapshot) {
+  return {
+    address: asString(getSnapshotValue(snapshot, ["address", "streetAddress", "unparsedAddress"])),
+    city: asString(getSnapshotValue(snapshot, ["city", "City"])),
+    province: asString(getSnapshotValue(snapshot, ["province", "stateOrProvince", "StateOrProvince"])),
+    postalCode: asString(getSnapshotValue(snapshot, ["postalCode", "PostalCode"])),
+    propertyType: asString(getSnapshotValue(snapshot, ["propertyType", "PropertyType", "type"])),
+    priceCents: priceToCents(getSnapshotValue(snapshot, ["price", "listPrice", "ListPrice", "purchasePrice"])),
+    bedrooms: asNumber(getSnapshotValue(snapshot, ["beds", "bedrooms", "BedroomsTotal"])),
+    bathrooms: asNumber(getSnapshotValue(snapshot, ["baths", "bathrooms", "BathroomsTotalInteger"])),
+    latitude: asNumber(getSnapshotValue(snapshot, ["latitude", "Latitude", "lat"])),
+    longitude: asNumber(getSnapshotValue(snapshot, ["longitude", "Longitude", "lng", "lon"])),
+    listingKey: asString(getSnapshotValue(snapshot, ["listingKey", "ListingKey", "listingId", "id"])),
+  };
+}
+
+function eventLatencySeconds(createdAt: Date | string | null | undefined): number | null {
+  if (!createdAt) return null;
+  const created = new Date(createdAt).getTime();
+  if (!Number.isFinite(created)) return null;
+  return Math.max(0, Math.round((Date.now() - created) / 1000));
 }
 
 function displayName(row: { userFirstName?: string | null; userLastName?: string | null }): string {
@@ -136,6 +208,167 @@ async function ensurePropertyQuestionColumns(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_listing_comments_listing_thread
       ON listing_comments(listing_mls_number, thread_type, created_at)
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS property_question_signals (
+      question_id varchar PRIMARY KEY REFERENCES listing_comments(id) ON DELETE CASCADE,
+      listing_mls_number text NOT NULL,
+      listing_key text,
+      user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+      referenced_analysis_id varchar,
+      question_text text NOT NULL,
+      normalized_question text,
+      question_intent text NOT NULL DEFAULT 'general',
+      question_length integer NOT NULL DEFAULT 0,
+      requested_expert_categories jsonb NOT NULL DEFAULT '[]'::jsonb,
+      requested_expert_category_count integer NOT NULL DEFAULT 0,
+      listing_snapshot jsonb,
+      address text,
+      city text,
+      province text,
+      postal_code text,
+      property_type text,
+      price_cents bigint,
+      bedrooms real,
+      bathrooms real,
+      latitude real,
+      longitude real,
+      answer_count integer NOT NULL DEFAULT 0,
+      expert_answer_count integer NOT NULL DEFAULT 0,
+      first_answer_at timestamp,
+      first_expert_answer_at timestamp,
+      answered_at timestamp,
+      resolved_at timestamp,
+      status text NOT NULL DEFAULT 'open',
+      source text NOT NULL DEFAULT 'web',
+      source_page text,
+      channel text NOT NULL DEFAULT 'web',
+      metadata jsonb,
+      created_at timestamp NOT NULL DEFAULT now(),
+      updated_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS property_question_events (
+      id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      question_id varchar NOT NULL REFERENCES listing_comments(id) ON DELETE CASCADE,
+      answer_id varchar REFERENCES listing_comments(id) ON DELETE SET NULL,
+      event_name text NOT NULL,
+      user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+      expert_user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+      expert_category text,
+      is_expert_answer boolean NOT NULL DEFAULT false,
+      listing_mls_number text NOT NULL,
+      latency_seconds integer,
+      source text NOT NULL DEFAULT 'web',
+      channel text NOT NULL DEFAULT 'web',
+      metadata jsonb,
+      created_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS property_question_signals_listing_idx ON property_question_signals(listing_mls_number, created_at)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS property_question_signals_status_idx ON property_question_signals(status, created_at)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS property_question_signals_intent_idx ON property_question_signals(question_intent, created_at)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS property_question_signals_city_idx ON property_question_signals(province, city, created_at)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS property_question_events_question_idx ON property_question_events(question_id, created_at)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS property_question_events_name_idx ON property_question_events(event_name, created_at)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS property_question_events_expert_idx ON property_question_events(expert_category, created_at)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS property_question_events_listing_idx ON property_question_events(listing_mls_number, created_at)`);
+}
+
+async function upsertQuestionSignal(params: {
+  question: typeof listingComments.$inferSelect;
+  body: string;
+  categories: ExpertCategory[];
+  userId: string;
+  listingSnapshot: ListingSnapshot;
+  sourcePage?: string | null;
+}) {
+  const listing = structuredListingSnapshot(params.listingSnapshot);
+  await db.insert(propertyQuestionSignals).values({
+    questionId: params.question.id,
+    listingMlsNumber: params.question.listingMlsNumber,
+    listingKey: listing.listingKey,
+    userId: params.userId,
+    referencedAnalysisId: params.question.referencedAnalysisId,
+    questionText: params.body,
+    normalizedQuestion: normalizeQuestionText(params.body),
+    questionIntent: inferQuestionIntent(params.body, params.categories),
+    questionLength: params.body.length,
+    requestedExpertCategories: params.categories,
+    requestedExpertCategoryCount: params.categories.length,
+    listingSnapshot: (params.listingSnapshot as Record<string, unknown> | null) ?? null,
+    address: listing.address,
+    city: listing.city,
+    province: listing.province,
+    postalCode: listing.postalCode,
+    propertyType: listing.propertyType,
+    priceCents: listing.priceCents,
+    bedrooms: listing.bedrooms,
+    bathrooms: listing.bathrooms,
+    latitude: listing.latitude,
+    longitude: listing.longitude,
+    status: params.question.questionStatus || "open",
+    source: "web",
+    sourcePage: params.sourcePage || null,
+    channel: "web",
+    metadata: {
+      source: "property_question",
+      categoryLabels: params.categories.map((category) => EXPERT_CATEGORY_LABELS[category]),
+    },
+  }).onConflictDoUpdate({
+    target: propertyQuestionSignals.questionId,
+    set: {
+      questionText: params.body,
+      normalizedQuestion: normalizeQuestionText(params.body),
+      questionIntent: inferQuestionIntent(params.body, params.categories),
+      questionLength: params.body.length,
+      requestedExpertCategories: params.categories,
+      requestedExpertCategoryCount: params.categories.length,
+      listingSnapshot: (params.listingSnapshot as Record<string, unknown> | null) ?? null,
+      address: listing.address,
+      city: listing.city,
+      province: listing.province,
+      postalCode: listing.postalCode,
+      propertyType: listing.propertyType,
+      priceCents: listing.priceCents,
+      bedrooms: listing.bedrooms,
+      bathrooms: listing.bathrooms,
+      latitude: listing.latitude,
+      longitude: listing.longitude,
+      status: params.question.questionStatus || "open",
+      updatedAt: new Date(),
+    },
+  });
+}
+
+async function appendQuestionEvent(params: {
+  questionId: string;
+  answerId?: string | null;
+  eventName: string;
+  userId?: string | null;
+  expertUserId?: string | null;
+  expertCategory?: ExpertCategory | string | null;
+  isExpertAnswer?: boolean;
+  listingMlsNumber: string;
+  latencySeconds?: number | null;
+  source?: string;
+  channel?: string;
+  metadata?: Record<string, unknown> | null;
+}) {
+  await db.insert(propertyQuestionEvents).values({
+    questionId: params.questionId,
+    answerId: params.answerId || null,
+    eventName: params.eventName,
+    userId: params.userId || null,
+    expertUserId: params.expertUserId || null,
+    expertCategory: params.expertCategory || null,
+    isExpertAnswer: Boolean(params.isExpertAnswer),
+    listingMlsNumber: params.listingMlsNumber,
+    latencySeconds: params.latencySeconds ?? null,
+    source: params.source || "web",
+    channel: params.channel || "web",
+    metadata: params.metadata || null,
+  });
 }
 
 async function getApprovedExpertCategory(userId: string, requested?: string | null): Promise<{ category: ExpertCategory; isExpert: boolean }> {
@@ -172,6 +405,7 @@ async function notifyLiveExperts(question: typeof listingComments.$inferSelect):
 
   const expertRows = await db
     .select({
+      userId: users.id,
       email: users.email,
       firstName: users.firstName,
       partnerType: industryPartners.partnerType,
@@ -212,6 +446,19 @@ async function notifyLiveExperts(question: typeof listingComments.$inferSelect):
       `,
     });
   }));
+  await Promise.allSettled(recipients.map((recipient) => appendQuestionEvent({
+    questionId: question.id,
+    eventName: "live_expert_alert_sent",
+    expertUserId: recipient.userId,
+    expertCategory: categoryFromPartnerType(recipient.partnerType),
+    listingMlsNumber: question.listingMlsNumber,
+    source: "email",
+    channel: "email",
+    metadata: {
+      trigger: "expert_question_live_alert",
+      requestedExpertCategories: categories,
+    },
+  })));
 }
 
 export function registerPropertyQuestionRoutes(app: Express) {
@@ -346,6 +593,39 @@ export function registerPropertyQuestionRoutes(app: Express) {
         userDisplaySnapshot: anonymizeDisplayName(user?.firstName, user?.lastName, "Realist member"),
         metadataJson: { source: "property_question" },
       }).returning();
+      await upsertQuestionSignal({
+        question,
+        body,
+        categories,
+        userId,
+        listingSnapshot: parsed.listingSnapshot ?? null,
+        sourcePage: "/listings",
+      });
+      await appendQuestionEvent({
+        questionId: question.id,
+        eventName: "question_created",
+        userId,
+        listingMlsNumber: question.listingMlsNumber,
+        metadata: {
+          requestedExpertCategories: categories,
+          questionIntent: inferQuestionIntent(body, categories),
+          listingSnapshotAvailable: Boolean(parsed.listingSnapshot),
+        },
+      });
+      await logUserActivity(req, {
+        userId,
+        eventName: "property_question_created",
+        listingKey: structuredListingSnapshot(parsed.listingSnapshot).listingKey || parsed.listingMlsNumber,
+        sourcePage: "/listings",
+        component: "property_question_widget",
+        metadata: {
+          questionId: question.id,
+          listingMlsNumber: parsed.listingMlsNumber,
+          requestedExpertCategories: categories,
+          questionIntent: inferQuestionIntent(body, categories),
+          ...structuredListingSnapshot(parsed.listingSnapshot),
+        },
+      });
       await db.insert(contributionEvents).values({
         userId,
         type: "listing_question_created",
@@ -391,13 +671,55 @@ export function registerPropertyQuestionRoutes(app: Express) {
         },
       }).returning();
 
+      const now = new Date();
       await db.update(listingComments)
         .set({
           replyCount: sql`${listingComments.replyCount} + 1`,
           questionStatus: question.questionStatus === "resolved" ? "resolved" : "answered",
-          updatedAt: new Date(),
+          updatedAt: now,
         })
         .where(eq(listingComments.id, question.id));
+      await db.update(propertyQuestionSignals)
+        .set({
+          answerCount: sql`${propertyQuestionSignals.answerCount} + 1`,
+          expertAnswerCount: expert.isExpert ? sql`${propertyQuestionSignals.expertAnswerCount} + 1` : propertyQuestionSignals.expertAnswerCount,
+          firstAnswerAt: sql`COALESCE(${propertyQuestionSignals.firstAnswerAt}, ${now})`,
+          firstExpertAnswerAt: expert.isExpert ? sql`COALESCE(${propertyQuestionSignals.firstExpertAnswerAt}, ${now})` : propertyQuestionSignals.firstExpertAnswerAt,
+          answeredAt: now,
+          status: question.questionStatus === "resolved" ? "resolved" : "answered",
+          updatedAt: now,
+        })
+        .where(eq(propertyQuestionSignals.questionId, question.id));
+      await appendQuestionEvent({
+        questionId: question.id,
+        answerId: answer.id,
+        eventName: expert.isExpert ? "expert_answer_created" : "community_answer_created",
+        userId,
+        expertUserId: expert.isExpert ? userId : null,
+        expertCategory: expert.category,
+        isExpertAnswer: expert.isExpert,
+        listingMlsNumber: question.listingMlsNumber,
+        latencySeconds: eventLatencySeconds(question.createdAt),
+        metadata: {
+          answerLength: answer.body.length,
+          priorStatus: question.questionStatus,
+        },
+      });
+      await logUserActivity(req, {
+        userId,
+        eventName: expert.isExpert ? "property_question_expert_answered" : "property_question_answered",
+        listingKey: question.listingMlsNumber,
+        sourcePage: "/community/questions",
+        component: "property_question_answer",
+        metadata: {
+          questionId: question.id,
+          answerId: answer.id,
+          listingMlsNumber: question.listingMlsNumber,
+          expertCategory: expert.category,
+          isExpertAnswer: expert.isExpert,
+          latencySeconds: eventLatencySeconds(question.createdAt),
+        },
+      });
       await db.insert(contributionEvents).values({
         userId,
         type: expert.isExpert ? "expert_question_answered" : "listing_question_answered",
@@ -436,6 +758,37 @@ export function registerPropertyQuestionRoutes(app: Express) {
         .set({ questionStatus: parsed.questionStatus, updatedAt: new Date() })
         .where(eq(listingComments.id, question.id))
         .returning();
+      await db.update(propertyQuestionSignals)
+        .set({
+          status: parsed.questionStatus,
+          resolvedAt: parsed.questionStatus === "resolved" ? new Date() : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(propertyQuestionSignals.questionId, question.id));
+      await appendQuestionEvent({
+        questionId: question.id,
+        eventName: "question_status_changed",
+        userId,
+        listingMlsNumber: question.listingMlsNumber,
+        latencySeconds: eventLatencySeconds(question.createdAt),
+        metadata: {
+          fromStatus: question.questionStatus,
+          toStatus: parsed.questionStatus,
+        },
+      });
+      await logUserActivity(req, {
+        userId,
+        eventName: "property_question_status_changed",
+        listingKey: question.listingMlsNumber,
+        sourcePage: "/community/questions",
+        component: "property_question_status",
+        metadata: {
+          questionId: question.id,
+          listingMlsNumber: question.listingMlsNumber,
+          fromStatus: question.questionStatus,
+          toStatus: parsed.questionStatus,
+        },
+      });
       res.json({ question: shapeQuestion(updated) });
     } catch (error) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0]?.message || "Invalid status" });
