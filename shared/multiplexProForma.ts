@@ -12,6 +12,7 @@
 import type { BuildConfiguration } from "./multiplexConfigs";
 import type { UnitType } from "./multiplexTypes";
 import { computeTorontoDevelopmentCharges, dcUnitsFromMix } from "./developmentCharges";
+import { computeOperatingCosts, type OperatingCostLine } from "./operatingCosts";
 
 // ─── Defaults (sources cited; admin-overridable) ─────────────────────────────
 
@@ -30,8 +31,6 @@ export const DEV_ASSUMPTION_DEFAULTS = {
   /** Share of total cost financed during construction. */
   loanToCost: 0.75,
   vacancyPct: 0.03,
-  /** Operating expenses as % of EGI (small purpose-built rental). */
-  opexPctOfEgi: 0.28,
   exitCapRate: 0.0475,
   condoSellingCostPct: 0.05,
   /** Target margins for residual land value. */
@@ -58,7 +57,6 @@ export interface DevAssumptions {
   constructionMonths: number;
   loanToCost: number;
   vacancyPct: number;
-  opexPctOfEgi: number;
   exitCapRate: number;
   condoSellingCostPct: number;
   targetCondoMarginOnCost: number;
@@ -181,6 +179,10 @@ export interface RentalHold {
   grossPotentialRent: number;
   effectiveGrossIncome: number;
   operatingExpenses: number;
+  /** Itemised operating budget (property tax, insurance, maintenance, …). */
+  operatingCostLines: OperatingCostLine[];
+  /** Realised opex as a fraction of EGI (was the flat assumption; now derived). */
+  opexPctOfEgi: number;
   noi: number;
   stabilizedValue: number;
   yieldOnCost: number;
@@ -195,12 +197,23 @@ export function computeRentalHold(config: BuildConfiguration, costs: CostStack, 
   }));
   const gpr = rentRoll.reduce((s, r) => s + r.count * r.rentEach, 0) * 12;
   const egi = gpr * (1 - a.vacancyPct);
-  const opex = egi * a.opexPctOfEgi;
+  // Itemised opex replaces the flat % — property tax (off the MPAC 2016-base
+  // proxy of dev cost), insurance, maintenance, reserve, management, utilities.
+  const opexResult = computeOperatingCosts({
+    units: config.units,
+    grossPotentialRent: gpr,
+    effectiveGrossIncome: egi,
+    currentValue: costs.totalDevCost,
+    isNewBuild: true,
+  });
+  const opex = opexResult.total;
   const noi = egi - opex;
   return {
     grossPotentialRent: Math.round(gpr),
     effectiveGrossIncome: Math.round(egi),
     operatingExpenses: Math.round(opex),
+    operatingCostLines: opexResult.lines,
+    opexPctOfEgi: opexResult.totalPctOfEgi,
     noi: Math.round(noi),
     stabilizedValue: a.exitCapRate > 0 ? Math.round(noi / a.exitCapRate) : 0,
     yieldOnCost: costs.totalDevCost > 0 ? round4(noi / costs.totalDevCost) : 0,
@@ -240,15 +253,23 @@ export function computeResidualLandValue(
     condoLand = Math.max(0, netSellout / (1 + a.targetCondoMarginOnCost) - nonLand(condoLand));
   }
 
-  // Rental: NOI / targetYoC = totalDevCost  =>  land = NOI/target − nonLand(land)
-  const rentRollNoi = (() => {
-    const gpr = config.unitMix.reduce((s, e) => s + e.count * (a.monthlyRents[e.type] ?? 0), 0) * 12;
-    const egi = gpr * (1 - a.vacancyPct);
-    return egi * (1 - a.opexPctOfEgi);
-  })();
+  // Rental: NOI(land) / targetYoC = totalDevCost(land)  =>  land = NOI/target − nonLand(land).
+  // NOI now depends on land via the property-tax line (assessed off dev cost),
+  // so it is recomputed each pass alongside nonLand — the same iteration that
+  // already resolves the LTT circularity.
+  const gpr = config.unitMix.reduce((s, e) => s + e.count * (a.monthlyRents[e.type] ?? 0), 0) * 12;
+  const egi = gpr * (1 - a.vacancyPct);
+  const noiAtLand = (land: number) => {
+    const stack = computeCostStack(config, land, a);
+    const opex = computeOperatingCosts({
+      units: config.units, grossPotentialRent: gpr, effectiveGrossIncome: egi,
+      currentValue: stack.totalDevCost, isNewBuild: true,
+    }).total;
+    return egi - opex;
+  };
   let rentalLand = 0;
   for (let i = 0; i < 3; i++) {
-    rentalLand = Math.max(0, rentRollNoi / a.targetYieldOnCost - nonLand(rentalLand));
+    rentalLand = Math.max(0, noiAtLand(rentalLand) / a.targetYieldOnCost - nonLand(rentalLand));
   }
 
   return {
