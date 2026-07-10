@@ -260,6 +260,20 @@ export function registerAuthRoutes(app: Express): void {
           onboardingStatus: data.certificationNumber ? "pending_verification" : "started",
         }).catch((err) => console.error("[signup] professional onboarding error:", err));
       }
+
+      // Expert signups get their industry partner profile started right away
+      // (pending admin approval) so they land in the partner portal with a
+      // profile to finish instead of an empty state.
+      if (data.role === "expert" && data.expertType) {
+        await storage.upsertIndustryPartner({
+          userId: newUser.id,
+          partnerType: data.expertType,
+          licenseNumber: data.certificationNumber || undefined,
+          serviceAreas: data.serviceArea
+            ? data.serviceArea.split(",").map((area) => area.trim()).filter(Boolean)
+            : undefined,
+        }).catch((err) => console.error("[signup] expert profile error:", err));
+      }
       
       // Set session
       req.session.userId = newUser.id;

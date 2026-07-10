@@ -73,14 +73,32 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Expert signup types mirror the industryPartners.partnerType values
+// (defined in shared/schema.ts, which imports this module — keep literal
+// here to avoid a circular import).
+export const SIGNUP_EXPERT_TYPES = [
+  "realtor",
+  "mortgage_broker",
+  "architect",
+  "urban_planner",
+  "lawyer",
+  "accountant",
+  "property_manager",
+  "contractor",
+  "appraiser",
+  "inspector",
+] as const;
+export type SignupExpertType = (typeof SIGNUP_EXPERT_TYPES)[number];
+
 // Validation schemas for auth
 export const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  role: z.enum(["investor", "partner"]).optional().default("investor"),
+  role: z.enum(["investor", "partner", "expert"]).optional().default("investor"),
   professionalType: z.enum(["contractor", "inspector"]).optional(),
+  expertType: z.enum(SIGNUP_EXPERT_TYPES).optional(),
   certificationNumber: z.string().max(120).optional(),
   serviceArea: z.string().max(160).optional(),
 });
