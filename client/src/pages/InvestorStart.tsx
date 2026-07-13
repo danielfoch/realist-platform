@@ -2,13 +2,14 @@ import { Link } from "wouter";
 import { SEO, organizationSchema, websiteSchema } from "@/components/SEO";
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { Navigation } from "@/components/Navigation";
+import { EventPromoFrame } from "@/components/home/EventPromoFrame";
 import { AnalysesCounter } from "@/components/AnalysesCounter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { getSavedListingSignals, getSavedSearchSignals, syncDiscoverySignalsWithAccount, track, trackRealistEvent } from "@/lib/analytics";
-import { ArrowRight, BarChart3, Brain, Calendar, Compass, Gauge, Map, MapPin, PhoneCall, Radar, Radio, Save, Target } from "lucide-react";
+import { ArrowRight, BarChart3, Brain, Compass, Gauge, Map, PhoneCall, Radar, Radio, Save, Target } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { CANADA_SVG_PATH, CANADA_VIEWBOX } from "@/lib/canadaSilhouette";
 import { mediaLogos } from "@/lib/mediaLogos";
@@ -272,58 +273,7 @@ export default function InvestorStart() {
           </div>
         </section>
 
-        {/* Featured event — Unpacking Multiplexes Toronto */}
-        <section className="py-10 md:py-14">
-          <div className="max-w-6xl mx-auto px-4 md:px-6">
-            <Card className="overflow-hidden border-primary/25 bg-[linear-gradient(120deg,hsl(var(--primary)/0.08),hsl(var(--background)))]">
-              <CardContent className="p-6 md:p-8">
-                <div className="flex flex-col md:flex-row md:items-center gap-6">
-                  <div className="flex-1 min-w-0">
-                    <Badge className="mb-3" data-testid="badge-featured-event">Featured Event</Badge>
-                    <h2 className="text-2xl md:text-3xl font-bold leading-tight" data-testid="text-featured-event-title">
-                      Unpacking Multiplexes Toronto
-                    </h2>
-                    <p className="text-muted-foreground mt-2 max-w-2xl">
-                      Toronto's missing middle and multiplex development conference. Join
-                      investors, architects, planners, lenders, and builders for an evening
-                      on zoning, financing, design, and execution.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        Tuesday, September 15, 2026
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <MapPin className="h-4 w-4 text-primary" />
-                        The Terminal Theatre, Queens Quay, Toronto
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0">
-                    <Link
-                      href="/community/events/unpacking-multiplexes-toronto"
-                      onClick={() => track({ event: "cta_clicked", cta: "featured_event_multiplexes", location: "homepage_featured_event", destination: "/community/events/unpacking-multiplexes-toronto" })}
-                    >
-                      <Button className="w-full" data-testid="button-featured-event-details">
-                        View event details
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
-                    <a
-                      href="https://ci.ovationtix.com/37003/production/1277443"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button variant="outline" className="w-full" data-testid="button-featured-event-tickets">
-                        Buy tickets
-                      </Button>
-                    </a>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
+        <EventPromoFrame />
 
         {/* Funnel band — the three doors into working with the team */}
         <section className="py-10 md:py-14">
