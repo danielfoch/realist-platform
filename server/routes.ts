@@ -153,6 +153,7 @@ import { registerUnderwritingShareRoutes } from "./underwritingShares";
 import { registerBookedCallLeadRoutes } from "./bookedCallLeads";
 import { registerDealRoomRoutes } from "./dealRoom";
 import { createOrGetReferralOutcomeForIntroduction, registerReferralOutcomeRoutes } from "./referralOutcomes";
+import { registerResearchPublishingRoutes } from "./researchPublishing";
 import { logFindDealsQuery } from "./demandLedger";
 import {
   getCurrentSaleEstimate,
@@ -849,6 +850,7 @@ export async function registerRoutes(
   registerReferralOutcomeRoutes(app);
   registerWatchlistRoutes(app);
   registerNotificationInboxRoutes(app);
+  registerResearchPublishingRoutes(app);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
