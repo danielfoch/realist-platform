@@ -6,7 +6,7 @@
 type Claim = { level:"verified"|"inferred"|"unknown"; sourceUrl:string; retrievedAt:string; snapshotHash:string };
 type SiteListQuery = { municipality?:string; stage?:string; tier?:string; bbox?:string; changedSince?:string; cursor?:string };
 type SiteSummary = { id:string; address?:string; tier:string; geometry?:GeoJSON.Geometry; rollupStage:string; tracks:number; claim:Claim; lastChangedAt:string };
-type SiteHistory = { site:SiteSummary; tracks:Array<{ type:string; events:Array<{stage:string; observedAt:string; claim:Claim}> }> };
+type SiteHistory = { site:SiteSummary; tracks:Array<{ type:string; activityState:"active"|"paused"; events:Array<{stage:string; observedAt:string; claim:Claim}> }> };
 type MunicipalitySummary = { id:string; asOf:string; countsByStage:Record<string,number>; inflow:number; approvals:number; stale:boolean; claim:Claim; sourceSnapshotHashes:string[] };
 type MatrixQuery = { archetype:string; scenario:"base"|"bull"|"bear"; densityMetric:"units"|"fsi"; output:"roc"|"rlv"|"irr"|"margin" };
 type MatrixResponse = { modelVersion:string; assumptionHash:string; density:number[]; mliRates:number[]; mliCells:number[][]; condoPricePsf:number[]; condoCells:number[][]; frontier:Array<{density:number; threshold:number}> };

@@ -5,7 +5,7 @@ export const stages = [
 ] as const;
 export type Stage = typeof stages[number];
 
-export type FixtureRecord = { id:string; municipality:string; site:string; track:string; stage:Stage; previous?:Stage; matchScore?:number };
+export type FixtureRecord = { id:string; municipality:string; site:string; track:string; stage:Stage; previous?:Stage; matchScore?:number; activityState?:"active"|"paused" };
 export const records: FixtureRecord[] = stages.map((stage, i) => ({
   id:`r${i+1}`, municipality:`Fake ${String.fromCharCode(65 + i%3)}`, site:`site-${i+1}`, track:"zoning_bylaw_amendment", stage,
 }));
@@ -13,6 +13,7 @@ records.push({ id:"r15", municipality:"Fake A", site:"parallel", track:"zoning_b
 records.push({ id:"r16", municipality:"Fake A", site:"parallel", track:"site_plan", stage:"under_review" });
 records.push({ id:"r17", municipality:"Fake B", site:"fuzzy", track:"site_plan", stage:"application_submitted", matchScore:0.81 });
 records.push({ id:"r18", municipality:"Fake C", site:"illegal", track:"building_permit", previous:"application_submitted", stage:"completed" });
+records.push({ id:"r19", municipality:"Fake C", site:"paused", track:"site_plan", stage:"under_review", activityState:"paused" });
 
 export const assumptions = {
   base: { rentPerUnitMonthly:3000, expenseRatio:0.30, hardCostPerUnit:360000, otherCost:850000, vacancy:0.03, amortYears:40, dscr:1.10 },

@@ -19,7 +19,8 @@ function rollup(values: Stage[]): Stage {
   return live.sort((a,b)=>rank[a]-rank[b])[0];
 }
 function illegal(previous:Stage|undefined,next:Stage) { return !!previous && previous!=="unknown" && !(allowed[previous]??[]).includes(next); }
-function mustNotLink(a:{address:string;roll:string;metres:number},b:{address:string;roll:string;metres:number}) { return a.roll!==b.roll || a.metres>25 || /\b[EWNS]\b/.test(a.address)!==/\b[EWNS]\b/.test(b.address); }
+function directional(address:string) { return address.toUpperCase().match(/\b(E|W|N|S)\b/)?.[1] ?? null; }
+function mustNotLink(a:{address:string;roll?:string;metres:number},b:{address:string;roll?:string;metres:number}) { const da=directional(a.address),db=directional(b.address); return (!!a.roll && !!b.roll && a.roll!==b.roll) || a.metres>25 || (!!da && !!db && da!==db); }
 function mortgageConstant(rate:number, years:number) { const i=rate/12,n=years*12; return 12*(i*(1+i)**n/((1+i)**n-1)); }
 function debtCap(units:number,rate:number) { const a=assumptions.base; const noi=units*a.rentPerUnitMonthly*12*(1-a.vacancy)*(1-a.expenseRatio); return noi/(a.dscr*mortgageConstant(rate,a.amortYears)); }
 
@@ -33,6 +34,9 @@ const seen=new Set<string>();
 const ingest=()=>records.filter(r=>{ const k=createHash("sha256").update(`${r.id}|${r.stage}`).digest("hex"); if(seen.has(k)) return false; seen.add(k); return true; }).length;
 if (ingest()===0 || ingest()!==0) throw new Error("idempotency failed");
 console.log("idempotency: PASS");
-if (!mustNotLink({address:"0 Highway 7",roll:"A",metres:5},{address:"0 Highway 7",roll:"B",metres:5})) throw new Error("must-not-link failed");
+if (!records.some(r=>r.activityState==="paused" && r.stage==="under_review")) throw new Error("paused state fixture failed");
+if (!mustNotLink({address:"123 Main St E",metres:5},{address:"123 Main St W",metres:5})) throw new Error("directional must-not-link failed");
+if (!mustNotLink({address:"0 Highway 7",roll:"A",metres:5},{address:"0 Highway 7",roll:"B",metres:5})) throw new Error("parcel must-not-link failed");
+console.log("paused and must-not-link: PASS");
 
 expectedCells.forEach((c,i)=>{ const actual=debtCap(c.units,c.rate); if(Math.abs(actual-c.debtCap)>2) throw new Error(`matrix cell ${i} mismatch: ${actual}`); console.log(`matrix cell ${i===0?"A":"B"}: PASS`); });

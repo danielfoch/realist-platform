@@ -1,5 +1,6 @@
 stage roll-up: PASS
 illegal transition flagged: PASS
 idempotency: PASS
+paused and must-not-link: PASS
 matrix cell A: PASS
 matrix cell B: PASS
