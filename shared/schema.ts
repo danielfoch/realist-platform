@@ -222,6 +222,9 @@ export const realistEvents = pgTable("realist_events", {
   // (free, recurring, member- or host-created).
   kind: text("kind").notNull().default("flagship"),
   city: text("city"),
+  // Homepage promotion: admins toggle this in the event form; the homepage
+  // event frame shows the soonest upcoming published event with the flag.
+  isFeatured: boolean("is_featured").default(false).notNull(),
   isRecurring: boolean("is_recurring").default(false).notNull(),
   recurrenceNote: text("recurrence_note"),
   // Mechanical recurrence: when set, a daily job clones the event into the

@@ -14,6 +14,7 @@ type AdminEventRow = {
   status: string;
   startsAt: string;
   eventType: string;
+  isFeatured?: boolean;
 };
 
 export default function AdminEvents() {
@@ -65,7 +66,12 @@ export default function AdminEvents() {
                         <div className="font-medium">{event.title}</div>
                         <div className="text-xs text-muted-foreground">/events/{event.slug}</div>
                       </TableCell>
-                      <TableCell><Badge variant={event.status === "PUBLISHED" ? "default" : "secondary"}>{event.status}</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge variant={event.status === "PUBLISHED" ? "default" : "secondary"}>{event.status}</Badge>
+                          {event.isFeatured && <Badge variant="outline" className="border-primary/50 text-primary">Homepage</Badge>}
+                        </div>
+                      </TableCell>
                       <TableCell>{new Date(event.startsAt).toLocaleString()}</TableCell>
                       <TableCell>{event.eventType}</TableCell>
                       <TableCell className="text-right">

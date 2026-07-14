@@ -51,6 +51,7 @@ export type RealistEventPayload = {
   seoDescription?: string | null;
   kind?: "flagship" | "meetup";
   city?: string | null;
+  isFeatured?: boolean;
   isRecurring?: boolean;
   recurrenceNote?: string | null;
   hostUserId?: string | null;
