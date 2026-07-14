@@ -56,6 +56,7 @@ interface ConfigResult {
   rentalHold: { noi: number; stabilizedValue: number; yieldOnCost: number; operatingExpenses?: number; opexPctOfEgi?: number; operatingCostLines?: Array<{ key: string; label: string; annual: number; basis: string }> };
   residualLandValue: { condoPath: number; rentalPath: number };
   mli: { eligible: boolean; reason?: string; premiumPct: number; maxLoan: number; actualDscr: number; amortYears: number; bindingConstraint: string };
+  mliAffordability?: { unitsRequired: number; annualRentForgone: number; commitmentYears: number; alreadyAffordable: boolean; notes?: string[] } | null;
   comparison: { condoProfit: number; holdEquityLeft: number; holdAnnualCashFlow: number; holdCashOnCash: number | null; recommendedExit: string };
 }
 
@@ -515,6 +516,14 @@ export default function MultiplexUnderwriterPage() {
                             ? `${fmtMoney(c.mli.maxLoan)} @ ${c.mli.premiumPct}% prem`
                             : "ineligible (<5 units)"}
                         </span>
+                        {c.mli.eligible && c.mliAffordability && !c.mliAffordability.alreadyAffordable && (
+                          <>
+                            <span className="text-muted-foreground">Affordability cost</span>
+                            <span className="font-mono text-right text-amber-700" title={c.mliAffordability.notes?.join("\n")}>
+                              −{fmtMoney(c.mliAffordability.annualRentForgone)}/yr ({c.mliAffordability.unitsRequired}u, {c.mliAffordability.commitmentYears}yr)
+                            </span>
+                          </>
+                        )}
                         {c.mli.eligible && c.comparison.holdCashOnCash != null && (
                           <>
                             <span className="text-muted-foreground">Hold cash-on-cash</span>

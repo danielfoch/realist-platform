@@ -40,6 +40,7 @@ import {
 import { assessRentRegulation, type RentRegulationResult } from "@shared/rentRegulation";
 import { TORONTO_ENVELOPE_RULES, PRACTICAL_GFA_HAIRCUT, computeEnvelope } from "@shared/multiplexEnvelope";
 import { computeMliTakeout, scoreMliPoints, type MliTakeoutResult } from "@shared/mliSelect";
+import { computeMliAffordability, affordableRentCapForMarket, type MliAffordabilityResult } from "@shared/mliAffordability";
 import { assessVarianceRisk, type VarianceRiskResult } from "@shared/multiplexVarianceRisk";
 import type { UnitType } from "@shared/multiplexTypes";
 
@@ -247,6 +248,8 @@ interface ConfigUnderwrite {
   rentalHold: ReturnType<typeof computeRentalHold>;
   residualLandValue: ReturnType<typeof computeResidualLandValue>;
   mli: MliTakeoutResult;
+  /** The rent given up to earn the MLI affordability points (null if no commitment). */
+  mliAffordability: MliAffordabilityResult | null;
   comparison: {
     condoProfit: number;
     holdEquityLeft: number;
@@ -354,11 +357,20 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   });
 
   // zod already constrains the levels to the valid integer ranges
-  const points = scoreMliPoints(
-    (input.mliCommitments ?? { affordabilityLevel: 1, energyLevel: 1, accessibilityLevel: 0 }) as import("@shared/mliSelect").MliCommitments,
-  );
+  const commitments = (input.mliCommitments ?? { affordabilityLevel: 1, energyLevel: 1, accessibilityLevel: 0 }) as import("@shared/mliSelect").MliCommitments;
+  const points = scoreMliPoints(commitments);
   if (!input.mliCommitments) {
     assumptionNotes.push("MLI Select modelled at 70 points (10% affordable units + 20% energy improvement) — adjust commitments to see other tiers.");
+  }
+  // The affordability points are not free: a share of units must rent at/below
+  // ~30% of Toronto's median renter income ($1,347.50/mo). Where market rent is
+  // higher, that rent is given up — modelled against the leverage benefit.
+  const affordableCap = affordableRentCapForMarket("Toronto");
+  const affordabilityLevel = commitments.affordabilityLevel;
+  if (affordabilityLevel > 0 && affordableCap != null) {
+    assumptionNotes.push(
+      `MLI Select affordability is costed, not free: the required affordable units are capped at $${affordableCap.toLocaleString()}/mo (30% of Toronto's median renter income), and the rent given up vs market is charged against the hold NOI used for loan sizing — see each scenario's affordability line.`,
+    );
   }
 
   const narrowLot = envelope.flags.some((f) => f.key === "narrow_lot");
@@ -367,9 +379,19 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
     const condoExit = computeCondoExit(config, costs, a.dev);
     const rentalHold = computeRentalHold(config, costs, a.dev);
     const residualLandValue = computeResidualLandValue(config, a.dev);
+    // Charge the affordability commitment's rent-forgone against the hold NOI
+    // used for MLI sizing, so leverage isn't credited on rents the borrower gave up.
+    const mliAffordability = affordabilityLevel > 0 && affordableCap != null
+      ? computeMliAffordability({
+          unitMix: rentalHold.monthlyRentRoll.map((r) => ({ marketRent: r.rentEach, count: r.count })),
+          affordableRentCap: affordableCap,
+          affordabilityLevel: affordabilityLevel as 1 | 2 | 3,
+        })
+      : null;
+    const mliNoi = mliAffordability ? Math.max(0, rentalHold.noi - mliAffordability.annualRentForgone) : rentalHold.noi;
     const mli = computeMliTakeout({
       units: config.units,
-      noi: rentalHold.noi,
+      noi: mliNoi,
       lendingValue: rentalHold.stabilizedValue,
       points,
       purpose: "other",
@@ -384,7 +406,9 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
     });
 
     const holdEquityLeft = mli.eligible ? Math.max(0, costs.totalDevCost - mli.maxLoan) : costs.totalDevCost;
-    const holdAnnualCashFlow = mli.eligible ? rentalHold.noi - mli.annualDebtService : rentalHold.noi;
+    // When MLI is used, the borrower has made the affordability commitment, so
+    // the cash flow reflects the discounted (affordability-adjusted) NOI.
+    const holdAnnualCashFlow = mli.eligible ? mliNoi - mli.annualDebtService : rentalHold.noi;
     const holdCashOnCash = mli.eligible && holdEquityLeft > 0 ? Math.round((holdAnnualCashFlow / holdEquityLeft) * 10000) / 10000 : null;
     const recommendedExit: ConfigUnderwrite["comparison"]["recommendedExit"] =
       condoExit.profit <= 0 && holdAnnualCashFlow <= 0
@@ -401,6 +425,7 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
       rentalHold,
       residualLandValue,
       mli,
+      mliAffordability,
       comparison: { condoProfit: condoExit.profit, holdEquityLeft, holdAnnualCashFlow, holdCashOnCash, recommendedExit },
     };
   });
