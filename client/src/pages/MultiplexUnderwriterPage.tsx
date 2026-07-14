@@ -53,7 +53,7 @@ interface ConfigResult {
   varianceRisk: { level: "low" | "medium" | "high"; factors: Array<{ key: string; reason: string }> };
   costs: { totalDevCost: number; hardCosts: number; softCosts: number; developmentCharges: number; landTransferTax: number; financingCarry: number; costPerUnit: number };
   condoExit: { grossSellout: number; profit: number; marginOnCost: number };
-  rentalHold: { noi: number; stabilizedValue: number; yieldOnCost: number };
+  rentalHold: { noi: number; stabilizedValue: number; yieldOnCost: number; operatingExpenses?: number; opexPctOfEgi?: number; operatingCostLines?: Array<{ key: string; label: string; annual: number; basis: string }> };
   residualLandValue: { condoPath: number; rentalPath: number };
   mli: { eligible: boolean; reason?: string; premiumPct: number; maxLoan: number; actualDscr: number; amortYears: number; bindingConstraint: string };
   comparison: { condoProfit: number; holdEquityLeft: number; holdAnnualCashFlow: number; holdCashOnCash: number | null; recommendedExit: string };
@@ -498,6 +498,17 @@ export default function MultiplexUnderwriterPage() {
                         </span>
                         <span className="text-muted-foreground">Stabilized NOI</span>
                         <span className="font-mono text-right">{fmtMoney(c.rentalHold.noi)}/yr</span>
+                        {c.rentalHold.operatingExpenses != null && (
+                          <>
+                            <span className="text-muted-foreground">Operating exp.</span>
+                            <span
+                              className="font-mono text-right cursor-help"
+                              title={c.rentalHold.operatingCostLines?.map((l) => `${l.label}: ${fmtMoney(l.annual)} (${l.basis})`).join("\n")}
+                            >
+                              {fmtMoney(c.rentalHold.operatingExpenses)}/yr{c.rentalHold.opexPctOfEgi != null ? ` (${fmtPct(c.rentalHold.opexPctOfEgi)})` : ""}
+                            </span>
+                          </>
+                        )}
                         <span className="text-muted-foreground">MLI Select</span>
                         <span className="font-mono text-right">
                           {c.mli.eligible

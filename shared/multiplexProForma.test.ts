@@ -79,14 +79,19 @@ describe("condo exit vs rental hold", () => {
 
   it("rental hold golden numbers", () => {
     // Rent roll: 2x1BR 1800 + 3x2BR 2400 + 1x3BR 2900 = 13,700/mo -> GPR 164,400
-    // EGI x0.97 = 159,468 ; opex 28% -> NOI = 114,817
+    // EGI x0.97 = 159,468 ; itemised opex 51,325 (32.2% — property tax 18,216 +
+    // insurance 3,900 + maint 13,152 + reserve 1,500 + mgmt 12,757 + util 1,800)
+    // -> NOI = 108,143
     const hold = computeRentalHold(config, costs, a);
     expect(hold.grossPotentialRent).toBe(164400);
     expect(hold.effectiveGrossIncome).toBe(159468);
-    expect(hold.noi).toBe(114817);
+    expect(hold.operatingExpenses).toBe(51325);
+    expect(hold.operatingCostLines).toHaveLength(6);
+    expect(hold.opexPctOfEgi).toBeCloseTo(0.3219, 3);
+    expect(hold.noi).toBe(108143);
     // Value at 4.75% cap
-    expect(hold.stabilizedValue).toBe(2417199);
-    expect(hold.yieldOnCost).toBeCloseTo(114817 / 3956584, 4); // yield rises on lower cost
+    expect(hold.stabilizedValue).toBe(2276695);
+    expect(hold.yieldOnCost).toBeCloseTo(108143 / 3956584, 4);
   });
 });
 
@@ -110,8 +115,8 @@ describe("computeResidualLandValue", () => {
   });
 
   it("lower target yield-on-cost raises the rental land bid", () => {
-    const generous = computeResidualLandValue(config, { ...a, targetYieldOnCost: 0.035, opexPctOfEgi: 0.2 });
-    const strict = computeResidualLandValue(config, { ...a, targetYieldOnCost: 0.055, opexPctOfEgi: 0.2 });
+    const generous = computeResidualLandValue(config, { ...a, targetYieldOnCost: 0.035 });
+    const strict = computeResidualLandValue(config, { ...a, targetYieldOnCost: 0.055 });
     expect(generous.rentalPath).toBeGreaterThanOrEqual(strict.rentalPath);
   });
 });
