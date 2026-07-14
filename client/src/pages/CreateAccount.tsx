@@ -7,11 +7,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, User, ArrowRight, ClipboardCheck, Wrench } from "lucide-react";
+import { Loader2, Mail, Lock, User, ArrowRight, ClipboardCheck, Wrench, Award } from "lucide-react";
+import { SIGNUP_EXPERT_TYPES, type SignupExpertType } from "@shared/models/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { authPath, clearAuthReturnUrl, getAuthReturnUrl, rememberAuthReturnUrl, goToReturnUrl } from "@/lib/authReturn";
+
+const EXPERT_TYPE_OPTIONS: { value: SignupExpertType; label: string }[] = [
+  { value: "architect", label: "Architect" },
+  { value: "urban_planner", label: "Urban Planner" },
+  { value: "realtor", label: "Realtor" },
+  { value: "mortgage_broker", label: "Mortgage Broker" },
+  { value: "lawyer", label: "Real Estate Lawyer" },
+  { value: "accountant", label: "Accountant" },
+  { value: "property_manager", label: "Property Manager" },
+  { value: "contractor", label: "Contractor" },
+  { value: "appraiser", label: "Appraiser" },
+  { value: "inspector", label: "Inspector" },
+];
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -19,8 +34,9 @@ const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
-  role: z.enum(["investor", "partner"]),
+  role: z.enum(["investor", "partner", "expert"]),
   professionalType: z.enum(["contractor", "inspector"]).optional(),
+  expertType: z.enum(SIGNUP_EXPERT_TYPES).optional(),
   certificationNumber: z.string().optional(),
   serviceArea: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -29,6 +45,9 @@ const signupSchema = z.object({
 }).refine((data) => data.role !== "partner" || !!data.professionalType, {
   message: "Choose contractor or inspector",
   path: ["professionalType"],
+}).refine((data) => data.role !== "expert" || !!data.expertType, {
+  message: "Choose your area of expertise",
+  path: ["expertType"],
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -51,6 +70,7 @@ export default function CreateAccount() {
       confirmPassword: "",
       role: "investor",
       professionalType: undefined,
+      expertType: undefined,
       certificationNumber: "",
       serviceArea: "",
     },
@@ -65,8 +85,9 @@ export default function CreateAccount() {
         password: data.password,
         role: data.role,
         professionalType: data.role === "partner" ? data.professionalType : undefined,
-        certificationNumber: data.role === "partner" ? data.certificationNumber : undefined,
-        serviceArea: data.role === "partner" ? data.serviceArea : undefined,
+        expertType: data.role === "expert" ? data.expertType : undefined,
+        certificationNumber: data.role === "investor" ? undefined : data.certificationNumber,
+        serviceArea: data.role === "investor" ? undefined : data.serviceArea,
         // Anonymous analyzer session — lets the server adopt pre-signup
         // analyses so the portal isn't empty on first login.
         sessionId: localStorage.getItem("realist_session_id") || undefined,
@@ -80,7 +101,11 @@ export default function CreateAccount() {
       // doesn't re-ask it (it reads and clears this key on mount).
       sessionStorage.setItem(
         "realist_signup_role",
-        JSON.stringify({ role: variables.role, professionalType: variables.professionalType || null }),
+        JSON.stringify({
+          role: variables.role,
+          professionalType: variables.professionalType || null,
+          expertType: variables.expertType || null,
+        }),
       );
       clearAuthReturnUrl();
       goToReturnUrl(returnUrl, setLocation);
@@ -154,7 +179,7 @@ export default function CreateAccount() {
                   <FormItem>
                     <FormLabel>Account type</FormLabel>
                     <FormControl>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => field.onChange("investor")}
@@ -188,6 +213,15 @@ export default function CreateAccount() {
                           <Wrench className="mb-2 h-4 w-4" />
                           Contractor
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => field.onChange("expert")}
+                          className={`rounded-md border p-3 text-left text-sm ${field.value === "expert" ? "border-primary bg-primary/5" : "border-border"}`}
+                          data-testid="button-signup-role-expert"
+                        >
+                          <Award className="mb-2 h-4 w-4" />
+                          Industry Expert
+                        </button>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -195,7 +229,40 @@ export default function CreateAccount() {
                 )}
               />
 
-              {form.watch("role") === "partner" && (
+              {form.watch("role") === "expert" && (
+                <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                  <FormField
+                    control={form.control}
+                    name="expertType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Area of expertise</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-signup-expert-type">
+                              <SelectValue placeholder="Architect, planner, lawyer..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {EXPERT_TYPE_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Free to join. Answer public property questions, publish field notes, and build a
+                    public profile investors can find you through.
+                  </p>
+                </div>
+              )}
+
+              {(form.watch("role") === "partner" || form.watch("role") === "expert") && (
                 <div className="grid grid-cols-2 gap-4 rounded-md border bg-muted/30 p-3">
                   <FormField
                     control={form.control}

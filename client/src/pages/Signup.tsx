@@ -11,9 +11,10 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { authPath } from "@/lib/authReturn";
-import { Building, TrendingUp, Users, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Building, TrendingUp, Users, ArrowRight, ArrowLeft, CheckCircle2, Award } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canadaProvinces } from "@/lib/provinces";
+import { type SignupExpertType } from "@shared/models/auth";
 
 interface BrokerageInfo {
   brokerageName: string;
@@ -24,13 +25,32 @@ interface BrokerageInfo {
   serviceArea: string;
 }
 
+const EXPERT_TYPE_OPTIONS: { value: SignupExpertType; label: string }[] = [
+  { value: "architect", label: "Architect" },
+  { value: "urban_planner", label: "Urban Planner" },
+  { value: "realtor", label: "Realtor" },
+  { value: "mortgage_broker", label: "Mortgage Broker" },
+  { value: "lawyer", label: "Real Estate Lawyer" },
+  { value: "accountant", label: "Accountant" },
+  { value: "property_manager", label: "Property Manager" },
+  { value: "contractor", label: "Contractor" },
+  { value: "appraiser", label: "Appraiser" },
+  { value: "inspector", label: "Inspector" },
+];
+
+interface ExpertInfo {
+  expertType: SignupExpertType;
+  companyName: string;
+  city: string;
+}
+
 export default function Signup() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedRole, setSelectedRole] = useState<"investor" | "professional" | null>(null);
-  const [step, setStep] = useState<"role" | "brokerage">("role");
+  const [selectedRole, setSelectedRole] = useState<"investor" | "professional" | "expert" | null>(null);
+  const [step, setStep] = useState<"role" | "brokerage" | "expert">("role");
   const [autoCreating, setAutoCreating] = useState(false);
   const [brokerageInfo, setBrokerageInfo] = useState<BrokerageInfo>({
     brokerageName: "",
@@ -39,6 +59,11 @@ export default function Signup() {
     professionalType: "realtor",
     certificationNumber: "",
     serviceArea: "",
+  });
+  const [expertInfo, setExpertInfo] = useState<ExpertInfo>({
+    expertType: "architect",
+    companyName: "",
+    city: "",
   });
 
   const createProfileMutation = useMutation({
@@ -64,6 +89,27 @@ export default function Signup() {
     },
   });
 
+  const createExpertMutation = useMutation({
+    mutationFn: async (info: ExpertInfo) => {
+      return apiRequest("PUT", "/api/partner/profile", {
+        partnerType: info.expertType,
+        companyName: info.companyName.trim() || undefined,
+        serviceAreas: info.city.trim() ? [info.city.trim()] : undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partner/profile"] });
+      toast({
+        title: "Expert profile started",
+        description: "Finish your public profile in the partner portal. New experts are reviewed before appearing publicly.",
+      });
+      setLocation("/partner");
+    },
+    onError: () => {
+      toast({ title: "Failed to create expert profile", variant: "destructive" });
+    },
+  });
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       setLocation(authPath("/login"));
@@ -78,10 +124,18 @@ export default function Signup() {
     if (!raw) return;
     sessionStorage.removeItem("realist_signup_role");
     try {
-      const carried = JSON.parse(raw) as { role?: string; professionalType?: string | null };
+      const carried = JSON.parse(raw) as { role?: string; professionalType?: string | null; expertType?: string | null };
       if (carried.role === "investor") {
         setAutoCreating(true);
         createProfileMutation.mutate({ role: "investor" });
+      } else if (carried.role === "expert") {
+        // The signup endpoint already created the expert profile — send them
+        // straight to the portal to finish it.
+        toast({
+          title: "Expert profile started",
+          description: "Finish your public profile in the partner portal. New experts are reviewed before appearing publicly.",
+        });
+        setLocation("/partner");
       } else if (carried.role === "partner") {
         setSelectedRole("professional");
         if (carried.professionalType === "contractor" || carried.professionalType === "inspector") {
@@ -98,7 +152,7 @@ export default function Signup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isAuthenticated]);
 
-  const handleRoleSelect = (role: "investor" | "professional") => {
+  const handleRoleSelect = (role: "investor" | "professional" | "expert") => {
     setSelectedRole(role);
   };
 
@@ -107,6 +161,8 @@ export default function Signup() {
       createProfileMutation.mutate({ role: "investor" });
     } else if (selectedRole === "professional") {
       setStep("brokerage");
+    } else if (selectedRole === "expert") {
+      setStep("expert");
     }
   };
 
@@ -142,6 +198,102 @@ export default function Signup() {
             <p className="text-muted-foreground">
               You already chose your account type — one moment while we finish up.
             </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (step === "expert") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="py-8 md:py-16">
+          <div className="max-w-lg mx-auto px-4 md:px-6">
+            <Button
+              variant="ghost"
+              className="mb-6 gap-2"
+              onClick={() => setStep("role")}
+              data-testid="button-back-to-role"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+
+            <div className="text-center mb-8">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2" data-testid="text-expert-title">
+                Set up your expert profile
+              </h1>
+              <p className="text-muted-foreground">
+                Answer public property questions, publish field notes, and get discovered by investors. Free to join.
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="expertType">Area of expertise</Label>
+                  <Select
+                    value={expertInfo.expertType}
+                    onValueChange={(value) => setExpertInfo({ ...expertInfo, expertType: value as SignupExpertType })}
+                  >
+                    <SelectTrigger id="expertType" data-testid="select-expert-type">
+                      <SelectValue placeholder="Select your expertise" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EXPERT_TYPE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="expertCompany">Company or practice</Label>
+                  <Input
+                    id="expertCompany"
+                    placeholder="Optional"
+                    value={expertInfo.companyName}
+                    onChange={(e) => setExpertInfo({ ...expertInfo, companyName: e.target.value })}
+                    data-testid="input-expert-company"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="expertCity">Primary market</Label>
+                  <Input
+                    id="expertCity"
+                    placeholder="e.g., Toronto"
+                    value={expertInfo.city}
+                    onChange={(e) => setExpertInfo({ ...expertInfo, city: e.target.value })}
+                    data-testid="input-expert-city"
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  You can add a bio, headshot, service areas, and links in the partner portal. New experts are
+                  reviewed before appearing publicly.
+                </p>
+
+                <Button
+                  className="w-full mt-2 gap-2"
+                  disabled={createExpertMutation.isPending}
+                  onClick={() => createExpertMutation.mutate(expertInfo)}
+                  data-testid="button-complete-expert-signup"
+                >
+                  {createExpertMutation.isPending ? (
+                    "Creating your profile..."
+                  ) : (
+                    <>
+                      Complete Setup
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </main>
       </div>
@@ -297,7 +449,7 @@ export default function Signup() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card 
               className={`cursor-pointer transition-all hover-elevate ${
                 selectedRole === "investor" 
@@ -401,6 +553,57 @@ export default function Signup() {
                     <span className="text-xs bg-muted px-2 py-1 rounded">$10/mo: 25 pulls</span>
                     <span className="text-xs bg-muted px-2 py-1 rounded">$25/mo: Unlimited</span>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={`cursor-pointer transition-all hover-elevate ${
+                selectedRole === "expert"
+                  ? "ring-2 ring-primary border-primary"
+                  : "hover:border-muted-foreground/50"
+              }`}
+              onClick={() => handleRoleSelect("expert")}
+              data-testid="card-role-expert"
+            >
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    selectedRole === "expert" ? "bg-primary text-primary-foreground" : "bg-muted"
+                  }`}>
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-xl">Industry Expert</CardTitle>
+                    <CardDescription>Architect, planner, lawyer, or other pro joining the expert network</CardDescription>
+                  </div>
+                  {selectedRole === "expert" && (
+                    <CheckCircle2 className="w-6 h-6 text-primary" />
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <Building className="w-4 h-4 mt-0.5 text-primary" />
+                    <span>Answer public property questions from investors</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Building className="w-4 h-4 mt-0.5 text-primary" />
+                    <span>Publish field notes on live listings</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Building className="w-4 h-4 mt-0.5 text-primary" />
+                    <span>Earn reputation and rank on the expert leaderboard</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Building className="w-4 h-4 mt-0.5 text-primary" />
+                    <span>Public profile that links to your business</span>
+                  </li>
+                </ul>
+
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-xs text-muted-foreground">Free to join. No subscription, no referral fees for knowledge professionals.</p>
                 </div>
               </CardContent>
             </Card>
