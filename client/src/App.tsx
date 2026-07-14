@@ -142,6 +142,7 @@ const Videos = lazy(() => import("@/pages/Videos"));
 const VideoDetail = lazy(() => import("@/pages/VideoDetail"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const AdminDealDesk = lazy(() => import("@/pages/AdminDealDesk"));
+const AdminResearch = lazy(() => import("@/pages/AdminResearch"));
 const AdminEvents = lazy(() => import("@/pages/AdminEvents"));
 const AdminEventRoster = lazy(() => import("@/pages/AdminEventRoster"));
 const AdminEventNew = lazy(() => import("@/pages/AdminEventNew"));
@@ -469,6 +470,7 @@ function Router() {
       <Route path="/compare" component={Compare} />
       <Route path="/admin" component={Admin} />
       <Route path="/admin/deal-desk" component={AdminDealDesk} />
+      <Route path="/admin/research" component={AdminResearch} />
       <Route path="/admin/power-team" component={AdminPowerTeam} />
       <Route path="/admin/events" component={AdminEvents} />
       <Route path="/admin/events/new" component={AdminEventNew} />

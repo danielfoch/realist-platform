@@ -520,6 +520,12 @@ export default function Admin() {
                   Deal Desk
                 </Button>
               </Link>
+              <Link href="/admin/research">
+                <Button variant="outline" className="gap-2" data-testid="link-research-admin">
+                  <FileText className="h-4 w-4" />
+                  Research
+                </Button>
+              </Link>
               <Button 
                 variant="outline" 
                 className="gap-2"

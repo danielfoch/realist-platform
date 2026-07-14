@@ -2,6 +2,7 @@ import { sql, relations } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, unique, uniqueIndex, index, foreignKey, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import type { ReportContent } from "./reportContent";
 
 // PostGIS geometry passthrough — declares the live `geom` columns so
 // drizzle-kit push stops proposing to drop them. Values are read/written as
@@ -3912,6 +3913,57 @@ export const insertGuideSchema = createInsertSchema(guides).omit({
 });
 export type InsertGuide = z.infer<typeof insertGuideSchema>;
 export type Guide = typeof guides.$inferSelect;
+
+export const researchArticles = pgTable("research_articles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceId: text("source_id").notNull().unique(),
+  ingestIdempotencyKey: text("ingest_idempotency_key").notNull().unique(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  dek: text("dek").notNull(),
+  status: text("status").default("draft").notNull(),
+  articleJson: jsonb("article_json").$type<ReportContent>().notNull(),
+  validationErrors: jsonb("validation_errors").$type<string[]>().default([]).notNull(),
+  previewIssuedAt: timestamp("preview_issued_at"),
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at"),
+  publishRequestedAt: timestamp("publish_requested_at"),
+  publishBlockedReason: text("publish_blocked_reason"),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_research_articles_status_created").on(table.status, table.createdAt),
+  index("idx_research_articles_slug").on(table.slug),
+]);
+
+export const researchPublishAttempts = pgTable("research_publish_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  articleId: varchar("article_id").references(() => researchArticles.id, { onDelete: "cascade" }).notNull(),
+  idempotencyKey: text("idempotency_key").notNull(),
+  requestedByUserId: varchar("requested_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  outcome: text("outcome").notNull(),
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("idx_research_publish_attempts_article_key").on(table.articleId, table.idempotencyKey),
+  index("idx_research_publish_attempts_article").on(table.articleId),
+]);
+
+export const insertResearchArticleSchema = createInsertSchema(researchArticles).omit({
+  id: true,
+  previewIssuedAt: true,
+  reviewedByUserId: true,
+  reviewedAt: true,
+  publishRequestedAt: true,
+  publishBlockedReason: true,
+  publishedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertResearchArticle = z.infer<typeof insertResearchArticleSchema>;
+export type ResearchArticle = typeof researchArticles.$inferSelect;
+export type ResearchPublishAttempt = typeof researchPublishAttempts.$inferSelect;
 
 export const mortgageRates = pgTable("mortgage_rates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
