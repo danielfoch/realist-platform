@@ -46,16 +46,33 @@ Terminal stages do not transition without an explicit reopening/new-track event.
 
 These mappings are design assumptions to verify against official portals in the pilot.
 
-| Coverage | Source term example | Canonical | Status |
-|---|---|---|---|
-| Toronto | Application Received | `application_submitted` | inferred |
-| Toronto | Under Review | `under_review` | inferred |
-| Toronto | Approved / Closed | `approved` or terminal after document review | inferred |
-| Mississauga | In Process | `under_review` | inferred |
-| Mississauga | Approved | `approved` | inferred |
-| Vaughan | Active | `under_review` | inferred |
-| Vaughan | Approved | `approved` | inferred |
-| Hamilton | Submitted | `application_submitted` | inferred |
-| Hamilton | Decision Made | `approved`/`refused` after decision document | inferred |
+### Toronto mapping (provisional)
+
+| Source term example | Canonical | Status |
+|---|---|---|
+| Application Received | `application_submitted` | inferred |
+| Under Review | `under_review` | inferred |
+| Approved / Closed | `approved` or terminal after document review | inferred |
+
+### Mississauga mapping (provisional)
+
+| Source term example | Canonical | Status |
+|---|---|---|
+| In Process | `under_review` | inferred |
+| Approved | `approved` | inferred |
+
+### Vaughan mapping (provisional)
+
+| Source term example | Canonical | Status |
+|---|---|---|
+| Active | `under_review` | inferred |
+| Approved | `approved` | inferred |
+
+### Hamilton mapping (provisional)
+
+| Source term example | Canonical | Status |
+|---|---|---|
+| Submitted | `application_submitted` | inferred |
+| Decision Made | `approved`/`refused` after decision document | inferred |
 
 No generic “closed” or “decision made” status may map automatically without the decision outcome.
