@@ -42,6 +42,8 @@ under_construction -> completed
 
 Terminal stages do not transition without an explicit reopening/new-track event. Illegal jumps are warnings, not silently accepted state.
 
+`on_hold` or `suspended` is not a lifecycle stage: map it to the last verified canonical stage, set `activity_state=paused`, preserve the municipal raw status, and prevent automatic advancement until a new official event appears. This avoids inventing progress while keeping paused applications representable.
+
 ## Provisional municipal vocabulary mappings
 
 These mappings are design assumptions to verify against official portals in the pilot.

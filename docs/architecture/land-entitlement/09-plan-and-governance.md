@@ -14,7 +14,7 @@ This is a **this-week compounding product**, not P1 today. It must not interfere
 | 3 Toronto matrices | current inputs verified | >=5×5 matrices; 100% assumption coverage; independent arithmetic review; report QA | 3–5 weeks; Dan approves branded publication |
 | 4 Wave 2 | Wave 1 stable for 3 runs | each new adapter score >=7/12; error <5%; data age <=45 days | per-source; approve any paid license |
 
-Rough incremental operating cost target for public/open-data MVP: <$300/month excluding engineering labour. Any paid parcel/planning data triggers a separate buy-vs-build case.
+Illustrative planning ranges as of 2026-07-14: rough incremental operating-cost target for a public/open-data MVP is <$300/month excluding engineering labour; phase effort ranges are directional, not commitments. Any paid parcel/planning data triggers a separate buy-vs-build case.
 
 ## Kill/defer and revisit triggers
 

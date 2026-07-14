@@ -45,3 +45,11 @@ Recommended schedule: first Sunday monthly at 03:15 America/Toronto, with a seco
 | Audit | DB failure | whole adapter transaction rolls back |
 
 Metrics/alerts: adapter success, data age, unchanged streak, parse yield, quarantine rate, illegal transitions, record-count delta, runtime and last successful publish. Two consecutive failures or data age >45 days is actionable.
+
+### Entity-resolution guardrails
+
+- Address normalization preserves street directionals (`E/W/N/S`), unit/block/phase tokens and municipal boundaries; it standardizes case, punctuation and street-type abbreviations only.
+- Geometry distance is measured in a local projected CRS in metres. Candidate pairs more than 25 m apart cannot auto-match on address alone; tune only after labelled pilot data.
+- Must-not-link rules override every fuzzy score: different verified roll numbers/PINs; different application phases explicitly identified by the source; non-overlapping parcels; or conflicting municipalities.
+- Generic/rural addresses (`0 Highway 7`, intersections, concession lots) require exact parcel/application identity and otherwise quarantine.
+- Auto-match requires either an exact official identifier or address score >=0.97 plus geometry overlap/proximity and no must-not-link. The general 0.92 threshold applies only after these gates.

@@ -26,6 +26,7 @@ Density: `units/site = U`; `units/acre = U / lot_acres`; `FSI = GFA / lot_area`;
 - Include insurance premium in debt/cash per verified lender treatment.
 - `Return on cost = NOI / TDC`; `cash-on-cash = (NOI - annual_debt_service) / initial_cash`.
 - Levered IRR is `IRR([-initial_cash, annual_cash_flow_1...annual_cash_flow_h + net_sale_proceeds_h])`.
+- `initial_cash = TDC - funded_debt + premium_paid_in_cash + initial_reserves`; `annual_cash_flow_t = NOI_t - annual_debt_service_t - capital_reserves_t`; `net_sale_proceeds_h = sale_value_h - selling_costs_h - debt_balance_h`.
 - Residual land value at target profit/return is solved for `L` where target IRR or target return-on-cost is met.
 
 MLI affordability/energy/accessibility points may alter amortization, LTC/LTV and premium. Exact thresholds/terms belong in the assumption registry and remain illustrative until verified from current CMHC documents and lender quote.
@@ -43,7 +44,21 @@ MLI affordability/energy/accessibility points may alter amortization, LTC/LTV an
 
 `(key, value, unit, effective_date, source_link, source_retrieved_at, scenario[base|bull|bear], geography, archetype, model_version, verified_by, verification_status)`.
 
-Required keys include land, lot size, GFA/FSI, unit mix/size/rent, hard/soft/contingency, fees/DC/tax treatment, schedules, construction and takeout rates/fees, vacancy/expenses, cap rate, MLI constraints/premium, condo price/sf, sales costs, target returns and hold exit assumptions. Published output stores sorted-assumption SHA-256.
+Required exhaustive key families:
+
+- Site/density: `land_cost`, `lot_area_sf`, `lot_acres`, `units`, `gfa_sf`, `fsi`, `net_efficiency`, `sale_efficiency`, `unit_mix`, `unit_size_sf`.
+- Cost/timing: `hard_cost_per_sf`, `hard_cost_per_unit`, `soft_cost_ratio`, `contingency`, `other_cost`, `development_charges_per_unit`, `municipal_fees`, `tax_treatment`, `predevelopment_months`, `construction_months`, `leaseup_months`, `sellout_months`, `draw_curve`.
+- Construction debt: `construction_rate`, `construction_lender_fee`, `average_balance_factor`.
+- Rental/NOI: `rent_per_unit_monthly`, `vacancy_rate`, `expense_ratio`, `other_income`, `capital_reserve`, `rent_growth`.
+- MLI/takeout: `takeout_rate`, `amortization_years`, `target_dscr`, `max_ltc`, `max_ltv`, `eligible_cost_definition`, `insurance_premium_pct`, `premium_cash_or_financed`, `takeout_lender_fee`.
+- Hold valuation: `cap_rate`, `hold_years`, `exit_cap_rate`, `sale_cost_ratio`, `discount_rate`, `target_roc`, `target_irr`, `initial_reserves`.
+- Condo: `condo_price_per_sf`, `parking_other_revenue`, `commission_ratio`, `marketing_ratio`, `closing_legal_cost`, `hst_rebate_treatment`, `target_margin`, `condo_discount_rate`.
+
+Published output stores the sorted-assumption SHA-256. Fixture `otherCost` maps to `other_cost`; every matrix axis, hurdle and cash-flow component must resolve to one listed key before computation.
+
+## NPV and decision-value convention
+
+At monthly period `t`, `NPV = Σ(CF_t / (1 + annual_discount_rate/12)^t)`. `NPV_hold` includes initial equity, operating cash flow, reserves, refinance/takeout fees and terminal net sale proceeds. `NPV_condo` includes land/predevelopment/construction draws and after-tax/fee unit closing receipts. Both are measured at the same valuation date in nominal CAD, with timing and discount rates from the registry. The decision frontier compares these two NPVs; IRR remains a separate hurdle.
 
 ## Delta from existing Multiplex Underwriter
 

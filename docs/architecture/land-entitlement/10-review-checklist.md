@@ -22,5 +22,7 @@
 - [ ] Every phase has measurable exit criteria and approval gates.
 - [ ] At least eight risks have mitigations.
 - [ ] Fixture validator prints all required PASS lines.
+- [ ] Paused/suspended applications retain their last canonical stage with `activity_state=paused`.
+- [ ] Address directionals, parcel/phase must-not-link rules and geometry units prevent known false merges.
 
 Adversarial review: find an unrepresentable stage; a matrix input without registry coverage; a claim without claim class; and two sites the fuzzy matcher would wrongly merge. Any finding must be fixed or accepted with written rationale.
