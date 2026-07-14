@@ -33,6 +33,45 @@ const ASKABLE_CATEGORIES: ExpertCategory[] = [
   "realtor",
 ];
 
+interface QuestionPrompt {
+  label: string;
+  body: string;
+  categories: ExpertCategory[];
+}
+
+const QUESTION_PROMPTS: QuestionPrompt[] = [
+  {
+    label: "Can I build 6 units here?",
+    body: "Can I build 6 units on this lot? What would zoning and site constraints realistically allow?",
+    categories: ["architecture", "urban_planning"],
+  },
+  {
+    label: "Would this qualify for CMHC MLI Select?",
+    body: "Would this property qualify for CMHC MLI Select financing, and what would the path to qualifying look like?",
+    categories: ["mortgage"],
+  },
+  {
+    label: "What zoning applies to this lot?",
+    body: "What zoning applies to this lot, and are there any overlays or restrictions an investor should know about?",
+    categories: ["urban_planning"],
+  },
+  {
+    label: "Cost to add a second suite?",
+    body: "What would it roughly cost to add a legal second suite here, and what does the permit process involve?",
+    categories: ["construction", "architecture"],
+  },
+  {
+    label: "Is this priced right?",
+    body: "Is this priced right for the area based on recent comparables and condition?",
+    categories: ["realtor", "appraisal"],
+  },
+  {
+    label: "Any legal or inspection red flags?",
+    body: "Are there any legal or inspection red flags a buyer should investigate before making an offer on this property?",
+    categories: ["legal", "inspection"],
+  },
+];
+
 interface PropertyQuestionWidgetProps {
   listingMlsNumber: string;
   listingSnapshot?: Record<string, unknown>;
@@ -87,6 +126,11 @@ export function PropertyQuestionWidget({
     });
   };
 
+  const applyPrompt = (prompt: QuestionPrompt) => {
+    setBody(prompt.body);
+    setCategories(Array.from(new Set(prompt.categories)).slice(0, 6));
+  };
+
   const submit = () => {
     if (!isAuthenticated) {
       setLocation(authPath("/login"));
@@ -117,6 +161,24 @@ export function PropertyQuestionWidget({
             {typeof listingSnapshot?.address === "string" && (
               <div className="text-muted-foreground">{listingSnapshot.address}</div>
             )}
+          </div>
+
+          <div>
+            <div className="mb-2 text-sm font-medium">Quick questions</div>
+            <div className="flex flex-wrap gap-2">
+              {QUESTION_PROMPTS.map((prompt) => (
+                <Button
+                  key={prompt.label}
+                  type="button"
+                  variant={body === prompt.body ? "secondary" : "outline"}
+                  size="sm"
+                  className="h-auto rounded-full px-3 py-1.5 text-xs font-normal"
+                  onClick={() => applyPrompt(prompt)}
+                >
+                  {prompt.label}
+                </Button>
+              ))}
+            </div>
           </div>
 
           <Textarea
