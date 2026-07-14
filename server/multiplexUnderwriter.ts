@@ -97,8 +97,6 @@ const ASSUMPTION_SEEDS: AssumptionSeed[] = [
   { key: "hard_cost_psf", value: d.hardCostPsf, label: "Hard cost per gross sqft (new-build multiplex, Toronto)", unit: "$/sqft", source: d.source, lastVerified: d.lastVerified },
   { key: "soft_cost_pct_of_hard", value: d.softCostPctOfHard, label: "Soft costs as % of hard cost", unit: "fraction", source: d.source, lastVerified: d.lastVerified },
   { key: "contingency_pct", value: d.contingencyPct, label: "Contingency on hard + soft", unit: "fraction", source: d.source, lastVerified: d.lastVerified },
-  { key: "dc_per_unit", value: d.dcPerUnit, label: "Development charge per unit (Toronto)", unit: "$", source: "City of Toronto DC schedule 2024", lastVerified: d.lastVerified },
-  { key: "dc_exempt_units", value: d.dcExemptUnits, label: "DC-exempt units per project (Bill 23 ARU baseline — verify per project)", unit: "units", source: "Ontario Bill 23; City incentive programs vary", lastVerified: d.lastVerified },
   { key: "construction_rate", value: d.constructionRate, label: "Construction loan rate (annual)", unit: "fraction", source: d.source, lastVerified: d.lastVerified },
   { key: "construction_months", value: d.constructionMonths, label: "Construction duration", unit: "months", source: d.source, lastVerified: d.lastVerified },
   { key: "loan_to_cost", value: d.loanToCost, label: "Construction loan-to-cost", unit: "fraction", source: d.source, lastVerified: d.lastVerified },
@@ -214,8 +212,6 @@ function buildAssumptions(
     hardCostPsf: num(pick("hard_cost_psf"), d.hardCostPsf),
     softCostPctOfHard: num(pick("soft_cost_pct_of_hard"), d.softCostPctOfHard),
     contingencyPct: num(pick("contingency_pct"), d.contingencyPct),
-    dcPerUnit: num(pick("dc_per_unit"), d.dcPerUnit),
-    dcExemptUnits: num(pick("dc_exempt_units"), d.dcExemptUnits),
     constructionRate: num(pick("construction_rate"), d.constructionRate),
     constructionMonths: num(pick("construction_months"), d.constructionMonths),
     loanToCost: num(pick("loan_to_cost"), d.loanToCost),
@@ -331,6 +327,12 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   });
   if (site.overlays?.maxLotCoverageRatio != null) {
     assumptionNotes.push(`Lot coverage ${Math.round(site.overlays.maxLotCoverageRatio * 100)}% from Toronto's verified Lot Coverage Overlay.`);
+  }
+
+  if (maxUnitsAsOfRight <= 6) {
+    assumptionNotes.push(
+      "Development charges reflect Toronto's multiplex exemption: units 2–6 in an up-to-six-unit development are $0 (MM32.5, for permits through Apr 30 2027), so only one unit is charged — a large saving vs. the standard per-unit charge.",
+    );
   }
 
   // Rent regulation — a newly-built/newly-created multiplex suite is exempt

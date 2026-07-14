@@ -11,11 +11,12 @@
 
 import type { BuildConfiguration } from "./multiplexConfigs";
 import type { UnitType } from "./multiplexTypes";
+import { computeTorontoDevelopmentCharges, dcUnitsFromMix } from "./developmentCharges";
 
 // ─── Defaults (sources cited; admin-overridable) ─────────────────────────────
 
 export const DEV_ASSUMPTION_DEFAULTS = {
-  source: "Altus 2024-25 cost guide ranges; City of Toronto DC schedule 2024; CMHC Toronto rents (see shared/cmhcRents.ts)",
+  source: "Altus 2024-25 cost guide ranges; Toronto DC By-law 1137-2022 rates + MM32.5 multiplex exemption (see shared/developmentCharges.ts); CMHC Toronto rents (see shared/cmhcRents.ts)",
   lastVerified: "2026-07",
   /** New-build multiplex hard cost, $/sf of gross GFA (Toronto, mid-range). */
   hardCostPsf: 400,
@@ -23,14 +24,6 @@ export const DEV_ASSUMPTION_DEFAULTS = {
   softCostPctOfHard: 0.15,
   /** Contingency on hard+soft. */
   contingencyPct: 0.1,
-  /** City of Toronto development charge per new unit (2024 schedule). */
-  dcPerUnit: 141139,
-  /**
-   * Units exempt from DCs. Bill 23 exempts up to 3 additional units on a lot
-   * with an existing dwelling; City multiplex/sixplex incentive programs may
-   * waive more — verify per project.
-   */
-  dcExemptUnits: 3,
   /** Construction loan rate (annual) and months, for carry estimate. */
   constructionRate: 0.065,
   constructionMonths: 14,
@@ -61,8 +54,6 @@ export interface DevAssumptions {
   hardCostPsf: number;
   softCostPctOfHard: number;
   contingencyPct: number;
-  dcPerUnit: number;
-  dcExemptUnits: number;
   constructionRate: number;
   constructionMonths: number;
   loanToCost: number;
@@ -112,6 +103,8 @@ export interface CostStack {
   contingency: number;
   developmentCharges: number;
   dcUnitsCharged: number;
+  dcExemptUnits: number;
+  dcExemptionBasis: string;
   financingCarry: number;
   totalDevCost: number;
   costPerUnit: number;
@@ -127,8 +120,12 @@ export function computeCostStack(
   const hard = totalGfa * a.hardCostPsf;
   const soft = hard * a.softCostPctOfHard;
   const contingency = (hard + soft) * a.contingencyPct;
-  const dcUnitsCharged = Math.max(0, config.units - a.dcExemptUnits);
-  const dcs = dcUnitsCharged * a.dcPerUnit;
+  // Development charges via the exemption-aware Toronto engine: units 2–6 in an
+  // up-to-six-unit multiplex are $0 (MM32.5), so a small multiplex pays DC on
+  // one unit, not (units − 3) single-detached charges.
+  const dc = computeTorontoDevelopmentCharges({ units: dcUnitsFromMix(config.unitMix), tenure: "ownership" });
+  const dcs = dc.total;
+  const dcUnitsCharged = dc.chargedUnits;
   const ltt = torontoLandTransferTax(landPrice);
 
   // Carry: interest on the financed share of (hard+soft+contingency+DCs),
@@ -145,6 +142,8 @@ export function computeCostStack(
     contingency: Math.round(contingency),
     developmentCharges: Math.round(dcs),
     dcUnitsCharged,
+    dcExemptUnits: dc.exemptUnits,
+    dcExemptionBasis: dc.exemptionBasis,
     financingCarry: Math.round(carry),
     totalDevCost: Math.round(total),
     costPerUnit: config.units > 0 ? Math.round(total / config.units) : 0,
