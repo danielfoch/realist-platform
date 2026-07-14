@@ -65,6 +65,7 @@ export function EventForm({ event }: { event?: RealistEventPayload }) {
     seoDescription: event?.seoDescription || "",
     kind: event?.kind || "flagship",
     city: event?.city || "",
+    isFeatured: event?.isFeatured || false,
     isRecurring: event?.isRecurring || false,
     recurrenceNote: event?.recurrenceNote || "",
     speakers: event?.speakers?.length ? event.speakers : [{ ...emptySpeaker }],
@@ -187,6 +188,16 @@ export function EventForm({ event }: { event?: RealistEventPayload }) {
           <div className="space-y-2">
             <Label>City</Label>
             <Input placeholder="Toronto" value={form.city || ""} onChange={(e) => setField("city", e.target.value)} />
+          </div>
+          <div className="space-y-2 md:col-span-2 rounded-lg border border-primary/25 bg-primary/5 p-4">
+            <div className="flex items-center gap-3">
+              <Switch checked={!!form.isFeatured} onCheckedChange={(checked) => setField("isFeatured", checked)} data-testid="switch-event-featured" />
+              <Label>Feature on the homepage</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Shows this event in the featured frame on realist.ca. Needs status Published.
+              If several events are featured, the one starting soonest wins.
+            </p>
           </div>
           <div className="flex items-center gap-3 pt-7">
             <Switch checked={!!form.isRecurring} onCheckedChange={(checked) => setField("isRecurring", checked)} />

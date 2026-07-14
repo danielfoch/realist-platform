@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import "express-session";
 import crypto from "crypto";
 import Stripe from "stripe";
-import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import { backlinkUserRecords } from "./personSpine";
@@ -98,6 +98,7 @@ export const eventPayloadSchema = z.object({
   seoDescription: z.string().optional().nullable(),
   kind: z.enum(["flagship", "meetup"]).default("flagship"),
   city: z.string().optional().nullable(),
+  isFeatured: z.boolean().default(false),
   isRecurring: z.boolean().default(false),
   recurrenceNote: z.string().optional().nullable(),
   speakers: z.array(speakerSchema).default([]),
@@ -269,7 +270,8 @@ export async function ensureRealistEventTables() {
       ADD COLUMN IF NOT EXISTS "reminder_sent_at" timestamp,
       ADD COLUMN IF NOT EXISTS "recurrence_rule" text,
       ADD COLUMN IF NOT EXISTS "recurrence_until" timestamp,
-      ADD COLUMN IF NOT EXISTS "parent_event_id" varchar
+      ADD COLUMN IF NOT EXISTS "parent_event_id" varchar,
+      ADD COLUMN IF NOT EXISTS "is_featured" boolean NOT NULL DEFAULT false
   `);
   // Community layer: discussion threads on event pages.
   await db.execute(sql`
@@ -418,6 +420,7 @@ async function saveEvent(payload: z.infer<typeof eventPayloadSchema>, createdByE
     seoDescription: payload.seoDescription || null,
     kind: payload.kind,
     city: payload.city || null,
+    isFeatured: payload.isFeatured,
     isRecurring: payload.isRecurring,
     recurrenceNote: payload.recurrenceNote || null,
     createdByEmail,
@@ -550,6 +553,44 @@ export function registerRealistEventRoutes(app: Express) {
     } catch (error: any) {
       console.error("[events] public list failed:", error);
       res.status(500).json({ error: "Failed to load events" });
+    }
+  });
+
+  // Homepage featured event. Registered before "/api/events/:slug" so the
+  // literal path wins the route match. Admin-flagged events take priority;
+  // when none is flagged the next upcoming published flagship fills in, so
+  // the homepage frame keeps promoting whatever is current without a deploy.
+  app.get("/api/events/featured", async (_req, res) => {
+    try {
+      const now = new Date();
+      const upcoming = or(
+        gt(realistEvents.endsAt, now),
+        and(isNull(realistEvents.endsAt), gt(realistEvents.startsAt, now)),
+      );
+      const [featured] = await db.select().from(realistEvents)
+        .where(and(eq(realistEvents.status, "PUBLISHED"), eq(realistEvents.isFeatured, true), upcoming))
+        .orderBy(asc(realistEvents.startsAt))
+        .limit(1);
+      const event = featured ?? (await db.select().from(realistEvents)
+        .where(and(eq(realistEvents.status, "PUBLISHED"), eq(realistEvents.kind, "flagship"), upcoming))
+        .orderBy(asc(realistEvents.startsAt))
+        .limit(1))[0] ?? null;
+      if (!event) return res.json({ event: null });
+      const [price] = await db.select({
+        minPriceCents: sql<number | null>`MIN(${realistEventTicketTypes.priceCents})`,
+      }).from(realistEventTicketTypes)
+        .where(and(eq(realistEventTicketTypes.eventId, event.id), eq(realistEventTicketTypes.isActive, true)));
+      res.json({
+        event: {
+          ...event,
+          // Private meeting link — stripped from public payloads, same as the list route.
+          onlineUrl: null,
+          minPriceCents: price?.minPriceCents != null ? Number(price.minPriceCents) : null,
+        },
+      });
+    } catch (error) {
+      console.error("[events] featured lookup failed:", error);
+      res.status(500).json({ error: "Failed to load featured event" });
     }
   });
 
