@@ -1,9 +1,37 @@
+/**
+ * CMHC rent baselines by market. The nine largest CMAs carry verified CMHC
+ * Rental Market Survey purpose-built averages (October 2025 survey, released
+ * Dec 2025); smaller markets remain approximate estimates.
+ *
+ * IMPORTANT — occupied vs turnover: these are AVERAGE rents across all tenancies,
+ * which include long-tenured tenants below market. A NEWLY built or just-turned
+ * unit rents materially higher: in Toronto a 1-bed turnover rent is ~$2,073 vs
+ * the ~$1,761 average (+21%). Underwriting a new build should apply that uplift
+ * (see CMHC_TORONTO_TURNOVER_PREMIUM) rather than the occupied average.
+ */
 export interface CmhcRentData {
   bachelor: number;
   oneBed: number;
   twoBed: number;
   threeBed: number;
 }
+
+/** Source + vintage for the verified CMA figures below. */
+export const CMHC_RENTS_SOURCE = "CMHC Rental Market Survey (purpose-built averages), October 2025 survey";
+export const CMHC_RENTS_AS_OF = "2025-10";
+
+/** Purpose-built apartment vacancy rate (%) by CMA — October 2025 survey. */
+export const CMHC_CMA_VACANCY: Record<string, number> = {
+  Toronto: 3.0, Vancouver: 3.7, Calgary: 3.3, Edmonton: 3.4, Ottawa: 2.7,
+  Montreal: 2.9, Hamilton: 3.0, Halifax: 2.7, Winnipeg: 2.8, Canada: 3.1,
+};
+
+/**
+ * Toronto turnover premium: a new-tenant (turnover) rent vs a long-tenured
+ * occupied rent. 1-bed turnover ~$2,073 vs occupied ~$1,711 = +$362/mo (~21%).
+ * The uplift to apply to CMHC averages when underwriting a new/vacant unit.
+ */
+export const CMHC_TORONTO_TURNOVER_PREMIUM = 0.21;
 
 export const CMHC_PROVINCIAL_RENTS: Record<string, CmhcRentData> = {
   "British Columbia": { bachelor: 1198, oneBed: 1459, twoBed: 1807, threeBed: 2168 },
@@ -36,7 +64,7 @@ export const CMHC_PROVINCIAL_RENTS: Record<string, CmhcRentData> = {
 };
 
 export const CMHC_CITY_RENTS: Record<string, CmhcRentData> = {
-  "Vancouver": { bachelor: 1525, oneBed: 1850, twoBed: 2550, threeBed: 3100 },
+  "Vancouver": { bachelor: 1500, oneBed: 1850, twoBed: 2100, threeBed: 2500 },
   "Burnaby": { bachelor: 1400, oneBed: 1700, twoBed: 2200, threeBed: 2700 },
   "Surrey": { bachelor: 1200, oneBed: 1500, twoBed: 1850, threeBed: 2200 },
   "Richmond": { bachelor: 1350, oneBed: 1650, twoBed: 2100, threeBed: 2500 },
@@ -62,8 +90,8 @@ export const CMHC_CITY_RENTS: Record<string, CmhcRentData> = {
   "Sidney": { bachelor: 1000, oneBed: 1250, twoBed: 1600, threeBed: 1900 },
   "Saanich": { bachelor: 1100, oneBed: 1400, twoBed: 1750, threeBed: 2050 },
 
-  "Calgary": { bachelor: 1100, oneBed: 1350, twoBed: 1650, threeBed: 1900 },
-  "Edmonton": { bachelor: 900, oneBed: 1100, twoBed: 1350, threeBed: 1550 },
+  "Calgary": { bachelor: 1150, oneBed: 1450, twoBed: 1750, threeBed: 2000 },
+  "Edmonton": { bachelor: 1000, oneBed: 1250, twoBed: 1500, threeBed: 1700 },
   "Red Deer": { bachelor: 750, oneBed: 950, twoBed: 1150, threeBed: 1350 },
   "Lethbridge": { bachelor: 750, oneBed: 950, twoBed: 1150, threeBed: 1300 },
   "Medicine Hat": { bachelor: 650, oneBed: 800, twoBed: 1000, threeBed: 1150 },
@@ -83,15 +111,15 @@ export const CMHC_CITY_RENTS: Record<string, CmhcRentData> = {
   "Moose Jaw": { bachelor: 600, oneBed: 750, twoBed: 950, threeBed: 1100 },
   "Prince Albert": { bachelor: 600, oneBed: 750, twoBed: 950, threeBed: 1100 },
 
-  "Winnipeg": { bachelor: 750, oneBed: 950, twoBed: 1200, threeBed: 1400 },
+  "Winnipeg": { bachelor: 800, oneBed: 1050, twoBed: 1300, threeBed: 1500 },
   "Brandon": { bachelor: 600, oneBed: 780, twoBed: 980, threeBed: 1120 },
   "Thompson": { bachelor: 700, oneBed: 900, twoBed: 1100, threeBed: 1300 },
 
-  "Toronto": { bachelor: 1450, oneBed: 1800, twoBed: 2400, threeBed: 2900 },
+  "Toronto": { bachelor: 1491, oneBed: 1761, twoBed: 2045, threeBed: 2294 },
   "Mississauga": { bachelor: 1350, oneBed: 1650, twoBed: 2150, threeBed: 2600 },
   "Brampton": { bachelor: 1250, oneBed: 1500, twoBed: 1950, threeBed: 2350 },
-  "Hamilton": { bachelor: 1050, oneBed: 1300, twoBed: 1650, threeBed: 1950 },
-  "Ottawa": { bachelor: 1100, oneBed: 1350, twoBed: 1700, threeBed: 2000 },
+  "Hamilton": { bachelor: 1100, oneBed: 1350, twoBed: 1600, threeBed: 1850 },
+  "Ottawa": { bachelor: 1250, oneBed: 1500, twoBed: 1800, threeBed: 2050 },
   "London": { bachelor: 950, oneBed: 1200, twoBed: 1500, threeBed: 1750 },
   "Kitchener": { bachelor: 1050, oneBed: 1300, twoBed: 1650, threeBed: 1900 },
   "Waterloo": { bachelor: 1050, oneBed: 1300, twoBed: 1650, threeBed: 1900 },
@@ -138,7 +166,7 @@ export const CMHC_CITY_RENTS: Record<string, CmhcRentData> = {
   "Lindsay": { bachelor: 900, oneBed: 1100, twoBed: 1400, threeBed: 1600 },
   "Collingwood": { bachelor: 1050, oneBed: 1300, twoBed: 1600, threeBed: 1900 },
 
-  "Montreal": { bachelor: 850, oneBed: 1100, twoBed: 1450, threeBed: 1700 },
+  "Montreal": { bachelor: 850, oneBed: 1150, twoBed: 1200, threeBed: 1350 },
   "Quebec City": { bachelor: 650, oneBed: 820, twoBed: 1000, threeBed: 1180 },
   "Québec": { bachelor: 650, oneBed: 820, twoBed: 1000, threeBed: 1180 },
   "Laval": { bachelor: 800, oneBed: 1000, twoBed: 1300, threeBed: 1550 },
@@ -158,7 +186,7 @@ export const CMHC_CITY_RENTS: Record<string, CmhcRentData> = {
   "Rimouski": { bachelor: 520, oneBed: 680, twoBed: 850, threeBed: 1000 },
   "Victoriaville": { bachelor: 520, oneBed: 660, twoBed: 830, threeBed: 970 },
 
-  "Halifax": { bachelor: 950, oneBed: 1200, twoBed: 1550, threeBed: 1800 },
+  "Halifax": { bachelor: 1100, oneBed: 1400, twoBed: 1650, threeBed: 1900 },
   "Dartmouth": { bachelor: 900, oneBed: 1100, twoBed: 1400, threeBed: 1650 },
   "Sydney": { bachelor: 650, oneBed: 800, twoBed: 1000, threeBed: 1150 },
   "Truro": { bachelor: 700, oneBed: 850, twoBed: 1050, threeBed: 1200 },
