@@ -26,8 +26,8 @@ interface GHLConfig {
 
 const getConfig = (): GHLConfig => {
   return {
-    token: process.env.HIGHLEVEL_TOKEN,
-    locationId: process.env.HIGHLEVEL_LOCATION_ID,
+    token: process.env.GHL_API_KEY || process.env.HIGHLEVEL_TOKEN,
+    locationId: process.env.GHL_LOCATION_ID || process.env.HIGHLEVEL_LOCATION_ID,
   };
 };
 
