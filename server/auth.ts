@@ -186,8 +186,92 @@ export function getSession() {
   });
 }
 
+/**
+ * Idempotent boot migration for the auth tables, mirroring the
+ * ensureRealistEventTables pattern in server/eventsModule.ts.
+ *
+ * WHY THIS EXISTS: drizzle's full-row selects (db.select().from(users))
+ * enumerate every column defined in code, so a single column that exists in
+ * shared/models/auth.ts but not in the production database throws on EVERY
+ * users read — which took down signup, login, and forgot-password in
+ * production on 2026-07-15 (users.phone_verification_skipped_at shipped
+ * 2026-07-02 in code, but db:push was never run against the prod database).
+ * Running the ADD COLUMN IF NOT EXISTS set on boot makes a deploy
+ * self-healing; each clause is a no-op when the column already exists.
+ */
+export async function ensureAuthSchema() {
+  await db.execute(sql`
+    ALTER TABLE "users"
+      ADD COLUMN IF NOT EXISTS "password_hash" varchar,
+      ADD COLUMN IF NOT EXISTS "first_name" varchar,
+      ADD COLUMN IF NOT EXISTS "last_name" varchar,
+      ADD COLUMN IF NOT EXISTS "phone" varchar,
+      ADD COLUMN IF NOT EXISTS "phone_verified" boolean DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "phone_verification_skipped_at" timestamp,
+      ADD COLUMN IF NOT EXISTS "profile_image_url" varchar,
+      ADD COLUMN IF NOT EXISTS "role" varchar DEFAULT 'investor',
+      ADD COLUMN IF NOT EXISTS "email_verified" boolean DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "email_verification_token" varchar,
+      ADD COLUMN IF NOT EXISTS "email_verification_expires" timestamp,
+      ADD COLUMN IF NOT EXISTS "email_digest_opt_in" boolean DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "stripe_customer_id" varchar,
+      ADD COLUMN IF NOT EXISTS "created_at" timestamp DEFAULT now(),
+      ADD COLUMN IF NOT EXISTS "updated_at" timestamp DEFAULT now()
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "user_id" varchar NOT NULL REFERENCES "users"("id"),
+      "token" varchar NOT NULL UNIQUE,
+      "expires_at" timestamp NOT NULL,
+      "used_at" timestamp,
+      "created_at" timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    ALTER TABLE "password_reset_tokens"
+      ADD COLUMN IF NOT EXISTS "used_at" timestamp,
+      ADD COLUMN IF NOT EXISTS "created_at" timestamp DEFAULT now()
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "user_oauth_accounts" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "user_id" varchar NOT NULL REFERENCES "users"("id"),
+      "provider" varchar NOT NULL,
+      "provider_user_id" varchar NOT NULL,
+      "provider_email" varchar,
+      "access_token" varchar,
+      "refresh_token" varchar,
+      "token_expires_at" timestamp,
+      "created_at" timestamp DEFAULT now(),
+      "updated_at" timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "phone_verification_codes" (
+      "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+      "user_id" varchar NOT NULL REFERENCES "users"("id"),
+      "phone" varchar NOT NULL,
+      "code" varchar NOT NULL,
+      "attempts" varchar DEFAULT '0',
+      "expires_at" timestamp NOT NULL,
+      "verified_at" timestamp,
+      "created_at" timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    ALTER TABLE "phone_verification_codes"
+      ADD COLUMN IF NOT EXISTS "verified_at" timestamp
+  `);
+}
+
 export function setupAuth(app: Express) {
   app.use(getSession());
+  // Fire-and-forget like ensureRealistEventTables: routes must still register
+  // if the DB is briefly unreachable, and every clause is idempotent.
+  ensureAuthSchema()
+    .then(() => console.log("[auth] schema ensured (users + auth side tables)"))
+    .catch((error) => console.error("[auth] failed to ensure schema:", error.message));
   console.log(
     process.env.GHL_WEBHOOK_URL
       ? "[ghl] GHL_WEBHOOK_URL is set — CRM webhooks enabled"
