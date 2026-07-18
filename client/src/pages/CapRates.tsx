@@ -44,6 +44,7 @@ import {
 import { getCmhcRent } from "@shared/cmhcRents";
 import { MiniDealAnalyzer } from "@/components/MiniDealAnalyzer";
 import { WatchListingButton } from "@/components/WatchListingButton";
+import { ReplacementCostEstimate } from "@/components/ReplacementCostEstimate";
 import type { ListingAnalysisAggregate } from "@shared/schema";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
@@ -200,6 +201,7 @@ interface DistressListing {
     numBathrooms?: number;
     sqft?: string;
     propertyType?: string;
+    yearBuilt?: string;
     description?: string;
   };
   images?: string[];
@@ -3013,6 +3015,13 @@ export default function CapRates() {
               <span>CF: {formatCompactCurrency(listing.monthlyCashFlow)}</span>
             </div>
 
+            <ReplacementCostEstimate
+              squareFootage={listing.details?.sqft}
+              yearBuilt={listing.details?.yearBuilt}
+              propertyType={listing.details?.propertyType || listing.type}
+              listingKey={listing.mlsNumber}
+            />
+
             <div className={`mt-2 rounded-md border px-2 py-1.5 ${multiplexScanTone}`} data-testid={`multiplex-scan-${listing.mlsNumber}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold">
@@ -3176,6 +3185,12 @@ export default function CapRates() {
             <p className="mt-1.5 line-clamp-2 text-[10px] text-muted-foreground">
               {listing.rawRemarks || listing.details?.description || "Motivated-seller indicators detected in listing remarks."}
             </p>
+            <ReplacementCostEstimate
+              squareFootage={listing.details?.sqft}
+              yearBuilt={listing.details?.yearBuilt}
+              propertyType={listing.details?.propertyType}
+              listingKey={`distress-${listing.mlsNumber}`}
+            />
           </div>
         </div>
       </div>
@@ -4000,6 +4015,12 @@ export default function CapRates() {
               <span>CF: {formatCompactCurrency(selectedListing.monthlyCashFlow)}</span>
               <span>{aggregate?.publicAnalysisCount || 0} analyses</span>
             </div>
+            <ReplacementCostEstimate
+              squareFootage={selectedListing.details?.sqft}
+              yearBuilt={selectedListing.details?.yearBuilt}
+              propertyType={selectedListing.details?.propertyType || selectedListing.type}
+              listingKey={`quick-${selectedListing.mlsNumber}`}
+            />
             <div className="mt-2 rounded-md border border-ai/30 bg-ai/5 px-2 py-1.5">
               <div className="flex items-center justify-between gap-2 text-[10px]">
                 <span className="inline-flex items-center gap-1 font-semibold text-ai">
