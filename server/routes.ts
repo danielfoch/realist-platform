@@ -6383,7 +6383,7 @@ export async function registerRoutes(
 
   app.post("/api/ddf/listings", async (req: any, res) => {
     try {
-      const { isDdfConfigured, searchDdfListings, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      const { isDdfConfigured, searchDdfListings, normalizeDdfListing } = await import("./creaDdf");
       const { isVacantLandLikeProperty } = await import("@shared/propertyEligibility");
 
       if (!isDdfConfigured()) {
@@ -6439,7 +6439,7 @@ export async function registerRoutes(
       });
 
       const normalizedListings = result.listings
-        .map(normalizeDdfToRepliersFormat)
+        .map(normalizeDdfListing)
         .filter((listing: any) => {
           const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
           return Number.isFinite(price) && price > 1 && !isVacantLandLikeProperty(listing);
@@ -6469,7 +6469,7 @@ export async function registerRoutes(
 
   app.get("/api/ddf/listing/:listingKey", async (req: any, res) => {
     try {
-      const { isDdfConfigured, getDdfListing, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      const { isDdfConfigured, getDdfListing, normalizeDdfListing } = await import("./creaDdf");
 
       if (!isDdfConfigured()) {
         res.status(503).json({ error: "CREA DDF not configured" });
@@ -6488,7 +6488,7 @@ export async function registerRoutes(
         return;
       }
 
-      res.json({ listing: normalizeDdfToRepliersFormat(listing), source: "crea_ddf" });
+      res.json({ listing: normalizeDdfListing(listing), source: "crea_ddf" });
     } catch (error: any) {
       console.error("DDF listing error:", error);
       res.status(500).json({ error: "Failed to fetch DDF listing" });
@@ -6497,7 +6497,7 @@ export async function registerRoutes(
 
   app.get("/api/ddf/mls/:mlsNumber", async (req: any, res) => {
     try {
-      const { isDdfConfigured, searchDdfByMlsNumber, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      const { isDdfConfigured, searchDdfByMlsNumber, normalizeDdfListing } = await import("./creaDdf");
 
       if (!isDdfConfigured()) {
         res.status(503).json({ error: "CREA DDF not configured", available: false });
@@ -6516,7 +6516,7 @@ export async function registerRoutes(
         return;
       }
 
-      const normalized = normalizeDdfToRepliersFormat(listing);
+      const normalized = normalizeDdfListing(listing);
 
       const parsedListing = {
         listingId: normalized.mlsNumber || mlsNumber,
@@ -6756,7 +6756,7 @@ export async function registerRoutes(
         return;
       }
 
-      const { isDdfConfigured, searchDdfListings, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      const { isDdfConfigured, searchDdfListings, normalizeDdfListing } = await import("./creaDdf");
       const { isVacantLandLikeProperty } = await import("@shared/propertyEligibility");
       if (!isDdfConfigured()) {
         res.status(503).json({ error: "DDF not configured", available: false });
@@ -6792,7 +6792,7 @@ export async function registerRoutes(
 
       const result = await searchDdfListings(searchParams);
       const normalizedListings = result.listings
-        .map(normalizeDdfToRepliersFormat)
+        .map(normalizeDdfListing)
         .filter((listing: any) => {
           const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
           return Number.isFinite(price) && price > 1 && !isVacantLandLikeProperty(listing);
@@ -6940,158 +6940,6 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Find deals error:", error);
       res.status(500).json({ error: "Failed to search for deals" });
-    }
-  });
-
-  // ============================================
-  // REPLIERS API PROXY ROUTES
-  // ============================================
-
-  app.post("/api/repliers/listings", async (req: any, res) => {
-    try {
-      const apiKey = process.env.REPLIERS_API_KEY;
-      if (!apiKey) {
-        res.status(500).json({ error: "Repliers API key not configured" });
-        return;
-      }
-
-      const {
-        map,
-        minPrice, maxPrice,
-        minBeds, maxBeds,
-        minBaths, maxBaths,
-        propertyType,
-        status,
-        pageNum,
-        resultsPerPage,
-        class: propClass,
-        type: listingType,
-        sortBy,
-        city,
-        area,
-      } = req.body;
-
-      const queryParams = new URLSearchParams();
-      if (minPrice) queryParams.set("minPrice", String(minPrice));
-      if (maxPrice) queryParams.set("maxPrice", String(maxPrice));
-      if (minBeds) queryParams.set("minBeds", String(minBeds));
-      if (maxBeds) queryParams.set("maxBeds", String(maxBeds));
-      if (minBaths) queryParams.set("minBaths", String(minBaths));
-      if (maxBaths) queryParams.set("maxBaths", String(maxBaths));
-      if (propertyType) queryParams.set("propertyType", propertyType);
-      if (status) queryParams.set("status", status);
-      if (propClass) queryParams.set("class", propClass);
-      if (listingType) queryParams.set("type", listingType);
-      if (sortBy) queryParams.set("sortBy", sortBy);
-      if (city) queryParams.set("city", city);
-      if (area) queryParams.set("area", area);
-      queryParams.set("pageNum", String(pageNum || 1));
-      queryParams.set("resultsPerPage", String(resultsPerPage || 50));
-
-      const body: Record<string, any> = {};
-      if (map) {
-        body.map = map;
-      }
-
-      const qs = queryParams.toString();
-      const url = `https://api.repliers.io/listings${qs ? `?${qs}` : ""}`;
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "REPLIERS-API-KEY": apiKey,
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Repliers API error:", response.status, errorText);
-        res.status(response.status).json({ error: "Repliers API error", details: errorText });
-        return;
-      }
-
-      const data = await response.json();
-      const filteredListings = Array.isArray(data.listings)
-        ? data.listings.filter((listing: any) => {
-            const price = typeof listing?.listPrice === "string" ? parseFloat(listing.listPrice) : listing?.listPrice;
-            return Number.isFinite(price) && price > 1;
-          })
-        : [];
-
-      res.json({
-        ...data,
-        listings: filteredListings,
-        count: filteredListings.length,
-        numPages: filteredListings.length > 0
-          ? Math.ceil(filteredListings.length / Math.max(Number(resultsPerPage) || 50, 1))
-          : 0,
-      });
-    } catch (error) {
-      console.error("Error proxying Repliers listings:", error);
-      res.status(500).json({ error: "Failed to fetch listings" });
-    }
-  });
-
-  app.get("/api/repliers/listings/:mlsNumber", async (req: any, res) => {
-    try {
-      const apiKey = process.env.REPLIERS_API_KEY;
-      if (!apiKey) {
-        res.status(500).json({ error: "Repliers API key not configured" });
-        return;
-      }
-
-      const { mlsNumber } = req.params;
-      const response = await fetch(`https://api.repliers.io/listings/${encodeURIComponent(mlsNumber)}`, {
-        method: "GET",
-        headers: {
-          "REPLIERS-API-KEY": apiKey,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Repliers API detail error:", response.status, errorText);
-        res.status(response.status).json({ error: "Repliers API error", details: errorText });
-        return;
-      }
-
-      const data = await response.json();
-      res.json(data);
-    } catch (error) {
-      console.error("Error fetching listing detail:", error);
-      res.status(500).json({ error: "Failed to fetch listing detail" });
-    }
-  });
-
-  app.get("/api/repliers/listings/:mlsNumber/similar", async (req: any, res) => {
-    try {
-      const apiKey = process.env.REPLIERS_API_KEY;
-      if (!apiKey) {
-        res.status(500).json({ error: "Repliers API key not configured" });
-        return;
-      }
-
-      const { mlsNumber } = req.params;
-      const response = await fetch(`https://api.repliers.io/listings/${encodeURIComponent(mlsNumber)}/similar`, {
-        method: "GET",
-        headers: {
-          "REPLIERS-API-KEY": apiKey,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        res.status(response.status).json({ error: "Repliers API error", details: errorText });
-        return;
-      }
-
-      const data = await response.json();
-      res.json(data);
-    } catch (error) {
-      console.error("Error fetching similar listings:", error);
-      res.status(500).json({ error: "Failed to fetch similar listings" });
     }
   });
 
@@ -12027,7 +11875,7 @@ export async function registerRoutes(
 
   async function runDistressScan(): Promise<{ listings: any[]; totalDdfScanned: number; failedTermCount: number }> {
     const { scoreDistress, isQualifiedDistressResult } = await import("@shared/distressScoring");
-    const { searchDdfByRemarks, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+    const { searchDdfByRemarks, normalizeDdfListing } = await import("./creaDdf");
 
     const allCategoryKeys = Object.keys(SEARCH_TERMS_BY_CATEGORY);
     const searchTerms: string[] = [];
@@ -12087,7 +11935,7 @@ export async function registerRoutes(
     }
 
     const allScored = Array.from(allListings.values()).map(raw => {
-      const normalized = normalizeDdfToRepliersFormat(raw);
+      const normalized = normalizeDdfListing(raw);
       const remarks = raw.PublicRemarks || "";
       const listingProvince = raw.StateOrProvince || "";
       const distress = scoreDistress(remarks, listingProvince);

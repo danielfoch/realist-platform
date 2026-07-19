@@ -207,7 +207,7 @@ export async function searchDdfListings(params: {
 
   const url = `${DDF_API_BASE}/Property?${queryParams.toString()}`;
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/json",
@@ -216,8 +216,32 @@ export async function searchDdfListings(params: {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("DDF search error:", response.status, errorText);
-    throw new Error(`DDF search failed: ${response.status} - ${errorText}`);
+    // CREA periodically evolves the Property schema. A removed/renamed field
+    // in $select makes the whole search return 400 even though authentication
+    // and the filter are healthy. Retry once without projection so listing
+    // search stays available while our field list catches up.
+    if (response.status === 400) {
+      const fallbackParams = new URLSearchParams(queryParams);
+      fallbackParams.delete("$select");
+      const fallbackUrl = `${DDF_API_BASE}/Property?${fallbackParams.toString()}`;
+      const fallbackResponse = await fetch(fallbackUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+      if (fallbackResponse.ok) {
+        console.warn("DDF search projection rejected; retried without $select");
+        response = fallbackResponse;
+      } else {
+        const fallbackErrorText = await fallbackResponse.text();
+        console.error("DDF search error:", response.status, errorText, "fallback:", fallbackResponse.status, fallbackErrorText);
+        throw new Error(`DDF search failed: ${fallbackResponse.status} - ${fallbackErrorText}`);
+      }
+    } else {
+      console.error("DDF search error:", response.status, errorText);
+      throw new Error(`DDF search failed: ${response.status} - ${errorText}`);
+    }
   }
 
   const data: DdfSearchResponse = await response.json();
@@ -383,7 +407,7 @@ export async function getDdfListing(listingKey: string): Promise<DdfListing | nu
   return response.json();
 }
 
-export function normalizeDdfToRepliersFormat(ddf: DdfListing): any {
+export function normalizeDdfListing(ddf: DdfListing): any {
   const images = (ddf.Media || [])
     .sort((a, b) => (a.Order || 0) - (b.Order || 0))
     .map(m => m.MediaURL || "")
