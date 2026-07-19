@@ -34,21 +34,13 @@ const getConfig = (): GHLConfig => {
 const GHL_BASE_URL = 'https://services.leadconnectorhq.com';
 
 /**
- * Push a contact to GoHighLevel as a background operation
- * Does not throw - errors are logged but don't fail the main flow
+ * Push a contact to GoHighLevel via the REST API.
+ * API-only: does NOT append to the owner's Google Sheet. Callers that already
+ * write to sheets (sendWebhook, sendSignupWebhookToGHL, etc.) should use this
+ * to avoid duplicate rows.
+ * Does not throw - errors are logged but don't fail the main flow.
  */
-export async function pushToGHL(contact: GHLContact): Promise<void> {
-  // Always pipe to owner's Google Sheet (replaces GHL as primary destination).
-  const tab = SOURCE_TO_TAB[contact.source] || "Contacts";
-  appendLead(tab, {
-    firstName: contact.firstName,
-    lastName: contact.lastName,
-    email: contact.email,
-    phone: contact.phone,
-    tags: contact.tags,
-    source: contact.source,
-  });
-
+export async function pushContactToGHL(contact: GHLContact): Promise<void> {
   const config = getConfig();
 
   // Skip GHL if no credentials configured
@@ -94,6 +86,26 @@ export async function pushToGHL(contact: GHLContact): Promise<void> {
     // Log but don't fail - this is a background operation
     console.error('[GHL] Error pushing contact:', error);
   }
+}
+
+/**
+ * Push a contact to GoHighLevel as a background operation.
+ * This is the canonical path for new standalone contacts: it appends to the
+ * owner's Google Sheet AND pushes to the GHL API when credentials are present.
+ */
+export async function pushToGHL(contact: GHLContact): Promise<void> {
+  // Always pipe to owner's Google Sheet (replaces GHL as primary destination).
+  const tab = SOURCE_TO_TAB[contact.source] || "Contacts";
+  appendLead(tab, {
+    firstName: contact.firstName,
+    lastName: contact.lastName,
+    email: contact.email,
+    phone: contact.phone,
+    tags: contact.tags,
+    source: contact.source,
+  });
+
+  await pushContactToGHL(contact);
 }
 
 /**
@@ -155,5 +167,34 @@ export async function pushDealLeadToGHL(
     phone: phone || '',
     tags,
     source: 'deal_lead',
+  });
+}
+
+/**
+ * Helper to push an investor lead to GHL.
+ * Used by the deal analyzer and engagement forms. Does NOT append to the
+ * owner's sheet — those callers already write to sheets via sendWebhook().
+ */
+export async function pushInvestorLeadToGHL(
+  email: string,
+  phone: string | null | undefined,
+  name: string,
+  source: string,
+  city?: string | null,
+  province?: string | null,
+  strategy?: string | null,
+): Promise<void> {
+  const tags = ['realist.ca', 'investor', source];
+  if (city) tags.push(`city:${city}`);
+  if (province) tags.push(`province:${province}`);
+  if (strategy) tags.push(`strategy:${strategy}`);
+
+  await pushContactToGHL({
+    firstName: name.split(' ')[0] || email.split('@')[0],
+    lastName: name.split(' ').slice(1).join(' ') || '',
+    email,
+    phone: phone || '',
+    tags,
+    source: 'investor_lead',
   });
 }
