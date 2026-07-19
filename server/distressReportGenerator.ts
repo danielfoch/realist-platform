@@ -2,7 +2,7 @@ import { db } from "./db";
 import { distressSnapshots } from "@shared/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { storage } from "./storage";
-import { searchDdfByRemarks, normalizeDdfToRepliersFormat, isDdfConfigured } from "./creaDdf";
+import { searchDdfByRemarks, normalizeDdfListing, isDdfConfigured } from "./creaDdf";
 import { isQualifiedDistressResult, scoreDistress } from "@shared/distressScoring";
 
 const PROVINCE_NAMES: Record<string, string> = {
@@ -118,7 +118,7 @@ async function scanProvinceDistress(provinceName: string): Promise<ScoredListing
   }
 
   return Array.from(allListings.values()).map(raw => {
-    const normalized = normalizeDdfToRepliersFormat(raw);
+    const normalized = normalizeDdfListing(raw);
     const remarks = raw.PublicRemarks || "";
     const distress = scoreDistress(remarks, provinceName);
     return { ...normalized, distress, rawRemarks: remarks } as ScoredListing;

@@ -86,8 +86,9 @@ import { type DistressResult } from "@shared/distressScoring";
 import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
 import { authPath } from "@/lib/authReturn";
 import { detectPossiblePlex } from "@shared/plexDetection";
+import { isTorontoListingAddress } from "@shared/listingLocation";
 
-interface RepliersListing {
+interface CanadianListing {
   mlsNumber: string;
   listPrice: number | string;
   address: {
@@ -134,7 +135,7 @@ interface RepliersListing {
   };
 }
 
-interface ListingWithCapRate extends RepliersListing {
+interface ListingWithCapRate extends CanadianListing {
   grossYield: number | null;
   capRate: number;
   cashOnCashReturn: number | null;
@@ -157,7 +158,7 @@ interface ListingWithCapRate extends RepliersListing {
   plexConfidenceScore?: number;
   plexDetectionReason?: string;
   unitCount: number;
-  dataSource?: "crea_ddf" | "repliers";
+  dataSource?: "crea_ddf";
 }
 
 interface MultiplexListingScan {
@@ -297,7 +298,7 @@ function escapeHtml(value: string | number | null | undefined): string {
     .replaceAll("'", "&#039;");
 }
 
-function formatAddress(addr: RepliersListing["address"]): string {
+function formatAddress(addr: CanadianListing["address"]): string {
   if (!addr) return "Unknown";
   const parts = [
     addr.streetNumber,
@@ -312,7 +313,7 @@ function formatAddress(addr: RepliersListing["address"]): string {
   return [street, unit, cityState].filter(Boolean).join(", ") || "Unknown";
 }
 
-function formatShortAddress(addr: RepliersListing["address"]): string {
+function formatShortAddress(addr: CanadianListing["address"]): string {
   if (!addr) return "Unknown";
   const parts = [
     addr.streetNumber,
@@ -328,7 +329,7 @@ function getImageUrl(images: string[] | undefined): string | null {
   if (!img) {
     const first = images[0];
     if (first.startsWith("http")) return first;
-    return `https://cdn.repliers.io/${first}`;
+    return null;
   }
   return img;
 }
@@ -508,7 +509,7 @@ function getMetricPrimaryConfidence(
   return null;
 }
 
-function buildListingSignal(listing: RepliersListing & {
+function buildListingSignal(listing: CanadianListing & {
   capRate?: number;
   estimatedMonthlyRent?: number;
   unitCount?: number;
@@ -554,8 +555,8 @@ function buildListingQuestionSnapshot(listing: ListingWithCapRate): Record<strin
 
 function buildDistressQuestionSnapshot(listing: DistressListing): Record<string, unknown> {
   return {
-    address: formatAddress(listing.address as RepliersListing["address"]),
-    shortAddress: formatShortAddress(listing.address as RepliersListing["address"]),
+    address: formatAddress(listing.address as CanadianListing["address"]),
+    shortAddress: formatShortAddress(listing.address as CanadianListing["address"]),
     city: listing.address?.city,
     province: listing.address?.state,
     neighbourhood: listing.address?.neighborhood,
@@ -581,7 +582,9 @@ function parseSqft(value?: string | number | null): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function buildMultiplexUnderwriterHref(listing: ListingWithCapRate): string {
+function buildMultiplexUnderwriterHref(
+  listing: Pick<CanadianListing, "mlsNumber" | "listPrice" | "address" | "details">,
+): string {
   const params = new URLSearchParams();
   const address = formatAddress(listing.address);
   const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
@@ -885,14 +888,14 @@ interface FindDealsResult {
   deal_score: number;
   final_score: number;
   explanation: string;
-  address: RepliersListing["address"];
-  details: RepliersListing["details"];
+  address: CanadianListing["address"];
+  details: CanadianListing["details"];
   images?: string[];
   daysOnMarket: number;
   monthlyRent: number;
   rentSource: string;
   listPrice: number | string;
-  taxes?: RepliersListing["taxes"];
+  taxes?: CanadianListing["taxes"];
   numberOfUnitsTotal: number;
 }
 
@@ -1645,7 +1648,7 @@ export default function CapRates() {
   const [consensusLabelFilter, setConsensusLabelFilter] = useState<"any" | ConsensusLabel>("any");
   const [includeUnavailableMetrics, setIncludeUnavailableMetrics] = useState(false);
   const [page, setPage] = useState(1);
-  const [listings, setListings] = useState<RepliersListing[]>([]);
+  const [listings, setListings] = useState<CanadianListing[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [numPages, setNumPages] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
@@ -1655,7 +1658,7 @@ export default function CapRates() {
   const [selectedDistressListing, setSelectedDistressListing] = useState<DistressListing | null>(null);
   const [analyzerSheetMeta, setAnalyzerSheetMeta] = useState<{ title: string; subtitle: string } | null>(null);
   const [analyzerSeedQuery, setAnalyzerSeedQuery] = useState("");
-  const [dataSource, setDataSource] = useState<"crea_ddf" | "repliers" | null>(null);
+  const [dataSource, setDataSource] = useState<"crea_ddf" | null>(null);
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [showMobileList, setShowMobileList] = useState(false);
   const [mapLayers, setMapLayers] = useState<MapLayer[]>(DEFAULT_LAYERS);
@@ -1683,7 +1686,7 @@ export default function CapRates() {
   const [showDistressOnly, setShowDistressOnly] = useState(() => (
     typeof window === "undefined" ? false : parseBooleanParam(new URLSearchParams(window.location.search).get("distressOnly"))
   ));
-  // Unified country filter: Canadian listings come from CREA DDF / Repliers,
+  // Unified country filter: Canadian listings come from CREA DDF,
   // US listings from the us_listings table (HomeHarvest). "all" shows both.
   const [countryFilter, setCountryFilter] = useState<"all" | "ca" | "us">("all");
   const showUsListingsLayer = countryFilter !== "ca";
@@ -1712,10 +1715,6 @@ export default function CapRates() {
 
   const { data: rentData = [] } = useQuery<RentPulseData[]>({
     queryKey: ["/api/rents/pulse"],
-  });
-
-  const { data: ddfStatus } = useQuery<{ configured: boolean; authenticated: boolean }>({
-    queryKey: ["/api/ddf/status"],
   });
 
   const { data: distressData } = useQuery<{ listings: DistressListing[] }>({
@@ -1964,72 +1963,36 @@ export default function CapRates() {
     setIsSearching(true);
     setFetchError(false);
     try {
-      const useDdf = ddfStatus?.configured && ddfStatus?.authenticated;
-
-      if (useDdf) {
-        const ddfBody: Record<string, any> = {
-          resultsPerPage: 50,
-          pageNum,
-          latitudeMin: bounds.south,
-          latitudeMax: bounds.north,
-          longitudeMin: bounds.west,
-          longitudeMax: bounds.east,
-          excludeBusinessSales: true,
-          excludeParking: true,
-          excludeVacantLand: true,
-        };
-
-        if (minPrice) ddfBody.minPrice = parseInt(minPrice);
-        if (maxPrice) ddfBody.maxPrice = parseInt(maxPrice);
-        if (minBeds && minBeds !== "any") ddfBody.minBeds = parseInt(minBeds);
-        if (minUnits && minUnits !== "any") ddfBody.minUnits = parseInt(minUnits);
-        if (propertyType && propertyType !== "all") ddfBody.propertySubType = propertyType;
-
-        try {
-          const response = await apiRequest("POST", "/api/ddf/listings", ddfBody);
-          const data = await response.json();
-
-          if (data.listings) {
-            setListings(data.listings);
-            setTotalCount(data.count || 0);
-            setNumPages(data.numPages || 0);
-            setPage(data.page || 1);
-            setDataSource("crea_ddf");
-            setHasSearched(true);
-            return;
-          }
-        } catch (ddfError) {
-          console.warn("DDF search failed, falling back to Repliers:", ddfError);
-        }
-      }
-
       const body: Record<string, any> = {
         resultsPerPage: 50,
         pageNum,
-        status: "A",
-        class: "ResidentialProperty",
-        map: `${bounds.south},${bounds.west}|${bounds.north},${bounds.east}`,
+        latitudeMin: bounds.south,
+        latitudeMax: bounds.north,
+        longitudeMin: bounds.west,
+        longitudeMax: bounds.east,
+        excludeBusinessSales: true,
+        excludeParking: true,
+        excludeVacantLand: true,
       };
 
       if (minPrice) body.minPrice = parseInt(minPrice);
       if (maxPrice) body.maxPrice = parseInt(maxPrice);
       if (minBeds && minBeds !== "any") body.minBeds = parseInt(minBeds);
-      if (propertyType && propertyType !== "all") body.propertyType = propertyType;
+      if (minUnits && minUnits !== "any") body.minUnits = parseInt(minUnits);
+      if (propertyType && propertyType !== "all") body.propertySubType = propertyType;
 
-      const response = await apiRequest("POST", "/api/repliers/listings", body);
+      const response = await apiRequest("POST", "/api/ddf/listings", body);
       const data = await response.json();
 
-      if (data.listings) {
-        setListings(data.listings);
-        setTotalCount(data.count || 0);
-        setNumPages(data.numPages || 0);
-        setPage(data.page || 1);
-        setDataSource("repliers");
-      } else {
-        setListings([]);
-        setTotalCount(0);
-        setNumPages(0);
+      if (!Array.isArray(data.listings)) {
+        throw new Error("CREA DDF response did not include listings");
       }
+
+      setListings(data.listings);
+      setTotalCount(data.count || 0);
+      setNumPages(data.numPages || 0);
+      setPage(data.page || 1);
+      setDataSource("crea_ddf");
       setHasSearched(true);
     } catch (error) {
       // Never let an API failure masquerade as "no properties found" — say
@@ -2047,7 +2010,7 @@ export default function CapRates() {
       setIsSearching(false);
       searchInProgress.current = false;
     }
-  }, [minPrice, maxPrice, minBeds, minUnits, propertyType, ddfStatus, toast]);
+  }, [minPrice, maxPrice, minBeds, minUnits, propertyType, toast]);
 
   // Keep the selected listing pinned while the user repositions the map —
   // clearing it on pan made it impossible to review a property and move the
@@ -2228,7 +2191,7 @@ export default function CapRates() {
   }, [distressListingsInView, listingsWithCapRates]);
 
   const displayedListings = useMemo(() => {
-    // US-only mode hides the Canadian (DDF/Repliers) inventory entirely;
+    // US-only mode hides the Canadian CREA DDF inventory entirely;
     // US listings render from usMapData as markers + simple cards.
     if (countryFilter === "us") return [];
     if (!showDistressOnly) return listingsWithCapRates;
@@ -2586,7 +2549,7 @@ export default function CapRates() {
   };
 
   const buildAnalyzerSeed = (listing: ListingWithCapRate | DistressListing) => {
-    const addr = formatAddress(listing.address as RepliersListing["address"]);
+    const addr = formatAddress(listing.address as CanadianListing["address"]);
     const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
     const params = new URLSearchParams();
     params.set("address", addr);
@@ -2639,7 +2602,7 @@ export default function CapRates() {
     const seedQuery = buildAnalyzerSeed(listing);
     const meta = {
       title: "Analyze Motivated Opportunity",
-      subtitle: `${formatShortAddress(listing.address as RepliersListing["address"])}${listing.address?.city ? `, ${listing.address.city}` : ""}`,
+      subtitle: `${formatShortAddress(listing.address as CanadianListing["address"])}${listing.address?.city ? `, ${listing.address.city}` : ""}`,
     };
     setAnalyzerSeedQuery(seedQuery);
     setAnalyzerSheetMeta(meta);
@@ -2880,6 +2843,7 @@ export default function CapRates() {
         ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
         : "border-border/70 bg-muted/35 text-muted-foreground";
     const questionSnapshot = buildListingQuestionSnapshot(listing);
+    const isTorontoListing = isTorontoListingAddress(listing.address);
 
     return (
       <div
@@ -3099,7 +3063,7 @@ export default function CapRates() {
                 data-testid={`link-multiplex-underwriter-${listing.mlsNumber}`}
               >
                 <Sparkles className="h-2.5 w-2.5" />
-                Full multiplex underwrite
+                {isTorontoListing ? "Can I multiplex this?" : "Full multiplex underwrite"}
               </Link>
               <ListingCommentCountBadge
                 count={aggregatesMap[listing.mlsNumber]?.publicCommentCount}
@@ -3141,6 +3105,7 @@ export default function CapRates() {
   const renderDistressCard = (listing: DistressListing) => {
     const imgUrl = getImageUrl(listing.images);
     const isSelected = selectedDistressListing?.mlsNumber === listing.mlsNumber;
+    const isTorontoListing = isTorontoListingAddress(listing.address);
     return (
       <div
         key={`distress-${listing.mlsNumber}`}
@@ -3157,7 +3122,7 @@ export default function CapRates() {
             {imgUrl ? (
               <img
                 src={imgUrl}
-                alt={formatShortAddress(listing.address as RepliersListing["address"])}
+                alt={formatShortAddress(listing.address as CanadianListing["address"])}
                 className="w-24 h-20 object-cover rounded-md"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
@@ -3175,7 +3140,7 @@ export default function CapRates() {
               <span className="text-sm font-bold">{formatPrice(listing.listPrice)}</span>
             </div>
             <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-              {formatShortAddress(listing.address as RepliersListing["address"])}, {listing.address?.city}
+              {formatShortAddress(listing.address as CanadianListing["address"])}, {listing.address?.city}
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1">
               {listing.distress.categoriesTriggered.foreclosure_pos && <Badge variant="outline" className="text-[10px]">POS/foreclosure</Badge>}
@@ -3191,6 +3156,27 @@ export default function CapRates() {
               propertyType={listing.details?.propertyType}
               listingKey={`distress-${listing.mlsNumber}`}
             />
+            {isTorontoListing && (
+              <Link
+                href={buildMultiplexUnderwriterHref(listing)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  track({
+                    event: "feature_used",
+                    feature: "multiplex_underwriter",
+                    details: {
+                      listing_id: listing.mlsNumber,
+                      source: "distress_listing_card",
+                    },
+                  });
+                }}
+                className="mt-2 inline-flex items-center gap-1 rounded-full border border-ai/40 bg-ai/5 px-2 py-1 text-[10px] font-semibold text-ai transition-colors hover:bg-ai hover:text-white"
+                data-testid={`link-distress-multiplex-underwriter-${listing.mlsNumber}`}
+              >
+                <Sparkles className="h-3 w-3" />
+                Can I multiplex this?
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -3302,6 +3288,7 @@ export default function CapRates() {
     const uwCalc = computeUwCapRate();
     const multiplexScan = buildMultiplexListingScan(selectedListing);
     const questionSnapshot = buildListingQuestionSnapshot(selectedListing);
+    const isTorontoListing = isTorontoListingAddress(selectedListing.address);
     const multiplexScanTone = multiplexScan.status === "likely"
       ? "border-ai/40 bg-ai/10"
       : multiplexScan.status === "possible"
@@ -3378,11 +3365,10 @@ export default function CapRates() {
                 {selectedListing.images && selectedListing.images.length > 0 && (
                   <div className="grid grid-cols-2 gap-1.5">
                     {selectedListing.images.filter(img => img.startsWith("http") && !img.includes("youriguide") && !img.includes("virtualtour")).slice(0, 4).map((img, idx) => {
-                      const url = img.startsWith("http") ? img : `https://cdn.repliers.io/${img}`;
                       return (
                         <img
                           key={idx}
-                          src={url}
+                          src={img}
                           alt={`Photo ${idx + 1}`}
                           className={`rounded-md object-cover w-full ${idx === 0 ? "col-span-2 h-[160px]" : "h-[80px]"}`}
                           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -3476,7 +3462,7 @@ export default function CapRates() {
                       })}
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Open full multiplex underwriter
+                      {isTorontoListing ? "Can I multiplex this?" : "Open full multiplex underwriter"}
                     </Link>
                   </Button>
                 </div>
@@ -3979,6 +3965,7 @@ export default function CapRates() {
     const imgUrl = getImageUrl(selectedListing.images);
     const multiplexScan = buildMultiplexListingScan(selectedListing);
     const questionSnapshot = buildListingQuestionSnapshot(selectedListing);
+    const isTorontoListing = isTorontoListingAddress(selectedListing.address);
 
     return (
       <div className="rounded-2xl border border-border/70 bg-background/96 p-3 shadow-2xl backdrop-blur">
@@ -4032,7 +4019,7 @@ export default function CapRates() {
             </div>
           </div>
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" className="flex-1" onClick={() => handleAnalyzeListing(selectedListing)}>
             <Calculator className="mr-1.5 h-3.5 w-3.5" />
             Analyze
@@ -4040,10 +4027,15 @@ export default function CapRates() {
           <Button size="sm" variant="outline" className="flex-1" onClick={() => handleSelectListing(selectedListing, "list")}>
             Open details
           </Button>
-          <Button size="sm" variant="outline" className="shrink-0 px-2" asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            className={isTorontoListing ? "order-last basis-full" : "shrink-0 px-2"}
+            asChild
+          >
             <Link
               href={multiplexScan.href}
-              aria-label="Open full multiplex underwriter"
+              aria-label={isTorontoListing ? "Can I multiplex this?" : "Open full multiplex underwriter"}
               data-testid="link-quick-card-multiplex-underwriter"
               onClick={() => track({
                 event: "feature_used",
@@ -4055,7 +4047,8 @@ export default function CapRates() {
                 },
               })}
             >
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className={isTorontoListing ? "mr-1.5 h-3.5 w-3.5" : "h-3.5 w-3.5"} />
+              {isTorontoListing && "Can I multiplex this?"}
             </Link>
           </Button>
           {selectedListing.mlsNumber && (
@@ -4088,6 +4081,7 @@ export default function CapRates() {
     if (!selectedDistressListing) return null;
     const imgUrl = getImageUrl(selectedDistressListing.images);
     const questionSnapshot = buildDistressQuestionSnapshot(selectedDistressListing);
+    const isTorontoListing = isTorontoListingAddress(selectedDistressListing.address);
     return (
       <div data-testid="panel-distress-detail">
         <Card>
@@ -4098,7 +4092,7 @@ export default function CapRates() {
                   <CardTitle className="text-xl">{formatPriceFull(selectedDistressListing.listPrice)}</CardTitle>
                 </div>
                 <CardDescription className="text-xs">
-                  {formatAddress(selectedDistressListing.address as RepliersListing["address"])}
+                  {formatAddress(selectedDistressListing.address as CanadianListing["address"])}
                 </CardDescription>
               </div>
               <Button
@@ -4115,7 +4109,7 @@ export default function CapRates() {
             {imgUrl ? (
               <img
                 src={imgUrl}
-                alt={formatShortAddress(selectedDistressListing.address as RepliersListing["address"])}
+                alt={formatShortAddress(selectedDistressListing.address as CanadianListing["address"])}
                 className="h-48 w-full rounded-lg object-cover"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
               />
@@ -4137,8 +4131,27 @@ export default function CapRates() {
             <div className="grid gap-2 sm:grid-cols-2">
               <Button className="w-full" onClick={() => handleAnalyzeDistressListing(selectedDistressListing)}>
                 <Calculator className="h-4 w-4 mr-2" />
-                Analyze this distress deal
+                Analyze
               </Button>
+              {isTorontoListing && (
+                <Button variant="outline" className="w-full" asChild>
+                  <Link
+                    href={buildMultiplexUnderwriterHref(selectedDistressListing)}
+                    onClick={() => track({
+                      event: "feature_used",
+                      feature: "multiplex_underwriter",
+                      details: {
+                        listing_id: selectedDistressListing.mlsNumber,
+                        source: "distress_detail_panel",
+                      },
+                    })}
+                    data-testid="link-distress-detail-multiplex-underwriter"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Can I multiplex this?
+                  </Link>
+                </Button>
+              )}
               {selectedDistressListing.mlsNumber && (
                 <PropertyQuestionWidget
                   listingMlsNumber={selectedDistressListing.mlsNumber}
@@ -4410,7 +4423,7 @@ export default function CapRates() {
               </Badge>
               {dataSource && (
                 <Badge variant="outline" className="text-[9px] px-1.5 py-0" data-testid="badge-data-source">
-                  {dataSource === "crea_ddf" ? "CREA DDF" : "Repliers"}
+                  CREA DDF
                 </Badge>
               )}
               {isSearching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
@@ -5030,7 +5043,7 @@ export default function CapRates() {
                 </p>
                 {dataSource && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0">
-                    {dataSource === "crea_ddf" ? "DDF" : "Repliers"}
+                    DDF
                   </Badge>
                 )}
               </div>

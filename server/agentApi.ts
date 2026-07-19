@@ -379,13 +379,13 @@ export function registerAgentRoutes(app: Express) {
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
       const input = parsed.data;
 
-      const { isDdfConfigured, searchDdfByMlsNumber, normalizeDdfToRepliersFormat } = await import("./creaDdf");
+      const { isDdfConfigured, searchDdfByMlsNumber, normalizeDdfListing } = await import("./creaDdf");
       if (!isDdfConfigured()) {
         return res.status(503).json({ error: "ddf_not_configured", message: "CREA DDF feed is unavailable" });
       }
       const ddfListing = await searchDdfByMlsNumber(input.mlsNumber.replace(/[^a-zA-Z0-9]/g, ""));
       if (!ddfListing) return res.status(404).json({ error: "listing_not_found", mlsNumber: input.mlsNumber });
-      const listing: any = normalizeDdfToRepliersFormat(ddfListing);
+      const listing: any = normalizeDdfListing(ddfListing);
       const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
       if (!Number.isFinite(price) || price <= 1) {
         return res.status(422).json({ error: "listing_has_no_price", mlsNumber: input.mlsNumber });
