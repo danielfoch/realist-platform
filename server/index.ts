@@ -566,9 +566,13 @@ async function ensureAppTables() {
     }
 
     const canonicalHost = host.replace(/^www\./i, "");
+    // NOTE: we intentionally do NOT redirect on a single trailing slash here.
+    // The hosting layer (and some CDNs) enforce the opposite trailing-slash
+    // policy, so a blanket /foo/ -> /foo 301 creates redirect loops for routes
+    // like /reports. The SPA serves the same content either way, and canonical
+    // tags in seoMeta.ts handle SEO consolidation.
     const needsRedirect =
       host !== canonicalHost ||
-      rawPath !== normalizedPath ||
       strippedParams ||
       (protocol === "http" && canonicalHost.endsWith("realist.ca"));
 
@@ -626,6 +630,8 @@ async function ensureAppTables() {
   registerAskRealistRoutes(app);
   const { registerEnrichmentRoutes } = await import("./enrichment");
   registerEnrichmentRoutes(app);
+  const { registerStreamOverlayRoutes } = await import("./streamOverlay");
+  registerStreamOverlayRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

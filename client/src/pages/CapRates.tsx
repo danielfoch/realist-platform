@@ -4488,6 +4488,18 @@ export default function CapRates() {
               {activeFilterCount > 0 && <Badge variant="secondary" className="px-1 py-0 text-[9px]">{activeFilterCount}</Badge>}
               {showAdvancedFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </Button>
+            <Link href="/work-with-realist">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-9 gap-1.5"
+                onClick={() => track({ event: "cta_clicked", cta: "cap_rates_work_with_us", location: "cap_rates_header", destination: "/work-with-realist" })}
+                data-testid="button-cap-rates-work-with-us"
+              >
+                <Users className="h-3.5 w-3.5" />
+                Work with us
+              </Button>
+            </Link>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-2" data-testid="deal-quick-filters">

@@ -17,6 +17,8 @@ import {
   ArrowRight, BadgeCheck, Calculator, CheckCircle2, Handshake,
   ShieldCheck, Users,
 } from "lucide-react";
+import danielImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_13_PM_1767729810400.png";
+import nickImage from "@assets/ChatGPT_Image_Jan_6,_2026,_02_50_25_PM_1767729122931.png";
 
 // This page deliberately does NOT collect a signature or create any binding
 // agreement. Representation is a serious commitment: we capture interest here,
@@ -137,6 +139,41 @@ export default function WorkWithRealist() {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="rounded-xl border border-border/60 bg-muted/20 p-6 md:p-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Who you&apos;ll talk to</h2>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="flex items-start gap-3">
+              <img
+                src={danielImage}
+                alt="Daniel Foch"
+                className="h-14 w-14 rounded-full border-2 border-background bg-muted object-cover object-top shadow-sm"
+              />
+              <div>
+                <p className="font-semibold">Daniel Foch</p>
+                <p className="text-sm text-muted-foreground">Real estate broker &amp; investor-focused realtor. Helps you screen markets, underwrite deals, and execute acquisitions.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <img
+                src={nickImage}
+                alt="Nick Hill"
+                className="h-14 w-14 rounded-full border-2 border-background bg-muted object-cover object-top shadow-sm"
+              />
+              <div>
+                <p className="font-semibold">Nick Hill</p>
+                <p className="text-sm text-muted-foreground">Mortgage broker. Structures financing for investors, including BRRR, multiplex, construction, and portfolio refinancing.</p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Active in the Greater Toronto Area, Hamilton, Calgary, Ottawa, and select markets across Ontario and Western Canada.
+            If your market isn&apos;t on the list, we&apos;ll point you to someone in the Realist network who is.
+          </p>
         </section>
 
         <section className="max-w-xl" id="talk-to-us">

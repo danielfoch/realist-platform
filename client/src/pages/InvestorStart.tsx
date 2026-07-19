@@ -319,6 +319,37 @@ export default function InvestorStart() {
                   Built by <span className="font-semibold text-foreground">Daniel Foch and Nick Hill</span>,
                   hosts of <span className="font-semibold text-foreground">{PODCAST_NAME}</span>.
                 </p>
+
+                {/* Human-service CTA — converts high-intent investors to representation */}
+                <div className="mt-4 flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Have a live deal or want a second opinion?</span>
+                  <Link
+                    href="/work-with-realist"
+                    className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                    onClick={() => track({ event: "cta_clicked", cta: "homepage_hero_work_with_us", location: "homepage_hero", destination: "/work-with-realist" })}
+                    data-testid="link-home-hero-work-with-us"
+                  >
+                    Work with Daniel & Nick
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+
+                {/* Feature row (3-up) */}
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  {[
+                    { label: "Save assumptions", icon: Save },
+                    { label: "Apply to similar deals", icon: Radar },
+                    { label: "Send an inspector", icon: Target },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.label} className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/75 px-3 py-2 text-sm font-medium">
+                        <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
+                        {item.label}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
               <AnalysesCounter className="mt-6 bg-background/80" />
               <div className="mt-7 flex flex-col sm:flex-row gap-3">
@@ -831,6 +862,42 @@ export default function InvestorStart() {
           </div>
         </section>
 
+        {/* ============================ WORK WITH REALIST BAND ============================ */}
+        <section className="py-10 md:py-14 border-t border-border/40">
+          <div className="max-w-6xl mx-auto px-4 md:px-6">
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/10 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+              <div className="max-w-xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary mb-2">Investor representation</p>
+                <h2 className="text-xl md:text-2xl font-bold tracking-tight">
+                  Have a deal you want to close — or a buy box you want filled?
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Daniel and Nick work with experienced investors in select Canadian markets. Use the tools for free,
+                  then tap the team when you need boots on the ground, financing, or a second opinion before you offer.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                <Link href="/work-with-realist">
+                  <Button
+                    className="gap-2 w-full sm:w-auto"
+                    onClick={() => track({ event: "cta_clicked", cta: "homepage_work_with_realist", location: "homepage_work_band", destination: "/work-with-realist" })}
+                    data-testid="button-home-work-with-realist"
+                  >
+                    Work with us
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/tools/analyzer">
+                  <Button variant="outline" className="w-full sm:w-auto" data-testid="button-home-work-band-analyze">
+                    Analyze a deal first
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============================ PRO BAND ============================ */}
         <section className="py-10 md:py-14 border-t border-border/40">
           <div className="max-w-6xl mx-auto px-4 md:px-6">
             <div className="rounded-xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/5 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-5">

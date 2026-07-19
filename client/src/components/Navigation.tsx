@@ -215,8 +215,24 @@ export function Navigation() {
 
           {/* Right side: primary CTA + auth */}
           <div className="flex items-center gap-2">
-            {/* Primary CTAs — always visible on desktop. Book a Call is the
-                revenue CTA and holds the filled treatment. */}
+            {/* Work-with-us CTA — surfaced for investors ready for representation */}
+            <div className="hidden md:block">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-9 px-3 gap-1.5"
+                data-testid="button-nav-work-with-realist"
+                onClick={() => track({ event: "cta_clicked", cta: "work_with_realist", location: "nav" })}
+              >
+                <Link href="/work-with-realist">
+                  <Handshake className="h-3.5 w-3.5" />
+                  Work with us
+                </Link>
+              </Button>
+            </div>
+
+            {/* Primary CTAs — always visible on desktop */}
             <div className="hidden md:flex items-center gap-1.5">
               <Button
                 asChild
@@ -391,7 +407,13 @@ export function Navigation() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border/50 glass max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="px-4 py-4 space-y-5">
-            {/* Primary CTAs on mobile — Book a Call first (revenue CTA) */}
+            {/* Primary CTAs on mobile */}
+            <Button asChild variant="outline" className="w-full gap-2" data-testid="button-mobile-work-with-realist">
+              <Link href="/work-with-realist" onClick={closeMobile}>
+                <Handshake className="h-4 w-4" />
+                Work with us
+              </Link>
+            </Button>
             <Button asChild className="w-full gap-2" data-testid="button-mobile-book-call">
               <Link href="/book-a-call" onClick={closeMobile}>
                 <PhoneCall className="h-4 w-4" />
