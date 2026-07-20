@@ -17,8 +17,8 @@ import {
   ArrowRight, BadgeCheck, Calculator, CheckCircle2, Handshake,
   ShieldCheck, Users,
 } from "lucide-react";
-import danielImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_13_PM_1767729810400.png";
-import nickImage from "@assets/ChatGPT_Image_Jan_6,_2026,_02_50_25_PM_1767729122931.png";
+import danielImage from "@assets/ChatGPT_Image_Jan_6,_2026,_03_03_13_PM_1767729810400.webp";
+import nickImage from "@assets/ChatGPT_Image_Jan_6,_2026,_02_50_25_PM_1767729122931.webp";
 
 // This page deliberately does NOT collect a signature or create any binding
 // agreement. Representation is a serious commitment: we capture interest here,
