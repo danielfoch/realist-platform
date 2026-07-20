@@ -12,6 +12,7 @@ import { backlinkUserRecords } from "./personSpine";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
 import { sendWelcomeAccountEmail, sendLoginLinkEmail, sendPasswordResetEmail } from "./resend";
 import { appendLead } from "./leadsSheet";
+import { pushContactToGHL } from "./ghl-service";
 import {
   SETUP_LINK_TTL_MS,
   evaluateLoginLinkRequest,
@@ -382,6 +383,16 @@ export function registerAuthRoutes(app: Express): void {
       sendSignupWebhookToGHL(newUser).catch(err =>
         console.error("[ghl-signup] webhook error:", err.message)
       );
+
+      // Direct GHL API push (background, non-blocking)
+      pushContactToGHL({
+        firstName: newUser.firstName || '',
+        lastName: newUser.lastName || '',
+        email: newUser.email,
+        phone: newUser.phone || '',
+        tags: ['realist.ca', 'investor', 'signup', `signup-${new Date().toISOString().slice(0, 7)}`],
+        source: 'investor_signup',
+      }).catch(err => console.error("[GHL] Direct signup push failed:", err));
     } catch (error: any) {
       console.error("Signup error:", error);
       if (error.name === "ZodError") {
@@ -693,7 +704,17 @@ export function registerAuthRoutes(app: Express): void {
       }).catch(err => console.error("Welcome email error:", err));
 
       const backfilled = await backfillAnalysesForSession(newUser.id, sessionId);
-      
+
+      // Direct GHL API push (background, non-blocking)
+      pushContactToGHL({
+        firstName: newUser.firstName || firstName || '',
+        lastName: newUser.lastName || lastName || '',
+        email: newUser.email,
+        phone: (req.body as any).phone || '',
+        tags: ['realist.ca', 'investor', 'lead_enroll'],
+        source: 'investor_lead_enroll',
+      }).catch(err => console.error("[GHL] Direct lead-enroll push failed:", err));
+
       res.json({
         user: { id: newUser.id, email: newUser.email, firstName: newUser.firstName, lastName: newUser.lastName },
         isNewUser: true,

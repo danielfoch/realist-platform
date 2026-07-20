@@ -19,7 +19,7 @@ export interface SharedRouteMeta {
 export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   "/": {
     title: "Realist - Canadian Real Estate Investing Platform | Deal Analyzer & Cap Rate Map",
-    description: "Use Realist to find, analyze, and compare Canadian real estate deals with AI-powered underwriting, a free deal analyzer, a cap rate map, market reports, and investor tools.",
+    description: "Find, analyze, and compare Canadian real estate deals with AI-powered underwriting, a free deal analyzer, cap rate map, and market reports. Built by investor-focused broker Daniel Foch and mortgage broker Nick Hill — work with the team when you're ready.",
   },
   "/tools": {
     title: "Free Canadian Real Estate Tools - Realist.ca",
@@ -27,7 +27,7 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   },
   "/tools/analyzer": {
     title: "Real Estate Deal Analyzer (Canada) - Cap Rate, IRR & Cash Flow Calculator",
-    description: "Analyze any Canadian rental property in seconds. Calculate cap rate, cash-on-cash, IRR, BRRR returns, multiplex viability and more. Free, no signup.",
+    description: "Analyze any Canadian rental property in seconds. Calculate cap rate, cash-on-cash, IRR, BRRR returns, multiplex viability and more. Free to use; talk to Daniel and Nick when you want a second opinion or help closing.",
   },
   "/tools/cap-rates": {
     title: "Canadian Listing Map - Cap Rates, Yield & Motivated Deals",

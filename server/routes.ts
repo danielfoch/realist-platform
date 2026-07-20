@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { google } from "googleapis";
 import { appendLead } from "./leadsSheet";
+import { pushInvestorLeadToGHL } from "./ghl-service";
 import { storage } from "./storage";
 import { getLeadRoutingChannel, shouldNotifyPartnerClaims } from "./referralRoutingPolicy";
 import { buildReferralAgreement, getReferralTerms } from "@shared/partnerNetwork";
@@ -2534,6 +2535,17 @@ export async function registerRoutes(
         console.error("Auto-enroll user error:", userError);
       }
 
+      // Push to GoHighLevel via REST API (background, non-blocking)
+      pushInvestorLeadToGHL(
+        lead.email,
+        lead.phone,
+        lead.name,
+        lead.leadSource || "Deal Analyzer",
+        property.city,
+        property.region,
+        analysis.strategyType,
+      ).catch(err => console.error("[GHL] Direct investor lead push failed:", err));
+
       // Send GHL webhook with full analysis data and deal count
       const analysisResults = (analysis.resultsJson || {}) as Record<string, any>;
       const analysisInputs = (analysis.inputsJson || {}) as Record<string, any>;
@@ -2659,6 +2671,16 @@ export async function registerRoutes(
         createdAt: lead.createdAt,
       }).catch(err => console.error("Webhook error:", err));
 
+      // Push to GoHighLevel via REST API (background, non-blocking)
+      pushInvestorLeadToGHL(
+        email,
+        phone,
+        name,
+        "MLI Select Calculator",
+        location || inputs?.location,
+        null,
+      ).catch(err => console.error("[GHL] Direct MLI quote lead push failed:", err));
+
       // Backup to Google Sheets
       sendToGoogleSheets({
         email,
@@ -2766,6 +2788,16 @@ export async function registerRoutes(
         source: formType || "Deal Engagement",
         tags: allTags,
       }).catch(err => console.error("Google Sheets backup error:", err));
+
+      // Push to GoHighLevel via REST API (background, non-blocking)
+      pushInvestorLeadToGHL(
+        email,
+        phone,
+        name,
+        formType || "Deal Engagement",
+        city,
+        province,
+      ).catch(err => console.error("[GHL] Direct engagement lead push failed:", err));
 
       // Send email notification only for the first lead from this email
       const engagementLeadCount = await storage.getLeadCountByEmail(email);
