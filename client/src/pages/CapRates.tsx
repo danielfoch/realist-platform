@@ -2190,6 +2190,16 @@ export default function CapRates() {
     return distressListingsInView.filter((listing) => !normalMls.has(listing.mlsNumber));
   }, [distressListingsInView, listingsWithCapRates]);
 
+  const usListingsInView = useMemo(() => {
+    if (!mapBounds) return usMapData?.listings ?? [];
+    return (usMapData?.listings ?? []).filter((listing) => {
+      const lat = listing.lat;
+      const lng = listing.lng;
+      if (typeof lat !== "number" || typeof lng !== "number") return false;
+      return lat >= mapBounds.south && lat <= mapBounds.north && lng >= mapBounds.west && lng <= mapBounds.east;
+    });
+  }, [usMapData, mapBounds]);
+
   const displayedListings = useMemo(() => {
     // US-only mode hides the Canadian CREA DDF inventory entirely;
     // US listings render from usMapData as markers + simple cards.
@@ -2788,7 +2798,12 @@ export default function CapRates() {
     return (
       <div
         key={`us-${listing.id}`}
-        className="rounded-lg border border-border transition-all hover:border-primary/50 hover:shadow-sm"
+        className="rounded-lg border border-border transition-all hover:border-primary/50 hover:shadow-sm cursor-pointer"
+        onClick={() => {
+          if (listing.sourceUrl) {
+            window.open(listing.sourceUrl, "_blank", "noopener,noreferrer");
+          }
+        }}
         data-testid={`card-us-listing-${listing.id}`}
       >
         <div className="flex flex-col gap-1 p-2.5">
@@ -4173,27 +4188,33 @@ export default function CapRates() {
     );
   };
 
-  const usVisibleCount = usMapData?.listings?.length ?? 0;
+  const usVisibleCount = usListingsInView.length;
   const resultSummaryLabel = countryFilter === "us"
     ? usMapLoading
       ? "Loading US listings…"
       : usVisibleCount > 0
         ? `${usVisibleCount} of ${(usMapData?.total ?? usVisibleCount).toLocaleString()} US listings`
         : "No US listings in view"
-    : hasSearched
-      ? totalCount > 0
-        ? `${displayedListings.length} of ${totalCount.toLocaleString()} properties`
-        : "No properties found"
-      : "Move the map or run a search to start";
+    : countryFilter === "all"
+      ? hasSearched || usVisibleCount > 0
+        ? `${displayedListings.length} CA${usVisibleCount > 0 ? ` · ${usVisibleCount} US` : ""}`
+        : "Move the map or run a search to start"
+      : hasSearched
+        ? totalCount > 0
+          ? `${displayedListings.length} of ${totalCount.toLocaleString()} properties`
+          : "No properties found"
+        : "Move the map or run a search to start";
   const mobileResultSummaryLabel = countryFilter === "us"
     ? usVisibleCount > 0
       ? `${usVisibleCount} US`
       : "No US listings"
-    : totalCount > 0
-      ? `${displayedListings.length} of ${totalCount.toLocaleString()}`
-      : showDistressOverlay && distressOnlyListingsInView.length > 0
-        ? `${distressOnlyListingsInView.length} distress`
-        : "No properties";
+    : countryFilter === "all"
+      ? `${displayedListings.length} CA${usVisibleCount > 0 ? ` · ${usVisibleCount} US` : ""}`
+      : totalCount > 0
+        ? `${displayedListings.length} of ${totalCount.toLocaleString()}`
+        : showDistressOverlay && distressOnlyListingsInView.length > 0
+          ? `${distressOnlyListingsInView.length} distress`
+          : "No properties";
 
   const sidebarContent = (
     <>
@@ -4298,8 +4319,8 @@ export default function CapRates() {
               </div>
             ))
           ) : countryFilter === "us" ? (
-            (usMapData?.listings?.length ?? 0) > 0 ? (
-              <>{(usMapData?.listings ?? []).map((listing) => renderUsListingCard(listing))}</>
+            usVisibleCount > 0 ? (
+              <>{usListingsInView.map((listing) => renderUsListingCard(listing))}</>
             ) : (
               <div className="rounded-lg border p-6 text-center">
                 <Map className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
@@ -4311,9 +4332,23 @@ export default function CapRates() {
                 </p>
               </div>
             )
-          ) : displayedListings.length > 0 || (showDistressOverlay && distressOnlyListingsInView.length > 0) ? (
+          ) : displayedListings.length > 0 || usVisibleCount > 0 || (showDistressOverlay && distressOnlyListingsInView.length > 0) ? (
             <>
               {displayedListings.map((listing) => renderListingCard(listing))}
+
+              {countryFilter === "all" && usVisibleCount > 0 && (
+                <div className="space-y-2 pt-2 border-t border-blue-500/20">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
+                      US listings
+                    </p>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-[10px]">
+                      {usVisibleCount}
+                    </Badge>
+                  </div>
+                  {usListingsInView.map((listing) => renderUsListingCard(listing))}
+                </div>
+              )}
 
               {showDistressOverlay && distressOnlyListingsInView.length > 0 && (
                 <div className="space-y-2 pt-2 border-t border-red-500/20">
