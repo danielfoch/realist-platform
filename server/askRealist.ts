@@ -11,8 +11,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
+import { sql, gte, and, eq } from "drizzle-orm";
 import { underwriteSimple } from "./agentApi";
 import { logAskRealistInteraction, summarizeToolInput } from "./demandLedger";
+import { db } from "./db";
+import { askRealistInteractions } from "@shared/schema";
+import { storage } from "./storage";
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -22,6 +26,50 @@ function getClient(): Anthropic {
 
 export function askRealistConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
+}
+
+// ─── Freemium quota ────────────────────────────────────────────────────────
+
+const FREE_ASKS_PER_PERIOD = 3;
+const FREE_PERIOD_DAYS = 30;
+
+async function countFreePeriodInteractions(userId: string): Promise<number> {
+  const since = new Date();
+  since.setDate(since.getDate() - FREE_PERIOD_DAYS);
+  const result = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(askRealistInteractions)
+    .where(
+      and(
+        eq(askRealistInteractions.userId, userId),
+        eq(askRealistInteractions.status, "ok"),
+        gte(askRealistInteractions.createdAt, since)
+      )
+    );
+  return result[0]?.count ?? 0;
+}
+
+async function hasAskRealistAccess(userId: string): Promise<boolean> {
+  // Existing premium subscribers get Ask Realist included.
+  const subscription = await storage.getProfessionalSubscription(userId);
+  if (subscription && subscription.tier === "premium" && subscription.status !== "cancelled") {
+    return true;
+  }
+
+  // Or they bought the Ask Realist-specific $100/mo add-on.
+  const askRealistPriceId = process.env.STRIPE_ASK_REALIST_PRICE_ID;
+  if (!askRealistPriceId || !subscription?.stripeCustomerId) return false;
+
+  const rows = await db.execute(sql`
+    SELECT 1
+    FROM stripe.subscription_items si
+    JOIN stripe.subscriptions s ON s.id = si.subscription
+    WHERE si.price = ${askRealistPriceId}
+      AND s.customer_id = ${subscription.stripeCustomerId}
+      AND s.status IN ('active', 'trialing')
+    LIMIT 1
+  `);
+  return (rows.rows.length ?? 0) > 0;
 }
 
 // ─── Rate limiting (in-memory, per session/IP per day) ─────────────────────
@@ -179,8 +227,67 @@ Hard rules:
 - Answers render as plain text with simple markdown (bold, lists). Keep them under ~250 words.`;
 
 export function registerAskRealistRoutes(app: Express): void {
-  app.get("/api/ask/status", (_req, res) => {
-    res.json({ available: askRealistConfigured() });
+  app.get("/api/ask/status", async (req: Request, res: Response) => {
+    const session: any = (req as any).session;
+    const userId = session?.userId;
+    const available = askRealistConfigured();
+    if (!available || !userId) {
+      res.json({ available, requiresAuth: !userId, remaining: 0, isPremium: false });
+      return;
+    }
+
+    const isPremium = await hasAskRealistAccess(userId);
+    const used = isPremium ? 0 : await countFreePeriodInteractions(userId);
+    const remaining = Math.max(0, FREE_ASKS_PER_PERIOD - used);
+    res.json({ available, requiresAuth: false, remaining, isPremium });
+  });
+
+  app.post("/api/ask/checkout", async (req: Request, res: Response) => {
+    const session: any = (req as any).session;
+    const userId = session?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "auth_required", message: "Create a free account to upgrade." });
+      return;
+    }
+    if (!process.env.STRIPE_ASK_REALIST_PRICE_ID) {
+      res.status(503).json({ error: "checkout_not_configured", message: "Ask Realist premium is not configured." });
+      return;
+    }
+
+    try {
+      const { stripeService } = await import("./stripeService");
+      const priceId = process.env.STRIPE_ASK_REALIST_PRICE_ID;
+      let subscription = await storage.getProfessionalSubscription(userId);
+      let customerId = subscription?.stripeCustomerId;
+
+      if (!customerId) {
+        const userClaims = (req as any).user?.claims || {};
+        const customer = await stripeService.createCustomer(
+          userClaims.email || `${userId}@realist.ca`,
+          userId,
+          userClaims.name
+        );
+        customerId = customer.id;
+        await storage.upsertProfessionalSubscription({
+          userId,
+          tier: "free",
+          stripeCustomerId: customerId,
+        });
+      }
+
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "realist.ca"}`;
+      const checkoutSession = await stripeService.createCheckoutSession(
+        customerId,
+        priceId,
+        `${baseUrl}/premium?success=true`,
+        `${baseUrl}/premium?canceled=true`,
+        { userId, product: "ask_realist" }
+      );
+      res.json({ url: checkoutSession.url });
+    } catch (error: any) {
+      console.error("[ask-realist] checkout error:", error?.message || error);
+      res.status(500).json({ error: "checkout_failed", message: "Could not start checkout. Please try again." });
+    }
   });
 
   app.post("/api/ask", async (req: Request, res: Response) => {
@@ -197,24 +304,44 @@ export function registerAskRealistRoutes(app: Express): void {
     }
 
     const session: any = (req as any).session;
-    const isAuthed = Boolean(session?.userId);
-    const rateKey = session?.userId || session?.id || req.ip || "anon";
-    const questionForLog = parsed.data.question;
-    if (!checkRateLimit(String(rateKey), isAuthed ? DAILY_LIMIT_AUTHED : DAILY_LIMIT_ANON)) {
+    const userId = session?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "auth_required", message: "Create a free account to ask Realist." });
+      return;
+    }
+
+    const isPremium = await hasAskRealistAccess(userId);
+    if (!isPremium) {
+      const used = await countFreePeriodInteractions(userId);
+      if (used >= FREE_ASKS_PER_PERIOD) {
+        logAskRealistInteraction({
+          sessionId: session?.id || (req as any).sessionID || null,
+          userId,
+          question: parsed.data.question,
+          context: parsed.data.context as any ?? null,
+          status: "quota_exceeded",
+          latencyMs: Date.now() - startedAt,
+        });
+        res.status(403).json({
+          error: "quota_exceeded",
+          message: `You've used your ${FREE_ASKS_PER_PERIOD} free Ask Realist questions this month. Upgrade for unlimited access.`,
+          upgradeUrl: "/premium",
+        });
+        return;
+      }
+    }
+
+    const rateKey = userId;
+    if (!checkRateLimit(String(rateKey), DAILY_LIMIT_AUTHED)) {
       logAskRealistInteraction({
         sessionId: session?.id || (req as any).sessionID || null,
-        userId: session?.userId || null,
-        question: questionForLog,
+        userId,
+        question: parsed.data.question,
         context: parsed.data.context as any ?? null,
         status: "rate_limited",
         latencyMs: Date.now() - startedAt,
       });
-      res.status(429).json({
-        error: "rate_limited",
-        message: isAuthed
-          ? "You've hit today's Ask Realist limit. Try again tomorrow."
-          : "You've hit today's limit. Create a free account for a higher one.",
-      });
+      res.status(429).json({ error: "rate_limited", message: "You've hit today's Ask Realist limit. Try again tomorrow." });
       return;
     }
 
@@ -282,7 +409,7 @@ export function registerAskRealistRoutes(app: Express): void {
 
       logAskRealistInteraction({
         sessionId: session?.id || (req as any).sessionID || null,
-        userId: session?.userId || null,
+        userId,
         question,
         answer: finalAnswer,
         toolCalls: toolCallLog.map((t) => ({
@@ -302,7 +429,7 @@ export function registerAskRealistRoutes(app: Express): void {
       console.error("[ask-realist] error:", err?.message || err);
       logAskRealistInteraction({
         sessionId: session?.id || (req as any).sessionID || null,
-        userId: session?.userId || null,
+        userId,
         question,
         context: context as any ?? null,
         status: "error",
