@@ -123,7 +123,7 @@ resolved end */
 import NotFound from "@/pages/not-found";
 
 // Lazy pages — code-split into per-route chunks, fetched on first navigation.
-const MapHomepage = lazy(() => import("@/pages/MapHomepage"));
+
 const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
 const Notebook = lazy(() => import("@/pages/Notebook"));
@@ -302,7 +302,7 @@ function Router() {
     <Switch>
       {/* Main entry - simplified investor homepage */}
       <Route path="/" component={InvestorStart} />
-      <Route path="/discover" component={MapHomepage} />
+      <Route path="/discover">{() => <Redirect to="/tools/cap-rates" />}</Route>
       <Route path="/deal-analyzer">{() => <Redirect to="/tools/analyzer" />}</Route>
 
       {/* New Tools routes */}
