@@ -5043,9 +5043,9 @@ export default function CapRates() {
           {sidebarContent}
         </div>
 
-        {showMobileList && (
-          <div className="lg:hidden fixed inset-x-0 bottom-0 z-[1000] bg-background border-t rounded-t-2xl shadow-2xl max-h-[60dvh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 border-b">
+        <Sheet open={showMobileList} onOpenChange={setShowMobileList}>
+          <SheetContent side="bottom" className="lg:hidden h-[85dvh] flex flex-col overflow-hidden p-0 rounded-t-2xl">
+            <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
               <div className="flex items-center gap-1.5">
                 <p className="text-xs font-medium">
                   {mobileResultSummaryLabel}
@@ -5068,8 +5068,8 @@ export default function CapRates() {
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
               {sidebarContent}
             </div>
-          </div>
-        )}
+          </SheetContent>
+        </Sheet>
       </div>
       <Sheet open={Boolean(analyzerSheetMeta)} onOpenChange={handleAnalyzerSheetOpenChange}>
         <SheetContent side="right" className="flex h-screen h-[100dvh] w-full flex-col overflow-hidden p-0 sm:max-w-3xl">
