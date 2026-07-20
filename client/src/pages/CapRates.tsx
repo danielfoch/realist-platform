@@ -4316,20 +4316,17 @@ export default function CapRates() {
               {displayedListings.map((listing) => renderListingCard(listing))}
 
               {showDistressOverlay && distressOnlyListingsInView.length > 0 && (
-                <Card className="border-red-500/20 bg-red-500/5">
-                  <CardContent className="p-3 space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700 dark:text-red-300">Motivated matches</p>
-                        <p className="text-xs text-muted-foreground">Additional motivated-seller opportunities in the current map view.</p>
-                      </div>
-                      <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
-                        {distressOnlyListingsInView.length}
-                      </Badge>
-                    </div>
-                    {distressOnlyListingsInView.slice(0, 12).map((listing) => renderDistressCard(listing))}
-                  </CardContent>
-                </Card>
+                <div className="space-y-2 pt-2 border-t border-red-500/20">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-700 dark:text-red-300">
+                      Motivated matches
+                    </p>
+                    <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-[10px]">
+                      {distressOnlyListingsInView.length}
+                    </Badge>
+                  </div>
+                  {distressOnlyListingsInView.map((listing) => renderDistressCard(listing))}
+                </div>
               )}
 
               {numPages > 1 && (
