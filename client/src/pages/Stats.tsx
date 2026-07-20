@@ -26,7 +26,7 @@ export default function Stats() {
       <SEO
         title="Canadian Housing Stats Explorer | Realist"
         description="Explore Canadian housing statistics — prices, sales, inventory, vacancy, rents and macro data — with interactive charts. Members-only."
-        canonicalUrl="https://realist.ca/stats"
+        canonicalUrl="/tools/stats"
         noIndex
       />
       <Navigation />

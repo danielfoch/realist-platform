@@ -636,7 +636,8 @@ async function ensureAppTables() {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
+    // Do not re-throw here: this is the final error handler. Re-throwing
+    // would produce an unhandled exception and potentially crash the process.
   });
 
   if (process.env.NODE_ENV === "production") {

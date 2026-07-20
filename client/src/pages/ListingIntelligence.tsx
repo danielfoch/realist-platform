@@ -182,7 +182,7 @@ export default function ListingIntelligence() {
         title="Listing Intelligence Card for Canadian Investors"
         description="Prototype Listing Intelligence Card for AI-ready underwriting, structured deal feedback, professional contributions, and Canadian investment property analysis."
         keywords="Canadian real estate investing, AI real estate underwriting, real estate deal analyzer, BRRRR calculator, investment property underwriting"
-        canonicalUrl="/listing-intelligence"
+        canonicalUrl="/tools/listing-intelligence"
         structuredData={combinedSchema}
       />
       <Navigation />
