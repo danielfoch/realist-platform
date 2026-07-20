@@ -350,6 +350,12 @@ export default function About() {
                       <p className="text-sm text-muted-foreground mb-3">
                         6,000,000+ impressions delivered for advertisers.
                       </p>
+                      <Link href="/about/podcast-deck">
+                        <Button variant="outline" size="sm">
+                          <Mic2 className="h-4 w-4 mr-2" />
+                          View Media Deck
+                        </Button>
+                      </Link>
                       <div className="mt-4">
                         <p className="text-xs text-muted-foreground mb-2">Past advertisers:</p>
                         <div className="flex flex-wrap gap-2">

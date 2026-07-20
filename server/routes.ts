@@ -131,7 +131,7 @@ import { authStorage } from "./replit_integrations/auth/storage";
 import { logUserActivity, rebuildUserInferenceProfile } from "./userActivity";
 import { trackRealistEvent } from "./realistEvents";
 import { registerRealistEventRoutes } from "./eventsModule";
-import { registerDealDeskRoutes } from "./dealDesk";
+import { registerDealDeskRoutes } from "./routes/dealDesk";
 import { scheduleAdminWeeklySummary } from "./adminWeeklySummary";
 import { registerRetentionEmailRoutes } from "./retentionEmails";
 import { registerOnboardingEmailRoutes } from "./onboardingEmails";
@@ -856,10 +856,6 @@ export async function registerRoutes(
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
   registerAgentRoutes(app);
-
-  // Clyde's Deal Desk (production endpoints — client + email queue use these).
-  const { registerDealDeskRoutes: registerClydeDealDeskRoutes } = await import("./routes/dealDesk");
-  registerClydeDealDeskRoutes(app);
 
   // ─── Event Tracking ───────────────────────────────────────────────────────
   // Lightweight behavioral event capture for AI training data pipeline.

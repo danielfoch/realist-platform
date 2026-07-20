@@ -135,6 +135,7 @@ const UnpackingMultiplexesToronto = lazy(() => import("@/pages/UnpackingMultiple
 const Blog = lazy(() => import("@/pages/Blog"));
 const BlogPost = lazy(() => import("@/pages/BlogPost"));
 const Shop = lazy(() => import("@/pages/Shop"));
+const PodcastDeck = lazy(() => import("@/pages/PodcastDeck"));
 const Compare = lazy(() => import("@/pages/Compare"));
 const Podcast = lazy(() => import("@/pages/Podcast"));
 const PodcastEpisodeDetail = lazy(() => import("@/pages/PodcastEpisodeDetail"));
@@ -437,6 +438,7 @@ function Router() {
       <Route path="/about/team">{() => <Redirect to="/about" />}</Route>
       <Route path="/about/programs">{() => <Redirect to="/about" />}</Route>
       <Route path="/about/shop" component={Shop} />
+      <Route path="/about/podcast-deck" component={PodcastDeck} />
       <Route path="/about/contact" component={ContactPage} />
       <Route path="/book-a-call" component={BookACall} />
       <Route path="/deal-room" component={DealRoom} />
