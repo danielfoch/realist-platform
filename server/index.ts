@@ -630,8 +630,6 @@ async function ensureAppTables() {
   registerAskRealistRoutes(app);
   const { registerEnrichmentRoutes } = await import("./enrichment");
   registerEnrichmentRoutes(app);
-  const { registerStreamOverlayRoutes } = await import("./streamOverlay");
-  registerStreamOverlayRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
