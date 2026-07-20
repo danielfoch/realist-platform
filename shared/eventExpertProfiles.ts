@@ -127,6 +127,21 @@ export const EVENT_EXPERT_PROFILES: EventExpertProfile[] = [
     phone: null,
     relatedEvents: [{ ...TORONTO_MULTIPLEX_EVENT, speakerTitle: "Lawyer" }],
   },
+  {
+    userId: "brandon-sage",
+    slug: "brandon-sage",
+    name: "Brandon Sage",
+    category: "property_management",
+    companyName: "LandLord",
+    title: "Investment Advisor",
+    bio: "Advises investors on acquiring, operating, and optimizing income properties across Toronto, with deep experience in rental property management and multi-unit investing.",
+    headshotUrl: null,
+    serviceAreas: [],
+    socialLinks: null,
+    publicEmail: null,
+    phone: null,
+    relatedEvents: [{ ...TORONTO_MULTIPLEX_EVENT, speakerTitle: "Investment Advisor" }],
+  },
 ];
 
 export function getEventExpertProfile(identifier: string): EventExpertProfile | undefined {

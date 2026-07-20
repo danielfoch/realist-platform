@@ -39,6 +39,7 @@ import noamHeadshot from "@assets/image_1781720616832.webp";
 import ryanHeadshot from "@assets/image_1781720634648.png";
 import hoomanHeadshot from "@assets/Hooman_1783450593275.png";
 import benHeadshot from "@assets/Ben_Singer_1783452380339.jpg";
+import brandonHeadshot from "@assets/Brandon_Sage_-_Headshot_1784568961891.png";
 
 const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
 // Meta Pixel scoped to this event page only (loaded in a useEffect below).
@@ -183,6 +184,7 @@ const SPEAKERS: RealistEventSpeaker[] = [
     expertProfileSlug: "ben-singer",
   },
   {
+<<<<<<< HEAD
     name: "Brendan Farrow",
     company: "Platform Insurance",
     title: "Speaker",
@@ -202,6 +204,14 @@ const SPONSORS = [
     src: "https://www.platforminsurance.com/wp-content/uploads/2024/02/Platform-Logo-RGB-Digital-Glacier.png",
     alt: "Platform Insurance",
     url: "https://www.platforminsurance.com/",
+=======
+    name: "Brandon Sage",
+    company: "LandLord",
+    title: "Investment Advisor",
+    bio: "Advises investors on acquiring, operating, and optimizing income properties across Toronto, with deep experience in rental property management and multi-unit investing.",
+    imageUrl: brandonHeadshot,
+    expertProfileSlug: "brandon-sage",
+>>>>>>> 71a959c64 (Add Brandon Sage as a speaker and LandLord as a sponsor)
   },
 ];
 
@@ -862,6 +872,37 @@ export default function UnpackingMultiplexesToronto() {
         </div>
       </section>
 
+<<<<<<< HEAD
+=======
+      {/* Sponsors */}
+      <section className="border-t border-border/60 bg-stone-50 dark:bg-stone-900">
+        <div className="max-w-6xl mx-auto px-4 py-10">
+          <p className="text-xs uppercase tracking-[0.18em] text-stone-400 text-center mb-8">
+            Event sponsors & partners
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-10 md:gap-16">
+            {[
+              { src: "/partners/cmhc.png", alt: "CMHC" },
+              { src: "/partners/bld-financial.png", alt: "BLD Financial" },
+              { src: "/partners/reside-properties.png", alt: "Reside Properties" },
+              { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio" },
+              { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT" },
+              { src: "/partners/sr-law.jpg", alt: "SR Law" },
+              { src: "/partners/landlord.png", alt: "LandLord" },
+            ].map((sponsor) => (
+              <img
+                key={sponsor.alt}
+                src={sponsor.src}
+                alt={sponsor.alt}
+                className="h-10 w-auto object-contain"
+                data-testid={`sponsor-logo-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+>>>>>>> 71a959c64 (Add Brandon Sage as a speaker and LandLord as a sponsor)
       {/* Bottom CTA */}
       <section className="border-t border-border/60 bg-card/40">
         <div className="max-w-4xl mx-auto px-4 py-12 text-center">
