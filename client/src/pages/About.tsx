@@ -15,7 +15,6 @@ import {
   Youtube, 
   Instagram,
   Calendar,
-  Download,
   MessageSquare,
   FileText,
   Handshake,
@@ -349,14 +348,8 @@ export default function About() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg mb-2">Podcast Partner</h3>
                       <p className="text-sm text-muted-foreground mb-3">
-                        6,000,000+ impressions delivered for advertisers. Download our Podcast Network Deck.
+                        6,000,000+ impressions delivered for advertisers.
                       </p>
-                      <a href="/assets/realist-podcast-network-deck.pdf" download>
-                        <Button variant="outline" size="sm">
-                          <Download className="h-4 w-4 mr-2" />
-                          Download Deck
-                        </Button>
-                      </a>
                       <div className="mt-4">
                         <p className="text-xs text-muted-foreground mb-2">Past advertisers:</p>
                         <div className="flex flex-wrap gap-2">

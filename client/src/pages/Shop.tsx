@@ -198,7 +198,7 @@ export default function Shop() {
         title="Canadian Real Estate Investor Podcast Merch - Official Shop"
         description="Shop official merchandise from the Canadian Real Estate Investor Podcast. Rep the Realist.ca community with exclusive apparel and accessories."
         keywords="canadian real estate investor podcast merch, realist.ca shop, real estate investor apparel, daniel foch merchandise"
-        canonicalUrl="/shop"
+        canonicalUrl="/about/shop"
       />
       <Navigation />
       <main className="flex-1">
