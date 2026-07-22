@@ -197,6 +197,8 @@ export async function getAssumptionValues(): Promise<Record<string, unknown>> {
 export const underwriteRequestSchema = z.object({
   address: z.string().min(5).max(200),
   postalCode: z.string().max(10).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
   lotFrontageFt: z.number().positive().max(500).optional(),
   lotDepthFt: z.number().positive().max(1000).optional(),
   lotAreaSqft: z.number().positive().max(200000).optional(),
@@ -549,7 +551,12 @@ export async function executeMultiplexUnderwriter(input: UnderwriteRequest, opts
   persist?: boolean;
 } = {}) {
   const workingInput = { ...input };
-  const site = await resolveSite(workingInput.address);
+  const site = await resolveSite(
+    workingInput.address,
+    workingInput.lat != null && workingInput.lng != null
+      ? { lat: workingInput.lat, lng: workingInput.lng }
+      : null,
+  );
 
   const hasDims = !!(workingInput.lotFrontageFt && workingInput.lotDepthFt) || !!workingInput.lotAreaSqft;
   if (!hasDims) {

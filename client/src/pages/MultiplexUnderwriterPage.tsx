@@ -137,6 +137,27 @@ function TuneField({ label, placeholder, value, onChange }: { label: string; pla
   );
 }
 
+async function geocodeAddressClient(address: string): Promise<{ lat: number; lng: number; displayName: string | null } | null> {
+  try {
+    const params = new URLSearchParams({
+      q: `${address}, Toronto, Ontario, Canada`,
+      format: "json",
+      limit: "1",
+      countrycodes: "ca",
+    });
+    const resp = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+      headers: { "User-Agent": "realist.ca multiplex underwriter (contact: hello@realist.ca)" },
+    });
+    if (!resp.ok) return null;
+    const results = (await resp.json()) as Array<{ lat: string; lon: string; display_name: string }>;
+    const hit = results[0];
+    if (!hit) return null;
+    return { lat: Number(hit.lat), lng: Number(hit.lon), displayName: hit.display_name };
+  } catch {
+    return null;
+  }
+}
+
 function TuneSelect({ label, value, onChange, options }: { label: string; value: number; onChange: (v: number) => void; options: Array<{ value: number; label: string }> }) {
   return (
     <div className="space-y-1">
@@ -271,14 +292,34 @@ export default function MultiplexUnderwriterPage() {
     savePropertyContext({ address, postalCode: postalCode || undefined });
     track({ event: "analyzer_started", address, strategy: "multiplex", source: "multiplex_underwriter" });
     try {
-      const res = await apiRequest("POST", "/api/multiplex-underwriter", { address, postalCode: postalCode || undefined });
+      // Geocode client-side first so the server isn't rate-limited or blocked by
+      // Nominatim. Fall back to server-side geocoding if the client call fails.
+      const geo = await geocodeAddressClient(address);
+      const res = await apiRequest("POST", "/api/multiplex-underwriter", {
+        address: geo?.displayName || address,
+        postalCode: postalCode || undefined,
+        ...(geo ? { lat: geo.lat, lng: geo.lng } : {}),
+      });
       const data = await res.json();
       if (data.status === "needs_lot_dimensions") {
         setSite(data.site);
         setStep("confirm");
+      } else if (data.status === "complete") {
+        setSite(data.site);
+        setResult(data.underwrite);
+        setShareToken(data.shareToken);
+        setStep("report");
       }
     } catch (e: any) {
-      setError(e?.message?.includes("429") ? "Daily underwrite limit reached — sign in for a higher limit." : "Could not resolve that address. Check the spelling and try again.");
+      const status = e?.status as number | undefined;
+      const message = String(e?.message || "Underwrite failed — please try again.");
+      if (status === 429) {
+        setError("Daily underwrite limit reached — sign in for a higher limit.");
+      } else if (status === 400 || status === 422) {
+        setError(message);
+      } else {
+        setError("Could not resolve that address. Check the spelling and try again.");
+      }
     } finally {
       setBusy(false);
     }
@@ -293,6 +334,8 @@ export default function MultiplexUnderwriterPage() {
       const res = await apiRequest("POST", "/api/multiplex-underwriter", {
         address,
         postalCode: postalCode || undefined,
+        lat: site?.lat ?? undefined,
+        lng: site?.lng ?? undefined,
         lotFrontageFt: Number(frontage),
         lotDepthFt: Number(depth),
         purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
@@ -313,7 +356,15 @@ export default function MultiplexUnderwriterPage() {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (e: any) {
-      setError("Underwrite failed — please try again.");
+      const status = e?.status as number | undefined;
+      const message = String(e?.message || "Underwrite failed — please try again.");
+      if (status === 429) {
+        setError("Daily underwrite limit reached — sign in for a higher limit.");
+      } else if (status === 400 || status === 422) {
+        setError(message);
+      } else {
+        setError("Underwrite failed — please try again.");
+      }
     } finally {
       setBusy(false);
     }

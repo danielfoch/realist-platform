@@ -355,9 +355,25 @@ export interface ResolvedSite {
   notes: string[];
 }
 
-export async function resolveSite(address: string): Promise<ResolvedSite> {
+export async function resolveSite(
+  address: string,
+  providedGeo?: { lat: number; lng: number } | null,
+): Promise<ResolvedSite> {
   const notes: string[] = [];
-  const geo = await geocodeAddress(address);
+  let geo: GeocodeResult | null = null;
+
+  if (providedGeo && Number.isFinite(providedGeo.lat) && Number.isFinite(providedGeo.lng)) {
+    geo = {
+      lat: providedGeo.lat,
+      lng: providedGeo.lng,
+      displayName: address,
+      provider: "client",
+      fromCache: false,
+    };
+  } else {
+    geo = await geocodeAddress(address);
+  }
+
   if (!geo) notes.push("Address could not be geocoded — location-based screens skipped.");
 
   const [zoning, zoningAvailable, trees, heritage, trca] = await Promise.all([
