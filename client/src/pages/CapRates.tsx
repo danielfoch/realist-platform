@@ -133,6 +133,11 @@ interface CanadianListing {
   taxes?: {
     annualAmount?: number;
   };
+  lotFrontage?: number;
+  lotDepth?: number;
+  lotArea?: number;
+  lotAreaUnit?: string;
+  lotDimensions?: string;
 }
 
 interface ListingWithCapRate extends CanadianListing {
@@ -583,7 +588,7 @@ function parseSqft(value?: string | number | null): number | null {
 }
 
 function buildMultiplexUnderwriterHref(
-  listing: Pick<CanadianListing, "mlsNumber" | "listPrice" | "address" | "details">,
+  listing: Pick<CanadianListing, "mlsNumber" | "listPrice" | "address" | "details" | "lotFrontage" | "lotDepth" | "lotArea">,
 ): string {
   const params = new URLSearchParams();
   const address = formatAddress(listing.address);
@@ -597,6 +602,9 @@ function buildMultiplexUnderwriterHref(
   if (listing.details?.numBedrooms) params.set("beds", String(listing.details.numBedrooms));
   if (listing.details?.numBathrooms) params.set("baths", String(listing.details.numBathrooms));
   if (listing.details?.sqft) params.set("sqft", listing.details.sqft);
+  if (listing.lotFrontage && listing.lotFrontage > 0) params.set("frontage", String(listing.lotFrontage));
+  if (listing.lotDepth && listing.lotDepth > 0) params.set("depth", String(listing.lotDepth));
+  if (listing.lotArea && listing.lotArea > 0) params.set("lotArea", String(listing.lotArea));
 
   return `/tools/multiplex-underwriter?${params.toString()}`;
 }
@@ -3078,7 +3086,7 @@ export default function CapRates() {
                 data-testid={`link-multiplex-underwriter-${listing.mlsNumber}`}
               >
                 <Sparkles className="h-2.5 w-2.5" />
-                {isTorontoListing ? "Can I multiplex this?" : "Full multiplex underwrite"}
+                Multiplex this
               </Link>
               <ListingCommentCountBadge
                 count={aggregatesMap[listing.mlsNumber]?.publicCommentCount}
@@ -3189,7 +3197,7 @@ export default function CapRates() {
                 data-testid={`link-distress-multiplex-underwriter-${listing.mlsNumber}`}
               >
                 <Sparkles className="h-3 w-3" />
-                Can I multiplex this?
+                Multiplex this
               </Link>
             )}
           </div>
@@ -3477,7 +3485,7 @@ export default function CapRates() {
                       })}
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
-                      {isTorontoListing ? "Can I multiplex this?" : "Open full multiplex underwriter"}
+                      {isTorontoListing ? "Multiplex this" : "Multiplex this"}
                     </Link>
                   </Button>
                 </div>
@@ -4050,7 +4058,7 @@ export default function CapRates() {
           >
             <Link
               href={multiplexScan.href}
-              aria-label={isTorontoListing ? "Can I multiplex this?" : "Open full multiplex underwriter"}
+              aria-label={isTorontoListing ? "Multiplex this" : "Multiplex this"}
               data-testid="link-quick-card-multiplex-underwriter"
               onClick={() => track({
                 event: "feature_used",
@@ -4063,7 +4071,7 @@ export default function CapRates() {
               })}
             >
               <Sparkles className={isTorontoListing ? "mr-1.5 h-3.5 w-3.5" : "h-3.5 w-3.5"} />
-              {isTorontoListing && "Can I multiplex this?"}
+              {isTorontoListing && "Multiplex this"}
             </Link>
           </Button>
           {selectedListing.mlsNumber && (
@@ -4163,7 +4171,7 @@ export default function CapRates() {
                     data-testid="link-distress-detail-multiplex-underwriter"
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
-                    Can I multiplex this?
+                    Multiplex this
                   </Link>
                 </Button>
               )}

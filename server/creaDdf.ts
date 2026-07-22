@@ -59,6 +59,11 @@ interface DdfListing {
   NumberOfUnitsTotal?: number;
   AssociationFee?: number;
   AssociationFeeFrequency?: string;
+  LotFrontage?: number;
+  LotDepth?: number;
+  LotSizeArea?: number;
+  LotSizeAreaUnits?: string;
+  LotSizeDimensions?: string;
   [key: string]: any;
 }
 
@@ -89,6 +94,7 @@ const DDF_SELECT_FIELDS = [
   "AssociationFee", "AssociationFeeFrequency",
   "PhotosCount", "Media",
   "ModificationTimestamp", "OriginalEntryTimestamp",
+  "LotFrontage", "LotDepth", "LotSizeArea", "LotSizeAreaUnits", "LotSizeDimensions",
 ].join(",");
 
 export async function getDdfToken(): Promise<string> {
@@ -461,6 +467,11 @@ export function normalizeDdfListing(ddf: DdfListing): any {
     listDate: ddf.OriginalEntryTimestamp || undefined,
     totalActualRent: ddf.TotalActualRent || undefined,
     numberOfUnitsTotal: ddf.NumberOfUnitsTotal || undefined,
+    lotFrontage: ddf.LotFrontage || undefined,
+    lotDepth: ddf.LotDepth || undefined,
+    lotArea: ddf.LotSizeArea || undefined,
+    lotAreaUnit: ddf.LotSizeAreaUnits || undefined,
+    lotDimensions: ddf.LotSizeDimensions || undefined,
     dataSource: "crea_ddf" as const,
   };
 }

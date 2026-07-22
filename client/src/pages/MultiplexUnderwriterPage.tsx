@@ -295,10 +295,19 @@ export default function MultiplexUnderwriterPage() {
       // Geocode client-side first so the server isn't rate-limited or blocked by
       // Nominatim. Fall back to server-side geocoding if the client call fails.
       const geo = await geocodeAddressClient(address);
+      const hasDims = Number(frontage) > 0 && Number(depth) > 0;
       const res = await apiRequest("POST", "/api/multiplex-underwriter", {
         address: geo?.displayName || address,
         postalCode: postalCode || undefined,
         ...(geo ? { lat: geo.lat, lng: geo.lng } : {}),
+        ...(hasDims
+          ? {
+              lotFrontageFt: Number(frontage),
+              lotDepthFt: Number(depth),
+              purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
+              laneAccess,
+            }
+          : {}),
       });
       const data = await res.json();
       if (data.status === "needs_lot_dimensions") {
@@ -309,6 +318,7 @@ export default function MultiplexUnderwriterPage() {
         setResult(data.underwrite);
         setShareToken(data.shareToken);
         setStep("report");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (e: any) {
       const status = e?.status as number | undefined;
@@ -418,8 +428,40 @@ export default function MultiplexUnderwriterPage() {
                 <Label htmlFor="postal">Postal code <span className="text-muted-foreground">(optional — improves sixplex-ward detection)</span></Label>
                 <Input id="postal" placeholder="M4M 2N2" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className="h-12" />
               </div>
+
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                <p className="text-sm font-medium">Lot dimensions</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="frontage">Frontage (ft)</Label>
+                    <Input id="frontage" type="number" placeholder="25" value={frontage} onChange={(e) => setFrontage(e.target.value)} className="h-12 font-mono" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="depth">Depth (ft)</Label>
+                    <Input id="depth" type="number" placeholder="120" value={depth} onChange={(e) => setDepth(e.target.value)} className="h-12 font-mono" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter dimensions now to skip the confirm step, or leave them blank and we'll ask after resolving the site.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price">Purchase / asking price <span className="text-muted-foreground">(optional)</span></Label>
+                <Input id="price" type="number" placeholder="1200000" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="h-12 font-mono" />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                <Label htmlFor="lane" className="cursor-pointer">Rear lane access (laneway suite potential)</Label>
+                <Switch id="lane" checked={laneAccess} onCheckedChange={setLaneAccess} />
+              </div>
+
               <Button className="w-full h-12" disabled={busy || address.trim().length < 5} onClick={resolveSite}>
-                {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Resolving site…</> : <>Resolve site <ArrowRight className="h-4 w-4 ml-2" /></>}
+                {busy ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {Number(frontage) && Number(depth) ? "Underwriting…" : "Resolving site…"}</>
+                ) : (
+                  <>{Number(frontage) && Number(depth) ? "Run the underwrite" : "Resolve site"} <ArrowRight className="h-4 w-4 ml-2" /></>
+                )}
               </Button>
               <p className="text-xs text-muted-foreground text-center">3 free underwrites per day — sign in for more.</p>
             </CardContent>
