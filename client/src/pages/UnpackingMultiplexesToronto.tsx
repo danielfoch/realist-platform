@@ -109,6 +109,30 @@ const highlights = [
   { icon: Sparkles, label: "Actionable takeaways you can implement immediately" },
 ];
 
+const MODERATORS: RealistEventSpeaker[] = [
+  {
+    name: "Sabrina Maddeaux",
+    company: "Guest Moderator",
+    title: "Journalist & Housing Commentator",
+    bio: "National housing columnist and political commentator known for sharp analysis of Canada's housing crisis and policy landscape.",
+    imageUrl: null,
+  },
+  {
+    name: "Daniel Foch",
+    company: "Realist.ca",
+    title: "Host & Moderator",
+    bio: "Real estate investor, analyst, and founder of Realist.ca. Host of The Canadian Real Estate Investor Podcast.",
+    imageUrl: "https://thedividendguyblog.com/wp-content/themes/leia-en/imagenes/2025/06/5602983c-dea5-40c9-b88e-2635b6e9c33d.png",
+  },
+  {
+    name: "Nick Hill",
+    company: "BLD Financial",
+    title: "Host & Moderator",
+    bio: "Co-founder of BLD Financial and co-host of The Canadian Real Estate Investor Podcast. Specialist in development financing and investor partnerships.",
+    imageUrl: "https://d68-invdn-com.investing.com/company_logo/9977ab06a1fa615ad329b5606b56ac3a.jpg?width=170&height=170",
+  },
+];
+
 const SPEAKERS: RealistEventSpeaker[] = [
   {
     name: "Aled Ab Iorwerth",
@@ -158,6 +182,27 @@ const SPEAKERS: RealistEventSpeaker[] = [
     imageUrl: benHeadshot,
     expertProfileSlug: "ben-singer",
   },
+  {
+    name: "Brendan Farrow",
+    company: "Platform Insurance",
+    title: "Speaker",
+    bio: "Insurance and risk management expert focused on real estate development, construction projects, and investor protection.",
+    imageUrl: null,
+  },
+];
+
+const SPONSORS = [
+  { src: "/partners/cmhc.png", alt: "CMHC", url: "https://www.cmhc-schl.gc.ca/" },
+  { src: "/partners/bld-financial.png", alt: "BLD Financial", url: "https://www.bldfinancial.ca/" },
+  { src: "/partners/reside-properties.png", alt: "Reside Properties", url: "https://www.resideproperties.ca/" },
+  { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio", url: "https://www.noamhazan.com/" },
+  { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT", url: "https://www.alliancereit.com/" },
+  { src: "/partners/sr-law.jpg", alt: "SR Law", url: "https://www.srlaw.ca/" },
+  {
+    src: "https://www.platforminsurance.com/wp-content/uploads/2024/02/Platform-Logo-RGB-Digital-Glacier.png",
+    alt: "Platform Insurance",
+    url: "https://www.platforminsurance.com/",
+  },
 ];
 
 const AGENDA = [
@@ -168,6 +213,51 @@ const AGENDA = [
   { time: "7:30 PM", label: "Execution", description: "From site acquisition to tenant placement — the full multiplex development lifecycle." },
   { time: "8:10 PM", label: "Networking Mixer", description: "Open networking with food, drinks, and Toronto's leading multiplex community." },
 ];
+
+function ModeratorCard({ moderator }: { moderator: RealistEventSpeaker }) {
+  const initials = moderator.name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const isSabrina = moderator.name === "Sabrina Maddeaux";
+
+  const card = (
+    <div className="h-full rounded-lg border bg-card p-5 transition-colors hover:border-primary/50">
+      <div className="flex items-start gap-4">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+          {initials}
+        </div>
+        <div>
+          <h3 className="font-semibold">{moderator.name}</h3>
+          {(moderator.title || moderator.company) && (
+            <p className="text-sm text-muted-foreground">
+              {[moderator.title, moderator.company].filter(Boolean).join(", ")}
+            </p>
+          )}
+          {moderator.bio && <p className="mt-3 text-sm leading-6 text-muted-foreground">{moderator.bio}</p>}
+          {isSabrina && (
+            <a
+              href="https://x.com/SabrinaMaddeaux"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            >
+              Follow on X
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return card;
+}
 
 const faqs = [
   {
@@ -494,6 +584,31 @@ export default function UnpackingMultiplexesToronto() {
           <p className="text-xs text-muted-foreground mt-4">
             Hosted by The Canadian Real Estate Investor Podcast · Ticketing powered by OvationTix
           </p>
+
+          {/* Sponsors strip */}
+          <div className="mt-10 pt-8 border-t border-border/40">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">
+              Event sponsors & partners
+            </p>
+            <div className="flex flex-wrap items-center gap-6 md:gap-10">
+              {SPONSORS.map((sponsor) => (
+                <a
+                  key={sponsor.alt}
+                  href={sponsor.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group transition-opacity hover:opacity-100"
+                  data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <img
+                    src={sponsor.src}
+                    alt={sponsor.alt}
+                    className="h-8 w-auto object-contain grayscale opacity-70 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100"
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -516,6 +631,19 @@ export default function UnpackingMultiplexesToronto() {
                 multiplexes, missing middle housing policy, financing, design,
                 construction, and investment strategy.
               </p>
+            </div>
+
+            {/* Hosts & Moderators */}
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">Hosts & Moderators</h2>
+              <p className="text-muted-foreground mb-6">
+                Guiding the conversation and keeping the panels sharp.
+              </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {MODERATORS.map((m) => (
+                  <ModeratorCard key={m.name} moderator={m} />
+                ))}
+              </div>
             </div>
 
             {/* Speakers */}
@@ -731,33 +859,6 @@ export default function UnpackingMultiplexesToronto() {
               </Card>
             </div>
           </aside>
-        </div>
-      </section>
-
-      {/* Sponsors */}
-      <section className="border-t border-border/60 bg-stone-50 dark:bg-stone-900">
-        <div className="max-w-6xl mx-auto px-4 py-10">
-          <p className="text-xs uppercase tracking-[0.18em] text-stone-400 text-center mb-8">
-            Event sponsors & partners
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-10 md:gap-16">
-            {[
-              { src: "/partners/cmhc.png", alt: "CMHC" },
-              { src: "/partners/bld-financial.png", alt: "BLD Financial" },
-              { src: "/partners/reside-properties.png", alt: "Reside Properties" },
-              { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio" },
-              { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT" },
-              { src: "/partners/sr-law.jpg", alt: "SR Law" },
-            ].map((sponsor) => (
-              <img
-                key={sponsor.alt}
-                src={sponsor.src}
-                alt={sponsor.alt}
-                className="h-10 w-auto object-contain"
-                data-testid={`sponsor-logo-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
-              />
-            ))}
-          </div>
         </div>
       </section>
 
