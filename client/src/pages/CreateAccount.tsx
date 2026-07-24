@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, User, ArrowRight, ClipboardCheck, Wrench, Award } from "lucide-react";
+import { Loader2, Mail, Lock, User, ArrowRight, ClipboardCheck, Wrench, Award, Building, DollarSign } from "lucide-react";
 import { SIGNUP_EXPERT_TYPES, type SignupExpertType } from "@shared/models/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -35,7 +35,7 @@ const signupSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
   role: z.enum(["investor", "partner", "expert"]),
-  professionalType: z.enum(["contractor", "inspector"]).optional(),
+  professionalType: z.enum(["contractor", "inspector", "realtor", "mortgage_broker"]).optional(),
   expertType: z.enum(SIGNUP_EXPERT_TYPES).optional(),
   certificationNumber: z.string().optional(),
   serviceArea: z.string().optional(),
@@ -43,7 +43,7 @@ const signupSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],
 }).refine((data) => data.role !== "partner" || !!data.professionalType, {
-  message: "Choose contractor or inspector",
+  message: "Choose a professional type",
   path: ["professionalType"],
 }).refine((data) => data.role !== "expert" || !!data.expertType, {
   message: "Choose your area of expertise",
@@ -97,6 +97,16 @@ export default function CreateAccount() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Account created!", description: "Welcome to Realist." });
+      // Network partners (realtor / mortgage broker) skip the /signup profile
+      // step and go straight into the agreement-first partner onboarding flow.
+      if (
+        variables.role === "partner" &&
+        (variables.professionalType === "realtor" || variables.professionalType === "mortgage_broker")
+      ) {
+        clearAuthReturnUrl();
+        setLocation(`/partner/onboarding?type=${variables.professionalType}`);
+        return;
+      }
       // The role question is answered here — carry it through so /signup
       // doesn't re-ask it (it reads and clears this key on mount).
       sessionStorage.setItem(
@@ -212,6 +222,30 @@ export default function CreateAccount() {
                         >
                           <Wrench className="mb-2 h-4 w-4" />
                           Contractor
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            field.onChange("partner");
+                            form.setValue("professionalType", "realtor");
+                          }}
+                          className={`rounded-md border p-3 text-left text-sm ${field.value === "partner" && form.watch("professionalType") === "realtor" ? "border-primary bg-primary/5" : "border-border"}`}
+                          data-testid="button-signup-role-realtor"
+                        >
+                          <Building className="mb-2 h-4 w-4" />
+                          Realtor
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            field.onChange("partner");
+                            form.setValue("professionalType", "mortgage_broker");
+                          }}
+                          className={`rounded-md border p-3 text-left text-sm ${field.value === "partner" && form.watch("professionalType") === "mortgage_broker" ? "border-primary bg-primary/5" : "border-border"}`}
+                          data-testid="button-signup-role-mortgage-broker"
+                        >
+                          <DollarSign className="mb-2 h-4 w-4" />
+                          Mortgage Broker
                         </button>
                         <button
                           type="button"

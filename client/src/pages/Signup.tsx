@@ -137,6 +137,11 @@ export default function Signup() {
         });
         setLocation("/partner");
       } else if (carried.role === "partner") {
+        // Network partners go straight to the agreement-first onboarding flow.
+        if (carried.professionalType === "realtor" || carried.professionalType === "mortgage_broker") {
+          setLocation(`/partner/onboarding?type=${carried.professionalType}`);
+          return;
+        }
         setSelectedRole("professional");
         if (carried.professionalType === "contractor" || carried.professionalType === "inspector") {
           setBrokerageInfo((prev) => ({
@@ -167,6 +172,12 @@ export default function Signup() {
   };
 
   const handleBrokerageSubmit = () => {
+    // Realtors and mortgage brokers are network partners — their profile is
+    // completed inside the agreement-first partner onboarding flow.
+    if (brokerageInfo.professionalType === "realtor" || brokerageInfo.professionalType === "mortgage_broker") {
+      setLocation(`/partner/onboarding?type=${brokerageInfo.professionalType}`);
+      return;
+    }
     if (!brokerageInfo.brokerageName.trim()) {
       toast({ title: "Please enter your brokerage name", variant: "destructive" });
       return;

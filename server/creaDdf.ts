@@ -151,17 +151,21 @@ export async function searchDdfListings(params: {
   excludeVacantLand?: boolean;
   /** Restrict to rental/lease listings (LeaseAmount is only set on leases). */
   forLease?: boolean;
+  /** Defaults to Active; pass e.g. "Pending" or "Coming Soon" for other statuses. */
+  standardStatus?: string;
   latitudeMin?: number;
   latitudeMax?: number;
   longitudeMin?: number;
   longitudeMax?: number;
   top?: number;
   skip?: number;
-}): Promise<{ listings: DdfListing[]; count: number; numPages: number; page: number; rawPageSize: number }> {
+  /** Server-provided continuation URL; when set it takes precedence over skip. */
+  nextLink?: string;
+}): Promise<{ listings: DdfListing[]; count: number; numPages: number; page: number; rawPageSize: number; nextLink: string | null }> {
   const token = await getDdfToken();
 
   const filters: string[] = [];
-  filters.push("StandardStatus eq 'Active'");
+  filters.push(`StandardStatus eq '${(params.standardStatus || "Active").replace(/'/g, "''")}'`);
   if (params.forLease) {
     // DDF dropped TransactionType (For sale/For rent); lease listings are now
     // the ones carrying a LeaseAmount.
@@ -208,10 +212,10 @@ export async function searchDdfListings(params: {
   queryParams.set("$count", "true");
   queryParams.set("$top", String(top));
   if (skip > 0) queryParams.set("$skip", String(skip));
-  queryParams.set("$orderby", "ModificationTimestamp desc");
+  queryParams.set("$orderby", "ModificationTimestamp desc,ListingKey");
   queryParams.set("$select", DDF_SELECT_FIELDS);
 
-  const url = `${DDF_API_BASE}/Property?${queryParams.toString()}`;
+  const url = params.nextLink || `${DDF_API_BASE}/Property?${queryParams.toString()}`;
 
   let response = await fetch(url, {
     headers: {
@@ -226,7 +230,7 @@ export async function searchDdfListings(params: {
     // in $select makes the whole search return 400 even though authentication
     // and the filter are healthy. Retry once without projection so listing
     // search stays available while our field list catches up.
-    if (response.status === 400) {
+    if (response.status === 400 && !params.nextLink) {
       const fallbackParams = new URLSearchParams(queryParams);
       fallbackParams.delete("$select");
       const fallbackUrl = `${DDF_API_BASE}/Property?${fallbackParams.toString()}`;
@@ -288,6 +292,7 @@ export async function searchDdfListings(params: {
     numPages: totalPages,
     page: currentPage,
     rawPageSize,
+    nextLink: data["@odata.nextLink"] || null,
   };
 }
 
@@ -345,7 +350,7 @@ export async function searchDdfByRemarks(params: {
   queryParams.set("$count", "true");
   queryParams.set("$top", String(requestedTop));
   if (skip > 0) queryParams.set("$skip", String(skip));
-  queryParams.set("$orderby", "ModificationTimestamp desc");
+  queryParams.set("$orderby", "ModificationTimestamp desc,ListingKey");
   queryParams.set("$select", DDF_SELECT_FIELDS);
 
   const url = `${DDF_API_BASE}/Property?${queryParams.toString()}`;

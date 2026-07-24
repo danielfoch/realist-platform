@@ -33,6 +33,7 @@ const DEFAULT_PROVINCES = [
   "Nova Scotia",
   "New Brunswick",
   "Prince Edward Island",
+  "Newfoundland and Labrador",
 ];
 
 const PAGE_SIZE = 100;

@@ -9,19 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
-import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, X, Plus, Layers, FileText, Lock, Landmark } from "lucide-react";
+import { TrendingUp, Building2, DollarSign, MapPin, Calendar, BarChart3, X, Plus, Layers, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
 import { apiRequest } from "@/lib/queryClient";
-import { sortedReports, reportDateLabel, type ReportKind } from "@shared/reportsRegistry";
-
-// Registry-driven report grid: newest first, zero manual fan-out per publish.
-const macroReports = sortedReports();
-const REPORT_KIND_ICONS: Record<ReportKind, typeof BarChart3> = {
-  macro: Landmark,
-  market: Building2,
-  research: FileText,
-};
 
 interface MarketSnapshot {
   id: string;
@@ -437,38 +428,6 @@ export default function MarketReport() {
               : "Loading..."}
             {" "}— Yields, rents, and investment metrics across {nationalAvgs?.totalCities || 30} Canadian markets
           </p>
-        </div>
-
-        <div className="mb-12" data-testid="section-macro-reports">
-          <h2 className="text-2xl font-bold mb-2">Reports & Research</h2>
-          <p className="text-muted-foreground mb-6">Every Realist report — macro releases, market data, and long-form research, newest first.</p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {macroReports.map((entry) => {
-              const Icon = REPORT_KIND_ICONS[entry.kind];
-              return (
-                <Link key={entry.slug} href={entry.route}>
-                  <Card className="h-full hover:border-primary/50 hover:shadow-sm cursor-pointer transition-all" data-testid={`card-macro-${entry.slug}`}>
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                          <Icon className="h-4.5 w-4.5 text-muted-foreground" />
-                        </div>
-                        <Badge variant="outline" className="text-[10px]">{reportDateLabel(entry)}</Badge>
-                        {entry.tags.includes("private") && (
-                          <Badge variant="outline" className="text-[10px]">
-                            <Lock className="h-2.5 w-2.5 mr-1" /> Private
-                          </Badge>
-                        )}
-                      </div>
-                      <h3 className="font-bold text-sm mb-1">{entry.title}</h3>
-                      <p className="text-xs text-muted-foreground mb-2">{entry.description}</p>
-                      <span className="text-xs text-primary font-medium">View Report →</span>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
         </div>
 
         {loadingLatest ? (
@@ -1048,7 +1007,7 @@ export default function MarketReport() {
                     ))}
                   </div>
                   <div className="mt-4 text-center">
-                    <Link href="/reports">
+                    <Link href="/insights">
                       <Button variant="outline" size="sm" data-testid="view-all-reports-btn">
                         View All Reports & Research
                       </Button>

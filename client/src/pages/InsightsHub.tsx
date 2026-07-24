@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { track } from "@/lib/analytics";
 import {
-  Radio, BookOpen, FileText, TrendingUp, AlertTriangle, LineChart,
+  Radio, BookOpen, TrendingUp, AlertTriangle, LineChart,
   Calculator, ArrowRight, BarChart3, ChevronRight, Building2, BriefcaseBusiness,
   Youtube,
 } from "lucide-react";
@@ -18,143 +18,143 @@ const kindIcons: Record<ReportKind, typeof LineChart> = {
   research: BriefcaseBusiness,
 };
 
+const kindLabels: Record<ReportKind, string> = {
+  macro: "Macro",
+  market: "Market Data",
+  research: "Research",
+};
+
+const kindFilters = [
+  { value: "all", label: "All" },
+  { value: "macro", label: "Macro" },
+  { value: "market", label: "Market Data" },
+  { value: "research", label: "Research" },
+];
+
 // Newest release overall drives the marquee slot — no baked month names.
 const allReports = sortedReports();
 const latestRelease = allReports[0];
-const featuredResearch = allReports
-  .filter((entry) => entry.kind === "research" && !entry.tags.includes("private") && entry.slug !== latestRelease.slug)
-  .slice(0, 3);
+const yearFilters = [
+  { value: "all", label: "All years" },
+  ...[...new Set(allReports.map((entry) => entry.date.slice(0, 4)))].map((year) => ({
+    value: year,
+    label: year,
+  })),
+];
 
-const insightSections = [
+// Section 1 — Live Data: recurring dashboards plus the latest registry release.
+const liveDataItems = [
   {
-    title: "Live Market Dashboards",
-    description: "Recurring data products and monitoring pages.",
-    items: [
-      {
-        href: "/insights/mortgage-rates",
-        title: "Mortgage Rates",
-        description: "Current best rates across Canada with historical context — fixed vs. variable, insured vs. conventional.",
-        icon: TrendingUp,
-        badge: "Live",
-        cta: "See Rates",
-      },
-      {
-        href: "/insights/motivated-report",
-        title: "Motivated Report",
-        description: "Monthly snapshot of power of sale, foreclosures, motivated sellers, and VTB opportunities across Canada.",
-        icon: AlertTriangle,
-        badge: "Monthly",
-        cta: "View Report",
-      },
-      {
-        href: latestRelease.route,
-        title: latestRelease.title,
-        description: latestRelease.description,
-        icon: kindIcons[latestRelease.kind],
-        badge: `Latest · ${reportDateLabel(latestRelease)}`,
-        cta: "Read Report",
-      },
-    ],
+    href: "/insights/mortgage-rates",
+    title: "Mortgage Rates",
+    description: "Current best rates across Canada with historical context — fixed vs. variable, insured vs. conventional.",
+    icon: TrendingUp,
+    badge: "Live",
+    cta: "See Rates",
   },
   {
-    title: "Deep Research Reports",
-    description: "Long-form analysis and thesis-driven research notes.",
-    items: [
-      ...featuredResearch.map((entry) => ({
-        href: entry.route,
-        title: entry.title,
-        description: entry.description,
-        icon: kindIcons[entry.kind],
-        badge: reportDateLabel(entry),
-        cta: "Open Report",
-      })),
-      {
-        href: "/reports",
-        title: "All Reports & Research",
-        description: "Every Realist report in one place — macro releases, market data, and long-form research, newest first.",
-        icon: FileText,
-        badge: `${allReports.length} reports`,
-        cta: "Browse All",
-      },
-    ],
+    href: "/insights/motivated-report",
+    title: "Motivated Report",
+    description: "Monthly snapshot of power of sale, foreclosures, motivated sellers, and VTB opportunities across Canada.",
+    icon: AlertTriangle,
+    badge: "Monthly",
+    cta: "View Report",
   },
   {
-    title: "Media and Education",
-    description: "Ongoing content, education, and archive surfaces.",
-    items: [
-      {
-        href: "/insights/podcast",
-        title: "Podcast",
-        description: "In-depth conversations with Canadian real estate investors, analysts, and operators. Real deals, real numbers.",
-        icon: Radio,
-        badge: "Audio",
-        cta: "Listen Now",
-      },
-      {
-        href: "/insights/videos",
-        title: "Videos",
-        description: "Daniel Foch's latest YouTube videos on the Canadian housing market, mortgages, and investing strategy — with the full breakdown on every page.",
-        icon: Youtube,
-        badge: "Video",
-        cta: "Watch Now",
-      },
-      {
-        href: "/insights/blog",
-        title: "Blog & Research",
-        description: "Market analysis, investment strategies, and data-driven perspectives for Canadian real estate investors.",
-        icon: BookOpen,
-        badge: "Articles",
-        cta: "Read Articles",
-      },
-      {
-        href: "/insights/guides",
-        title: "Guides & Encyclopedia",
-        description: "Step-by-step guides plus searchable definitions, formulas, examples, caveats, and calculator specs.",
-        icon: FileText,
-        badge: "Education",
-        cta: "Open Library",
-      },
-      {
-        href: "/insights/encyclopedia",
-        title: "Investor Encyclopedia",
-        description: "Search definitions, formulas, examples, caveats, and calculator specs for Canadian real estate underwriting.",
-        icon: BookOpen,
-        badge: "New",
-        cta: "Search Terms",
-      },
-    ],
+    href: latestRelease.route,
+    title: latestRelease.title,
+    description: latestRelease.description,
+    icon: kindIcons[latestRelease.kind],
+    badge: `Latest · ${reportDateLabel(latestRelease)}`,
+    cta: "Read Report",
   },
 ];
 
-// Contextual bridges: content-specific prompts that route into product.
-// Keyed by card href so they survive title changes in the registry.
-const contextBridges: Record<string, { text: string; cta: string; href: string }> = {
-  "/insights/mortgage-rates": {
-    text: "See how today's rates affect your deal returns",
-    cta: "Model a Deal",
-    href: "/tools/analyzer",
+// Section 3 — Learn & Media: education and ongoing content surfaces.
+const mediaItems = [
+  {
+    href: "/insights/guides",
+    title: "Guides & Encyclopedia",
+    description: "Step-by-step guides plus searchable definitions, formulas, examples, caveats, and calculator specs.",
+    icon: BookOpen,
+    badge: "Education",
+    cta: "Open Library",
   },
-  [latestRelease.route]: {
-    text: "Run this release's numbers through a live deal",
-    cta: "Analyze a Deal",
-    href: "/tools/analyzer",
+  {
+    href: "/insights/podcast",
+    title: "Podcast",
+    description: "In-depth conversations with Canadian real estate investors, analysts, and operators. Real deals, real numbers.",
+    icon: Radio,
+    badge: "Audio",
+    cta: "Listen Now",
   },
-  "/insights/the-spread-that-ate-the-economy": {
-    text: "See how yield compression shows up on the map",
-    cta: "Browse Yield Map",
-    href: "/tools/cap-rates",
+  {
+    href: "/insights/videos",
+    title: "Videos",
+    description: "Daniel Foch's latest YouTube videos on the Canadian housing market, mortgages, and investing strategy — with the full breakdown on every page.",
+    icon: Youtube,
+    badge: "Video",
+    cta: "Watch Now",
   },
-  "/insights/motivated-report": {
-    text: "Search live motivated-seller opportunities in your market",
-    cta: "Find Deals",
-    href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1",
-  },
+];
+
+type HubItem = {
+  href: string;
+  title: string;
+  description: string;
+  icon: typeof LineChart;
+  badge: string;
+  cta: string;
 };
 
+function HubCard({ item }: { item: HubItem }) {
+  return (
+    <Card className="h-full hover-elevate border-border/60 group flex flex-col">
+      <CardContent className="p-6 flex flex-col flex-1 space-y-4">
+        <div className="flex items-start justify-between">
+          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+            <item.icon className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">{item.badge}</Badge>
+        </div>
+
+        <div className="flex-1">
+          <h3 className="text-base font-semibold mb-1.5">{item.title}</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+        </div>
+
+        <div className="pt-2">
+          <Link href={item.href}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5 group-hover:border-primary/40 transition-colors"
+              data-testid={`button-${item.title.toLowerCase().replace(/[\s–—]+/g, "-")}`}
+              onClick={() => track({ event: "content_consumed", content_type: "report", content_id: item.href, title: item.title })}
+            >
+              {item.cta}
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function InsightsHub() {
+  const [selectedKind, setSelectedKind] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("all");
+
   useEffect(() => {
     track({ event: "page_viewed", path: "/insights", title: "Market Intelligence" });
   }, []);
+
+  const filteredReports = allReports.filter(
+    (entry) =>
+      (selectedKind === "all" || entry.kind === selectedKind) &&
+      (selectedYear === "all" || entry.date.startsWith(selectedYear))
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -170,68 +170,86 @@ export default function InsightsHub() {
         </div>
 
         <div className="space-y-10 mb-12">
-          {insightSections.map((section) => (
-            <section key={section.title} className="space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold">{section.title}</h2>
-                <p className="text-sm text-muted-foreground">{section.description}</p>
-              </div>
+          {/* Section 1 — Live Data */}
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold">Live Data</h2>
+              <p className="text-sm text-muted-foreground">Recurring data products, monitoring pages, and the latest release.</p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {liveDataItems.map((item) => (
+                <HubCard key={item.href} item={item} />
+              ))}
+            </div>
+          </section>
+
+          {/* Section 2 — Research Library */}
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold">Research Library</h2>
+              <p className="text-sm text-muted-foreground">Every Realist report — macro releases, market data, and long-form research, newest first.</p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap" data-testid="filter-kinds">
+              {kindFilters.map((filter) => (
+                <Button
+                  key={filter.value}
+                  variant={selectedKind === filter.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedKind(filter.value)}
+                  data-testid={`filter-kind-${filter.value}`}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap" data-testid="filter-years">
+              {yearFilters.map((filter) => (
+                <Button
+                  key={filter.value}
+                  variant={selectedYear === filter.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedYear(filter.value)}
+                  data-testid={`filter-year-${filter.value}`}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+            </div>
+
+            {filteredReports.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {section.items.map((item) => {
-                  const bridge = contextBridges[item.href];
-                  return (
-                    <Card
-                      key={item.href}
-                      className="h-full hover-elevate border-border/60 group flex flex-col"
-                    >
-                      <CardContent className="p-6 flex flex-col flex-1 space-y-4">
-                        <div className="flex items-start justify-between">
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                            <item.icon className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">{item.badge}</Badge>
-                        </div>
-
-                        <div className="flex-1">
-                          <h3 className="text-base font-semibold mb-1.5">{item.title}</h3>
-                          <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-                        </div>
-
-                        <div className="space-y-2 pt-2">
-                          <Link href={item.href}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full gap-1.5 group-hover:border-primary/40 transition-colors"
-                              data-testid={`button-${item.title.toLowerCase().replace(/[\s–—]+/g, "-")}`}
-                              onClick={() => track({ event: "content_consumed", content_type: "report", content_id: item.href, title: item.title })}
-                            >
-                              {item.cta}
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </Button>
-                          </Link>
-
-                          {bridge && (
-                            <Link href={bridge.href}>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full gap-1.5 text-xs text-muted-foreground hover:text-primary"
-                                onClick={() => track({ event: "cta_clicked", cta: bridge.cta, location: `insights_hub_${item.title}`, destination: bridge.href })}
-                              >
-                                <Calculator className="h-3 w-3" />
-                                {bridge.text}
-                              </Button>
-                            </Link>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                {filteredReports.map((entry) => (
+                  <HubCard
+                    key={entry.slug}
+                    item={{
+                      href: entry.route,
+                      title: entry.title,
+                      description: entry.description,
+                      icon: kindIcons[entry.kind],
+                      badge: kindLabels[entry.kind],
+                      cta: "Open Report",
+                    }}
+                  />
+                ))}
               </div>
-            </section>
-          ))}
+            ) : (
+              <p className="text-sm text-muted-foreground" data-testid="text-no-reports">No reports match these filters.</p>
+            )}
+          </section>
+
+          {/* Section 3 — Learn & Media */}
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold">Learn & Media</h2>
+              <p className="text-sm text-muted-foreground">Education and ongoing content surfaces.</p>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {mediaItems.map((item) => (
+                <HubCard key={item.href} item={item} />
+              ))}
+            </div>
+          </section>
         </div>
 
         {/* Bottom CTA — route users into deal analyzer */}

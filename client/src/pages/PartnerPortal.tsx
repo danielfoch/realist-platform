@@ -19,11 +19,12 @@ import { authPath } from "@/lib/authReturn";
 import { User, Briefcase, Users, CheckCircle, Clock, Phone, Mail, MapPin, Building } from "lucide-react";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import type { IndustryPartner, PartnerLead, Lead } from "@shared/schema";
+import type { IndustryPartner, PartnerLead, Lead, RealtorLeadNotification } from "@shared/schema";
 
 const PARTNER_TYPES = [
   { value: "realtor", label: "Realtor" },
   { value: "mortgage_broker", label: "Mortgage Broker" },
+  { value: "lender", label: "Lender" },
   { value: "architect", label: "Architect" },
   { value: "urban_planner", label: "Urban Planner" },
   { value: "lawyer", label: "Real Estate Lawyer" },
@@ -39,6 +40,10 @@ const PARTNER_TYPES = [
 // referral fee — their value is the field notes they contribute. Only the
 // deal-referral streams (realtor, mortgage broker) carry a referral agreement.
 const REFERRAL_PARTNER_TYPES = new Set(["realtor", "mortgage_broker"]);
+
+// Financing-side partners receive financing-intent leads through the partner
+// network (realtor_lead_notifications with a partner_type discriminator).
+const FINANCING_PARTNER_TYPES = new Set(["mortgage_broker", "lender"]);
 
 interface PartnerSocialLinks {
   website?: string;
@@ -62,22 +67,44 @@ const LEAD_STATUSES = [
 ];
 
 type PartnerLeadWithLead = PartnerLead & { lead: Lead };
+type NetworkLeadNotification = RealtorLeadNotification & { lead: Lead };
 
 export default function PartnerPortal() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [currentTab, setCurrentTab] = usePersistedTab("partnerPortal.activeTab", "leads", ["leads", "profile"]);
+  const [currentTab, setCurrentTab] = usePersistedTab("partnerPortal.activeTab", "leads", ["leads", "financing", "profile"]);
 
   const { data: partner, isLoading: partnerLoading } = useQuery<IndustryPartner | null>({
     queryKey: ["/api/partner/profile"],
     enabled: isAuthenticated,
   });
 
+  const isFinancingPartner = FINANCING_PARTNER_TYPES.has(partner?.partnerType || "");
+
   const { data: leads, isLoading: leadsLoading } = useQuery<PartnerLeadWithLead[]>({
     queryKey: ["/api/partner/leads"],
     enabled: isAuthenticated && !!partner,
+  });
+
+  const { data: financingLeads, isLoading: financingLeadsLoading } = useQuery<NetworkLeadNotification[]>({
+    queryKey: ["/api/realtor-network/my-leads"],
+    enabled: isAuthenticated && isFinancingPartner,
+  });
+
+  const claimFinancingLeadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      const res = await apiRequest("POST", `/api/realtor-network/claim-lead/${notificationId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/realtor-network/my-leads"] });
+      toast({ title: "Lead claimed!", description: "Introduction sent. The lead has been added to your CRM." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to claim lead", description: error.message || "Please try again.", variant: "destructive" });
+    },
   });
 
   const updateProfileMutation = useMutation({
@@ -238,6 +265,11 @@ export default function PartnerPortal() {
           <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
             <TabsList data-testid="partner-tabs">
               <TabsTrigger value="leads" data-testid="tab-leads">Leads</TabsTrigger>
+              {isFinancingPartner && (
+                <TabsTrigger value="financing" data-testid="tab-financing">
+                  {partner?.partnerType === "lender" ? "Lender Deals" : "Financing Leads"}
+                </TabsTrigger>
+              )}
               <TabsTrigger value="profile" data-testid="tab-profile">My Profile</TabsTrigger>
             </TabsList>
 
@@ -336,6 +368,83 @@ export default function PartnerPortal() {
                 </Card>
               )}
             </TabsContent>
+
+            {isFinancingPartner && (
+              <TabsContent value="financing" className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-xl font-semibold">
+                    {partner?.partnerType === "lender" ? "Financing Deals" : "Financing Leads"}
+                  </h2>
+                </div>
+
+                {financingLeadsLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ) : !financingLeads || financingLeads.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <Building className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="font-semibold mb-2">No financing leads yet</h3>
+                      <p className="text-muted-foreground">
+                        When investors with financing intent analyze deals in your market, they will appear here.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Deal</TableHead>
+                          <TableHead>City</TableHead>
+                          <TableHead>Strategy</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {financingLeads.map((notification) => (
+                          <TableRow key={notification.id} data-testid={`financing-lead-row-${notification.id}`}>
+                            <TableCell>
+                              <p className="font-medium">{notification.dealAddress || "Address not specified"}</p>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {notification.dealCity || "—"}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {notification.dealStrategy || "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={notification.status === "claimed" ? "default" : "secondary"}>
+                                {notification.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {format(new Date(notification.notifiedAt), "MMM d, yyyy")}
+                            </TableCell>
+                            <TableCell>
+                              {notification.status === "new" && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => claimFinancingLeadMutation.mutate(notification.id)}
+                                  disabled={claimFinancingLeadMutation.isPending}
+                                  data-testid={`button-claim-financing-lead-${notification.id}`}
+                                >
+                                  {claimFinancingLeadMutation.isPending ? "Claiming..." : "Claim"}
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                )}
+              </TabsContent>
+            )}
 
             <TabsContent value="profile" className="space-y-4">
               <Card>

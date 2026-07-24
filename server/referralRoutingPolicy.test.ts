@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getLeadRoutingChannel,
+  getPartnerTypesForIntent,
   isValeryTorontoServiceZone,
   shouldNotifyPartnerClaims,
 } from "./referralRoutingPolicy";
@@ -27,5 +28,20 @@ describe("referral routing policy", () => {
   it("holds missing province data for manual review", () => {
     expect(getLeadRoutingChannel({ city: "Halifax", region: "" })).toBe("manual_review");
     expect(shouldNotifyPartnerClaims({ city: "Halifax", region: null })).toBe(false);
+  });
+});
+
+describe("partner types for intent", () => {
+  it("routes financing intent to mortgage brokers and lenders, not realtors", () => {
+    const types = getPartnerTypesForIntent("financing");
+    expect(types).toContain("mortgage_broker");
+    expect(types).toContain("lender");
+    expect(types).not.toContain("realtor");
+  });
+
+  it("routes purchase intent (and missing intent) to realtors only", () => {
+    expect(getPartnerTypesForIntent("purchase")).toEqual(["realtor"]);
+    expect(getPartnerTypesForIntent(null)).toEqual(["realtor"]);
+    expect(getPartnerTypesForIntent(undefined)).toEqual(["realtor"]);
   });
 });

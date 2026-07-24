@@ -77,3 +77,17 @@ export function shouldNotifyPartnerClaims(input: {
 }): boolean {
   return getLeadRoutingChannel(input) === "partner_referral";
 }
+
+export type LeadIntent = "purchase" | "financing";
+
+export type RoutablePartnerType = "realtor" | "mortgage_broker" | "lender";
+
+// Which partner claim types a routed lead is fanned out to. Financing-intent
+// leads belong on the financing side of the network: mortgage brokers handle
+// the borrower, lenders supply the product. Everything else stays with
+// realtors. Notifications reuse the realtor_lead_notifications table with a
+// partner_type discriminator, so the downstream claim/intro/outcome flow is
+// identical for every partner type.
+export function getPartnerTypesForIntent(intent?: LeadIntent | null): RoutablePartnerType[] {
+  return intent === "financing" ? ["mortgage_broker", "lender"] : ["realtor"];
+}

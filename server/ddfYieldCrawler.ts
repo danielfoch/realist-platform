@@ -2,7 +2,7 @@ import { searchDdfListings, isDdfConfigured } from "./creaDdf";
 import { storage } from "./storage";
 import { db } from "./db";
 import { ddfListingSnapshots, type InsertDdfListingSnapshot, type InsertCityYieldHistory, type InsertAreaYieldHistory } from "@shared/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { CMHC_PROVINCIAL_RENTS, CMHC_CITY_RENTS, type CmhcRentData as CmhcRentEntry } from "@shared/cmhcRents";
 import {
   queueDdfListingChangeNotifications,
@@ -22,6 +22,7 @@ const PROVINCE_TO_ABBREV: Record<string, string> = {
   "Nova Scotia": "NS",
   "New Brunswick": "NB",
   "Prince Edward Island": "PE",
+  "Newfoundland and Labrador": "NL",
 };
 
 const CRAWL_PROVINCES = [
@@ -34,6 +35,7 @@ const CRAWL_PROVINCES = [
   "Nova Scotia",
   "New Brunswick",
   "Prince Edward Island",
+  "Newfoundland and Labrador",
 ];
 
 interface CmhcRentData {
@@ -168,27 +170,65 @@ function aggregateYieldMetrics(snapshots: InsertDdfListingSnapshot[]) {
   };
 }
 
+const PAGE_FETCH_MAX_ATTEMPTS = 3;
+const PAGE_FETCH_BASE_DELAY_MS = 1000;
+
+type DdfSearchResult = Awaited<ReturnType<typeof searchDdfListings>>;
+
+/** Fetch one results page with exponential backoff; null means every attempt failed. */
+async function fetchDdfPageWithRetry(
+  params: Parameters<typeof searchDdfListings>[0],
+  label: string,
+): Promise<DdfSearchResult | null> {
+  for (let attempt = 1; attempt <= PAGE_FETCH_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await searchDdfListings(params);
+    } catch (error) {
+      console.warn(`[ddf-crawler] ${label}: fetch failed (attempt ${attempt}/${PAGE_FETCH_MAX_ATTEMPTS}):`, error);
+      if (attempt < PAGE_FETCH_MAX_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, PAGE_FETCH_BASE_DELAY_MS * 2 ** (attempt - 1)));
+      }
+    }
+  }
+  console.error(`[ddf-crawler] ${label}: giving up after ${PAGE_FETCH_MAX_ATTEMPTS} attempts, skipping page`);
+  return null;
+}
+
 export async function crawlDdfForProvince(
   ddfProvince: string,
   month: string,
   cmhcRents: CmhcRentData,
+  standardStatus: string = "Active",
 ): Promise<InsertDdfListingSnapshot[]> {
   const snapshots: InsertDdfListingSnapshot[] = [];
   const pageSize = 100;
   const maxPages = 500;
 
+  let nextLink: string | null = null;
   for (let page = 0; page < maxPages; page++) {
-    try {
-      const result = await searchDdfListings({
+    const result = await fetchDdfPageWithRetry(
+      {
         stateOrProvince: ddfProvince,
+        standardStatus,
         excludeBusinessSales: true,
         excludeParking: true,
         excludeVacantLand: true,
         top: pageSize,
-        skip: page * pageSize,
-      });
+        // Follow @odata.nextLink when the API provides one; manual $skip otherwise.
+        ...(nextLink ? { nextLink } : { skip: page * pageSize }),
+      },
+      `${ddfProvince} page ${page + 1}`,
+    );
+    if (!result) {
+      // Page failed every retry: skip it and fall back to manual $skip paging.
+      nextLink = null;
+      continue;
+    }
 
-      if (!result.listings || result.listings.length === 0) break;
+    try {
+      // Terminate on the raw page size, not the post-filter kept count:
+      // client-side exclusions (parking, vacant land, ...) shrink listings.
+      if (result.rawPageSize === 0) break;
 
       for (const listing of result.listings) {
         const listPrice = listing.ListPrice;
@@ -250,14 +290,15 @@ export async function crawlDdfForProvince(
         });
       }
 
-      console.log(`[ddf-crawler] ${ddfProvince} page ${page + 1}: ${result.listings.length} kept / ${result.listings.length} fetched (total so far: ${snapshots.length}, API count: ${result.count})`);
+      console.log(`[ddf-crawler] ${ddfProvince} page ${page + 1}: ${result.listings.length} kept / ${result.rawPageSize} fetched (total so far: ${snapshots.length}, API count: ${result.count})`);
 
-      if (result.listings.length < pageSize) break;
+      nextLink = result.nextLink;
+      if (result.rawPageSize < pageSize) break;
 
       await new Promise(r => setTimeout(r, 800));
     } catch (error) {
       console.error(`[ddf-crawler] Error crawling ${ddfProvince} page ${page}:`, error);
-      break;
+      nextLink = null;
     }
   }
 
@@ -269,24 +310,34 @@ export async function crawlDdfForCity(
   province: string,
   month: string,
   cmhcRents: CmhcRentData,
+  standardStatus: string = "Active",
 ): Promise<InsertDdfListingSnapshot[]> {
   const snapshots: InsertDdfListingSnapshot[] = [];
   const pageSize = 100;
   const maxPages = 200;
 
+  let nextLink: string | null = null;
   for (let page = 0; page < maxPages; page++) {
-    try {
-      const result = await searchDdfListings({
+    const result = await fetchDdfPageWithRetry(
+      {
         city,
         stateOrProvince: province,
+        standardStatus,
         excludeBusinessSales: true,
         excludeParking: true,
         excludeVacantLand: true,
         top: pageSize,
-        skip: page * pageSize,
-      });
+        ...(nextLink ? { nextLink } : { skip: page * pageSize }),
+      },
+      `${city}, ${province} page ${page + 1}`,
+    );
+    if (!result) {
+      nextLink = null;
+      continue;
+    }
 
-      if (!result.listings || result.listings.length === 0) break;
+    try {
+      if (result.rawPageSize === 0) break;
 
       for (const listing of result.listings) {
         const listPrice = listing.ListPrice;
@@ -347,11 +398,12 @@ export async function crawlDdfForCity(
         });
       }
 
-      if (result.listings.length < pageSize) break;
+      nextLink = result.nextLink;
+      if (result.rawPageSize < pageSize) break;
       await new Promise(r => setTimeout(r, 500));
     } catch (error) {
       console.error(`[ddf-crawler] Error crawling ${city}, ${province} page ${page}:`, error);
-      break;
+      nextLink = null;
     }
   }
 
@@ -574,5 +626,53 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
     return { month, totalListings, citiesCrawled: allCities.size, provincesCompleted };
   } finally {
     crawlInProgress = false;
+  }
+}
+
+/**
+ * Alert when stored snapshots lag the API's reported active-listing count.
+ * The stored ratio is structurally below 1: @odata.count includes parking,
+ * vacant land, and business sales (excluded client-side after fetch) and
+ * price-less listings are dropped — so only a deep shortfall trips the alert.
+ */
+const COVERAGE_ALERT_RATIO = 0.5;
+
+export async function checkDdfCoverage(targetMonth?: string): Promise<void> {
+  if (!isDdfConfigured()) {
+    console.log("[ddf-crawler][coverage] DDF credentials not configured, skipping coverage check");
+    return;
+  }
+
+  const now = new Date();
+  const month = targetMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const storedRows = await db
+    .select({ province: ddfListingSnapshots.province, stored: sql<number>`count(*)::int` })
+    .from(ddfListingSnapshots)
+    .where(eq(ddfListingSnapshots.snapshotMonth, month))
+    .groupBy(ddfListingSnapshots.province);
+  const storedByProvince = new Map(storedRows.map((row) => [row.province, row.stored]));
+
+  for (const ddfProvince of CRAWL_PROVINCES) {
+    const shortProvince = PROVINCE_TO_ABBREV[ddfProvince] || ddfProvince;
+    try {
+      const result = await searchDdfListings({
+        stateOrProvince: ddfProvince,
+        excludeBusinessSales: true,
+        excludeParking: true,
+        excludeVacantLand: true,
+        top: 1,
+      });
+      const apiCount = result.count;
+      const stored = storedByProvince.get(shortProvince) || 0;
+      const ratio = apiCount > 0 ? stored / apiCount : 1;
+      console.log(`[ddf-crawler][coverage] ${ddfProvince}: stored=${stored} apiCount=${apiCount} ratio=${ratio.toFixed(2)} (month ${month})`);
+      if (apiCount > 0 && ratio < COVERAGE_ALERT_RATIO) {
+        console.warn(`[ddf-crawler][coverage-alert] ${ddfProvince}: only ${stored}/${apiCount} (${(ratio * 100).toFixed(1)}%) of active listings snapshotted for ${month}`);
+      }
+    } catch (error) {
+      console.error(`[ddf-crawler][coverage] ${ddfProvince}: coverage check failed:`, error);
+    }
+    await new Promise(r => setTimeout(r, 500));
   }
 }

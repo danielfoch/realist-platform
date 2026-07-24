@@ -97,6 +97,7 @@ const navCategories: NavCategory[] = [
       { href: "/community/events", label: "Events", description: "Workshops and investor meetups", icon: <Calendar className="h-4 w-4" /> },
       { href: "/meetups", label: "Meetups", description: "Local investor meetups with native RSVP", icon: <MapPin className="h-4 w-4" /> },
       { href: "/community/leaderboard", label: "Leaderboard", description: "Top deal analysts in the community", icon: <TrendingUp className="h-4 w-4" /> },
+      { href: "/jv-partners", label: "JV Partners", description: "Find joint-venture partners for your next deal", icon: <Handshake className="h-4 w-4" /> },
       { href: "https://www.skool.com/realist", label: "Online Community", description: "1,200+ members on Skool", icon: <Users className="h-4 w-4" />, external: true },
     ],
   },
@@ -105,8 +106,8 @@ const navCategories: NavCategory[] = [
     items: [
       { href: "/power-team", label: "Power Team", description: "Join the professional network behind Realist deals", icon: <Briefcase className="h-4 w-4" /> },
       { href: "/about/local-experts", label: "Local Experts", description: "Claim a market as an investor referral partner or meetup host", icon: <MapPin className="h-4 w-4" /> },
-      { href: "/join/realtors", label: "Realtors", description: "Get matched with investors analyzing deals in your market", icon: <Building className="h-4 w-4" /> },
-      { href: "/join/mortgage-brokers", label: "Mortgage Brokers", description: "Fund deals sourced and underwritten on Realist", icon: <DollarSign className="h-4 w-4" /> },
+      { href: "/partner/onboarding?type=realtor", label: "Realtors", description: "Get matched with investors analyzing deals in your market", icon: <Building className="h-4 w-4" /> },
+      { href: "/partner/onboarding?type=mortgage_broker", label: "Mortgage Brokers", description: "Fund deals sourced and underwritten on Realist", icon: <DollarSign className="h-4 w-4" /> },
       { href: "/join/lenders", label: "Lenders", description: "Reach investors at the moment they need financing", icon: <Handshake className="h-4 w-4" /> },
       { href: "/join/experts", label: "Become an Expert", description: "Share your market knowledge with Realist investors", icon: <Users className="h-4 w-4" /> },
       { href: "/partner", label: "Partner Portal", description: "Manage your leads, markets, and referrals", icon: <Gauge className="h-4 w-4" /> },
@@ -336,10 +337,10 @@ export function Navigation() {
                           Partner Portal
                         </DropdownMenuItem>
                       </Link>
-                      <Link href="/partner/network">
-                        <DropdownMenuItem className="cursor-pointer" data-testid="link-realtor-network">
+                      <Link href="/partner/onboarding?type=realtor">
+                        <DropdownMenuItem className="cursor-pointer" data-testid="link-join-realtors">
                           <Users className="mr-2 h-4 w-4" />
-                          Realtor Network
+                          Join Realtors
                         </DropdownMenuItem>
                       </Link>
                       {canAccessEventsAdmin && (

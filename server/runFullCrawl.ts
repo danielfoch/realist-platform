@@ -7,12 +7,13 @@ import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
 const PROVINCE_TO_ABBREV: Record<string, string> = {
   "Ontario": "ON", "British Columbia": "BC", "Quebec": "QC", "Alberta": "AB",
   "Manitoba": "MB", "Saskatchewan": "SK", "Nova Scotia": "NS", "New Brunswick": "NB",
-  "Prince Edward Island": "PE",
+  "Prince Edward Island": "PE", "Newfoundland and Labrador": "NL",
 };
 
 const CRAWL_PROVINCES = [
-  "Ontario", "British Columbia", "Alberta", "Saskatchewan",
-  "Nova Scotia", "New Brunswick", "Prince Edward Island", "Manitoba",
+  "Ontario", "British Columbia", "Quebec", "Alberta", "Manitoba",
+  "Saskatchewan", "Nova Scotia", "New Brunswick", "Prince Edward Island",
+  "Newfoundland and Labrador",
 ];
 
 function estimateRent(listing: any, city: string, province: string) {

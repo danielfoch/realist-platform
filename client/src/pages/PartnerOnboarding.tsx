@@ -232,7 +232,7 @@ export default function PartnerOnboarding() {
               is on its way to your inbox.
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Button size="lg" onClick={() => navigate("/partner/network")} data-testid="button-goto-network">
+              <Button size="lg" onClick={() => navigate("/partner")} data-testid="button-goto-network">
                 <Mail className="mr-2 h-4 w-4" />
                 View My Leads
               </Button>

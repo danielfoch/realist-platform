@@ -34,6 +34,8 @@ import {
   coInvestChecklistResults,
   coInvestMessages,
   coInvestComplianceLogs,
+  jvPartnerListings,
+  jvPartnerMatches,
   experimentAssignments,
   realtorMarketClaims,
   realtorLeadNotifications,
@@ -121,6 +123,10 @@ import {
   type InsertCoInvestMessage,
   type CoInvestComplianceLog,
   type InsertCoInvestComplianceLog,
+  type JvPartnerListing,
+  type InsertJvPartnerListing,
+  type JvPartnerMatch,
+  type InsertJvPartnerMatch,
   type ExperimentAssignment,
   type InsertExperimentAssignment,
   type RealtorMarketClaim,
@@ -223,7 +229,7 @@ import { users, userOAuthAccounts, phoneVerificationCodes, type UserOAuthAccount
 import { db } from "./db";
 import { extractTypedMetrics } from "@shared/analysisMetrics";
 import { linkPersonByEmail } from "./personSpine";
-import { eq, desc, sql, and, gte, lte, inArray, asc } from "drizzle-orm";
+import { eq, desc, sql, and, or, gte, lte, inArray, asc, ne, ilike } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { anonymizeDisplayName, sanitizeUserText, summarizeCommunityMetrics, truncateText, type AnalysisSentiment } from "@shared/community";
 
@@ -430,6 +436,24 @@ export interface IStorage {
     selectedJurisdiction?: string;
   }): Promise<CoInvestUserProfile | undefined>;
 
+  // JV Partner Matching
+  createJvPartnerListing(listing: InsertJvPartnerListing): Promise<JvPartnerListing>;
+  getJvPartnerListing(id: string): Promise<JvPartnerListing | undefined>;
+  getJvPartnerListingsByUser(userId: string): Promise<JvPartnerListing[]>;
+  searchJvPartnerListings(filters?: {
+    role?: string;
+    city?: string;
+    province?: string;
+    investmentMin?: number;
+    investmentMax?: number;
+    status?: string;
+    excludeUserId?: string;
+  }): Promise<JvPartnerListing[]>;
+  updateJvPartnerListingStatus(id: string, status: string): Promise<JvPartnerListing | undefined>;
+  createJvPartnerMatch(match: InsertJvPartnerMatch): Promise<JvPartnerMatch>;
+  getJvPartnerMatchByListingAndUser(listingId: string, userId: string, matchType?: string): Promise<JvPartnerMatch | undefined>;
+  getJvPartnerMatchesForUser(userId: string): Promise<{ match: JvPartnerMatch; listing: JvPartnerListing }[]>;
+
   // Experiment Assignments
   getExperimentAssignment(visitorId: string, experimentKey: string): Promise<ExperimentAssignment | undefined>;
   createExperimentAssignment(assignment: InsertExperimentAssignment): Promise<ExperimentAssignment>;
@@ -440,7 +464,7 @@ export interface IStorage {
   createRealtorMarketClaim(claim: InsertRealtorMarketClaim): Promise<RealtorMarketClaim>;
   getRealtorMarketClaim(id: string): Promise<RealtorMarketClaim | undefined>;
   getRealtorMarketClaimsByUser(userId: string): Promise<RealtorMarketClaim[]>;
-  getActiveClaimsForMarket(city: string, region: string): Promise<RealtorMarketClaim[]>;
+  getActiveClaimsForMarket(city: string, region: string, partnerTypes?: string[]): Promise<RealtorMarketClaim[]>;
   updateRealtorMarketClaim(id: string, updates: Partial<RealtorMarketClaim>): Promise<RealtorMarketClaim | undefined>;
 
   createRealtorLeadNotification(notification: InsertRealtorLeadNotification): Promise<RealtorLeadNotification>;
@@ -1624,6 +1648,102 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  // JV Partner Matching
+  async createJvPartnerListing(listing: InsertJvPartnerListing): Promise<JvPartnerListing> {
+    const [result] = await db.insert(jvPartnerListings).values(listing).returning();
+    return result;
+  }
+
+  async getJvPartnerListing(id: string): Promise<JvPartnerListing | undefined> {
+    const [result] = await db.select().from(jvPartnerListings).where(eq(jvPartnerListings.id, id));
+    return result || undefined;
+  }
+
+  async getJvPartnerListingsByUser(userId: string): Promise<JvPartnerListing[]> {
+    return db.select().from(jvPartnerListings)
+      .where(eq(jvPartnerListings.userId, userId))
+      .orderBy(desc(jvPartnerListings.createdAt));
+  }
+
+  async searchJvPartnerListings(filters?: {
+    role?: string;
+    city?: string;
+    province?: string;
+    investmentMin?: number;
+    investmentMax?: number;
+    status?: string;
+    excludeUserId?: string;
+  }): Promise<JvPartnerListing[]> {
+    const conditions = [eq(jvPartnerListings.status, filters?.status ?? "active")];
+    if (filters?.role) {
+      conditions.push(eq(jvPartnerListings.partnerRoleOffered, filters.role));
+    }
+    if (filters?.province) {
+      conditions.push(ilike(jvPartnerListings.province, filters.province));
+    }
+    if (filters?.city) {
+      conditions.push(ilike(jvPartnerListings.city, filters.city));
+    }
+    // Range overlap: listing's range must intersect the requested range.
+    if (filters?.investmentMin !== undefined) {
+      conditions.push(or(
+        sql`${jvPartnerListings.investmentMax} IS NULL`,
+        gte(jvPartnerListings.investmentMax, filters.investmentMin)
+      )!);
+    }
+    if (filters?.investmentMax !== undefined) {
+      conditions.push(or(
+        sql`${jvPartnerListings.investmentMin} IS NULL`,
+        lte(jvPartnerListings.investmentMin, filters.investmentMax)
+      )!);
+    }
+    if (filters?.excludeUserId) {
+      conditions.push(ne(jvPartnerListings.userId, filters.excludeUserId));
+    }
+    return db.select().from(jvPartnerListings)
+      .where(and(...conditions))
+      .orderBy(desc(jvPartnerListings.createdAt));
+  }
+
+  async updateJvPartnerListingStatus(id: string, status: string): Promise<JvPartnerListing | undefined> {
+    const [result] = await db.update(jvPartnerListings)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(jvPartnerListings.id, id))
+      .returning();
+    return result || undefined;
+  }
+
+  async createJvPartnerMatch(match: InsertJvPartnerMatch): Promise<JvPartnerMatch> {
+    const [result] = await db.insert(jvPartnerMatches).values(match).returning();
+    return result;
+  }
+
+  async getJvPartnerMatchByListingAndUser(listingId: string, userId: string, matchType?: string): Promise<JvPartnerMatch | undefined> {
+    const conditions = [
+      eq(jvPartnerMatches.listingId, listingId),
+      eq(jvPartnerMatches.matchedUserId, userId),
+    ];
+    if (matchType) {
+      conditions.push(eq(jvPartnerMatches.matchType, matchType));
+    }
+    const [result] = await db.select().from(jvPartnerMatches).where(and(...conditions));
+    return result || undefined;
+  }
+
+  async getJvPartnerMatchesForUser(userId: string): Promise<{ match: JvPartnerMatch; listing: JvPartnerListing }[]> {
+    const rows = await db.select({
+      match: jvPartnerMatches,
+      listing: jvPartnerListings,
+    }).from(jvPartnerMatches)
+      .innerJoin(jvPartnerListings, eq(jvPartnerMatches.listingId, jvPartnerListings.id))
+      .where(or(
+        eq(jvPartnerMatches.matchedUserId, userId),
+        eq(jvPartnerListings.userId, userId)
+      ))
+      .orderBy(desc(jvPartnerMatches.createdAt));
+    return rows;
+  }
+
   async getExperimentAssignment(visitorId: string, experimentKey: string): Promise<ExperimentAssignment | undefined> {
     const [result] = await db.select().from(experimentAssignments)
       .where(and(
@@ -1674,12 +1794,23 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(realtorMarketClaims.createdAt));
   }
 
-  async getActiveClaimsForMarket(city: string, region: string): Promise<RealtorMarketClaim[]> {
+  async getActiveClaimsForMarket(city: string, region: string, partnerTypes?: string[]): Promise<RealtorMarketClaim[]> {
+    // Lenders claim whole provinces (or "National") rather than cities: when
+    // lender claims are in scope they match any deal inside their region,
+    // while realtor/mortgage-broker claims keep the exact city+region match.
+    const marketMatch = partnerTypes?.includes("lender")
+      ? sql`(
+          (LOWER(${realtorMarketClaims.marketCity}) = LOWER(${city}) AND LOWER(${realtorMarketClaims.marketRegion}) = LOWER(${region}))
+          OR (${realtorMarketClaims.partnerType} = 'lender' AND LOWER(${realtorMarketClaims.marketRegion}) IN (LOWER(${region}), 'national'))
+        )`
+      : sql`LOWER(${realtorMarketClaims.marketCity}) = LOWER(${city}) AND LOWER(${realtorMarketClaims.marketRegion}) = LOWER(${region})`;
     return db.select().from(realtorMarketClaims)
       .where(and(
-        sql`LOWER(${realtorMarketClaims.marketCity}) = LOWER(${city})`,
-        sql`LOWER(${realtorMarketClaims.marketRegion}) = LOWER(${region})`,
-        eq(realtorMarketClaims.status, "active")
+        marketMatch,
+        eq(realtorMarketClaims.status, "active"),
+        partnerTypes && partnerTypes.length > 0
+          ? inArray(realtorMarketClaims.partnerType, partnerTypes)
+          : undefined
       ));
   }
 

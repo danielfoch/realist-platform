@@ -169,6 +169,9 @@ const CoInvestingOpportunities = lazy(() => import("@/pages/CoInvestingOpportuni
 const CoInvestingChecklist = lazy(() => import("@/pages/CoInvestingChecklist"));
 const CoInvestingGroupNew = lazy(() => import("@/pages/CoInvestingGroupNew"));
 const CoInvestingGroupDetail = lazy(() => import("@/pages/CoInvestingGroupDetail"));
+const JvPartnerHub = lazy(() => import("@/pages/JvPartnerHub"));
+const JvPartnerListing = lazy(() => import("@/pages/JvPartnerListing"));
+const JvPartnerDetail = lazy(() => import("@/pages/JvPartnerDetail"));
 const DealDesk = lazy(() => import("@/pages/DealDesk"));
 const Offer = lazy(() => import("@/pages/Offer"));
 const CrmHome = lazy(() => import("@/pages/CrmHome"));
@@ -407,6 +410,11 @@ function Router() {
       <Route path="/community/events/unpacking-multiplexes-toronto" component={UnpackingMultiplexesToronto} />
       <Route path="/community/network" component={NetworkHub} />
 
+      {/* JV Partner Matching routes */}
+      <Route path="/jv-partners" component={JvPartnerHub} />
+      <Route path="/jv-partners/new" component={JvPartnerListing} />
+      <Route path="/jv-partners/:id" component={JvPartnerDetail} />
+
       {/* New Insights routes */}
       <Route path="/insights" component={InsightsHub} />
       {/* Config-driven reports (data + narrative content files, no bespoke code) */}
@@ -494,7 +502,7 @@ function Router() {
       <Route path="/set-password" component={SetPassword} />
       <Route path="/verify-phone" component={VerifyPhone} />
       <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
-      <Route path="/partner/network" component={RealtorNetwork} />
+      <Route path="/partner/network">{() => <Redirect to="/partner/onboarding?type=realtor" />}</Route>
       <Route path="/partner/onboarding" component={PartnerOnboarding} />
       <Route path="/join/realtors" component={JoinRealtors} />
       <Route path="/join/mortgage-brokers" component={JoinMortgageBrokers} />

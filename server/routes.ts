@@ -5,7 +5,7 @@ import { google } from "googleapis";
 import { appendLead } from "./leadsSheet";
 import { pushInvestorLeadToGHL } from "./ghl-service";
 import { storage } from "./storage";
-import { getLeadRoutingChannel, shouldNotifyPartnerClaims } from "./referralRoutingPolicy";
+import { getLeadRoutingChannel, getPartnerTypesForIntent, shouldNotifyPartnerClaims, type LeadIntent } from "./referralRoutingPolicy";
 import { buildReferralAgreement, getReferralTerms } from "@shared/partnerNetwork";
 
 // Maps the formTag/source value already present on every lead payload to a
@@ -106,6 +106,7 @@ import { z } from "zod";
 import { COMMUNITY_DEFAULTS, COMMUNITY_FLAGS, computeConsensusLabel, sanitizeUserText, summarizeCommunityMetrics, truncateText } from "@shared/community";
 import { getEvents, forceRefreshEvents, clearEventCache } from "./eventbrite";
 import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin, appBaseUrl } from "./auth";
+import { registerJvPartnerRoutes, ensureJvPartnerTables } from "./jvPartnerMatching";
 import { getDashboardGlanceCached } from "./dashboardGlance";
 import { ANALYST_BADGES, computeMilestoneProgress } from "@shared/milestones";
 import { createProxyMiddleware } from "http-proxy-middleware";
@@ -2414,6 +2415,12 @@ export async function registerRoutes(
       // Toronto-drive-zone Ontario leads stay with Valery; other Ontario leads
       // are held for manual review instead of being auto-routed.
       if (property.city && property.region) {
+        // Financing-intent leads route to the financing side of the network
+        // (mortgage brokers + lenders) instead of realtors.
+        const leadIntent: LeadIntent =
+          (req.body as any)?.intent === "financing" || inputsData.financingIntent === true
+            ? "financing"
+            : "purchase";
         (async () => {
           try {
             const routingChannel = getLeadRoutingChannel({
@@ -2427,6 +2434,7 @@ export async function registerRoutes(
                 source: "partner_network",
                 metadata: {
                   routingChannel,
+                  leadIntent,
                   leadId: lead.id,
                   analysisId: analysis.id,
                   dealCity: property.city,
@@ -2435,7 +2443,8 @@ export async function registerRoutes(
               }).catch(err => console.error("lead_routing_policy_applied event error:", err));
               return;
             }
-            const activeClaims = await storage.getActiveClaimsForMarket(property.city!, property.region!);
+            const partnerTypes = getPartnerTypesForIntent(leadIntent);
+            const activeClaims = await storage.getActiveClaimsForMarket(property.city!, property.region!, partnerTypes);
             const baseUrl = process.env.REPLIT_DEV_DOMAIN
               ? `https://${process.env.REPLIT_DEV_DOMAIN}`
               : process.env.REPL_SLUG
@@ -2449,6 +2458,7 @@ export async function registerRoutes(
                 leadId: lead.id,
                 propertyId: property.id,
                 analysisId: analysis.id,
+                partnerType: claim.partnerType ?? "realtor",
                 dealAddress: property.formattedAddress,
                 dealCity: property.city,
                 dealRegion: property.region,
@@ -2463,6 +2473,7 @@ export async function registerRoutes(
                 source: "partner_network",
                 metadata: {
                   partnerType: claim.partnerType ?? "realtor",
+                  leadIntent,
                   leadId: lead.id,
                   analysisId: analysis.id,
                   dealCity: property.city,
@@ -2484,7 +2495,7 @@ export async function registerRoutes(
                     dealAddress: property.formattedAddress || undefined,
                     dealCity: property.city || undefined,
                     dealStrategy: analysis.strategyType,
-                    claimUrl: `${baseUrl}/partner/network`,
+                    claimUrl: `${baseUrl}/partner`,
                   }).catch(err => console.error("Realtor lead alert email error:", err));
                 }
               } catch (emailErr) {
@@ -2492,10 +2503,10 @@ export async function registerRoutes(
               }
             }
             if (activeClaims.length > 0) {
-              console.log(`Notified ${activeClaims.length} realtor(s) for market: ${property.city}, ${property.region}`);
+              console.log(`Notified ${activeClaims.length} partner(s) [${partnerTypes.join(", ")}] for market: ${property.city}, ${property.region}`);
             }
           } catch (notifyErr) {
-            console.error("Realtor notification error:", notifyErr);
+            console.error("Partner lead notification error:", notifyErr);
           }
         })();
       }
@@ -5949,8 +5960,10 @@ export async function registerRoutes(
 
       // The referral agreement must be signed before the first lead flows —
       // this is the commitment moment (value is now proven, not promised).
+      // Only realtor claims are gated here: mortgage brokers sign during
+      // partner-network onboarding and lenders agree in their application.
       const marketClaim = await storage.getRealtorMarketClaim(notification.realtorClaimId);
-      if (marketClaim && !marketClaim.referralAgreementSignedAt) {
+      if (marketClaim && (marketClaim.partnerType ?? "realtor") === "realtor" && !marketClaim.referralAgreementSignedAt) {
         return res.status(409).json({
           error: "agreement_required",
           message: "Sign the referral agreement for this market to claim your first lead.",
@@ -10230,6 +10243,48 @@ export async function registerRoutes(
       const parsed = insertLenderApplicationSchema.parse(req.body);
       const [application] = await db.insert(lenderApplications).values(parsed).returning();
 
+      // Wire the lender into the partner network: when we can resolve a
+      // Realist user (active session or matching account email), upsert their
+      // industry_partners record as a lender and register province/national
+      // market claims so financing-intent leads route to them.
+      try {
+        const { linkPersonByEmail } = await import("./personSpine");
+        const lenderUserId = (req.session as any)?.userId || (await linkPersonByEmail(parsed.email));
+        if (lenderUserId) {
+          const partner = await storage.upsertIndustryPartner({
+            userId: lenderUserId,
+            partnerType: "lender",
+            companyName: parsed.company || undefined,
+            phone: parsed.phone || undefined,
+            publicEmail: parsed.email,
+            serviceAreas: parsed.targetMarkets ?? undefined,
+          });
+          const markets = (parsed.targetMarkets || []).map(m => m.trim()).filter(Boolean);
+          const existingClaims = await storage.getRealtorMarketClaimsByUser(lenderUserId);
+          for (const market of markets) {
+            const duplicate = existingClaims.find(
+              c => c.partnerType === "lender" &&
+                   c.marketRegion.toLowerCase() === market.toLowerCase() &&
+                   c.status === "active"
+            );
+            if (duplicate) continue;
+            // Lender claims are province/national level: routing matches any
+            // deal inside the claimed region (see getActiveClaimsForMarket).
+            await storage.createRealtorMarketClaim({
+              userId: lenderUserId,
+              partnerId: partner.id,
+              partnerType: "lender",
+              marketCity: market,
+              marketRegion: market,
+              brokerageName: parsed.company || null,
+              status: "active",
+            });
+          }
+        }
+      } catch (partnerErr) {
+        console.error("Lender partner-network upsert error:", partnerErr);
+      }
+
       appendLead("LenderApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
 
       try {
@@ -10668,9 +10723,10 @@ export async function registerRoutes(
       const now = new Date();
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       console.log("[ddf-crawler] Daily refresh: starting yield crawl for", currentMonth);
-      const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
+      const { runDdfYieldCrawl, checkDdfCoverage } = await import("./ddfYieldCrawler");
       runDdfYieldCrawl(currentMonth).then(result => {
         console.log("[ddf-crawler] Daily refresh complete:", result);
+        return checkDdfCoverage(currentMonth);
       }).catch(err => {
         console.error("[ddf-crawler] Daily refresh failed:", err);
       });
@@ -13188,6 +13244,13 @@ export async function registerRoutes(
       res.status(500).json({ error: e.message });
     }
   });
+
+  // JV partner matching (idempotent table ensure is fire-and-forget, same
+  // pattern as ensureAuthSchema in auth.ts)
+  ensureJvPartnerTables()
+    .then(() => console.log("[jv-partners] schema ensured"))
+    .catch((error) => console.error("[jv-partners] failed to ensure schema:", error.message));
+  registerJvPartnerRoutes(app);
 
   return httpServer;
 }

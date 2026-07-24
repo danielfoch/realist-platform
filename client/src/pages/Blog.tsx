@@ -3,10 +3,9 @@ import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, Calendar, Clock, FileText, TrendingUp, Landmark, Building2 } from "lucide-react";
+import { ExternalLink, Calendar, Clock, FileText } from "lucide-react";
 import { format } from "date-fns";
 
 interface SubstackPost {
@@ -48,45 +47,6 @@ function estimateReadTime(content: string): number {
   return Math.ceil(words / wordsPerMinute);
 }
 
-interface DeepResearchReport {
-  href: string;
-  title: string;
-  description: string;
-  badge: string;
-  icon: React.ReactNode;
-  iconBg: string;
-}
-
-const deepResearchReports: DeepResearchReport[] = [
-  {
-    href: "/insights/spring-economic-update-2026",
-    title: "Spring Economic Update 2026",
-    description:
-      "What Ottawa's spring fiscal update says about Canadian real estate — housing affordability, starts, inflation, rates, and the deficit through an investor lens.",
-    badge: "Apr 2026",
-    icon: <Landmark className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />,
-    iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
-  },
-  {
-    href: "/insights/the-spread-that-ate-the-economy",
-    title: "The Spread That Ate the Economy",
-    description:
-      "How widening credit spreads are quietly reshaping Canadian real estate cap rates, mortgage pricing, and deal viability.",
-    badge: "Research",
-    icon: <TrendingUp className="h-5 w-5 text-rose-600 dark:text-rose-400" />,
-    iconBg: "bg-rose-100 dark:bg-rose-900/30",
-  },
-  {
-    href: "/reports/cmhc-land-use-regulations-housing-canada-2026",
-    title: "CMHC Land Use Regulations & Housing Canada 2026",
-    description:
-      "Deep dive into how municipal land-use rules constrain Canadian housing supply — and what investors need to know.",
-    badge: "Research",
-    icon: <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
-    iconBg: "bg-blue-100 dark:bg-blue-900/30",
-  },
-];
-
 export default function Blog() {
   const { data: rssData, isLoading: rssLoading } = useQuery<RSSFeedResponse>({
     queryKey: ["/api/blog/posts"],
@@ -120,48 +80,23 @@ export default function Blog() {
             <h2 className="text-2xl font-bold" data-testid="text-deep-research-heading">
               Realist Deep Research Reports
             </h2>
-            <Link href="/insights/market-report">
+            <Link href="/insights">
               <Button variant="outline" size="sm" data-testid="button-view-monthly-archive">
                 <FileText className="mr-2 h-4 w-4" />
-                Monthly Market Report Archive
+                Browse All Research
               </Button>
             </Link>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {deepResearchReports.map((report) => (
-              <Link
-                key={report.href}
-                href={report.href}
-                className="block group"
-                data-testid={`link-research-report-${report.href.split("/").pop()}`}
-              >
-                <Card className="h-full hover-elevate transition-all duration-200">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${report.iconBg}`}>
-                        {report.icon}
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {report.badge}
-                      </Badge>
-                    </div>
-                    <h3
-                      className="font-semibold text-lg leading-tight group-hover:text-primary transition-colors"
-                      data-testid={`text-research-title-${report.href.split("/").pop()}`}
-                    >
-                      {report.title}
-                    </h3>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
-                      {report.description}
-                    </p>
-                    <span className="text-sm text-primary font-medium">Read report →</span>
-                  </CardContent>
-                </Card>
+          <Card>
+            <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground max-w-xl">
+                Every Realist report — macro releases, market data, and long-form research — lives in the Market Intelligence hub, newest first.
+              </p>
+              <Link href="/insights">
+                <Button data-testid="button-open-insights-hub">Open Market Intelligence</Button>
               </Link>
-            ))}
-          </div>
+            </CardContent>
+          </Card>
         </section>
 
         <section data-testid="section-substack">
