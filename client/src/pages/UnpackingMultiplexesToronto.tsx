@@ -43,6 +43,7 @@ import brandonHeadshot from "@assets/Brandon_Sage_-_Headshot_1784568961891.png";
 import danielHeadshot from "@assets/image_1784990099119.png";
 import nickHeadshot from "@assets/image_1784989996852.png";
 import sabrinaHeadshot from "@assets/image_1784989970115.png";
+import brendanHeadshot from "@assets/image_1784992136111.png";
 
 const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
 // Meta Pixel scoped to this event page only (loaded in a useEffect below).
@@ -191,7 +192,7 @@ const SPEAKERS: RealistEventSpeaker[] = [
     company: "Platform Insurance",
     title: "Speaker",
     bio: "Insurance and risk management expert focused on real estate development, construction projects, and investor protection.",
-    imageUrl: null,
+    imageUrl: brendanHeadshot,
   },
   {
     name: "Brandon Sage",
