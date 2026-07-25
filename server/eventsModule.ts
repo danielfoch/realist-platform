@@ -785,6 +785,15 @@ async function createOrUpdateEventUser(session: Stripe.Checkout.Session) {
   // with this email. Best-effort, never fails the checkout.
   await backlinkUserRecords(user.id, email);
 
+  const { announceNewAccount } = await import("./accountAnnounce");
+  announceNewAccount({
+    email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    source: "event_ticket",
+  });
+
   const baseUrl = process.env.PUBLIC_BASE_URL || "https://realist.ca";
   const rawToken = crypto.randomBytes(32).toString("hex");
   // /api/auth/set-password looks tokens up by sha256 hash — store the hash,

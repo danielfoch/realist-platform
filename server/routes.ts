@@ -4,8 +4,11 @@ import crypto from "crypto";
 import { google } from "googleapis";
 import { appendLead } from "./leadsSheet";
 import { pushInvestorLeadToGHL } from "./ghl-service";
+import { announceNewAccount } from "./accountAnnounce";
+import { requireVerified } from "./accountVerification";
 import { storage } from "./storage";
-import { getLeadRoutingChannel, getPartnerTypesForIntent, shouldNotifyPartnerClaims, type LeadIntent } from "./referralRoutingPolicy";
+import { type LeadIntent } from "./referralRoutingPolicy";
+import { captureDealLead, partnerBaseUrl, recordDealIntent, routeLeadToPartnerClaims } from "./dealIntent";
 import { buildReferralAgreement, getReferralTerms } from "@shared/partnerNetwork";
 
 // Maps the formTag/source value already present on every lead payload to a
@@ -611,6 +614,17 @@ async function autoEnrollLeadAsUser(params: {
   // with this email (including the lead row that triggered this enrollment).
   // Best-effort, never fails the enrollment.
   await backlinkUserRecords(newUser.id, emailLower);
+
+  // This path silently creates an account for every captured lead and used to
+  // push nothing to the CRM and notify nobody — the largest hole in the funnel.
+  announceNewAccount({
+    email: emailLower,
+    firstName: params.firstName,
+    lastName: params.lastName,
+    phone: params.phone,
+    source: "lead_enrol",
+    leadSource: params.leadSource,
+  });
 
   await db.update(passwordResetTokens)
     .set({ usedAt: new Date() })
@@ -2414,6 +2428,10 @@ export async function registerRoutes(
       // Notify partner claims only for markets outside the Valery service lane.
       // Toronto-drive-zone Ontario leads stay with Valery; other Ontario leads
       // are held for manual review instead of being auto-routed.
+      //
+      // The routing itself now lives in server/dealIntent.ts so the underwriter,
+      // the map and the estimator route identically — this call site keeps the
+      // same fire-and-forget shape it always had.
       if (property.city && property.region) {
         // Financing-intent leads route to the financing side of the network
         // (mortgage brokers + lenders) instead of realtors.
@@ -2421,94 +2439,18 @@ export async function registerRoutes(
           (req.body as any)?.intent === "financing" || inputsData.financingIntent === true
             ? "financing"
             : "purchase";
-        (async () => {
-          try {
-            const routingChannel = getLeadRoutingChannel({
-              city: property.city,
-              region: property.region,
-            });
-            if (!shouldNotifyPartnerClaims({ city: property.city, region: property.region })) {
-              logUserActivity(null, {
-                userId: null,
-                eventName: "lead_routing_policy_applied",
-                source: "partner_network",
-                metadata: {
-                  routingChannel,
-                  leadIntent,
-                  leadId: lead.id,
-                  analysisId: analysis.id,
-                  dealCity: property.city,
-                  dealRegion: property.region,
-                },
-              }).catch(err => console.error("lead_routing_policy_applied event error:", err));
-              return;
-            }
-            const partnerTypes = getPartnerTypesForIntent(leadIntent);
-            const activeClaims = await storage.getActiveClaimsForMarket(property.city!, property.region!, partnerTypes);
-            const baseUrl = process.env.REPLIT_DEV_DOMAIN
-              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-              : process.env.REPL_SLUG
-                ? `https://${process.env.REPL_SLUG}.replit.app`
-                : "https://realist.ca";
-
-            for (const claim of activeClaims) {
-              await storage.createRealtorLeadNotification({
-                realtorClaimId: claim.id,
-                realtorUserId: claim.userId,
-                leadId: lead.id,
-                propertyId: property.id,
-                analysisId: analysis.id,
-                partnerType: claim.partnerType ?? "realtor",
-                dealAddress: property.formattedAddress,
-                dealCity: property.city,
-                dealRegion: property.region,
-                dealStrategy: analysis.strategyType,
-                status: "new",
-                notifiedAt: new Date(),
-              });
-
-              logUserActivity(null, {
-                userId: claim.userId,
-                eventName: "partner_lead_notified",
-                source: "partner_network",
-                metadata: {
-                  partnerType: claim.partnerType ?? "realtor",
-                  leadIntent,
-                  leadId: lead.id,
-                  analysisId: analysis.id,
-                  dealCity: property.city,
-                  dealRegion: property.region,
-                  dealStrategy: analysis.strategyType,
-                },
-              }).catch(err => console.error("partner_lead_notified event error:", err));
-
-              // Send email alert to the realtor
-              try {
-                const [realtorUser] = await db.select().from(users).where(eq(users.id, claim.userId));
-                if (realtorUser) {
-                  const realtorName = `${realtorUser.firstName || ''} ${realtorUser.lastName || ''}`.trim() || realtorUser.email;
-                  const { sendRealtorLeadAlert } = await import("./resend");
-                  sendRealtorLeadAlert({
-                    realtorEmail: realtorUser.email,
-                    realtorName,
-                    leadName: lead.name,
-                    dealAddress: property.formattedAddress || undefined,
-                    dealCity: property.city || undefined,
-                    dealStrategy: analysis.strategyType,
-                    claimUrl: `${baseUrl}/partner`,
-                  }).catch(err => console.error("Realtor lead alert email error:", err));
-                }
-              } catch (emailErr) {
-                console.error("Realtor alert email lookup error:", emailErr);
-              }
-            }
-            if (activeClaims.length > 0) {
-              console.log(`Notified ${activeClaims.length} partner(s) [${partnerTypes.join(", ")}] for market: ${property.city}, ${property.region}`);
-            }
-          } catch (notifyErr) {
-            console.error("Partner lead notification error:", notifyErr);
-          }
-        })();
+        routeLeadToPartnerClaims({
+          leadId: lead.id,
+          leadName: lead.name,
+          city: property.city,
+          region: property.region,
+          intent: leadIntent,
+          dealAddress: property.formattedAddress,
+          dealStrategy: analysis.strategyType,
+          propertyId: property.id,
+          analysisId: analysis.id,
+          baseUrl: partnerBaseUrl(),
+        }).catch(err => console.error("Partner lead notification error:", err));
       }
 
       let userId: string | null = null;
@@ -3021,6 +2963,16 @@ export async function registerRoutes(
           // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts
           // rows carrying this email to the imported user.
           await backlinkUserRecords(newUser.id, email);
+
+          // CRM yes, team email no: a 500-row import is one deliberate act by
+          // the person who would receive the mail, not 500 revenue events.
+          announceNewAccount({
+            email,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
+            phone: newUser.phone,
+            source: "admin_import",
+          }, { notifyTeam: false });
 
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -3704,7 +3656,11 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/analyses", async (req, res) => {
+  // Gated: this writes into the analysis dataset and feeds leaderboard
+  // eligibility. Discovery (/api/find-deals) and lead capture (/api/leads,
+  // /api/deal-desk/submit) stay open — gating those would block the funnel
+  // rather than protect the data.
+  app.post("/api/analyses", requireVerified, async (req, res) => {
     try {
       const { countryMode, strategyType, inputsJson, resultsJson, address, city, province, sessionId } = req.body;
       if (!countryMode || !strategyType || !inputsJson) {
@@ -6765,6 +6721,50 @@ export async function registerRoutes(
 
   const findDealsCache = new Map<string, { data: any; expiresAt: number }>();
 
+  /**
+   * Emit the market-hunting signal from the PARSED filters.
+   *
+   * client/src/lib/analytics.ts declares market_filter_used / yield_filter_used
+   * and friends in its taxonomy, but nothing in the client ever fires them — so
+   * the map's filter behaviour (the best available read on which market an
+   * investor is hunting) reached neither user_activity_events nor the sentiment
+   * rollups. Deriving it here from what actually got searched is both more
+   * reliable than client instrumentation and impossible to skip.
+   *
+   * find_deals_queries still gets its own row via logFindDealsQuery — that's the
+   * demand ledger, which nothing reads for intent.
+   */
+  const recordFindDealsIntent = (
+    req: any,
+    opts: {
+      filters: any;
+      resultCount: number;
+      userId: string | null;
+      sessionId: string | null;
+      rawQuery: string;
+      cached: boolean;
+    },
+  ) => {
+    if (!opts.filters?.city && !opts.filters?.province) return;
+    recordDealIntent(req, {
+      surface: "cap_rates_map",
+      eventName: "market_filter_used",
+      userId: opts.userId,
+      sessionId: opts.sessionId,
+      city: opts.filters.city ?? null,
+      region: opts.filters.province ?? null,
+      propertyType: opts.filters.propertyType ?? null,
+      metadata: {
+        rawQuery: opts.rawQuery,
+        resultCount: opts.resultCount,
+        minPrice: opts.filters.minPrice ?? null,
+        maxPrice: opts.filters.maxPrice ?? null,
+        minBeds: opts.filters.minBeds ?? null,
+        servedFromCache: opts.cached,
+      },
+    }).catch(err => console.error("[find-deals] intent record error:", err));
+  };
+
   app.post("/api/find-deals", async (req: any, res) => {
     try {
       const { query, bounds } = req.body;
@@ -6792,6 +6792,14 @@ export async function registerRoutes(
           apiKeyId: demandApiKeyId,
           sessionId,
           userId: demandUserId,
+        });
+        recordFindDealsIntent(req, {
+          filters: cached.data?.filters_applied ?? null,
+          resultCount: Number(cached.data?.total ?? cached.data?.listings?.length ?? 0),
+          userId: demandUserId,
+          sessionId,
+          rawQuery: trimmedQuery,
+          cached: true,
         });
         res.json(cached.data);
         return;
@@ -6969,6 +6977,15 @@ export async function registerRoutes(
         apiKeyId: demandApiKeyId,
         sessionId,
         userId: demandUserId,
+      });
+
+      recordFindDealsIntent(req, {
+        filters,
+        resultCount: responseData.total,
+        userId: demandUserId,
+        sessionId,
+        rawQuery: trimmedQuery,
+        cached: false,
       });
 
       findDealsCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + 600000 });
@@ -12785,13 +12802,23 @@ export async function registerRoutes(
         return '+' + cleaned;
       };
 
-      const lead = await storage.createLead({
-        name: fullName,
-        email,
-        phone,
-        consent: true,
-        leadSource: "Land Claim Screener",
-      });
+      // Full genesis rather than a bare createLead: this form hands over name,
+      // email AND phone to screen a specific parcel, which is due-diligence
+      // intent worth scoring and routing. Upserts by email, so a repeat
+      // screener stops creating duplicate lead rows.
+      const capture = await captureDealLead(
+        req,
+        {
+          surface: "land_claim_screener",
+          eventName: "screening_registered",
+          userId: req.session?.userId ?? null,
+          sessionId: req.sessionID ?? null,
+          address,
+          metadata: { screenedAddress: address },
+        },
+        { name: fullName, email, phone, consentEmail: true },
+      );
+      const lead = { id: capture.leadId, createdAt: new Date() };
 
       sendWebhook(lead.id, {
         email,
@@ -12868,6 +12895,23 @@ export async function registerRoutes(
           notes: `${hit.layerName}: ${hit.featureName}`,
         });
       }
+
+      // Anonymous-safe: the screening itself is intent even before the person
+      // registers, and it was previously invisible to the intent engine.
+      await recordDealIntent(req, {
+        surface: "land_claim_screener",
+        eventName: "screening_completed",
+        userId,
+        sessionId: req.sessionID ?? null,
+        address: address || null,
+        metadata: {
+          screeningId: screening.id,
+          resultStatus: result.status,
+          hitsCount: result.hitsCount,
+          completeness: result.completeness,
+          bufferMeters,
+        },
+      });
 
       res.json({ ...result, screeningId: screening.id });
     } catch (error: any) {

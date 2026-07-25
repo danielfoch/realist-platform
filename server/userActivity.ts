@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { Request } from "express";
-import { eq, sql } from "drizzle-orm";
+import cron from "node-cron";
+import { and, eq, gte, isNotNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   analysisQualityScores,
@@ -139,6 +140,65 @@ export async function logUserActivity(req: Request | null, event: {
   } catch (error) {
     console.error("Failed to log user activity:", error);
   }
+}
+
+/** Only users active this recently get a nightly profile rebuild. */
+const INFERENCE_ACTIVE_WINDOW_DAYS = 30;
+/** Each rebuild is ~7 queries, so cap how many run at once. */
+const INFERENCE_REBUILD_CONCURRENCY = 4;
+
+/**
+ * Rebuild inference profiles for recently active users.
+ *
+ * rebuildUserInferenceProfile has always been a capable feature builder with no
+ * caller other than an admin route (POST /api/admin/user-inference/rebuild/:userId),
+ * so user_inference_profiles sat empty and nothing downstream — lead scoring,
+ * digests, notifications — could use preferred markets or bullishness.
+ *
+ * Scoped to the active window rather than every user who ever signed up: the
+ * whole table would be re-derived nightly for people who left, and the cost
+ * grows forever.
+ */
+export async function rebuildActiveUserInferenceProfiles(): Promise<{
+  attempted: number;
+  rebuilt: number;
+  failed: number;
+}> {
+  const since = new Date(Date.now() - INFERENCE_ACTIVE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .selectDistinct({ userId: userActivityEvents.userId })
+    .from(userActivityEvents)
+    .where(and(isNotNull(userActivityEvents.userId), gte(userActivityEvents.eventTimestamp, since)));
+
+  const userIds = rows.map(r => r.userId).filter((id): id is string => !!id);
+  let rebuilt = 0;
+  let failed = 0;
+
+  for (let i = 0; i < userIds.length; i += INFERENCE_REBUILD_CONCURRENCY) {
+    const batch = userIds.slice(i, i + INFERENCE_REBUILD_CONCURRENCY);
+    const results = await Promise.allSettled(batch.map(id => rebuildUserInferenceProfile(id)));
+    for (const r of results) {
+      if (r.status === "fulfilled") rebuilt++;
+      else {
+        failed++;
+        console.error("[user-inference] rebuild failed:", r.reason);
+      }
+    }
+  }
+
+  return { attempted: userIds.length, rebuilt, failed };
+}
+
+/** Nightly at 03:30 Toronto / 08:30 UTC — after the 07:00 UTC AI trainer. */
+export function scheduleUserInferenceRebuild(): void {
+  cron.schedule("30 8 * * *", () => {
+    rebuildActiveUserInferenceProfiles()
+      .then(({ attempted, rebuilt, failed }) =>
+        console.log(`[user-inference] nightly rebuild: ${rebuilt}/${attempted} profiles, ${failed} failed`),
+      )
+      .catch(err => console.error("[user-inference] nightly rebuild error:", err));
+  });
+  console.log("[user-inference] Nightly profile rebuild scheduled (3:30am Toronto / 08:30 UTC)");
 }
 
 export async function rebuildUserInferenceProfile(userId: string) {

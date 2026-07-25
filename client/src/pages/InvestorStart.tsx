@@ -319,37 +319,23 @@ export default function InvestorStart() {
                   Built by <span className="font-semibold text-foreground">Daniel Foch and Nick Hill</span>,
                   hosts of <span className="font-semibold text-foreground">{PODCAST_NAME}</span>.
                 </p>
+              </div>
 
-                {/* Human-service CTA — converts high-intent investors to representation */}
-                <div className="mt-4 flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Have a live deal or want a second opinion?</span>
-                  <Link
-                    href="/work-with-realist"
-                    className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                    onClick={() => track({ event: "cta_clicked", cta: "homepage_hero_work_with_us", location: "homepage_hero", destination: "/work-with-realist" })}
-                    data-testid="link-home-hero-work-with-us"
-                  >
-                    Work with Daniel & Nick
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-
-                {/* Feature row (3-up) */}
-                <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                  {[
-                    { label: "Save assumptions", icon: Save },
-                    { label: "Apply to similar deals", icon: Radar },
-                    { label: "Send an inspector", icon: Target },
-                  ].map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <div key={item.label} className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/75 px-3 py-2 text-sm font-medium">
-                        <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
-                        {item.label}
-                      </div>
-                    );
-                  })}
-                </div>
+              {/* Human-service CTA — converts high-intent investors to representation.
+                  Sibling of the hosts byline, not a child: it used to sit inside that
+                  `flex items-center` row, which laid it out horizontally beside the
+                  avatars and made its top margin a no-op. */}
+              <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <span className="text-muted-foreground">Have a live deal or want a second opinion?</span>
+                <Link
+                  href="/work-with-realist"
+                  className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                  onClick={() => track({ event: "cta_clicked", cta: "homepage_hero_work_with_us", location: "homepage_hero", destination: "/work-with-realist" })}
+                  data-testid="link-home-hero-work-with-us"
+                >
+                  Work with Daniel &amp; Nick
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                </Link>
               </div>
               <AnalysesCounter className="mt-6 bg-background/80" />
               <div className="mt-7 flex flex-col sm:flex-row gap-3">
@@ -383,9 +369,10 @@ export default function InvestorStart() {
                   </Button>
                 </Link>
               </div>
-              <p className="mt-4 text-sm text-muted-foreground">
-                Estimated metrics only. Screening signals are based on assumptions, not guaranteed returns.
-              </p>
+              {/* Feature row (3-up). One copy only — this block was duplicated
+                  verbatim, so the hero rendered six chips instead of three. Placed
+                  above the disclaimer: chips belong with the hero copy, not trailing
+                  the legal line. */}
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 {[
                   { label: "Save assumptions", icon: Save },
@@ -395,12 +382,17 @@ export default function InvestorStart() {
                   const Icon = item.icon;
                   return (
                     <div key={item.label} className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/75 px-3 py-2 text-sm font-medium">
-                      <Icon className="h-4 w-4 text-primary" />
-                      {item.label}
+                      <Icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                      {/* shrink-0 on the icon + min-w-0 here: without them the label
+                          overflowed its own border once the row was narrow. */}
+                      <span className="min-w-0">{item.label}</span>
                     </div>
                   );
                 })}
               </div>
+              <p className="mt-6 text-sm text-muted-foreground">
+                Estimated metrics only. Screening signals are based on assumptions, not guaranteed returns.
+              </p>
             </div>
           </div>
         </section>

@@ -12,7 +12,7 @@ import { backlinkUserRecords } from "./personSpine";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
 import { sendWelcomeAccountEmail, sendLoginLinkEmail, sendPasswordResetEmail } from "./resend";
 import { appendLead } from "./leadsSheet";
-import { pushContactToGHL } from "./ghl-service";
+import { announceNewAccount } from "./accountAnnounce";
 import {
   SETUP_LINK_TTL_MS,
   evaluateLoginLinkRequest,
@@ -143,6 +143,18 @@ async function backfillAnalysesForSession(userId: string, sessionId?: string | n
     WHERE session_id = ${sessionId}
       AND user_id IS NULL
   `);
+
+  // Analyses were never the only anonymous work worth adopting — activity
+  // events (the intent engine's input) and multiplex_underwritings had no
+  // backfill at all, so an anonymous fourplex underwrite stayed orphaned even
+  // after its author created an account. Every auth path already funnels
+  // through this helper, so claiming here covers signup, login, magic link,
+  // OAuth claim-session and lead-enroll in one place. Non-fatal by design:
+  // claimAnonymousIntent swallows its own errors, and the return value stays
+  // the analyses count so existing callers and responses are unchanged.
+  const { claimAnonymousIntent } = await import("./dealIntent");
+  await claimAnonymousIntent(userId, sessionId);
+
   return result.rowCount ?? 0;
 }
 
@@ -384,15 +396,28 @@ export function registerAuthRoutes(app: Express): void {
         console.error("[ghl-signup] webhook error:", err.message)
       );
 
-      // Direct GHL API push (background, non-blocking)
-      pushContactToGHL({
-        firstName: newUser.firstName || '',
-        lastName: newUser.lastName || '',
+      // CRM push + team notification. Signup used to push to GHL and email
+      // nobody; announceNewAccount does both so no path can pick up half.
+      announceNewAccount({
         email: newUser.email,
-        phone: newUser.phone || '',
-        tags: ['realist.ca', 'investor', 'signup', `signup-${new Date().toISOString().slice(0, 7)}`],
-        source: 'investor_signup',
-      }).catch(err => console.error("[GHL] Direct signup push failed:", err));
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        phone: newUser.phone,
+        source: "signup",
+      });
+
+      // Kick off email verification immediately. Non-blocking: signup succeeds
+      // either way, and the user can request another link from the app.
+      (async () => {
+        const { issueEmailVerificationLink } = await import("./accountVerification");
+        const { sendEmailVerificationEmail } = await import("./resend");
+        const verifyLink = await issueEmailVerificationLink(newUser.id);
+        await sendEmailVerificationEmail({
+          toEmail: newUser.email,
+          firstName: newUser.firstName || "there",
+          verifyLink,
+        });
+      })().catch(err => console.error("[verification] signup email failed:", err));
     } catch (error: any) {
       console.error("Signup error:", error);
       if (error.name === "ZodError") {
@@ -455,7 +480,18 @@ export function registerAuthRoutes(app: Express): void {
       if (data.rememberMe) {
         req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
       }
-      
+
+      // Signup already adopted the anonymous session's work; login did not, so
+      // a returning user who underwrote a few deals while logged out lost that
+      // history. Read off the raw body (loginSchema doesn't carry it) and stay
+      // non-fatal — a failed backfill must never block a valid sign-in.
+      const anonymousSessionId = typeof (req.body as any)?.sessionId === "string" ? (req.body as any).sessionId : null;
+      if (anonymousSessionId) {
+        backfillAnalysesForSession(user.id, anonymousSessionId).catch(err =>
+          console.error("[login] session backfill error:", err),
+        );
+      }
+
       res.json({
         id: user.id,
         email: user.email,
@@ -686,6 +722,16 @@ export function registerAuthRoutes(app: Express): void {
       // rows with this email (the enrolling lead row included).
       await backlinkUserRecords(newUser.id, newUser.email);
 
+      // Phone off the request body, not newUser: the insert above only sets
+      // email/first/last, so newUser.phone is always null here.
+      announceNewAccount({
+        email: newUser.email,
+        firstName: newUser.firstName || firstName,
+        lastName: newUser.lastName || lastName,
+        phone: typeof (req.body as any).phone === "string" ? (req.body as any).phone : null,
+        source: "lead_enrol",
+      });
+
       const rawToken = crypto.randomBytes(32).toString("hex");
       const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
       const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
@@ -705,15 +751,8 @@ export function registerAuthRoutes(app: Express): void {
 
       const backfilled = await backfillAnalysesForSession(newUser.id, sessionId);
 
-      // Direct GHL API push (background, non-blocking)
-      pushContactToGHL({
-        firstName: newUser.firstName || firstName || '',
-        lastName: newUser.lastName || lastName || '',
-        email: newUser.email,
-        phone: (req.body as any).phone || '',
-        tags: ['realist.ca', 'investor', 'lead_enroll'],
-        source: 'investor_lead_enroll',
-      }).catch(err => console.error("[GHL] Direct lead-enroll push failed:", err));
+      // GHL push is handled by the announceNewAccount call above — a second
+      // direct push here would duplicate the contact.
 
       res.json({
         user: { id: newUser.id, email: newUser.email, firstName: newUser.firstName, lastName: newUser.lastName },
@@ -766,10 +805,12 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(400).json({ message: "Password already set. Please use login." });
       }
       
-      // Hash and set password
+      // Hash and set password. emailVerified comes along for free: reaching this
+      // point required opening a link we emailed to that address, which is the
+      // same proof a separate verification email would collect.
       const passwordHash = await bcrypt.hash(password, 12);
       await db.update(users)
-        .set({ passwordHash, updatedAt: new Date() })
+        .set({ passwordHash, emailVerified: true, updatedAt: new Date() })
         .where(eq(users.id, user.id));
       
       // Mark token as used
@@ -897,6 +938,15 @@ export function registerAuthRoutes(app: Express): void {
       }
 
       req.session.userId = user.id;
+
+      // Opening a magic link proves control of the address — same proof a
+      // verification email collects, so don't ask for a second click.
+      if (!user.emailVerified) {
+        const { markEmailVerified } = await import("./accountVerification");
+        await markEmailVerified(user.id).catch(err =>
+          console.error("[verification] magic-link email mark failed:", err),
+        );
+      }
 
       // Persist the session before redirecting (same pattern as google/start).
       await new Promise<void>((resolve, reject) => {
@@ -1107,6 +1157,14 @@ export function registerAuthRoutes(app: Express): void {
       // rows with this email. Best-effort, never fails the OAuth flow.
       await backlinkUserRecords(newUser.id, newUser.email);
 
+      announceNewAccount({
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        phone: newUser.phone,
+        source: "google_oauth",
+      });
+
       // Create OAuth account link
       await storage.createUserOAuthAccount({
         userId: newUser.id,
@@ -1245,7 +1303,83 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  // Phone Verification - Skip (optional, for users who don't want to verify)
+  // ─── Email verification ────────────────────────────────────────────────────
+
+  // What the client polls to decide whether to show the verify prompt and which
+  // step to route to.
+  app.get("/api/auth/verification/status", isAuthenticated, async (req, res) => {
+    try {
+      const { getVerificationState } = await import("./accountVerification");
+      res.json(await getVerificationState(req.session.userId!));
+    } catch (error) {
+      console.error("Verification status error:", error);
+      res.status(500).json({ message: "Failed to read verification status" });
+    }
+  });
+
+  app.post("/api/auth/email/send-verification", isAuthenticated, async (req, res) => {
+    try {
+      const {
+        getVerificationState,
+        hasRecentEmailVerificationToken,
+        issueEmailVerificationLink,
+      } = await import("./accountVerification");
+
+      const state = await getVerificationState(req.session.userId!);
+      if (state.emailVerified) {
+        return res.json({ message: "Email already verified", emailVerified: true });
+      }
+      if (await hasRecentEmailVerificationToken(req.session.userId!)) {
+        return res.status(429).json({ message: "A verification link was just sent — check your inbox." });
+      }
+
+      const [user] = await db
+        .select({ email: users.email, firstName: users.firstName })
+        .from(users)
+        .where(eq(users.id, req.session.userId!))
+        .limit(1);
+      if (!user) return res.status(404).json({ message: "Account not found" });
+
+      const verifyLink = await issueEmailVerificationLink(req.session.userId!);
+      const { sendEmailVerificationEmail } = await import("./resend");
+      await sendEmailVerificationEmail({
+        toEmail: user.email,
+        firstName: user.firstName || "there",
+        verifyLink,
+      });
+      res.json({ message: "Verification email sent" });
+    } catch (error) {
+      console.error("Send verification email error:", error);
+      res.status(500).json({ message: "Failed to send verification email" });
+    }
+  });
+
+  // Unauthenticated by design — the token IS the proof, and people routinely
+  // open email links in a browser where they are not signed in.
+  app.post("/api/auth/email/verify", async (req, res) => {
+    try {
+      const token = typeof (req.body as any)?.token === "string" ? (req.body as any).token : "";
+      const { consumeEmailVerificationToken } = await import("./accountVerification");
+      const result = await consumeEmailVerificationToken(token);
+      if (!result.ok) {
+        const message =
+          result.reason === "expired"
+            ? "That link has expired — request a new one."
+            : result.reason === "already_used"
+              ? "That link was already used."
+              : "That verification link isn't valid.";
+        return res.status(400).json({ message, reason: result.reason });
+      }
+      res.json({ message: "Email verified", emailVerified: true });
+    } catch (error) {
+      console.error("Email verify error:", error);
+      res.status(500).json({ message: "Failed to verify email" });
+    }
+  });
+
+  // Phone Verification - Skip. Stops OAuth logins re-prompting on every visit;
+  // does NOT satisfy the verification requirement for accounts subject to it
+  // (see getVerificationState in ./accountVerification).
   app.post("/api/auth/phone/skip", isAuthenticated, async (req, res) => {
     try {
       // Persist the skip so OAuth logins stop re-prompting on every visit
