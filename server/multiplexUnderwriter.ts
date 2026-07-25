@@ -22,6 +22,7 @@ import { z } from "zod";
 import { db } from "./db";
 import { isAdmin } from "./auth";
 import { users } from "@shared/models/auth";
+import { multiplexUnderwritings } from "@shared/schema";
 import { resolveSite, type ResolvedSite } from "./torontoGeo";
 import { captureDealLead, recordDealIntent, type DealIntentSignal } from "./dealIntent";
 import { consumeDailyUsage } from "./usageLimits";
@@ -58,44 +59,11 @@ import {
 import { assessVarianceRisk, type VarianceRiskResult } from "@shared/multiplexVarianceRisk";
 import type { UnitType } from "@shared/multiplexTypes";
 
-// ─── Tables ──────────────────────────────────────────────────────────────────
-
-export async function ensureMultiplexTables(): Promise<void> {
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS multiplex_assumptions (
-      key           text PRIMARY KEY,
-      value         jsonb NOT NULL,
-      label         text NOT NULL,
-      unit          text,
-      source        text NOT NULL,
-      last_verified text,
-      updated_by    varchar,
-      updated_at    timestamp NOT NULL DEFAULT now()
-    )
-  `);
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS multiplex_underwritings (
-      id          varchar PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id     varchar,
-      session_id  varchar,
-      address     text NOT NULL,
-      lat         double precision,
-      lng         double precision,
-      postal_fsa  varchar(3),
-      inputs_json jsonb NOT NULL,
-      site_json   jsonb NOT NULL,
-      result_json jsonb,
-      share_token varchar UNIQUE,
-      created_at  timestamp NOT NULL DEFAULT now()
-    )
-  `);
-  await db.execute(sql`
-    CREATE INDEX IF NOT EXISTS multiplex_underwritings_user_idx
-    ON multiplex_underwritings (user_id, created_at)
-  `);
-}
-
 // ─── Seed data ───────────────────────────────────────────────────────────────
+// multiplex_assumptions and multiplex_underwritings now live in shared/schema.ts
+// and are owned by `npm run db:push`. The boot-time `CREATE TABLE IF NOT EXISTS`
+// that used to sit here is why the platform's most valuable dataset had no FK to
+// users and no aggregates; a fresh database needs db:push before first boot.
 
 interface AssumptionSeed {
   key: string;
@@ -584,16 +552,19 @@ export async function executeMultiplexUnderwriter(input: UnderwriteRequest, opts
   }
 
   const shareToken = crypto.randomBytes(12).toString("hex");
-  const inserted = await db.execute(sql`
-    INSERT INTO multiplex_underwritings (user_id, session_id, address, lat, lng, postal_fsa, inputs_json, site_json, result_json, share_token)
-    VALUES (
-      ${opts.userId ?? null}, ${opts.sessionId ?? null}, ${workingInput.address}, ${site.lat}, ${site.lng},
-      ${extractFsa(workingInput)}, ${JSON.stringify(workingInput)}::jsonb,
-      ${JSON.stringify(site)}::jsonb, ${JSON.stringify(result)}::jsonb, ${shareToken}
-    )
-    RETURNING id
-  `);
-  const id = (inserted.rows[0] as { id: string }).id;
+  const [inserted] = await db.insert(multiplexUnderwritings).values({
+    userId: opts.userId ?? null,
+    sessionId: opts.sessionId ?? null,
+    address: workingInput.address,
+    lat: site.lat,
+    lng: site.lng,
+    postalFsa: extractFsa(workingInput),
+    inputsJson: workingInput,
+    siteJson: site,
+    resultJson: result,
+    shareToken,
+  }).returning({ id: multiplexUnderwritings.id });
+  const id = inserted.id;
 
   // Feed the intent engine. This is the highest-intent act on the platform — a
   // confirmed-dimension underwrite on a real address — so it must not dead-end
@@ -679,9 +650,8 @@ function buildIntentSignal(
 }
 
 export function registerMultiplexUnderwriterRoutes(app: Express): void {
-  ensureMultiplexTables()
-    .then(seedAssumptions)
-    .catch((err) => console.error("[multiplex] failed to ensure/seed tables:", err.message));
+  seedAssumptions()
+    .catch((err) => console.error("[multiplex] failed to seed assumptions:", err.message));
 
   // Public read — the analyzer UI shows defaults with their sources.
   app.get("/api/multiplex-assumptions", async (_req: Request, res: Response) => {
@@ -748,13 +718,15 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
     try {
       const token = String(req.params.token);
       if (!/^[a-f0-9]{24}$/.test(token)) return res.status(400).json({ error: "invalid token" });
-      const rows = await db.execute(sql`
-        SELECT id, address, site_json, result_json, created_at
-        FROM multiplex_underwritings WHERE share_token = ${token} LIMIT 1
-      `);
-      if (!rows.rows.length) return res.status(404).json({ error: "not found" });
-      const r = rows.rows[0] as Record<string, unknown>;
-      res.json({ id: r.id, address: r.address, site: r.site_json, underwrite: r.result_json, createdAt: r.created_at, disclaimer: DISCLAIMER });
+      const [r] = await db.select({
+        id: multiplexUnderwritings.id,
+        address: multiplexUnderwritings.address,
+        siteJson: multiplexUnderwritings.siteJson,
+        resultJson: multiplexUnderwritings.resultJson,
+        createdAt: multiplexUnderwritings.createdAt,
+      }).from(multiplexUnderwritings).where(eq(multiplexUnderwritings.shareToken, token)).limit(1);
+      if (!r) return res.status(404).json({ error: "not found" });
+      res.json({ id: r.id, address: r.address, site: r.siteJson, underwrite: r.resultJson, createdAt: r.createdAt, disclaimer: DISCLAIMER });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -763,15 +735,14 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
   app.get("/api/multiplex-underwriter/:id", async (req: any, res: Response) => {
     try {
       const id = String(req.params.id);
-      const rows = await db.execute(sql`
-        SELECT id, user_id, session_id, address, inputs_json, site_json, result_json, share_token, created_at
-        FROM multiplex_underwritings WHERE id = ${id} LIMIT 1
-      `);
-      if (!rows.rows.length) return res.status(404).json({ error: "not found" });
-      const r = rows.rows[0] as Record<string, unknown>;
+      const [r] = await db.select()
+        .from(multiplexUnderwritings)
+        .where(eq(multiplexUnderwritings.id, id))
+        .limit(1);
+      if (!r) return res.status(404).json({ error: "not found" });
       const isOwner =
-        (r.user_id && r.user_id === req.session?.userId) ||
-        (!r.user_id && r.session_id && r.session_id === req.sessionID);
+        (r.userId && r.userId === req.session?.userId) ||
+        (!r.userId && r.sessionId && r.sessionId === req.sessionID);
       if (!isOwner) {
         let isSessionAdmin = false;
         if (req.session?.userId) {
@@ -783,11 +754,11 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
       res.json({
         id: r.id,
         address: r.address,
-        inputs: r.inputs_json,
-        site: r.site_json,
-        underwrite: r.result_json,
-        shareToken: r.share_token,
-        createdAt: r.created_at,
+        inputs: r.inputsJson,
+        site: r.siteJson,
+        underwrite: r.resultJson,
+        shareToken: r.shareToken,
+        createdAt: r.createdAt,
         disclaimer: DISCLAIMER,
       });
     } catch (err: any) {

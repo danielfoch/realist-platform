@@ -30,7 +30,7 @@
 import type { Request } from "express";
 import { and, eq, gte, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
-import { opportunities, users, userActivityEvents } from "@shared/schema";
+import { multiplexUnderwritings, opportunities, users, userActivityEvents } from "@shared/schema";
 import { storage } from "./storage";
 import { logUserActivity } from "./userActivity";
 import { scoreLeadInput, selectEmailTriggers, type ScoringInput } from "@shared/leadScoring";
@@ -550,13 +550,15 @@ export async function claimAnonymousIntent(
   }
 
   try {
-    // Raw SQL: multiplex_underwritings is managed by
-    // ensureMultiplexTables (server/multiplexUnderwriter.ts), not drizzle.
-    const result = await db.execute(sql`
-      UPDATE multiplex_underwritings
-      SET user_id = ${userId}
-      WHERE session_id = ${sessionId} AND user_id IS NULL
-    `);
+    const result = await db
+      .update(multiplexUnderwritings)
+      .set({ userId })
+      .where(
+        and(
+          eq(multiplexUnderwritings.sessionId, sessionId),
+          isNull(multiplexUnderwritings.userId),
+        ),
+      );
     underwritings = result.rowCount ?? 0;
   } catch (err) {
     console.error("[deal-intent] multiplex underwriting backfill failed:", err);

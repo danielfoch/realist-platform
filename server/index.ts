@@ -732,6 +732,9 @@ async function ensureAppTables() {
       import("./userActivity").then(({ scheduleUserInferenceRebuild }) => {
         scheduleUserInferenceRebuild();
       }).catch((err) => log(`User inference rebuild schedule error: ${err.message}`, "intelligence"));
+      import("./multiplexMarketRollups").then(({ scheduleMultiplexRollupRebuild }) => {
+        scheduleMultiplexRollupRebuild();
+      }).catch((err) => log(`Multiplex rollup schedule error: ${err.message}`, "intelligence"));
       if (!process.env.ANTHROPIC_API_KEY) {
         log("⚠️  ANTHROPIC_API_KEY is not set — Multiplex Underwriter narratives fall back to templates and Ask Realist (/api/ask) is DISABLED. Users are seeing zero live AI.", "startup");
       }
