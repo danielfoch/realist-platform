@@ -546,6 +546,7 @@ export default function Events() {
                     { name: "SR Law", logo: "/partners/sr-law-2025.png", url: "/community/events/partners/sr-law", internal: true },
                     { name: "LandLord", logo: "/partners/landlord-2025.png", url: "/community/events/partners/landlord", internal: true },
                     { name: "Platform Insurance", logo: "https://www.platforminsurance.com/wp-content/uploads/2024/02/Platform-Logo-RGB-Digital-Glacier.png", url: "/community/events/partners/platform-insurance", internal: true },
+                    { name: "Valery", logo: "/partners/valery.png", url: "/community/events/partners/valery", internal: true },
                     { name: "TCI Podcast Network", logo: "/partners/tci-podcast.png", url: "https://thecanadianinvestorpodcast.com/podcast/the-canadian-real-estate-investor" },
                     { name: "KV Capital", logo: "/partners/kv-capital.png", url: "https://www.kvcapital.ca/" },
                     { name: "City of Edmonton", logo: "/partners/edmonton.png", url: "https://www.edmonton.ca/" },

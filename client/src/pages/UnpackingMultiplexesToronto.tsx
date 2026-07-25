@@ -217,6 +217,7 @@ const SPONSORS = [
     url: "/community/events/partners/platform-insurance",
     internal: true,
   },
+  { src: "/partners/valery.png", alt: "Valery", url: "/community/events/partners/valery", internal: true },
 ];
 
 const AGENDA = [
