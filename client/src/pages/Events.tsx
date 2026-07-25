@@ -560,6 +560,8 @@ export default function Events() {
                     { name: "Burke by Burke", logo: "/partners/burke-by-burke.png", url: "https://www.burkebyburke.com/" },
                     { name: "Greater Vancouver Tenant & Property Management Ltd", logo: "/partners/gvtpm.png", url: "https://gvantpm.com/" },
                     { name: "HomiesAI", logo: "/partners/homies.png", url: "https://homiesai.com" },
+                    { name: "STOREYS", logo: "/partners/storeys.png", url: "https://storeys.com/" },
+                    { name: "Real Estate Magazine", logo: "/partners/real-estate-magazine.png", url: "https://realestatemagazine.ca/" },
                   ].map((partner) => {
                     const testId = `link-partner-${partner.name.toLowerCase().replace(/\s+/g, '-')}`;
                     const imgEl = (
