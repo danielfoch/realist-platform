@@ -26,6 +26,7 @@ import { multiplexUnderwritings } from "@shared/schema";
 import { resolveSite, type ResolvedSite } from "./torontoGeo";
 import { captureDealLead, recordDealIntent, type DealIntentSignal } from "./dealIntent";
 import { consumeDailyUsage } from "./usageLimits";
+import { requireVerified } from "./accountVerification";
 import { resolveWard } from "./enrichment";
 import { computeMultiplexFeasibility, TORONTO_SIXPLEX_WARDS } from "./multiplexFeasibility";
 import {
@@ -688,7 +689,9 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
 
   // The underwriter. Without lot dimensions it resolves the site and stops
   // (the UI's confirm step); with dimensions it runs the full pipeline.
-  app.post("/api/multiplex-underwriter", async (req: any, res: Response) => {
+  // requireVerified gates signed-in-but-unverified accounts only; anonymous
+  // callers pass through to the usage cap below, which is the separate concern.
+  app.post("/api/multiplex-underwriter", requireVerified, async (req: any, res: Response) => {
     try {
       const rate = await consumeDailyUsage(UNDERWRITE_SCOPE, req, UNDERWRITE_LIMITS);
       if (!rate.allowed) {

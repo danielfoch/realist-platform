@@ -5,6 +5,7 @@ import { google } from "googleapis";
 import { appendLead } from "./leadsSheet";
 import { pushInvestorLeadToGHL } from "./ghl-service";
 import { announceNewAccount } from "./accountAnnounce";
+import { requireVerified } from "./accountVerification";
 import { storage } from "./storage";
 import { type LeadIntent } from "./referralRoutingPolicy";
 import { captureDealLead, partnerBaseUrl, recordDealIntent, routeLeadToPartnerClaims } from "./dealIntent";
@@ -3655,7 +3656,11 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/analyses", async (req, res) => {
+  // Gated: this writes into the analysis dataset and feeds leaderboard
+  // eligibility. Discovery (/api/find-deals) and lead capture (/api/leads,
+  // /api/deal-desk/submit) stay open — gating those would block the funnel
+  // rather than protect the data.
+  app.post("/api/analyses", requireVerified, async (req, res) => {
     try {
       const { countryMode, strategyType, inputsJson, resultsJson, address, city, province, sessionId } = req.body;
       if (!countryMode || !strategyType || !inputsJson) {

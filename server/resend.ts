@@ -953,6 +953,68 @@ export async function sendWelcomeAccountEmail(params: {
  * Magic sign-in link. Transactional auth email (consent-exempt): only ever
  * sent in direct response to a sign-in request for an existing account.
  */
+export async function sendEmailVerificationEmail(params: {
+  toEmail: string;
+  firstName: string;
+  verifyLink: string;
+}) {
+  try {
+    const { client, fromEmail } = await getResendClient();
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${emailHeader('Confirm your email', 'One click and your Realist tools are unlocked')}
+
+        <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="color: #111827; font-size: 16px; margin: 0 0 16px 0;">
+            Hi ${params.firstName || 'there'},
+          </p>
+
+          <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
+            Confirm this address to unlock the deal analyzer, the multiplex underwriter,
+            and saved deals. You can keep browsing without it — this just switches the tools on.
+          </p>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${params.verifyLink}" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              Confirm my email
+            </a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0 0 8px 0;">
+            This link works once and expires in 24 hours.
+          </p>
+
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              If you didn't create a Realist.ca account, you can safely ignore this email.
+            </p>
+          </div>
+        </div>
+
+        ${emailFooter()}
+      </div>
+    `;
+
+    const { data: emailData, error } = await client.emails.send({
+      from: fromEmail,
+      to: [params.toEmail],
+      subject: 'Confirm your Realist.ca email',
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send email verification:', error);
+      throw error;
+    }
+    console.log(`Email verification sent to: ${params.toEmail}`);
+    return emailData;
+  } catch (err) {
+    console.error('sendEmailVerificationEmail error:', err);
+    throw err;
+  }
+}
+
 export async function sendLoginLinkEmail(params: {
   toEmail: string;
   firstName: string;

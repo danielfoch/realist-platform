@@ -405,6 +405,19 @@ export function registerAuthRoutes(app: Express): void {
         phone: newUser.phone,
         source: "signup",
       });
+
+      // Kick off email verification immediately. Non-blocking: signup succeeds
+      // either way, and the user can request another link from the app.
+      (async () => {
+        const { issueEmailVerificationLink } = await import("./accountVerification");
+        const { sendEmailVerificationEmail } = await import("./resend");
+        const verifyLink = await issueEmailVerificationLink(newUser.id);
+        await sendEmailVerificationEmail({
+          toEmail: newUser.email,
+          firstName: newUser.firstName || "there",
+          verifyLink,
+        });
+      })().catch(err => console.error("[verification] signup email failed:", err));
     } catch (error: any) {
       console.error("Signup error:", error);
       if (error.name === "ZodError") {
@@ -792,10 +805,12 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(400).json({ message: "Password already set. Please use login." });
       }
       
-      // Hash and set password
+      // Hash and set password. emailVerified comes along for free: reaching this
+      // point required opening a link we emailed to that address, which is the
+      // same proof a separate verification email would collect.
       const passwordHash = await bcrypt.hash(password, 12);
       await db.update(users)
-        .set({ passwordHash, updatedAt: new Date() })
+        .set({ passwordHash, emailVerified: true, updatedAt: new Date() })
         .where(eq(users.id, user.id));
       
       // Mark token as used
@@ -923,6 +938,15 @@ export function registerAuthRoutes(app: Express): void {
       }
 
       req.session.userId = user.id;
+
+      // Opening a magic link proves control of the address — same proof a
+      // verification email collects, so don't ask for a second click.
+      if (!user.emailVerified) {
+        const { markEmailVerified } = await import("./accountVerification");
+        await markEmailVerified(user.id).catch(err =>
+          console.error("[verification] magic-link email mark failed:", err),
+        );
+      }
 
       // Persist the session before redirecting (same pattern as google/start).
       await new Promise<void>((resolve, reject) => {
@@ -1279,7 +1303,83 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  // Phone Verification - Skip (optional, for users who don't want to verify)
+  // ─── Email verification ────────────────────────────────────────────────────
+
+  // What the client polls to decide whether to show the verify prompt and which
+  // step to route to.
+  app.get("/api/auth/verification/status", isAuthenticated, async (req, res) => {
+    try {
+      const { getVerificationState } = await import("./accountVerification");
+      res.json(await getVerificationState(req.session.userId!));
+    } catch (error) {
+      console.error("Verification status error:", error);
+      res.status(500).json({ message: "Failed to read verification status" });
+    }
+  });
+
+  app.post("/api/auth/email/send-verification", isAuthenticated, async (req, res) => {
+    try {
+      const {
+        getVerificationState,
+        hasRecentEmailVerificationToken,
+        issueEmailVerificationLink,
+      } = await import("./accountVerification");
+
+      const state = await getVerificationState(req.session.userId!);
+      if (state.emailVerified) {
+        return res.json({ message: "Email already verified", emailVerified: true });
+      }
+      if (await hasRecentEmailVerificationToken(req.session.userId!)) {
+        return res.status(429).json({ message: "A verification link was just sent — check your inbox." });
+      }
+
+      const [user] = await db
+        .select({ email: users.email, firstName: users.firstName })
+        .from(users)
+        .where(eq(users.id, req.session.userId!))
+        .limit(1);
+      if (!user) return res.status(404).json({ message: "Account not found" });
+
+      const verifyLink = await issueEmailVerificationLink(req.session.userId!);
+      const { sendEmailVerificationEmail } = await import("./resend");
+      await sendEmailVerificationEmail({
+        toEmail: user.email,
+        firstName: user.firstName || "there",
+        verifyLink,
+      });
+      res.json({ message: "Verification email sent" });
+    } catch (error) {
+      console.error("Send verification email error:", error);
+      res.status(500).json({ message: "Failed to send verification email" });
+    }
+  });
+
+  // Unauthenticated by design — the token IS the proof, and people routinely
+  // open email links in a browser where they are not signed in.
+  app.post("/api/auth/email/verify", async (req, res) => {
+    try {
+      const token = typeof (req.body as any)?.token === "string" ? (req.body as any).token : "";
+      const { consumeEmailVerificationToken } = await import("./accountVerification");
+      const result = await consumeEmailVerificationToken(token);
+      if (!result.ok) {
+        const message =
+          result.reason === "expired"
+            ? "That link has expired — request a new one."
+            : result.reason === "already_used"
+              ? "That link was already used."
+              : "That verification link isn't valid.";
+        return res.status(400).json({ message, reason: result.reason });
+      }
+      res.json({ message: "Email verified", emailVerified: true });
+    } catch (error) {
+      console.error("Email verify error:", error);
+      res.status(500).json({ message: "Failed to verify email" });
+    }
+  });
+
+  // Phone Verification - Skip. Stops OAuth logins re-prompting on every visit;
+  // does NOT satisfy the verification requirement for accounts subject to it
+  // (see getVerificationState in ./accountVerification).
   app.post("/api/auth/phone/skip", isAuthenticated, async (req, res) => {
     try {
       // Persist the skip so OAuth logins stop re-prompting on every visit
