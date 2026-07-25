@@ -132,6 +132,7 @@ const DanielFoch = lazy(() => import("@/pages/DanielFoch"));
 const NickHill = lazy(() => import("@/pages/NickHill"));
 const LocalExperts = lazy(() => import("@/pages/LocalExperts"));
 const UnpackingMultiplexesToronto = lazy(() => import("@/pages/UnpackingMultiplexesToronto"));
+const EventPartnerPage = lazy(() => import("@/pages/EventPartnerPage"));
 const Blog = lazy(() => import("@/pages/Blog"));
 const BlogPost = lazy(() => import("@/pages/BlogPost"));
 const Shop = lazy(() => import("@/pages/Shop"));
@@ -408,6 +409,7 @@ function Router() {
       <Route path="/meetups" component={Meetups} />
       <Route path="/community/meetups">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/community/events/unpacking-multiplexes-toronto" component={UnpackingMultiplexesToronto} />
+      <Route path="/community/events/partners/:slug" component={EventPartnerPage} />
       <Route path="/community/network" component={NetworkHub} />
 
       {/* JV Partner Matching routes */}

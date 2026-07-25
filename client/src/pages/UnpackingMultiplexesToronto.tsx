@@ -204,17 +204,18 @@ const SPEAKERS: RealistEventSpeaker[] = [
 ];
 
 const SPONSORS = [
-  { src: "/partners/cmhc.png", alt: "CMHC", url: "https://www.cmhc-schl.gc.ca/" },
-  { src: "/partners/bld-financial.png", alt: "BLD Financial", url: "https://www.bldfinancial.ca/" },
-  { src: "https://www.resideproperties.ca/assets/logo.svg", alt: "Reside Properties", url: "https://www.resideproperties.ca/" },
-  { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio", url: "https://www.noamhazan.com/" },
-  { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT", url: "https://www.alliancereit.com/" },
-  { src: "/partners/sr-law-2025.png", alt: "SR Law", url: "https://www.srlaw.ca/" },
-  { src: "/partners/landlord-2025.png", alt: "LandLord", url: "https://www.landlord.ca/" },
+  { src: "/partners/cmhc.png", alt: "CMHC", url: "/community/events/partners/cmhc", internal: true },
+  { src: "/partners/bld-financial.png", alt: "BLD Financial", url: "/community/events/partners/bld-financial", internal: true },
+  { src: "https://www.resideproperties.ca/assets/logo.svg", alt: "Reside Properties", url: "/community/events/partners/reside-properties", internal: true },
+  { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio", url: "/community/events/partners/noam-hazan-design-studio", internal: true },
+  { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT", url: "/community/events/partners/alliance-reit", internal: true },
+  { src: "/partners/sr-law-2025.png", alt: "SR Law", url: "/community/events/partners/sr-law", internal: true },
+  { src: "/partners/landlord-2025.png", alt: "LandLord", url: "/community/events/partners/landlord", internal: true },
   {
     src: "https://www.platforminsurance.com/wp-content/uploads/2024/02/Platform-Logo-RGB-Digital-Glacier.png",
     alt: "Platform Insurance",
-    url: "https://www.platforminsurance.com/",
+    url: "/community/events/partners/platform-insurance",
+    internal: true,
   },
 ];
 
@@ -595,22 +596,37 @@ export default function UnpackingMultiplexesToronto() {
             Event sponsors & partners
           </p>
           <div className="flex flex-wrap items-center gap-8 rounded-xl bg-white px-8 py-6 shadow-sm ring-1 ring-border/20">
-            {SPONSORS.map((sponsor) => (
-              <a
-                key={sponsor.alt}
-                href={sponsor.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group"
-                data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
-              >
-                <img
-                  src={sponsor.src}
-                  alt={sponsor.alt}
-                  className="h-12 w-auto max-w-[140px] object-contain opacity-80 transition-opacity duration-300 group-hover:opacity-100"
-                />
-              </a>
-            ))}
+            {SPONSORS.map((sponsor) =>
+              sponsor.internal ? (
+                <Link
+                  key={sponsor.alt}
+                  href={sponsor.url}
+                  className="group"
+                  data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <img
+                    src={sponsor.src}
+                    alt={sponsor.alt}
+                    className="h-12 w-auto max-w-[140px] object-contain opacity-80 transition-opacity duration-300 group-hover:opacity-100"
+                  />
+                </Link>
+              ) : (
+                <a
+                  key={sponsor.alt}
+                  href={sponsor.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group"
+                  data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <img
+                    src={sponsor.src}
+                    alt={sponsor.alt}
+                    className="h-12 w-auto max-w-[140px] object-contain opacity-80 transition-opacity duration-300 group-hover:opacity-100"
+                  />
+                </a>
+              )
+            )}
           </div>
         </div>
       </div>
