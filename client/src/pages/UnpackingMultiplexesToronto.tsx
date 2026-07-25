@@ -594,20 +594,20 @@ export default function UnpackingMultiplexesToronto() {
           <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">
             Event sponsors & partners
           </p>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-8 rounded-xl bg-white px-8 py-6 shadow-sm ring-1 ring-border/20">
             {SPONSORS.map((sponsor) => (
               <a
                 key={sponsor.alt}
                 href={sponsor.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center justify-center rounded-xl bg-white px-5 py-3 shadow-sm ring-1 ring-border/20 transition-shadow hover:shadow-md"
+                className="group"
                 data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 <img
                   src={sponsor.src}
                   alt={sponsor.alt}
-                  className="h-12 w-auto max-w-[140px] object-contain transition-opacity duration-300 group-hover:opacity-100 opacity-85"
+                  className="h-12 w-auto max-w-[140px] object-contain opacity-80 transition-opacity duration-300 group-hover:opacity-100"
                 />
               </a>
             ))}
