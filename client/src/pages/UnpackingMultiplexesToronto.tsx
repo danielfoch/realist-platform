@@ -119,14 +119,14 @@ const MODERATORS: RealistEventSpeaker[] = [
     company: "Realist.ca",
     title: "Host & Moderator",
     bio: null,
-    imageUrl: danielHeadshot,
+    imageUrl: nickHeadshot,
   },
   {
     name: "Nick Hill",
     company: "BLD Financial",
     title: "Host & Moderator",
     bio: null,
-    imageUrl: nickHeadshot,
+    imageUrl: danielHeadshot,
   },
   {
     name: "Sabrina Maddeaux",
