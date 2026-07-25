@@ -30,7 +30,7 @@
 import type { Request } from "express";
 import { and, eq, gte, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
-import { users, userActivityEvents } from "@shared/schema";
+import { opportunities, users, userActivityEvents } from "@shared/schema";
 import { storage } from "./storage";
 import { logUserActivity } from "./userActivity";
 import { scoreLeadInput, selectEmailTriggers, type ScoringInput } from "@shared/leadScoring";
@@ -311,6 +311,47 @@ export function partnerBaseUrl(): string {
   return "https://realist.ca";
 }
 
+// ─── Team alerting ───────────────────────────────────────────────────────────
+
+/** Repeat captures inside this window are throttled unless they escalate. */
+const TEAM_ALERT_THROTTLE_HOURS = 24;
+
+/**
+ * Whether an in-house lead should page a human right now.
+ *
+ * Status alone is a useless gate — captureDealLead always scores at least 55
+ * (deal_submitted 40 + one of buying/financing help 15), so everything is warm
+ * or better by construction. The real noise source is volume from ONE person: a
+ * signed-in investor running twenty underwrites in an afternoon should not send
+ * twenty emails.
+ *
+ * So: first capture in the window always alerts; repeats only alert if they came
+ * back HOT, which is exactly the escalation worth interrupting someone for. The
+ * legacy analyzer path instead used "first lead from this email, ever", which
+ * goes permanently quiet on a known investor at the moment they get serious.
+ */
+async function shouldAlertTeam(
+  leadId: string,
+  status: "hot" | "warm" | "nurture" | "audience",
+): Promise<boolean> {
+  if (status === "nurture" || status === "audience") return false;
+  try {
+    const since = new Date(Date.now() - TEAM_ALERT_THROTTLE_HOURS * 60 * 60 * 1000);
+    const [row] = await db
+      .select({ recent: sql<number>`COUNT(*)::int` })
+      .from(opportunities)
+      .where(and(eq(opportunities.leadId, leadId), gte(opportunities.createdAt, since)));
+    // The opportunity for THIS capture is already written, so a prior one means
+    // a count above 1.
+    const isRepeat = Number(row?.recent || 0) > 1;
+    return !isRepeat || status === "hot";
+  } catch (err) {
+    // Never swallow a lead alert because a throttle query failed.
+    console.error("[deal-intent] alert throttle check failed, alerting anyway:", err);
+    return true;
+  }
+}
+
 // ─── Full capture ────────────────────────────────────────────────────────────
 
 export interface DealLeadIdentity {
@@ -423,7 +464,7 @@ export async function captureDealLead(
   // silent must not mean invisible. Those are OUR leads, so the team gets the
   // alert the partner network would otherwise have sent. Without this, every
   // Toronto multiplex underwrite lands in the database and notifies nobody.
-  if (routing.notified === 0) {
+  if (routing.notified === 0 && (await shouldAlertTeam(lead.id, score.status))) {
     try {
       const { sendLeadNotification } = await import("./resend");
       await sendLeadNotification({

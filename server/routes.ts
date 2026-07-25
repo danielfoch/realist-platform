@@ -6,7 +6,7 @@ import { appendLead } from "./leadsSheet";
 import { pushInvestorLeadToGHL } from "./ghl-service";
 import { storage } from "./storage";
 import { type LeadIntent } from "./referralRoutingPolicy";
-import { partnerBaseUrl, routeLeadToPartnerClaims } from "./dealIntent";
+import { captureDealLead, partnerBaseUrl, recordDealIntent, routeLeadToPartnerClaims } from "./dealIntent";
 import { buildReferralAgreement, getReferralTerms } from "@shared/partnerNetwork";
 
 // Maps the formTag/source value already present on every lead payload to a
@@ -6694,6 +6694,50 @@ export async function registerRoutes(
 
   const findDealsCache = new Map<string, { data: any; expiresAt: number }>();
 
+  /**
+   * Emit the market-hunting signal from the PARSED filters.
+   *
+   * client/src/lib/analytics.ts declares market_filter_used / yield_filter_used
+   * and friends in its taxonomy, but nothing in the client ever fires them — so
+   * the map's filter behaviour (the best available read on which market an
+   * investor is hunting) reached neither user_activity_events nor the sentiment
+   * rollups. Deriving it here from what actually got searched is both more
+   * reliable than client instrumentation and impossible to skip.
+   *
+   * find_deals_queries still gets its own row via logFindDealsQuery — that's the
+   * demand ledger, which nothing reads for intent.
+   */
+  const recordFindDealsIntent = (
+    req: any,
+    opts: {
+      filters: any;
+      resultCount: number;
+      userId: string | null;
+      sessionId: string | null;
+      rawQuery: string;
+      cached: boolean;
+    },
+  ) => {
+    if (!opts.filters?.city && !opts.filters?.province) return;
+    recordDealIntent(req, {
+      surface: "cap_rates_map",
+      eventName: "market_filter_used",
+      userId: opts.userId,
+      sessionId: opts.sessionId,
+      city: opts.filters.city ?? null,
+      region: opts.filters.province ?? null,
+      propertyType: opts.filters.propertyType ?? null,
+      metadata: {
+        rawQuery: opts.rawQuery,
+        resultCount: opts.resultCount,
+        minPrice: opts.filters.minPrice ?? null,
+        maxPrice: opts.filters.maxPrice ?? null,
+        minBeds: opts.filters.minBeds ?? null,
+        servedFromCache: opts.cached,
+      },
+    }).catch(err => console.error("[find-deals] intent record error:", err));
+  };
+
   app.post("/api/find-deals", async (req: any, res) => {
     try {
       const { query, bounds } = req.body;
@@ -6721,6 +6765,14 @@ export async function registerRoutes(
           apiKeyId: demandApiKeyId,
           sessionId,
           userId: demandUserId,
+        });
+        recordFindDealsIntent(req, {
+          filters: cached.data?.filters_applied ?? null,
+          resultCount: Number(cached.data?.total ?? cached.data?.listings?.length ?? 0),
+          userId: demandUserId,
+          sessionId,
+          rawQuery: trimmedQuery,
+          cached: true,
         });
         res.json(cached.data);
         return;
@@ -6898,6 +6950,15 @@ export async function registerRoutes(
         apiKeyId: demandApiKeyId,
         sessionId,
         userId: demandUserId,
+      });
+
+      recordFindDealsIntent(req, {
+        filters,
+        resultCount: responseData.total,
+        userId: demandUserId,
+        sessionId,
+        rawQuery: trimmedQuery,
+        cached: false,
       });
 
       findDealsCache.set(cacheKey, { data: responseData, expiresAt: Date.now() + 600000 });
@@ -12714,13 +12775,23 @@ export async function registerRoutes(
         return '+' + cleaned;
       };
 
-      const lead = await storage.createLead({
-        name: fullName,
-        email,
-        phone,
-        consent: true,
-        leadSource: "Land Claim Screener",
-      });
+      // Full genesis rather than a bare createLead: this form hands over name,
+      // email AND phone to screen a specific parcel, which is due-diligence
+      // intent worth scoring and routing. Upserts by email, so a repeat
+      // screener stops creating duplicate lead rows.
+      const capture = await captureDealLead(
+        req,
+        {
+          surface: "land_claim_screener",
+          eventName: "screening_registered",
+          userId: req.session?.userId ?? null,
+          sessionId: req.sessionID ?? null,
+          address,
+          metadata: { screenedAddress: address },
+        },
+        { name: fullName, email, phone, consentEmail: true },
+      );
+      const lead = { id: capture.leadId, createdAt: new Date() };
 
       sendWebhook(lead.id, {
         email,
@@ -12797,6 +12868,23 @@ export async function registerRoutes(
           notes: `${hit.layerName}: ${hit.featureName}`,
         });
       }
+
+      // Anonymous-safe: the screening itself is intent even before the person
+      // registers, and it was previously invisible to the intent engine.
+      await recordDealIntent(req, {
+        surface: "land_claim_screener",
+        eventName: "screening_completed",
+        userId,
+        sessionId: req.sessionID ?? null,
+        address: address || null,
+        metadata: {
+          screeningId: screening.id,
+          resultStatus: result.status,
+          hitsCount: result.hitsCount,
+          completeness: result.completeness,
+          bufferMeters,
+        },
+      });
 
       res.json({ ...result, screeningId: screening.id });
     } catch (error: any) {

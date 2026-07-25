@@ -17,6 +17,9 @@ const state = {
   /** Throw from the aggregate to exercise the fallback path. */
   activityThrows: false,
   userRows: [] as Record<string, unknown>[],
+  /** Opportunities for this lead inside the throttle window, incl. the new one. */
+  recentOpportunityCount: 1,
+  throttleThrows: false,
   claims: [] as Record<string, unknown>[],
   claimsQueriedWith: [] as Array<{ city: string; region: string; partnerTypes?: string[] }>,
   notifications: [] as Record<string, unknown>[],
@@ -52,6 +55,10 @@ vi.mock("./db", () => {
           if (shape && "exports" in shape) {
             if (state.activityThrows) throw new Error("aggregate boom");
             return [state.activityCounts];
+          }
+          if (shape && "recent" in shape) {
+            if (state.throttleThrows) throw new Error("throttle boom");
+            return [{ recent: state.recentOpportunityCount }];
           }
           return state.userRows;
         }),
@@ -124,6 +131,8 @@ const NO_COUNTS = {
 beforeEach(() => {
   state.activityCounts = { ...NO_COUNTS };
   state.activityThrows = false;
+  state.recentOpportunityCount = 1;
+  state.throttleThrows = false;
   state.userRows = [];
   state.claims = [];
   state.claimsQueriedWith = [];
@@ -322,6 +331,41 @@ describe("captureDealLead", () => {
     // The alert carries the score so the team can triage without opening /admin.
     expect(String(state.leadNotifications[0].source)).toContain("Multiplex Underwriter");
     expect(String(state.leadNotifications[0].source)).toMatch(/HOT|WARM|NURTURE|AUDIENCE/);
+  });
+
+  it("throttles a repeat warm capture from the same lead", async () => {
+    // A prior opportunity inside the window means this is capture 2+. Someone
+    // running twenty underwrites should not send twenty team emails.
+    state.recentOpportunityCount = 2;
+
+    const result = await captureDealLead(null, signal, identity);
+
+    expect(result.status).toBe("warm");
+    expect(state.leadNotifications).toHaveLength(0);
+    // Still fully captured — only the human interrupt is suppressed.
+    expect(result.opportunityId).toBe("opp-1");
+    expect(state.queuedTriggers).toContain("deal_submitted_confirmation");
+  });
+
+  it("breaks the throttle when a repeat capture escalates to hot", async () => {
+    state.recentOpportunityCount = 5;
+    state.activityCounts = { ...NO_COUNTS, exports: 1, saves: 1, offerCandidates: 1 };
+
+    const result = await captureDealLead(null, signal, identity);
+
+    expect(result.status).toBe("hot");
+    expect(state.leadNotifications).toHaveLength(1);
+  });
+
+  it("alerts anyway when the throttle query fails", async () => {
+    // A broken throttle must not cost a lead alert.
+    state.throttleThrows = true;
+    state.recentOpportunityCount = 9;
+
+    const result = await captureDealLead(null, signal, identity);
+
+    expect(result.status).toBe("warm");
+    expect(state.leadNotifications).toHaveLength(1);
   });
 
   it("does not double-notify when a partner already got the lead", async () => {
