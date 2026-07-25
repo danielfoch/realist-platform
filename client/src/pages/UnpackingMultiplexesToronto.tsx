@@ -209,8 +209,8 @@ const SPONSORS = [
   { src: "https://www.resideproperties.ca/assets/logo.svg", alt: "Reside Properties", url: "https://www.resideproperties.ca/" },
   { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio", url: "https://www.noamhazan.com/" },
   { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT", url: "https://www.alliancereit.com/" },
-  { src: "/partners/sr-law.jpg", alt: "SR Law", url: "https://www.srlaw.ca/" },
-  { src: "/partners/landlord.png", alt: "LandLord", url: "https://www.landlord.ca/" },
+  { src: "/partners/sr-law-2025.png", alt: "SR Law", url: "https://www.srlaw.ca/" },
+  { src: "/partners/landlord-2025.png", alt: "LandLord", url: "https://www.landlord.ca/" },
   {
     src: "https://www.platforminsurance.com/wp-content/uploads/2024/02/Platform-Logo-RGB-Digital-Glacier.png",
     alt: "Platform Insurance",
