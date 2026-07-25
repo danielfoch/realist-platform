@@ -594,33 +594,35 @@ export default function UnpackingMultiplexesToronto() {
           <p className="text-xs text-muted-foreground mt-4">
             Hosted by The Canadian Real Estate Investor Podcast · Ticketing powered by OvationTix
           </p>
-
-          {/* Sponsors strip */}
-          <div className="mt-10 pt-8 border-t border-border/40">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">
-              Event sponsors & partners
-            </p>
-            <div className="flex flex-wrap items-center gap-6 md:gap-10">
-              {SPONSORS.map((sponsor) => (
-                <a
-                  key={sponsor.alt}
-                  href={sponsor.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group transition-opacity hover:opacity-100"
-                  data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
-                >
-                  <img
-                    src={sponsor.src}
-                    alt={sponsor.alt}
-                    className="h-8 w-auto object-contain grayscale opacity-70 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100"
-                  />
-                </a>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
+
+      {/* Sponsors strip */}
+      <div className="border-t border-border/40 bg-background">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">
+            Event sponsors & partners
+          </p>
+          <div className="flex flex-wrap items-center gap-6 md:gap-10">
+            {SPONSORS.map((sponsor) => (
+              <a
+                key={sponsor.alt}
+                href={sponsor.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group transition-opacity hover:opacity-100"
+                data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                <img
+                  src={sponsor.src}
+                  alt={sponsor.alt}
+                  className="h-8 w-auto object-contain grayscale opacity-70 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Overview */}
       <section className="max-w-6xl mx-auto px-4 py-12 md:py-16">
