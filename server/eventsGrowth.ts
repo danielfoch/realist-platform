@@ -83,6 +83,15 @@ async function ensureUserByEmail(email: string, name: string | null, leadSource:
   // with this email. Best-effort, never fails the RSVP.
   await backlinkUserRecords(user.id, normalized);
 
+  const { announceNewAccount } = await import("./accountAnnounce");
+  announceNewAccount({
+    email: normalized,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    source: "event_growth",
+  });
+
   // CASL ledger: the RSVP/signup form is the express consent moment.
   await db.insert(emailConsent).values({
     userId: user.id,

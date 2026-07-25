@@ -27,7 +27,20 @@ const state = {
   queuedTriggers: [] as string[],
   leadNotifications: [] as Record<string, unknown>[],
   partnerAlerts: [] as Record<string, unknown>[],
+  ghlPushes: [] as Array<{ email: string; name: string; source: string; city?: string | null }>,
 };
+
+vi.mock("./ghl-service", () => ({
+  pushInvestorLeadToGHL: async (
+    email: string,
+    _phone: string | null | undefined,
+    name: string,
+    source: string,
+    city?: string | null,
+  ) => {
+    state.ghlPushes.push({ email, name, source, city });
+  },
+}));
 
 vi.mock("./db", () => {
   // select(...).from(...).where(...) is awaited directly in both call sites, so
@@ -141,6 +154,7 @@ beforeEach(() => {
   state.queuedTriggers = [];
   state.leadNotifications = [];
   state.partnerAlerts = [];
+  state.ghlPushes = [];
 });
 
 // ─── Scoring derivation ──────────────────────────────────────────────────────
@@ -331,6 +345,25 @@ describe("captureDealLead", () => {
     // The alert carries the score so the team can triage without opening /admin.
     expect(String(state.leadNotifications[0].source)).toContain("Multiplex Underwriter");
     expect(String(state.leadNotifications[0].source)).toMatch(/HOT|WARM|NURTURE|AUDIENCE/);
+  });
+
+  it("pushes every capture to the CRM with market tags", async () => {
+    await captureDealLead(null, signal, identity);
+
+    expect(state.ghlPushes).toHaveLength(1);
+    expect(state.ghlPushes[0].email).toBe("jordan@example.com");
+    expect(state.ghlPushes[0].source).toBe("Multiplex Underwriter");
+    expect(state.ghlPushes[0].city).toBe("Toronto");
+  });
+
+  it("still pushes to the CRM when the team alert is throttled", async () => {
+    // The throttle protects a human inbox; it must not skip the CRM.
+    state.recentOpportunityCount = 4;
+
+    await captureDealLead(null, signal, identity);
+
+    expect(state.leadNotifications).toHaveLength(0);
+    expect(state.ghlPushes).toHaveLength(1);
   });
 
   it("throttles a repeat warm capture from the same lead", async () => {

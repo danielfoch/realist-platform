@@ -53,6 +53,31 @@ function getNotifyEmails(): string[] {
   return emails;
 }
 
+/**
+ * Recipients for revenue events only: a new lead or a new account.
+ *
+ * Deliberately NOT getNotifyEmails(). That list also carries podcast questions,
+ * reno quotes, event host enquiries and expert applications — piping those to a
+ * mortgage broker would be noise he never asked for. It also returns [] when
+ * neither env var is set, which is why lead notifications have been silently
+ * going nowhere.
+ *
+ * Defaults are in code rather than env-only so this works on deploy without a
+ * config step; LEAD_NOTIFY_EMAILS overrides (comma-separated) when the list
+ * changes.
+ */
+export function getLeadNotifyEmails(): string[] {
+  const configured = process.env.LEAD_NOTIFY_EMAILS;
+  if (configured) {
+    const parsed = configured
+      .split(",")
+      .map(e => e.trim())
+      .filter(e => e.includes("@"));
+    if (parsed.length) return parsed;
+  }
+  return ["danielfoch@gmail.com", "nick@bldfinancial.ca"];
+}
+
 // Email header template
 function emailHeader(title: string, subtitle: string) {
   return `
@@ -87,13 +112,15 @@ function formatRow(label: string, value: string | number | undefined | null) {
 
 // Send form notification with CC support
 export async function sendFormNotification(params: {
-  formType: 'lead' | 'podcast_question' | 'reno_quote' | 'contact_host' | 'expert_application' | 'market_expert_apply' | 'coaching_waitlist';
+  formType: 'lead' | 'new_account' | 'podcast_question' | 'reno_quote' | 'contact_host' | 'expert_application' | 'market_expert_apply' | 'coaching_waitlist';
   subject: string;
   data: Record<string, any>;
+  /** Overrides getNotifyEmails() — used by the lead/account revenue events. */
+  recipients?: string[];
 }) {
   const { client, fromEmail } = await getResendClient();
-  const recipients = getNotifyEmails();
-  
+  const recipients = params.recipients?.length ? params.recipients : getNotifyEmails();
+
   if (recipients.length === 0) {
     console.log('No notification emails configured, skipping email send');
     return null;
@@ -101,6 +128,7 @@ export async function sendFormNotification(params: {
 
   const formTypeLabels: Record<string, { title: string; subtitle: string }> = {
     lead: { title: 'New Lead Submission', subtitle: 'Deal Analyzer Lead Capture' },
+    new_account: { title: 'New Account Created', subtitle: 'Realist.ca Registration' },
     podcast_question: { title: 'New Podcast Question', subtitle: 'The Canadian Real Estate Investor Podcast' },
     reno_quote: { title: 'New Renovation Quote Request', subtitle: 'Renovation Calculator Submission' },
     contact_host: { title: 'Event Host Contact Request', subtitle: 'Meetup Event Inquiry' },
@@ -180,6 +208,7 @@ export async function sendLeadNotification(lead: {
   return sendFormNotification({
     formType: 'lead',
     subject: `New Lead: ${lead.name} - ${lead.address || 'Deal Analyzer'}`,
+    recipients: getLeadNotifyEmails(),
     data: {
       Name: lead.name,
       Email: lead.email,
@@ -188,6 +217,35 @@ export async function sendLeadNotification(lead: {
       'Investment Strategy': lead.strategy,
       'Purchase Price': lead.purchasePrice ? `$${lead.purchasePrice.toLocaleString()}` : undefined,
       Source: lead.source,
+    },
+  });
+}
+
+/**
+ * New account created — every path, including the silent enrolments that lead
+ * capture and event ticketing trigger. Those used to notify nobody at all.
+ */
+export async function sendNewAccountNotification(account: {
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  /** How the account came to exist, e.g. "signup", "google_oauth", "lead_enrol". */
+  source: string;
+  /** Present when the account was created off the back of a lead. */
+  leadSource?: string | null;
+}) {
+  const name = `${account.firstName || ''} ${account.lastName || ''}`.trim() || account.email;
+  return sendFormNotification({
+    formType: 'new_account',
+    subject: `New Realist account: ${name}`,
+    recipients: getLeadNotifyEmails(),
+    data: {
+      Name: name,
+      Email: account.email,
+      Phone: account.phone || undefined,
+      'Created Via': account.source,
+      'Lead Source': account.leadSource || undefined,
     },
   });
 }

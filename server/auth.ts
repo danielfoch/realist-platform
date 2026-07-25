@@ -12,7 +12,7 @@ import { backlinkUserRecords } from "./personSpine";
 import { sendVerificationSMS, isValidPhoneNumber, normalizePhoneNumber } from "./twilio";
 import { sendWelcomeAccountEmail, sendLoginLinkEmail, sendPasswordResetEmail } from "./resend";
 import { appendLead } from "./leadsSheet";
-import { pushContactToGHL } from "./ghl-service";
+import { announceNewAccount } from "./accountAnnounce";
 import {
   SETUP_LINK_TTL_MS,
   evaluateLoginLinkRequest,
@@ -396,15 +396,15 @@ export function registerAuthRoutes(app: Express): void {
         console.error("[ghl-signup] webhook error:", err.message)
       );
 
-      // Direct GHL API push (background, non-blocking)
-      pushContactToGHL({
-        firstName: newUser.firstName || '',
-        lastName: newUser.lastName || '',
+      // CRM push + team notification. Signup used to push to GHL and email
+      // nobody; announceNewAccount does both so no path can pick up half.
+      announceNewAccount({
         email: newUser.email,
-        phone: newUser.phone || '',
-        tags: ['realist.ca', 'investor', 'signup', `signup-${new Date().toISOString().slice(0, 7)}`],
-        source: 'investor_signup',
-      }).catch(err => console.error("[GHL] Direct signup push failed:", err));
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        phone: newUser.phone,
+        source: "signup",
+      });
     } catch (error: any) {
       console.error("Signup error:", error);
       if (error.name === "ZodError") {
@@ -709,6 +709,16 @@ export function registerAuthRoutes(app: Express): void {
       // rows with this email (the enrolling lead row included).
       await backlinkUserRecords(newUser.id, newUser.email);
 
+      // Phone off the request body, not newUser: the insert above only sets
+      // email/first/last, so newUser.phone is always null here.
+      announceNewAccount({
+        email: newUser.email,
+        firstName: newUser.firstName || firstName,
+        lastName: newUser.lastName || lastName,
+        phone: typeof (req.body as any).phone === "string" ? (req.body as any).phone : null,
+        source: "lead_enrol",
+      });
+
       const rawToken = crypto.randomBytes(32).toString("hex");
       const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
       const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
@@ -728,15 +738,8 @@ export function registerAuthRoutes(app: Express): void {
 
       const backfilled = await backfillAnalysesForSession(newUser.id, sessionId);
 
-      // Direct GHL API push (background, non-blocking)
-      pushContactToGHL({
-        firstName: newUser.firstName || firstName || '',
-        lastName: newUser.lastName || lastName || '',
-        email: newUser.email,
-        phone: (req.body as any).phone || '',
-        tags: ['realist.ca', 'investor', 'lead_enroll'],
-        source: 'investor_lead_enroll',
-      }).catch(err => console.error("[GHL] Direct lead-enroll push failed:", err));
+      // GHL push is handled by the announceNewAccount call above — a second
+      // direct push here would duplicate the contact.
 
       res.json({
         user: { id: newUser.id, email: newUser.email, firstName: newUser.firstName, lastName: newUser.lastName },
@@ -1129,6 +1132,14 @@ export function registerAuthRoutes(app: Express): void {
       // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts
       // rows with this email. Best-effort, never fails the OAuth flow.
       await backlinkUserRecords(newUser.id, newUser.email);
+
+      announceNewAccount({
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        phone: newUser.phone,
+        source: "google_oauth",
+      });
 
       // Create OAuth account link
       await storage.createUserOAuthAccount({

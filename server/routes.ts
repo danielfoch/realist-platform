@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { google } from "googleapis";
 import { appendLead } from "./leadsSheet";
 import { pushInvestorLeadToGHL } from "./ghl-service";
+import { announceNewAccount } from "./accountAnnounce";
 import { storage } from "./storage";
 import { type LeadIntent } from "./referralRoutingPolicy";
 import { captureDealLead, partnerBaseUrl, recordDealIntent, routeLeadToPartnerClaims } from "./dealIntent";
@@ -612,6 +613,17 @@ async function autoEnrollLeadAsUser(params: {
   // with this email (including the lead row that triggered this enrollment).
   // Best-effort, never fails the enrollment.
   await backlinkUserRecords(newUser.id, emailLower);
+
+  // This path silently creates an account for every captured lead and used to
+  // push nothing to the CRM and notify nobody — the largest hole in the funnel.
+  announceNewAccount({
+    email: emailLower,
+    firstName: params.firstName,
+    lastName: params.lastName,
+    phone: params.phone,
+    source: "lead_enrol",
+    leadSource: params.leadSource,
+  });
 
   await db.update(passwordResetTokens)
     .set({ usedAt: new Date() })
@@ -2950,6 +2962,16 @@ export async function registerRoutes(
           // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts
           // rows carrying this email to the imported user.
           await backlinkUserRecords(newUser.id, email);
+
+          // CRM yes, team email no: a 500-row import is one deliberate act by
+          // the person who would receive the mail, not 500 revenue events.
+          announceNewAccount({
+            email,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
+            phone: newUser.phone,
+            source: "admin_import",
+          }, { notifyTeam: false });
 
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
