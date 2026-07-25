@@ -40,6 +40,9 @@ import ryanHeadshot from "@assets/image_1781720634648.png";
 import hoomanHeadshot from "@assets/Hooman_1783450593275.png";
 import benHeadshot from "@assets/Ben_Singer_1783452380339.jpg";
 import brandonHeadshot from "@assets/Brandon_Sage_-_Headshot_1784568961891.png";
+import danielHeadshot from "@assets/image_1784990099119.png";
+import nickHeadshot from "@assets/image_1784989996852.png";
+import sabrinaHeadshot from "@assets/image_1784989970115.png";
 
 const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
 // Meta Pixel scoped to this event page only (loaded in a useEffect below).
@@ -112,25 +115,25 @@ const highlights = [
 
 const MODERATORS: RealistEventSpeaker[] = [
   {
-    name: "Sabrina Maddeaux",
-    company: "Guest Moderator",
-    title: "Journalist & Housing Commentator",
-    bio: "National housing columnist and political commentator known for sharp analysis of Canada's housing crisis and policy landscape.",
-    imageUrl: null,
-  },
-  {
     name: "Daniel Foch",
     company: "Realist.ca",
     title: "Host & Moderator",
-    bio: "Real estate investor, analyst, and founder of Realist.ca. Host of The Canadian Real Estate Investor Podcast.",
-    imageUrl: "https://thedividendguyblog.com/wp-content/themes/leia-en/imagenes/2025/06/5602983c-dea5-40c9-b88e-2635b6e9c33d.png",
+    bio: null,
+    imageUrl: danielHeadshot,
   },
   {
     name: "Nick Hill",
     company: "BLD Financial",
     title: "Host & Moderator",
-    bio: "Co-founder of BLD Financial and co-host of The Canadian Real Estate Investor Podcast. Specialist in development financing and investor partnerships.",
-    imageUrl: "https://d68-invdn-com.investing.com/company_logo/9977ab06a1fa615ad329b5606b56ac3a.jpg?width=170&height=170",
+    bio: null,
+    imageUrl: nickHeadshot,
+  },
+  {
+    name: "Sabrina Maddeaux",
+    company: "Guest Moderator",
+    title: "Journalist & Housing Commentator",
+    bio: null,
+    imageUrl: sabrinaHeadshot,
   },
 ];
 
@@ -232,13 +235,21 @@ function ModeratorCard({ moderator }: { moderator: RealistEventSpeaker }) {
     .slice(0, 2)
     .toUpperCase();
 
-  const isSabrina = moderator.name === "Sabrina Maddeaux";
-
-  const card = (
+  return (
     <div className="h-full rounded-lg border bg-card p-5 transition-colors hover:border-primary/50">
-      <div className="flex items-start gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-          {initials}
+      <div className="flex items-center gap-4">
+        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-primary/10">
+          {moderator.imageUrl ? (
+            <img
+              src={moderator.imageUrl as string}
+              alt={moderator.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-primary">
+              {initials}
+            </div>
+          )}
         </div>
         <div>
           <h3 className="font-semibold">{moderator.name}</h3>
@@ -247,26 +258,10 @@ function ModeratorCard({ moderator }: { moderator: RealistEventSpeaker }) {
               {[moderator.title, moderator.company].filter(Boolean).join(", ")}
             </p>
           )}
-          {moderator.bio && <p className="mt-3 text-sm leading-6 text-muted-foreground">{moderator.bio}</p>}
-          {isSabrina && (
-            <a
-              href="https://x.com/SabrinaMaddeaux"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-            >
-              Follow on X
-              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-              </svg>
-            </a>
-          )}
         </div>
       </div>
     </div>
   );
-
-  return card;
 }
 
 const faqs = [
