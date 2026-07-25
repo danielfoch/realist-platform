@@ -213,6 +213,7 @@ const SPONSORS = [
     alt: "Platform Insurance",
     url: "https://www.platforminsurance.com/",
   },
+  { src: "/partners/landlord.png", alt: "LandLord", url: "https://landlord.net/" },
 ];
 
 const AGENDA = [
