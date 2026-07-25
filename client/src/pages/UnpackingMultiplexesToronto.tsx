@@ -206,7 +206,7 @@ const SPEAKERS: RealistEventSpeaker[] = [
 const SPONSORS = [
   { src: "/partners/cmhc.png", alt: "CMHC", url: "https://www.cmhc-schl.gc.ca/" },
   { src: "/partners/bld-financial.png", alt: "BLD Financial", url: "https://www.bldfinancial.ca/" },
-  { src: "/partners/reside-properties.png", alt: "Reside Properties", url: "https://www.resideproperties.ca/" },
+  { src: "https://www.resideproperties.ca/assets/logo.svg", alt: "Reside Properties", url: "https://www.resideproperties.ca/" },
   { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio", url: "https://www.noamhazan.com/" },
   { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT", url: "https://www.alliancereit.com/" },
   { src: "/partners/sr-law.jpg", alt: "SR Law", url: "https://www.srlaw.ca/" },
