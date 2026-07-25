@@ -4,6 +4,8 @@ import crypto from "crypto";
 import { google } from "googleapis";
 import { appendLead } from "./leadsSheet";
 import { pushInvestorLeadToGHL } from "./ghl-service";
+import { announceNewAccount } from "./accountAnnounce";
+import { requireVerified } from "./accountVerification";
 import { storage } from "./storage";
 import { type LeadIntent } from "./referralRoutingPolicy";
 import { captureDealLead, partnerBaseUrl, recordDealIntent, routeLeadToPartnerClaims } from "./dealIntent";
@@ -612,6 +614,17 @@ async function autoEnrollLeadAsUser(params: {
   // with this email (including the lead row that triggered this enrollment).
   // Best-effort, never fails the enrollment.
   await backlinkUserRecords(newUser.id, emailLower);
+
+  // This path silently creates an account for every captured lead and used to
+  // push nothing to the CRM and notify nobody — the largest hole in the funnel.
+  announceNewAccount({
+    email: emailLower,
+    firstName: params.firstName,
+    lastName: params.lastName,
+    phone: params.phone,
+    source: "lead_enrol",
+    leadSource: params.leadSource,
+  });
 
   await db.update(passwordResetTokens)
     .set({ usedAt: new Date() })
@@ -2951,6 +2964,16 @@ export async function registerRoutes(
           // rows carrying this email to the imported user.
           await backlinkUserRecords(newUser.id, email);
 
+          // CRM yes, team email no: a 500-row import is one deliberate act by
+          // the person who would receive the mail, not 500 revenue events.
+          announceNewAccount({
+            email,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
+            phone: newUser.phone,
+            source: "admin_import",
+          }, { notifyTeam: false });
+
           const rawToken = crypto.randomBytes(32).toString("hex");
           const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
           const expiresAt = new Date(Date.now() + SETUP_LINK_TTL_MS);
@@ -3633,7 +3656,11 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/analyses", async (req, res) => {
+  // Gated: this writes into the analysis dataset and feeds leaderboard
+  // eligibility. Discovery (/api/find-deals) and lead capture (/api/leads,
+  // /api/deal-desk/submit) stay open — gating those would block the funnel
+  // rather than protect the data.
+  app.post("/api/analyses", requireVerified, async (req, res) => {
     try {
       const { countryMode, strategyType, inputsJson, resultsJson, address, city, province, sessionId } = req.body;
       if (!countryMode || !strategyType || !inputsJson) {

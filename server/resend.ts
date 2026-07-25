@@ -53,6 +53,31 @@ function getNotifyEmails(): string[] {
   return emails;
 }
 
+/**
+ * Recipients for revenue events only: a new lead or a new account.
+ *
+ * Deliberately NOT getNotifyEmails(). That list also carries podcast questions,
+ * reno quotes, event host enquiries and expert applications — piping those to a
+ * mortgage broker would be noise he never asked for. It also returns [] when
+ * neither env var is set, which is why lead notifications have been silently
+ * going nowhere.
+ *
+ * Defaults are in code rather than env-only so this works on deploy without a
+ * config step; LEAD_NOTIFY_EMAILS overrides (comma-separated) when the list
+ * changes.
+ */
+export function getLeadNotifyEmails(): string[] {
+  const configured = process.env.LEAD_NOTIFY_EMAILS;
+  if (configured) {
+    const parsed = configured
+      .split(",")
+      .map(e => e.trim())
+      .filter(e => e.includes("@"));
+    if (parsed.length) return parsed;
+  }
+  return ["danielfoch@gmail.com", "nick@bldfinancial.ca"];
+}
+
 // Email header template
 function emailHeader(title: string, subtitle: string) {
   return `
@@ -87,13 +112,15 @@ function formatRow(label: string, value: string | number | undefined | null) {
 
 // Send form notification with CC support
 export async function sendFormNotification(params: {
-  formType: 'lead' | 'podcast_question' | 'reno_quote' | 'contact_host' | 'expert_application' | 'market_expert_apply' | 'coaching_waitlist';
+  formType: 'lead' | 'new_account' | 'podcast_question' | 'reno_quote' | 'contact_host' | 'expert_application' | 'market_expert_apply' | 'coaching_waitlist';
   subject: string;
   data: Record<string, any>;
+  /** Overrides getNotifyEmails() — used by the lead/account revenue events. */
+  recipients?: string[];
 }) {
   const { client, fromEmail } = await getResendClient();
-  const recipients = getNotifyEmails();
-  
+  const recipients = params.recipients?.length ? params.recipients : getNotifyEmails();
+
   if (recipients.length === 0) {
     console.log('No notification emails configured, skipping email send');
     return null;
@@ -101,6 +128,7 @@ export async function sendFormNotification(params: {
 
   const formTypeLabels: Record<string, { title: string; subtitle: string }> = {
     lead: { title: 'New Lead Submission', subtitle: 'Deal Analyzer Lead Capture' },
+    new_account: { title: 'New Account Created', subtitle: 'Realist.ca Registration' },
     podcast_question: { title: 'New Podcast Question', subtitle: 'The Canadian Real Estate Investor Podcast' },
     reno_quote: { title: 'New Renovation Quote Request', subtitle: 'Renovation Calculator Submission' },
     contact_host: { title: 'Event Host Contact Request', subtitle: 'Meetup Event Inquiry' },
@@ -180,6 +208,7 @@ export async function sendLeadNotification(lead: {
   return sendFormNotification({
     formType: 'lead',
     subject: `New Lead: ${lead.name} - ${lead.address || 'Deal Analyzer'}`,
+    recipients: getLeadNotifyEmails(),
     data: {
       Name: lead.name,
       Email: lead.email,
@@ -188,6 +217,35 @@ export async function sendLeadNotification(lead: {
       'Investment Strategy': lead.strategy,
       'Purchase Price': lead.purchasePrice ? `$${lead.purchasePrice.toLocaleString()}` : undefined,
       Source: lead.source,
+    },
+  });
+}
+
+/**
+ * New account created — every path, including the silent enrolments that lead
+ * capture and event ticketing trigger. Those used to notify nobody at all.
+ */
+export async function sendNewAccountNotification(account: {
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  /** How the account came to exist, e.g. "signup", "google_oauth", "lead_enrol". */
+  source: string;
+  /** Present when the account was created off the back of a lead. */
+  leadSource?: string | null;
+}) {
+  const name = `${account.firstName || ''} ${account.lastName || ''}`.trim() || account.email;
+  return sendFormNotification({
+    formType: 'new_account',
+    subject: `New Realist account: ${name}`,
+    recipients: getLeadNotifyEmails(),
+    data: {
+      Name: name,
+      Email: account.email,
+      Phone: account.phone || undefined,
+      'Created Via': account.source,
+      'Lead Source': account.leadSource || undefined,
     },
   });
 }
@@ -895,6 +953,68 @@ export async function sendWelcomeAccountEmail(params: {
  * Magic sign-in link. Transactional auth email (consent-exempt): only ever
  * sent in direct response to a sign-in request for an existing account.
  */
+export async function sendEmailVerificationEmail(params: {
+  toEmail: string;
+  firstName: string;
+  verifyLink: string;
+}) {
+  try {
+    const { client, fromEmail } = await getResendClient();
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${emailHeader('Confirm your email', 'One click and your Realist tools are unlocked')}
+
+        <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="color: #111827; font-size: 16px; margin: 0 0 16px 0;">
+            Hi ${params.firstName || 'there'},
+          </p>
+
+          <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
+            Confirm this address to unlock the deal analyzer, the multiplex underwriter,
+            and saved deals. You can keep browsing without it — this just switches the tools on.
+          </p>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${params.verifyLink}" style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+              Confirm my email
+            </a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0 0 8px 0;">
+            This link works once and expires in 24 hours.
+          </p>
+
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 20px;">
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              If you didn't create a Realist.ca account, you can safely ignore this email.
+            </p>
+          </div>
+        </div>
+
+        ${emailFooter()}
+      </div>
+    `;
+
+    const { data: emailData, error } = await client.emails.send({
+      from: fromEmail,
+      to: [params.toEmail],
+      subject: 'Confirm your Realist.ca email',
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send email verification:', error);
+      throw error;
+    }
+    console.log(`Email verification sent to: ${params.toEmail}`);
+    return emailData;
+  } catch (err) {
+    console.error('sendEmailVerificationEmail error:', err);
+    throw err;
+  }
+}
+
 export async function sendLoginLinkEmail(params: {
   toEmail: string;
   firstName: string;

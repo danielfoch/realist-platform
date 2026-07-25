@@ -30,7 +30,7 @@
 import type { Request } from "express";
 import { and, eq, gte, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
-import { opportunities, users, userActivityEvents } from "@shared/schema";
+import { multiplexUnderwritings, opportunities, users, userActivityEvents } from "@shared/schema";
 import { storage } from "./storage";
 import { logUserActivity } from "./userActivity";
 import { scoreLeadInput, selectEmailTriggers, type ScoringInput } from "@shared/leadScoring";
@@ -464,6 +464,23 @@ export async function captureDealLead(
   // silent must not mean invisible. Those are OUR leads, so the team gets the
   // alert the partner network would otherwise have sent. Without this, every
   // Toronto multiplex underwrite lands in the database and notifies nobody.
+  // CRM push on every capture, regardless of routing lane or alert throttle —
+  // the throttle exists to protect a human inbox, not to skip the CRM.
+  try {
+    const { pushInvestorLeadToGHL } = await import("./ghl-service");
+    pushInvestorLeadToGHL(
+      lead.email,
+      lead.phone,
+      lead.name,
+      meta.leadSource,
+      signal.city ?? null,
+      signal.region ?? null,
+      signal.strategyType ?? undefined,
+    ).catch(err => console.error("[deal-intent] GHL lead push failed:", err?.message ?? err));
+  } catch (err) {
+    console.error("[deal-intent] GHL module load failed:", err);
+  }
+
   if (routing.notified === 0 && (await shouldAlertTeam(lead.id, score.status))) {
     try {
       const { sendLeadNotification } = await import("./resend");
@@ -550,13 +567,15 @@ export async function claimAnonymousIntent(
   }
 
   try {
-    // Raw SQL: multiplex_underwritings is managed by
-    // ensureMultiplexTables (server/multiplexUnderwriter.ts), not drizzle.
-    const result = await db.execute(sql`
-      UPDATE multiplex_underwritings
-      SET user_id = ${userId}
-      WHERE session_id = ${sessionId} AND user_id IS NULL
-    `);
+    const result = await db
+      .update(multiplexUnderwritings)
+      .set({ userId })
+      .where(
+        and(
+          eq(multiplexUnderwritings.sessionId, sessionId),
+          isNull(multiplexUnderwritings.userId),
+        ),
+      );
     underwritings = result.rowCount ?? 0;
   } catch (err) {
     console.error("[deal-intent] multiplex underwriting backfill failed:", err);

@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, unique, uniqueIndex, index, foreignKey, primaryKey, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, doublePrecision, bigint, numeric, unique, uniqueIndex, index, foreignKey, primaryKey, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { ReportContent } from "./reportContent";
@@ -4790,6 +4790,83 @@ export const appSettings = pgTable("app_settings", {
   value: text("value").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// ─── Multiplex underwriter ───────────────────────────────────────────────────
+// These two were created by raw `CREATE TABLE IF NOT EXISTS` at boot
+// (ensureMultiplexTables in server/multiplexUnderwriter.ts), which left the
+// platform's most valuable dataset outside drizzle: untyped, absent from
+// db:push, no FK to users, and invisible to every aggregate. Declared here so
+// push owns the shape and the rollups below can be built on typed columns.
+// Column types match the live tables exactly — this is a takeover, not a
+// reshape, so push has nothing to alter beyond adding the FK and indexes.
+
+export const multiplexAssumptions = pgTable("multiplex_assumptions", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  label: text("label").notNull(),
+  unit: text("unit"),
+  source: text("source").notNull(),
+  lastVerified: text("last_verified"),
+  updatedBy: varchar("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const multiplexUnderwritings = pgTable("multiplex_underwritings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // The FK the raw DDL never had. set null so deleting a user keeps the
+  // underwriting for the market rollups — the row's analytical value does not
+  // depend on who ran it. Orphaned user_ids must be nulled before push adds
+  // this constraint: scripts/prepare-multiplex-migration.ts does that.
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  sessionId: varchar("session_id"),
+  address: text("address").notNull(),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
+  postalFsa: varchar("postal_fsa", { length: 3 }),
+  inputsJson: jsonb("inputs_json").notNull(),
+  siteJson: jsonb("site_json").notNull(),
+  resultJson: jsonb("result_json"),
+  shareToken: varchar("share_token").unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("multiplex_underwritings_user_idx").on(table.userId, table.createdAt),
+  // Serves the FSA rollup rebuild, which groups by (postal_fsa, month).
+  index("idx_multiplex_uw_fsa_created").on(table.postalFsa, table.createdAt),
+  // Serves claimAnonymousIntent (server/dealIntent.ts) adopting a session.
+  index("idx_multiplex_uw_session").on(table.sessionId),
+]);
+
+/**
+ * What investors are actually underwriting, per FSA per month.
+ *
+ * This is the compounding asset: nothing else on the market knows the median
+ * price an investor is testing on a Danforth fourplex, or how often the
+ * sixplex-eligible answer comes back yes. Rebuilt from multiplex_underwritings
+ * rather than accumulated incrementally, so a corrected underwrite or a changed
+ * assumption set is reflected on the next rebuild instead of being baked in.
+ */
+export const multiplexMarketRollups = pgTable("multiplex_market_rollups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  postalFsa: varchar("postal_fsa", { length: 3 }).notNull(),
+  /** First day of the month this bucket covers (UTC). */
+  periodMonth: timestamp("period_month").notNull(),
+  underwriteCount: integer("underwrite_count").default(0).notNull(),
+  /** Distinct identified users; anonymous sessions are excluded. */
+  distinctUserCount: integer("distinct_user_count").default(0).notNull(),
+  medianPurchasePrice: real("median_purchase_price"),
+  medianMaxUnits: real("median_max_units"),
+  /** 0–1 share of underwrites whose site came back sixplex-eligible. */
+  sixplexEligibleRate: real("sixplex_eligible_rate"),
+  /** 0–1 share whose recommended takeout was the MLI Select hold. */
+  holdPreferenceRate: real("hold_preference_rate"),
+  medianYieldOnCost: real("median_yield_on_cost"),
+  rebuiltAt: timestamp("rebuilt_at").defaultNow().notNull(),
+}, (table) => [
+  unique("uq_multiplex_rollup_fsa_month").on(table.postalFsa, table.periodMonth),
+  index("idx_multiplex_rollup_month").on(table.periodMonth),
+]);
+
+export type MultiplexMarketRollup = typeof multiplexMarketRollups.$inferSelect;
 
 /**
  * Durable per-day usage counters for the free-tier tool caps.
