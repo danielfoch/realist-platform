@@ -608,7 +608,7 @@ export default function UnpackingMultiplexesToronto() {
                   <img
                     src={sponsor.src}
                     alt={sponsor.alt}
-                    className="h-12 w-auto max-w-[140px] object-contain opacity-80 transition-opacity duration-300 group-hover:opacity-100"
+                    className="h-12 w-auto max-w-[140px] object-contain grayscale opacity-70 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100"
                   />
                 </Link>
               ) : (
@@ -623,7 +623,7 @@ export default function UnpackingMultiplexesToronto() {
                   <img
                     src={sponsor.src}
                     alt={sponsor.alt}
-                    className="h-12 w-auto max-w-[140px] object-contain opacity-80 transition-opacity duration-300 group-hover:opacity-100"
+                    className="h-12 w-auto max-w-[140px] object-contain grayscale opacity-70 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100"
                   />
                 </a>
               )
