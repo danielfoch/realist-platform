@@ -236,30 +236,26 @@ function ModeratorCard({ moderator }: { moderator: RealistEventSpeaker }) {
     .toUpperCase();
 
   return (
-    <div className="h-full rounded-lg border bg-card p-5 transition-colors hover:border-primary/50">
-      <div className="flex items-center gap-4">
-        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-primary/10">
-          {moderator.imageUrl ? (
-            <img
-              src={moderator.imageUrl as string}
-              alt={moderator.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-primary">
-              {initials}
-            </div>
-          )}
-        </div>
-        <div>
-          <h3 className="font-semibold">{moderator.name}</h3>
-          {(moderator.title || moderator.company) && (
-            <p className="text-sm text-muted-foreground">
-              {[moderator.title, moderator.company].filter(Boolean).join(", ")}
-            </p>
-          )}
-        </div>
+    <div className="h-full rounded-lg border bg-card p-5 transition-colors hover:border-primary/50 flex flex-col items-center text-center">
+      <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full bg-primary/10 mb-4">
+        {moderator.imageUrl ? (
+          <img
+            src={moderator.imageUrl as string}
+            alt={moderator.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-primary">
+            {initials}
+          </div>
+        )}
       </div>
+      <h3 className="font-semibold">{moderator.name}</h3>
+      {(moderator.title || moderator.company) && (
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {[moderator.title, moderator.company].filter(Boolean).join(", ")}
+        </p>
+      )}
     </div>
   );
 }
