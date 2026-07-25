@@ -23,6 +23,8 @@ import { db } from "./db";
 import { isAdmin } from "./auth";
 import { users } from "@shared/models/auth";
 import { resolveSite, type ResolvedSite } from "./torontoGeo";
+import { captureDealLead, recordDealIntent, type DealIntentSignal } from "./dealIntent";
+import { consumeDailyUsage } from "./usageLimits";
 import { resolveWard } from "./enrichment";
 import { computeMultiplexFeasibility, TORONTO_SIXPLEX_WARDS } from "./multiplexFeasibility";
 import {
@@ -521,24 +523,12 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   };
 }
 
-// ─── Rate limiting (in-memory, per day) ──────────────────────────────────────
+// ─── Rate limiting (durable, per day) ────────────────────────────────────────
 
-const usage = new Map<string, { day: string; count: number }>();
+/** Hitting this is the platform's main reason to create an account. */
+const UNDERWRITE_LIMITS = { anonymous: 3, identified: 20 };
 
-function checkRateLimit(req: Request): { ok: boolean; limit: number } {
-  const userId = (req as any).session?.userId as string | undefined;
-  const key = userId || (req as any).sessionID || req.ip || "anon";
-  const limit = userId ? 20 : 3;
-  const day = new Date().toISOString().slice(0, 10);
-  const entry = usage.get(key);
-  if (!entry || entry.day !== day) {
-    usage.set(key, { day, count: 1 });
-    return { ok: true, limit };
-  }
-  if (entry.count >= limit) return { ok: false, limit };
-  entry.count++;
-  return { ok: true, limit };
-}
+const UNDERWRITE_SCOPE = "multiplex_underwrite";
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
@@ -549,6 +539,8 @@ export async function executeMultiplexUnderwriter(input: UnderwriteRequest, opts
   userId?: string | null;
   sessionId?: string | null;
   persist?: boolean;
+  /** Passed through to the intent capture for IP/user-agent attribution. */
+  req?: Request | null;
 } = {}) {
   const workingInput = { ...input };
   const site = await resolveSite(
@@ -602,7 +594,88 @@ export async function executeMultiplexUnderwriter(input: UnderwriteRequest, opts
     RETURNING id
   `);
   const id = (inserted.rows[0] as { id: string }).id;
+
+  // Feed the intent engine. This is the highest-intent act on the platform — a
+  // confirmed-dimension underwrite on a real address — so it must not dead-end
+  // in this table the way it used to. recordDealIntent is anonymous-safe and
+  // never throws; captureDealLead only runs once we actually know who this is.
+  const intentSignal = buildIntentSignal(workingInput, result, id, opts);
+  await recordDealIntent(opts.req ?? null, intentSignal);
+
+  if (opts.userId) {
+    try {
+      const [account] = await db
+        .select({ email: users.email, firstName: users.firstName, lastName: users.lastName, phone: users.phone })
+        .from(users)
+        .where(eq(users.id, opts.userId))
+        .limit(1);
+      if (account?.email) {
+        await captureDealLead(
+          opts.req ?? null,
+          intentSignal,
+          {
+            name: `${account.firstName || ""} ${account.lastName || ""}`.trim() || account.email,
+            email: account.email,
+            phone: account.phone ?? null,
+            // A signed-in account already carries its own consent state; the
+            // underwrite is not itself a consent event, so nothing is asserted
+            // here. The email governor is the gate on what actually sends.
+            consentEmail: false,
+            consentSms: false,
+          },
+          { intent: workingInput.goal === "hold" ? "financing" : "purchase" },
+        );
+      }
+    } catch (err) {
+      console.error("[multiplex] lead capture failed (underwrite still returned):", err);
+    }
+  }
+
   return { status: "complete" as const, id, shareToken, site, underwrite: result, disclaimer: DISCLAIMER };
+}
+
+/**
+ * Map an underwrite into the shared intent signal. City/region are hardcoded
+ * because the whole pipeline is Toronto-only (server/torontoGeo.ts) — that also
+ * means getLeadRoutingChannel puts these in the "valery" lane by design.
+ */
+function buildIntentSignal(
+  input: UnderwriteRequest,
+  result: Awaited<ReturnType<typeof runUnderwrite>>,
+  underwritingId: string,
+  opts: { userId?: string | null; sessionId?: string | null },
+): DealIntentSignal {
+  const recommendedKey = result.winner.hold ?? result.winner.flip;
+  const recommended = result.configs.find((c) => c.config.key === recommendedKey);
+  return {
+    surface: "multiplex_underwriter",
+    eventName: "underwriting_completed",
+    userId: opts.userId ?? null,
+    sessionId: opts.sessionId ?? null,
+    address: input.address,
+    city: "Toronto",
+    region: "Ontario",
+    propertyType: "multiplex",
+    strategyType: input.goal === "hold" ? "buy_and_hold" : "flip",
+    purchasePrice: input.purchasePrice ?? null,
+    // Monthly, to match opportunities.estimated_rent everywhere else. Summed
+    // from the rent roll rather than dividing the annual GPR, so vacancy and
+    // other-income adjustments upstream cannot skew it.
+    estimatedRent: recommended
+      ? recommended.rentalHold.monthlyRentRoll.reduce((sum, r) => sum + r.count * r.rentEach, 0)
+      : null,
+    underwritingId,
+    metadata: {
+      maxUnitsAsOfRight: result.maxUnitsAsOfRight,
+      sixplexEligible: result.sixplex.eligible,
+      sixplexCertainty: result.sixplex.certainty,
+      recommendedConfig: recommendedKey,
+      recommendedExit: recommended?.comparison?.recommendedExit ?? null,
+      takeoutDecision: result.recommendedTakeout?.takeout ?? null,
+      lotAreaSqft: input.lotAreaSqft ?? null,
+      goal: input.goal ?? null,
+    },
+  };
 }
 
 export function registerMultiplexUnderwriterRoutes(app: Express): void {
@@ -647,9 +720,13 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
   // (the UI's confirm step); with dimensions it runs the full pipeline.
   app.post("/api/multiplex-underwriter", async (req: any, res: Response) => {
     try {
-      const rate = checkRateLimit(req);
-      if (!rate.ok) {
-        return res.status(429).json({ error: `Daily underwrite limit reached (${rate.limit}/day). Sign in for a higher limit.` });
+      const rate = await consumeDailyUsage(UNDERWRITE_SCOPE, req, UNDERWRITE_LIMITS);
+      if (!rate.allowed) {
+        return res.status(429).json({
+          error: `Daily underwrite limit reached (${rate.limit}/day). Sign in for a higher limit.`,
+          limit: rate.limit,
+          remaining: 0,
+        });
       }
 
       const parsed = underwriteRequestSchema.safeParse(req.body);
@@ -659,6 +736,7 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
       res.json(await executeMultiplexUnderwriter(parsed.data, {
         userId: req.session?.userId ?? null,
         sessionId: req.sessionID ?? null,
+        req,
       }));
     } catch (err: any) {
       console.error("[multiplex] underwrite failed:", err);

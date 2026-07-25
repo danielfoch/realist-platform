@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, unique, uniqueIndex, index, foreignKey, customType } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, bigint, numeric, unique, uniqueIndex, index, foreignKey, primaryKey, customType } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { ReportContent } from "./reportContent";
@@ -4434,7 +4434,18 @@ export const opportunities = pgTable("opportunities", {
   firstContactedAt: timestamp("first_contacted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  // Serves the hot-lead SLA sweep (runSlaBreachSweep in server/routes/dealDesk.ts),
+  // which now runs every 5 minutes instead of only when an admin pressed a
+  // button. Partial on the uncontacted rows because that is the only set the
+  // sweep ever looks at, and it stays small as leads get worked.
+  index("idx_opportunities_sla_open")
+    .on(table.intentScore, table.status, table.createdAt)
+    .where(sql`${table.firstContactedAt} IS NULL`),
+  // Serves the per-lead team-alert throttle (shouldAlertTeam in
+  // server/dealIntent.ts), which counts recent opportunities for one lead.
+  index("idx_opportunities_lead_created").on(table.leadId, table.createdAt),
+]);
 
 export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
   id: true,
@@ -4779,6 +4790,30 @@ export const appSettings = pgTable("app_settings", {
   value: text("value").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+/**
+ * Durable per-day usage counters for the free-tier tool caps.
+ *
+ * The multiplex underwriter's cap (3/day anonymous, 20/day signed in) lived in a
+ * process-local Map, so every Replit restart handed everyone a fresh allowance —
+ * which made the cap leaky in exactly the place it matters, since hitting it is
+ * the platform's only signup incentive. Keyed by (scope, key, day) so a row is
+ * one bucket; `day` is a YYYY-MM-DD string in UTC to match how the old counter
+ * bucketed and to keep the key human-readable in psql.
+ */
+export const usageCounters = pgTable("usage_counters", {
+  /** Which cap this counts, e.g. "multiplex_underwrite". */
+  scope: varchar("scope", { length: 64 }).notNull(),
+  /** userId when known, else session id, else hashed IP. */
+  key: varchar("key", { length: 128 }).notNull(),
+  day: varchar("day", { length: 10 }).notNull(),
+  count: integer("count").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.scope, table.key, table.day] }),
+  // Serves the retention sweep that drops buckets for elapsed days.
+  index("idx_usage_counters_day").on(table.day),
+]);
 export type AppSetting = typeof appSettings.$inferSelect;
 
 // ============================================================================
