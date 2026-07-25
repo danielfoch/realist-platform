@@ -24,6 +24,7 @@ import { isAdmin } from "./auth";
 import { users } from "@shared/models/auth";
 import { resolveSite, type ResolvedSite } from "./torontoGeo";
 import { captureDealLead, recordDealIntent, type DealIntentSignal } from "./dealIntent";
+import { consumeDailyUsage } from "./usageLimits";
 import { resolveWard } from "./enrichment";
 import { computeMultiplexFeasibility, TORONTO_SIXPLEX_WARDS } from "./multiplexFeasibility";
 import {
@@ -522,24 +523,12 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   };
 }
 
-// ─── Rate limiting (in-memory, per day) ──────────────────────────────────────
+// ─── Rate limiting (durable, per day) ────────────────────────────────────────
 
-const usage = new Map<string, { day: string; count: number }>();
+/** Hitting this is the platform's main reason to create an account. */
+const UNDERWRITE_LIMITS = { anonymous: 3, identified: 20 };
 
-function checkRateLimit(req: Request): { ok: boolean; limit: number } {
-  const userId = (req as any).session?.userId as string | undefined;
-  const key = userId || (req as any).sessionID || req.ip || "anon";
-  const limit = userId ? 20 : 3;
-  const day = new Date().toISOString().slice(0, 10);
-  const entry = usage.get(key);
-  if (!entry || entry.day !== day) {
-    usage.set(key, { day, count: 1 });
-    return { ok: true, limit };
-  }
-  if (entry.count >= limit) return { ok: false, limit };
-  entry.count++;
-  return { ok: true, limit };
-}
+const UNDERWRITE_SCOPE = "multiplex_underwrite";
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
@@ -731,9 +720,13 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
   // (the UI's confirm step); with dimensions it runs the full pipeline.
   app.post("/api/multiplex-underwriter", async (req: any, res: Response) => {
     try {
-      const rate = checkRateLimit(req);
-      if (!rate.ok) {
-        return res.status(429).json({ error: `Daily underwrite limit reached (${rate.limit}/day). Sign in for a higher limit.` });
+      const rate = await consumeDailyUsage(UNDERWRITE_SCOPE, req, UNDERWRITE_LIMITS);
+      if (!rate.allowed) {
+        return res.status(429).json({
+          error: `Daily underwrite limit reached (${rate.limit}/day). Sign in for a higher limit.`,
+          limit: rate.limit,
+          remaining: 0,
+        });
       }
 
       const parsed = underwriteRequestSchema.safeParse(req.body);

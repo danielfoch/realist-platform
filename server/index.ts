@@ -729,6 +729,9 @@ async function ensureAppTables() {
         schedulePodcastDigest();
       }).catch((err) => log(`Podcast digest schedule error: ${err.message}`, "podcast-digest"));
       scheduleNightlyTraining();
+      import("./userActivity").then(({ scheduleUserInferenceRebuild }) => {
+        scheduleUserInferenceRebuild();
+      }).catch((err) => log(`User inference rebuild schedule error: ${err.message}`, "intelligence"));
       if (!process.env.ANTHROPIC_API_KEY) {
         log("⚠️  ANTHROPIC_API_KEY is not set — Multiplex Underwriter narratives fall back to templates and Ask Realist (/api/ask) is DISABLED. Users are seeing zero live AI.", "startup");
       }
@@ -782,9 +785,49 @@ async function ensureAppTables() {
         } catch (err: any) {
           log(`Watchlist sweep error: ${err.message}`, "watchlists");
         }
+        // Behavioural nurture triggers (saved-but-not-submitted, abandoned
+        // underwrite, financing tinkering). Scans 24h–14d windows, so hourly is
+        // the right cadence. Was previously only reachable by an admin manually
+        // POSTing /api/deal-desk/sweep, which meant it effectively never ran.
+        try {
+          const { runBehaviouralTriggerSweep } = await import("./routes/dealDesk");
+          const behavioural = await runBehaviouralTriggerSweep();
+          if (behavioural.queued) {
+            log(`Behavioural trigger sweep queued ${behavioural.queued} trigger(s)`, "deal-desk");
+          }
+        } catch (err: any) {
+          log(`Behavioural trigger sweep error: ${err.message}`, "deal-desk");
+        }
+        // Drop elapsed daily usage buckets — one row per caller per day would
+        // otherwise accumulate forever.
+        try {
+          const { pruneUsageCounters } = await import("./usageLimits");
+          const pruned = await pruneUsageCounters();
+          if (pruned) log(`Pruned ${pruned} stale usage counter row(s)`, "usage-limits");
+        } catch (err: any) {
+          log(`Usage counter prune error: ${err.message}`, "usage-limits");
+        }
       };
       runLifecycleJobs();
       setInterval(runLifecycleJobs, 60 * 60 * 1000);
+
+      // Hot-lead SLA policing on its own short cadence. shared/leadScoring.ts
+      // promises "Call within 5 minutes" for hot leads and the SLA nag fires at
+      // 30 — enforcing that on the hourly lifecycle tick would let a breach sit
+      // up to 90 minutes. Cheap, indexed query, so 5 minutes is affordable.
+      const runSlaSweep = async () => {
+        try {
+          const { runSlaBreachSweep } = await import("./routes/dealDesk");
+          const sla = await runSlaBreachSweep();
+          if (sla.breaches) {
+            log(`SLA sweep: ${sla.breaches} uncontacted hot lead(s), ${sla.queued} nag(s) queued`, "deal-desk");
+          }
+        } catch (err: any) {
+          log(`SLA sweep error: ${err.message}`, "deal-desk");
+        }
+      };
+      runSlaSweep();
+      setInterval(runSlaSweep, 5 * 60 * 1000);
     },
   );
 })();

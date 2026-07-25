@@ -168,6 +168,95 @@ export async function submitDealDesk(input: DealDeskSubmitInput, opts: {
   };
 }
 
+/**
+ * Hot-lead SLA check. Cheap and indexed, so it runs on a short cadence — a
+ * 30-minute SLA policed hourly can sit 90 minutes before anyone is nagged.
+ *
+ * Idempotent: queueEmailTrigger dedupes against pending triggers, so repeated
+ * sweeps over the same breach do not pile up emails.
+ */
+export async function runSlaBreachSweep(): Promise<{ breaches: number; queued: number }> {
+  const breaches = await db.select({
+    id: opportunities.id,
+    userId: opportunities.userId,
+    assignedTo: opportunities.assignedTo,
+  }).from(opportunities).where(and(
+    gte(opportunities.intentScore, 80),
+    sql`${opportunities.firstContactedAt} IS NULL`,
+    inArray(opportunities.status, ["new", "hot"]),
+    sql`${opportunities.createdAt} < ${minutesAgo(HOT_SLA_MINUTES)}`,
+  ));
+
+  let queued = 0;
+  for (const b of breaches) {
+    await queueEmailTrigger({
+      userId: b.userId,
+      opportunityId: b.id,
+      triggerType: "sla_breach_nag",
+      payload: { assigned_to: b.assignedTo, opportunity_id: b.id },
+    });
+    queued++;
+  }
+  return { breaches: breaches.length, queued };
+}
+
+/**
+ * Behavioural nurture sweeps — saved-but-never-submitted, abandoned underwrite,
+ * and repeated financing tinkering. These scan 24-hour-to-14-day windows, so
+ * hourly is plenty; there is nothing to gain from re-scanning two weeks of
+ * events every five minutes.
+ */
+export async function runBehaviouralTriggerSweep(): Promise<{ queued: number }> {
+  let queued = 0;
+
+  const savedNoSubmit = await db.execute(sql`
+    SELECT DISTINCT e.user_id FROM user_activity_events e
+    WHERE e.event_name IN ('deal_saved', 'deal_analyzer_saved', 'listing_saved', 'saved_listing', 'underwriting_exported_or_saved')
+      AND e.created_at < ${hoursAgo(48)}
+      AND e.created_at > ${daysAgo(14)}
+      AND e.user_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM user_activity_events s
+        WHERE s.user_id = e.user_id AND s.event_name = 'deal_submitted' AND s.created_at > e.created_at
+      )
+  `);
+  for (const r of savedNoSubmit.rows as Array<{ user_id: string }>) {
+    await queueEmailTrigger({ userId: r.user_id, triggerType: "saved_deal_no_submit" });
+    queued++;
+  }
+
+  const abandoned = await db.execute(sql`
+    SELECT DISTINCT e.user_id FROM user_activity_events e
+    WHERE e.event_name IN ('model_run', 'deal_analyzer_start', 'underwriting_started', 'analysis_started')
+      AND e.created_at < ${hoursAgo(24)}
+      AND e.created_at > ${daysAgo(7)}
+      AND e.user_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM user_activity_events s
+        WHERE s.user_id = e.user_id
+          AND s.event_name IN ('deal_saved', 'deal_analyzer_saved', 'underwriting_exported_or_saved', 'analysis_completed', 'deal_submitted')
+          AND s.created_at > e.created_at
+      )
+  `);
+  for (const r of abandoned.rows as Array<{ user_id: string }>) {
+    await queueEmailTrigger({ userId: r.user_id, triggerType: "abandoned_underwriting" });
+    queued++;
+  }
+
+  const financing = await db.execute(sql`
+    SELECT DISTINCT user_id FROM user_activity_events
+    WHERE event_name IN ('financing_changed', 'financing_assumption_changed')
+      AND created_at > ${daysAgo(7)}
+      AND user_id IS NOT NULL
+  `);
+  for (const r of financing.rows as Array<{ user_id: string }>) {
+    await queueEmailTrigger({ userId: r.user_id, triggerType: "financing_interest" });
+    queued++;
+  }
+
+  return { queued };
+}
+
 export function registerDealDeskRoutes(app: Express) {
   app.post("/api/deal-desk/submit", async (req, res) => {
     try {
@@ -656,74 +745,17 @@ export function registerDealDeskRoutes(app: Express) {
    */
   app.post("/api/deal-desk/sweep", isAdmin, async (_req, res) => {
     try {
-      let created = 0;
-
-      const breaches = await db.select({
-        id: opportunities.id,
-        userId: opportunities.userId,
-        assignedTo: opportunities.assignedTo,
-      }).from(opportunities).where(and(
-        gte(opportunities.intentScore, 80),
-        sql`${opportunities.firstContactedAt} IS NULL`,
-        inArray(opportunities.status, ["new", "hot"]),
-        sql`${opportunities.createdAt} < ${minutesAgo(HOT_SLA_MINUTES)}`,
-      ));
-      for (const b of breaches) {
-        await queueEmailTrigger({
-          userId: b.userId,
-          opportunityId: b.id,
-          triggerType: "sla_breach_nag",
-          payload: { assigned_to: b.assignedTo, opportunity_id: b.id },
-        });
-        created++;
-      }
-
-      const savedNoSubmit = await db.execute(sql`
-        SELECT DISTINCT e.user_id FROM user_activity_events e
-        WHERE e.event_name IN ('deal_saved', 'deal_analyzer_saved', 'listing_saved', 'saved_listing', 'underwriting_exported_or_saved')
-          AND e.created_at < ${hoursAgo(48)}
-          AND e.created_at > ${daysAgo(14)}
-          AND e.user_id IS NOT NULL
-          AND NOT EXISTS (
-            SELECT 1 FROM user_activity_events s
-            WHERE s.user_id = e.user_id AND s.event_name = 'deal_submitted' AND s.created_at > e.created_at
-          )
-      `);
-      for (const r of savedNoSubmit.rows as Array<{ user_id: string }>) {
-        await queueEmailTrigger({ userId: r.user_id, triggerType: "saved_deal_no_submit" });
-        created++;
-      }
-
-      const abandoned = await db.execute(sql`
-        SELECT DISTINCT e.user_id FROM user_activity_events e
-        WHERE e.event_name IN ('model_run', 'deal_analyzer_start', 'underwriting_started', 'analysis_started')
-          AND e.created_at < ${hoursAgo(24)}
-          AND e.created_at > ${daysAgo(7)}
-          AND e.user_id IS NOT NULL
-          AND NOT EXISTS (
-            SELECT 1 FROM user_activity_events s
-            WHERE s.user_id = e.user_id
-              AND s.event_name IN ('deal_saved', 'deal_analyzer_saved', 'underwriting_exported_or_saved', 'analysis_completed', 'deal_submitted')
-              AND s.created_at > e.created_at
-          )
-      `);
-      for (const r of abandoned.rows as Array<{ user_id: string }>) {
-        await queueEmailTrigger({ userId: r.user_id, triggerType: "abandoned_underwriting" });
-        created++;
-      }
-
-      const financing = await db.execute(sql`
-        SELECT DISTINCT user_id FROM user_activity_events
-        WHERE event_name IN ('financing_changed', 'financing_assumption_changed')
-          AND created_at > ${daysAgo(7)}
-          AND user_id IS NOT NULL
-      `);
-      for (const r of financing.rows as Array<{ user_id: string }>) {
-        await queueEmailTrigger({ userId: r.user_id, triggerType: "financing_interest" });
-        created++;
-      }
-
-      res.json({ success: true, data: { triggers_created: created, sla_breaches: breaches.length } });
+      // Both halves also run on their own schedules (server/index.ts); this
+      // endpoint stays as the manual "run it now" for admins.
+      const sla = await runSlaBreachSweep();
+      const behavioural = await runBehaviouralTriggerSweep();
+      res.json({
+        success: true,
+        data: {
+          triggers_created: sla.queued + behavioural.queued,
+          sla_breaches: sla.breaches,
+        },
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       res.status(500).json({ success: false, error: message });
