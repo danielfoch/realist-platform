@@ -5,7 +5,8 @@ import { google } from "googleapis";
 import { appendLead } from "./leadsSheet";
 import { pushInvestorLeadToGHL } from "./ghl-service";
 import { storage } from "./storage";
-import { getLeadRoutingChannel, getPartnerTypesForIntent, shouldNotifyPartnerClaims, type LeadIntent } from "./referralRoutingPolicy";
+import { type LeadIntent } from "./referralRoutingPolicy";
+import { partnerBaseUrl, routeLeadToPartnerClaims } from "./dealIntent";
 import { buildReferralAgreement, getReferralTerms } from "@shared/partnerNetwork";
 
 // Maps the formTag/source value already present on every lead payload to a
@@ -2414,6 +2415,10 @@ export async function registerRoutes(
       // Notify partner claims only for markets outside the Valery service lane.
       // Toronto-drive-zone Ontario leads stay with Valery; other Ontario leads
       // are held for manual review instead of being auto-routed.
+      //
+      // The routing itself now lives in server/dealIntent.ts so the underwriter,
+      // the map and the estimator route identically — this call site keeps the
+      // same fire-and-forget shape it always had.
       if (property.city && property.region) {
         // Financing-intent leads route to the financing side of the network
         // (mortgage brokers + lenders) instead of realtors.
@@ -2421,94 +2426,18 @@ export async function registerRoutes(
           (req.body as any)?.intent === "financing" || inputsData.financingIntent === true
             ? "financing"
             : "purchase";
-        (async () => {
-          try {
-            const routingChannel = getLeadRoutingChannel({
-              city: property.city,
-              region: property.region,
-            });
-            if (!shouldNotifyPartnerClaims({ city: property.city, region: property.region })) {
-              logUserActivity(null, {
-                userId: null,
-                eventName: "lead_routing_policy_applied",
-                source: "partner_network",
-                metadata: {
-                  routingChannel,
-                  leadIntent,
-                  leadId: lead.id,
-                  analysisId: analysis.id,
-                  dealCity: property.city,
-                  dealRegion: property.region,
-                },
-              }).catch(err => console.error("lead_routing_policy_applied event error:", err));
-              return;
-            }
-            const partnerTypes = getPartnerTypesForIntent(leadIntent);
-            const activeClaims = await storage.getActiveClaimsForMarket(property.city!, property.region!, partnerTypes);
-            const baseUrl = process.env.REPLIT_DEV_DOMAIN
-              ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-              : process.env.REPL_SLUG
-                ? `https://${process.env.REPL_SLUG}.replit.app`
-                : "https://realist.ca";
-
-            for (const claim of activeClaims) {
-              await storage.createRealtorLeadNotification({
-                realtorClaimId: claim.id,
-                realtorUserId: claim.userId,
-                leadId: lead.id,
-                propertyId: property.id,
-                analysisId: analysis.id,
-                partnerType: claim.partnerType ?? "realtor",
-                dealAddress: property.formattedAddress,
-                dealCity: property.city,
-                dealRegion: property.region,
-                dealStrategy: analysis.strategyType,
-                status: "new",
-                notifiedAt: new Date(),
-              });
-
-              logUserActivity(null, {
-                userId: claim.userId,
-                eventName: "partner_lead_notified",
-                source: "partner_network",
-                metadata: {
-                  partnerType: claim.partnerType ?? "realtor",
-                  leadIntent,
-                  leadId: lead.id,
-                  analysisId: analysis.id,
-                  dealCity: property.city,
-                  dealRegion: property.region,
-                  dealStrategy: analysis.strategyType,
-                },
-              }).catch(err => console.error("partner_lead_notified event error:", err));
-
-              // Send email alert to the realtor
-              try {
-                const [realtorUser] = await db.select().from(users).where(eq(users.id, claim.userId));
-                if (realtorUser) {
-                  const realtorName = `${realtorUser.firstName || ''} ${realtorUser.lastName || ''}`.trim() || realtorUser.email;
-                  const { sendRealtorLeadAlert } = await import("./resend");
-                  sendRealtorLeadAlert({
-                    realtorEmail: realtorUser.email,
-                    realtorName,
-                    leadName: lead.name,
-                    dealAddress: property.formattedAddress || undefined,
-                    dealCity: property.city || undefined,
-                    dealStrategy: analysis.strategyType,
-                    claimUrl: `${baseUrl}/partner`,
-                  }).catch(err => console.error("Realtor lead alert email error:", err));
-                }
-              } catch (emailErr) {
-                console.error("Realtor alert email lookup error:", emailErr);
-              }
-            }
-            if (activeClaims.length > 0) {
-              console.log(`Notified ${activeClaims.length} partner(s) [${partnerTypes.join(", ")}] for market: ${property.city}, ${property.region}`);
-            }
-          } catch (notifyErr) {
-            console.error("Partner lead notification error:", notifyErr);
-          }
-        })();
+        routeLeadToPartnerClaims({
+          leadId: lead.id,
+          leadName: lead.name,
+          city: property.city,
+          region: property.region,
+          intent: leadIntent,
+          dealAddress: property.formattedAddress,
+          dealStrategy: analysis.strategyType,
+          propertyId: property.id,
+          analysisId: analysis.id,
+          baseUrl: partnerBaseUrl(),
+        }).catch(err => console.error("Partner lead notification error:", err));
       }
 
       let userId: string | null = null;

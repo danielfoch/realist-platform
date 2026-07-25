@@ -143,6 +143,18 @@ async function backfillAnalysesForSession(userId: string, sessionId?: string | n
     WHERE session_id = ${sessionId}
       AND user_id IS NULL
   `);
+
+  // Analyses were never the only anonymous work worth adopting — activity
+  // events (the intent engine's input) and multiplex_underwritings had no
+  // backfill at all, so an anonymous fourplex underwrite stayed orphaned even
+  // after its author created an account. Every auth path already funnels
+  // through this helper, so claiming here covers signup, login, magic link,
+  // OAuth claim-session and lead-enroll in one place. Non-fatal by design:
+  // claimAnonymousIntent swallows its own errors, and the return value stays
+  // the analyses count so existing callers and responses are unchanged.
+  const { claimAnonymousIntent } = await import("./dealIntent");
+  await claimAnonymousIntent(userId, sessionId);
+
   return result.rowCount ?? 0;
 }
 
@@ -455,7 +467,18 @@ export function registerAuthRoutes(app: Express): void {
       if (data.rememberMe) {
         req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
       }
-      
+
+      // Signup already adopted the anonymous session's work; login did not, so
+      // a returning user who underwrote a few deals while logged out lost that
+      // history. Read off the raw body (loginSchema doesn't carry it) and stay
+      // non-fatal — a failed backfill must never block a valid sign-in.
+      const anonymousSessionId = typeof (req.body as any)?.sessionId === "string" ? (req.body as any).sessionId : null;
+      if (anonymousSessionId) {
+        backfillAnalysesForSession(user.id, anonymousSessionId).catch(err =>
+          console.error("[login] session backfill error:", err),
+        );
+      }
+
       res.json({
         id: user.id,
         email: user.email,
