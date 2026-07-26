@@ -55,7 +55,14 @@ vi.mock("./db", () => ({
   },
 }));
 
-const { consumeDailyUsage, peekDailyUsage, pruneUsageCounters, usageKey } = await import("./usageLimits");
+const {
+  consumeDailyUsage,
+  grantDailyUnlock,
+  hasDailyUnlock,
+  peekDailyUsage,
+  pruneUsageCounters,
+  usageKey,
+} = await import("./usageLimits");
 
 const LIMITS = { anonymous: 3, identified: 20 };
 
@@ -171,6 +178,41 @@ describe("peekDailyUsage", () => {
     const decision = await peekDailyUsage("multiplex_underwrite", makeReq({ sessionID: "s" }), LIMITS);
     expect(decision.allowed).toBe(true);
     expect(decision.degraded).toBe(true);
+  });
+});
+
+describe("daily unlock", () => {
+  it("records an unlock under its own scope so it expires with the day", async () => {
+    await grantDailyUnlock("multiplex_underwrite", makeReq({ sessionID: "s" }));
+    const written = state.insertedValues[0];
+    expect(written.scope).toBe("multiplex_underwrite:unlock");
+    expect(written.key).toBe("s:s");
+    expect(written.day).toBe(new Date().toISOString().slice(0, 10));
+  });
+
+  it("reports an unlock once one exists", async () => {
+    state.selectCount = 1;
+    await expect(hasDailyUnlock("multiplex_underwrite", makeReq({ sessionID: "s" }))).resolves.toBe(true);
+  });
+
+  it("reports no unlock when the bucket is empty", async () => {
+    state.selectCount = null;
+    await expect(hasDailyUnlock("multiplex_underwrite", makeReq({ sessionID: "s" }))).resolves.toBe(false);
+  });
+
+  it("fails CLOSED when the lookup errors", async () => {
+    // Opposite of consumeDailyUsage on purpose. Failing open here would hand
+    // every anonymous caller the raised limit on a transient database error;
+    // the cheaper mistake is re-showing a prompt someone already completed.
+    state.selectThrows = true;
+    await expect(hasDailyUnlock("multiplex_underwrite", makeReq({ sessionID: "s" }))).resolves.toBe(false);
+  });
+
+  it("does not throw when recording an unlock fails", async () => {
+    // The lead is already captured by this point — losing the allowance bump is
+    // recoverable, losing the request is not.
+    state.insertThrows = true;
+    await expect(grantDailyUnlock("multiplex_underwrite", makeReq({ sessionID: "s" }))).resolves.toBeUndefined();
   });
 });
 

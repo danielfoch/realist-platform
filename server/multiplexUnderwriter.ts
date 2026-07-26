@@ -25,7 +25,7 @@ import { users } from "@shared/models/auth";
 import { multiplexUnderwritings } from "@shared/schema";
 import { resolveSite, type ResolvedSite } from "./torontoGeo";
 import { captureDealLead, recordDealIntent, type DealIntentSignal } from "./dealIntent";
-import { consumeDailyUsage } from "./usageLimits";
+import { consumeDailyUsage, grantDailyUnlock, hasDailyUnlock } from "./usageLimits";
 import { requireVerified } from "./accountVerification";
 import { resolveWard } from "./enrichment";
 import { computeMultiplexFeasibility, TORONTO_SIXPLEX_WARDS } from "./multiplexFeasibility";
@@ -693,12 +693,26 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
   // callers pass through to the usage cap below, which is the separate concern.
   app.post("/api/multiplex-underwriter", requireVerified, async (req: any, res: Response) => {
     try {
-      const rate = await consumeDailyUsage(UNDERWRITE_SCOPE, req, UNDERWRITE_LIMITS);
+      // An anonymous visitor who already traded their email today gets the
+      // signed-in allowance. The first few underwrites stay completely
+      // frictionless — gating a first impression would cost more in reach than
+      // it gains in captured addresses.
+      const unlocked = req.session?.userId
+        ? false
+        : await hasDailyUnlock(UNDERWRITE_SCOPE, req);
+      const limits = unlocked
+        ? { anonymous: UNDERWRITE_LIMITS.identified, identified: UNDERWRITE_LIMITS.identified }
+        : UNDERWRITE_LIMITS;
+
+      const rate = await consumeDailyUsage(UNDERWRITE_SCOPE, req, limits);
       if (!rate.allowed) {
         return res.status(429).json({
-          error: `Daily underwrite limit reached (${rate.limit}/day). Sign in for a higher limit.`,
+          error: `Daily underwrite limit reached (${rate.limit}/day).`,
           limit: rate.limit,
           remaining: 0,
+          // Drives the client's capture card. Once they have already unlocked,
+          // there is nothing left to offer and the wall is honest.
+          canUnlock: !req.session?.userId && !unlocked,
         });
       }
 
@@ -714,6 +728,57 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
     } catch (err: any) {
       console.error("[multiplex] underwrite failed:", err);
       res.status(500).json({ error: "Underwrite failed — please try again." });
+    }
+  });
+
+  /**
+   * Trade an email for the rest of today's underwrites.
+   *
+   * The daily cap used to end in a red error banner — a dead end at the exact
+   * moment someone had proven they were working a real site. It is now the
+   * capture point: the lead goes through the same genesis every other surface
+   * uses (score, routing, CRM, team alert), and the allowance lifts to the
+   * signed-in limit for the rest of the day.
+   */
+  app.post("/api/multiplex-underwriter/unlock", async (req: any, res: Response) => {
+    try {
+      const parsed = z
+        .object({
+          name: z.string().trim().min(1).max(120),
+          email: z.string().trim().email().max(200),
+          phone: z.string().trim().max(40).optional(),
+          consentEmail: z.boolean().optional(),
+          address: z.string().trim().max(200).optional(),
+        })
+        .safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Enter a name and a valid email." });
+      }
+
+      const { name, email, phone, consentEmail, address } = parsed.data;
+
+      await captureDealLead(
+        req,
+        {
+          surface: "multiplex_underwriter",
+          eventName: "underwriting_completed",
+          userId: req.session?.userId ?? null,
+          sessionId: req.sessionID ?? null,
+          address: address ?? null,
+          city: "Toronto",
+          region: "Ontario",
+          propertyType: "multiplex",
+          metadata: { capturedAt: "daily_limit_unlock" },
+        },
+        { name, email, phone: phone ?? null, consentEmail: consentEmail ?? false },
+      );
+
+      await grantDailyUnlock(UNDERWRITE_SCOPE, req);
+
+      res.json({ unlocked: true, limit: UNDERWRITE_LIMITS.identified });
+    } catch (err: any) {
+      console.error("[multiplex] unlock failed:", err);
+      res.status(500).json({ error: "Could not unlock — please try again." });
     }
   });
 

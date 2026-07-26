@@ -13,6 +13,7 @@ import { Navigation } from "@/components/Navigation";
 import { NextStepBlock } from "@/components/NextStepBlock";
 import { MultiplexEventCta } from "@/components/events/MultiplexEventCta";
 import { VerdictSummary } from "@/components/multiplex/VerdictSummary";
+import { UnlockMoreUnderwrites } from "@/components/multiplex/UnlockMoreUnderwrites";
 import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,6 +207,7 @@ export default function MultiplexUnderwriterPage() {
   const [step, setStep] = useState<Step>("input");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
 
   // Seed from cross-tool params or the shared property context so an address
   // typed in feasibility/analyzer carries straight into the AI underwrite.
@@ -326,7 +328,10 @@ export default function MultiplexUnderwriterPage() {
       const status = e?.status as number | undefined;
       const message = String(e?.message || "Underwrite failed — please try again.");
       if (status === 429) {
-        setError("Daily underwrite limit reached — sign in for a higher limit.");
+        // The cap is a capture moment, not an error — hitting it means they are
+        // working real sites. Show the offer instead of a red banner.
+        setLimitReached(true);
+        setError(null);
       } else if (status === 400 || status === 422) {
         setError(message);
       } else {
@@ -371,7 +376,10 @@ export default function MultiplexUnderwriterPage() {
       const status = e?.status as number | undefined;
       const message = String(e?.message || "Underwrite failed — please try again.");
       if (status === 429) {
-        setError("Daily underwrite limit reached — sign in for a higher limit.");
+        // The cap is a capture moment, not an error — hitting it means they are
+        // working real sites. Show the offer instead of a red banner.
+        setLimitReached(true);
+        setError(null);
       } else if (status === 400 || status === 422) {
         setError(message);
       } else {
@@ -414,8 +422,17 @@ export default function MultiplexUnderwriterPage() {
           </div>
         )}
 
+        {limitReached && (
+          <div className="mb-6">
+            <UnlockMoreUnderwrites
+              address={address || undefined}
+              onUnlocked={() => setLimitReached(false)}
+            />
+          </div>
+        )}
+
         {/* Step 1 — address */}
-        {step === "input" && (
+        {step === "input" && !limitReached && (
           <Card className="max-w-xl mx-auto">
             <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Property address</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -470,7 +487,7 @@ export default function MultiplexUnderwriterPage() {
         {/* Below the form, not above it: a way out for someone who arrived
             without a specific address, without pulling everyone else off the
             page before they have started. */}
-        {step === "input" && (
+        {step === "input" && !limitReached && (
           <div className="max-w-xl mx-auto mt-6 space-y-6">
             <p className="text-center text-sm text-muted-foreground">
               No address in mind?{" "}
