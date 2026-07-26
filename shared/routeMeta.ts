@@ -53,6 +53,42 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
     title: "Buy vs Rent-to-Own Calculator (Canada) - Realist.ca",
     description: "Compare a traditional CMHC-insured purchase against a rent-to-own pathway. See upfront cash, monthly cost, equity, and total 5-year cost side by side.",
   },
+  // ─── Conversion pages ──────────────────────────────────────────────────────
+  // These were serving the generic fallback title (or a hard 404) despite being
+  // the destinations of the nav's primary CTAs.
+  "/book-a-call": {
+    title: "Book a Call with Daniel Foch & Nick Hill | Realist.ca",
+    description: "Talk through a live deal, a financing structure, or a multiplex site with an investor-focused broker and a mortgage broker. No cost, no pitch — bring the numbers you already have.",
+  },
+  "/work-with-realist": {
+    title: "Work With Realist — Buy, Finance & Underwrite With Us | Realist.ca",
+    description: "Representation for Canadian real estate investors: deal sourcing, underwriting, financing, and closing with Daniel Foch and Nick Hill.",
+  },
+  "/tools/financing-readiness": {
+    title: "Financing Readiness — Your Stress-Tested Max Price | Realist.ca",
+    description: "Find the maximum purchase price you can actually finance in 30 seconds. Stress-tested against current Canadian qualifying rates, not wishful math.",
+  },
+  "/join/mortgage-brokers": {
+    title: "For Mortgage Brokers — Join the Realist Referral Network",
+    description: "Get matched with Canadian investors who have already underwritten a deal and asked for financing help. Claim your market on the Realist partner network.",
+  },
+  "/join/experts": {
+    title: "For Real Estate Professionals — Join Realist as an Expert",
+    description: "Realtors, lenders, planners, and trades: reach Canadian investors at the moment they are underwriting a deal in your market.",
+  },
+  "/experts": {
+    title: "Find a Real Estate Expert in Your Market | Realist.ca",
+    description: "Vetted Canadian realtors, mortgage brokers, planners, and trades — matched to the market and strategy you are actually investing in.",
+  },
+  "/deal-room": {
+    title: "The Realist Deal Room — Live Canadian Deal Flow",
+    description: "On-market and off-market Canadian investment properties, underwritten and discussed with the Realist community.",
+  },
+  "/meetups": {
+    title: "Canadian Real Estate Investor Meetups | Realist.ca",
+    description: "Find a Realist meetup near you — local investor events hosted across Canada by the Canadian Real Estate Investor community.",
+  },
+
   // ─── Multiplex ─────────────────────────────────────────────────────────────
   // The underwriter is the flagship; the other two feed it. Titles lead with the
   // question the searcher is actually typing ("can I build a fourplex on this

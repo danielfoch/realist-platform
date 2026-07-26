@@ -33,6 +33,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import SetPassword from "@/pages/SetPassword";
 import VerifyPhone from "@/pages/VerifyPhone";
+import VerifyEmail from "@/pages/VerifyEmail";
 import BuyBox from "@/pages/BuyBox";
 import BuyBoxAgreement from "@/pages/BuyBoxAgreement";
 import BuyBoxCheckout from "@/pages/BuyBoxCheckout";
@@ -159,6 +160,7 @@ const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const SetPassword = lazy(() => import("@/pages/SetPassword"));
 const VerifyPhone = lazy(() => import("@/pages/VerifyPhone"));
+const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const BuyBox = lazy(() => import("@/pages/BuyBox"));
 const BuyBoxAgreement = lazy(() => import("@/pages/BuyBoxAgreement"));
 const BuyBoxCheckout = lazy(() => import("@/pages/BuyBoxCheckout"));
@@ -501,6 +503,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/set-password" component={SetPassword} />
       <Route path="/verify-phone" component={VerifyPhone} />
+      <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/realtor/buyboxes" component={RealtorBuyBoxes} />
       <Route path="/partner/network">{() => <Redirect to="/partner/onboarding?type=realtor" />}</Route>
       <Route path="/partner/onboarding" component={PartnerOnboarding} />

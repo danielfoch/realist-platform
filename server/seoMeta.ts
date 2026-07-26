@@ -55,6 +55,34 @@ const STATIC_META: Record<string, PageMeta> = {
   // meta map so the server head tags and the client Helmet layer can never
   // disagree (the client SEO component reads the same module).
   ...SHARED_ROUTE_META,
+  // Private / utility surfaces: registered above so they resolve instead of
+  // 404ing, but explicitly kept out of the index — a verification landing page
+  // or a print view has no business in search results.
+  "/verify-email": {
+    title: "Confirm your email | Realist",
+    description: "Confirm your Realist.ca email address.",
+    noindex: true,
+  },
+  "/verify-phone": {
+    title: "Confirm your phone number | Realist",
+    description: "Confirm your phone number to finish setting up your Realist.ca account.",
+    noindex: true,
+  },
+  "/account/notifications": {
+    title: "Notification settings | Realist",
+    description: "Manage your Realist.ca notification preferences.",
+    noindex: true,
+  },
+  "/partner/onboarding": {
+    title: "Partner onboarding | Realist",
+    description: "Finish setting up your Realist partner profile.",
+    noindex: true,
+  },
+  "/notebook/print": {
+    title: "Print view | Realist",
+    description: "Printable notebook view.",
+    noindex: true,
+  },
   "/about": {
     title: "About Realist.ca - Canadian Real Estate Investing Community",
     description: "Realist.ca is Canada's biggest real estate investor community, home of the Canadian Real Estate Investor Podcast with Daniel Foch, Nick Hill, and Jonathan Woo.",
@@ -1107,6 +1135,39 @@ const KNOWN_APP_ROUTES = new Set<string>([
   "/tools/land-claim-screener",
   "/tools/distress-deals",
   "/tools/motivated-deals",
+  // Synced with client/src/App.tsx 2026-07-26. These 28 were declared in the
+  // router but never registered here, so every one of them — including
+  // /book-a-call, the primary revenue CTA, and /work-with-realist from the nav —
+  // served HTTP 404 with "noindex, nofollow" while rendering fine.
+  // server/appRouteRegistry.test.ts now fails if the two drift again.
+  "/book-a-call",
+  "/work-with-realist",
+  "/tools/financing-readiness",
+  "/tools/rent-to-own",
+  "/experts",
+  "/join/experts",
+  "/join/mortgage-brokers",
+  "/power-team",
+  "/power-team/profile",
+  "/jv-partners",
+  "/jv-partners/new",
+  "/deal-room",
+  "/meetups",
+  "/community/meetups",
+  "/community/questions",
+  "/about/local-experts",
+  "/about/podcast-deck",
+  "/offer",
+  "/insights/canada-interprovincial-migration-2026",
+  "/insights/market-report/homebench-ai-realtor-benchmark",
+  "/stats",
+  "/tools/stats",
+  "/verify-email",
+  "/account/notifications",
+  "/partner/onboarding",
+  "/notebook/print",
+  "/admin/power-team",
+  "/admin/research",
   "/tools/multiplex-feasibility",
   // Was missing, so the flagship multiplex tool served HTTP 404 with
   // "noindex, nofollow" and a "Page Not Found" title while rendering fine —
