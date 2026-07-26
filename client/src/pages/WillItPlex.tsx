@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
+import { UnderwriterUpsell } from "@/components/multiplex/UnderwriterUpsell";
 import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -1264,6 +1265,10 @@ export default function WillItPlex() {
             </Button>
           </div>
         </div>
+
+        {/* Upgrade path — this tool asks the visitor for the numbers; the
+            underwriter looks the zoning up for a real Toronto address. */}
+        {!currentProjectId && <UnderwriterUpsell from="will_it_plex" className="mb-6" />}
 
         {!currentProjectId ? (
           <Card>

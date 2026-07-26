@@ -9,7 +9,7 @@ import {
   Menu, X, User, LogOut, Briefcase, Building, ChevronDown,
   Calculator, MapPin, Users, Handshake, Calendar, Radio,
   FileText, TrendingUp, BarChart3, Shield, Gavel,
-  Map, DollarSign, Layers, Building2, Inbox, Sparkles,
+  Map, DollarSign, Building2, Inbox,
   KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell, PhoneCall, PenLine,
   Youtube, MessageSquare,
 } from "lucide-react";
@@ -63,9 +63,13 @@ const navCategories: NavCategory[] = [
       { href: "/tools", label: "All Tools", description: "Browse every calculator", icon: <FolderOpen className="h-4 w-4" /> },
       { href: "/tools/analyzer", label: "Deal Analyzer", description: "Full underwriting — buy & hold, BRRR, multiplex, flip", icon: <Calculator className="h-4 w-4" /> },
       { href: "/tools/financing-readiness", label: "Financing Readiness", description: "Your stress-tested max purchase price in 30 seconds", icon: <Gauge className="h-4 w-4" />, badge: "New" },
-      { href: "/tools/multiplex-underwriter", label: "Multiplex Underwriter", description: "Address-first AI underwrite with zoning and risk flags", icon: <Sparkles className="h-4 w-4" />, badge: "AI" },
-      { href: "/tools/multiplex-feasibility", label: "Multiplex Feasibility", description: "Screen any property for development potential", icon: <Building2 className="h-4 w-4" /> },
-      { href: "/tools/will-it-plex", label: "Will It Plex?", description: "Full multiplex financial pro forma", icon: <Layers className="h-4 w-4" /> },
+      // One multiplex door, not three. The menu previously offered Multiplex
+      // Underwriter, Multiplex Feasibility and "Will It Plex?" side by side with
+      // near-identical descriptions, leaving a visitor to guess which one
+      // answers "can I build on this lot" — and only the Underwriter is backed
+      // by live zoning data. The other two stay routable (inbound links, SEO)
+      // and are reachable from /tools and from the Underwriter itself.
+      { href: "/tools/multiplex-underwriter", label: "Multiplex Underwriter", description: "Enter a Toronto address — unit count, costs, rents, and exit math", icon: <Building2 className="h-4 w-4" />, badge: "AI" },
       { href: "/tools/true-cost", label: "True Cost", description: "Complete cost breakdown for Ontario buyers", icon: <DollarSign className="h-4 w-4" /> },
       { href: "/tools/rent-vs-buy", label: "Rent vs. Buy", description: "Compare renting vs. owning over time", icon: <BarChart3 className="h-4 w-4" /> },
       { href: "/tools/deal-desk", label: "Deal Desk", description: "Submit a deal for our team to review with you", icon: <Inbox className="h-4 w-4" /> },
@@ -176,7 +180,11 @@ export function Navigation() {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/50 glass">
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+      {/* Wider than the max-w-7xl used for page content. The bar carries a logo,
+          five dropdowns and up to four CTAs — ~1421px — and 7xl caps the inner
+          width at 1232px at EVERY viewport, so the row overflowed even on a
+          1536px screen. The chrome is allowed to be wider than the text column. */}
+      <div className="max-w-[1600px] mx-auto px-4 md:px-6">
         <div className="flex h-16 items-center justify-between gap-4">
 
           {/* Logo */}
@@ -190,8 +198,13 @@ export function Navigation() {
             <span className="font-bold text-xl tracking-tight" data-testid="text-logo">Realist</span>
           </Link>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-0.5">
+          {/* Desktop nav.
+              xl, not md: logo (110) + this row (634) + the CTA cluster (645)
+              is ~1421px of content, which overflowed a 1232px container at the
+              1280px MacBook default — the whole bar scrolled sideways and the
+              Sign In button was clipped off-screen. Below xl this collapses
+              into the existing mobile menu. */}
+          <div className="hidden xl:flex items-center gap-0.5">
             {navCategories.map((category) => (
               <DropdownMenu key={category.label}>
                 <DropdownMenuTrigger asChild>
@@ -216,8 +229,10 @@ export function Navigation() {
 
           {/* Right side: primary CTA + auth */}
           <div className="flex items-center gap-2">
-            {/* Work-with-us CTA — surfaced for investors ready for representation */}
-            <div className="hidden md:block">
+            {/* Work-with-us CTA — surfaced for investors ready for representation.
+                Widest breakpoint of the three: it is the closest in intent to
+                "Book a Call", so it is the least costly to drop first. */}
+            <div className="hidden 2xl:block">
               <Button
                 asChild
                 variant="outline"
@@ -239,7 +254,7 @@ export function Navigation() {
                 asChild
                 variant="outline"
                 size="sm"
-                className="h-9 px-4 gap-1.5"
+                className="hidden 2xl:inline-flex h-9 px-4 gap-1.5"
                 data-testid="button-nav-analyze"
                 onClick={() => track({ event: "cta_clicked", cta: "analyze_deal", location: "nav" })}
               >
@@ -270,7 +285,7 @@ export function Navigation() {
 
             {/* Auth */}
             {!isLoading && (
-              <div className="hidden md:flex items-center gap-1">
+              <div className="hidden xl:flex items-center gap-1">
                 {isAuthenticated ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -393,7 +408,7 @@ export function Navigation() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden h-9 w-9"
+              className="xl:hidden h-9 w-9"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               data-testid="button-mobile-menu"
               aria-label="Toggle menu"
@@ -406,7 +421,7 @@ export function Navigation() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border/50 glass max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <div className="xl:hidden border-t border-border/50 glass max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="px-4 py-4 space-y-5">
             {/* Primary CTAs on mobile */}
             <Button asChild variant="outline" className="w-full gap-2" data-testid="button-mobile-work-with-realist">

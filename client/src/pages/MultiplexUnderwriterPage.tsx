@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { NextStepBlock } from "@/components/NextStepBlock";
+import { MultiplexEventCta } from "@/components/events/MultiplexEventCta";
 import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -399,14 +400,11 @@ export default function MultiplexUnderwriterPage() {
             Zoning verdict with the by-law cited, tree and ravine screens with evidence, build configurations,
             and the sell-as-condos vs hold-on-CMHC-MLI-Select math — every number labelled by where it came from.
           </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <Button asChild variant="outline">
-              <Link href="/tools/cap-rates?strategy=multiplex">
-                <MapPin className="mr-2 h-4 w-4" />
-                Browse pre-screened map listings
-              </Link>
-            </Button>
-          </div>
+          {/* No CTA above the form. The only one here used to be "Browse
+              pre-screened map listings", which routed the highest-intent
+              visitor on the site away to the map before they had entered an
+              address. It now sits below the form as a fallback for people who
+              arrived without a specific site in mind. */}
         </div>
 
         {error && (
@@ -466,6 +464,25 @@ export default function MultiplexUnderwriterPage() {
               <p className="text-xs text-muted-foreground text-center">3 free underwrites per day — sign in for more.</p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Below the form, not above it: a way out for someone who arrived
+            without a specific address, without pulling everyone else off the
+            page before they have started. */}
+        {step === "input" && (
+          <div className="max-w-xl mx-auto mt-6 space-y-6">
+            <p className="text-center text-sm text-muted-foreground">
+              No address in mind?{" "}
+              <Link
+                href="/tools/cap-rates?strategy=multiplex"
+                className="font-medium text-primary hover:underline"
+                onClick={() => track({ event: "cta_clicked", cta: "multiplex_browse_map", location: "/tools/multiplex-underwriter", destination: "/tools/cap-rates" })}
+              >
+                Browse pre-screened listings on the map →
+              </Link>
+            </p>
+            <MultiplexEventCta placement="inline" sourcePage="/tools/multiplex-underwriter" />
+          </div>
         )}
 
         {/* Step 2 — confirm site + lot dims */}
@@ -810,7 +827,12 @@ export default function MultiplexUnderwriterPage() {
               </div>
             )}
 
-            <NextStepBlock sourcePage="/tools/multiplex-underwriter" className="mt-8" />
+            {/* Highest-intent moment on the platform: they have just been told
+                what their lot supports. Event first (cheap, dated, social),
+                then the book-a-call path. */}
+            <MultiplexEventCta placement="result" sourcePage="/tools/multiplex-underwriter" className="mt-8" />
+
+            <NextStepBlock sourcePage="/tools/multiplex-underwriter" className="mt-6" />
 
             {/* Assumption notes */}
             {result.assumptionNotes.length > 0 && (
@@ -828,11 +850,6 @@ export default function MultiplexUnderwriterPage() {
               Toronto, a registered planner or architect, and your lender before acting.
             </p>
 
-            <div className="text-center pt-2">
-              <Link href="/tools/multiplex-feasibility" className="text-sm text-primary hover:underline">
-                Want the zoning-rules deep dive? Try the Multiplex Feasibility screener →
-              </Link>
-            </div>
           </div>
         )}
       </main>
