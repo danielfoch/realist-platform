@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { CalendarDays, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FLAGSHIP_EVENT, hasEnded } from "@/lib/flagshipEvent";
 
 /**
  * Big always-on promo bar for the current flagship event, pinned to the top of
@@ -8,21 +9,18 @@ import { Button } from "@/components/ui/button";
  * feed or the native events query) so it can never silently disappear the way
  * the feed-driven "Featured Event" card did when those sources returned empty.
  *
- * Update FLAGSHIP for the next flagship; it auto-hides once the event has ended.
+ * Event details come from @/lib/flagshipEvent — they used to be hardcoded here
+ * and in EventPromoFrame, and the two had already drifted to different taglines
+ * for the same evening. It still auto-hides once the event has ended.
  */
 const FLAGSHIP = {
-  title: "Unpacking Multiplexes Toronto",
-  tagline: "Toronto's premier multiplex development conference",
-  dateLabel: "Tuesday, September 15, 2026 · 5:00–10:00 PM EDT",
-  venueLabel: "The Terminal Theatre, Queens Quay Terminal",
-  href: "/community/events/unpacking-multiplexes-toronto",
-  heroImage: "/events/unpacking-multiplexes-toronto-ai-hero.png",
-  // Hide the bar after the event wraps so it never promotes a past date.
-  endsAt: new Date("2026-09-15T22:00:00-04:00"),
+  ...FLAGSHIP_EVENT,
+  dateLabel: `${FLAGSHIP_EVENT.dateLabel} · ${FLAGSHIP_EVENT.timeLabel}`,
+  venueLabel: FLAGSHIP_EVENT.venueDetail,
 };
 
 export function FlagshipEventBanner() {
-  if (Date.now() > FLAGSHIP.endsAt.getTime()) return null;
+  if (hasEnded()) return null;
 
   return (
     <section aria-label="Featured event" className="border-b border-primary/20 bg-gradient-to-r from-primary/15 via-primary/5 to-accent/15">

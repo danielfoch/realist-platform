@@ -10,6 +10,7 @@ import { useState, useRef } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { MultiplexFeasibilityPanel } from "@/components/MultiplexFeasibilityPanel";
+import { UnderwriterUpsell } from "@/components/multiplex/UnderwriterUpsell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -224,6 +225,10 @@ export default function MultiplexFeasibilityPage() {
             ))}
           </div>
         </div>
+
+        {/* Upgrade path to the zoning-backed tool — this screener applies rules
+            the visitor supplies, the underwriter looks the real ones up. */}
+        <UnderwriterUpsell from="feasibility" />
 
         {/* ── Disclaimer Banner ───────────────────────────────────────────── */}
         <div className="rounded-xl border border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-950/20 p-4 flex gap-3">

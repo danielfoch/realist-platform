@@ -53,9 +53,29 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
     title: "Buy vs Rent-to-Own Calculator (Canada) - Realist.ca",
     description: "Compare a traditional CMHC-insured purchase against a rent-to-own pathway. See upfront cash, monthly cost, equity, and total 5-year cost side by side.",
   },
+  // ─── Multiplex ─────────────────────────────────────────────────────────────
+  // The underwriter is the flagship; the other two feed it. Titles lead with the
+  // question the searcher is actually typing ("can I build a fourplex on this
+  // lot", "how many units can I build") rather than the product name.
+  "/tools/multiplex-underwriter": {
+    title: "Multiplex Underwriter — How Many Units Can I Build? | Realist.ca",
+    description: "Enter a Toronto address and get an instant multiplex underwrite: as-of-right unit count, sixplex eligibility, buildable envelope, construction costs, rent roll, and MLI Select hold vs condo exit — with the zoning source behind every number.",
+  },
+  "/tools/multiplex-feasibility": {
+    title: "Multiplex Feasibility Check — Can This Lot Be Plexed? | Realist.ca",
+    description: "Screen any Canadian property for multiplex development potential in seconds: lot size, frontage, zoning permissions, and the constraints that usually kill a plex before you spend a dollar.",
+  },
   "/tools/will-it-plex": {
     title: "Will It Plex? Multiplex Conversion Analyzer - Realist.ca",
     description: "Find out if a single-family home is a strong multiplex conversion candidate. Free Canadian multiplex screening tool.",
+  },
+  "/multiplex-investor-fit": {
+    title: "Is a Multiplex Right for You? Investor Fit Check | Realist.ca",
+    description: "Answer a few questions about your capital, timeline, and risk tolerance to see whether a multiplex build, a conversion, or a turnkey rental actually fits your position.",
+  },
+  "/masterclass": {
+    title: "Canadian Multiplex Masterclass — Build, Finance & Exit | Realist.ca",
+    description: "The full multiplex playbook from Daniel Foch and Nick Hill: zoning and as-of-right permissions, construction budgeting, MLI Select financing, and choosing between a rental hold and a condo exit.",
   },
   "/tools/fixed-vs-variable": {
     title: "Fixed vs Variable Mortgage Calculator (Canada) - Realist.ca",

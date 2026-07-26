@@ -1108,6 +1108,10 @@ const KNOWN_APP_ROUTES = new Set<string>([
   "/tools/distress-deals",
   "/tools/motivated-deals",
   "/tools/multiplex-feasibility",
+  // Was missing, so the flagship multiplex tool served HTTP 404 with
+  // "noindex, nofollow" and a "Page Not Found" title while rendering fine —
+  // invisible to search and to every social share preview.
+  "/tools/multiplex-underwriter",
   "/multiplex-investor-fit",
   "/masterclass",
   "/course",

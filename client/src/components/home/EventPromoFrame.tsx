@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
 import { toDisplayEvent, type DisplayEvent, type FeaturedEventResponse } from "./featuredEvent";
+import { FLAGSHIP_EVENT } from "@/lib/flagshipEvent";
 
 /**
  * Homepage featured-event frame, driven by GET /api/events/featured: admins
@@ -17,23 +18,9 @@ import { toDisplayEvent, type DisplayEvent, type FeaturedEventResponse } from ".
  * the API errors or the events table has nothing upcoming, we still promote
  * the current flagship until it ends. Update it when the next flagship books.
  */
-const FALLBACK = {
-  title: "Unpacking Multiplexes Toronto",
-  tagline: "Toronto's missing middle and multiplex development conference",
-  description:
-    "A focused evening for people turning missing middle policy into real projects: site selection, zoning, architecture, financing, construction, exit strategy, and underwriting.",
-  href: "/community/events/unpacking-multiplexes-toronto",
-  heroImage: "/events/unpacking-multiplexes-toronto-ai-hero.png",
-  dateLabel: "Tuesday, September 15, 2026",
-  timeLabel: "5:00-10:00 PM EDT",
-  venueTitle: "Toronto waterfront",
-  venueDetail: "The Terminal Theatre, Queens Quay Terminal",
-  audienceLabel: "Developers, investors, architects, planners, lenders, and builders",
-  ticketBadge: "Tickets on sale now",
-  ticketNote: "Ticketing details on the event page",
-  kicker: "Toronto multiplex event",
-  endsAt: new Date("2026-09-15T22:00:00-04:00"),
-};
+// Details live in @/lib/flagshipEvent — this and FlagshipEventBanner each used
+// to carry their own copy, and had already drifted to different taglines.
+const FALLBACK = FLAGSHIP_EVENT;
 
 export function EventPromoFrame() {
   const { data, isLoading, isError } = useQuery<FeaturedEventResponse>({
