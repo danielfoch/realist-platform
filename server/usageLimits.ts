@@ -126,6 +126,51 @@ export async function peekDailyUsage(
 }
 
 /**
+ * Record that this caller unlocked a higher allowance today (by handing over an
+ * email, typically). Stored as its own daily counter so it expires with the day
+ * and rides the same prune.
+ */
+export async function grantDailyUnlock(scope: string, req: Request): Promise<void> {
+  const { key } = usageKey(req);
+  try {
+    await db
+      .insert(usageCounters)
+      .values({ scope: `${scope}:unlock`, key, day: today(), count: 1 })
+      .onConflictDoUpdate({
+        target: [usageCounters.scope, usageCounters.key, usageCounters.day],
+        set: { count: sql`${usageCounters.count} + 1`, updatedAt: new Date() },
+      });
+  } catch (err) {
+    console.error(`[usage-limits] failed to record ${scope} unlock:`, err);
+  }
+}
+
+/** Whether this caller already unlocked today. Fails CLOSED — see below. */
+export async function hasDailyUnlock(scope: string, req: Request): Promise<boolean> {
+  const { key } = usageKey(req);
+  try {
+    const [row] = await db
+      .select({ count: usageCounters.count })
+      .from(usageCounters)
+      .where(
+        and(
+          eq(usageCounters.scope, `${scope}:unlock`),
+          eq(usageCounters.key, key),
+          eq(usageCounters.day, today()),
+        ),
+      )
+      .limit(1);
+    return Number(row?.count ?? 0) > 0;
+  } catch (err) {
+    // Opposite of consumeDailyUsage on purpose: there, failing open keeps the
+    // product working. Here, failing open would silently hand everyone the
+    // raised limit, so the cheaper mistake is to show the unlock prompt again.
+    console.error(`[usage-limits] ${scope} unlock lookup failed:`, err);
+    return false;
+  }
+}
+
+/**
  * Drop buckets for elapsed days. Yesterday's rows are never read again, and
  * without this the table grows by one row per caller per day forever.
  */
