@@ -12,6 +12,7 @@ import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { NextStepBlock } from "@/components/NextStepBlock";
 import { MultiplexEventCta } from "@/components/events/MultiplexEventCta";
+import { VerdictSummary } from "@/components/multiplex/VerdictSummary";
 import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -565,6 +566,34 @@ export default function MultiplexUnderwriterPage() {
                 <Button variant="outline" size="sm" onClick={() => { setStep("input"); setResult(null); setSite(null); }}>New underwrite</Button>
               </div>
             </div>
+
+            {/* The answer first. Everything below is the reasoning. */}
+            {(() => {
+              const rec = result.recommendedTakeout;
+              const rc = rec?.configKey ? result.configs.find((c) => c.config.key === rec.configKey) : null;
+              const isHold = rec?.takeout === "mli_hold";
+              const isCondo = rec?.takeout === "condo_termination";
+              // When the comparator lands on "neither", no residual land value
+              // is honest to headline — quoting one path's max price would imply
+              // a recommendation the model explicitly declined to make.
+              const hasPath = rc != null && (isHold || isCondo);
+              return (
+                <VerdictSummary
+                  maxUnitsAsOfRight={result.maxUnitsAsOfRight}
+                  sixplexEligible={result.sixplex.eligible}
+                  sixplexCertainty={result.sixplex.certainty}
+                  takeout={rec?.takeout ?? null}
+                  maxLandPrice={
+                    hasPath ? (isHold ? rc!.residualLandValue.rentalPath : rc!.residualLandValue.condoPath) : null
+                  }
+                  returnLabel={hasPath ? (isHold ? "Yield on cost" : "Margin on cost") : null}
+                  returnValue={
+                    hasPath ? (isHold ? rc!.rentalHold.yieldOnCost : rc!.condoExit.marginOnCost) : null
+                  }
+                  askingPrice={purchasePrice ? Number(purchasePrice) : null}
+                />
+              );
+            })()}
 
             {/* Screens */}
             <div className="flex flex-wrap gap-2">
