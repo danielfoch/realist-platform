@@ -82,6 +82,22 @@ beforeEach(() => {
   state.updates = [];
 });
 
+describe("VERIFICATION_ENFORCED_FROM", () => {
+  it("does not predate the code that sends verification emails", () => {
+    // The cutoff shipped at 2026-07-25 while the deploy was 2026-07-28, which
+    // would have gated three days of accounts that never received an email
+    // because signup did not yet send one. A cutoff in the past strands people;
+    // one in the future merely exempts them.
+    expect(VERIFICATION_ENFORCED_FROM.getTime()).toBeGreaterThanOrEqual(
+      new Date("2026-07-28T00:00:00-04:00").getTime(),
+    );
+  });
+
+  it("is a valid date", () => {
+    expect(Number.isNaN(VERIFICATION_ENFORCED_FROM.getTime())).toBe(false);
+  });
+});
+
 describe("getVerificationState", () => {
   it("grandfathers accounts created before the cutoff", async () => {
     state.userRows = [userRow({ createdAt: BEFORE })];
