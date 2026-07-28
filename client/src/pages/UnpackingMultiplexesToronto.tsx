@@ -40,6 +40,10 @@ import ryanHeadshot from "@assets/image_1781720634648.png";
 import hoomanHeadshot from "@assets/Hooman_1783450593275.png";
 import benHeadshot from "@assets/Ben_Singer_1783452380339.jpg";
 import brandonHeadshot from "@assets/Brandon_Sage_-_Headshot_1784568961891.png";
+import danielHeadshot from "@assets/image_1784990099119.png";
+import nickHeadshot from "@assets/image_1784989996852.png";
+import sabrinaHeadshot from "@assets/image_1784989970115.png";
+import brendanHeadshot from "@assets/image_1784992136111.png";
 
 const TICKET_URL = "https://ci.ovationtix.com/37003/production/1277443";
 // Meta Pixel scoped to this event page only (loaded in a useEffect below).
@@ -112,25 +116,25 @@ const highlights = [
 
 const MODERATORS: RealistEventSpeaker[] = [
   {
-    name: "Sabrina Maddeaux",
-    company: "Guest Moderator",
-    title: "Journalist & Housing Commentator",
-    bio: "National housing columnist and political commentator known for sharp analysis of Canada's housing crisis and policy landscape.",
-    imageUrl: null,
-  },
-  {
     name: "Daniel Foch",
     company: "Realist.ca",
     title: "Host & Moderator",
-    bio: "Real estate investor, analyst, and founder of Realist.ca. Host of The Canadian Real Estate Investor Podcast.",
-    imageUrl: "https://thedividendguyblog.com/wp-content/themes/leia-en/imagenes/2025/06/5602983c-dea5-40c9-b88e-2635b6e9c33d.png",
+    bio: null,
+    imageUrl: nickHeadshot,
   },
   {
     name: "Nick Hill",
     company: "BLD Financial",
     title: "Host & Moderator",
-    bio: "Co-founder of BLD Financial and co-host of The Canadian Real Estate Investor Podcast. Specialist in development financing and investor partnerships.",
-    imageUrl: "https://d68-invdn-com.investing.com/company_logo/9977ab06a1fa615ad329b5606b56ac3a.jpg?width=170&height=170",
+    bio: null,
+    imageUrl: danielHeadshot,
+  },
+  {
+    name: "Sabrina Maddeaux",
+    company: "Guest Moderator",
+    title: "Journalist & Housing Commentator",
+    bio: null,
+    imageUrl: sabrinaHeadshot,
   },
 ];
 
@@ -188,7 +192,7 @@ const SPEAKERS: RealistEventSpeaker[] = [
     company: "Platform Insurance",
     title: "Speaker",
     bio: "Insurance and risk management expert focused on real estate development, construction projects, and investor protection.",
-    imageUrl: null,
+    imageUrl: brendanHeadshot,
   },
   {
     name: "Brandon Sage",
@@ -201,19 +205,21 @@ const SPEAKERS: RealistEventSpeaker[] = [
 ];
 
 const SPONSORS = [
-  { src: "/partners/cmhc.png", alt: "CMHC", url: "https://www.cmhc-schl.gc.ca/" },
-  { src: "/partners/bld-financial.png", alt: "BLD Financial", url: "https://www.bldfinancial.ca/" },
-  { src: "/partners/reside-properties.png", alt: "Reside Properties", url: "https://www.resideproperties.ca/" },
-  { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio", url: "https://www.noamhazan.com/" },
-  { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT", url: "https://www.alliancereit.com/" },
-  { src: "/partners/sr-law.jpg", alt: "SR Law", url: "https://www.srlaw.ca/" },
-  { src: "/partners/landlord.png", alt: "LandLord", url: "https://www.landlord.ca/" },
+  { src: "/partners/cmhc.png", alt: "CMHC", url: "/community/events/partners/cmhc", internal: true },
+  { src: "/partners/bld-financial.png", alt: "BLD Financial", url: "/community/events/partners/bld-financial", internal: true },
+  { src: "https://www.resideproperties.ca/assets/logo.svg", alt: "Reside Properties", url: "/community/events/partners/reside-properties", internal: true },
+  { src: "/partners/noam-hazan-design-studio.png", alt: "Noam Hazan Design Studio", url: "/community/events/partners/noam-hazan-design-studio", internal: true },
+  { src: "/partners/alliance-reit.jpg", alt: "Alliance REIT", url: "/community/events/partners/alliance-reit", internal: true },
+  { src: "/partners/sr-law-2025.png", alt: "SR Law", url: "/community/events/partners/sr-law", internal: true },
+  { src: "/partners/landlord-2025.png", alt: "LandLord", url: "/community/events/partners/landlord", internal: true },
   {
     src: "https://www.platforminsurance.com/wp-content/uploads/2024/02/Platform-Logo-RGB-Digital-Glacier.png",
     alt: "Platform Insurance",
-    url: "https://www.platforminsurance.com/",
+    url: "/community/events/partners/platform-insurance",
+    internal: true,
   },
-  { src: "/partners/landlord.png", alt: "LandLord", url: "https://landlord.net/" },
+  { src: "/partners/storeys.png", alt: "STOREYS", url: "https://storeys.com/", internal: false },
+  { src: "/partners/real-estate-magazine.png", alt: "Real Estate Magazine", url: "https://realestatemagazine.ca/", internal: false },
 ];
 
 const AGENDA = [
@@ -233,41 +239,29 @@ function ModeratorCard({ moderator }: { moderator: RealistEventSpeaker }) {
     .slice(0, 2)
     .toUpperCase();
 
-  const isSabrina = moderator.name === "Sabrina Maddeaux";
-
-  const card = (
-    <div className="h-full rounded-lg border bg-card p-5 transition-colors hover:border-primary/50">
-      <div className="flex items-start gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-          {initials}
-        </div>
-        <div>
-          <h3 className="font-semibold">{moderator.name}</h3>
-          {(moderator.title || moderator.company) && (
-            <p className="text-sm text-muted-foreground">
-              {[moderator.title, moderator.company].filter(Boolean).join(", ")}
-            </p>
-          )}
-          {moderator.bio && <p className="mt-3 text-sm leading-6 text-muted-foreground">{moderator.bio}</p>}
-          {isSabrina && (
-            <a
-              href="https://x.com/SabrinaMaddeaux"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-            >
-              Follow on X
-              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-              </svg>
-            </a>
-          )}
-        </div>
+  return (
+    <div className="h-full rounded-lg border bg-card p-5 transition-colors hover:border-primary/50 flex flex-col items-center text-center">
+      <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full bg-primary/10 mb-4">
+        {moderator.imageUrl ? (
+          <img
+            src={moderator.imageUrl as string}
+            alt={moderator.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-primary">
+            {initials}
+          </div>
+        )}
       </div>
+      <h3 className="font-semibold">{moderator.name}</h3>
+      {(moderator.title || moderator.company) && (
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {[moderator.title, moderator.company].filter(Boolean).join(", ")}
+        </p>
+      )}
     </div>
   );
-
-  return card;
 }
 
 const faqs = [
@@ -598,32 +592,47 @@ export default function UnpackingMultiplexesToronto() {
         </div>
       </section>
 
-      {/* Sponsors strip — below the banner, above Overview */}
-      <section className="border-b border-border/40 bg-stone-50/50 dark:bg-stone-900/50">
+      {/* Sponsors strip */}
+      <div className="border-t border-border/40 bg-background">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">
             Event sponsors & partners
           </p>
-          <div className="flex flex-wrap items-center gap-6 md:gap-10">
-            {SPONSORS.map((sponsor) => (
-              <a
-                key={sponsor.alt}
-                href={sponsor.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group transition-opacity hover:opacity-100"
-                data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
-              >
-                <img
-                  src={sponsor.src}
-                  alt={sponsor.alt}
-                  className="h-8 w-auto object-contain grayscale opacity-70 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100"
-                />
-              </a>
-            ))}
+          <div className="flex flex-wrap items-center gap-8 rounded-xl bg-white px-8 py-6 shadow-sm ring-1 ring-border/20">
+            {SPONSORS.map((sponsor) =>
+              sponsor.internal ? (
+                <Link
+                  key={sponsor.alt}
+                  href={sponsor.url}
+                  className="group"
+                  data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <img
+                    src={sponsor.src}
+                    alt={sponsor.alt}
+                    className="h-16 md:h-20 w-auto max-w-[200px] object-contain grayscale opacity-70 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100"
+                  />
+                </Link>
+              ) : (
+                <a
+                  key={sponsor.alt}
+                  href={sponsor.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group"
+                  data-testid={`link-sponsor-${sponsor.alt.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <img
+                    src={sponsor.src}
+                    alt={sponsor.alt}
+                    className="h-16 md:h-20 w-auto max-w-[200px] object-contain grayscale opacity-70 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100"
+                  />
+                </a>
+              )
+            )}
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Overview */}
       <section className="max-w-6xl mx-auto px-4 py-12 md:py-16">
