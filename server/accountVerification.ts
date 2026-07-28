@@ -30,11 +30,31 @@ import { verificationTokens } from "@shared/schema";
 import { appBaseUrl } from "./auth";
 
 /**
- * Accounts created before this instant are exempt. Set to the deploy of the
- * verification requirement — moving it forward re-exempts people, moving it back
- * subjects existing users to a wall they did not sign up for.
+ * Accounts created before this instant are exempt.
+ *
+ * MUST NOT predate the deploy. Signup only started sending a verification email
+ * when this feature shipped, so anyone created before that got no email — and a
+ * cutoff in the past would gate them out of the tools with nothing in their
+ * inbox to act on. Moving it forward re-exempts people (safe); moving it back
+ * strands them (not).
+ *
+ * Overridable so the date can be corrected without a deploy. An unparseable
+ * value falls back to the default rather than to epoch-zero, which would
+ * silently subject every account that has ever existed.
  */
-export const VERIFICATION_ENFORCED_FROM = new Date("2026-07-25T00:00:00.000Z");
+function resolveEnforcedFrom(): Date {
+  const DEFAULT = new Date("2026-07-29T00:00:00-04:00");
+  const raw = process.env.VERIFICATION_ENFORCED_FROM;
+  if (!raw) return DEFAULT;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    console.error(`[verification] VERIFICATION_ENFORCED_FROM="${raw}" is unparseable — using ${DEFAULT.toISOString()}`);
+    return DEFAULT;
+  }
+  return parsed;
+}
+
+export const VERIFICATION_ENFORCED_FROM = resolveEnforcedFrom();
 
 /** How long an emailed verification link stays good. */
 const EMAIL_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;

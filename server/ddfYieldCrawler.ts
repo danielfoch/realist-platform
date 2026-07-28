@@ -1,3 +1,4 @@
+import cron from "node-cron";
 import { searchDdfListings, isDdfConfigured } from "./creaDdf";
 import { storage } from "./storage";
 import { db } from "./db";
@@ -636,6 +637,33 @@ export async function runDdfYieldCrawl(targetMonth?: string): Promise<{
  * price-less listings are dropped — so only a deep shortfall trips the alert.
  */
 const COVERAGE_ALERT_RATIO = 0.5;
+
+/**
+ * Nightly crawl + coverage check.
+ *
+ * Both halves already existed and neither had a clock attached: the only way to
+ * run either was an admin POST to /api/ddf-crawl/trigger, so listing coverage
+ * was as fresh as the last time someone remembered to press it, and the coverage
+ * ratio that would have revealed the gap was never computed at all.
+ *
+ * Crawl at 02:20 Toronto / 06:20 UTC — before the 07:00 AI trainer and the
+ * 09:15 multiplex rollups, both of which read this data. Coverage runs straight
+ * after so the ratio in the logs always describes the crawl that just finished.
+ */
+export function scheduleDdfYieldCrawl(): void {
+  cron.schedule("20 6 * * *", () => {
+    runDdfYieldCrawl()
+      .then(async (r) => {
+        console.log(
+          `[ddf-crawler] nightly crawl: ${r.totalListings} listings across ${r.citiesCrawled} cities, ` +
+            `${r.provincesCompleted}/${CRAWL_PROVINCES.length} provinces (month ${r.month})`,
+        );
+        await checkDdfCoverage(r.month);
+      })
+      .catch((err) => console.error("[ddf-crawler] nightly crawl error:", err));
+  });
+  console.log("[ddf-crawler] Nightly crawl + coverage check scheduled (2:20am Toronto / 06:20 UTC)");
+}
 
 export async function checkDdfCoverage(targetMonth?: string): Promise<void> {
   if (!isDdfConfigured()) {
