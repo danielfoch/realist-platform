@@ -1284,6 +1284,16 @@ const KNOWN_APP_ROUTE_PATTERNS: RegExp[] = [
   /^\/underwriting\/[^/]+$/,
   /^\/admin\/events\/[^/]+\/edit$/,
   /^\/events\/[^/]+\/success$/,
+  // Sponsor pages for the flagship event (client/src/lib/eventPartners.ts —
+  // cmhc, bld-financial, alliance-reit, sr-law, valery, …). Added by the Replit
+  // agent without a pattern here, so every sponsor URL returned 404 + noindex —
+  // and these are links that get sent to the sponsors themselves.
+  /^\/community\/events\/partners\/[^/]+$/,
+  // SEO project detail pages — the component is literally named SeoProjectDetail
+  // and the route was returning 404 + noindex.
+  /^\/projects\/[^/]+$/,
+  // /admin/events/:id/edit had a pattern; the sibling roster view did not.
+  /^\/admin\/events\/[^/]+\/roster$/,
 ];
 
 export function isKnownAppRoute(rawPath: string): boolean {

@@ -69,6 +69,47 @@ describe("KNOWN_APP_ROUTES mirrors the SPA router", () => {
     }
   });
 
+  it("covers parameterised routes with a pattern", () => {
+    // The static check above skips these, which is how nine sponsor pages at
+    // /community/events/partners/:slug shipped returning 404 + noindex — links
+    // that get sent to the sponsors themselves. A parameterised route needs
+    // either a KNOWN_APP_ROUTE_PATTERNS entry or a getMetaForPath/
+    // renderSeoFallback lookup that validates the slug.
+    const app = readFileSync(join(REPO_ROOT, "client/src/App.tsx"), "utf8");
+    const parameterised = [...app.matchAll(/<Route\s+path="(\/[^"]*:[^"]*)"/g)].map((m) => m[1]);
+
+    // Routes whose slug is deliberately validated downstream, so an unknown
+    // slug SHOULD fall through to a 404 (see the KNOWN_APP_ROUTES comment).
+    const validatedDownstream = [
+      "/reports/", "/listings/", "/markets/", "/events/", "/guides/",
+      "/encyclopedia/", "/blog/", "/insights/", "/jv-partners/", "/experts/",
+      "/community/events/", "/podcast/", "/videos/", "/strategies/", "/u/",
+      // getProgrammaticStrategy / getProgrammaticMarket validate these slugs.
+      "/investing/", "/markets/",
+    ];
+
+    const unhandled = parameterised.filter((route) => {
+      const sample = route.replace(/:[^/]+/g, "sample-slug");
+      if (isKnownAppRoute(sample)) return false;
+      return !validatedDownstream.some((prefix) => route.startsWith(prefix));
+    });
+
+    expect(
+      unhandled,
+      `Parameterised routes with no pattern and no downstream slug validation:\n  ${unhandled.join("\n  ")}`,
+    ).toEqual([]);
+  });
+
+  it("resolves the event sponsor pages", () => {
+    // Named explicitly: these go out to sponsors before the September event.
+    for (const slug of ["cmhc", "bld-financial", "valery", "alliance-reit"]) {
+      expect(
+        isKnownAppRoute(`/community/events/partners/${slug}`),
+        `sponsor page ${slug} must not 404`,
+      ).toBe(true);
+    }
+  });
+
   it("still rejects junk URLs", () => {
     // The fix must not become "treat everything as known", which would 200 every
     // junk path and invite junk indexing.
