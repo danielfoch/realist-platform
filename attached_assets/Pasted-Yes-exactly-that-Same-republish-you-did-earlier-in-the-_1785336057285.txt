@@ -1,0 +1,39 @@
+Yes — exactly that. Same "republish" you did earlier in the session.
+
+On Replit the workspace and the live site are two separate things:
+
+Workspace — where you just ran git reset and the psql migration. It's a dev environment.
+Deployment — the published snapshot actually serving realist.ca.
+Pulling code into the workspace doesn't touch the live site. Publishing takes a fresh snapshot of the workspace, builds it, and swaps it in. That's the step that's missing — which is why the bundle hash on realist.ca is still the old one.
+
+So: hit Publish/Deploy, same as before. Nothing else to do first — the code and the database are both already correct.
+
+The database part is already live, incidentally. psql writes straight to the real database, which is shared between workspace and deployment — that's why usage_counters and multiplex_market_rollups showed up immediately. It's only the code that's waiting on a publish.
+
+When it's done:
+
+curl -s -o /dev/null -w '%{http_code}\n' https://realist.ca/book-a-call
+200 and you're live. If it's still 404 after a successful publish, paste me the build log — that'd mean something in the build is failing and I'd want to see it.
+
+all I'm getting is ~/workspace$ curl -s -o /dev/null -w '%{http_code}\n' https://realist.ca/book-a-call
+404 no build log
+
+Re-checked whether the deploy landed
+Still index-9fWpxHVi.js — byte-identical to before. No new build has been published at all. If a publish had completed, that hash would change, regardless of whether my code worked.
+
+So this isn't a code problem or a build failure. Nothing has run yet. "No build log" fits that — there's no log because there's been no build.
+
+Three things I'd check, in order:
+
+1. Is there a Deploy/Publish entry in the left sidebar? If realist.ca was set up as a Reserved VM or Autoscale deployment, there's a "Deployments" pane with the current status and a Redeploy button. That's where the log lives.
+
+2. What does its status say? If it shows a green "Promoted"/"Running" with a timestamp from days ago, that confirms it's serving an old snapshot and just needs a redeploy.
+
+3. Does it show the connected source? Some deployments build from a GitHub branch rather than the workspace. If it's pinned to a branch, the workspace git reset wouldn't affect it — but main on GitHub is correct now (3bf63f2), so redeploying would still pick it up.
+
+Screenshot the Deployments pane if easier than describing it — I can read it and tell you exactly what to press.
+
+Worth saying plainly
+I've been asserting "just redeploy" three messages running and it clearly isn't that simple on your setup. I can't see your Replit UI or trigger anything there — this is the one part of the loop I have no visibility into, which is exactly the weakness we were talking about with the Vercel/Railway question.
+
+Everything on my side is verified and waiting: GitHub main at 3bf63f2, 997 tests green, both database tables live. The gap is purely the publish step.
