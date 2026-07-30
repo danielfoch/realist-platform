@@ -195,8 +195,38 @@ export async function resolveZoning(lat: number, lng: number): Promise<ZoningRes
 }
 
 export async function zoningDataLoaded(): Promise<boolean> {
-  const r = await db.execute(sql`SELECT 1 FROM toronto_zoning_polygons LIMIT 1`);
-  return r.rows.length > 0;
+  try {
+    const r = await db.execute(sql`SELECT 1 FROM toronto_zoning_polygons LIMIT 1`);
+    return r.rows.length > 0;
+  } catch {
+    // Table absent (import never run on this database) reads the same as empty:
+    // "not loaded". Throwing here rejected the Promise.all in resolveSite and
+    // 500'd the whole underwriter for every address — see softScreen below.
+    return false;
+  }
+}
+
+/**
+ * Run a site screen, falling back to its documented "no data" shape if it throws.
+ *
+ * Every screen queries a table created by scripts/import-toronto-*.ts rather than
+ * by a migration, and ensureTorontoGeoTables() is exported but called from
+ * nowhere — so on any database where those imports have not been run, the tables
+ * simply do not exist and the query throws.
+ *
+ * resolveSite already has user-facing copy for exactly this state ("Zoning layer
+ * not imported yet — run scripts/import-toronto-geodata.ts"), which is the
+ * author's intent made explicit: missing layers are meant to degrade the report,
+ * not fail it. Only screenTrca had a try/catch, so the other three took the whole
+ * request down with them.
+ */
+async function softScreen<T>(label: string, run: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await run();
+  } catch (err) {
+    console.error(`[toronto-geo] ${label} screen unavailable:`, err instanceof Error ? err.message : err);
+    return fallback;
+  }
 }
 
 // ─── Street tree screening ───────────────────────────────────────────────────
@@ -376,14 +406,21 @@ export async function resolveSite(
 
   if (!geo) notes.push("Address could not be geocoded — location-based screens skipped.");
 
+  const noTreeData: TreeScreenResult = {
+    status: "no_data", cityTreeConflict: false, treesWithinTightRadius: 0,
+    treesWithinContextRadius: 0, nearest: null, privateTreeCaution: PRIVATE_TREE_CAUTION,
+  };
+  const noTrcaData: TrcaScreenResult = { status: "unavailable", regulated: false, detail: null, fromCache: false };
+  const noHeritageData: HeritageScreenResult = { status: "no_data", listed: false, match: null };
+
+  // Each screen is independent: one unavailable layer must degrade its own line
+  // of the report, not the whole underwrite.
   const [zoning, zoningAvailable, trees, heritage, trca] = await Promise.all([
-    geo ? resolveZoning(geo.lat, geo.lng) : Promise.resolve(null),
+    geo ? softScreen("zoning", () => resolveZoning(geo!.lat, geo!.lng), null) : Promise.resolve(null),
     zoningDataLoaded(),
-    geo
-      ? screenStreetTrees(geo.lat, geo.lng)
-      : Promise.resolve<TreeScreenResult>({ status: "no_data", cityTreeConflict: false, treesWithinTightRadius: 0, treesWithinContextRadius: 0, nearest: null, privateTreeCaution: PRIVATE_TREE_CAUTION }),
-    screenHeritage(address),
-    geo ? screenTrca(geo.lat, geo.lng) : Promise.resolve<TrcaScreenResult>({ status: "unavailable", regulated: false, detail: null, fromCache: false }),
+    geo ? softScreen("street tree", () => screenStreetTrees(geo!.lat, geo!.lng), noTreeData) : Promise.resolve(noTreeData),
+    softScreen("heritage", () => screenHeritage(address), noHeritageData),
+    geo ? softScreen("TRCA", () => screenTrca(geo!.lat, geo!.lng), noTrcaData) : Promise.resolve(noTrcaData),
   ]);
 
   if (geo && zoningAvailable && !zoning) notes.push("Point did not land in any imported zoning polygon — zone must be confirmed manually.");

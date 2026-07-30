@@ -24,6 +24,11 @@
  *   LOW (<35): Jurisdiction not yet supported or data too sparse to conclude
  */
 
+import {
+  buildMultiplexDevelopmentReport,
+  type MultiplexDevelopmentReport,
+} from "@shared/multiplexFeasibilityReport";
+
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 export interface FeasibilityInput {
@@ -39,6 +44,20 @@ export interface FeasibilityInput {
   laneAccess?: boolean;
   heritageFlag?: boolean;
   floodplainFlag?: boolean;
+  /**
+   * Major Transit Station Area status, where the user has checked the property
+   * against the municipality's delineation. Omit when unknown — the engine will
+   * fall back to a distance heuristic rather than guessing "outside".
+   */
+  transitAreaStatus?: "outside" | "mtsa" | "pmtsa";
+  /** Straight-line distance to the nearest rapid transit station, in metres. */
+  transitStationDistanceM?: number;
+  /** Lot fronts a major street / avenue — affects MTSA low-rise height direction. */
+  majorStreet?: boolean;
+  /** Optional site acquisition price for the illustrative development pro forma. */
+  purchasePrice?: number;
+  /** Optional hard-cost override for the illustrative development pro forma. */
+  hardCostPsf?: number;
 }
 
 export interface PolicySource {
@@ -67,7 +86,7 @@ export interface RiskFlag {
 }
 
 export interface RuleLayerTrace {
-  layer: "province_baseline" | "municipality_rules" | "zone_standards" | "overlays" | "property_caveats";
+  layer: "province_baseline" | "municipality_rules" | "zone_standards" | "transit_overlay" | "overlays" | "property_caveats";
   label: string;
   status: "direct" | "heuristic" | "missing";
   impact: string;
@@ -79,6 +98,64 @@ export interface AssumptionTrace {
   label: string;
   value: string;
   certainty: "direct" | "inferred" | "unknown";
+}
+
+export interface SiteSpecificLookup {
+  status: "verified" | "partial" | "unavailable";
+  geocoded: boolean;
+  coordinates: { lat: number; lng: number } | null;
+  zoning: {
+    code: string;
+    category: string | null;
+    certainty: "verified";
+  } | null;
+  screens: {
+    city_tree_conflict: boolean | null;
+    trees_within_20m: number | null;
+    heritage_listed: boolean | null;
+    conservation_regulated: boolean | null;
+  };
+  notes: string[];
+}
+
+/**
+ * Major Transit Station Area status.
+ *
+ * MTSA — an area within roughly a 500–800m radius of an existing or planned
+ * higher-order transit station, delineated in a municipality's official plan
+ * (Provincial Planning Statement, 2024, policy 2.4).
+ *
+ * PMTSA — an MTSA delineated under Planning Act s.16(15)–(16). The extra
+ * "protected" status is what unlocks inclusionary zoning and constrains appeals.
+ *
+ * `likely_mtsa_inferred` is our own distance heuristic, never a delineation:
+ * real MTSA boundaries are irregular polygons, not circles.
+ */
+export type TransitAreaStatus =
+  | "unknown"
+  | "outside"
+  | "likely_mtsa_inferred"
+  | "mtsa"
+  | "pmtsa";
+
+export interface TransitContext {
+  status: TransitAreaStatus;
+  certainty: "direct" | "inferred" | "unknown";
+  distance_m: number | null;
+  major_street: boolean;
+  /** Minimum parking cannot be imposed in a P/MTSA — in force since 2025-08-15. */
+  parking_minimums_prohibited: boolean;
+  /** Inclusionary zoning is only available to a municipality inside a PMTSA. */
+  inclusionary_zoning_possible: boolean;
+  inclusionary_zoning_note: string;
+  /**
+   * Height in storeys the province has directed for low-rise (Neighbourhoods)
+   * lands inside a Toronto P/MTSA. Policy direction, not yet zoning — null
+   * where no such direction applies.
+   */
+  policy_height_storeys: number | null;
+  summary: string;
+  notes: string[];
 }
 
 export interface MultiplexFeasibilityResult {
@@ -107,6 +184,7 @@ export interface MultiplexFeasibilityResult {
     heritage_flagged: boolean;
     floodplain_flagged: boolean;
   };
+  site_specific: SiteSpecificLookup | null;
 
   // Permission analysis
   permissions: {
@@ -125,6 +203,12 @@ export interface MultiplexFeasibilityResult {
     scenarios: FeasibilityScenario[];
     approval_notes: string[];
   };
+
+  // Major Transit Station Area context
+  transit: TransitContext;
+
+  // Input-matched concept, illustrative pro forma, and project schedule.
+  development_report: MultiplexDevelopmentReport | null;
 
   // Envelope math
   envelope: {
@@ -228,6 +312,49 @@ const SOURCES: Record<string, PolicySource> = {
     jurisdiction: "Ontario",
     date: "2023-06-01",
     confidence: "high",
+  },
+  pps2024MTSA: {
+    type: "policy_document",
+    name: "Provincial Planning Statement, 2024 — Major Transit Station Areas (500–800m; minimum density targets)",
+    url: "https://www.ontario.ca/page/provincial-planning-statement-2024",
+    section: "Policy 2.4 — Housing and transit-supportive development",
+    jurisdiction: "Ontario",
+    date: "2024-10-20",
+    confidence: "high",
+  },
+  planningActPMTSA: {
+    type: "legislation",
+    name: "Planning Act — Protected Major Transit Station Areas (delineation + inclusionary zoning)",
+    url: "https://www.ontario.ca/laws/statute/90p13",
+    section: "Sections 16(4)–(5), 16(15)–(16)",
+    jurisdiction: "Ontario",
+    date: "2020-01-01",
+    confidence: "high",
+  },
+  bill185Parking: {
+    type: "legislation",
+    name: "Bill 185 — Cutting Red Tape to Build More Homes Act, 2024: no minimum parking in P/MTSAs",
+    url: "https://www.ola.org/en/legislative-business/bills/parliament-43/session-1/bill-185",
+    section: "Planning Act ss. 16(22)–(23), 34(1.1)–(1.2)",
+    jurisdiction: "Ontario",
+    date: "2025-08-15",
+    confidence: "high",
+  },
+  torontoMTSA2025: {
+    type: "official_plan",
+    name: "City of Toronto — MTSA/PMTSA delineation (OPA 524, 537, 540, 544, 570, 575), Minister-approved",
+    url: "https://www.toronto.ca/city-government/planning-development/planning-studies-initiatives/zoning-for-major-transit-station-areas/",
+    jurisdiction: "Toronto",
+    date: "2025-08-15",
+    confidence: "high",
+  },
+  ontarioIZPause2026: {
+    type: "legislation",
+    name: "O. Reg. 15/26 — inclusionary zoning obligations paused in Toronto until 2027-07-01",
+    url: "https://www.ontario.ca/laws/regulation/210232",
+    jurisdiction: "Ontario",
+    date: "2026-01-29",
+    confidence: "medium",
   },
   inferred: {
     type: "inference",
@@ -816,6 +943,162 @@ function inferTorontoSixUnitStatus(input: FeasibilityInput, munRule: Municipalit
   return "possible_unverified";
 }
 
+// ─── Major Transit Station Areas ────────────────────────────────────────────
+
+/**
+ * PPS 2024 describes an MTSA as roughly a 500–800m radius around a higher-order
+ * transit station. We use the outer bound for the "might be inside" heuristic so
+ * the tool errs toward telling the user to go check the delineation.
+ */
+export const MTSA_OUTER_RADIUS_M = 800;
+
+/**
+ * Heights the Province directed Toronto to permit on Neighbourhoods-designated
+ * (low-rise) land inside a P/MTSA when it approved the delineations on
+ * 2025-08-15. Council still has to implement these through a zoning amendment —
+ * the workplan slipped again after Bill 98 (Royal Assent 2026-06-02) — so this
+ * is planning-policy support for an application, not an as-of-right envelope.
+ */
+export const TORONTO_MTSA_LOW_RISE_STOREYS = {
+  majorStreet: 6,
+  interior: 4,
+  status: "policy direction — awaiting City zoning implementation",
+  source: "Toronto MTSA/PMTSA approval, 2025-08-15",
+};
+
+/**
+ * Toronto's inclusionary zoning by-law only reaches developments of 100+ units
+ * AND 8,000+ m² of new residential GFA inside an approved PMTSA — two orders of
+ * magnitude above multiplex scale — and O. Reg. 15/26 paused it in Toronto until
+ * 2027-07-01 regardless.
+ */
+const IZ_UNIT_THRESHOLD = 100;
+
+function assessTransitArea(
+  input: FeasibilityInput,
+  munRule: MunicipalityRule | null,
+  zoneHint: ZoneHint | null,
+): TransitContext {
+  const notes: string[] = [];
+  const distance = typeof input.transitStationDistanceM === "number" && input.transitStationDistanceM >= 0
+    ? Math.round(input.transitStationDistanceM)
+    : null;
+  const majorStreet = !!input.majorStreet;
+  const isToronto = munRule?.name === "City of Toronto";
+  const isOntario = (munRule?.province ?? "") === "ON" || /^(ON|ONTARIO)$/i.test((input.province || "").trim());
+
+  // 1. Status — an explicit answer always beats the distance heuristic.
+  let status: TransitAreaStatus;
+  let certainty: "direct" | "inferred" | "unknown";
+
+  if (input.transitAreaStatus === "pmtsa") {
+    status = "pmtsa";
+    certainty = "direct";
+  } else if (input.transitAreaStatus === "mtsa") {
+    status = "mtsa";
+    certainty = "direct";
+  } else if (input.transitAreaStatus === "outside") {
+    status = "outside";
+    certainty = "direct";
+  } else if (distance !== null && distance <= MTSA_OUTER_RADIUS_M) {
+    status = "likely_mtsa_inferred";
+    certainty = "inferred";
+    notes.push(
+      `${distance}m from a station is inside the ${MTSA_OUTER_RADIUS_M}m radius the PPS uses to describe an MTSA, but delineated boundaries are irregular polygons drawn in the official plan — not circles. Confirm on the municipality's MTSA map.`,
+    );
+  } else if (distance !== null) {
+    status = "outside";
+    certainty = "inferred";
+    notes.push(
+      `${distance}m from the nearest station is beyond the ${MTSA_OUTER_RADIUS_M}m MTSA radius, so the property is probably outside — though delineations sometimes stretch further along a corridor.`,
+    );
+  } else {
+    status = "unknown";
+    certainty = "unknown";
+    notes.push("No MTSA status or station distance was supplied, so no transit-area policy was applied.");
+  }
+
+  const inside = status === "mtsa" || status === "pmtsa" || status === "likely_mtsa_inferred";
+  const confirmedInside = status === "mtsa" || status === "pmtsa";
+
+  // 2. Parking — in force, and the one MTSA effect that needs no implementation.
+  const parkingProhibited = confirmedInside && isOntario;
+  if (parkingProhibited) {
+    notes.push(
+      "Minimum parking requirements cannot be applied here. Bill 185 barred official plans and zoning by-laws from requiring parking in a P/MTSA, and as of 2025-08-15 any existing minimum stopped having effect. Accessible parking standards still apply where parking is provided voluntarily.",
+    );
+  } else if (status === "likely_mtsa_inferred" && isOntario) {
+    notes.push(
+      "If the delineation confirms this lot is inside a P/MTSA, minimum parking requirements cannot be applied to it (Bill 185, in force 2025-08-15) — worth confirming before you price structured or surface parking into the deal.",
+    );
+  }
+
+  // 3. Inclusionary zoning — PMTSA-only, and far above multiplex scale.
+  const izPossible = status === "pmtsa";
+  let izNote: string;
+  if (izPossible) {
+    izNote = isToronto
+      ? `Inclusionary zoning is only available to a municipality inside an approved PMTSA, and Toronto's by-law reaches developments of ${IZ_UNIT_THRESHOLD}+ units and 8,000+ m² of new residential GFA. A multiplex sits far below that threshold. O. Reg. 15/26 also paused Toronto's IZ obligations until 2027-07-01.`
+      : `Inclusionary zoning can only be applied inside an approved PMTSA, and municipal by-laws set unit/GFA thresholds well above multiplex scale (Toronto's is ${IZ_UNIT_THRESHOLD}+ units). Check whether this municipality has an IZ by-law and what its threshold is if you are contemplating a larger rezoning.`;
+  } else if (inside) {
+    izNote = "Inclusionary zoning requires PMTSA status specifically — a plain MTSA does not carry it.";
+  } else {
+    izNote = "Not applicable — inclusionary zoning only operates inside an approved PMTSA.";
+  }
+
+  // 4. Toronto low-rise height direction.
+  const lowRiseZone = !zoneHint || zoneHint.category === "residential_low" || zoneHint.category === "residential_medium";
+  const policyHeight = confirmedInside && isToronto && lowRiseZone
+    ? (majorStreet ? TORONTO_MTSA_LOW_RISE_STOREYS.majorStreet : TORONTO_MTSA_LOW_RISE_STOREYS.interior)
+    : null;
+
+  if (policyHeight) {
+    notes.push(
+      `When the Province approved Toronto's delineations it directed the City to permit ${TORONTO_MTSA_LOW_RISE_STOREYS.interior} storeys on Neighbourhoods land inside a P/MTSA, and ${TORONTO_MTSA_LOW_RISE_STOREYS.majorStreet} storeys where the lot fronts a major street. Council has not yet implemented that in the zoning by-law, so it is policy support for an application — not an as-of-right envelope. The GFA math below deliberately stays on the current ${munRule?.typical_storeys ?? 3}-storey multiplex envelope.`,
+    );
+  }
+
+  if (inside) {
+    notes.push(
+      "MTSAs carry minimum density targets under PPS 2024 — 200 residents-and-jobs per hectare at a subway, 160 at LRT/BRT, 150 at commuter rail. Those bind the municipality's planning, not your lot, but they are why intensification applications inside an MTSA face a friendlier policy read.",
+    );
+  }
+
+  // 5. Summary line.
+  let summary: string;
+  switch (status) {
+    case "pmtsa":
+      summary = "Inside a Protected Major Transit Station Area — no parking minimums, and the strongest official-plan support for intensification.";
+      break;
+    case "mtsa":
+      summary = "Inside a delineated Major Transit Station Area — official-plan support for intensification, and no parking minimums.";
+      break;
+    case "likely_mtsa_inferred":
+      summary = `About ${distance}m from a station, so plausibly inside an MTSA — verify against the delineation before underwriting any of the upside.`;
+      break;
+    case "outside":
+      summary = certainty === "direct"
+        ? "Outside any Major Transit Station Area — standard municipal permissions apply."
+        : "Probably outside a Major Transit Station Area based on station distance.";
+      break;
+    default:
+      summary = "MTSA status not provided — transit-area policy was not applied to this screening.";
+  }
+
+  return {
+    status,
+    certainty,
+    distance_m: distance,
+    major_street: majorStreet,
+    parking_minimums_prohibited: parkingProhibited,
+    inclusionary_zoning_possible: izPossible,
+    inclusionary_zoning_note: izNote,
+    policy_height_storeys: policyHeight,
+    summary,
+    notes,
+  };
+}
+
 // ─── Confidence Scoring ─────────────────────────────────────────────────────
 
 function computeConfidence(
@@ -867,6 +1150,15 @@ function computeConfidence(
     breakdown.overlays = { score: 10, reason: "Heritage/floodplain flags provided" };
   } else {
     breakdown.overlays = { score: 3, reason: "No overlay data — assuming no known constraints (unverified)" };
+  }
+
+  // Transit-area status
+  if (input.transitAreaStatus) {
+    breakdown.transit_area = { score: 8, reason: `MTSA status "${input.transitAreaStatus}" confirmed against the municipal delineation` };
+  } else if (typeof input.transitStationDistanceM === "number") {
+    breakdown.transit_area = { score: 4, reason: "Station distance provided — MTSA status inferred from radius, not delineation" };
+  } else {
+    breakdown.transit_area = { score: 0, reason: "No MTSA/PMTSA input — transit-area policy not applied" };
   }
 
   // Lot context (corner, lane access)
@@ -1029,6 +1321,8 @@ function buildScenarios(
   provRule: ProvinceRule | null,
   practicalGfa: number | null,
   input: FeasibilityInput,
+  transit: TransitContext,
+  assumedStoreys: number,
 ): FeasibilityScenario[] {
   const scenarios: FeasibilityScenario[] = [];
   const baseUnits = munRule ? munRule.baseline_units : (provRule?.baseline_units || 2);
@@ -1102,6 +1396,28 @@ function buildScenarios(
     });
   }
 
+  // Scenario 5: transit-area upside — only where the delineation was confirmed,
+  // and always as an application, never as-of-right.
+  if (transit.policy_height_storeys && transit.policy_height_storeys > assumedStoreys) {
+    const uplift = transit.policy_height_storeys / assumedStoreys;
+    const upsideUnits = Math.max(baseUnits + 1, Math.round(baseUnits * uplift));
+    const areaLabel = transit.status === "pmtsa" ? "PMTSA" : "MTSA";
+    scenarios.push({
+      name: `Transit-Oriented Low-Rise (${areaLabel} upside)`,
+      units: upsideUnits,
+      description: `${transit.policy_height_storeys} storeys is the height the Province directed Toronto to permit on low-rise land inside a P/MTSA${transit.major_street ? " fronting a major street" : ""} — not yet in the zoning by-law, so this is an application, not a right.`,
+      approval_path: "rezoning_required",
+      typical_gfa_sqft: practicalGfa ? Math.round(practicalGfa * uplift) : undefined,
+      notes: [
+        `Council has not yet amended the zoning by-law to implement the ${transit.policy_height_storeys}-storey direction — the workplan was pushed back again after Bill 98 (Royal Assent 2026-06-02)`,
+        "Until it is implemented, reaching this scale means a rezoning or a substantial minor variance, with the delineation and the Province's direction as your planning argument",
+        "Unit count is scaled from the storey uplift only — it does not test angular planes, separation distances, servicing, or the Building Code step from Part 9 to Part 3 construction",
+        "The Part 9 → Part 3 threshold above 3 storeys / 600m² materially changes construction cost — price it before assuming the upside is worth pursuing",
+        "Verify the delineation, the current zoning, and the application route with the City and a planner",
+      ],
+    });
+  }
+
   return scenarios;
 }
 
@@ -1111,6 +1427,7 @@ function detectRiskFlags(
   input: FeasibilityInput,
   munRule: MunicipalityRule | null,
   lotArea: { area: number | null; frontage: number | null; depth: number | null; basis: string },
+  transit: TransitContext,
 ): RiskFlag[] {
   const flags: RiskFlag[] = [];
 
@@ -1189,11 +1506,44 @@ function detectRiskFlags(
     details: "Servicing capacity (water, sewer, hydro) for additional units must be verified with the applicable utility and municipality. Servicing upgrades can add significant cost to multiplex projects.",
   });
 
-  flags.push({
-    flag: "Parking Requirements",
-    severity: "low",
-    details: "Many municipalities require 1+ parking spaces per unit. This can constrain the viable unit count on tight lots. Verify parking standards with municipality. Toronto has reduced parking requirements near transit.",
-  });
+  if (transit.parking_minimums_prohibited) {
+    flags.push({
+      flag: "Parking Requirements — none can be imposed (P/MTSA)",
+      severity: "low",
+      details: "This property sits inside a Protected/Major Transit Station Area, where an official plan or zoning by-law cannot require minimum parking (Bill 185; in force since 2025-08-15). Parking may still be provided voluntarily, and accessible parking standards apply to whatever is provided. Confirm the delineation before relying on this.",
+    });
+  } else {
+    flags.push({
+      flag: "Parking Requirements",
+      severity: "low",
+      details: "Many municipalities require 1+ parking spaces per unit. This can constrain the viable unit count on tight lots. Verify parking standards with municipality. Toronto imposes no minimum parking for multiplexes, and no Ontario municipality can impose minimums inside a P/MTSA.",
+    });
+  }
+
+  // MTSA-specific caveats.
+  if (transit.status === "likely_mtsa_inferred") {
+    flags.push({
+      flag: "MTSA Status Inferred From Distance",
+      severity: "medium",
+      details: `MTSA membership was guessed from a ${transit.distance_m}m station distance, not read off a delineation. Boundaries are irregular polygons adopted in the official plan — a lot inside the radius can still be outside the MTSA. Check the municipality's MTSA mapping (in Toronto, the P/MTSA layer on the Open Data portal) before pricing in any transit-area upside.`,
+    });
+  }
+
+  if (transit.policy_height_storeys) {
+    flags.push({
+      flag: "Transit-Area Height Is Policy, Not Zoning",
+      severity: "medium",
+      details: `The ${transit.policy_height_storeys}-storey figure for low-rise land inside a Toronto P/MTSA is a provincial direction issued with the 2025-08-15 delineation approval, and Council has not yet written it into the zoning by-law. Building to it today requires an application. The envelope math in this screening stays on the current as-of-right multiplex assumption for that reason.`,
+    });
+  }
+
+  if (transit.inclusionary_zoning_possible) {
+    flags.push({
+      flag: "Inclusionary Zoning (PMTSA) — Above Multiplex Scale",
+      severity: "low",
+      details: transit.inclusionary_zoning_note,
+    });
+  }
 
   return flags;
 }
@@ -1204,6 +1554,7 @@ function buildRuleHierarchy(
   munRule: MunicipalityRule | null,
   zoneHint: ZoneHint | null,
   sixUnitStatus: "not_applicable" | "possible_unverified" | "more_likely_area",
+  transit: TransitContext,
 ): RuleLayerTrace[] {
   const layers: RuleLayerTrace[] = [];
 
@@ -1245,6 +1596,30 @@ function buildRuleHierarchy(
   });
 
   layers.push({
+    layer: "transit_overlay",
+    label:
+      transit.status === "pmtsa" ? "Protected Major Transit Station Area"
+      : transit.status === "mtsa" ? "Major Transit Station Area"
+      : transit.status === "likely_mtsa_inferred" ? "Transit station area (inferred)"
+      : "Transit station area",
+    status:
+      transit.certainty === "direct" ? "direct"
+      : transit.certainty === "inferred" ? "heuristic"
+      : "missing",
+    impact: transit.summary,
+    confidence: transit.certainty === "direct" ? "high" : transit.certainty === "inferred" ? "low" : "low",
+    source_names:
+      transit.status === "unknown"
+        ? [SOURCES.inferred.name]
+        : [
+            SOURCES.pps2024MTSA.name,
+            ...(transit.status === "pmtsa" ? [SOURCES.planningActPMTSA.name] : []),
+            ...(transit.parking_minimums_prohibited ? [SOURCES.bill185Parking.name] : []),
+            ...(munRule?.name === "City of Toronto" ? [SOURCES.torontoMTSA2025.name] : []),
+          ],
+  });
+
+  layers.push({
     layer: "overlays",
     label: "Overlay constraints",
     status: input.heritageFlag || input.floodplainFlag ? "direct" : "heuristic",
@@ -1278,6 +1653,7 @@ function buildAssumptions(
     storeys: number;
   },
   sixUnitStatus: "not_applicable" | "possible_unverified" | "more_likely_area",
+  transit: TransitContext,
 ): AssumptionTrace[] {
   return [
     {
@@ -1304,6 +1680,18 @@ function buildAssumptions(
             ? "6-unit permissions may apply in limited Toronto subareas; location not confirmed."
             : "Not applicable to this property.",
       certainty: sixUnitStatus === "not_applicable" ? "direct" : "unknown",
+    },
+    {
+      label: "MTSA / PMTSA status",
+      value: transit.summary,
+      certainty: transit.certainty,
+    },
+    {
+      label: "Transit-area envelope treatment",
+      value: transit.policy_height_storeys
+        ? `Provincial direction supports ${transit.policy_height_storeys} storeys here, but the GFA math stays on the as-of-right envelope until the City implements it in zoning.`
+        : "No transit-area height uplift applied to the envelope math.",
+      certainty: transit.policy_height_storeys ? "inferred" : "direct",
     },
     {
       label: "Overlay status",
@@ -1353,7 +1741,8 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
   const likelyRangeLabel = `${unitsLow}-${unitsHigh} units`;
 
   // 8. Build scenarios
-  const scenarios = buildScenarios(munRule, provRule, envelope.practical_gfa, input);
+  const transit = assessTransitArea(input, munRule, zoneHint);
+  const scenarios = buildScenarios(munRule, provRule, envelope.practical_gfa, input, transit, envelope.storeys);
   const sixUnitStatus = inferTorontoSixUnitStatus(input, munRule);
 
   // 9. Unit GFA scenarios
@@ -1364,9 +1753,9 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
   }));
 
   // 10. Detect risk flags
-  const riskFlags = detectRiskFlags(input, munRule ? { ...munRule, key: munKey } as any : null, lotAreaResult);
-  const rulesHierarchy = buildRuleHierarchy(input, provRule, munRule, zoneHint, sixUnitStatus);
-  const assumptions = buildAssumptions(input, lotAreaResult, envelope, sixUnitStatus);
+  const riskFlags = detectRiskFlags(input, munRule ? { ...munRule, key: munKey } as any : null, lotAreaResult, transit);
+  const rulesHierarchy = buildRuleHierarchy(input, provRule, munRule, zoneHint, sixUnitStatus, transit);
+  const assumptions = buildAssumptions(input, lotAreaResult, envelope, sixUnitStatus, transit);
 
   // 11. Approval path assessment
   let approvalPath: "as_of_right" | "minor_variance_likely" | "rezoning_required" | "complex" | "unknown" = "unknown";
@@ -1402,8 +1791,12 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
   if (munRule?.laneway_suite_possible) keyFacts.push("Laneway suite possible (verify lane access)");
   if (munRule?.garden_suite_possible || provRule?.garden_suite_possible) keyFacts.push("Garden suite likely possible");
   if (sixUnitStatus === "more_likely_area") keyFacts.push("Toronto 6-unit subarea looks more plausible from address context");
+  if (transit.status === "pmtsa") keyFacts.push("Inside a PMTSA — no parking minimums apply");
+  else if (transit.status === "mtsa") keyFacts.push("Inside a delineated MTSA");
+  else if (transit.status === "likely_mtsa_inferred") keyFacts.push(`~${transit.distance_m}m from transit — possibly inside an MTSA`);
 
   const keyBlockers: string[] = [];
+  if (transit.status === "likely_mtsa_inferred") keyBlockers.push("MTSA status inferred from distance — verify the delineation");
   if (input.heritageFlag) keyBlockers.push("Heritage flag — major constraint");
   if (input.floodplainFlag) keyBlockers.push("Floodplain — conservation authority required");
   if (!input.zoneCode) keyBlockers.push("Zone not provided — verify with municipal zoning map");
@@ -1414,7 +1807,35 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
     ...(provRule?.sources || []),
     ...(munRule?.sources || []),
   ];
+  if (transit.status !== "unknown" && transit.status !== "outside") {
+    allSources.push(SOURCES.pps2024MTSA);
+    if (transit.status === "pmtsa") allSources.push(SOURCES.planningActPMTSA);
+    if (transit.parking_minimums_prohibited) allSources.push(SOURCES.bill185Parking);
+    if (munRule?.name === "City of Toronto") allSources.push(SOURCES.torontoMTSA2025);
+    if (transit.inclusionary_zoning_possible) allSources.push(SOURCES.ontarioIZPause2026);
+  }
   if (!munRule) allSources.push(SOURCES.inferred);
+
+  const developmentReport = buildMultiplexDevelopmentReport({
+    municipality: munRule?.name || input.city || "Unknown",
+    frontageFt: lotAreaResult.frontage,
+    depthFt: lotAreaResult.depth,
+    lotAreaSqft: lotAreaResult.area,
+    coverageRatio: envelope.coverage_ratio,
+    practicalGfaSqft: envelope.practical_gfa,
+    asOfRightStoreys: envelope.storeys,
+    policyStoreys: transit.policy_height_storeys,
+    effectiveBaselineUnits: effectiveBaseline,
+    sixUnitStatus,
+    laneAccess: input.laneAccess || false,
+    gardenSuitePossible: munRule?.garden_suite_possible || provRule?.garden_suite_possible || false,
+    lanewaySuitePossible: munRule?.laneway_suite_possible || false,
+    majorStreet: input.majorStreet || false,
+    transitStatus: transit.status,
+    approvalPath,
+    purchasePrice: input.purchasePrice,
+    hardCostPsf: input.hardCostPsf,
+  });
 
   return {
     address: input.address || input.city || "Unknown address",
@@ -1442,6 +1863,7 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
       heritage_flagged: input.heritageFlag || false,
       floodplain_flagged: input.floodplainFlag || false,
     },
+    site_specific: null,
 
     permissions: {
       provincial_baseline_units: provBaseline,
@@ -1459,6 +1881,9 @@ export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexF
       scenarios,
       approval_notes: munRule?.approval_notes || provRule?.baseline_notes || [],
     },
+
+    transit,
+    development_report: developmentReport,
 
     envelope: {
       lot_area_sqft: lotAreaResult.area,

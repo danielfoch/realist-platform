@@ -9,7 +9,7 @@ import {
   Menu, X, User, LogOut, Briefcase, Building, ChevronDown,
   Calculator, MapPin, Users, Handshake, Calendar, Radio,
   FileText, TrendingUp, BarChart3, Shield, Gavel,
-  Map, DollarSign, Building2, Inbox,
+  Map, DollarSign, Layers, Building2, Inbox,
   KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell, PhoneCall, PenLine,
   Youtube, MessageSquare,
 } from "lucide-react";
@@ -63,13 +63,18 @@ const navCategories: NavCategory[] = [
       { href: "/tools", label: "All Tools", description: "Browse every calculator", icon: <FolderOpen className="h-4 w-4" /> },
       { href: "/tools/analyzer", label: "Deal Analyzer", description: "Full underwriting — buy & hold, BRRR, multiplex, flip", icon: <Calculator className="h-4 w-4" /> },
       { href: "/tools/financing-readiness", label: "Financing Readiness", description: "Your stress-tested max purchase price in 30 seconds", icon: <Gauge className="h-4 w-4" />, badge: "New" },
-      // One multiplex door, not three. The menu previously offered Multiplex
-      // Underwriter, Multiplex Feasibility and "Will It Plex?" side by side with
-      // near-identical descriptions, leaving a visitor to guess which one
-      // answers "can I build on this lot" — and only the Underwriter is backed
-      // by live zoning data. The other two stay routable (inbound links, SEO)
-      // and are reachable from /tools and from the Underwriter itself.
-      { href: "/tools/multiplex-underwriter", label: "Multiplex Underwriter", description: "Enter a Toronto address — unit count, costs, rents, and exit math", icon: <Building2 className="h-4 w-4" />, badge: "AI" },
+      // Three multiplex tools, distinguished by what they need from you rather
+      // than by name — the old descriptions ("address-first AI underwrite" /
+      // "screen any property" / "full pro forma") left a visitor guessing which
+      // one answers "can I build on this lot".
+      //
+      // Consolidating to just the Underwriter was tried and reverted: it is the
+      // only one that depends on the server, so when it fails the menu funnels
+      // everyone to a dead end while two working tools sit hidden. Collapse this
+      // again only once the Underwriter is covered by an end-to-end test.
+      { href: "/tools/multiplex-underwriter", label: "Multiplex Underwriter", description: "Toronto address → real zoning, unit count, costs, and exit math", icon: <Building2 className="h-4 w-4" />, badge: "AI" },
+      { href: "/tools/multiplex-feasibility", label: "Multiplex Feasibility", description: "Anywhere in Canada — you supply the zoning rules, it screens the lot", icon: <Layers className="h-4 w-4" /> },
+      { href: "/tools/will-it-plex", label: "Will It Plex?", description: "Full pro forma from your own numbers — no address needed", icon: <Calculator className="h-4 w-4" /> },
       { href: "/tools/true-cost", label: "True Cost", description: "Complete cost breakdown for Ontario buyers", icon: <DollarSign className="h-4 w-4" /> },
       { href: "/tools/rent-vs-buy", label: "Rent vs. Buy", description: "Compare renting vs. owning over time", icon: <BarChart3 className="h-4 w-4" /> },
       { href: "/tools/deal-desk", label: "Deal Desk", description: "Submit a deal for our team to review with you", icon: <Inbox className="h-4 w-4" /> },

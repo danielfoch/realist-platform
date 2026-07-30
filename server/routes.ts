@@ -1596,7 +1596,7 @@ export async function registerRoutes(
   app.post("/api/multiplex-feasibility", async (req, res) => {
     try {
       const { computeMultiplexFeasibility } = await import("./multiplexFeasibility");
-      const input = req.body;
+      const input = { ...req.body };
 
       // Basic guard — require at least city or address
       if (!input?.address && !input?.city && !input?.province) {
@@ -1607,12 +1607,161 @@ export async function registerRoutes(
       if (input.lotFrontage) input.lotFrontage = parseFloat(input.lotFrontage) || undefined;
       if (input.lotDepth) input.lotDepth = parseFloat(input.lotDepth) || undefined;
       if (input.lotArea) input.lotArea = parseFloat(input.lotArea) || undefined;
+      if (input.purchasePrice !== undefined) {
+        const parsed = parseFloat(input.purchasePrice);
+        input.purchasePrice = Number.isFinite(parsed) && parsed >= 0 && parsed <= 50_000_000
+          ? parsed
+          : undefined;
+      }
+      if (input.hardCostPsf !== undefined) {
+        const parsed = parseFloat(input.hardCostPsf);
+        input.hardCostPsf = Number.isFinite(parsed) && parsed >= 100 && parsed <= 2_000
+          ? parsed
+          : undefined;
+      }
+      if (input.transitStationDistanceM !== undefined) {
+        const parsed = parseFloat(input.transitStationDistanceM);
+        input.transitStationDistanceM = Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+      }
+      // Only an explicit, recognized delineation answer is trusted — anything
+      // else falls through to the engine's distance heuristic.
+      if (!["outside", "mtsa", "pmtsa"].includes(input.transitAreaStatus)) {
+        input.transitAreaStatus = undefined;
+      }
+
+      let siteSpecific: import("./multiplexFeasibility").SiteSpecificLookup | null = null;
+      const looksToronto = /\btoronto\b/i.test(`${input.city || ""} ${input.address || ""}`);
+      if (looksToronto && typeof input.address === "string" && input.address.trim().length >= 5) {
+        try {
+          const { resolveSite } = await import("./torontoGeo");
+          const submittedZone = input.zoneCode ? String(input.zoneCode) : null;
+          const site = await resolveSite(input.address);
+          if (site.zoning) {
+            input.zoneCode = site.zoning.zoneCode;
+          }
+          input.heritageFlag = Boolean(input.heritageFlag || site.heritage.listed);
+          input.floodplainFlag = Boolean(input.floodplainFlag || site.trca.regulated);
+
+          const lookupNotes = [...site.notes];
+          if (
+            submittedZone
+            && site.zoning
+            && submittedZone.trim().toUpperCase() !== site.zoning.zoneCode.trim().toUpperCase()
+          ) {
+            lookupNotes.unshift(
+              `Submitted zone ${submittedZone} differs from the mapped zoning polygon ${site.zoning.zoneCode}; the mapped polygon was used for this report.`,
+            );
+          }
+
+          const hasVerifiedZone = Boolean(site.zoning);
+          const screenedCount = [
+            site.trees.status === "screened",
+            site.heritage.status === "screened",
+            site.trca.status === "screened",
+          ].filter(Boolean).length;
+          siteSpecific = {
+            status: hasVerifiedZone && screenedCount === 3
+              ? "verified"
+              : site.lat != null && site.lng != null
+                ? "partial"
+                : "unavailable",
+            geocoded: site.lat != null && site.lng != null,
+            coordinates: site.lat != null && site.lng != null
+              ? { lat: site.lat, lng: site.lng }
+              : null,
+            zoning: site.zoning
+              ? {
+                  code: site.zoning.zoneCode,
+                  category: site.zoning.zoneCategory,
+                  certainty: site.zoning.certainty,
+                }
+              : null,
+            screens: {
+              city_tree_conflict: site.trees.status === "screened"
+                ? site.trees.cityTreeConflict
+                : null,
+              trees_within_20m: site.trees.status === "screened"
+                ? site.trees.treesWithinContextRadius
+                : null,
+              heritage_listed: site.heritage.status === "screened"
+                ? site.heritage.listed
+                : null,
+              conservation_regulated: site.trca.status === "screened"
+                ? site.trca.regulated
+                : null,
+            },
+            notes: lookupNotes,
+          };
+        } catch (lookupError) {
+          console.error("Multiplex site-specific lookup degraded:", lookupError);
+          siteSpecific = {
+            status: "unavailable",
+            geocoded: false,
+            coordinates: null,
+            zoning: null,
+            screens: {
+              city_tree_conflict: null,
+              trees_within_20m: null,
+              heritage_listed: null,
+              conservation_regulated: null,
+            },
+            notes: ["The site-specific zoning and overlay layers were unavailable; submitted inputs and municipality-level rules were used."],
+          };
+        }
+      }
 
       const result = computeMultiplexFeasibility(input);
+      result.site_specific = siteSpecific;
       res.json(result);
     } catch (err) {
       console.error("Multiplex feasibility error:", err);
       res.status(500).json({ error: "Failed to compute feasibility" });
+    }
+  });
+
+  // One input-matched architectural concept board per report. The dimensioned
+  // site plan remains deterministic; GPT Image 2 only visualizes the already
+  // computed massing and never decides zoning or setbacks.
+  app.post("/api/multiplex-concept-image", async (req: any, res) => {
+    try {
+      const {
+        generateMultiplexConceptImage,
+        multiplexConceptImageConfigured,
+        multiplexConceptImageSchema,
+      } = await import("./multiplexConceptImage");
+      const parsed = multiplexConceptImageSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid concept rendering request" });
+      }
+      if (!multiplexConceptImageConfigured()) {
+        return res.status(503).json({
+          error: "Concept rendering is not configured",
+          code: "image_generation_unavailable",
+        });
+      }
+
+      const { consumeDailyUsage } = await import("./usageLimits");
+      const usage = await consumeDailyUsage(
+        "multiplex_concept_image",
+        req,
+        { anonymous: 2, identified: 10 },
+      );
+      if (!usage.allowed) {
+        return res.status(429).json({
+          error: `Daily concept-render limit reached (${usage.limit}/day).`,
+          code: "image_generation_limit",
+          remaining: 0,
+        });
+      }
+
+      const image = await generateMultiplexConceptImage(parsed.data);
+      res.json({ ...image, remaining: usage.remaining });
+    } catch (err: any) {
+      console.error("Multiplex concept image error:", err?.message || err);
+      res.status(502).json({
+        error: "The architectural concept could not be rendered right now.",
+        code: "image_generation_failed",
+      });
     }
   });
 

@@ -38,7 +38,20 @@ interface FeasibilityFormState {
   laneAccess: boolean;
   heritageFlag: boolean;
   floodplainFlag: boolean;
+  transitAreaStatus: "" | "outside" | "mtsa" | "pmtsa";
+  transitStationDistanceM: string;
+  majorStreet: boolean;
+  purchasePrice: string;
+  hardCostPsf: string;
 }
+
+/** MTSA membership is a delineation, not a radius — so "don't know" is a real answer. */
+const TRANSIT_AREA_OPTIONS = [
+  { value: "", label: "Don't know / haven't checked" },
+  { value: "outside", label: "Outside any station area" },
+  { value: "mtsa", label: "Inside an MTSA" },
+  { value: "pmtsa", label: "Inside a PMTSA (protected)" },
+] as const;
 
 const CANADIAN_PROVINCES = [
   { value: "ON", label: "Ontario" },
@@ -55,9 +68,10 @@ const CANADIAN_PROVINCES = [
 
 const EXAMPLE_PROPERTIES = [
   { label: "Toronto — Standard lot", city: "Toronto", province: "ON", frontage: "25", depth: "120", zone: "RD" },
-  { label: "Toronto — Wide lot with lane", city: "Toronto", province: "ON", frontage: "40", depth: "110", laneAccess: true },
+  { label: "Toronto — Wide lot with lane", city: "Toronto", province: "ON", frontage: "40", depth: "110", laneAccess: true, purchasePrice: "1450000" },
   { label: "Hamilton — Medium lot", city: "Hamilton", province: "ON", frontage: "33", depth: "100" },
   { label: "Toronto — Narrow lot", city: "Toronto", province: "ON", frontage: "18", depth: "135" },
+  { label: "Toronto — Lot in a PMTSA", city: "Toronto", province: "ON", frontage: "30", depth: "115", transitAreaStatus: "pmtsa" as const, transitStationDistanceM: "300", majorStreet: true },
 ];
 
 const DEFAULT_FORM: FeasibilityFormState = {
@@ -73,6 +87,11 @@ const DEFAULT_FORM: FeasibilityFormState = {
   laneAccess: false,
   heritageFlag: false,
   floodplainFlag: false,
+  transitAreaStatus: "",
+  transitStationDistanceM: "",
+  majorStreet: false,
+  purchasePrice: "",
+  hardCostPsf: "",
 };
 
 export default function MultiplexFeasibilityPage() {
@@ -129,6 +148,8 @@ export default function MultiplexFeasibilityPage() {
         has_zone: !!form.zoneCode,
         has_dimensions: !!(form.lotFrontage || form.lotDepth || form.lotArea),
         has_flags: !!(form.heritageFlag || form.floodplainFlag),
+        transit_area: form.transitAreaStatus || (form.transitStationDistanceM ? "distance_only" : "unknown"),
+        has_purchase_price: !!form.purchasePrice,
       },
     });
 
@@ -148,6 +169,10 @@ export default function MultiplexFeasibilityPage() {
       lotDepth: ex.depth || "",
       zoneCode: ex.zone || "",
       laneAccess: (ex as any).laneAccess || false,
+      transitAreaStatus: (ex as any).transitAreaStatus || "",
+      transitStationDistanceM: (ex as any).transitStationDistanceM || "",
+      majorStreet: (ex as any).majorStreet || false,
+      purchasePrice: (ex as any).purchasePrice || "",
     }));
     setSubmitted(null);
   };
@@ -165,13 +190,20 @@ export default function MultiplexFeasibilityPage() {
     laneAccess: submitted.laneAccess,
     heritageFlag: submitted.heritageFlag,
     floodplainFlag: submitted.floodplainFlag,
+    transitAreaStatus: submitted.transitAreaStatus || undefined,
+    transitStationDistanceM: submitted.transitStationDistanceM
+      ? parseFloat(submitted.transitStationDistanceM)
+      : undefined,
+    majorStreet: submitted.majorStreet,
+    purchasePrice: submitted.purchasePrice ? parseFloat(submitted.purchasePrice) : undefined,
+    hardCostPsf: submitted.hardCostPsf ? parseFloat(submitted.hardCostPsf) : undefined,
   } : null;
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="max-w-5xl mx-auto px-4 py-10 space-y-10">
+      <main className="max-w-7xl mx-auto px-4 py-10 space-y-10">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="space-y-3">
@@ -190,13 +222,14 @@ export default function MultiplexFeasibilityPage() {
                 </Badge>
                 <Badge variant="outline" className="text-xs">Toronto Multiplex By-law ✓</Badge>
                 <Badge variant="outline" className="text-xs">Bill 23 / ARU ✓</Badge>
+                <Badge variant="outline" className="text-xs">MTSA / PMTSA ✓</Badge>
               </div>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
                 Multiplex Feasibility
               </h1>
               <p className="text-muted-foreground max-w-xl leading-relaxed">
                 Screen any Canadian residential property for multiplex development potential.
-                See what unit count may be achievable, rough envelope estimates, and key buyer-to-verify risks.
+                Get an input-matched site concept, architectural rendering, sample pro forma, and full project timeline alongside the zoning and buyer-to-verify risks.
               </p>
             </div>
             <div className="shrink-0">
@@ -215,6 +248,7 @@ export default function MultiplexFeasibilityPage() {
               "Ontario Bill 23 / ARU framework",
               "Toronto city-wide multiplex by-law",
               "Toronto & East York 6-unit permissions",
+              "MTSA / PMTSA transit-area policy",
               "Garden suite & laneway suite logic",
               "Confidence-scored output",
             ].map(item => (
@@ -244,7 +278,7 @@ export default function MultiplexFeasibilityPage() {
         </div>
 
         {/* ── Two-Column Layout ────────────────────────────────────────────── */}
-        <div className="grid lg:grid-cols-[400px_1fr] gap-8 items-start">
+        <div className="grid lg:grid-cols-[360px_minmax(0,1fr)] gap-8 items-start">
 
           {/* Left: Form ───────────────────────────────────────────────────── */}
           <div className="space-y-4 lg:sticky lg:top-20">
@@ -313,7 +347,7 @@ export default function MultiplexFeasibilityPage() {
                     <div>
                       <Label htmlFor="zone" className="text-xs">
                         Zone Code
-                        <span className="text-muted-foreground ml-1">(optional — look up at municipality)</span>
+                        <span className="text-muted-foreground ml-1">(optional — Toronto addresses are map-checked)</span>
                       </Label>
                       <Input
                         id="zone"
@@ -376,11 +410,98 @@ export default function MultiplexFeasibilityPage() {
                   <Separator />
 
                   <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sample Pro Forma</p>
+                      <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                        Optional inputs. Leave blank to see development costs before land and the modelled residual land value.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="purchasePrice" className="text-xs">Purchase / asking price (CAD)</Label>
+                      <Input
+                        id="purchasePrice"
+                        type="number"
+                        min="0"
+                        step="10000"
+                        placeholder="e.g. 1,250,000"
+                        value={form.purchasePrice}
+                        onChange={e => update("purchasePrice", e.target.value)}
+                        className="mt-1 h-9 text-sm font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="hardCostPsf" className="text-xs">
+                        Hard cost / gross sqft
+                        <span className="ml-1 text-muted-foreground">(optional override)</span>
+                      </Label>
+                      <Input
+                        id="hardCostPsf"
+                        type="number"
+                        min="100"
+                        max="2000"
+                        step="10"
+                        placeholder="Platform sample: 400"
+                        value={form.hardCostPsf}
+                        onChange={e => update("hardCostPsf", e.target.value)}
+                        className="mt-1 h-9 text-sm font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Transit Station Area</p>
+
+                    <div>
+                      <Label htmlFor="transitAreaStatus" className="text-xs">
+                        MTSA / PMTSA status
+                        <span className="text-muted-foreground ml-1">(check your municipality's map)</span>
+                      </Label>
+                      <select
+                        id="transitAreaStatus"
+                        value={form.transitAreaStatus}
+                        onChange={e => update("transitAreaStatus", e.target.value)}
+                        className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        {TRANSIT_AREA_OPTIONS.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="transitDistance" className="text-xs">
+                        Distance to nearest rapid transit station (m)
+                      </Label>
+                      <Input
+                        id="transitDistance"
+                        type="number"
+                        min="0"
+                        step="50"
+                        placeholder="e.g. 450"
+                        value={form.transitStationDistanceM}
+                        onChange={e => update("transitStationDistanceM", e.target.value)}
+                        className="mt-1 h-9 text-sm font-mono"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                        Used only to flag a possible MTSA when you haven't confirmed the status. Real boundaries are
+                        polygons in the official plan, not circles.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Site Flags (check if known)</p>
 
                     {[
                       { id: "cornerLot", label: "Corner lot" },
                       { id: "laneAccess", label: "Rear lane access" },
+                      { id: "majorStreet", label: "Fronts a major street / avenue" },
                       { id: "heritageFlag", label: "Heritage designation / listing" },
                       { id: "floodplainFlag", label: "Floodplain / conservation area" },
                     ].map(({ id, label }) => (
@@ -446,9 +567,9 @@ export default function MultiplexFeasibilityPage() {
                   <div className="grid grid-cols-2 gap-3 text-left max-w-sm mx-auto pt-2">
                     {[
                       { icon: Building2, text: "As-of-right unit count estimate" },
-                      { icon: Calculator, text: "Rough GFA and envelope math" },
-                      { icon: MapPin, text: "Zone classification and policy source" },
-                      { icon: AlertTriangle, text: "Buyer-to-verify risk flags" },
+                      { icon: Calculator, text: "Sample project pro forma + CMHC takeout" },
+                      { icon: MapPin, text: "Input-matched site plan and rendering" },
+                      { icon: AlertTriangle, text: "Full development timeline + risks" },
                     ].map(({ icon: Icon, text }) => (
                       <div key={text} className="flex items-start gap-2 text-xs text-muted-foreground">
                         <Icon className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary/60" />
@@ -476,7 +597,7 @@ export default function MultiplexFeasibilityPage() {
               {
                 step: "01",
                 title: "Rules Hierarchy",
-                body: "Ontario province baseline (Bill 23) → Municipality-specific override (e.g. Toronto's 4-unit multiplex by-law) → Zone-specific standards → Overlay constraints (heritage, conservation, flood).",
+                body: "Ontario province baseline (Bill 23) → Municipality-specific override (e.g. Toronto's 4-unit multiplex by-law) → Zone-specific standards → Transit station area policy (MTSA / PMTSA) → Overlay constraints (heritage, conservation, flood).",
               },
               {
                 step: "02",
@@ -510,7 +631,7 @@ export default function MultiplexFeasibilityPage() {
           <h3 className="font-semibold text-sm">Municipality Coverage</h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
             {[
-              { name: "Toronto", level: "Partial", note: "4-unit + T&EY 6-unit, garden + laneway suite logic" },
+              { name: "Toronto", level: "Partial", note: "4-unit + T&EY 6-unit, garden + laneway suite, P/MTSA policy" },
               { name: "Ottawa", level: "Province Baseline", note: "Ontario Bill 23 baseline" },
               { name: "Hamilton", level: "Province Baseline", note: "Ontario Bill 23 baseline" },
               { name: "Mississauga", level: "Province Baseline", note: "Ontario Bill 23 baseline" },
@@ -533,6 +654,8 @@ export default function MultiplexFeasibilityPage() {
           </div>
           <p className="text-xs text-muted-foreground">
             More municipalities added regularly. Municipality coverage improves as zone-specific rules are ingested from public by-law sources.
+            Transit station area logic (MTSA / PMTSA) applies province-wide in Ontario from the status you supply — Toronto's approved
+            delineations and height direction are modelled in detail; elsewhere the tool applies the Planning Act and PPS rules only.
           </p>
         </div>
 

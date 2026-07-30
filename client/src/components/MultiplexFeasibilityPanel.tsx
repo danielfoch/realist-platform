@@ -20,11 +20,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
+import { FeasibilityDevelopmentReport } from "@/components/multiplex/FeasibilityDevelopmentReport";
+import type { MultiplexDevelopmentReport } from "@shared/multiplexFeasibilityReport";
 import { track } from "@/lib/analytics";
 import {
   AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, ChevronUp,
   Building2, Calculator, ExternalLink, Info, Shield, Zap,
-  Home, Layers, BarChart3, FileText, HelpCircle, Phone,
+  Home, Layers, BarChart3, FileText, HelpCircle, Phone, TrainFront,
 } from "lucide-react";
 
 // ─── Types (mirrored from server) ────────────────────────────────────────────
@@ -54,8 +56,23 @@ interface RiskFlag {
   details: string;
 }
 
+type TransitAreaStatus = "unknown" | "outside" | "likely_mtsa_inferred" | "mtsa" | "pmtsa";
+
+interface TransitContext {
+  status: TransitAreaStatus;
+  certainty: "direct" | "inferred" | "unknown";
+  distance_m: number | null;
+  major_street: boolean;
+  parking_minimums_prohibited: boolean;
+  inclusionary_zoning_possible: boolean;
+  inclusionary_zoning_note: string;
+  policy_height_storeys: number | null;
+  summary: string;
+  notes: string[];
+}
+
 interface RuleLayerTrace {
-  layer: "province_baseline" | "municipality_rules" | "zone_standards" | "overlays" | "property_caveats";
+  layer: "province_baseline" | "municipality_rules" | "zone_standards" | "transit_overlay" | "overlays" | "property_caveats";
   label: string;
   status: "direct" | "heuristic" | "missing";
   impact: string;
@@ -67,6 +84,24 @@ interface AssumptionTrace {
   label: string;
   value: string;
   certainty: "direct" | "inferred" | "unknown";
+}
+
+interface SiteSpecificLookup {
+  status: "verified" | "partial" | "unavailable";
+  geocoded: boolean;
+  coordinates: { lat: number; lng: number } | null;
+  zoning: {
+    code: string;
+    category: string | null;
+    certainty: "verified";
+  } | null;
+  screens: {
+    city_tree_conflict: boolean | null;
+    trees_within_20m: number | null;
+    heritage_listed: boolean | null;
+    conservation_regulated: boolean | null;
+  };
+  notes: string[];
 }
 
 interface MultiplexFeasibilityResult {
@@ -90,6 +125,7 @@ interface MultiplexFeasibilityResult {
     heritage_flagged: boolean;
     floodplain_flagged: boolean;
   };
+  site_specific: SiteSpecificLookup | null;
   permissions: {
     provincial_baseline_units: number;
     municipal_baseline_units: number;
@@ -106,6 +142,8 @@ interface MultiplexFeasibilityResult {
     scenarios: FeasibilityScenario[];
     approval_notes: string[];
   };
+  transit: TransitContext;
+  development_report: MultiplexDevelopmentReport | null;
   envelope: {
     lot_area_sqft: number | null;
     lot_frontage_ft: number | null;
@@ -151,6 +189,11 @@ export interface MultiplexFeasibilityPanelProps {
   laneAccess?: boolean;
   heritageFlag?: boolean;
   floodplainFlag?: boolean;
+  transitAreaStatus?: "outside" | "mtsa" | "pmtsa";
+  transitStationDistanceM?: number;
+  majorStreet?: boolean;
+  purchasePrice?: number;
+  hardCostPsf?: number;
   compact?: boolean; // show condensed version
 }
 
@@ -203,6 +246,102 @@ function UnitBadge({ units }: { units: number }) {
   );
 }
 
+function TransitStatusBadge({ status }: { status: TransitAreaStatus }) {
+  const config: Record<TransitAreaStatus, { label: string; className: string }> = {
+    pmtsa: { label: "PMTSA — Protected", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" },
+    mtsa: { label: "MTSA — Delineated", className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30" },
+    likely_mtsa_inferred: { label: "Possibly MTSA — Unverified", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30" },
+    outside: { label: "Outside a Station Area", className: "bg-muted text-muted-foreground border border-border/50" },
+    unknown: { label: "Not Checked", className: "bg-muted text-muted-foreground border border-border/50" },
+  };
+  const c = config[status];
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.className}`}>
+      {c.label}
+    </span>
+  );
+}
+
+/**
+ * Transit station area card. MTSA/PMTSA membership mostly moves upside — parking
+ * minimums disappear and intensification gets a friendlier policy read — so this
+ * renders as its own block rather than joining the amber constraint overlays.
+ */
+function TransitAreaCard({ transit }: { transit: TransitContext }) {
+  const inside = transit.status === "mtsa" || transit.status === "pmtsa" || transit.status === "likely_mtsa_inferred";
+
+  return (
+    <Card className="border-border/60">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <TrainFront className="h-4 w-4 text-primary" />
+          Transit Station Area (MTSA / PMTSA)
+          <TransitStatusBadge status={transit.status} />
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground leading-relaxed">{transit.summary}</p>
+
+        {transit.status === "unknown" ? (
+          <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground leading-relaxed">
+            Tell the tool whether this property sits inside a Major Transit Station Area — or how far it is from the
+            nearest rapid transit station — and this screening will factor in parking rules, inclusionary zoning
+            exposure, and the transit-area intensification read. In Toronto, check the P/MTSA layer on the City's
+            zoning and Open Data maps.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              {
+                label: "Station distance",
+                value: transit.distance_m !== null ? `~${transit.distance_m.toLocaleString()}m` : "—",
+                good: false,
+              },
+              {
+                label: "Parking minimums",
+                value: transit.parking_minimums_prohibited ? "Cannot be imposed" : "Municipal rules apply",
+                good: transit.parking_minimums_prohibited,
+              },
+              {
+                label: "Inclusionary zoning",
+                value: transit.inclusionary_zoning_possible ? "Possible above 100 units" : "Not applicable",
+                good: !transit.inclusionary_zoning_possible,
+              },
+              {
+                label: "Policy height",
+                value: transit.policy_height_storeys ? `${transit.policy_height_storeys} storeys (policy)` : "No uplift applied",
+                good: false,
+              },
+            ].map(({ label, value, good }) => (
+              <div key={label} className={`rounded-lg p-2.5 border ${good ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900/30" : "bg-muted/40 border-border/40"}`}>
+                <p className="text-[10px] text-muted-foreground">{label}</p>
+                <p className={`text-xs font-medium mt-0.5 ${good ? "text-green-800 dark:text-green-300" : ""}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {transit.notes.length > 0 && (
+          <div className="space-y-1.5">
+            {transit.notes.map((n, i) => (
+              <div key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground leading-relaxed">
+                <ChevronRight className="h-3 w-3 shrink-0 mt-0.5 text-primary" />
+                <span>{n}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {inside && (
+          <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+            {transit.inclusionary_zoning_note}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Loading Skeleton ────────────────────────────────────────────────────────
 
 function LoadingSkeleton() {
@@ -250,6 +389,11 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
     laneAccess: props.laneAccess,
     heritageFlag: props.heritageFlag,
     floodplainFlag: props.floodplainFlag,
+    transitAreaStatus: props.transitAreaStatus,
+    transitStationDistanceM: props.transitStationDistanceM,
+    majorStreet: props.majorStreet,
+    purchasePrice: props.purchasePrice,
+    hardCostPsf: props.hardCostPsf,
   };
 
   const { data, isLoading, error } = useQuery<MultiplexFeasibilityResult>({
@@ -327,7 +471,7 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
         <>
           <Card className="border-border/60">
             <CardContent className="p-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
                 <div className="rounded-lg bg-muted/40 p-3">
                   <p className="text-[11px] text-muted-foreground">Baseline</p>
                   <p className="text-lg font-semibold">{d.permissions.effective_baseline_units} units</p>
@@ -348,6 +492,18 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
                     ].filter(Boolean).slice(0, 2).join(" + ") || "None shown"}
                   </p>
                   <p className="text-[10px] text-muted-foreground">verify lot conditions</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="text-[11px] text-muted-foreground">Transit area</p>
+                  <p className="text-lg font-semibold">
+                    {d.transit.status === "pmtsa" ? "PMTSA"
+                      : d.transit.status === "mtsa" ? "MTSA"
+                      : d.transit.status === "likely_mtsa_inferred" ? "Maybe MTSA"
+                      : d.transit.status === "outside" ? "Outside" : "Not checked"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {d.transit.parking_minimums_prohibited ? "no parking minimums" : "verify delineation"}
+                  </p>
                 </div>
                 <div className="rounded-lg bg-muted/40 p-3">
                   <p className="text-[11px] text-muted-foreground">Practical GFA</p>
@@ -536,6 +692,9 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
             </CardContent>
           </Card>
 
+          {/* ── Transit Station Area ────────────────────────────────────────── */}
+          <TransitAreaCard transit={d.transit} />
+
           {/* ── Zoning Snapshot ─────────────────────────────────────────────── */}
           <Card className="border-border/60">
             <CardHeader className="pb-3">
@@ -567,6 +726,80 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
                   </div>
                 )}
               </div>
+
+              {d.site_specific && (
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold">Address-level map lookup</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Toronto zoning polygon and property constraint screens
+                      </p>
+                    </div>
+                    <Badge
+                      variant={d.site_specific.status === "verified" ? "default" : "outline"}
+                      className="text-[10px] capitalize"
+                    >
+                      {d.site_specific.status}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      {
+                        label: "Mapped zone",
+                        value: d.site_specific.zoning?.code || "Not resolved",
+                        flagged: false,
+                      },
+                      {
+                        label: "City tree",
+                        value: d.site_specific.screens.city_tree_conflict == null
+                          ? "Not screened"
+                          : d.site_specific.screens.city_tree_conflict
+                            ? "Conflict flagged"
+                            : "No close conflict",
+                        flagged: d.site_specific.screens.city_tree_conflict === true,
+                      },
+                      {
+                        label: "Heritage",
+                        value: d.site_specific.screens.heritage_listed == null
+                          ? "Not screened"
+                          : d.site_specific.screens.heritage_listed
+                            ? "Listed"
+                            : "No match",
+                        flagged: d.site_specific.screens.heritage_listed === true,
+                      },
+                      {
+                        label: "TRCA / conservation",
+                        value: d.site_specific.screens.conservation_regulated == null
+                          ? "Not screened"
+                          : d.site_specific.screens.conservation_regulated
+                            ? "Regulated"
+                            : "No intersection",
+                        flagged: d.site_specific.screens.conservation_regulated === true,
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className={`rounded-lg border p-2 ${item.flagged
+                          ? "border-red-500/30 bg-red-500/10"
+                          : "border-border/50 bg-background/70"}`}
+                      >
+                        <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                        <p className={`mt-0.5 text-xs font-medium ${item.flagged ? "text-red-700 dark:text-red-300" : ""}`}>
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {d.site_specific.notes.length > 0 && (
+                    <ul className="mt-3 space-y-1 text-[11px] leading-relaxed text-muted-foreground">
+                      {d.site_specific.notes.map((note) => <li key={note}>• {note}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
 
               {/* Overlay flags */}
               {(d.zoning.overlay_flags.length > 0 || d.zoning.heritage_flagged || d.zoning.floodplain_flagged) && (
@@ -710,6 +943,11 @@ export function MultiplexFeasibilityPanel(props: MultiplexFeasibilityPanelProps)
               )}
             </CardContent>
           </Card>
+
+          {/* ── Concept, pro forma & project timeline ──────────────────────── */}
+          {d.development_report && (
+            <FeasibilityDevelopmentReport report={d.development_report} />
+          )}
 
           {/* ── Red Flags ───────────────────────────────────────────────────── */}
           {d.risk_flags.length > 0 && (

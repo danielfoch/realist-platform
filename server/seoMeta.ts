@@ -215,6 +215,12 @@ const STATIC_META: Record<string, PageMeta> = {
     description: "StatCan labour and payroll data compared with CBA mortgage arrears context: unemployment as a leading indicator for Canadian mortgage delinquencies.",
     ogType: "article",
   },
+  "/insights/canada-construction-costs-2026": {
+    title: "Does It Pencil? Canadian Construction Costs and Feasibility in 2026 | Realist",
+    description:
+      "Interactive breakdown of the Altus Group 2026 Canadian Cost Guide: hard costs per square foot in nine markets, Turner & Townsend escalation to 2028, BuildForce labour projections, and a live Toronto condo cost-stack model.",
+    ogType: "article",
+  },
   "/insights/new-construction-canada": {
     title: "Canada New Construction Market Report - Live CREA DDF Data",
     description: "Live national snapshot of active new construction listings across Canada. Pricing by province and city, property types, pre-construction signals.",
@@ -1159,6 +1165,7 @@ const KNOWN_APP_ROUTES = new Set<string>([
   "/about/podcast-deck",
   "/offer",
   "/insights/canada-interprovincial-migration-2026",
+  "/insights/canada-construction-costs-2026",
   "/insights/market-report/homebench-ai-realtor-benchmark",
   "/stats",
   "/tools/stats",

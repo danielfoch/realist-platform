@@ -23,7 +23,7 @@ import { db } from "./db";
 import { isAdmin } from "./auth";
 import { users } from "@shared/models/auth";
 import { multiplexUnderwritings } from "@shared/schema";
-import { resolveSite, type ResolvedSite } from "./torontoGeo";
+import { ensureTorontoGeoTables, resolveSite, type ResolvedSite } from "./torontoGeo";
 import { captureDealLead, recordDealIntent, type DealIntentSignal } from "./dealIntent";
 import { consumeDailyUsage, grantDailyUnlock, hasDailyUnlock } from "./usageLimits";
 import { requireVerified } from "./accountVerification";
@@ -651,6 +651,15 @@ function buildIntentSignal(
 }
 
 export function registerMultiplexUnderwriterRoutes(app: Express): void {
+  // ensureTorontoGeoTables was exported and called from nowhere, so on any
+  // database where scripts/import-toronto-*.ts had never run, the zoning, tree
+  // and heritage tables did not exist — and the screens querying them threw,
+  // 500ing the underwriter for every address. Creating them empty is enough:
+  // resolveSite already reports "layer not imported yet" for an empty table,
+  // which is the honest answer until the import runs.
+  ensureTorontoGeoTables()
+    .catch((err) => console.error("[multiplex] failed to ensure geo tables:", err.message));
+
   seedAssumptions()
     .catch((err) => console.error("[multiplex] failed to seed assumptions:", err.message));
 

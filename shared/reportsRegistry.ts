@@ -47,6 +47,16 @@ export interface ReportRegistryEntry {
 
 export const reportsRegistry: ReportRegistryEntry[] = [
   {
+    slug: "canada-construction-costs-2026",
+    route: "/insights/canada-construction-costs-2026",
+    title: "Does It Pencil? Canadian Construction Costs in 2026",
+    description:
+      "Altus Group's 2026 Cost Guide, Turner & Townsend's escalation forecast, BuildForce's labour projections and ReNew Canada's Top100 resolved into one feasibility position, with interactive cost tables and a live cost-stack model.",
+    date: "2026-07-29",
+    tags: ["construction costs", "development", "feasibility", "labour", "infrastructure"],
+    kind: "research",
+  },
+  {
     slug: "canada-interprovincial-migration-2026",
     route: "/insights/canada-interprovincial-migration-2026",
     title: "Interprovincial Migration: Alberta Wins, Ontario Loses",
