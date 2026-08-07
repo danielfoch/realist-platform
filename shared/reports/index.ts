@@ -22,6 +22,7 @@ import {
 } from "../reportContent";
 import type { ReportRegistryEntry } from "../reportsRegistry";
 import { canadaCpiMay2026ConfigReport } from "./canada-cpi-may-2026-config";
+import { canadaLabourForceSurveyJuly2026ConfigReport } from "./canada-labour-force-survey-july-2026-config";
 import { canadaRealEstateSearchQuestions2026ConfigReport } from "./canada-real-estate-search-questions-2026-config";
 import { interprovincialMigrationConfigReport } from "./interprovincial-migration-config";
 import { rbcHomebuyerTiming2026ConfigReport } from "./rbc-homebuyer-timing-2026-config";
@@ -32,6 +33,7 @@ import { teranetQ12026OntarioBuyerResetConfigReport } from "./teranet-q1-2026-on
  * file). Order does not matter — everything downstream sorts by publishDate.
  */
 export const configReports: ReportContent[] = [
+  canadaLabourForceSurveyJuly2026ConfigReport,
   canadaRealEstateSearchQuestions2026ConfigReport,
   rbcHomebuyerTiming2026ConfigReport,
   teranetQ12026OntarioBuyerResetConfigReport,
