@@ -18,6 +18,8 @@ import { createHash } from "crypto";
 // dynamic import so nudge unsubscribe tokens are deterministic.
 process.env.SESSION_SECRET = "parity-test-secret";
 delete process.env.REPLIT_DOMAINS;
+delete process.env.PUBLIC_SITE_URL;
+delete process.env.PUBLIC_BASE_URL;
 
 const { buildEmailForTrigger, getSampleTriggerPayload, EMAIL_TRIGGER_TYPES } =
   await import("./emailTriggerTemplates");
@@ -122,6 +124,17 @@ describe("emailTriggerTemplates parity (moved from server/emailQueue.ts)", () =>
     for (const type of ["hot_lead_immediate_followup", "warm_lead_24h_followup", "financing_interest_followup", "sla_breach_nag", "lost_reason_nurture"] as const) {
       const { html } = buildEmailForTrigger(type, getSampleTriggerPayload(type));
       expect(html).toContain("https://realist.ca/admin/deal-desk");
+    }
+  });
+
+  it("does not leak a temporary Replit deployment hostname into admin links", () => {
+    process.env.REPLIT_DOMAINS = "temporary.janeway.replit.dev,realist.ca";
+    try {
+      const { html } = buildEmailForTrigger("sla_breach_nag", getSampleTriggerPayload("sla_breach_nag"));
+      expect(html).toContain("https://realist.ca/admin/deal-desk");
+      expect(html).not.toContain("janeway.replit.dev");
+    } finally {
+      delete process.env.REPLIT_DOMAINS;
     }
   });
 });

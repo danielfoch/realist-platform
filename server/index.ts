@@ -440,6 +440,34 @@ async function ensureAppTables() {
     await db.execute(sql`ALTER TABLE listing_analysis_aggregates ADD COLUMN IF NOT EXISTS reported_comment_count integer NOT NULL DEFAULT 0`);
     await db.execute(sql`ALTER TABLE email_triggers ADD COLUMN IF NOT EXISTS sent_at timestamp`);
     await db.execute(sql`ALTER TABLE email_triggers ADD COLUMN IF NOT EXISTS failure_reason text`);
+    await db.execute(sql`ALTER TABLE email_triggers ADD COLUMN IF NOT EXISTS dedupe_key text`);
+    // Preserve one historical SLA row per opportunity as the permanent claim.
+    // Existing incident rows remain available for audit; only the newest gets
+    // the stable key that prevents every future five-minute sweep from sending.
+    await db.execute(sql`
+      WITH latest_sla AS (
+        SELECT DISTINCT ON (opportunity_id) id, opportunity_id
+        FROM email_triggers source
+        WHERE source.trigger_type = 'sla_breach_nag'
+          AND source.opportunity_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM email_triggers claimed
+            WHERE claimed.opportunity_id = source.opportunity_id
+              AND claimed.dedupe_key IS NOT NULL
+          )
+        ORDER BY source.opportunity_id, source.created_at DESC, source.id DESC
+      )
+      UPDATE email_triggers t
+      SET dedupe_key = 'email_trigger:sla_breach_nag:opportunity:' || latest_sla.opportunity_id
+      FROM latest_sla
+      WHERE t.id = latest_sla.id
+        AND t.dedupe_key IS NULL
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_email_triggers_dedupe_key
+      ON email_triggers (dedupe_key)
+      WHERE dedupe_key IS NOT NULL
+    `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS api_usage_events (
         id varchar PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -21,7 +21,7 @@ import { storage } from "./storage";
 import { getResendClient } from "./resend";
 import { db } from "./db";
 import { governMarketingSend } from "./emailGovernor";
-import { analyses, propertyAnalyses, users } from "@shared/schema";
+import { analyses, deals, leads, opportunities, propertyAnalyses, users } from "@shared/schema";
 import {
   buildAbandonedUnderwritingNudge,
   buildDealSubmittedConfirmation,
@@ -274,30 +274,58 @@ export async function sendEmailTrigger(trigger: TriggerLike): Promise<TriggerSen
           return { status: "failed", reason: "No admin notify emails configured" };
         }
         const enriched: Record<string, any> = { ...payload };
-        if (trigger.userId) {
-          const [lead] = await db
-            .select({ email: users.email, firstName: users.firstName, lastName: users.lastName, phone: users.phone })
-            .from(users)
-            .where(eq(users.id, trigger.userId))
-            .limit(1);
-          if (lead) {
-            enriched.name = [lead.firstName, lead.lastName].filter(Boolean).join(" ") || lead.email;
-            enriched.email = lead.email;
-            enriched.phone = lead.phone;
-          }
-        }
         if (trigger.opportunityId) {
           try {
-            const opp = await storage.getOpportunityById(trigger.opportunityId);
-            if (opp) {
-              enriched.address = opp.propertyAddress;
-              enriched.market = opp.market;
-              enriched.intentScore = opp.intentScore;
-              enriched.assigned_to = enriched.assigned_to || opp.assignedTo;
+            const [details] = await db
+              .select({
+                firstContactedAt: opportunities.firstContactedAt,
+                intentScore: opportunities.intentScore,
+                assignedTo: opportunities.assignedTo,
+                propertyAddress: opportunities.propertyAddress,
+                opportunityMarket: opportunities.market,
+                dealAddress: deals.address,
+                dealMarket: deals.market,
+                leadName: leads.name,
+                leadEmail: leads.email,
+                leadPhone: leads.phone,
+                userEmail: users.email,
+                userFirstName: users.firstName,
+                userLastName: users.lastName,
+                userPhone: users.phone,
+              })
+              .from(opportunities)
+              .leftJoin(leads, eq(opportunities.leadId, leads.id))
+              .leftJoin(deals, eq(opportunities.dealId, deals.id))
+              .leftJoin(users, eq(opportunities.userId, users.id))
+              .where(eq(opportunities.id, trigger.opportunityId))
+              .limit(1);
+            if (details) {
+              const userName = [details.userFirstName, details.userLastName].filter(Boolean).join(" ");
+              enriched.name = enriched.name || userName || details.leadName || details.userEmail || details.leadEmail;
+              enriched.email = enriched.email || details.userEmail || details.leadEmail;
+              enriched.phone = enriched.phone || details.userPhone || details.leadPhone;
+              enriched.address = enriched.address || details.propertyAddress || details.dealAddress;
+              enriched.market = enriched.market || details.opportunityMarket || details.dealMarket;
+              enriched.intentScore = details.intentScore;
+              enriched.assigned_to = enriched.assigned_to || details.assignedTo;
               // Contacted between the sweep and now? Stand down.
-              if (opp.firstContactedAt) {
+              if (details.firstContactedAt) {
                 return { status: "cancelled", reason: "Lead was contacted before the nag fired" };
               }
+            }
+          } catch (err: any) {
+            console.error(`[email-queue] Could not enrich SLA trigger ${trigger.id}:`, err?.message || String(err));
+          }
+        }
+        // Defensive fallback for a trigger whose opportunity was removed or
+        // whose lead relationship was repaired after it was queued.
+        if ((!enriched.name || !enriched.email) && trigger.leadId) {
+          try {
+            const lead = await storage.getLead(trigger.leadId);
+            if (lead) {
+              enriched.name = enriched.name || lead.name;
+              enriched.email = enriched.email || lead.email;
+              enriched.phone = enriched.phone || lead.phone;
             }
           } catch {
           }

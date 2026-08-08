@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, eq, gte, inArray, sql, type SQL } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
-import { users, opportunities, assignments } from "@shared/schema";
+import { users, opportunities, assignments, emailTriggers } from "@shared/schema";
 import { logUserActivity } from "../userActivity";
 import { isAdmin } from "../auth";
 import { scoreLeadInput, selectEmailTriggers } from "@shared/leadScoring";
@@ -105,6 +105,14 @@ export async function submitDealDesk(input: DealDeskSubmitInput, opts: {
     status: scoreResult.status,
     suggestedNextAction: scoreResult.suggestedNextAction,
     source,
+    propertyAddress: input.address,
+    listingUrl: input.listingUrl || null,
+    market: input.market || null,
+    propertyType: input.propertyType || null,
+    purchasePrice: input.purchasePrice ?? null,
+    estimatedRent: input.estimatedRent ?? null,
+    financingHelp: input.financingHelpWanted,
+    buyingHelp: input.buyingHelpWanted,
   });
 
   if (opts.req) {
@@ -172,12 +180,14 @@ export async function submitDealDesk(input: DealDeskSubmitInput, opts: {
  * Hot-lead SLA check. Cheap and indexed, so it runs on a short cadence — a
  * 30-minute SLA policed hourly can sit 90 minutes before anyone is nagged.
  *
- * Idempotent: queueEmailTrigger dedupes against pending triggers, so repeated
- * sweeps over the same breach do not pile up emails.
+ * Idempotent across sent history and concurrent/autoscaled sweep processes:
+ * the query skips opportunities with any prior SLA trigger, while the
+ * producer's permanent per-opportunity key closes the select/insert race.
  */
 export async function runSlaBreachSweep(): Promise<{ breaches: number; queued: number }> {
   const breaches = await db.select({
     id: opportunities.id,
+    leadId: opportunities.leadId,
     userId: opportunities.userId,
     assignedTo: opportunities.assignedTo,
   }).from(opportunities).where(and(
@@ -185,17 +195,23 @@ export async function runSlaBreachSweep(): Promise<{ breaches: number; queued: n
     sql`${opportunities.firstContactedAt} IS NULL`,
     inArray(opportunities.status, ["new", "hot"]),
     sql`${opportunities.createdAt} < ${minutesAgo(HOT_SLA_MINUTES)}`,
+    sql`NOT EXISTS (
+      SELECT 1 FROM ${emailTriggers}
+      WHERE ${emailTriggers.opportunityId} = ${opportunities.id}
+        AND ${emailTriggers.triggerType} = 'sla_breach_nag'
+    )`,
   ));
 
   let queued = 0;
   for (const b of breaches) {
-    await queueEmailTrigger({
+    const result = await queueEmailTrigger({
+      leadId: b.leadId,
       userId: b.userId,
       opportunityId: b.id,
       triggerType: "sla_breach_nag",
       payload: { assigned_to: b.assignedTo, opportunity_id: b.id },
     });
-    queued++;
+    if (result.enqueued) queued++;
   }
   return { breaches: breaches.length, queued };
 }

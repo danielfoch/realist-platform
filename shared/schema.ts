@@ -4482,6 +4482,10 @@ export const emailTriggers = pgTable("email_triggers", {
   userId: varchar("user_id").references(() => users.id),
   opportunityId: varchar("opportunity_id").references(() => opportunities.id),
   triggerType: text("trigger_type").notNull(),
+  // Non-null only for triggers with permanent entity-level idempotency. The
+  // SLA sweep uses one stable key per opportunity so sent history blocks a
+  // future five-minute sweep as well as a same-instant race.
+  dedupeKey: text("dedupe_key"),
   payload: jsonb("payload"),
   status: text("status").default("pending").notNull(),
   sentAt: timestamp("sent_at"),
@@ -4497,6 +4501,9 @@ export const emailTriggers = pgTable("email_triggers", {
   uniqueIndex("uq_email_triggers_pending_user_type")
     .on(table.userId, table.triggerType)
     .where(sql`${table.status} = 'pending'`),
+  uniqueIndex("uq_email_triggers_dedupe_key")
+    .on(table.dedupeKey)
+    .where(sql`${table.dedupeKey} IS NOT NULL`),
 ]);
 
 export const insertEmailTriggerSchema = createInsertSchema(emailTriggers).omit({
