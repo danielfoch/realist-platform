@@ -35,7 +35,18 @@ const GRID_STROKE = "hsl(var(--border))";
 const AXIS_STROKE = "hsl(var(--muted-foreground))";
 
 export function ReportChart({ block }: { block: ChartBlock }) {
-  const height = Math.max(300, block.data.length > 12 ? block.data.length * 22 : 320);
+  // Time-series charts should remain landscape even when they contain years of
+  // monthly observations. The old row-count formula made a 61-month line chart
+  // more than 1,300px tall. Only dense categorical bar charts benefit from
+  // extra vertical room, and even those are capped to keep the report scannable.
+  const height = block.chartType === "bar" && block.data.length > 12
+    ? Math.min(720, Math.max(320, block.data.length * 22))
+    : 360;
+  const xTickInterval = block.data.length > 16
+    ? Math.max(0, Math.ceil(block.data.length / 10) - 1)
+    : 0;
+  const angleCategoryLabels = block.chartType === "bar" && block.data.length > 8;
+  const chartBottomMargin = block.xAxisLabel ? 24 : angleCategoryLabels ? 56 : 8;
   const fmt = block.format ?? "number";
 
   const commonAxes = (
@@ -46,6 +57,10 @@ export function ReportChart({ block }: { block: ChartBlock }) {
         stroke={AXIS_STROKE}
         tick={{ fontSize: 12 }}
         tickLine={false}
+        interval={xTickInterval}
+        angle={angleCategoryLabels ? -32 : 0}
+        textAnchor={angleCategoryLabels ? "end" : "middle"}
+        height={angleCategoryLabels ? 72 : 30}
         label={
           block.xAxisLabel
             ? { value: block.xAxisLabel, position: "insideBottom", offset: -4, fontSize: 11, fill: AXIS_STROKE }
@@ -91,7 +106,7 @@ export function ReportChart({ block }: { block: ChartBlock }) {
     switch (block.chartType) {
       case "line":
         return (
-          <LineChart data={block.data} margin={{ top: 8, right: 24, left: 4, bottom: block.xAxisLabel ? 20 : 4 }}>
+          <LineChart data={block.data} margin={{ top: 8, right: 24, left: 4, bottom: chartBottomMargin }}>
             {commonAxes}
             {block.series.map((s, i) => (
               <Line
@@ -109,7 +124,7 @@ export function ReportChart({ block }: { block: ChartBlock }) {
         );
       case "area":
         return (
-          <AreaChart data={block.data} margin={{ top: 8, right: 24, left: 4, bottom: block.xAxisLabel ? 20 : 4 }}>
+          <AreaChart data={block.data} margin={{ top: 8, right: 24, left: 4, bottom: chartBottomMargin }}>
             {commonAxes}
             {block.series.map((s, i) => {
               const color = seriesColor(s, i);
@@ -130,7 +145,7 @@ export function ReportChart({ block }: { block: ChartBlock }) {
         );
       case "composed":
         return (
-          <ComposedChart data={block.data} margin={{ top: 8, right: 24, left: 4, bottom: block.xAxisLabel ? 20 : 4 }}>
+          <ComposedChart data={block.data} margin={{ top: 8, right: 24, left: 4, bottom: chartBottomMargin }}>
             {commonAxes}
             {block.series.map((s, i) => {
               const color = seriesColor(s, i);
@@ -147,7 +162,7 @@ export function ReportChart({ block }: { block: ChartBlock }) {
       case "bar":
       default:
         return (
-          <BarChart data={block.data} margin={{ top: 8, right: 24, left: 4, bottom: block.xAxisLabel ? 20 : 4 }}>
+          <BarChart data={block.data} margin={{ top: 8, right: 24, left: 4, bottom: chartBottomMargin }}>
             {commonAxes}
             {block.series.map((s, i) => (
               <Bar key={s.key} dataKey={s.key} name={s.label} fill={seriesColor(s, i)} radius={[3, 3, 0, 0]} />
