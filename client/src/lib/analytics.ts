@@ -99,6 +99,8 @@ export type RealistEvent =
   // Content
   | { event: "page_viewed"; path: string; referrer?: string; title?: string }
   | { event: "content_consumed"; content_type: "podcast" | "blog" | "guide" | "report"; content_id?: string; title?: string }
+  | { event: "podcast_episode_played"; episode_id: string; title: string; source: "podcast_hub" | "episode_detail" }
+  | { event: "podcast_platform_clicked"; platform: "apple" | "spotify" | "youtube"; episode_id?: string; title?: string; source: "podcast_hub" | "episode_detail" }
   | { event: "cta_clicked"; cta: string; location: string; destination?: string }
   | { event: "feature_used"; feature: string; details?: Record<string, unknown> }
 
