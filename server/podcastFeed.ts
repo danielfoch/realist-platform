@@ -22,6 +22,8 @@ import cron from "node-cron";
 
 export interface PodcastEpisode {
   slug: string;
+  /** Public Omny clip identifier; used to discover publisher transcripts. */
+  clipId: string;
   title: string;
   /** Raw (unsanitized) show-notes HTML from the feed. */
   description: string;
@@ -46,7 +48,7 @@ export interface PodcastEpisodePayload extends PodcastEpisode {
   cta: EpisodeCta;
   related: RelatedEpisode[];
   relatedResources: EpisodeResource[];
-  /** Future enrichment seam — null today, see getEpisodeEnrichment(). */
+  /** Admin-reviewed, transcript-backed editorial layer when available. */
   enrichment: PodcastEpisodeEnrichment | null;
 }
 
@@ -100,6 +102,7 @@ export function parseFeed(xmlText: string): PodcastEpisode[] {
     };
 
     const title = decodeXmlEntities(getTagContent("title"));
+    const clipId = getTagContent("omny:clipId") || getTagContent("guid");
     const description = getTagContent("description") || getTagContent("itunes:summary");
     const pubDate = getTagContent("pubDate");
     const link = getTagContent("link");
@@ -108,7 +111,7 @@ export function parseFeed(xmlText: string): PodcastEpisode[] {
     const imageUrl = getAttr("itunes:image", "href") || feedImage;
 
     if (!title) continue;
-    items.push({ title, description, pubDate, audioUrl, duration, link, imageUrl });
+    items.push({ clipId, title, description, pubDate, audioUrl, duration, link, imageUrl });
   }
 
   return assignEpisodeSlugs(items);
@@ -172,7 +175,15 @@ export function schedulePodcastFeedRefresh() {
   cron.schedule("10 5 * * 2,5", () => {
     console.log("[podcast-feed] Scheduled RSS refresh triggered");
     refreshPodcastFeed()
-      .then((episodes) => console.log(`[podcast-feed] Refreshed ${episodes.length} episodes`))
+      .then(async (episodes) => {
+        console.log(`[podcast-feed] Refreshed ${episodes.length} episodes`);
+        const { syncLatestOmnyTranscripts } = await import("./podcastEnrichment");
+        const result = await syncLatestOmnyTranscripts(episodes.filter((episode) => episode.clipId).slice(0, 8));
+        console.log(
+          `[podcast-enrichment] checked=${result.checked} drafted=${result.drafted} `
+          + `awaitingGeneration=${result.awaitingGeneration} failed=${result.failed.length}`,
+        );
+      })
       .catch((error) => console.error("[podcast-feed] Scheduled refresh failed:", error));
   }, { timezone: "America/Toronto" });
   console.log("[podcast-feed] Scheduled: Tuesdays and Fridays at 5:10am Toronto");
@@ -348,19 +359,29 @@ export function getRelatedEpisodes(
 // ---------------------------------------------------------------------------
 
 export interface PodcastEpisodeEnrichment {
-  summaryHtml?: string;
-  keyTakeaways?: string[];
+  summaryText: string;
+  keyTakeaways: string[];
+  faq: Array<{ question: string; answer: string }>;
+  sourceKind: "omny_publisher" | "publisher_upload" | "manual_transcript";
+  sourceUrl: string | null;
+  sourceLabel: string;
+  reviewedAt: string;
+  publishedAt: string;
 }
 
 /**
- * Future enrichment hook: an `episode_enrichments` lookup (by slug) can later
- * inject AI-written summaries / key takeaways into the page payload, the
- * crawler fallback, and the JSON-LD. Intentionally returns null today — the
- * page already renders a complete document without it, and callers must treat
- * null as "no enrichment". No table or feature yet.
+ * Published enrichments are loaded lazily so RSS parsing and sitemap tests do
+ * not require a database. Missing migrations or a transient DB failure never
+ * block the canonical RSS-backed episode page.
  */
-export async function getEpisodeEnrichment(_slug: string): Promise<PodcastEpisodeEnrichment | null> {
-  return null;
+export async function getEpisodeEnrichment(slug: string): Promise<PodcastEpisodeEnrichment | null> {
+  try {
+    const { getPublishedPodcastEpisodeEnrichment } = await import("./podcastEnrichment");
+    return await getPublishedPodcastEpisodeEnrichment(slug);
+  } catch (error) {
+    console.error("[podcast-enrichment] published lookup failed:", error instanceof Error ? error.message : error);
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------

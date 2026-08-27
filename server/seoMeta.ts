@@ -20,7 +20,7 @@ import { deriveVideoKeywords } from "@shared/youtubeVideos";
 import {
   durationToIso8601,
   stripShowNotes,
-  type PodcastEpisode as PodcastFeedEpisode,
+  type PodcastEpisodePayload as PodcastFeedEpisode,
 } from "./podcastFeed";
 import {
   stripDescription,
@@ -746,8 +746,8 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
   const podcastEpisodeMatch = path.match(/^\/insights\/podcast\/([^\/]+)$/);
   if (podcastEpisodeMatch) {
     try {
-      const { getEpisodeBySlug } = await import("./podcastFeed");
-      const episode = await getEpisodeBySlug(decodeURIComponent(podcastEpisodeMatch[1]));
+      const { getEpisodePayload } = await import("./podcastFeed");
+      const episode = await getEpisodePayload(decodeURIComponent(podcastEpisodeMatch[1]));
       if (episode) return buildPodcastEpisodeMeta(episode);
     } catch { /* fall through */ }
   }
@@ -935,7 +935,7 @@ function buildEventMeta(event: SeoEventRow): PageMeta {
 function buildPodcastEpisodeMeta(episode: PodcastFeedEpisode): PageMeta {
   const canonicalPath = `/insights/podcast/${episode.slug}`;
   const url = `${BASE_URL}${canonicalPath}`;
-  const description = stripShowNotes(episode.description, 158)
+  const description = stripShowNotes(episode.enrichment?.summaryText || episode.description, 158)
     || `${episode.title} — an episode of ${PODCAST_NAME} with Daniel Foch and Nick Hill.`;
   const publishedDate = episode.pubDate ? new Date(episode.pubDate) : null;
   const datePublished = publishedDate && !isNaN(publishedDate.getTime())
@@ -943,51 +943,64 @@ function buildPodcastEpisodeMeta(episode: PodcastFeedEpisode): PageMeta {
     : undefined;
   const isoDuration = durationToIso8601(episode.duration);
 
+  const structuredData: Record<string, unknown>[] = [
+    {
+      "@context": "https://schema.org",
+      "@type": "PodcastEpisode",
+      "@id": `${url}#episode`,
+      name: episode.title,
+      url,
+      ...(datePublished ? { datePublished } : {}),
+      description: stripShowNotes(episode.enrichment?.summaryText || episode.description, 500) || description,
+      ...(episode.audioUrl
+        ? {
+            associatedMedia: {
+              "@type": "MediaObject",
+              contentUrl: episode.audioUrl,
+              encodingFormat: "audio/mpeg",
+            },
+          }
+        : {}),
+      ...(isoDuration ? { timeRequired: isoDuration } : {}),
+      ...(episode.imageUrl ? { image: episode.imageUrl } : {}),
+      partOfSeries: {
+        "@type": "PodcastSeries",
+        "@id": `${BASE_URL}/insights/podcast#podcast`,
+        name: PODCAST_NAME,
+        url: `${BASE_URL}/insights/podcast`,
+      },
+      publisher: { "@id": `${BASE_URL}/#organization` },
+      inLanguage: "en-CA",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+        { "@type": "ListItem", position: 2, name: "Podcast", item: `${BASE_URL}/insights/podcast` },
+        { "@type": "ListItem", position: 3, name: episode.title, item: url },
+      ],
+    },
+  ];
+  if (episode.enrichment?.faq.length) {
+    structuredData.push({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: episode.enrichment.faq.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: { "@type": "Answer", text: item.answer },
+      })),
+    });
+  }
+
   return {
     title: `${episode.title} - ${PODCAST_NAME} Podcast`,
     description,
     ogImage: episode.imageUrl || undefined,
     canonicalPath,
     keywords: deriveEpisodeKeywords(episode.title),
-    structuredData: [
-      {
-        "@context": "https://schema.org",
-        "@type": "PodcastEpisode",
-        "@id": `${url}#episode`,
-        name: episode.title,
-        url,
-        ...(datePublished ? { datePublished } : {}),
-        description: stripShowNotes(episode.description, 500) || description,
-        ...(episode.audioUrl
-          ? {
-              associatedMedia: {
-                "@type": "MediaObject",
-                contentUrl: episode.audioUrl,
-                encodingFormat: "audio/mpeg",
-              },
-            }
-          : {}),
-        ...(isoDuration ? { timeRequired: isoDuration } : {}),
-        ...(episode.imageUrl ? { image: episode.imageUrl } : {}),
-        partOfSeries: {
-          "@type": "PodcastSeries",
-          "@id": `${BASE_URL}/insights/podcast#podcast`,
-          name: PODCAST_NAME,
-          url: `${BASE_URL}/insights/podcast`,
-        },
-        publisher: { "@id": `${BASE_URL}/#organization` },
-        inLanguage: "en-CA",
-      },
-      {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
-          { "@type": "ListItem", position: 2, name: "Podcast", item: `${BASE_URL}/insights/podcast` },
-          { "@type": "ListItem", position: 3, name: episode.title, item: url },
-        ],
-      },
-    ],
+    structuredData,
   };
 }
 

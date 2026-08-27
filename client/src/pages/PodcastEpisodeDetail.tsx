@@ -6,7 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart3, BookOpen, Calendar, ChevronLeft, Clock, Headphones, Loader2, Wrench } from "lucide-react";
+import { BarChart3, BookOpen, Calendar, ChevronLeft, Clock, FileCheck2, Headphones, Loader2, Wrench } from "lucide-react";
 import {
   PODCAST_APPLE_URL,
   PODCAST_NAME,
@@ -47,8 +47,16 @@ interface EpisodePayload {
     description: string;
     kind: "dashboard" | "report" | "tool";
   }>;
-  /** Future AI enrichment seam — null today. */
-  enrichment: { summaryHtml?: string; keyTakeaways?: string[] } | null;
+  enrichment: {
+    summaryText: string;
+    keyTakeaways: string[];
+    faq: Array<{ question: string; answer: string }>;
+    sourceKind: "omny_publisher" | "publisher_upload" | "manual_transcript";
+    sourceUrl: string | null;
+    sourceLabel: string;
+    reviewedAt: string;
+    publishedAt: string;
+  } | null;
 }
 
 function formatEpisodeDate(pubDate: string): string | null {
@@ -105,15 +113,18 @@ export default function PodcastEpisodeDetail() {
     return isNaN(date.getTime()) ? undefined : date.toISOString();
   })();
 
+  const episodeDescription = (episode.enrichment?.summaryText
+    || episode.showNotesHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())
+    .slice(0, 500);
   // Mirrors the server-rendered PodcastEpisode JSON-LD in server/seoMeta.ts.
-  const structuredData = {
+  const episodeStructuredData = {
     "@context": "https://schema.org",
     "@type": "PodcastEpisode",
     "@id": `${episodeUrl}#episode`,
     name: episode.title,
     url: episodeUrl,
     ...(publishedIso ? { datePublished: publishedIso } : {}),
-    description: episode.showNotesHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500),
+    description: episodeDescription,
     ...(episode.audioUrl
       ? { associatedMedia: { "@type": "MediaObject", contentUrl: episode.audioUrl, encodingFormat: "audio/mpeg" } }
       : {}),
@@ -125,13 +136,27 @@ export default function PodcastEpisodeDetail() {
     },
     inLanguage: "en-CA",
   };
+  const structuredData = episode.enrichment?.faq.length
+    ? [
+        episodeStructuredData,
+        {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: episode.enrichment.faq.map((item) => ({
+            "@type": "Question",
+            name: item.question,
+            acceptedAnswer: { "@type": "Answer", text: item.answer },
+          })),
+        },
+      ]
+    : episodeStructuredData;
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <SEO
         title={`${episode.title} - ${PODCAST_NAME} Podcast`}
-        description={structuredData.description.slice(0, 158)}
+        description={episodeDescription.slice(0, 158)}
         canonicalUrl={`/insights/podcast/${episode.slug}`}
         ogImage={episode.imageUrl || undefined}
         keywords={episode.keywords}
@@ -198,23 +223,33 @@ export default function PodcastEpisodeDetail() {
           </Card>
         )}
 
-        {/* Future enrichment seam: when getEpisodeEnrichment() starts returning
-            AI-written summaries/key takeaways, they render here above the raw
-            show notes. */}
-        {episode.enrichment?.summaryHtml && (
-          <section
-            className="prose prose-neutral dark:prose-invert max-w-none mb-8"
-            dangerouslySetInnerHTML={{ __html: episode.enrichment.summaryHtml }}
-          />
-        )}
-        {episode.enrichment?.keyTakeaways && episode.enrichment.keyTakeaways.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-3">Key Takeaways</h2>
-            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-              {episode.enrichment.keyTakeaways.map((takeaway) => (
-                <li key={takeaway}>{takeaway}</li>
-              ))}
+        {episode.enrichment && (
+          <section className="mb-10 rounded-xl border border-primary/20 bg-primary/5 p-6" data-testid="section-transcript-brief">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <FileCheck2 className="h-4 w-4" />
+                  Transcript-backed episode brief
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold">What this conversation covers</h2>
+              </div>
+              <span className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground">Admin reviewed</span>
+            </div>
+            <div className="space-y-3 text-muted-foreground">
+              {episode.enrichment.summaryText.split(/\n{2,}/).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            </div>
+            <h3 className="mt-6 text-lg font-semibold">Key takeaways from the episode</h3>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground">
+              {episode.enrichment.keyTakeaways.map((takeaway) => <li key={takeaway}>{takeaway}</li>)}
             </ul>
+            <p className="mt-5 text-xs text-muted-foreground">
+              This editorial brief summarizes the conversation; it does not independently verify speaker claims. Source:{" "}
+              {episode.enrichment.sourceUrl ? (
+                <a className="text-primary underline" href={episode.enrichment.sourceUrl} target="_blank" rel="noopener noreferrer">
+                  {episode.enrichment.sourceLabel}
+                </a>
+              ) : episode.enrichment.sourceLabel}.
+            </p>
           </section>
         )}
 
@@ -249,6 +284,20 @@ export default function PodcastEpisodeDetail() {
                   </Link>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {(episode.enrichment?.faq.length ?? 0) > 0 && (
+          <section className="mb-10" data-testid="section-episode-faq">
+            <h2 className="text-2xl font-semibold mb-4">Episode questions, answered</h2>
+            <div className="space-y-3">
+              {episode.enrichment!.faq.map((item) => (
+                <details key={item.question} className="rounded-lg border bg-card p-4">
+                  <summary className="cursor-pointer font-medium">{item.question}</summary>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.answer}</p>
+                </details>
+              ))}
             </div>
           </section>
         )}

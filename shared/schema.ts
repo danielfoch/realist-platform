@@ -3,6 +3,7 @@ import { pgTable, text, varchar, timestamp, boolean, jsonb, integer, real, doubl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { ReportContent } from "./reportContent";
+import type { PodcastEpisodeFaq } from "./podcastEnrichment";
 
 // PostGIS geometry passthrough — declares the live `geom` columns so
 // drizzle-kit push stops proposing to drop them. Values are read/written as
@@ -3982,6 +3983,34 @@ export const insertResearchArticleSchema = createInsertSchema(researchArticles).
 export type InsertResearchArticle = z.infer<typeof insertResearchArticleSchema>;
 export type ResearchArticle = typeof researchArticles.$inferSelect;
 export type ResearchPublishAttempt = typeof researchPublishAttempts.$inferSelect;
+
+export const podcastEpisodeEnrichments = pgTable("podcast_episode_enrichments", {
+  episodeSlug: text("episode_slug").primaryKey(),
+  clipId: text("clip_id"),
+  episodeTitle: text("episode_title").notNull(),
+  episodePublishedAt: timestamp("episode_published_at"),
+  transcriptSourceKind: text("transcript_source_kind").notNull(),
+  transcriptSourceUrl: text("transcript_source_url"),
+  transcriptSha256: text("transcript_sha256").notNull(),
+  transcriptText: text("transcript_text").notNull(),
+  status: text("status").notNull().default("transcript_ready"),
+  summaryText: text("summary_text"),
+  keyTakeawaysJson: jsonb("key_takeaways_json").$type<string[]>().default([]).notNull(),
+  faqJson: jsonb("faq_json").$type<PodcastEpisodeFaq[]>().default([]).notNull(),
+  generationModel: text("generation_model"),
+  generationError: text("generation_error"),
+  generatedAt: timestamp("generated_at"),
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at"),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("idx_podcast_enrichments_clip_id").on(table.clipId),
+  index("idx_podcast_enrichments_status_updated").on(table.status, table.updatedAt),
+]);
+
+export type PodcastEpisodeEnrichmentRecord = typeof podcastEpisodeEnrichments.$inferSelect;
 
 export const mortgageRates = pgTable("mortgage_rates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

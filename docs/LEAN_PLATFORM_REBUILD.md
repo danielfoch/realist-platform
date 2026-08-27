@@ -140,16 +140,19 @@ reports, records the attempt, and adds the report to `/insights`, structured
 data, the no-JavaScript crawler rendering, and the report sitemap. Published
 records are immutable; corrections ship as a reviewed replacement draft.
 
-High-priority podcast episodes can still receive a second asynchronous layer:
+High-priority podcast episodes now have a second asynchronous layer:
 
-1. transcribe or ingest the publisher transcript;
-2. extract claims and cited datasets;
-3. attach an existing chart/report or queue a human-reviewed chart brief;
-4. generate a Canadian-investor summary and FAQ with source links;
-5. update the podcast sitemap and internal links.
+1. check the public Omny clip record for a publisher transcript after each RSS refresh;
+2. ingest that transcript privately, with a manual publisher-upload fallback;
+3. generate a transcript-grounded summary, takeaways, and FAQ when Claude is configured;
+4. require an administrator to review and explicitly publish the draft;
+5. combine the reviewed brief with the existing deterministic chart/report/tool pack.
 
-Automated text should never invent a chart or statistic. Publish the episode page
-immediately, then add sourced enrichment when it is ready.
+The raw transcript is never returned by a public endpoint. Episode briefs say
+that they summarize the conversation and do not independently verify speaker
+claims. Automated text never selects or invents a chart or statistic: the
+episode page publishes immediately from RSS, and reviewed enrichment is added
+later without changing its URL.
 
 `/insights` is the only public research hub. The old `/reports` archive now
 redirects there, while stable detail URLs under `/reports/:slug` remain intact.
@@ -279,8 +282,16 @@ The canonical `/insights/motivated-report` page exposes those cohort trends,
 methodology limits, province/city history, the generated monthly article, and a
 direct path into the live motivated-listings browser and underwriting funnel.
 Generated monthly reports now compound into the Research hub and sitemap.
-Remaining research work is transcript-backed claim extraction for priority
-podcast episodes.
+
+### Phase 7 — transcript-backed podcast briefs
+
+The scheduled RSS job now checks recent Omny clip metadata for a public
+publisher transcript. Available transcripts are stored privately and become
+Claude-assisted editorial drafts, never unattended public copy. The existing
+Research admin screen can also ingest a publisher transcript manually, review
+the summary, takeaways, and FAQ, and explicitly publish the brief. Public
+episode pages, crawler HTML, metadata, and FAQ structured data all use only the
+reviewed record and keep a visible provenance/caveat label.
 
 ## Success metrics
 

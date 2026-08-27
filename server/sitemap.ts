@@ -199,12 +199,15 @@ export async function buildPodcastSitemap() {
   try {
     const { getPodcastEpisodes } = await import("./podcastFeed");
     const episodes = await getPodcastEpisodes();
+    const enrichmentLastmods = await import("./podcastEnrichment")
+      .then(({ getPublishedPodcastEnrichmentLastmods }) => getPublishedPodcastEnrichmentLastmods())
+      .catch(() => new Map<string, string>());
     // Hub lastmod = newest episode pubDate; episode lastmod = its real pubDate.
     if (episodes[0]?.pubDate) hubLastmod = dateOnly(episodes[0].pubDate);
     for (const episode of episodes) {
       urls.push({
         loc: `${BASE}/insights/podcast/${episode.slug}`,
-        lastmod: dateOnly(episode.pubDate || undefined),
+        lastmod: dateOnly(enrichmentLastmods.get(episode.slug) || episode.pubDate || undefined),
         changefreq: "monthly",
         priority: 0.65,
       });

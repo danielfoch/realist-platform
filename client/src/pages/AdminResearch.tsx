@@ -9,6 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, Clipboard, Eye, FileText, ShieldCheck } from "lucide-react";
 import type { ReportContent, ReportSection } from "@shared/reportContent";
+import { PodcastEnrichmentAdmin } from "@/components/admin/PodcastEnrichmentAdmin";
 
 type ResearchArticle = {
   id: string;
@@ -223,6 +224,7 @@ export default function AdminResearch() {
             )}
           </div>
         )}
+        <PodcastEnrichmentAdmin />
       </main>
     </div>
   );

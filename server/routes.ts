@@ -160,6 +160,7 @@ import { registerBookedCallLeadRoutes } from "./bookedCallLeads";
 import { registerDealRoomRoutes } from "./dealRoom";
 import { createOrGetReferralOutcomeForIntroduction, registerReferralOutcomeRoutes } from "./referralOutcomes";
 import { registerResearchPublishingRoutes } from "./researchPublishing";
+import { registerPodcastEnrichmentRoutes } from "./podcastEnrichmentRoutes";
 import { logFindDealsQuery } from "./demandLedger";
 import {
   getCurrentSaleEstimate,
@@ -869,6 +870,7 @@ export async function registerRoutes(
   registerWatchlistRoutes(app);
   registerNotificationInboxRoutes(app);
   registerResearchPublishingRoutes(app);
+  registerPodcastEnrichmentRoutes(app, isAdmin);
 
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
@@ -5398,7 +5400,7 @@ export async function registerRoutes(
 
   // Single episode payload for the /insights/podcast/:slug page — sanitized
   // + encyclopedia-linked show notes, topics, contextual tool CTA, related
-  // episodes, and the (currently null) enrichment seam.
+  // episodes, and any admin-reviewed transcript enrichment.
   app.get("/api/podcast/episodes/:slug", async (req, res) => {
     try {
       const { getEpisodePayload } = await import("./podcastFeed");

@@ -41,6 +41,22 @@ read the same cached feed. A failed refresh keeps the last known-good feed.
 The RSS refresh requires no API key. Keep the Express worker continuously
 running; a serverless-only frontend will not run this scheduler reliably.
 
+After each scheduled refresh, the worker also checks the eight newest public
+Omny clip records for a publisher transcript. When one exists, Realist imports
+it privately and, when `ANTHROPIC_API_KEY` is configured, creates a
+transcript-grounded editorial draft. It never auto-publishes the AI draft. An
+administrator reviews and publishes the summary, takeaways, and FAQ from
+`/admin/research`; the raw transcript is never exposed by a public endpoint.
+
+Apply `migrations/0019_podcast_episode_enrichments.sql` before enabling this
+step. If the publisher has not enabled a transcript in Omny, an administrator
+can paste the publisher transcript into the same Research screen. For an
+external reliability check, call:
+
+```bash
+15 5 * * 2,5 curl -s -X POST -H "x-api-key: $PODCAST_ENRICHMENT_API_KEY" https://realist.ca/api/integrations/podcast/enrichments/sync
+```
+
 ## Monthly Motivated-Listing Dataset
 
 Starting on the 2nd of each month, the always-on server checks every six hours

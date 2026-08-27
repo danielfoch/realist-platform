@@ -1094,10 +1094,35 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
             <a href="${escapeHtml(payload.audioUrl)}">Listen to ${escapeHtml(payload.title)}</a>
           </audio>
         ` : ""}
+        ${payload.enrichment ? `
+          <section style="border:1px solid #99f6e4;background:#f0fdfa;border-radius:12px;padding:20px;max-width:860px;margin:20px 0;">
+            <p style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#0f766e;margin:0 0 6px;">Transcript-backed · Admin reviewed</p>
+            <h2 style="font-size:28px;margin:0 0 12px;">What this conversation covers</h2>
+            ${payload.enrichment.summaryText.split(/\n{2,}/).map((paragraph) => `<p style="font-size:16px;line-height:1.75;color:#374151;">${escapeHtml(paragraph)}</p>`).join("")}
+            <h3 style="font-size:20px;margin:20px 0 8px;">Key takeaways from the episode</h3>
+            <ul style="padding-left:20px;line-height:1.75;color:#374151;">
+              ${payload.enrichment.keyTakeaways.map((takeaway) => `<li>${escapeHtml(takeaway)}</li>`).join("")}
+            </ul>
+            <p style="font-size:12px;color:#6b7280;margin:16px 0 0;">This brief summarizes the conversation; it does not independently verify speaker claims. Source: ${payload.enrichment.sourceUrl
+              ? `<a href="${escapeHtml(payload.enrichment.sourceUrl)}" style="color:#0f766e;">${escapeHtml(payload.enrichment.sourceLabel)}</a>`
+              : escapeHtml(payload.enrichment.sourceLabel)}.</p>
+          </section>
+        ` : ""}
         <section style="font-size:16px;line-height:1.8;max-width:860px;margin:20px 0;">
           <h2 style="font-size:28px;margin:0 0 12px;">Show Notes</h2>
           ${payload.showNotesHtml}
         </section>
+        ${payload.enrichment?.faq.length ? `
+          <section style="max-width:860px;margin:28px 0;">
+            <h2 style="font-size:26px;margin:0 0 12px;">Episode questions, answered</h2>
+            ${payload.enrichment.faq.map((item) => `
+              <div style="border-top:1px solid #e5e7eb;padding:14px 0;">
+                <h3 style="font-size:18px;margin:0 0 6px;">${escapeHtml(item.question)}</h3>
+                <p style="font-size:16px;color:#4b5563;line-height:1.7;margin:0;">${escapeHtml(item.answer)}</p>
+              </div>
+            `).join("")}
+          </section>
+        ` : ""}
         <section style="border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:760px;margin:28px 0;">
           <h2 style="font-size:22px;margin:0 0 8px;">Put this episode to work</h2>
           <p style="font-size:16px;color:#4b5563;margin:0 0 12px;">${escapeHtml(payload.cta.copy)}</p>
