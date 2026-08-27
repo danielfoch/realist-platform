@@ -234,10 +234,21 @@ export const realistEvents = pgTable("realist_events", {
   parentEventId: varchar("parent_event_id"),
   hostUserId: varchar("host_user_id"),
   reminderSentAt: timestamp("reminder_sent_at"),
+  // External calendars are copied into the native Realist event model so the
+  // public page, RSVP/account funnel, reminders, and discussion stay on-site.
+  externalSource: text("external_source"),
+  externalEventId: text("external_event_id"),
+  externalUrl: text("external_url"),
+  externalGroupUrlname: text("external_group_urlname"),
+  externalGroupName: text("external_group_name"),
+  externalRsvpCount: integer("external_rsvp_count").default(0).notNull(),
+  externalSyncedAt: timestamp("external_synced_at"),
   createdByEmail: text("created_by_email").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex("uq_realist_events_external_source_id").on(table.externalSource, table.externalEventId),
+]);
 
 export const realistEventSpeakers = pgTable("realist_event_speakers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -8,7 +8,7 @@ export default function NickHill() {
     { label: "The Canadian Real Estate Investor Podcast", href: "https://realist.ca/insights/podcast", icon: Mic, sub: "Co-host — weekly episodes on investing strategy" },
     { label: "Financing & DSCR Tools", href: "https://realist.ca/tools/mortgage", icon: DollarSign, sub: "Model mortgage stress tests and CMHC MLI Select" },
     { label: "Deal Analyzer", href: "https://realist.ca/tools/analyzer", icon: TrendingUp, sub: "Analyze a deal live on realist.ca" },
-    { label: "Events", href: "https://realist.ca/community/events", icon: Home, sub: "Upcoming investor events with Nick" },
+    { label: "Events", href: "https://realist.ca/meetups", icon: Home, sub: "Upcoming investor events with Nick" },
   ];
 
   return (

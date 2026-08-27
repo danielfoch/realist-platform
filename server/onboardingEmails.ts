@@ -71,7 +71,7 @@ function buildStepEmail(step: OnboardingStepKey, firstName: string | null): { su
         html: `<h2 style="font-size:20px;">Don't invest alone</h2>
           ${hi}
           <p>The sharpest part of Realist isn't the software — it's the investors using it. Catch the <a href="https://realist.ca/insights/podcast?${UTM}&utm_campaign=community" style="color:#16a34a;font-weight:600;">Realist podcast</a> for market breakdowns, then meet other investors in person:</p>
-          ${cta(`https://realist.ca/community/events?${UTM}&utm_campaign=community`, "See upcoming events & meetups")}`,
+          ${cta(`https://realist.ca/meetups?${UTM}&utm_campaign=community`, "See upcoming events & meetups")}`,
       };
   }
 }

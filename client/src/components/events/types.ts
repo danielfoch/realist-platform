@@ -55,6 +55,13 @@ export type RealistEventPayload = {
   isRecurring?: boolean;
   recurrenceNote?: string | null;
   hostUserId?: string | null;
+  externalSource?: string | null;
+  externalEventId?: string | null;
+  externalUrl?: string | null;
+  externalGroupUrlname?: string | null;
+  externalGroupName?: string | null;
+  externalRsvpCount?: number;
+  externalSyncedAt?: string | null;
   minPriceCents?: number | null;
   rsvpCount?: number;
   createdByEmail?: string;

@@ -174,7 +174,7 @@ export function DealPromotions({ region, city, country, dealInfo, defaultValues 
                     <p className="text-xs text-muted-foreground mt-0.5">{expert.name}</p>
                   )}
                   {expert?.becomePartner && (
-                    <Link href="/events#become-partner">
+                    <Link href="/meetups#host">
                       <span className="text-xs text-primary hover:underline cursor-pointer">
                         {expert.name} - Become a Realist Partner
                       </span>

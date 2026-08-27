@@ -1,5 +1,5 @@
 /**
- * Events growth engine — the meetup.com replacement + sponsor machine.
+ * Events growth engine — the native Realist RSVP/account layer + sponsor machine.
  *
  * - Free-event RSVPs that double as account signups (the funnel: meetup
  *   member → realist.ca account → deal analysis → AI training data).
@@ -68,7 +68,7 @@ async function ensureUserByEmail(email: string, name: string | null, leadSource:
   // Lowercase + trim so RSVP-form emails can't fork identities.
   const normalized = normalizeEmail(email);
   const [existing] = await db.select().from(users).where(eq(users.email, normalized)).limit(1);
-  if (existing) return existing;
+  if (existing) return { user: existing, created: false };
 
   const [firstName, ...lastParts] = (name || "").split(" ").filter(Boolean);
   const [user] = await db.insert(users).values({
@@ -76,7 +76,9 @@ async function ensureUserByEmail(email: string, name: string | null, leadSource:
     firstName: firstName || null,
     lastName: lastParts.join(" ") || null,
     role: "investor",
-    emailVerified: true,
+    // The setup link proves control of the address and marks this true when
+    // redeemed. A typed email address alone is not verification.
+    emailVerified: false,
   }).returning();
 
   // PERSON SPINE (phase 1): backlink pre-existing leads/crm_contacts rows
@@ -116,7 +118,7 @@ async function ensureUserByEmail(email: string, name: string | null, leadSource:
     setupLink: `${baseUrl.replace(/\/$/, "")}/set-password?token=${rawToken}`,
     leadSource,
   }).catch((error) => console.error("[events-growth] welcome email failed:", error.message));
-  return user;
+  return { user, created: true };
 }
 
 function eventDateLine(event: typeof realistEvents.$inferSelect): string {
@@ -146,6 +148,7 @@ function eventEmailHtml(event: typeof realistEvents.$inferSelect, heading: strin
 const rsvpSchema = z.object({
   email: z.string().email().optional(),
   name: z.string().max(200).optional(),
+  accountConsent: z.literal(true).optional(),
 });
 
 const memberMeetupSchema = z.object({
@@ -204,11 +207,12 @@ export function registerEventsGrowthRoutes(app: Express): void {
       const sessionUser = await getSessionUser(req);
       const email = (sessionUser?.email || payload.email || "").toLowerCase();
       if (!email) return res.status(400).json({ error: "Email is required to RSVP" });
+      if (!sessionUser && payload.accountConsent !== true) {
+        return res.status(400).json({ error: "Confirm account creation and event emails to RSVP" });
+      }
       const name = sessionUser
         ? [sessionUser.firstName, sessionUser.lastName].filter(Boolean).join(" ") || null
         : payload.name || null;
-
-      const user = sessionUser ?? await ensureUserByEmail(email, name, `Realist Meetup RSVP: ${event.slug}`);
 
       if (event.capacity !== null) {
         const [count] = await db.select({ going: sql<number>`COUNT(*)` })
@@ -218,6 +222,11 @@ export function registerEventsGrowthRoutes(app: Express): void {
           return res.status(400).json({ error: "This event is full" });
         }
       }
+
+      const account = sessionUser
+        ? { user: sessionUser, created: false }
+        : await ensureUserByEmail(email, name, `Realist Meetup RSVP: ${event.slug}`);
+      const user = account.user;
 
       await db.insert(realistEventRsvps)
         .values({ eventId: event.id, userId: user?.id || null, email, name, status: "GOING" })
@@ -240,7 +249,7 @@ export function registerEventsGrowthRoutes(app: Express): void {
         html: eventEmailHtml(event, "You're on the list", `Hi ${name?.split(" ")[0] || "there"}, your RSVP is confirmed.`, baseUrl),
       }).catch((error) => console.error("[events-growth] rsvp email failed:", error.message));
 
-      res.json({ success: true, accountCreated: !sessionUser });
+      res.json({ success: true, accountCreated: account.created });
     } catch (error: any) {
       res.status(400).json({ error: error.errors?.[0]?.message || error.message || "Failed to RSVP" });
     }
@@ -298,7 +307,7 @@ export function registerEventsGrowthRoutes(app: Express): void {
       await logUserActivity(req, {
         userId: user.id,
         eventName: "event.meetup_created",
-        sourcePage: "/community/events",
+        sourcePage: "/meetups",
         metadata: { eventId: event.id, city: payload.city },
       });
 

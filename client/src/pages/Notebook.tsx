@@ -697,7 +697,7 @@ function S10_NextMoves({ nb }: { nb: NB }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-3 justify-center pt-2">
-            <QR url="https://realist.ca/community/events" size={48} label="events" />
+            <QR url="https://realist.ca/meetups" size={48} label="events" />
             <QR url="https://realist.ca/newsletter" size={48} label="newsletter" />
             <QR url="https://realist.ca/tools/analyzer" size={48} label="analyzer" />
           </div>

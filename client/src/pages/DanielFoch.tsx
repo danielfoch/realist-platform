@@ -7,7 +7,7 @@ export default function DanielFoch() {
   const links = [
     { label: "The Canadian Real Estate Investor Podcast", href: "https://realist.ca/insights/podcast", icon: Mic, sub: "Co-host — weekly episodes on investing strategy" },
     { label: "Deal Analyzer", href: "https://realist.ca/tools/analyzer", icon: TrendingUp, sub: "Analyze a deal live on realist.ca" },
-    { label: "Events", href: "https://realist.ca/community/events", icon: Home, sub: "Upcoming investor events with Daniel" },
+    { label: "Events", href: "https://realist.ca/meetups", icon: Home, sub: "Upcoming investor events with Daniel" },
     { label: "Guides & Education", href: "https://realist.ca/insights/guides", icon: BookOpen, sub: "Multiplex, BRRRR, and financing guides" },
   ];
 

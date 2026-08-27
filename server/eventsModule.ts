@@ -271,7 +271,18 @@ export async function ensureRealistEventTables() {
       ADD COLUMN IF NOT EXISTS "recurrence_rule" text,
       ADD COLUMN IF NOT EXISTS "recurrence_until" timestamp,
       ADD COLUMN IF NOT EXISTS "parent_event_id" varchar,
-      ADD COLUMN IF NOT EXISTS "is_featured" boolean NOT NULL DEFAULT false
+      ADD COLUMN IF NOT EXISTS "is_featured" boolean NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "external_source" text,
+      ADD COLUMN IF NOT EXISTS "external_event_id" text,
+      ADD COLUMN IF NOT EXISTS "external_url" text,
+      ADD COLUMN IF NOT EXISTS "external_group_urlname" text,
+      ADD COLUMN IF NOT EXISTS "external_group_name" text,
+      ADD COLUMN IF NOT EXISTS "external_rsvp_count" integer NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "external_synced_at" timestamp
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS "uq_realist_events_external_source_id"
+      ON "realist_events" ("external_source", "external_event_id")
   `);
   // Community layer: discussion threads on event pages.
   await db.execute(sql`

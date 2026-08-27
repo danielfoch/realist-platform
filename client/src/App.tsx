@@ -22,7 +22,6 @@ import { TrafficAnalyticsTracker } from "@/components/TrafficAnalyticsTracker";
 // - Login / Signup: primary auth entries
 // - NotFound: tiny, avoids a spinner flash on bad URLs
 import InvestorStart from "@/pages/InvestorStart";
-import Events from "@/pages/Events";
 import EventDetail from "@/pages/EventDetail";
 import EventSuccess from "@/pages/EventSuccess";
 import Login from "@/pages/Login";
@@ -262,7 +261,6 @@ const EdmontonEvent = lazy(() => import("@/pages/EdmontonEvent"));
 
 // Hub Pages
 const ToolsHub = lazy(() => import("@/pages/ToolsHub"));
-const CommunityHub = lazy(() => import("@/pages/CommunityHub"));
 const PropertyQuestions = lazy(() => import("@/pages/PropertyQuestions"));
 const InsightsHub = lazy(() => import("@/pages/InsightsHub"));
 const GuidesHub = lazy(() => import("@/pages/GuidesHub"));
@@ -411,9 +409,9 @@ function Router() {
       <Route path="/premium/branding" component={PremiumBranding} />
 
       {/* New Community routes */}
-      <Route path="/community" component={CommunityHub} />
+      <Route path="/community">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/community/questions" component={PropertyQuestions} />
-      <Route path="/community/events" component={Events} />
+      <Route path="/community/events">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/meetups" component={Meetups} />
       <Route path="/community/meetups">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/community/events/unpacking-multiplexes-toronto" component={UnpackingMultiplexesToronto} />
@@ -477,7 +475,7 @@ function Router() {
       <Route path="/coinvesting/checklist">{() => <Redirect to="/tools/coinvest/checklist" />}</Route>
       <Route path="/coinvesting/groups/new">{() => <Redirect to="/tools/coinvest/groups/new" />}</Route>
       <Route path="/coinvesting/groups/:id">{(props: any) => <Redirect to={`/tools/coinvest/groups/${props.params?.id}`} />}</Route>
-      <Route path="/events">{() => <Redirect to="/community/events" />}</Route>
+      <Route path="/events">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/notebook" component={Notebook} />
       <Route path="/notebook/print" component={NotebookPrint} />
       <Route path="/danielfoch" component={DanielFoch} />

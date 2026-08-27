@@ -16,6 +16,21 @@ Requires env: `DEAL_DESK_API_KEY`, `DEAL_ROOM_MEET_URL`,
 "Meet Recordings" folder with the service-account email). Manual ingest run:
 `npm run deal-room:ingest`.
 
+## Meetup Pro Event Sync
+
+The always-on server runs this every six hours. An external scheduler can call
+the same idempotent endpoint after deployments or as a reliability fallback:
+
+```bash
+17 */6 * * * curl -s -X POST -H "x-api-key: $EVENTS_CRON_API_KEY" https://realist.ca/api/integrations/meetup/sync
+```
+
+An event administrator must first open `/admin/events` and select **Connect
+Meetup**. Required deployment secrets: `MEETUP_CLIENT_ID`,
+`MEETUP_CLIENT_SECRET`, `MEETUP_PRO_NETWORK_URLNAME`,
+`MEETUP_OAUTH_STATE_SECRET`, `MEETUP_TOKEN_ENCRYPTION_KEY`, and either
+`EVENTS_CRON_API_KEY` or `DEAL_DESK_API_KEY`.
+
 ## Monthly Market Update Automation
 
 To set up automatic monthly market updates:

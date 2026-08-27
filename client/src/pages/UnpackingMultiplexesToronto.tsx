@@ -508,7 +508,7 @@ export default function UnpackingMultiplexesToronto() {
 
         <div className="relative max-w-6xl mx-auto px-4 py-16 md:py-24">
           <Link
-            href="/community/events"
+            href="/meetups"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6"
             data-testid="link-back-events"
           >

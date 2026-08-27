@@ -181,7 +181,7 @@ export default function About() {
               <li className="flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
                 <span>
-                  <Link href="/events" className="text-primary hover:underline">11,000+ in-person community members</Link>
+                  <Link href="/meetups" className="text-primary hover:underline">11,000+ in-person community members</Link>
                 </span>
               </li>
               <li className="flex items-center gap-3">
@@ -197,7 +197,7 @@ export default function About() {
             </p>
             
             <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/events">
+              <Link href="/meetups">
                 <Button variant="outline" data-testid="button-community-events">
                   <Calendar className="h-4 w-4 mr-2" />
                   See Upcoming Events
@@ -258,7 +258,7 @@ export default function About() {
             </p>
             
             <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/events">
+              <Link href="/meetups">
                 <Button variant="outline" data-testid="button-community-events">
                   <Calendar className="h-4 w-4 mr-2" />
                   See Upcoming Events

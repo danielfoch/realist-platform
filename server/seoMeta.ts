@@ -103,6 +103,7 @@ const STATIC_META: Record<string, PageMeta> = {
   "/community": {
     title: "Canadian Real Estate Investor Community - Realist.ca",
     description: "Join 11,000+ Canadian real estate investors. Network, deal flow, accountability groups, and live events.",
+    canonicalPath: "/meetups",
   },
   "/community/leaderboard": {
     title: "Realist Investor Leaderboard - Top Canadian Real Estate Investors",
@@ -111,6 +112,7 @@ const STATIC_META: Record<string, PageMeta> = {
   "/community/events": {
     title: "Canadian Real Estate Investor Events - Realist.ca",
     description: "Meetups, masterminds, podcast tapings, and live events for Canadian real estate investors.",
+    canonicalPath: "/meetups",
   },
   "/community/events/unpacking-multiplexes-toronto": {
     title: "Toronto Missing Middle & Multiplex Event | Realist",
@@ -175,7 +177,7 @@ const STATIC_META: Record<string, PageMeta> = {
         "@type": "BreadcrumbList",
         itemListElement: [
           { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
-          { "@type": "ListItem", position: 2, name: "Events", item: `${BASE_URL}/community/events` },
+          { "@type": "ListItem", position: 2, name: "Meetups & Events", item: `${BASE_URL}/meetups` },
           { "@type": "ListItem", position: 3, name: "Unpacking Multiplexes Toronto", item: `${BASE_URL}/community/events/unpacking-multiplexes-toronto` },
         ],
       },
@@ -758,6 +760,9 @@ export interface SeoEventRow {
   city: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  kind: string;
+  externalUrl: string | null;
+  externalRsvpCount: number;
   minPriceCents: number | null;
   currency: string;
 }
@@ -790,9 +795,44 @@ export async function getPublishedEventForSeo(slug: string): Promise<SeoEventRow
     city: event.city,
     seoTitle: event.seoTitle,
     seoDescription: event.seoDescription,
+    kind: event.kind,
+    externalUrl: event.externalUrl,
+    externalRsvpCount: event.externalRsvpCount,
     minPriceCents: tickets.length ? tickets[0].priceCents : null,
     currency: tickets.length ? tickets[0].currency.toUpperCase() : "CAD",
   };
+}
+
+export type SeoEventListRow = Pick<SeoEventRow,
+  "slug" | "title" | "shortDescription" | "startsAt" | "endsAt" | "eventType" |
+  "venueName" | "venueAddress" | "city" | "kind" | "externalUrl" | "externalRsvpCount"
+>;
+
+export async function getUpcomingEventsForSeo(limit = 100): Promise<SeoEventListRow[]> {
+  const { db } = await import("./db");
+  const { realistEvents } = await import("@shared/schema");
+  const { and, asc, eq, gt, isNull, or } = await import("drizzle-orm");
+  const now = new Date();
+  return db.select({
+    slug: realistEvents.slug,
+    title: realistEvents.title,
+    shortDescription: realistEvents.shortDescription,
+    startsAt: realistEvents.startsAt,
+    endsAt: realistEvents.endsAt,
+    eventType: realistEvents.eventType,
+    venueName: realistEvents.venueName,
+    venueAddress: realistEvents.venueAddress,
+    city: realistEvents.city,
+    kind: realistEvents.kind,
+    externalUrl: realistEvents.externalUrl,
+    externalRsvpCount: realistEvents.externalRsvpCount,
+  }).from(realistEvents)
+    .where(and(
+      eq(realistEvents.status, "PUBLISHED"),
+      or(gt(realistEvents.endsAt, now), and(isNull(realistEvents.endsAt), gt(realistEvents.startsAt, now))),
+    ))
+    .orderBy(asc(realistEvents.startsAt))
+    .limit(Math.max(1, Math.min(200, limit)));
 }
 
 export function formatEventDate(value: Date): string {
@@ -825,13 +865,15 @@ function buildEventMeta(event: SeoEventRow): PageMeta {
         startDate: new Date(event.startsAt).toISOString(),
         ...(event.endsAt ? { endDate: new Date(event.endsAt).toISOString() } : {}),
         eventStatus: "https://schema.org/EventScheduled",
-        eventAttendanceMode: event.eventType === "ONLINE"
+        eventAttendanceMode: event.eventType === "WEBINAR"
           ? "https://schema.org/OnlineEventAttendanceMode"
-          : "https://schema.org/OfflineEventAttendanceMode",
+          : event.eventType === "HYBRID"
+            ? "https://schema.org/MixedEventAttendanceMode"
+            : "https://schema.org/OfflineEventAttendanceMode",
         ...(event.headerImageUrl
           ? { image: event.headerImageUrl.startsWith("http") ? event.headerImageUrl : `${BASE_URL}${event.headerImageUrl}` }
           : {}),
-        location: event.eventType === "ONLINE"
+        location: event.eventType === "WEBINAR"
           ? { "@type": "VirtualLocation", url }
           : {
               "@type": "Place",
@@ -852,7 +894,7 @@ function buildEventMeta(event: SeoEventRow): PageMeta {
         "@type": "BreadcrumbList",
         itemListElement: [
           { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
-          { "@type": "ListItem", position: 2, name: "Events", item: `${BASE_URL}/community/events` },
+          { "@type": "ListItem", position: 2, name: "Meetups & Events", item: `${BASE_URL}/meetups` },
           { "@type": "ListItem", position: 3, name: event.title, item: url },
         ],
       },

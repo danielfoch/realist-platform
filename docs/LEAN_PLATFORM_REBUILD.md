@@ -149,24 +149,28 @@ Realist already has the most valuable part of the funnel: free-event RSVPs are
 stored against a Realist account, so a site RSVP creates or attaches the person
 to Realist. Keep Realist as the canonical account and event database.
 
-Meetup changed its integrations to GraphQL in 2025. The production integration
-should use:
+Meetup changed its integrations to GraphQL in 2025. Phase 4 now uses Meetup's
+OAuth server flow for the Realist Pro administrator account and the current
+`https://api.meetup.com/gql-ext` endpoint. The administrator connects once from
+`/admin/events`; access and single-use refresh tokens are encrypted before they
+are stored. The network's upcoming events sync every six hours into the native
+`realist_events` model.
 
-- **JWT/server-to-server** for syncing Realist-owned events to and from the
-  Realist Meetup Pro network; and
-- **OAuth only as an optional account connection** when a member explicitly
-  wants to connect their own Meetup identity.
+The boundary is deliberate:
 
-Do not silently create or join a Meetup account for a Realist user. It requires
-user authorization and creates privacy/consent issues. A practical first launch
-is one-way event publication plus inbound RSVP reconciliation using the native
-Realist account as the identity spine.
+- Meetup is the distribution calendar and supplies event metadata plus an
+  aggregate RSVP count.
+- Realist owns the canonical event page, free RSVP, account creation, consent,
+  reminders, discussion, and downstream investor journey.
+- The sync does not import Meetup member profiles or email addresses.
+- A Realist RSVP does not silently create a Meetup account or RSVP. Meetup
+  requires that member to authorize its own identity, so both attendee lists
+  are labelled separately.
 
-The credentials previously shared in chat must be rotated before use. Production
-still needs the Meetup Pro network URL name, the OAuth callback registered as
-`https://realist.ca/api/auth/meetup/callback`, and—if using JWT—the owner member
-ID, signing key ID, and RSA private key. Secrets belong in the deployment secret
-store only.
+The credentials previously shared in chat must be rotated before use. Register
+`https://realist.ca/api/auth/meetup/callback` on the Meetup OAuth client and add
+the rotated values only to the deployment secret store. The Pro network URL
+name is `the-canadian-real-estate-investor`.
 
 ## Infrastructure recommendation
 
@@ -236,8 +240,11 @@ and make concepts explicitly illustrative. Add export and team-review CTAs.
 
 ### Phase 4 — community and research compounding
 
-Connect the approved Meetup Pro integration, publish sourced episode enrichment,
-and produce the monthly distressed-market dataset/report from accumulated
+Meetup Pro event ingestion, native RSVP/account conversion, calendar
+consolidation, OAuth administration, encrypted token refresh, and scheduled
+sync are implemented on the feature branch. Production activation still needs
+the rotated OAuth secret and one administrator authorization. Next, publish
+sourced episode enrichment and produce the monthly distressed-market dataset/report from accumulated
 listing snapshots.
 
 ## Success metrics

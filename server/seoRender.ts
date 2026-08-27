@@ -873,6 +873,42 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
     `);
   }
 
+  if (reqPath === "/meetups") {
+    const { formatEventDate, getUpcomingEventsForSeo } = await import("./seoMeta");
+    const events = await getUpcomingEventsForSeo().catch(() => []);
+    const flagships = events.filter((event) => event.kind !== "meetup");
+    const meetups = events.filter((event) => event.kind === "meetup");
+    const eventLinks = (items: typeof events) => items.length
+      ? `<ul style="padding-left:18px;line-height:1.8;">${items.map((event) => `
+          <li style="margin:0 0 14px;">
+            <a href="/events/${escapeHtml(event.slug)}" style="font-weight:700;color:#0f766e;">${escapeHtml(event.title)}</a><br>
+            <span style="color:#4b5563;">${escapeHtml(formatEventDate(event.startsAt))}${event.city ? ` · ${escapeHtml(event.city)}` : ""}${event.externalRsvpCount > 0 ? ` · ${event.externalRsvpCount} going on Meetup` : ""}</span>
+            ${event.shortDescription ? `<br><span>${escapeHtml(event.shortDescription)}</span>` : ""}
+          </li>
+        `).join("")}</ul>`
+      : `<p style="color:#4b5563;">New dates are being posted. Check back soon or host the first Realist meetup in your market.</p>`;
+    return renderShell(`
+      ${renderBreadcrumbs([{ href: "/", label: "Home" }, { href: "/meetups", label: "Meetups & Events" }])}
+      <header>
+        <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#0f766e;">Realist investor community</p>
+        <h1 style="font-size:42px;line-height:1.1;margin:8px 0 14px;">Canadian Real Estate Investor Meetups & Events</h1>
+        <p style="font-size:18px;color:#4b5563;line-height:1.7;max-width:780px;">One live calendar for local meetups, live underwriting sessions, and Realist flagship events. Meetup distributes the network; Realist keeps the useful event page, free RSVP, reminders, discussion, and investor account together.</p>
+      </header>
+      ${flagships.length ? `<section><h2 style="font-size:28px;margin:32px 0 10px;">Flagship events</h2>${eventLinks(flagships)}</section>` : ""}
+      <section><h2 style="font-size:28px;margin:32px 0 10px;">Upcoming investor meetups</h2>${eventLinks(meetups)}</section>
+      <section style="font-size:16px;line-height:1.8;max-width:860px;margin:30px 0;">
+        <h2 style="font-size:28px;margin:0 0 12px;">One RSVP, one useful account</h2>
+        <p>When you RSVP on Realist, your event confirmation, reminders, discussion access, and deal-analysis tools stay attached to the same free investor account. Meetup.com maintains its own attendee list; Realist does not silently create Meetup accounts or import member profiles.</p>
+        ${renderLinkList([
+          { href: "/community/meetups/new", label: "Host a Realist meetup" },
+          { href: "/deals", label: "Browse underwritten Canadian deals" },
+          { href: "/insights/podcast", label: "Listen to Canada's #1 real estate podcast" },
+        ])}
+      </section>
+      ${renderFooterLinks()}
+    `);
+  }
+
   // Event pages (audit item 12): real crawlable content for /events/:slug —
   // h1 event name, date, venue, and ticket link.
   const eventMatch = reqPath.match(/^\/events\/([^/]+)$/);
@@ -881,7 +917,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
     const event = await getPublishedEventForSeo(decodeURIComponent(eventMatch[1])).catch(() => null);
     if (!event) return null;
     const dateLabel = formatEventDate(event.startsAt);
-    const venueLabel = event.eventType === "ONLINE"
+    const venueLabel = event.eventType === "WEBINAR"
       ? "Online event"
       : [event.venueName, event.venueAddress, event.city].filter(Boolean).join(", ") || "Venue to be announced";
     const priceLabel = event.minPriceCents != null
@@ -891,7 +927,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
     return renderShell(`
       ${renderBreadcrumbs([
         { href: "/", label: "Home" },
-        { href: "/community/events", label: "Events" },
+        { href: "/meetups", label: "Meetups & Events" },
         { href: `/events/${event.slug}`, label: event.title },
       ])}
       <article>
@@ -908,13 +944,12 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
           </section>
         ` : ""}
         <p style="margin:24px 0;">
-          <a href="/events/${escapeHtml(event.slug)}" style="display:inline-block;background:#0f766e;color:#fff;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:600;">Get tickets</a>
+          <a href="/events/${escapeHtml(event.slug)}" style="display:inline-block;background:#0f766e;color:#fff;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:600;">${event.kind === "meetup" ? "RSVP free" : "Get tickets"}</a>
         </p>
         <section style="font-size:16px;line-height:1.8;max-width:860px;margin:24px 0;">
           <h2 style="font-size:28px;margin:0 0 12px;">More from Realist</h2>
           ${renderLinkList([
-            { href: "/community/events", label: "All Canadian real estate investor events" },
-            { href: "/community", label: "Join the Realist investor community" },
+            { href: "/meetups", label: "All Canadian real estate investor meetups and events" },
             { href: "/insights/podcast", label: "The Canadian Real Estate Investor Podcast" },
           ])}
         </section>

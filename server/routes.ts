@@ -148,6 +148,7 @@ import { registerSocialStatsRoutes } from "./socialStats";
 import { registerTrafficAnalyticsRoutes } from "./trafficAnalytics";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerEventsCommunityRoutes } from "./eventsCommunity";
+import { registerMeetupIntegrationRoutes } from "./meetupIntegration";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
 import { registerRentBacktestRoutes } from "./rentBacktestRunner";
@@ -855,6 +856,7 @@ export async function registerRoutes(
   registerTrafficAnalyticsRoutes(app, isAdmin);
   registerEventsGrowthRoutes(app);
   registerEventsCommunityRoutes(app);
+  registerMeetupIntegrationRoutes(app);
   registerRentIntelligenceRoutes(app);
   registerRentIngestionRoutes(app);
   registerRentBacktestRoutes(app);
@@ -8301,9 +8303,8 @@ export async function registerRoutes(
         { path: "/tools/fixed-vs-variable", priority: 0.7, changefreq: "weekly" },
         { path: "/tools/land-claim-screener", priority: 0.7, changefreq: "monthly" },
         { path: "/course", priority: 0.9, changefreq: "weekly" },
-        { path: "/community", priority: 0.8, changefreq: "weekly" },
         { path: "/community/leaderboard", priority: 0.8, changefreq: "daily" },
-        { path: "/community/events", priority: 0.8, changefreq: "weekly" },
+        { path: "/meetups", priority: 0.9, changefreq: "daily" },
         { path: "/community/network", priority: 0.7, changefreq: "weekly" },
         { path: "/insights", priority: 0.9, changefreq: "weekly" },
         { path: "/insights/market-report", priority: 0.9, changefreq: "weekly" },

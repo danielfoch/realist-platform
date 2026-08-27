@@ -49,7 +49,7 @@ const PRIMARY_LINKS = [
   },
   {
     label: "Community",
-    href: "/community",
+    href: "/meetups",
     matches: ["/meetups", "/community", "/deal-room", "/events/"],
   },
 ] as const;

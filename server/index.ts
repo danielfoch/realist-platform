@@ -618,6 +618,10 @@ async function ensureAppTables() {
       "/insights/distress-report",
       "/deal-analyzer",
       "/podcast",
+      "/events",
+      "/community",
+      "/community/events",
+      "/community/meetups",
       "/insights/market-report/homebench-ai-realtor-benchmark",
     ],
     (req, res, next) => {
@@ -631,6 +635,10 @@ async function ensureAppTables() {
       // the duplicates.
       "/deal-analyzer": "/tools/analyzer",
       "/podcast": "/insights/podcast",
+      "/events": "/meetups",
+      "/community": "/meetups",
+      "/community/events": "/meetups",
+      "/community/meetups": "/meetups",
       // Pre-rename benchmark path — the client redirects for humans, but
       // crawlers need the 301 (the old path shipped in shared hub links).
       "/insights/market-report/homebench-ai-realtor-benchmark":
@@ -784,6 +792,10 @@ async function ensureAppTables() {
         scheduleEventsCommunityJobs(log);
         log("Events community jobs scheduled (daily recurrence sweep)", "events");
       }).catch((err) => log(`Events community schedule error: ${err.message}`, "events"));
+      import("./meetupIntegration").then(({ scheduleMeetupEventSync }) => {
+        scheduleMeetupEventSync(log);
+        log("Meetup Pro event sync scheduled (every 6 hours)", "meetup");
+      }).catch((err) => log(`Meetup sync schedule error: ${err.message}`, "meetup"));
       const drainNotifications = async () => {
         try {
           const result = await processPendingGhlNotifications();

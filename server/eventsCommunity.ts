@@ -1,5 +1,5 @@
 /**
- * Events community layer — the meetup.com replacement pieces that sit on top
+ * Events community layer — the Realist-owned discussion and recurrence pieces that sit on top
  * of the events growth engine:
  *
  * - Discussion threads on event pages (one nesting level, owner/admin

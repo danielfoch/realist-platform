@@ -1,4 +1,4 @@
-import { CalendarDays, MapPin, MonitorPlay, Users } from "lucide-react";
+import { CalendarDays, ExternalLink, MapPin, MonitorPlay, Users } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -39,6 +39,7 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
               {event.kind === "meetup" && <Badge>Free meetup</Badge>}
               {event.city && <Badge variant="outline">{event.city}</Badge>}
               {event.isRecurring && <Badge variant="outline">{event.recurrenceNote || "Recurring"}</Badge>}
+              {event.externalSource === "meetup" && <Badge variant="outline">Meetup Pro calendar</Badge>}
             </div>
             <h1 className="text-4xl font-bold tracking-tight md:text-5xl">{event.title}</h1>
             {event.shortDescription && <p className="max-w-3xl text-lg text-muted-foreground">{event.shortDescription}</p>}
@@ -49,7 +50,7 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
               </div>
               <div className="flex gap-2">
                 {event.eventType === "WEBINAR" ? <MonitorPlay className="mt-0.5 h-4 w-4 shrink-0" /> : <MapPin className="mt-0.5 h-4 w-4 shrink-0" />}
-                <span>{event.venueName || onlineLabel}{event.venueAddress ? ` · ${event.venueAddress}` : ""}</span>
+                <span>{event.venueName || event.externalGroupName || event.city || onlineLabel}{event.venueAddress ? ` · ${event.venueAddress}` : ""}</span>
               </div>
               {event.capacity != null && (
                 <div className="flex gap-2">
@@ -63,7 +64,23 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
                   <span>{event.rsvpCount} going</span>
                 </div>
               )}
+              {(event.externalRsvpCount ?? 0) > 0 && (
+                <div className="flex gap-2" data-testid="text-event-meetup-rsvp-count">
+                  <Users className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{event.externalRsvpCount} going on Meetup.com</span>
+                </div>
+              )}
             </div>
+            {event.externalUrl && (
+              <a
+                href={event.externalUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Original Meetup listing <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
           </div>
 
           {event.longDescription && (
@@ -126,7 +143,7 @@ export function EventPageTemplate({ event }: { event: RealistEventPayload }) {
           {soldOutByCapacity ? (
             <div className="rounded-lg border bg-card p-5 text-sm text-muted-foreground">This event is sold out.</div>
           ) : isFreeMeetup ? (
-            <RsvpPanel slug={event.slug} />
+            <RsvpPanel slug={event.slug} externalUrl={event.externalUrl} />
           ) : (
             <TicketSelector slug={event.slug} tickets={event.ticketTypes} />
           )}

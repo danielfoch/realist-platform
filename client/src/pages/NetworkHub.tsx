@@ -19,7 +19,7 @@ const networkOptions = [
     icon: Briefcase,
   },
   {
-    href: "/community/events",
+    href: "/meetups",
     title: "Local Events",
     description: "Attend workshops and meetups to meet investors in person.",
     icon: Calendar,

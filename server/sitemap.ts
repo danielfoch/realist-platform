@@ -74,9 +74,7 @@ export async function buildPagesSitemap() {
     { loc: `${BASE}/tools/fixed-vs-variable`, lastmod: now, changefreq: "weekly", priority: 0.7 },
     { loc: `${BASE}/tools/land-claim-screener`, lastmod: now, changefreq: "monthly", priority: 0.7 },
     { loc: `${BASE}/course`, lastmod: now, changefreq: "weekly", priority: 0.9 },
-    { loc: `${BASE}/community`, lastmod: now, changefreq: "weekly", priority: 0.8 },
     { loc: `${BASE}/community/leaderboard`, lastmod: now, changefreq: "daily", priority: 0.8 },
-    { loc: `${BASE}/community/events`, lastmod: now, changefreq: "weekly", priority: 0.8 },
     { loc: `${BASE}/community/network`, lastmod: now, changefreq: "weekly", priority: 0.7 },
     { loc: `${BASE}/insights`, lastmod: now, changefreq: "weekly", priority: 0.9 },
     { loc: `${BASE}/insights/guides/capital-stack-canada`, lastmod: now, changefreq: "monthly", priority: 0.8 },
@@ -89,7 +87,7 @@ export async function buildPagesSitemap() {
     { loc: `${BASE}/multiplex`, lastmod: now, changefreq: "weekly", priority: 0.95 },
     { loc: `${BASE}/tools/multiplex-underwriter`, lastmod: now, changefreq: "monthly", priority: 0.45 },
     { loc: `${BASE}/power-team`, lastmod: now, changefreq: "monthly", priority: 0.75 },
-    { loc: `${BASE}/meetups`, lastmod: now, changefreq: "weekly", priority: 0.75 },
+    { loc: `${BASE}/meetups`, lastmod: now, changefreq: "daily", priority: 0.9 },
     { loc: `${BASE}/canada-housing-market`, lastmod: now, changefreq: "weekly", priority: 0.9 },
     { loc: `${BASE}/toronto-housing-market`, lastmod: now, changefreq: "weekly", priority: 0.9 },
     { loc: `${BASE}/toronto-condo-prices-dropping`, lastmod: now, changefreq: "weekly", priority: 0.85 },
@@ -231,7 +229,7 @@ export async function buildVideoSitemap() {
 
 export async function buildEventsSitemap() {
   const urls: SitemapUrl[] = [
-    { loc: `${BASE}/community/events`, lastmod: today(), changefreq: "weekly", priority: 0.8 },
+    { loc: `${BASE}/meetups`, lastmod: today(), changefreq: "daily", priority: 0.9 },
   ];
   try {
     const { db } = await import("./db");

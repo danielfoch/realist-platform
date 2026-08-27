@@ -89,8 +89,8 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
     description: "On-market and off-market Canadian investment properties, underwritten and discussed with the Realist community.",
   },
   "/meetups": {
-    title: "Canadian Real Estate Investor Meetups | Realist.ca",
-    description: "Find a Realist meetup near you — local investor events hosted across Canada by the Canadian Real Estate Investor community.",
+    title: "Canadian Real Estate Investor Meetups & Events | Realist.ca",
+    description: "One live calendar for free Canadian real estate investor meetups and Realist flagship events. RSVP on Realist for reminders, discussion, and a free investor account.",
   },
 
   // ─── Multiplex ─────────────────────────────────────────────────────────────
