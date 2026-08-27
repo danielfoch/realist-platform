@@ -87,6 +87,19 @@ describe("validateReportContent — rejects bad reports", () => {
     expect(result.errors.some((e) => e.startsWith("sections:"))).toBe(true);
   });
 
+  it("requires at least one HTTPS source", () => {
+    expect(validateReportContent(baseReport({ sources: [] })).errors).toContain("sources: at least one source required");
+    expect(validateReportContent(baseReport({ sources: [{ label: "Bad", url: "http://example.com" }] })).errors)
+      .toContain("sources[0].url: must use https");
+  });
+
+  it("rejects unsafe CTA protocols", () => {
+    const result = validateReportContent(baseReport({
+      cta: { toolUrl: "javascript:alert(1)", headline: "Go", body: "Do it." },
+    }));
+    expect(result.errors).toContain("cta.toolUrl: must be an internal path or https URL");
+  });
+
   it("rejects a chart with no series", () => {
     const result = validateReportContent(
       baseReport({

@@ -25,8 +25,23 @@ export const researchDraftIngestSchema = z.object({
 
 export const researchPublishRequestSchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(240),
-  confirm: z.literal("publish").optional(),
+  confirm: z.literal("publish"),
 });
+
+export const researchDraftUpdateSchema = z.object({
+  article: z.custom<ReportContent>((value) => typeof value === "object" && value !== null, "article must be a ReportContent object"),
+});
+
+export interface PublishedResearchSummary {
+  slug: string;
+  title: string;
+  dek: string;
+  publishDate: string;
+  kind: ReportContent["kind"];
+  tags: string[];
+  route: string;
+  updatedAt: string;
+}
 
 export function normalizeResearchArticle(raw: ReportContent): ReportContent {
   return {

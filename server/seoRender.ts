@@ -46,7 +46,7 @@ function renderFooterLinks() {
       <nav aria-label="Footer links">
         ${renderLinkList([
           { href: "/markets", label: "Markets" },
-          { href: "/reports", label: "Reports" },
+          { href: "/insights", label: "Research" },
           { href: "/investing", label: "Investing" },
           { href: "/about", label: "About" },
           { href: "/about/contact", label: "Contact" },
@@ -388,7 +388,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
       },
     ],
     links: [
-      { href: "/reports", label: "Browse reports" },
+      { href: "/insights", label: "Browse research" },
       { href: "/markets/toronto", label: "Toronto market page" },
       { href: "/tools/analyzer", label: "Open deal analyzer" },
     ],
@@ -409,7 +409,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
     links: [
       { href: "/canada-housing-market", label: "Canada housing market overview" },
       { href: "/toronto-housing-market", label: "Toronto housing market page" },
-      { href: "/reports", label: "All reports" },
+      { href: "/insights", label: "All research" },
     ],
   },
   "/insights/new-construction-canada": {
@@ -420,7 +420,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
       { title: "Investor use case", body: "Use this page to understand where supply pressure may affect resale, rents, and underwriting assumptions." },
     ],
     links: [
-      { href: "/reports", label: "All reports" },
+      { href: "/insights", label: "All research" },
       { href: "/markets/toronto", label: "Toronto market page" },
       { href: "/investing/buy-and-hold", label: "Buy and hold strategy page" },
     ],
@@ -434,7 +434,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
     ],
     links: [
       { href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Open Motivated Deals Browser" },
-      { href: "/reports", label: "All reports" },
+      { href: "/insights", label: "All research" },
       { href: "/investing/distress", label: "Motivated-seller investing strategy page" },
     ],
   },
@@ -448,7 +448,7 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
     links: [
       { href: "/tools/analyzer", label: "Open deal analyzer" },
       { href: "/investing/brrr", label: "BRRR strategy page" },
-      { href: "/reports", label: "Browse reports" },
+      { href: "/insights", label: "Browse research" },
     ],
   },
   "/tools/hst-rebate": {
@@ -641,15 +641,28 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
   }
 
   if (reqPath === "/insights") {
-    const latestReports = await storage.getBlogPosts({ status: "published", category: "market-analysis", limit: 6 });
+    const { sortedReports } = await import("@shared/reportsRegistry");
+    const staticReports = sortedReports();
+    let dynamicReports: Array<{ route: string; title: string; publishDate: string }> = [];
+    try {
+      const { getPublishedResearchSummaries } = await import("./researchPublishing");
+      dynamicReports = await getPublishedResearchSummaries(24);
+    } catch { /* static library remains useful during a DB outage */ }
+    const reportLinks = [
+      ...dynamicReports.map((report) => ({ href: report.route, label: report.title, date: report.publishDate })),
+      ...staticReports.map((report) => ({ href: report.route, label: report.title, date: report.date })),
+    ]
+      .filter((report, index, all) => all.findIndex((candidate) => candidate.href === report.href) === index)
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 24);
     return renderShell(`
       <header>
-        <h1 style="font-size:40px;margin:0 0 12px;">Canadian Real Estate Insights & Reports</h1>
-        <p style="font-size:18px;color:#4b5563;max-width:760px;line-height:1.7;">Original research, market reports, mortgage commentary, and macro analysis for Canadian real estate investors.</p>
+        <h1 style="font-size:40px;margin:0 0 12px;">Canadian Real Estate Research</h1>
+        <p style="font-size:18px;color:#4b5563;max-width:760px;line-height:1.7;">Institutional-grade housing evidence translated into decisions regular Canadian investors can use: sourced reports, interactive datasets, podcast evidence packs, rates, and motivated-market signals.</p>
       </header>
       <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:28px 0;">
         ${[
-          { title: "Reports", body: "Crawlable Canadian housing reports and market intelligence.", href: "/reports" },
+          { title: "Research Library", body: "Crawlable Canadian housing reports, interactive charts, sources, and market intelligence.", href: "/insights" },
           { title: "CMHC Land Use Regulations Report", body: "Analysis of CMHC's 2026 research on zoning, approvals, affordability, and housing supply.", href: "/reports/cmhc-land-use-regulations-housing-canada-2026" },
           { title: "Mortgage Rates", body: "Current Canadian mortgage rate context for investors.", href: "/insights/mortgage-rates" },
           { title: "Motivated Report", body: "Monthly power of sale, foreclosure, and motivated-seller signals.", href: "/insights/motivated-report" },
@@ -663,8 +676,8 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
         `).join("")}
       </section>
       <section style="margin-top:36px;">
-        <h2 style="font-size:28px;margin-bottom:12px;">Latest Reports</h2>
-        ${renderLinkList(latestReports.map((report) => ({ href: `/reports/${report.slug}`, label: report.title })))}
+        <h2 style="font-size:28px;margin-bottom:12px;">Research Library</h2>
+        ${renderLinkList(reportLinks)}
       </section>
     `);
   }
@@ -698,7 +711,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
     const related = await storage.getBlogPosts({ status: "published", category: post.category, limit: 4 });
     const latest = await storage.getBlogPosts({ status: "published", category: "market-analysis", limit: 6 });
     return renderShell(`
-      ${renderBreadcrumbs([{ href: "/", label: "Home" }, { href: "/reports", label: "Reports" }, { href: `/reports/${post.slug}`, label: post.title }])}
+      ${renderBreadcrumbs([{ href: "/", label: "Home" }, { href: "/insights", label: "Research" }, { href: `/reports/${post.slug}`, label: post.title }])}
       <article>
         <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">Report</p>
         <h1 style="font-size:42px;line-height:1.1;margin:8px 0 14px;">${escapeHtml(post.title)}</h1>
@@ -832,7 +845,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
         <h2 style="font-size:28px;margin:32px 0 10px;">Investor Workflows</h2>
         ${renderLinkList([
           { href: "/tools/analyzer", label: "Analyze a property" },
-          { href: "/reports", label: "Browse reports" },
+          { href: "/insights", label: "Browse research" },
           { href: "/tools/cap-rates", label: "Explore cap rates" },
         ])}
       </article>
@@ -1133,7 +1146,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
     `);
   }
 
-  // Config-driven reports (shared/reports/): a full crawlable / no-JS fallback —
+  // Config-driven and DB-published research reports: a full crawlable / no-JS fallback —
   // H1, dek, narrative section text, and every ChartBlock rendered as an
   // accessible data table (the visual charts are recharts SVG, invisible to
   // crawlers). Mirrors what ReportRenderer draws for real users.
@@ -1141,7 +1154,13 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
   if (configReportMatch) {
     const { getConfigReport } = await import("@shared/reports");
     const { chartToTableRows } = await import("@shared/reportContent");
-    const report = getConfigReport(configReportMatch[1]);
+    let report = getConfigReport(configReportMatch[1]);
+    if (!report) {
+      try {
+        const { getPublishedResearchArticleBySlug } = await import("./researchPublishing");
+        report = (await getPublishedResearchArticleBySlug(configReportMatch[1])) || undefined;
+      } catch { /* return the normal 404 below */ }
+    }
     if (!report) return null;
 
     const publishLabel = (() => {
@@ -1192,7 +1211,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
     }).join("");
 
     return renderShell(`
-      ${renderBreadcrumbs([{ href: "/", label: "Home" }, { href: "/reports", label: "Reports" }, { href: `/insights/reports/${report.slug}`, label: report.title }])}
+      ${renderBreadcrumbs([{ href: "/", label: "Home" }, { href: "/insights", label: "Research" }, { href: `/insights/reports/${report.slug}`, label: report.title }])}
       <article>
         <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">Report</p>
         <h1 style="font-size:clamp(2rem,4vw,3.25rem);line-height:1.1;margin:8px 0 14px;">${escapeHtml(report.title)}</h1>
@@ -1207,7 +1226,7 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
         <section style="border:1px solid #e5e7eb;border-radius:12px;padding:20px;max-width:760px;margin:28px 0;">
           <h2 style="font-size:22px;margin:0 0 8px;">${escapeHtml(report.cta.headline)}</h2>
           <p style="font-size:16px;color:#4b5563;margin:0 0 12px;">${escapeHtml(report.cta.body)}</p>
-          <p style="margin:0;"><a href="${escapeHtml(report.cta.toolUrl)}" style="display:inline-block;background:#0f766e;color:#fff;border-radius:8px;padding:10px 20px;text-decoration:none;font-weight:600;">Open the free deal analyzer</a></p>
+          <p style="margin:0;"><a href="${escapeHtml(report.cta.toolUrl)}" style="display:inline-block;background:#0f766e;color:#fff;border-radius:8px;padding:10px 20px;text-decoration:none;font-weight:600;">Put this research to work</a></p>
         </section>
       </article>
       ${renderFooterLinks()}

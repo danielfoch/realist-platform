@@ -68,8 +68,8 @@ export default function ReportPage() {
               {
                 "@type": "ListItem",
                 "position": 1,
-                "name": "Reports",
-                "item": "https://realist.ca/reports",
+              "name": "Research",
+              "item": "https://realist.ca/insights",
               },
               {
                 "@type": "ListItem",
@@ -95,10 +95,10 @@ export default function ReportPage() {
       />
       <Navigation />
       <main className="max-w-4xl mx-auto px-4 md:px-6 py-8">
-        <Link href="/reports">
+        <Link href="/insights">
           <Button variant="ghost" size="sm" className="mb-6 gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back to Reports
+            Back to Research
           </Button>
         </Link>
 
@@ -116,8 +116,8 @@ export default function ReportPage() {
         {error && (
           <div className="py-16 text-center">
             <p className="text-muted-foreground mb-4">This report could not be found.</p>
-            <Link href="/reports">
-              <Button>Browse Reports</Button>
+            <Link href="/insights">
+              <Button>Browse Research</Button>
             </Link>
           </div>
         )}

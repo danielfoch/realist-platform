@@ -55,8 +55,8 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - `GET /api/community/questions` — public outstanding listing questions
 - `POST /api/community/questions` — authenticated listing question creation
 - `POST /api/community/questions/:id/answers` — authenticated public answer creation
-- `research_articles` — DB-backed unpublished research drafts using `ReportContent` JSON; ingest is idempotent via `source_id` + `ingest_idempotency_key`
-- `research_publish_attempts` — idempotent admin publish-attempt ledger; Phase 2 records blocked attempts only, no public article publishing
+- `research_articles` — DB-backed research using validated `ReportContent` JSON; ingest is idempotent via `source_id` + `ingest_idempotency_key`, and reviewed records publish at `/insights/reports/:slug`
+- `research_publish_attempts` — idempotent admin publication ledger recording published, already-published, and blocked validation/collision outcomes
 
 ### Pending/Recent Work
 - `ef7766e` (Clyde) — /api/deals/join, user_sessions table for session→user linking

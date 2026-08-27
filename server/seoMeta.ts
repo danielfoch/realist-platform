@@ -189,8 +189,8 @@ const STATIC_META: Record<string, PageMeta> = {
   },
   // Insights / Reports
   "/insights": {
-    title: "Canadian Real Estate Insights & Reports - Realist.ca",
-    description: "Original research, market reports, mortgage commentary, and macro analysis for Canadian real estate investors.",
+    title: "Canadian Real Estate Research, Reports & Data | Realist.ca",
+    description: "Sourced Canadian housing research for regular investors: interactive reports, mortgage rates, motivated listings, podcast evidence packs, and StatCan and CMHC analysis.",
   },
   "/insights/market-report": {
     title: "Canadian Real Estate Market Report - Live Data | Realist.ca",
@@ -324,6 +324,7 @@ const STATIC_META: Record<string, PageMeta> = {
   "/reports": {
     title: "Canadian Real Estate Reports | Realist",
     description: "Browse Realist's Canadian real estate reports for housing data, market analysis, and investor research. Read the latest insights.",
+    canonicalPath: "/insights",
   },
   "/markets": {
     title: "Canadian Real Estate Markets | Realist",
@@ -532,7 +533,7 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
               "@type": "BreadcrumbList",
               itemListElement: [
                 { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
-                { "@type": "ListItem", position: 2, name: "Reports", item: `${BASE_URL}/reports` },
+                { "@type": "ListItem", position: 2, name: "Research", item: `${BASE_URL}/insights` },
                 { "@type": "ListItem", position: 3, name: post.title, item: `${BASE_URL}${canonicalPath}` },
               ],
             },
@@ -542,13 +543,19 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
     } catch {}
   }
 
-  // Config-driven reports (shared/reports/): /insights/reports/:slug gets a
-  // Report + Person(author) + BreadcrumbList JSON-LD graph built from the same
-  // content object the client and crawler fallback render.
+  // Config-driven and DB-published research reports share one canonical route
+  // and renderer. Static content wins; reviewed DB research fills the same
+  // Report + Person(author) + BreadcrumbList contract.
   const configReportMatch = path.match(/^\/insights\/reports\/([^\/]+)$/);
   if (configReportMatch) {
     const { getConfigReport } = await import("@shared/reports");
-    const report = getConfigReport(configReportMatch[1]);
+    let report = getConfigReport(configReportMatch[1]);
+    if (!report) {
+      try {
+        const { getPublishedResearchArticleBySlug } = await import("./researchPublishing");
+        report = (await getPublishedResearchArticleBySlug(configReportMatch[1])) || undefined;
+      } catch { /* fall through to a real 404 */ }
+    }
     if (report) {
       const canonicalPath = `/insights/reports/${report.slug}`;
       const url = `${BASE_URL}${canonicalPath}`;
@@ -586,7 +593,7 @@ export async function getMetaForPath(rawPath: string): Promise<PageMeta> {
             "@type": "BreadcrumbList",
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
-              { "@type": "ListItem", position: 2, name: "Reports", item: `${BASE_URL}/reports` },
+              { "@type": "ListItem", position: 2, name: "Research", item: `${BASE_URL}/insights` },
               { "@type": "ListItem", position: 3, name: report.title, item: url },
             ],
           },

@@ -132,7 +132,15 @@ a stable `/insights/podcast/:slug` page, crawler-friendly metadata, show notes,
 topic tags, related episodes, and now a small research/tool pack. The Tuesday and
 Friday refresh makes those pages available shortly after release.
 
-The next research iteration should enrich high-priority episodes asynchronously:
+The general research workflow is now complete: an automation or administrator
+can ingest a typed `ReportContent` draft with an idempotency key, review a signed
+interactive preview, and explicitly publish it. Publication revalidates every
+chart row, requires at least one HTTPS source, prevents collisions with committed
+reports, records the attempt, and adds the report to `/insights`, structured
+data, the no-JavaScript crawler rendering, and the report sitemap. Published
+records are immutable; corrections ship as a reviewed replacement draft.
+
+High-priority podcast episodes can still receive a second asynchronous layer:
 
 1. transcribe or ingest the publisher transcript;
 2. extract claims and cited datasets;
@@ -142,6 +150,11 @@ The next research iteration should enrich high-priority episodes asynchronously:
 
 Automated text should never invent a chart or statistic. Publish the episode page
 immediately, then add sourced enrichment when it is ready.
+
+`/insights` is the only public research hub. The old `/reports` archive now
+redirects there, while stable detail URLs under `/reports/:slug` remain intact.
+New config and DB-published research use `/insights/reports/:slug` and the same
+interactive renderer.
 
 ## Meetup integration boundary
 
@@ -243,9 +256,16 @@ and make concepts explicitly illustrative. Add export and team-review CTAs.
 Meetup Pro event ingestion, native RSVP/account conversion, calendar
 consolidation, OAuth administration, encrypted token refresh, and scheduled
 sync are implemented on the feature branch. Production activation still needs
-the rotated OAuth secret and one administrator authorization. Next, publish
-sourced episode enrichment and produce the monthly distressed-market dataset/report from accumulated
-listing snapshots.
+the rotated OAuth secret and one administrator authorization.
+
+### Phase 5 — sourced research publishing
+
+The DB-backed research workflow now publishes reviewed StatCan/CMHC-style
+reports into the canonical Research hub with charts, citations, structured data,
+crawler tables, and sitemap discovery. The episode RSS pipeline already creates
+pages and evidence packs after Tuesday/Friday releases. Remaining work is
+transcript-backed claim extraction for priority episodes and the monthly
+distressed-market dataset/report from accumulated listing snapshots.
 
 ## Success metrics
 

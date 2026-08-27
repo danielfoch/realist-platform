@@ -333,7 +333,7 @@ export function deriveEpisodeResources(title: string): EpisodeResource[] {
   }
 
   add({
-    href: "/reports",
+    href: "/insights",
     title: "Realist research library",
     description: "Browse Canadian housing reports, dashboards and source notes.",
     kind: "report",

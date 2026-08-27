@@ -3,6 +3,7 @@ import { DEFAULT_AUTHOR, type ReportContent } from "./reportContent";
 import {
   draftStatusFromErrors,
   researchDraftIngestSchema,
+  researchPublishRequestSchema,
   validateResearchArticle,
 } from "./researchPublishing";
 
@@ -40,5 +41,10 @@ describe("research publishing draft validation", () => {
 
     expect(result.errors).toContain("sections: at least one section required");
     expect(draftStatusFromErrors(result.errors)).toBe("needs_revision");
+  });
+
+  it("requires an explicit publish confirmation", () => {
+    expect(() => researchPublishRequestSchema.parse({ idempotencyKey: "publish-test-123" })).toThrow();
+    expect(researchPublishRequestSchema.parse({ idempotencyKey: "publish-test-123", confirm: "publish" }).confirm).toBe("publish");
   });
 });

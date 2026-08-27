@@ -5,7 +5,6 @@ const GSC_URL =
 const GOOGLE_TRENDS_URL = "https://trends.google.com/trends/explore?date=all&geo=CA";
 const NOTION_EPISODE_URL =
   "https://app.notion.com/p/The-9-Most-Googled-Real-Estate-Questions-of-2026-39577b52a03d80448b09f66d61945539";
-const REALIST_REPORT_ROUTE = "/insights/reports/canada-real-estate-search-questions-2026";
 
 const housePricesTrend = [
   { year: 2004, interest: 35 },
@@ -474,11 +473,6 @@ export const canadaRealEstateSearchQuestions2026ConfigReport: ReportContent = {
       label: "The 9 Most Googled Real Estate Questions of 2026",
       url: NOTION_EPISODE_URL,
       publisher: "Realist podcast draft",
-    },
-    {
-      label: "Realist report route",
-      url: REALIST_REPORT_ROUTE,
-      publisher: "Realist.ca",
     },
   ],
   cta: {

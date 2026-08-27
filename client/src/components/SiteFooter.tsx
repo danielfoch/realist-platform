@@ -17,7 +17,7 @@ const FOOTER_GROUPS = [
     links: [
       { label: "Podcast", href: "/insights/podcast" },
       { label: "Research", href: "/insights" },
-      { label: "Market reports", href: "/reports" },
+      { label: "Research", href: "/insights" },
       { label: "Investor encyclopedia", href: "/insights/encyclopedia" },
     ],
   },

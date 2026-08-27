@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
+import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +13,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { sortedReports, reportDateLabel, type ReportKind } from "@shared/reportsRegistry";
+import type { PublishedResearchSummary } from "@shared/researchPublishing";
 
 const kindIcons: Record<ReportKind, typeof LineChart> = {
   macro: LineChart,
@@ -32,43 +35,7 @@ const kindFilters = [
 ];
 
 // Newest release overall drives the marquee slot — no baked month names.
-const allReports = sortedReports();
-const latestRelease = allReports[0];
-const yearFilters = [
-  { value: "all", label: "All years" },
-  ...[...new Set(allReports.map((entry) => entry.date.slice(0, 4)))].map((year) => ({
-    value: year,
-    label: year,
-  })),
-];
-
-// Section 1 — Live Data: recurring dashboards plus the latest registry release.
-const liveDataItems = [
-  {
-    href: "/insights/mortgage-rates",
-    title: "Mortgage Rates",
-    description: "Current best rates across Canada with historical context — fixed vs. variable, insured vs. conventional.",
-    icon: TrendingUp,
-    badge: "Live",
-    cta: "See Rates",
-  },
-  {
-    href: "/insights/motivated-report",
-    title: "Motivated Report",
-    description: "Monthly snapshot of power of sale, foreclosures, motivated sellers, and VTB opportunities across Canada.",
-    icon: AlertTriangle,
-    badge: "Monthly",
-    cta: "View Report",
-  },
-  {
-    href: latestRelease.route,
-    title: latestRelease.title,
-    description: latestRelease.description,
-    icon: kindIcons[latestRelease.kind],
-    badge: `Latest · ${reportDateLabel(latestRelease)}`,
-    cta: "Read Report",
-  },
-];
+const staticReports = sortedReports();
 
 // Section 3 — Learn & Media: education and ongoing content surfaces.
 const mediaItems = [
@@ -145,6 +112,58 @@ function HubCard({ item }: { item: HubItem }) {
 export default function InsightsHub() {
   const [selectedKind, setSelectedKind] = useState("all");
   const [selectedYear, setSelectedYear] = useState("all");
+  const { data: publishedResearch = [] } = useQuery<PublishedResearchSummary[]>({
+    queryKey: ["/api/research/articles"],
+    retry: false,
+  });
+
+  const allReports = useMemo(() => {
+    const byRoute = new Map<string, (typeof staticReports)[number]>();
+    for (const report of publishedResearch) {
+      byRoute.set(report.route, {
+        slug: report.slug,
+        route: report.route,
+        title: report.title,
+        description: report.dek,
+        date: report.publishDate,
+        tags: report.tags,
+        kind: report.kind,
+      });
+    }
+    for (const report of staticReports) if (!byRoute.has(report.route)) byRoute.set(report.route, report);
+    return [...byRoute.values()].sort((a, b) => b.date.localeCompare(a.date));
+  }, [publishedResearch]);
+  const latestRelease = allReports[0] || staticReports[0];
+  const yearFilters = useMemo(() => [
+    { value: "all", label: "All years" },
+    ...[...new Set(allReports.map((entry) => entry.date.slice(0, 4)))].map((year) => ({ value: year, label: year })),
+  ], [allReports]);
+  const liveDataItems: HubItem[] = [
+    {
+      href: "/insights/mortgage-rates",
+      title: "Mortgage Rates",
+      description: "Current best rates across Canada with historical context — fixed vs. variable, insured vs. conventional.",
+      icon: TrendingUp,
+      badge: "Live",
+      cta: "See Rates",
+    },
+    {
+      href: "/insights/motivated-report",
+      title: "Motivated Report",
+      description: "Monthly snapshot of power of sale, foreclosures, motivated sellers, and VTB opportunities across Canada.",
+      icon: AlertTriangle,
+      badge: "Monthly",
+      cta: "View Report",
+    },
+    {
+      href: latestRelease.route,
+      title: latestRelease.title,
+      description: latestRelease.description,
+      icon: kindIcons[latestRelease.kind],
+      badge: `Latest · ${reportDateLabel(latestRelease)}`,
+      cta: "Read Report",
+    },
+  ];
 
   useEffect(() => {
     track({ event: "page_viewed", path: "/insights", title: "Market Intelligence" });
@@ -159,13 +178,18 @@ export default function InsightsHub() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      <SEO
+        title="Canadian Real Estate Research, Reports & Data | Realist.ca"
+        description="Canadian housing research for regular investors: market reports, podcast evidence packs, mortgage rates, motivated listings, interactive charts, and sourced StatCan and CMHC analysis."
+        canonicalUrl="/insights"
+      />
 
       <main className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="text-center mb-12">
           <Badge variant="secondary" className="mb-3 text-xs">Latest release · {reportDateLabel(latestRelease)}</Badge>
-          <h1 className="text-4xl font-bold mb-3">Market Intelligence</h1>
+          <h1 className="text-4xl font-bold mb-3">Canadian Real Estate Research</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Data and analysis interpreted for Canadian real estate investors. From macro trends to deal-level implications.
+            Institutional-grade evidence translated into decisions regular Canadian investors can actually use.
           </p>
         </div>
 

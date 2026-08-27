@@ -150,7 +150,7 @@ export default function IrccImmigrationDashboardReport() {
       <Navigation />
 
       <main className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-        <Link href="/reports">
+        <Link href="/insights">
           <Button variant="ghost" size="sm" className="mb-6 gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to Reports

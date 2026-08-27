@@ -14,6 +14,7 @@ import { ArrowLeft, ExternalLink, Info, AlertTriangle, CheckCircle2, TrendingUp,
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportEndCta } from "@/components/ReportEndCta";
 import {
@@ -65,7 +66,7 @@ function buildStructuredData(report: ReportContent) {
         "@type": "BreadcrumbList",
         itemListElement: [
           { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
-          { "@type": "ListItem", position: 2, name: "Reports", item: `${BASE_URL}/reports` },
+          { "@type": "ListItem", position: 2, name: "Research", item: `${BASE_URL}/insights` },
           { "@type": "ListItem", position: 3, name: report.title, item: url },
         ],
       },
@@ -167,7 +168,7 @@ function Section({ section }: { section: ReportSection }) {
   }
 }
 
-export function ReportRenderer({ report }: { report: ReportContent }) {
+export function ReportRenderer({ report, noIndex = false }: { report: ReportContent; noIndex?: boolean }) {
   const canonicalPath = reportRoute(report.slug);
   return (
     <div className="min-h-screen bg-background" data-testid={`config-report-${report.slug}`}>
@@ -179,16 +180,17 @@ export function ReportRenderer({ report }: { report: ReportContent }) {
         ogType="article"
         keywords={report.tags.join(", ")}
         structuredData={buildStructuredData(report)}
+        noIndex={noIndex}
       />
       <Navigation />
 
       <main className="container max-w-6xl mx-auto px-4 py-8">
         <Link
-          href="/reports"
+          href="/insights"
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
           data-testid="link-back-reports"
         >
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Reports
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Research
         </Link>
 
         {/* Hero */}
@@ -255,6 +257,15 @@ export function ReportRenderer({ report }: { report: ReportContent }) {
           <div className="rounded-xl border border-border/60 bg-muted/30 p-6 md:p-8 text-center space-y-3">
             <h2 className="text-xl font-bold">{report.cta.headline}</h2>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">{report.cta.body}</p>
+            <Button asChild className="mt-2">
+              {report.cta.toolUrl.startsWith("https://") ? (
+                <a href={report.cta.toolUrl} target="_blank" rel="noopener noreferrer">
+                  Put this research to work
+                </a>
+              ) : (
+                <Link href={report.cta.toolUrl}>Put this research to work</Link>
+              )}
+            </Button>
           </div>
           <ReportEndCta sourcePage={canonicalPath} />
         </section>

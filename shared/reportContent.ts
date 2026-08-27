@@ -340,14 +340,27 @@ export function validateReportContent(report: ReportContent): ValidationResult {
 
   if (!Array.isArray(report.sources)) {
     errors.push("sources: must be an array");
+  } else if (report.sources.length === 0) {
+    errors.push("sources: at least one source required");
   } else {
     report.sources.forEach((src, i) => {
       if (!src.label?.trim()) errors.push(`sources[${i}].label: required`);
       if (!src.url?.trim()) errors.push(`sources[${i}].url: required`);
+      else {
+        try {
+          const url = new URL(src.url);
+          if (url.protocol !== "https:") errors.push(`sources[${i}].url: must use https`);
+        } catch {
+          errors.push(`sources[${i}].url: must be a valid absolute URL`);
+        }
+      }
     });
   }
 
   if (!report.cta?.toolUrl?.trim()) errors.push("cta.toolUrl: required");
+  else if (!report.cta.toolUrl.startsWith("/") && !report.cta.toolUrl.startsWith("https://")) {
+    errors.push("cta.toolUrl: must be an internal path or https URL");
+  }
   if (!report.cta?.headline?.trim()) errors.push("cta.headline: required");
   if (!report.cta?.body?.trim()) errors.push("cta.body: required");
 

@@ -55,7 +55,6 @@ export async function buildPagesSitemap() {
   const now = today();
   const urls: SitemapUrl[] = [
     { loc: `${BASE}/`, lastmod: now, changefreq: "daily", priority: 1 },
-    { loc: `${BASE}/reports`, lastmod: now, changefreq: "weekly", priority: 0.9 },
     { loc: `${BASE}/markets`, lastmod: now, changefreq: "weekly", priority: 0.85 },
     { loc: `${BASE}/investing`, lastmod: now, changefreq: "weekly", priority: 0.85 },
     { loc: `${BASE}/about`, lastmod: now, changefreq: "monthly", priority: 0.9 },
@@ -178,6 +177,18 @@ export async function buildReportsSitemap() {
       priority: 0.78,
     });
   }
+  try {
+    const { getPublishedResearchSummaries } = await import("./researchPublishing");
+    for (const report of await getPublishedResearchSummaries()) {
+      if (configReports.some((item) => item.slug === report.slug)) continue;
+      urls.push({
+        loc: `${BASE}${report.route}`,
+        lastmod: dateOnly(report.updatedAt || report.publishDate),
+        changefreq: "monthly",
+        priority: 0.78,
+      });
+    }
+  } catch {}
   return urlset(urls);
 }
 

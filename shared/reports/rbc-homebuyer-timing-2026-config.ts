@@ -1,7 +1,6 @@
 import { DEFAULT_AUTHOR, type ReportContent } from "../reportContent";
 
 const RBC_POLL_URL = "https://www.rbc.com/newsroom/news/article.html?article=126116";
-const REALIST_REPORT_ROUTE = "/insights/reports/rbc-homebuyer-timing-2026";
 
 export const rbcHomebuyerTiming2026ConfigReport: ReportContent = {
   slug: "rbc-homebuyer-timing-2026",
@@ -246,11 +245,6 @@ export const rbcHomebuyerTiming2026ConfigReport: ReportContent = {
       label: "When is the Perfect Time to Buy a Home? 64% of Canadians Say It Doesn't Exist",
       url: RBC_POLL_URL,
       publisher: "RBC Newsroom / RBC 2026 Home Ownership Poll",
-    },
-    {
-      label: "Realist report route",
-      url: REALIST_REPORT_ROUTE,
-      publisher: "Realist.ca",
     },
   ],
   cta: {

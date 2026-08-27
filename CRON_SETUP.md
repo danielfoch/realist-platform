@@ -31,6 +31,16 @@ Meetup**. Required deployment secrets: `MEETUP_CLIENT_ID`,
 `MEETUP_OAUTH_STATE_SECRET`, `MEETUP_TOKEN_ENCRYPTION_KEY`, and either
 `EVENTS_CRON_API_KEY` or `DEAL_DESK_API_KEY`.
 
+## Podcast RSS Refresh
+
+The always-on server refreshes the Omny feed at 5:10am Toronto time every
+Tuesday and Friday, ten minutes after the scheduled release. Episode pages,
+homepage playback, topic-specific research links, and the podcast sitemap all
+read the same cached feed. A failed refresh keeps the last known-good feed.
+
+The RSS refresh requires no API key. Keep the Express worker continuously
+running; a serverless-only frontend will not run this scheduler reliably.
+
 ## Monthly Market Update Automation
 
 To set up automatic monthly market updates:

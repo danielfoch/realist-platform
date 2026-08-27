@@ -618,6 +618,7 @@ async function ensureAppTables() {
       "/insights/distress-report",
       "/deal-analyzer",
       "/podcast",
+      "/reports",
       "/events",
       "/community",
       "/community/events",
@@ -635,6 +636,7 @@ async function ensureAppTables() {
       // the duplicates.
       "/deal-analyzer": "/tools/analyzer",
       "/podcast": "/insights/podcast",
+      "/reports": "/insights",
       "/events": "/meetups",
       "/community": "/meetups",
       "/community/events": "/meetups",

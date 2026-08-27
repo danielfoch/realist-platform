@@ -61,7 +61,7 @@ export default function AdminResearch() {
     }
   }
 
-  async function recordPublishAttempt(article: ResearchArticle) {
+  async function publishArticle(article: ResearchArticle) {
     setBusyId(article.id);
     try {
       const key = `admin-${article.id}-${Date.now()}`;
@@ -70,8 +70,15 @@ export default function AdminResearch() {
         confirm: "publish",
       });
       const body = await res.json();
-      toast({ title: "Publish remains disabled", description: body.message || "Attempt recorded as blocked." });
+      toast({ title: "Research published", description: body.publicUrl || "The report is now live in Research." });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/research/articles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/research/articles"] });
+    } catch (error: any) {
+      toast({
+        title: "Publish blocked",
+        description: error?.message || "Resolve the validation issue and try again with a new publish request.",
+        variant: "destructive",
+      });
     } finally {
       setBusyId(null);
     }
@@ -87,11 +94,11 @@ export default function AdminResearch() {
               <FileText className="h-5 w-5" />
               <h1 className="text-3xl font-bold tracking-tight">Research publishing</h1>
             </div>
-            <p className="text-muted-foreground">Review DB-backed report drafts before any public publish workflow exists.</p>
+            <p className="text-muted-foreground">Review sourced, chart-ready reports and publish them into the canonical Research library.</p>
           </div>
           <Badge variant="outline" className="gap-1">
             <ShieldCheck className="h-3 w-3" />
-            Publish disabled
+            Admin-reviewed publishing
           </Badge>
         </div>
 
@@ -147,16 +154,16 @@ export default function AdminResearch() {
                       <a href={selected.previewUrl} target="_blank" rel="noreferrer">
                         <Button variant="outline" size="sm" className="gap-2">
                           <Eye className="h-4 w-4" />
-                          Open JSON
+                          Open preview
                         </Button>
                       </a>
                       <Button
                         size="sm"
                         variant="secondary"
-                        disabled={busyId === selected.id || selected.validationErrors.length > 0}
-                        onClick={() => recordPublishAttempt(selected)}
+                        disabled={busyId === selected.id || selected.validationErrors.length > 0 || selected.status === "published"}
+                        onClick={() => publishArticle(selected)}
                       >
-                        Record publish attempt
+                        {selected.status === "published" ? "Published" : "Publish report"}
                       </Button>
                     </div>
                   </div>

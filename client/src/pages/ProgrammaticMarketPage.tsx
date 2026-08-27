@@ -17,7 +17,7 @@ export default function ProgrammaticMarketPage() {
         <main className="max-w-4xl mx-auto px-4 md:px-6 py-12">
           <h1 className="text-3xl font-bold mb-4">Market Page Not Found</h1>
           <p className="text-muted-foreground mb-6">This market page has not been generated yet.</p>
-          <Link href="/reports"><Button>Browse Reports</Button></Link>
+          <Link href="/insights"><Button>Browse Research</Button></Link>
         </main>
       </div>
     );
@@ -79,7 +79,7 @@ export default function ProgrammaticMarketPage() {
               <CardTitle>Next Steps</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Link href="/reports" className="block text-sm text-primary hover:underline">Browse reports</Link>
+              <Link href="/insights" className="block text-sm text-primary hover:underline">Browse research</Link>
               <Link href="/tools/analyzer" className="block text-sm text-primary hover:underline">Run the deal analyzer</Link>
               <Link href="/tools/cap-rates" className="block text-sm text-primary hover:underline">Explore cap rates</Link>
             </CardContent>

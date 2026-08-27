@@ -165,7 +165,7 @@ describe("deriveEpisodeResources", () => {
 
   it("always returns a useful research link", () => {
     expect(deriveEpisodeResources("An Interview With Our Moms")).toEqual([
-      expect.objectContaining({ href: "/reports" }),
+      expect.objectContaining({ href: "/insights" }),
     ]);
   });
 });
