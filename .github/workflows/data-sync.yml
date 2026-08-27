@@ -1,0 +1,35 @@
+name: Nightly data sync
+
+# Heavy DDF work runs here rather than on Vercel: the national listings crawl
+# and the lease-rent ingestion each take longer than a serverless budget.
+on:
+  schedule:
+    # 06:20 UTC ≈ 01:20–02:20 Toronto — after the day's listing churn settles.
+    - cron: "20 6 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: data-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CREA_DDF_USERNAME: ${{ secrets.CREA_DDF_USERNAME }}
+      CREA_DDF_PASSWORD: ${{ secrets.CREA_DDF_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lean
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: DDF listings crawl (snapshots + yield history)
+        run: npx tsx scripts/sync-ddf.ts
+      - name: Lease listings → rent database
+        run: npx tsx scripts/sync-rents.ts

@@ -1,0 +1,1918 @@
+/**
+ * Realist.ca — Multiplex Feasibility Engine
+ *
+ * A rules-based screening engine for estimating multiplex development potential
+ * on Canadian residential properties. Ontario-first, Toronto-priority.
+ *
+ * IMPORTANT: This engine produces screening estimates only — not legal, planning,
+ * architectural, or development advice. Every output carries a confidence score
+ * and source traceability. All conclusions must be verified by qualified professionals.
+ *
+ * Rules hierarchy (lowest → highest priority):
+ *   Province baseline < Municipality policy < Zone standards < Overlay/special area
+ *
+ * Adding a new municipality:
+ *   1. Add entry to MUNICIPALITY_RULES below
+ *   2. Add any zone-specific rules to ZONE_HINTS
+ *   3. Add sources to POLICY_SOURCES
+ *   4. Set supportLevel: "partial" until zone rules are complete
+ *
+ * Confidence model:
+ *   Each field that is known vs. inferred adds or subtracts from a 0–100 score.
+ *   HIGH (≥65): Reliable screening — enough data to make useful inferences
+ *   MEDIUM (35–64): Useful but major assumptions made — verify before acting
+ *   LOW (<35): Jurisdiction not yet supported or data too sparse to conclude
+ */
+
+import {
+  buildMultiplexDevelopmentReport,
+  type MultiplexDevelopmentReport,
+} from "./multiplexFeasibilityReport";
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+export interface FeasibilityInput {
+  address?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  zoneCode?: string;
+  lotFrontage?: number; // feet
+  lotDepth?: number;    // feet
+  lotArea?: number;     // sqft (if provided directly)
+  cornerLot?: boolean;
+  laneAccess?: boolean;
+  heritageFlag?: boolean;
+  floodplainFlag?: boolean;
+  /**
+   * Major Transit Station Area status, where the user has checked the property
+   * against the municipality's delineation. Omit when unknown — the engine will
+   * fall back to a distance heuristic rather than guessing "outside".
+   */
+  transitAreaStatus?: "outside" | "mtsa" | "pmtsa";
+  /** Straight-line distance to the nearest rapid transit station, in metres. */
+  transitStationDistanceM?: number;
+  /** Lot fronts a major street / avenue — affects MTSA low-rise height direction. */
+  majorStreet?: boolean;
+  /** Optional site acquisition price for the illustrative development pro forma. */
+  purchasePrice?: number;
+  /** Optional hard-cost override for the illustrative development pro forma. */
+  hardCostPsf?: number;
+}
+
+export interface PolicySource {
+  type: "legislation" | "bylaw" | "official_plan" | "policy_document" | "inference";
+  name: string;
+  url?: string;
+  section?: string;
+  jurisdiction: string;
+  date?: string;
+  confidence: "high" | "medium" | "low";
+}
+
+export interface FeasibilityScenario {
+  name: string;
+  units: number;
+  description: string;
+  approval_path: "as_of_right" | "minor_variance_likely" | "rezoning_required" | "complex";
+  typical_gfa_sqft?: number;
+  notes: string[];
+}
+
+export interface RiskFlag {
+  flag: string;
+  severity: "high" | "medium" | "low";
+  details: string;
+}
+
+export interface RuleLayerTrace {
+  layer: "province_baseline" | "municipality_rules" | "zone_standards" | "transit_overlay" | "overlays" | "property_caveats";
+  label: string;
+  status: "direct" | "heuristic" | "missing";
+  impact: string;
+  confidence: "high" | "medium" | "low";
+  source_names: string[];
+}
+
+export interface AssumptionTrace {
+  label: string;
+  value: string;
+  certainty: "direct" | "inferred" | "unknown";
+}
+
+export interface SiteSpecificLookup {
+  status: "verified" | "partial" | "unavailable";
+  geocoded: boolean;
+  coordinates: { lat: number; lng: number } | null;
+  zoning: {
+    code: string;
+    category: string | null;
+    certainty: "verified";
+  } | null;
+  screens: {
+    city_tree_conflict: boolean | null;
+    trees_within_20m: number | null;
+    heritage_listed: boolean | null;
+    conservation_regulated: boolean | null;
+  };
+  notes: string[];
+}
+
+/**
+ * Major Transit Station Area status.
+ *
+ * MTSA — an area within roughly a 500–800m radius of an existing or planned
+ * higher-order transit station, delineated in a municipality's official plan
+ * (Provincial Planning Statement, 2024, policy 2.4).
+ *
+ * PMTSA — an MTSA delineated under Planning Act s.16(15)–(16). The extra
+ * "protected" status is what unlocks inclusionary zoning and constrains appeals.
+ *
+ * `likely_mtsa_inferred` is our own distance heuristic, never a delineation:
+ * real MTSA boundaries are irregular polygons, not circles.
+ */
+export type TransitAreaStatus =
+  | "unknown"
+  | "outside"
+  | "likely_mtsa_inferred"
+  | "mtsa"
+  | "pmtsa";
+
+export interface TransitContext {
+  status: TransitAreaStatus;
+  certainty: "direct" | "inferred" | "unknown";
+  distance_m: number | null;
+  major_street: boolean;
+  /** Minimum parking cannot be imposed in a P/MTSA — in force since 2025-08-15. */
+  parking_minimums_prohibited: boolean;
+  /** Inclusionary zoning is only available to a municipality inside a PMTSA. */
+  inclusionary_zoning_possible: boolean;
+  inclusionary_zoning_note: string;
+  /**
+   * Height in storeys the province has directed for low-rise (Neighbourhoods)
+   * lands inside a Toronto P/MTSA. Policy direction, not yet zoning — null
+   * where no such direction applies.
+   */
+  policy_height_storeys: number | null;
+  summary: string;
+  notes: string[];
+}
+
+export interface MultiplexFeasibilityResult {
+  // Identity
+  address: string;
+  municipality: string;
+  province: string;
+  support_level: "full" | "partial" | "province_only" | "unsupported";
+
+  // Quick summary
+  quick_read: {
+    headline: string;
+    confidence: "high" | "medium" | "low";
+    confidence_score: number;
+    key_facts: string[];
+    key_blockers: string[];
+  };
+
+  // Zoning snapshot
+  zoning: {
+    code?: string;
+    description?: string;
+    zone_category?: "residential_low" | "residential_medium" | "residential_high" | "mixed_use" | "commercial" | "unknown";
+    official_plan_note?: string;
+    overlay_flags: string[];
+    heritage_flagged: boolean;
+    floodplain_flagged: boolean;
+  };
+  site_specific: SiteSpecificLookup | null;
+
+  // Permission analysis
+  permissions: {
+    provincial_baseline_units: number;
+    municipal_baseline_units: number;
+    effective_baseline_units: number;
+    likely_units_low: number;
+    likely_units_high: number;
+    likely_range_label: string;
+    aru_possible: boolean;
+    garden_suite_possible: boolean;
+    laneway_suite_possible: boolean;
+    six_unit_area_possible: boolean;
+    six_unit_area_status: "not_applicable" | "possible_unverified" | "more_likely_area";
+    approval_path: "as_of_right" | "minor_variance_likely" | "rezoning_required" | "complex" | "unknown";
+    scenarios: FeasibilityScenario[];
+    approval_notes: string[];
+  };
+
+  // Major Transit Station Area context
+  transit: TransitContext;
+
+  // Input-matched concept, illustrative pro forma, and project schedule.
+  development_report: MultiplexDevelopmentReport | null;
+
+  // Envelope math
+  envelope: {
+    lot_area_sqft: number | null;
+    lot_frontage_ft: number | null;
+    lot_depth_ft: number | null;
+    lot_area_basis: "provided" | "calculated" | "estimated";
+    estimated_lot_coverage_ratio: number;
+    coverage_basis: "bylaw" | "zone_rule" | "municipality_fallback" | "province_fallback";
+    estimated_max_footprint_sqft: number | null;
+    estimated_storeys: number;
+    estimated_theoretical_gfa_sqft: number | null;
+    estimated_practical_gfa_sqft: number | null;
+    practical_haircut_reason: string;
+    unit_scenarios: { units: number; avg_unit_sqft: number; total_gfa: number }[];
+    calculation_notes: string[];
+  };
+
+  // Risk flags
+  risk_flags: RiskFlag[];
+
+  // Rules + assumptions traceability
+  rules_hierarchy: RuleLayerTrace[];
+  assumptions: AssumptionTrace[];
+  source_summary: {
+    direct_sources: number;
+    heuristic_sources: number;
+    total_sources: number;
+  };
+
+  // Sources
+  sources: PolicySource[];
+
+  // Confidence breakdown
+  confidence_breakdown: Record<string, { score: number; reason: string }>;
+  confidence_score: number;
+
+  // Metadata
+  computed_at: string;
+  disclaimer: string;
+}
+
+// ─── Policy Knowledge Base ──────────────────────────────────────────────────
+
+const DISCLAIMER = `This is a preliminary screening estimate only. Realist does not guarantee zoning accuracy, development feasibility, unit count, lot coverage, GFA, or approval outcomes. Municipal by-laws, official plans, overlays, secondary plans, and policies can change. Site-specific conditions including servicing capacity, frontage, lot shape, heritage designation, conservation authority restrictions, easements, floodplains, tree by-laws, angular plane, parking requirements, and building code constraints may materially affect what is actually achievable here. This tool does not constitute legal, planning, architectural, engineering, or development advice. All conclusions must be independently verified by the buyer and their qualified professional advisors before relying on them in any way.`;
+
+const SOURCES: Record<string, PolicySource> = {
+  bill23: {
+    type: "legislation",
+    name: "Bill 23 — More Homes Built Faster Act, 2022 (Ontario)",
+    url: "https://www.ontario.ca/laws/statute/22m17",
+    jurisdiction: "Ontario",
+    date: "2022-11-28",
+    confidence: "high",
+  },
+  planningActARU: {
+    type: "legislation",
+    name: "Planning Act — Additional Residential Units (Ontario)",
+    url: "https://www.ontario.ca/laws/statute/90p13",
+    section: "Section 16(3), 35.2",
+    jurisdiction: "Ontario",
+    date: "2023-01-01",
+    confidence: "high",
+  },
+  torontoMultiplex2023: {
+    type: "bylaw",
+    name: "City of Toronto — Multiplex Zoning By-law Amendment (2023)",
+    url: "https://www.toronto.ca/city-government/planning-development/planning-studies-initiatives/expanding-housing-options/",
+    jurisdiction: "Toronto",
+    date: "2023-09-28",
+    confidence: "high",
+  },
+  torontoSixplex2025: {
+    type: "bylaw",
+    name: "City of Toronto — By-law 654-2025 / OPA 818: Fiveplexes & Sixplexes (as-of-right in 9 wards + councillor opt-in)",
+    url: "https://www.toronto.ca/city-government/planning-development/planning-studies-initiatives/multiplex-housing/",
+    jurisdiction: "Toronto — Wards 4, 9, 10, 11, 12, 13, 14, 19 (Toronto & East York) + Ward 23 (Scarborough North)",
+    date: "2025-06-25",
+    confidence: "high",
+  },
+  torontoGardenSuite2022: {
+    type: "bylaw",
+    name: "City of Toronto — Garden Suite Zoning By-law (2022)",
+    url: "https://www.toronto.ca/city-government/planning-development/planning-studies-initiatives/garden-suites/",
+    jurisdiction: "Toronto",
+    date: "2022-06-23",
+    confidence: "high",
+  },
+  torontoLaneway2018: {
+    type: "bylaw",
+    name: "City of Toronto — Laneway Suite Zoning By-law (2018)",
+    url: "https://www.toronto.ca/city-government/planning-development/planning-studies-initiatives/garden-and-laneway-suites/",
+    jurisdiction: "Toronto",
+    date: "2018-07-05",
+    confidence: "high",
+  },
+  ontarioARUGuidance: {
+    type: "policy_document",
+    name: "Province of Ontario — Additional Residential Units Guidance",
+    url: "https://www.ontario.ca/page/additional-residential-units",
+    jurisdiction: "Ontario",
+    date: "2023-06-01",
+    confidence: "high",
+  },
+  pps2024MTSA: {
+    type: "policy_document",
+    name: "Provincial Planning Statement, 2024 — Major Transit Station Areas (500–800m; minimum density targets)",
+    url: "https://www.ontario.ca/page/provincial-planning-statement-2024",
+    section: "Policy 2.4 — Housing and transit-supportive development",
+    jurisdiction: "Ontario",
+    date: "2024-10-20",
+    confidence: "high",
+  },
+  planningActPMTSA: {
+    type: "legislation",
+    name: "Planning Act — Protected Major Transit Station Areas (delineation + inclusionary zoning)",
+    url: "https://www.ontario.ca/laws/statute/90p13",
+    section: "Sections 16(4)–(5), 16(15)–(16)",
+    jurisdiction: "Ontario",
+    date: "2020-01-01",
+    confidence: "high",
+  },
+  bill185Parking: {
+    type: "legislation",
+    name: "Bill 185 — Cutting Red Tape to Build More Homes Act, 2024: no minimum parking in P/MTSAs",
+    url: "https://www.ola.org/en/legislative-business/bills/parliament-43/session-1/bill-185",
+    section: "Planning Act ss. 16(22)–(23), 34(1.1)–(1.2)",
+    jurisdiction: "Ontario",
+    date: "2025-08-15",
+    confidence: "high",
+  },
+  torontoMTSA2025: {
+    type: "official_plan",
+    name: "City of Toronto — MTSA/PMTSA delineation (OPA 524, 537, 540, 544, 570, 575), Minister-approved",
+    url: "https://www.toronto.ca/city-government/planning-development/planning-studies-initiatives/zoning-for-major-transit-station-areas/",
+    jurisdiction: "Toronto",
+    date: "2025-08-15",
+    confidence: "high",
+  },
+  ontarioIZPause2026: {
+    type: "legislation",
+    name: "O. Reg. 15/26 — inclusionary zoning obligations paused in Toronto until 2027-07-01",
+    url: "https://www.ontario.ca/laws/regulation/210232",
+    jurisdiction: "Ontario",
+    date: "2026-01-29",
+    confidence: "medium",
+  },
+  inferred: {
+    type: "inference",
+    name: "Realist heuristic estimate — not from direct by-law source",
+    jurisdiction: "Realist",
+    confidence: "low",
+  },
+};
+
+// ─── Province Rules ─────────────────────────────────────────────────────────
+
+interface ProvinceRule {
+  name: string;
+  baseline_units: number;
+  aru_possible: boolean;
+  garden_suite_possible: boolean;
+  requires_servicing: boolean;
+  baseline_notes: string[];
+  sources: PolicySource[];
+}
+
+const PROVINCE_RULES: Record<string, ProvinceRule> = {
+  ON: {
+    name: "Ontario",
+    // Bill 23 / Planning Act: up to 3 units total on serviced residential lots
+    // (principal building + ancillary) — baseline without rezoning
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    requires_servicing: true,
+    baseline_notes: [
+      "Ontario's Bill 23 framework allows up to 3 residential units on most serviced residential lots without rezoning",
+      "This includes configurations like 2 units in the principal building + 1 ancillary, or 3 in the principal building",
+      "Municipal implementation and zoning standards still apply — local by-laws can be more permissive but not more restrictive below provincial minimum",
+      "Servicing (municipal water and sewer) is required for most configurations",
+      "Heritage properties, conservation authority land, and hazard land may be exempt from these provisions",
+      "Lot-specific constraints (frontage, coverage, setbacks) still apply",
+    ],
+    sources: [SOURCES.bill23, SOURCES.planningActARU, SOURCES.ontarioARUGuidance],
+  },
+  BC: {
+    name: "British Columbia",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    requires_servicing: true,
+    baseline_notes: [
+      "BC's Small-Scale Multi-Unit Housing (SSMUH) legislation (2023) requires municipalities to allow 3–6 units on most single-family lots",
+      "Exact unit count depends on lot size and proximity to transit",
+      "Municipality-specific implementation applies",
+    ],
+    sources: [
+      {
+        type: "legislation",
+        name: "BC Small-Scale Multi-Unit Housing Legislation (Bill 44, 2023)",
+        url: "https://www2.gov.bc.ca/gov/content/housing-tenancy/local-governments-and-housing/housing-initiatives/small-scale-multi-unit-housing",
+        jurisdiction: "British Columbia",
+        date: "2023-11-30",
+        confidence: "high",
+      },
+    ],
+  },
+};
+
+// ─── Municipality Rules ─────────────────────────────────────────────────────
+
+interface MunicipalityRule {
+  name: string;
+  province: string;
+  aliases: string[]; // alternative city name spellings
+  supportLevel: "full" | "partial" | "province_only";
+  baseline_units: number;
+  aru_possible: boolean;
+  garden_suite_possible: boolean;
+  laneway_suite_possible: boolean;
+  six_unit_area_possible: boolean;
+  six_unit_area_note?: string;
+  default_lot_coverage_ratio: number; // 0–1 fraction
+  coverage_basis: "bylaw" | "zone_rule" | "municipality_fallback";
+  typical_storeys: number; // for GFA estimation
+  approval_notes: string[];
+  sources: PolicySource[];
+}
+
+const MUNICIPALITY_RULES: Record<string, MunicipalityRule> = {
+  Toronto: {
+    name: "City of Toronto",
+    province: "ON",
+    aliases: ["toronto", "north york", "scarborough", "etobicoke", "york", "east york"],
+    supportLevel: "partial",
+    // Toronto adopted city-wide multiplex (4 units) in Sept 2023
+    baseline_units: 4,
+    aru_possible: true,
+    garden_suite_possible: true,
+    // Laneway suites possible on most lots with lane access in former City of Toronto / East York
+    laneway_suite_possible: true,
+    // By-law 654-2025 / OPA 818 (June 2025): 5-6 units as-of-right in the eight
+    // Toronto & East York wards (4, 9, 10, 11, 12, 13, 14, 19) plus Ward 23
+    // (Scarborough North). Remaining wards require councillor opt-in.
+    six_unit_area_possible: true,
+    six_unit_area_note:
+      "By-law 654-2025 permits five- and six-unit multiplexes as-of-right in Wards 4, 9, 10, 11, 12, 13, 14, 19 (Toronto & East York district) and Ward 23 (Scarborough North). Other wards require the local councillor to opt in — the list can grow; verify the property's ward against the current by-law.",
+    // Standard Toronto residential zone: ~33–35% lot coverage for principal building
+    // For multiplex scenarios, effective coverage including rear structures may reach 45%+
+    default_lot_coverage_ratio: 0.35,
+    coverage_basis: "municipality_fallback",
+    // Multiplex by-law permits 10m height (~3 storeys); sixplex areas allow up to
+    // 4 storeys/12m. 3 is the realistic massing basis for multiplex GFA.
+    typical_storeys: 3,
+    approval_notes: [
+      "Toronto's city-wide multiplex by-law allows up to 4 units 'as of right' in residential areas (subject to zoning standards)",
+      "By-law 654-2025 extends as-of-right permission to 5-6 units in Wards 4, 9, 10, 11, 12, 13, 14, 19 and Ward 23; other wards may opt in",
+      "FSI does not apply to multiplexes — the envelope is governed by height (10m; 12m/4 storeys in sixplex areas), lot coverage, and setbacks (7.5m rear; 0.9m sides, 1.5m for 5+ units)",
+      "No minimum parking requirement applies to multiplexes",
+      "Minor variances may be needed for irregular lots or non-standard configurations",
+      "Development charge relief may apply (Bill 23 ARU exemptions; City multiplex/sixplex incentive programs) — verify current treatment before underwriting",
+      "Laneway suites are permitted on lots with lane access (approx. 65,000 eligible lots)",
+      "Garden suites are permitted on most residential lots since 2022",
+      "Heritage designation, TRCA flood/conservation, and other overlays can reduce feasibility",
+    ],
+    sources: [
+      SOURCES.torontoMultiplex2023,
+      SOURCES.torontoSixplex2025,
+      SOURCES.torontoGardenSuite2022,
+      SOURCES.torontoLaneway2018,
+    ],
+  },
+  Ottawa: {
+    name: "City of Ottawa",
+    province: "ON",
+    aliases: ["ottawa", "kanata", "barrhaven", "nepean", "gloucester", "orleans"],
+    supportLevel: "province_only",
+    baseline_units: 3, // Ontario baseline; Ottawa has its own zoning study underway
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: [
+      "Ottawa follows Ontario's Bill 23 baseline (up to 3 units)",
+      "Ottawa is undertaking a Residential Intensification in Established Neighbourhoods Study (RIENS) — additional permissions may follow",
+      "Buyer should verify current zoning status with City of Ottawa",
+    ],
+    sources: [
+      SOURCES.bill23,
+      SOURCES.planningActARU,
+      {
+        type: "policy_document",
+        name: "City of Ottawa — Official Plan (2021)",
+        url: "https://ottawa.ca/en/city-hall/get-know-your-city/official-plan",
+        jurisdiction: "Ottawa",
+        date: "2021-11-24",
+        confidence: "medium",
+      },
+    ],
+  },
+  Hamilton: {
+    name: "City of Hamilton",
+    province: "ON",
+    aliases: ["hamilton", "stoney creek", "dundas", "ancaster", "flamborough", "glanbrook"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: [
+      "Hamilton follows Ontario's Bill 23 baseline (up to 3 units)",
+      "Hamilton has been studying infill/intensification policies — verify current permissions with City of Hamilton",
+    ],
+    sources: [SOURCES.bill23, SOURCES.planningActARU],
+  },
+  Mississauga: {
+    name: "City of Mississauga",
+    province: "ON",
+    aliases: ["mississauga", "port credit", "streetsville", "clarkson", "cooksville"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.35,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: [
+      "Mississauga follows Ontario's Bill 23 baseline (up to 3 units)",
+      "Mississauga's zoning by-law implements ARU permissions — verify specifics with City of Mississauga",
+    ],
+    sources: [SOURCES.bill23, SOURCES.planningActARU],
+  },
+  Brampton: {
+    name: "City of Brampton",
+    province: "ON",
+    aliases: ["brampton"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["Brampton follows Ontario's Bill 23 baseline. Verify with City of Brampton."],
+    sources: [SOURCES.bill23],
+  },
+  Kitchener: {
+    name: "City of Kitchener",
+    province: "ON",
+    aliases: ["kitchener"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["Kitchener follows Ontario's Bill 23 baseline. Verify with City of Kitchener."],
+    sources: [SOURCES.bill23],
+  },
+  Waterloo: {
+    name: "City of Waterloo",
+    province: "ON",
+    aliases: ["waterloo"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["Waterloo follows Ontario's Bill 23 baseline."],
+    sources: [SOURCES.bill23],
+  },
+  London: {
+    name: "City of London",
+    province: "ON",
+    aliases: ["london"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["London follows Ontario's Bill 23 baseline. Verify with City of London."],
+    sources: [SOURCES.bill23],
+  },
+  Kingston: {
+    name: "City of Kingston",
+    province: "ON",
+    aliases: ["kingston"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["Kingston follows Ontario's Bill 23 baseline."],
+    sources: [SOURCES.bill23],
+  },
+  Barrie: {
+    name: "City of Barrie",
+    province: "ON",
+    aliases: ["barrie"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["Barrie follows Ontario's Bill 23 baseline."],
+    sources: [SOURCES.bill23],
+  },
+  Guelph: {
+    name: "City of Guelph",
+    province: "ON",
+    aliases: ["guelph"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["Guelph follows Ontario's Bill 23 baseline."],
+    sources: [SOURCES.bill23],
+  },
+  "Niagara Falls": {
+    name: "City of Niagara Falls",
+    province: "ON",
+    aliases: ["niagara falls", "niagara"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["Niagara Falls follows Ontario's Bill 23 baseline."],
+    sources: [SOURCES.bill23],
+  },
+  Windsor: {
+    name: "City of Windsor",
+    province: "ON",
+    aliases: ["windsor"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.42,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["Windsor follows Ontario's Bill 23 baseline."],
+    sources: [SOURCES.bill23],
+  },
+  Oshawa: {
+    name: "City of Oshawa",
+    province: "ON",
+    aliases: ["oshawa"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: false,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.4,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: ["Oshawa follows Ontario's Bill 23 baseline."],
+    sources: [SOURCES.bill23],
+  },
+  Vancouver: {
+    name: "City of Vancouver",
+    province: "BC",
+    aliases: ["vancouver"],
+    supportLevel: "province_only",
+    baseline_units: 3,
+    aru_possible: true,
+    garden_suite_possible: true,
+    laneway_suite_possible: true,
+    six_unit_area_possible: false,
+    default_lot_coverage_ratio: 0.45,
+    coverage_basis: "municipality_fallback",
+    typical_storeys: 2,
+    approval_notes: [
+      "Vancouver follows BC's SSMUH legislation (2023) allowing up to 3–6 units on residential lots",
+      "Verify exact permissions with City of Vancouver zoning",
+      "Vancouver has extensive laneway house program since 2009",
+    ],
+    sources: [PROVINCE_RULES.BC.sources[0]],
+  },
+};
+
+// ─── Zone Classification Hints ──────────────────────────────────────────────
+
+interface ZoneHint {
+  category: "residential_low" | "residential_medium" | "residential_high" | "mixed_use" | "commercial";
+  description: string;
+  typical_coverage?: number;
+  typical_storeys?: number;
+  notes: string[];
+}
+
+function classifyZone(zoneCode: string): ZoneHint | null {
+  const code = zoneCode.trim().toUpperCase();
+
+  // Toronto-specific zone codes
+  if (/^RD\b/.test(code)) return {
+    category: "residential_low",
+    description: "Residential Detached (Toronto)",
+    typical_coverage: 0.33,
+    typical_storeys: 2,
+    notes: ["Standard Toronto detached zone — historically limited density, now multiplex-eligible under 2023 by-law"],
+  };
+  if (/^RS\b/.test(code)) return {
+    category: "residential_low",
+    description: "Residential Semi-Detached (Toronto)",
+    typical_coverage: 0.45,
+    typical_storeys: 2.5,
+    notes: ["Semi-detached zone — may have more permissive coverage for multiplex conversion"],
+  };
+  if (/^RM\b/.test(code)) return {
+    category: "residential_medium",
+    description: "Residential Multiple (Toronto)",
+    typical_coverage: 0.45,
+    typical_storeys: 3,
+    notes: ["Multiple-residential zone — more permissive density baseline"],
+  };
+  if (/^R\d/.test(code)) return {
+    category: "residential_low",
+    description: `Residential Zone ${code}`,
+    typical_storeys: 2,
+    notes: ["Standard low-density residential — verify multiplex permissions with municipality"],
+  };
+
+  // Generic Ontario residential codes
+  if (/^R1\b/i.test(code)) return {
+    category: "residential_low",
+    description: "Low Density Residential",
+    typical_coverage: 0.35,
+    typical_storeys: 2,
+    notes: ["Lowest density residential — ARU and garden suite possible under provincial rules"],
+  };
+  if (/^R2\b/i.test(code)) return {
+    category: "residential_low",
+    description: "Low-Medium Density Residential",
+    typical_coverage: 0.40,
+    typical_storeys: 2.5,
+    notes: ["Low-medium density — usually allows semi-detached; may allow triplex/fourplex depending on municipality"],
+  };
+  if (/^R3\b/i.test(code)) return {
+    category: "residential_medium",
+    description: "Medium Density Residential",
+    typical_coverage: 0.45,
+    typical_storeys: 3,
+    notes: ["Medium density — often allows townhouses and small apartment forms"],
+  };
+  if (/^R4\b/i.test(code)) return {
+    category: "residential_medium",
+    description: "Medium-High Density Residential",
+    typical_coverage: 0.50,
+    typical_storeys: 3.5,
+    notes: ["Higher density residential — likely permissive for multiplex"],
+  };
+  if (/^[A-Z]*R[A-Z]?\b/i.test(code) || /^RES/i.test(code)) return {
+    category: "residential_low",
+    description: `Residential Zone (${code})`,
+    notes: ["Zone appears residential — verify specific permissions with municipality"],
+  };
+  if (/^MU\b|^CR\b|^MC\b|^C[0-9]/i.test(code)) return {
+    category: "mixed_use",
+    description: `Mixed Use / Commercial Zone (${code})`,
+    typical_coverage: 0.60,
+    typical_storeys: 4,
+    notes: ["Mixed-use zone — may allow residential above ground floor; verify use permissions"],
+  };
+
+  return null;
+}
+
+// ─── Municipality Detection ─────────────────────────────────────────────────
+
+function detectMunicipality(input: FeasibilityInput): {
+  key: string | null;
+  rule: MunicipalityRule | null;
+  confidence_contribution: number;
+} {
+  const city = (input.city || "").toLowerCase().trim();
+  const address = (input.address || "").toLowerCase();
+  const searchIn = `${city} ${address}`;
+
+  for (const [key, rule] of Object.entries(MUNICIPALITY_RULES)) {
+    for (const alias of rule.aliases) {
+      if (searchIn.includes(alias)) {
+        return { key, rule, confidence_contribution: 20 };
+      }
+    }
+  }
+
+  return { key: null, rule: null, confidence_contribution: 0 };
+}
+
+function detectProvince(input: FeasibilityInput): {
+  key: string | null;
+  rule: ProvinceRule | null;
+  confidence_contribution: number;
+} {
+  const prov = (input.province || "").trim().toUpperCase();
+  if (prov === "ON" || prov === "ONTARIO") return { key: "ON", rule: PROVINCE_RULES.ON, confidence_contribution: 10 };
+  if (prov === "BC" || prov === "BRITISH COLUMBIA") return { key: "BC", rule: PROVINCE_RULES.BC, confidence_contribution: 10 };
+
+  // Try to infer from city / municipality
+  const { rule: munRule } = detectMunicipality(input);
+  if (munRule) {
+    const provKey = munRule.province;
+    return { key: provKey, rule: PROVINCE_RULES[provKey] || null, confidence_contribution: 5 };
+  }
+
+  return { key: null, rule: null, confidence_contribution: 0 };
+}
+
+/**
+ * Sixplex geography under By-law 654-2025: as-of-right in the eight Toronto &
+ * East York wards (4, 9, 10, 11, 12, 13, 14, 19) plus Ward 23 (Scarborough
+ * North). Additional wards may opt in via their councillor — keep OPT_IN_WARDS
+ * current when that happens.
+ *
+ * FSA prefixes are a conservative heuristic (certainty: inferred) until the
+ * geodata phase resolves the actual ward from ward-boundary polygons. Only
+ * FSAs that sit clearly inside a sixplex ward are listed; boundary-straddling
+ * FSAs are deliberately excluded so we never over-promise six units.
+ */
+export const TORONTO_SIXPLEX_WARDS = {
+  asOfRightWards: [
+    { ward: 4, name: "Parkdale–High Park" },
+    { ward: 9, name: "Davenport" },
+    { ward: 10, name: "Spadina–Fort York" },
+    { ward: 11, name: "University–Rosedale" },
+    { ward: 12, name: "Toronto–St. Paul's" },
+    { ward: 13, name: "Toronto Centre" },
+    { ward: 14, name: "Toronto–Danforth" },
+    { ward: 19, name: "Beaches–East York" },
+    { ward: 23, name: "Scarborough North" },
+  ],
+  // Councillor opt-ins post-654-2025. Verify against the current by-law
+  // consolidation before relying on this list.
+  optInWards: [] as Array<{ ward: number; name: string }>,
+  // Conservative FSA→sixplex-ward heuristic (clearly-core FSAs only).
+  likelyFsaPrefixes: [
+    // East end / East York / Danforth (Wards 14, 19)
+    "M4B", "M4C", "M4E", "M4J", "M4K", "M4L", "M4M",
+    // Toronto Centre / downtown (Wards 10, 13)
+    "M4W", "M4X", "M4Y", "M5A", "M5B", "M5C", "M5E", "M5G", "M5H", "M5J", "M5T", "M5V",
+    // University–Rosedale / Annex (Ward 11)
+    "M5R", "M5S",
+    // St. Paul's midtown (Ward 12)
+    "M4V", "M5P", "M6C",
+    // Davenport / Parkdale / High Park (Wards 4, 9)
+    "M6G", "M6H", "M6J", "M6K", "M6P", "M6R", "M6S",
+    // Scarborough North (Ward 23)
+    "M1V", "M1S",
+  ],
+  source: "By-law 654-2025 / OPA 818, adopted 2025-06-25",
+  lastVerified: "2026-07",
+};
+
+function inferTorontoSixUnitStatus(input: FeasibilityInput, munRule: MunicipalityRule | null): "not_applicable" | "possible_unverified" | "more_likely_area" {
+  if (munRule?.name !== "City of Toronto" || !munRule.six_unit_area_possible) return "not_applicable";
+
+  const city = (input.city || "").toLowerCase().trim();
+  const address = (input.address || "").toLowerCase();
+  const postal = (input.postalCode || "").toUpperCase().replace(/\s+/g, "");
+  const search = `${city} ${address}`;
+
+  const fsa = postal.slice(0, 3);
+  if (fsa && TORONTO_SIXPLEX_WARDS.likelyFsaPrefixes.includes(fsa)) {
+    return "more_likely_area";
+  }
+
+  if (
+    city === "east york" ||
+    search.includes("east york") ||
+    search.includes("toronto and east york")
+  ) {
+    return "more_likely_area";
+  }
+
+  // Named ward references in the address string
+  const wardMatch = search.match(/ward\s+(\d{1,2})/);
+  if (wardMatch) {
+    const wardNum = parseInt(wardMatch[1], 10);
+    const eligible = [
+      ...TORONTO_SIXPLEX_WARDS.asOfRightWards,
+      ...TORONTO_SIXPLEX_WARDS.optInWards,
+    ].some((w) => w.ward === wardNum);
+    if (eligible) return "more_likely_area";
+  }
+
+  // Everywhere else in Toronto: only via councillor opt-in or minor variance —
+  // report as possible-but-unverified rather than likely.
+  return "possible_unverified";
+}
+
+// ─── Major Transit Station Areas ────────────────────────────────────────────
+
+/**
+ * PPS 2024 describes an MTSA as roughly a 500–800m radius around a higher-order
+ * transit station. We use the outer bound for the "might be inside" heuristic so
+ * the tool errs toward telling the user to go check the delineation.
+ */
+export const MTSA_OUTER_RADIUS_M = 800;
+
+/**
+ * Heights the Province directed Toronto to permit on Neighbourhoods-designated
+ * (low-rise) land inside a P/MTSA when it approved the delineations on
+ * 2025-08-15. Council still has to implement these through a zoning amendment —
+ * the workplan slipped again after Bill 98 (Royal Assent 2026-06-02) — so this
+ * is planning-policy support for an application, not an as-of-right envelope.
+ */
+export const TORONTO_MTSA_LOW_RISE_STOREYS = {
+  majorStreet: 6,
+  interior: 4,
+  status: "policy direction — awaiting City zoning implementation",
+  source: "Toronto MTSA/PMTSA approval, 2025-08-15",
+};
+
+/**
+ * Toronto's inclusionary zoning by-law only reaches developments of 100+ units
+ * AND 8,000+ m² of new residential GFA inside an approved PMTSA — two orders of
+ * magnitude above multiplex scale — and O. Reg. 15/26 paused it in Toronto until
+ * 2027-07-01 regardless.
+ */
+const IZ_UNIT_THRESHOLD = 100;
+
+function assessTransitArea(
+  input: FeasibilityInput,
+  munRule: MunicipalityRule | null,
+  zoneHint: ZoneHint | null,
+): TransitContext {
+  const notes: string[] = [];
+  const distance = typeof input.transitStationDistanceM === "number" && input.transitStationDistanceM >= 0
+    ? Math.round(input.transitStationDistanceM)
+    : null;
+  const majorStreet = !!input.majorStreet;
+  const isToronto = munRule?.name === "City of Toronto";
+  const isOntario = (munRule?.province ?? "") === "ON" || /^(ON|ONTARIO)$/i.test((input.province || "").trim());
+
+  // 1. Status — an explicit answer always beats the distance heuristic.
+  let status: TransitAreaStatus;
+  let certainty: "direct" | "inferred" | "unknown";
+
+  if (input.transitAreaStatus === "pmtsa") {
+    status = "pmtsa";
+    certainty = "direct";
+  } else if (input.transitAreaStatus === "mtsa") {
+    status = "mtsa";
+    certainty = "direct";
+  } else if (input.transitAreaStatus === "outside") {
+    status = "outside";
+    certainty = "direct";
+  } else if (distance !== null && distance <= MTSA_OUTER_RADIUS_M) {
+    status = "likely_mtsa_inferred";
+    certainty = "inferred";
+    notes.push(
+      `${distance}m from a station is inside the ${MTSA_OUTER_RADIUS_M}m radius the PPS uses to describe an MTSA, but delineated boundaries are irregular polygons drawn in the official plan — not circles. Confirm on the municipality's MTSA map.`,
+    );
+  } else if (distance !== null) {
+    status = "outside";
+    certainty = "inferred";
+    notes.push(
+      `${distance}m from the nearest station is beyond the ${MTSA_OUTER_RADIUS_M}m MTSA radius, so the property is probably outside — though delineations sometimes stretch further along a corridor.`,
+    );
+  } else {
+    status = "unknown";
+    certainty = "unknown";
+    notes.push("No MTSA status or station distance was supplied, so no transit-area policy was applied.");
+  }
+
+  const inside = status === "mtsa" || status === "pmtsa" || status === "likely_mtsa_inferred";
+  const confirmedInside = status === "mtsa" || status === "pmtsa";
+
+  // 2. Parking — in force, and the one MTSA effect that needs no implementation.
+  const parkingProhibited = confirmedInside && isOntario;
+  if (parkingProhibited) {
+    notes.push(
+      "Minimum parking requirements cannot be applied here. Bill 185 barred official plans and zoning by-laws from requiring parking in a P/MTSA, and as of 2025-08-15 any existing minimum stopped having effect. Accessible parking standards still apply where parking is provided voluntarily.",
+    );
+  } else if (status === "likely_mtsa_inferred" && isOntario) {
+    notes.push(
+      "If the delineation confirms this lot is inside a P/MTSA, minimum parking requirements cannot be applied to it (Bill 185, in force 2025-08-15) — worth confirming before you price structured or surface parking into the deal.",
+    );
+  }
+
+  // 3. Inclusionary zoning — PMTSA-only, and far above multiplex scale.
+  const izPossible = status === "pmtsa";
+  let izNote: string;
+  if (izPossible) {
+    izNote = isToronto
+      ? `Inclusionary zoning is only available to a municipality inside an approved PMTSA, and Toronto's by-law reaches developments of ${IZ_UNIT_THRESHOLD}+ units and 8,000+ m² of new residential GFA. A multiplex sits far below that threshold. O. Reg. 15/26 also paused Toronto's IZ obligations until 2027-07-01.`
+      : `Inclusionary zoning can only be applied inside an approved PMTSA, and municipal by-laws set unit/GFA thresholds well above multiplex scale (Toronto's is ${IZ_UNIT_THRESHOLD}+ units). Check whether this municipality has an IZ by-law and what its threshold is if you are contemplating a larger rezoning.`;
+  } else if (inside) {
+    izNote = "Inclusionary zoning requires PMTSA status specifically — a plain MTSA does not carry it.";
+  } else {
+    izNote = "Not applicable — inclusionary zoning only operates inside an approved PMTSA.";
+  }
+
+  // 4. Toronto low-rise height direction.
+  const lowRiseZone = !zoneHint || zoneHint.category === "residential_low" || zoneHint.category === "residential_medium";
+  const policyHeight = confirmedInside && isToronto && lowRiseZone
+    ? (majorStreet ? TORONTO_MTSA_LOW_RISE_STOREYS.majorStreet : TORONTO_MTSA_LOW_RISE_STOREYS.interior)
+    : null;
+
+  if (policyHeight) {
+    notes.push(
+      `When the Province approved Toronto's delineations it directed the City to permit ${TORONTO_MTSA_LOW_RISE_STOREYS.interior} storeys on Neighbourhoods land inside a P/MTSA, and ${TORONTO_MTSA_LOW_RISE_STOREYS.majorStreet} storeys where the lot fronts a major street. Council has not yet implemented that in the zoning by-law, so it is policy support for an application — not an as-of-right envelope. The GFA math below deliberately stays on the current ${munRule?.typical_storeys ?? 3}-storey multiplex envelope.`,
+    );
+  }
+
+  if (inside) {
+    notes.push(
+      "MTSAs carry minimum density targets under PPS 2024 — 200 residents-and-jobs per hectare at a subway, 160 at LRT/BRT, 150 at commuter rail. Those bind the municipality's planning, not your lot, but they are why intensification applications inside an MTSA face a friendlier policy read.",
+    );
+  }
+
+  // 5. Summary line.
+  let summary: string;
+  switch (status) {
+    case "pmtsa":
+      summary = "Inside a Protected Major Transit Station Area — no parking minimums, and the strongest official-plan support for intensification.";
+      break;
+    case "mtsa":
+      summary = "Inside a delineated Major Transit Station Area — official-plan support for intensification, and no parking minimums.";
+      break;
+    case "likely_mtsa_inferred":
+      summary = `About ${distance}m from a station, so plausibly inside an MTSA — verify against the delineation before underwriting any of the upside.`;
+      break;
+    case "outside":
+      summary = certainty === "direct"
+        ? "Outside any Major Transit Station Area — standard municipal permissions apply."
+        : "Probably outside a Major Transit Station Area based on station distance.";
+      break;
+    default:
+      summary = "MTSA status not provided — transit-area policy was not applied to this screening.";
+  }
+
+  return {
+    status,
+    certainty,
+    distance_m: distance,
+    major_street: majorStreet,
+    parking_minimums_prohibited: parkingProhibited,
+    inclusionary_zoning_possible: izPossible,
+    inclusionary_zoning_note: izNote,
+    policy_height_storeys: policyHeight,
+    summary,
+    notes,
+  };
+}
+
+// ─── Confidence Scoring ─────────────────────────────────────────────────────
+
+function computeConfidence(
+  input: FeasibilityInput,
+  munRule: MunicipalityRule | null,
+  provRule: ProvinceRule | null,
+  zoneHint: ZoneHint | null,
+): { score: number; breakdown: Record<string, { score: number; reason: string }> } {
+  const breakdown: Record<string, { score: number; reason: string }> = {};
+
+  // Municipality known
+  if (munRule) {
+    const pts = munRule.supportLevel === "full" ? 20 : munRule.supportLevel === "partial" ? 15 : 8;
+    breakdown.municipality = { score: pts, reason: `Municipality "${munRule.name}" recognized (support: ${munRule.supportLevel})` };
+  } else {
+    breakdown.municipality = { score: 0, reason: "Municipality not recognized — province baseline only" };
+  }
+
+  // Province known
+  if (provRule) {
+    breakdown.province = { score: 10, reason: `Province "${provRule.name}" recognized` };
+  } else {
+    breakdown.province = { score: 0, reason: "Province not recognized — no baseline rules applied" };
+  }
+
+  // Lot dimensions
+  const hasLotArea = !!(input.lotArea || (input.lotFrontage && input.lotDepth));
+  if (input.lotArea) {
+    breakdown.lot_area = { score: 15, reason: "Lot area directly provided" };
+  } else if (input.lotFrontage && input.lotDepth) {
+    breakdown.lot_area = { score: 12, reason: "Lot area calculated from frontage × depth" };
+  } else if (input.lotFrontage || input.lotDepth) {
+    breakdown.lot_area = { score: 5, reason: "Only one lot dimension provided — area estimated" };
+  } else {
+    breakdown.lot_area = { score: 0, reason: "No lot dimensions — envelope math is speculative" };
+  }
+
+  // Zone code
+  if (input.zoneCode && zoneHint) {
+    breakdown.zone = { score: 20, reason: `Zone "${input.zoneCode}" classified as ${zoneHint.category}` };
+  } else if (input.zoneCode) {
+    breakdown.zone = { score: 8, reason: `Zone "${input.zoneCode}" provided but not classified — using municipality fallback` };
+  } else {
+    breakdown.zone = { score: 0, reason: "No zone code provided — using municipality/province fallback assumptions" };
+  }
+
+  // Overlay flags known
+  if (input.heritageFlag !== undefined || input.floodplainFlag !== undefined) {
+    breakdown.overlays = { score: 10, reason: "Heritage/floodplain flags provided" };
+  } else {
+    breakdown.overlays = { score: 3, reason: "No overlay data — assuming no known constraints (unverified)" };
+  }
+
+  // Transit-area status
+  if (input.transitAreaStatus) {
+    breakdown.transit_area = { score: 8, reason: `MTSA status "${input.transitAreaStatus}" confirmed against the municipal delineation` };
+  } else if (typeof input.transitStationDistanceM === "number") {
+    breakdown.transit_area = { score: 4, reason: "Station distance provided — MTSA status inferred from radius, not delineation" };
+  } else {
+    breakdown.transit_area = { score: 0, reason: "No MTSA/PMTSA input — transit-area policy not applied" };
+  }
+
+  // Lot context (corner, lane access)
+  if (input.cornerLot !== undefined || input.laneAccess !== undefined) {
+    breakdown.lot_context = { score: 5, reason: "Corner lot / lane access information provided" };
+  } else {
+    breakdown.lot_context = { score: 0, reason: "Lot context unknown" };
+  }
+
+  const total = Object.values(breakdown).reduce((sum, b) => sum + b.score, 0);
+  // Cap at 100
+  return { score: Math.min(100, total), breakdown };
+}
+
+// ─── Lot Area / Envelope Math ───────────────────────────────────────────────
+
+function computeLotArea(input: FeasibilityInput): {
+  area: number | null;
+  frontage: number | null;
+  depth: number | null;
+  basis: "provided" | "calculated" | "estimated";
+} {
+  if (input.lotArea && input.lotArea > 0) {
+    return {
+      area: input.lotArea,
+      frontage: input.lotFrontage || null,
+      depth: input.lotDepth || null,
+      basis: "provided",
+    };
+  }
+  if (input.lotFrontage && input.lotDepth && input.lotFrontage > 0 && input.lotDepth > 0) {
+    return {
+      area: input.lotFrontage * input.lotDepth,
+      frontage: input.lotFrontage,
+      depth: input.lotDepth,
+      basis: "calculated",
+    };
+  }
+  // Estimate based on a "typical" urban lot if we at least have one dimension
+  if (input.lotFrontage && input.lotFrontage > 0) {
+    const assumedDepth = 100; // typical urban lot depth ft
+    return {
+      area: input.lotFrontage * assumedDepth,
+      frontage: input.lotFrontage,
+      depth: assumedDepth,
+      basis: "estimated",
+    };
+  }
+  return { area: null, frontage: null, depth: null, basis: "estimated" };
+}
+
+function computeEnvelope(
+  lotArea: number | null,
+  lotFrontage: number | null,
+  munRule: MunicipalityRule | null,
+  zoneHint: ZoneHint | null,
+  input: FeasibilityInput,
+): {
+  coverage_ratio: number;
+  coverage_basis: "bylaw" | "zone_rule" | "municipality_fallback" | "province_fallback";
+  footprint: number | null;
+  storeys: number;
+  theoretical_gfa: number | null;
+  practical_gfa: number | null;
+  practical_haircut_reason: string;
+  calc_notes: string[];
+} {
+  const notes: string[] = [];
+
+  // Determine lot coverage ratio
+  let coverageRatio: number;
+  let coverageBasis: "bylaw" | "zone_rule" | "municipality_fallback" | "province_fallback";
+
+  if (zoneHint?.typical_coverage) {
+    coverageRatio = zoneHint.typical_coverage;
+    coverageBasis = "zone_rule";
+    notes.push(`Lot coverage ratio ${Math.round(coverageRatio * 100)}% estimated from zone category "${zoneHint.category}" — verify exact by-law value`);
+  } else if (munRule) {
+    coverageRatio = munRule.default_lot_coverage_ratio;
+    coverageBasis = "municipality_fallback";
+    notes.push(`Lot coverage ratio ${Math.round(coverageRatio * 100)}% is a municipality-level estimate for ${munRule.name} — verify actual zoning standard`);
+  } else {
+    // Generic fallback for Ontario residential
+    coverageRatio = 0.38;
+    coverageBasis = "province_fallback";
+    notes.push("Lot coverage ratio 38% is a conservative province-level fallback — verify with local zoning by-law");
+  }
+
+  // Storey estimate
+  const storeys = zoneHint?.typical_storeys || munRule?.typical_storeys || 2;
+  notes.push(`${storeys} storey${storeys !== 1 ? "s" : ""} assumed for GFA calculation — verify height limit with local zoning`);
+
+  if (!lotArea) {
+    return {
+      coverage_ratio: coverageRatio,
+      coverage_basis: coverageBasis,
+      footprint: null,
+      storeys,
+      theoretical_gfa: null,
+      practical_gfa: null,
+      practical_haircut_reason: "Cannot estimate without lot area",
+      calc_notes: notes,
+    };
+  }
+
+  const footprint = Math.round(lotArea * coverageRatio);
+  const theoreticalGfa = Math.round(footprint * storeys);
+
+  // Practical GFA haircut: setbacks, stairs/circulation, code compliance, lot inefficiency
+  // Typical haircut: 15–25%
+  let haircutFactor = 0.78; // 22% haircut default
+  let haircutReason = "22% haircut applied for setbacks, circulation, code compliance, and lot inefficiency";
+
+  if (input.cornerLot) {
+    haircutFactor = Math.max(0.70, haircutFactor - 0.05);
+    haircutReason += "; corner lot reduces usable frontage but may improve access";
+  }
+  if (input.heritageFlag) {
+    haircutFactor = Math.max(0.55, haircutFactor - 0.15);
+    haircutReason += "; heritage flag significantly constrains envelope";
+    notes.push("Heritage flag detected — envelope and unit count severely constrained, verify with heritage planner");
+  }
+  if (input.floodplainFlag) {
+    haircutFactor = Math.max(0.50, haircutFactor - 0.20);
+    haircutReason += "; floodplain flag severely constrains buildable envelope";
+    notes.push("Floodplain flag detected — conservation authority approval required, major feasibility risk");
+  }
+
+  // Frontage check
+  if (lotFrontage && lotFrontage < 20) {
+    haircutFactor = Math.max(0.60, haircutFactor - 0.12);
+    haircutReason += `; very narrow frontage (${lotFrontage}ft) limits building form`;
+    notes.push(`Frontage of ${lotFrontage}ft is very narrow — may constrain building form and parking access`);
+  } else if (lotFrontage && lotFrontage < 25) {
+    haircutFactor = Math.max(0.65, haircutFactor - 0.07);
+    haircutReason += `; narrow frontage (${lotFrontage}ft) adds design constraints`;
+  }
+
+  const practicalGfa = Math.round(theoreticalGfa * haircutFactor);
+
+  notes.push(`Theoretical GFA: ${theoreticalGfa.toLocaleString()} sqft = ${lotArea.toLocaleString()} sqft lot × ${Math.round(coverageRatio * 100)}% coverage × ${storeys} storeys`);
+  notes.push(`Practical GFA estimate: ${practicalGfa.toLocaleString()} sqft after ${Math.round((1 - haircutFactor) * 100)}% haircut for setbacks, stairs, code complexity`);
+
+  return {
+    coverage_ratio: coverageRatio,
+    coverage_basis: coverageBasis,
+    footprint,
+    storeys,
+    theoretical_gfa: theoreticalGfa,
+    practical_gfa: practicalGfa,
+    practical_haircut_reason: haircutReason,
+    calc_notes: notes,
+  };
+}
+
+// ─── Scenario Builder ───────────────────────────────────────────────────────
+
+function buildScenarios(
+  munRule: MunicipalityRule | null,
+  provRule: ProvinceRule | null,
+  practicalGfa: number | null,
+  input: FeasibilityInput,
+  transit: TransitContext,
+  assumedStoreys: number,
+): FeasibilityScenario[] {
+  const scenarios: FeasibilityScenario[] = [];
+  const baseUnits = munRule ? munRule.baseline_units : (provRule?.baseline_units || 2);
+  const hasLane = input.laneAccess || (munRule?.laneway_suite_possible ?? false);
+  const hasGarden = munRule?.garden_suite_possible || provRule?.aru_possible || false;
+
+  // Scenario 1: Minimum (keep existing + convert/add 1 unit)
+  scenarios.push({
+    name: "Minimal Conversion",
+    units: 2,
+    description: "Convert existing single-family home to duplex — lower risk, lower cost, shorter approval timeline",
+    approval_path: "as_of_right",
+    typical_gfa_sqft: practicalGfa ? Math.round(practicalGfa * 0.5) : undefined,
+    notes: [
+      "Duplex conversion typically requires building permit, not rezoning",
+      "Subject to Ontario Building Code (OBC) requirements for egress, fire separation, sound attenuation",
+      "Confirm parking requirements with municipality",
+    ],
+  });
+
+  // Scenario 2: Baseline entitlement
+  if (baseUnits >= 3) {
+    scenarios.push({
+      name: "Baseline Multiplex",
+      units: baseUnits,
+      description: `${baseUnits}-unit multiplex — maximum likely as-of-right under ${munRule?.name || provRule?.name || "provincial"} rules`,
+      approval_path: "as_of_right",
+      typical_gfa_sqft: practicalGfa ? Math.round(practicalGfa * 0.85) : undefined,
+      notes: [
+        `Up to ${baseUnits} units permitted under current policy baseline`,
+        "Zoning standards (setbacks, height, coverage, parking) still determine actual achievability",
+        "Building permit and site plan review may be required",
+        "Buyer must verify with municipality",
+      ],
+    });
+  }
+
+  // Scenario 3: 6-unit if in applicable Toronto area
+  if (munRule?.six_unit_area_possible && baseUnits < 6) {
+    scenarios.push({
+      name: "6-Unit Multiplex (Toronto & East York / Ward 23)",
+      units: 6,
+      description: "Up to 6 units possible in Toronto & East York community council area and Ward 23. Verify property location.",
+      approval_path: "minor_variance_likely",
+      typical_gfa_sqft: practicalGfa ? Math.round(practicalGfa) : undefined,
+      notes: [
+        "6-unit permission applies in Toronto & East York and Ward 23 (Scarborough North)",
+        "Property must be confirmed to be within this boundary — verify with Toronto zoning map",
+        "Minor variance may be required depending on lot-specific zoning standards",
+        "Buyer must independently verify",
+      ],
+    });
+  }
+
+  // Scenario 4: With ancillary unit (garden or laneway)
+  if ((hasLane || hasGarden) && baseUnits >= 3) {
+    const ancillaryType = hasLane ? "laneway suite" : "garden suite";
+    scenarios.push({
+      name: `Multiplex + ${ancillaryType.charAt(0).toUpperCase() + ancillaryType.slice(1)}`,
+      units: baseUnits + 1,
+      description: `${baseUnits}-unit principal building + ${ancillaryType} on same lot — maximum density without rezoning`,
+      approval_path: "as_of_right",
+      notes: [
+        `${ancillaryType.charAt(0).toUpperCase() + ancillaryType.slice(1)} is subject to separate building permit`,
+        hasLane
+          ? "Laneway suite requires confirmed lane access at the rear of property"
+          : "Garden suite requires sufficient rear yard area",
+        "Verify parking requirements for combined unit count",
+        "Buyer must independently verify feasibility and eligibility",
+      ],
+    });
+  }
+
+  // Scenario 5: transit-area upside — only where the delineation was confirmed,
+  // and always as an application, never as-of-right.
+  if (transit.policy_height_storeys && transit.policy_height_storeys > assumedStoreys) {
+    const uplift = transit.policy_height_storeys / assumedStoreys;
+    const upsideUnits = Math.max(baseUnits + 1, Math.round(baseUnits * uplift));
+    const areaLabel = transit.status === "pmtsa" ? "PMTSA" : "MTSA";
+    scenarios.push({
+      name: `Transit-Oriented Low-Rise (${areaLabel} upside)`,
+      units: upsideUnits,
+      description: `${transit.policy_height_storeys} storeys is the height the Province directed Toronto to permit on low-rise land inside a P/MTSA${transit.major_street ? " fronting a major street" : ""} — not yet in the zoning by-law, so this is an application, not a right.`,
+      approval_path: "rezoning_required",
+      typical_gfa_sqft: practicalGfa ? Math.round(practicalGfa * uplift) : undefined,
+      notes: [
+        `Council has not yet amended the zoning by-law to implement the ${transit.policy_height_storeys}-storey direction — the workplan was pushed back again after Bill 98 (Royal Assent 2026-06-02)`,
+        "Until it is implemented, reaching this scale means a rezoning or a substantial minor variance, with the delineation and the Province's direction as your planning argument",
+        "Unit count is scaled from the storey uplift only — it does not test angular planes, separation distances, servicing, or the Building Code step from Part 9 to Part 3 construction",
+        "The Part 9 → Part 3 threshold above 3 storeys / 600m² materially changes construction cost — price it before assuming the upside is worth pursuing",
+        "Verify the delineation, the current zoning, and the application route with the City and a planner",
+      ],
+    });
+  }
+
+  return scenarios;
+}
+
+// ─── Risk Flag Detection ─────────────────────────────────────────────────────
+
+function detectRiskFlags(
+  input: FeasibilityInput,
+  munRule: MunicipalityRule | null,
+  lotArea: { area: number | null; frontage: number | null; depth: number | null; basis: string },
+  transit: TransitContext,
+): RiskFlag[] {
+  const flags: RiskFlag[] = [];
+
+  if (input.heritageFlag) {
+    flags.push({
+      flag: "Heritage Designation",
+      severity: "high",
+      details: "Heritage-designated or listed properties may face significant restrictions on demolition, alteration, and new construction. Verify heritage status with municipality and consult a heritage planner before making any assumptions about multiplex feasibility.",
+    });
+  }
+
+  if (input.floodplainFlag) {
+    flags.push({
+      flag: "Floodplain / Conservation Authority",
+      severity: "high",
+      details: "Properties within TRCA, Conservation Ontario, or other conservation authority flood/erosion zones typically require authority approval for development. This can materially change or prevent multiplex scenarios. Verify with the applicable conservation authority.",
+    });
+  }
+
+  if (lotArea.frontage && lotArea.frontage < 20) {
+    flags.push({
+      flag: "Very Narrow Frontage",
+      severity: "high",
+      details: `Lot frontage of ~${lotArea.frontage}ft is very narrow. Minimum frontage requirements for multiplex development vary (typically 6–9m / ~20–30ft) — verify with municipality. Very narrow lots may limit unit count, parking, and building form.`,
+    });
+  } else if (lotArea.frontage && lotArea.frontage < 25) {
+    flags.push({
+      flag: "Narrow Frontage",
+      severity: "medium",
+      details: `Lot frontage of ~${lotArea.frontage}ft may constrain building form and parking access for multiplex configurations. Verify frontage minimums with municipality.`,
+    });
+  }
+
+  if (lotArea.area && lotArea.area < 2500) {
+    flags.push({
+      flag: "Small Lot Area",
+      severity: "high",
+      details: `Estimated lot area of ~${Math.round(lotArea.area).toLocaleString()} sqft is small for multiplex development. Many municipalities require minimum lot sizes for additional units. GFA estimates are likely to be significantly constrained.`,
+    });
+  } else if (lotArea.area && lotArea.area < 3500) {
+    flags.push({
+      flag: "Below-Average Lot Area",
+      severity: "medium",
+      details: `Lot area of ~${Math.round(lotArea.area).toLocaleString()} sqft is below average for multiplex development. Check municipal minimum lot size requirements.`,
+    });
+  }
+
+  if (!input.laneAccess && munRule?.name?.includes("Toronto")) {
+    flags.push({
+      flag: "Lane Access Unknown",
+      severity: "low",
+      details: "Laneway suite potential depends on confirmed rear lane access. Check Toronto's lane map — approximately 65,000 Toronto lots have lane access. If no lane, garden suite may still be possible.",
+    });
+  }
+
+  if (lotArea.basis === "estimated") {
+    flags.push({
+      flag: "Lot Dimensions Not Provided",
+      severity: "medium",
+      details: "Lot area is estimated from typical assumptions. Envelope math may be significantly off. Obtain actual lot dimensions from land registry, listing, or site survey before making financial decisions.",
+    });
+  }
+
+  if (!input.zoneCode) {
+    flags.push({
+      flag: "Zone Code Not Verified",
+      severity: "medium",
+      details: "No zoning code was provided. All unit count and coverage estimates use municipality-level fallbacks. Verify the exact zoning code using your municipality's online zoning map before relying on any conclusions.",
+    });
+  }
+
+  // Always add a standard buyer-to-verify flag
+  flags.push({
+    flag: "Servicing & Utilities",
+    severity: "medium",
+    details: "Servicing capacity (water, sewer, hydro) for additional units must be verified with the applicable utility and municipality. Servicing upgrades can add significant cost to multiplex projects.",
+  });
+
+  if (transit.parking_minimums_prohibited) {
+    flags.push({
+      flag: "Parking Requirements — none can be imposed (P/MTSA)",
+      severity: "low",
+      details: "This property sits inside a Protected/Major Transit Station Area, where an official plan or zoning by-law cannot require minimum parking (Bill 185; in force since 2025-08-15). Parking may still be provided voluntarily, and accessible parking standards apply to whatever is provided. Confirm the delineation before relying on this.",
+    });
+  } else {
+    flags.push({
+      flag: "Parking Requirements",
+      severity: "low",
+      details: "Many municipalities require 1+ parking spaces per unit. This can constrain the viable unit count on tight lots. Verify parking standards with municipality. Toronto imposes no minimum parking for multiplexes, and no Ontario municipality can impose minimums inside a P/MTSA.",
+    });
+  }
+
+  // MTSA-specific caveats.
+  if (transit.status === "likely_mtsa_inferred") {
+    flags.push({
+      flag: "MTSA Status Inferred From Distance",
+      severity: "medium",
+      details: `MTSA membership was guessed from a ${transit.distance_m}m station distance, not read off a delineation. Boundaries are irregular polygons adopted in the official plan — a lot inside the radius can still be outside the MTSA. Check the municipality's MTSA mapping (in Toronto, the P/MTSA layer on the Open Data portal) before pricing in any transit-area upside.`,
+    });
+  }
+
+  if (transit.policy_height_storeys) {
+    flags.push({
+      flag: "Transit-Area Height Is Policy, Not Zoning",
+      severity: "medium",
+      details: `The ${transit.policy_height_storeys}-storey figure for low-rise land inside a Toronto P/MTSA is a provincial direction issued with the 2025-08-15 delineation approval, and Council has not yet written it into the zoning by-law. Building to it today requires an application. The envelope math in this screening stays on the current as-of-right multiplex assumption for that reason.`,
+    });
+  }
+
+  if (transit.inclusionary_zoning_possible) {
+    flags.push({
+      flag: "Inclusionary Zoning (PMTSA) — Above Multiplex Scale",
+      severity: "low",
+      details: transit.inclusionary_zoning_note,
+    });
+  }
+
+  return flags;
+}
+
+function buildRuleHierarchy(
+  input: FeasibilityInput,
+  provRule: ProvinceRule | null,
+  munRule: MunicipalityRule | null,
+  zoneHint: ZoneHint | null,
+  sixUnitStatus: "not_applicable" | "possible_unverified" | "more_likely_area",
+  transit: TransitContext,
+): RuleLayerTrace[] {
+  const layers: RuleLayerTrace[] = [];
+
+  layers.push({
+    layer: "province_baseline",
+    label: provRule ? `${provRule.name} baseline` : "Province baseline",
+    status: provRule ? "direct" : "missing",
+    impact: provRule
+      ? `Provincial screening baseline supports about ${provRule.baseline_units} units before municipality-specific overrides.`
+      : "Province not recognized, so no reliable baseline legislation was applied.",
+    confidence: provRule ? "high" : "low",
+    source_names: provRule?.sources.map((source) => source.name) || [],
+  });
+
+  layers.push({
+    layer: "municipality_rules",
+    label: munRule ? munRule.name : "Municipality rules",
+    status: munRule ? (munRule.supportLevel === "province_only" ? "heuristic" : "direct") : "missing",
+    impact: munRule
+      ? munRule.name === "City of Toronto"
+        ? `Toronto city-wide 4-unit permissions are applied. 6-unit status is ${sixUnitStatus === "more_likely_area" ? "more likely" : "possible but unverified"} based on limited location data.`
+        : `${munRule.name} currently uses ${munRule.supportLevel === "province_only" ? "province-level baseline logic with municipality fallbacks" : "municipality-specific rules"} in this screening model.`
+      : "Municipality not yet normalized, so only province logic and generic heuristics were used.",
+    confidence: munRule ? (munRule.supportLevel === "province_only" ? "medium" : "high") : "low",
+    source_names: munRule?.sources.map((source) => source.name) || [],
+  });
+
+  layers.push({
+    layer: "zone_standards",
+    label: input.zoneCode ? `Zone ${input.zoneCode}` : "Zone standards",
+    status: zoneHint ? "direct" : input.zoneCode ? "heuristic" : "missing",
+    impact: zoneHint
+      ? `${zoneHint.description} was classified and used to shape lot coverage and storey assumptions.`
+      : input.zoneCode
+        ? "A zone code was provided but not fully classified, so municipality-level form assumptions were used."
+        : "No zone code was provided, so lot coverage and form assumptions rely on municipality defaults.",
+    confidence: zoneHint ? "medium" : input.zoneCode ? "low" : "low",
+    source_names: zoneHint ? [`Realist zone classifier (${zoneHint.category})`] : [SOURCES.inferred.name],
+  });
+
+  layers.push({
+    layer: "transit_overlay",
+    label:
+      transit.status === "pmtsa" ? "Protected Major Transit Station Area"
+      : transit.status === "mtsa" ? "Major Transit Station Area"
+      : transit.status === "likely_mtsa_inferred" ? "Transit station area (inferred)"
+      : "Transit station area",
+    status:
+      transit.certainty === "direct" ? "direct"
+      : transit.certainty === "inferred" ? "heuristic"
+      : "missing",
+    impact: transit.summary,
+    confidence: transit.certainty === "direct" ? "high" : transit.certainty === "inferred" ? "low" : "low",
+    source_names:
+      transit.status === "unknown"
+        ? [SOURCES.inferred.name]
+        : [
+            SOURCES.pps2024MTSA.name,
+            ...(transit.status === "pmtsa" ? [SOURCES.planningActPMTSA.name] : []),
+            ...(transit.parking_minimums_prohibited ? [SOURCES.bill185Parking.name] : []),
+            ...(munRule?.name === "City of Toronto" ? [SOURCES.torontoMTSA2025.name] : []),
+          ],
+  });
+
+  layers.push({
+    layer: "overlays",
+    label: "Overlay constraints",
+    status: input.heritageFlag || input.floodplainFlag ? "direct" : "heuristic",
+    impact: input.heritageFlag || input.floodplainFlag
+      ? "Explicit heritage and/or floodplain constraints reduce confidence and practical envelope assumptions."
+      : "No overlay inputs were supplied, so the model assumes no known major overlay constraints.",
+    confidence: input.heritageFlag || input.floodplainFlag ? "high" : "low",
+    source_names: input.heritageFlag || input.floodplainFlag ? ["User / property-level flag"] : [SOURCES.inferred.name],
+  });
+
+  layers.push({
+    layer: "property_caveats",
+    label: "Property-specific caveats",
+    status: input.lotArea || (input.lotFrontage && input.lotDepth) ? "direct" : "heuristic",
+    impact: input.lotArea || (input.lotFrontage && input.lotDepth)
+      ? "Lot dimensions directly inform footprint, GFA, and unit-size screening."
+      : "Without lot dimensions, footprint and GFA remain broad screening estimates only.",
+    confidence: input.lotArea || (input.lotFrontage && input.lotDepth) ? "high" : "low",
+    source_names: input.lotArea || (input.lotFrontage && input.lotDepth) ? ["User / listing input"] : [SOURCES.inferred.name],
+  });
+
+  return layers;
+}
+
+function buildAssumptions(
+  input: FeasibilityInput,
+  lotAreaResult: { area: number | null; frontage: number | null; depth: number | null; basis: "provided" | "calculated" | "estimated" },
+  envelope: {
+    coverage_ratio: number;
+    coverage_basis: "bylaw" | "zone_rule" | "municipality_fallback" | "province_fallback";
+    storeys: number;
+  },
+  sixUnitStatus: "not_applicable" | "possible_unverified" | "more_likely_area",
+  transit: TransitContext,
+): AssumptionTrace[] {
+  return [
+    {
+      label: "Lot area basis",
+      value: lotAreaResult.area ? `${Math.round(lotAreaResult.area).toLocaleString()} sqft (${lotAreaResult.basis})` : "Unknown lot area",
+      certainty: lotAreaResult.basis === "provided" ? "direct" : lotAreaResult.basis === "calculated" ? "inferred" : "unknown",
+    },
+    {
+      label: "Lot coverage ratio",
+      value: `${Math.round(envelope.coverage_ratio * 100)}% (${envelope.coverage_basis.replace(/_/g, " ")})`,
+      certainty: envelope.coverage_basis === "zone_rule" ? "direct" : envelope.coverage_basis === "municipality_fallback" ? "inferred" : "unknown",
+    },
+    {
+      label: "Storey assumption",
+      value: `${envelope.storeys} storeys assumed for GFA screening`,
+      certainty: "inferred",
+    },
+    {
+      label: "Toronto 6-unit status",
+      value:
+        sixUnitStatus === "more_likely_area"
+          ? "Address context suggests Toronto & East York linkage, but still verify."
+          : sixUnitStatus === "possible_unverified"
+            ? "6-unit permissions may apply in limited Toronto subareas; location not confirmed."
+            : "Not applicable to this property.",
+      certainty: sixUnitStatus === "not_applicable" ? "direct" : "unknown",
+    },
+    {
+      label: "MTSA / PMTSA status",
+      value: transit.summary,
+      certainty: transit.certainty,
+    },
+    {
+      label: "Transit-area envelope treatment",
+      value: transit.policy_height_storeys
+        ? `Provincial direction supports ${transit.policy_height_storeys} storeys here, but the GFA math stays on the as-of-right envelope until the City implements it in zoning.`
+        : "No transit-area height uplift applied to the envelope math.",
+      certainty: transit.policy_height_storeys ? "inferred" : "direct",
+    },
+    {
+      label: "Overlay status",
+      value: input.heritageFlag || input.floodplainFlag ? "Overlay flags were supplied and applied." : "No heritage/floodplain inputs supplied.",
+      certainty: input.heritageFlag || input.floodplainFlag ? "direct" : "unknown",
+    },
+  ];
+}
+
+// ─── Main Computation Function ───────────────────────────────────────────────
+
+export function computeMultiplexFeasibility(input: FeasibilityInput): MultiplexFeasibilityResult {
+  const now = new Date().toISOString();
+
+  // 1. Detect jurisdiction
+  const { rule: munRule, key: munKey } = detectMunicipality(input);
+  const { rule: provRule } = detectProvince(input);
+
+  // 2. Classify zone
+  const zoneHint = input.zoneCode ? classifyZone(input.zoneCode) : null;
+
+  // 3. Compute confidence
+  const { score: confidenceScore, breakdown } = computeConfidence(input, munRule, provRule, zoneHint);
+  const confidenceLevel: "high" | "medium" | "low" =
+    confidenceScore >= 65 ? "high" : confidenceScore >= 35 ? "medium" : "low";
+
+  // 4. Compute lot area
+  const lotAreaResult = computeLotArea(input);
+
+  // 5. Compute envelope
+  const envelope = computeEnvelope(
+    lotAreaResult.area,
+    lotAreaResult.frontage,
+    munRule,
+    zoneHint,
+    input,
+  );
+
+  // 6. Determine effective baseline unit count
+  const provBaseline = provRule?.baseline_units || 2;
+  const munBaseline = munRule?.baseline_units || provBaseline;
+  const effectiveBaseline = Math.max(munBaseline, provBaseline);
+
+  // 7. Unit count range
+  const unitsLow = Math.min(2, effectiveBaseline);
+  const unitsHigh = munRule?.six_unit_area_possible ? effectiveBaseline + 2 : effectiveBaseline;
+  const likelyRangeLabel = `${unitsLow}-${unitsHigh} units`;
+
+  // 8. Build scenarios
+  const transit = assessTransitArea(input, munRule, zoneHint);
+  const scenarios = buildScenarios(munRule, provRule, envelope.practical_gfa, input, transit, envelope.storeys);
+  const sixUnitStatus = inferTorontoSixUnitStatus(input, munRule);
+
+  // 9. Unit GFA scenarios
+  const unitScenarios = [2, effectiveBaseline, ...(munRule?.six_unit_area_possible ? [6] : [])].map(u => ({
+    units: u,
+    avg_unit_sqft: envelope.practical_gfa ? Math.round(envelope.practical_gfa / u) : 0,
+    total_gfa: envelope.practical_gfa || 0,
+  }));
+
+  // 10. Detect risk flags
+  const riskFlags = detectRiskFlags(input, munRule ? { ...munRule, key: munKey } as any : null, lotAreaResult, transit);
+  const rulesHierarchy = buildRuleHierarchy(input, provRule, munRule, zoneHint, sixUnitStatus, transit);
+  const assumptions = buildAssumptions(input, lotAreaResult, envelope, sixUnitStatus, transit);
+
+  // 11. Approval path assessment
+  let approvalPath: "as_of_right" | "minor_variance_likely" | "rezoning_required" | "complex" | "unknown" = "unknown";
+  if (!munRule && !provRule) {
+    approvalPath = "unknown";
+  } else if (input.heritageFlag || input.floodplainFlag) {
+    approvalPath = "complex";
+  } else if (effectiveBaseline >= 4 && munRule?.supportLevel === "partial") {
+    approvalPath = "as_of_right";
+  } else if (effectiveBaseline >= 3) {
+    approvalPath = "as_of_right";
+  } else {
+    approvalPath = "minor_variance_likely";
+  }
+
+  // 12. Build quick read
+  let headline: string;
+  const isToronto = munKey === "Toronto";
+
+  if (!provRule && !munRule) {
+    headline = "Municipality not yet in our database — Ontario baseline may apply";
+  } else if (isToronto) {
+    headline = `Toronto: up to ${effectiveBaseline} units likely as-of-right${munRule?.six_unit_area_possible ? ` (up to 6 in T&EY area)` : ""} — subject to zoning standards`;
+  } else {
+    headline = `Ontario: up to ${effectiveBaseline} units likely as baseline — subject to local zoning`;
+  }
+
+  const keyFacts: string[] = [];
+  if (munRule) keyFacts.push(`Municipality: ${munRule.name}`);
+  keyFacts.push(`Likely screening range: ${likelyRangeLabel}`);
+  if (lotAreaResult.area) keyFacts.push(`Estimated lot area: ${Math.round(lotAreaResult.area).toLocaleString()} sqft`);
+  if (envelope.practical_gfa) keyFacts.push(`Rough practical GFA: ~${envelope.practical_gfa.toLocaleString()} sqft (see envelope math)`);
+  if (munRule?.laneway_suite_possible) keyFacts.push("Laneway suite possible (verify lane access)");
+  if (munRule?.garden_suite_possible || provRule?.garden_suite_possible) keyFacts.push("Garden suite likely possible");
+  if (sixUnitStatus === "more_likely_area") keyFacts.push("Toronto 6-unit subarea looks more plausible from address context");
+  if (transit.status === "pmtsa") keyFacts.push("Inside a PMTSA — no parking minimums apply");
+  else if (transit.status === "mtsa") keyFacts.push("Inside a delineated MTSA");
+  else if (transit.status === "likely_mtsa_inferred") keyFacts.push(`~${transit.distance_m}m from transit — possibly inside an MTSA`);
+
+  const keyBlockers: string[] = [];
+  if (transit.status === "likely_mtsa_inferred") keyBlockers.push("MTSA status inferred from distance — verify the delineation");
+  if (input.heritageFlag) keyBlockers.push("Heritage flag — major constraint");
+  if (input.floodplainFlag) keyBlockers.push("Floodplain — conservation authority required");
+  if (!input.zoneCode) keyBlockers.push("Zone not provided — verify with municipal zoning map");
+  if (lotAreaResult.area && lotAreaResult.area < 2500) keyBlockers.push("Small lot — unit count likely constrained");
+
+  // 13. Collect all sources
+  const allSources: PolicySource[] = [
+    ...(provRule?.sources || []),
+    ...(munRule?.sources || []),
+  ];
+  if (transit.status !== "unknown" && transit.status !== "outside") {
+    allSources.push(SOURCES.pps2024MTSA);
+    if (transit.status === "pmtsa") allSources.push(SOURCES.planningActPMTSA);
+    if (transit.parking_minimums_prohibited) allSources.push(SOURCES.bill185Parking);
+    if (munRule?.name === "City of Toronto") allSources.push(SOURCES.torontoMTSA2025);
+    if (transit.inclusionary_zoning_possible) allSources.push(SOURCES.ontarioIZPause2026);
+  }
+  if (!munRule) allSources.push(SOURCES.inferred);
+
+  const developmentReport = buildMultiplexDevelopmentReport({
+    municipality: munRule?.name || input.city || "Unknown",
+    frontageFt: lotAreaResult.frontage,
+    depthFt: lotAreaResult.depth,
+    lotAreaSqft: lotAreaResult.area,
+    coverageRatio: envelope.coverage_ratio,
+    practicalGfaSqft: envelope.practical_gfa,
+    asOfRightStoreys: envelope.storeys,
+    policyStoreys: transit.policy_height_storeys,
+    effectiveBaselineUnits: effectiveBaseline,
+    sixUnitStatus,
+    laneAccess: input.laneAccess || false,
+    gardenSuitePossible: munRule?.garden_suite_possible || provRule?.garden_suite_possible || false,
+    lanewaySuitePossible: munRule?.laneway_suite_possible || false,
+    majorStreet: input.majorStreet || false,
+    transitStatus: transit.status,
+    approvalPath,
+    purchasePrice: input.purchasePrice,
+    hardCostPsf: input.hardCostPsf,
+  });
+
+  return {
+    address: input.address || input.city || "Unknown address",
+    municipality: munRule?.name || (provRule ? `${provRule.name} (municipality not recognized)` : "Unknown"),
+    province: provRule?.name || "Unknown",
+    support_level: munRule?.supportLevel || (provRule ? "province_only" : "unsupported"),
+
+    quick_read: {
+      headline,
+      confidence: confidenceLevel,
+      confidence_score: confidenceScore,
+      key_facts: keyFacts,
+      key_blockers: keyBlockers,
+    },
+
+    zoning: {
+      code: input.zoneCode,
+      description: zoneHint?.description,
+      zone_category: zoneHint?.category || "unknown",
+      official_plan_note: munRule ? `Verify in ${munRule.name} Official Plan` : undefined,
+      overlay_flags: [
+        ...(input.heritageFlag ? ["Heritage"] : []),
+        ...(input.floodplainFlag ? ["Floodplain / Conservation"] : []),
+      ],
+      heritage_flagged: input.heritageFlag || false,
+      floodplain_flagged: input.floodplainFlag || false,
+    },
+    site_specific: null,
+
+    permissions: {
+      provincial_baseline_units: provBaseline,
+      municipal_baseline_units: munBaseline,
+      effective_baseline_units: effectiveBaseline,
+      likely_units_low: unitsLow,
+      likely_units_high: unitsHigh,
+      likely_range_label: likelyRangeLabel,
+      aru_possible: munRule?.aru_possible || provRule?.aru_possible || false,
+      garden_suite_possible: munRule?.garden_suite_possible || provRule?.garden_suite_possible || false,
+      laneway_suite_possible: munRule?.laneway_suite_possible || false,
+      six_unit_area_possible: munRule?.six_unit_area_possible || false,
+      six_unit_area_status: sixUnitStatus,
+      approval_path: approvalPath,
+      scenarios,
+      approval_notes: munRule?.approval_notes || provRule?.baseline_notes || [],
+    },
+
+    transit,
+    development_report: developmentReport,
+
+    envelope: {
+      lot_area_sqft: lotAreaResult.area,
+      lot_frontage_ft: lotAreaResult.frontage,
+      lot_depth_ft: lotAreaResult.depth,
+      lot_area_basis: lotAreaResult.basis,
+      estimated_lot_coverage_ratio: envelope.coverage_ratio,
+      coverage_basis: envelope.coverage_basis,
+      estimated_max_footprint_sqft: envelope.footprint,
+      estimated_storeys: envelope.storeys,
+      estimated_theoretical_gfa_sqft: envelope.theoretical_gfa,
+      estimated_practical_gfa_sqft: envelope.practical_gfa,
+      practical_haircut_reason: envelope.practical_haircut_reason,
+      unit_scenarios: unitScenarios,
+      calculation_notes: envelope.calc_notes,
+    },
+
+    risk_flags: riskFlags,
+    rules_hierarchy: rulesHierarchy,
+    assumptions,
+    source_summary: {
+      direct_sources: allSources.filter((source) => source.confidence !== "low").length,
+      heuristic_sources: allSources.filter((source) => source.confidence === "low").length,
+      total_sources: allSources.length,
+    },
+    sources: allSources,
+    confidence_breakdown: breakdown,
+    confidence_score: confidenceScore,
+    computed_at: now,
+    disclaimer: DISCLAIMER,
+  };
+}

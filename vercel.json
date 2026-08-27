@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/podcast",
+      "schedule": "20 9,10 * * 2,5"
+    },
+    {
+      "path": "/api/cron/distress",
+      "schedule": "40 5,17 * * *"
+    },
+    {
+      "path": "/api/cron/distress-report",
+      "schedule": "10 11 2 * *"
+    }
+  ]
+}

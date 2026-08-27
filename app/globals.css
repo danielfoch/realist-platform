@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* The repo is a git worktree; Tailwind's auto source detection can miss it.
+ * Point the scanner at the source trees explicitly. */
+@source "../app";
+@source "../components";
+@source "../lib";
+
+/*
+ * Realist design language: institutional-grade research desk for regular
+ * investors. Warm paper ground, near-black ink, heritage teal, hairline
+ * rules, serif display type, tabular numerals for anything that counts.
+ * Deliberately single-theme (light) — data-dense pages read best on paper.
+ */
+@theme {
+  --color-paper: #f7f5f0;
+  --color-surface: #fffdf9;
+  --color-ink: #131c1a;
+  --color-ink-soft: #3d4a47;
+  --color-ink-faint: #6b7673;
+  --color-hairline: #e0dcd1;
+  --color-hairline-strong: #c9c4b6;
+  --color-brand: #0f766e;
+  --color-brand-deep: #0a4f4a;
+  --color-brand-wash: #e4efec;
+  --color-signal: #b45309;
+  --color-signal-wash: #f6ead9;
+  --color-good: #15803d;
+  --color-bad: #b91c1c;
+
+  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numbers that line up: apply to any stat, table, or money figure. */
+.tnum {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* Show-notes / longform HTML we don't control class-by-class. */
+.prose-notes {
+  line-height: 1.75;
+  color: var(--color-ink-soft);
+}
+.prose-notes p {
+  margin-block: 0.9em;
+}
+.prose-notes a {
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-brand) 40%, transparent);
+  text-underline-offset: 2px;
+}
+.prose-notes a:hover {
+  text-decoration-color: var(--color-brand);
+}
+.prose-notes ul,
+.prose-notes ol {
+  margin-block: 0.9em;
+  padding-inline-start: 1.4em;
+}
+.prose-notes ul {
+  list-style: disc;
+}
+.prose-notes ol {
+  list-style: decimal;
+}
+.prose-notes li {
+  margin-block: 0.35em;
+}
+.prose-notes strong {
+  color: var(--color-ink);
+}
+.prose-notes h1,
+.prose-notes h2,
+.prose-notes h3,
+.prose-notes h4 {
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  margin-block: 1.2em 0.5em;
+  line-height: 1.25;
+}
