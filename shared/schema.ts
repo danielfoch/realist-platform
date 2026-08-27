@@ -4178,6 +4178,10 @@ export const distressSnapshots = pgTable("distress_snapshots", {
   avgDaysOnMarket: real("avg_days_on_market"),
   propertyTypesJson: jsonb("property_types_json"),
   topCitiesJson: jsonb("top_cities_json"),
+  queriesAttempted: integer("queries_attempted").default(0).notNull(),
+  queriesSucceeded: integer("queries_succeeded").default(0).notNull(),
+  methodologyVersion: text("methodology_version").default("distress-v2").notNull(),
+  capturedAt: timestamp("captured_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   sql`CREATE UNIQUE INDEX IF NOT EXISTS distress_snapshots_month_prov_city_idx ON distress_snapshots(month, province, city)`
@@ -4189,6 +4193,40 @@ export const insertDistressSnapshotSchema = createInsertSchema(distressSnapshots
 });
 export type InsertDistressSnapshot = z.infer<typeof insertDistressSnapshotSchema>;
 export type DistressSnapshot = typeof distressSnapshots.$inferSelect;
+
+export const distressListingObservations = pgTable("distress_listing_observations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  snapshotMonth: varchar("snapshot_month", { length: 7 }).notNull(),
+  listingKey: varchar("listing_key").notNull(),
+  mlsNumber: varchar("mls_number"),
+  province: text("province").notNull(),
+  city: text("city"),
+  postalCode: varchar("postal_code"),
+  listPrice: real("list_price"),
+  daysOnMarket: integer("days_on_market"),
+  propertyType: text("property_type"),
+  distressScore: integer("distress_score").notNull(),
+  confidence: text("confidence").notNull(),
+  primaryCategory: text("primary_category").notNull(),
+  foreclosurePos: boolean("foreclosure_pos").default(false).notNull(),
+  motivated: boolean("motivated").default(false).notNull(),
+  vtb: boolean("vtb").default(false).notNull(),
+  matchedTermsJson: jsonb("matched_terms_json").$type<Array<{ term: string; category: string; weight: string; points: number }>>().default([]).notNull(),
+  matchedSearchTermsJson: jsonb("matched_search_terms_json").$type<string[]>().default([]).notNull(),
+  capturedAt: timestamp("captured_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("distress_observations_month_listing_idx").on(table.snapshotMonth, table.listingKey),
+  index("distress_observations_month_province_idx").on(table.snapshotMonth, table.province),
+  index("distress_observations_listing_month_idx").on(table.listingKey, table.snapshotMonth),
+  index("distress_observations_month_category_idx").on(table.snapshotMonth, table.primaryCategory),
+]);
+
+export const insertDistressListingObservationSchema = createInsertSchema(distressListingObservations).omit({
+  id: true,
+  capturedAt: true,
+});
+export type InsertDistressListingObservation = typeof distressListingObservations.$inferInsert;
+export type DistressListingObservation = typeof distressListingObservations.$inferSelect;
 
 export const geographies = pgTable("geographies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

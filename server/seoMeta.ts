@@ -197,8 +197,31 @@ const STATIC_META: Record<string, PageMeta> = {
     description: "Live Canadian housing market dashboard. Sales, prices, inventory, mortgage rates, yield, motivated-seller signals, and macro indicators across every major Canadian city.",
   },
   "/insights/motivated-report": {
-    title: "Canadian Motivated Real Estate Report - Motivated Seller & Power of Sale Trends",
-    description: "Tracking power of sale, foreclosure, and motivated-seller listings across Canada — by city, province, and time.",
+    title: "Canadian Motivated Listing Report - Power of Sale & VTB Trends",
+    description: "Monthly listing-level intelligence tracking power-of-sale, foreclosure, motivated-seller, and VTB language signals across Canada by province, city, and cohort.",
+    canonicalPath: "/insights/motivated-report",
+    keywords: "Canadian motivated sellers, power of sale listings Canada, foreclosure listings Canada, VTB properties, motivated real estate report",
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        name: "Canadian Motivated Listing Signals",
+        description: "Monthly point-in-time observations of motivated-seller, power-of-sale, foreclosure, and vendor-financing language in active Canadian listings.",
+        url: `${BASE_URL}/insights/motivated-report`,
+        creator: { "@id": `${BASE_URL}/#organization` },
+        isBasedOn: "https://www.crea.ca/technology/realtor-ca-for-realtors/realtor-ca-tools/realtor-ca-ddf/",
+        measurementTechnique: "Monthly point-in-time PublicRemarks query and rules-based signal classification",
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "Research", item: `${BASE_URL}/insights` },
+          { "@type": "ListItem", position: 3, name: "Motivated Listing Report", item: `${BASE_URL}/insights/motivated-report` },
+        ],
+      },
+    ],
   },
   "/insights/mortgage-rates": {
     title: "Canadian Mortgage Rates Today - Big 6 Banks & Best Rates",

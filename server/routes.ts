@@ -10816,8 +10816,13 @@ export async function registerRoutes(
 
       const existing = await db.select().from(distressSnapshots)
         .where(and(eq(distressSnapshots.month, currentMonth), sql`city IS NULL`))
-        .limit(1);
-      if (existing.length > 0) {
+        .limit(20);
+      const completeProvinceCount = new Set(existing
+        .filter((row) => row.methodologyVersion === "distress-v2" && row.queriesAttempted > 0 && row.queriesSucceeded === row.queriesAttempted)
+        .map((row) => row.province)).size;
+      const { distressReportSlugForMonth } = await import("./distressReportGenerator");
+      const existingReport = await storage.getBlogPostBySlug(distressReportSlugForMonth(currentMonth));
+      if (completeProvinceCount >= 10 && existingReport?.status === "published") {
         distressReportMonth = currentMonth;
         return;
       }
@@ -10829,7 +10834,7 @@ export async function registerRoutes(
       const { runMonthlyDistressReport } = await import("./distressReportGenerator");
       const result = await runMonthlyDistressReport();
       console.log(`[distress-report] Monthly cron result: ${result.action} — ${result.details}`);
-      if (result.action === "published" || result.action === "exists") {
+      if (result.action === "published" || result.action === "updated" || result.action === "exists") {
         distressReportMonth = currentMonth;
       }
     } catch (error) {
@@ -12244,6 +12249,9 @@ export async function registerRoutes(
   setInterval(() => prewarmNewConstructionReport(), 6 * 60 * 60 * 1000);
 
   // ─── Distress Report API ─────────────────────
+  const { registerDistressIntelligenceRoutes } = await import("./distressIntelligence");
+  registerDistressIntelligenceRoutes(app);
+
   app.get("/api/distress-snapshots", async (req, res) => {
     try {
       const month = req.query.month as string | undefined;
@@ -12773,13 +12781,21 @@ export async function registerRoutes(
       const now = new Date();
       const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       const month = (req.body.month as string) || defaultMonth;
-      if (!/^\d{4}-\d{2}$/.test(month)) {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
         res.status(400).json({ error: "Invalid month format. Use YYYY-MM." });
         return;
       }
       const { captureDistressSnapshots, generateDistressReport } = await import("./distressReportGenerator");
       console.log(`[distress-report] Admin triggered for ${month}`);
       const snapResult = await captureDistressSnapshots(month);
+      if (snapResult.failedProvinces.length > 0) {
+        res.status(502).json({
+          error: "partial_capture",
+          message: `Report not published; retry required for ${snapResult.failedProvinces.join(", ")}`,
+          snapshots: snapResult,
+        });
+        return;
+      }
       const reportResult = await generateDistressReport(month);
       res.json({ ...reportResult, snapshots: snapResult });
     } catch (error: any) {

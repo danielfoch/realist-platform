@@ -23,6 +23,15 @@ describe("distress scoring", () => {
     expect(isQualifiedDistressResult(scoreDistress("Price reduced on this clean move-in-ready home.", "ON"))).toBe(false);
   });
 
+  it("does not mislabel estate or as-is language as a foreclosure signal", () => {
+    const estate = scoreDistress("Estate sale. Motivated seller, bring an offer.", "ON");
+    const asIs = scoreDistress("Sold as is. Seller must sell quickly.", "BC");
+    expect(estate.categoriesTriggered.foreclosure_pos).toBe(false);
+    expect(asIs.categoriesTriggered.foreclosure_pos).toBe(false);
+    expect(estate.categoriesTriggered.motivated).toBe(true);
+    expect(asIs.categoriesTriggered.motivated).toBe(true);
+  });
+
   it("keeps weak condition terms when paired with hard distress signals", () => {
     expect(isQualifiedDistressResult(scoreDistress("As is where is under power of sale.", "ON"))).toBe(true);
     expect(isQualifiedDistressResult(scoreDistress("Handyman special. Motivated seller, quick close preferred.", "BC"))).toBe(true);

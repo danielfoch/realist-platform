@@ -41,6 +41,23 @@ read the same cached feed. A failed refresh keeps the last known-good feed.
 The RSS refresh requires no API key. Keep the Express worker continuously
 running; a serverless-only frontend will not run this scheduler reliably.
 
+## Monthly Motivated-Listing Dataset
+
+Starting on the 2nd of each month, the always-on server checks every six hours
+until it has a complete capture for all ten scheduled provinces and a published
+monthly report. Every successful run stores one minimal observation per unique
+flagged listing for that month, then rebuilds province/city aggregates and the
+article. A partial upstream capture is retained for diagnosis but is not
+published as a national report; the next check retries it.
+
+Apply `migrations/0018_distress_listing_observations.sql` before enabling the
+job. The scheduler requires working `CREA_DDF_USERNAME` and
+`CREA_DDF_PASSWORD` credentials and a continuously running Express worker.
+Administrators can run or repair a capture with
+`POST /api/admin/distress-report/generate` and `{ "month": "YYYY-MM" }`.
+The public dashboard reads aggregate cohort metrics from
+`GET /api/distress-market-intelligence`; it never exposes full listing remarks.
+
 ## Monthly Market Update Automation
 
 To set up automatic monthly market updates:

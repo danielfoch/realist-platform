@@ -57,6 +57,14 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - `POST /api/community/questions/:id/answers` — authenticated public answer creation
 - `research_articles` — DB-backed research using validated `ReportContent` JSON; ingest is idempotent via `source_id` + `ingest_idempotency_key`, and reviewed records publish at `/insights/reports/:slug`
 - `research_publish_attempts` — idempotent admin publication ledger recording published, already-published, and blocked validation/collision outcomes
+- `distress_snapshots` — monthly province/city aggregates plus DDF query coverage and methodology version
+- `distress_listing_observations` — one minimal listing-level observation per capture month (`0018_distress_listing_observations.sql`); retains matched terms, signal categories, asking price, DOM, and location without retaining full remarks
+
+### Research and distress APIs
+
+- `GET /api/research/articles` and `GET /api/research/articles/:slug` — published, validated config-style research only
+- `GET /api/distress-market-intelligence` — public monthly cohort summary (new, persistent, exited, repriced, primary and overlapping category counts); never returns full listing remarks
+- `POST /api/admin/distress-report/generate` — admin capture/report rerun; refuses publication when any scheduled province capture fails
 
 ### Pending/Recent Work
 - `ef7766e` (Clyde) — /api/deals/join, user_sessions table for session→user linking

@@ -263,9 +263,24 @@ the rotated OAuth secret and one administrator authorization.
 The DB-backed research workflow now publishes reviewed StatCan/CMHC-style
 reports into the canonical Research hub with charts, citations, structured data,
 crawler tables, and sitemap discovery. The episode RSS pipeline already creates
-pages and evidence packs after Tuesday/Friday releases. Remaining work is
-transcript-backed claim extraction for priority episodes and the monthly
-distressed-market dataset/report from accumulated listing snapshots.
+pages and evidence packs after Tuesday/Friday releases.
+
+### Phase 6 — longitudinal motivated-listing intelligence
+
+Monthly DDF searches now retain one minimal observation per unique flagged
+listing instead of discarding the underlying records after aggregation. The
+dataset tracks newly flagged, persistent, no-longer-flagged, and repriced
+cohorts, plus exclusive primary categories and overlapping triggered signals.
+It deliberately does not retain full public remarks. Every capture records
+query coverage and a methodology version; partial province runs are retried and
+cannot publish a falsely national report.
+
+The canonical `/insights/motivated-report` page exposes those cohort trends,
+methodology limits, province/city history, the generated monthly article, and a
+direct path into the live motivated-listings browser and underwriting funnel.
+Generated monthly reports now compound into the Research hub and sitemap.
+Remaining research work is transcript-backed claim extraction for priority
+podcast episodes.
 
 ## Success metrics
 

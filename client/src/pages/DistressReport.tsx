@@ -12,7 +12,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
 } from "recharts";
-import { AlertTriangle, TrendingUp, TrendingDown, MapPin, ArrowRight, FileText } from "lucide-react";
+import { AlertTriangle, TrendingUp, TrendingDown, MapPin, ArrowRight, FileText, Database, RefreshCw, CircleDollarSign, ShieldCheck } from "lucide-react";
+import type { DistressMarketIntelligenceResponse } from "@shared/distressIntelligence";
 
 const PROVINCE_NAMES: Record<string, string> = {
   ON: "Ontario", BC: "British Columbia", QC: "Quebec", AB: "Alberta",
@@ -70,6 +71,10 @@ interface Snapshot {
   avgDaysOnMarket: number | null;
   propertyTypesJson: Record<string, number> | null;
   topCitiesJson: Array<{ name: string; count: number }> | null;
+  queriesAttempted?: number;
+  queriesSucceeded?: number;
+  methodologyVersion?: string;
+  capturedAt?: string;
 }
 
 interface TrendPoint {
@@ -86,12 +91,6 @@ interface TrendPoint {
   mediumConfidenceCount: number;
   lowConfidenceCount: number;
   avgDaysOnMarket: number | null;
-}
-
-interface InventoryRow {
-  province: string | null;
-  city?: string | null;
-  totalListings: number;
 }
 
 export default function DistressReport() {
@@ -125,26 +124,16 @@ export default function DistressReport() {
     },
   });
 
-  const { data: provinceInventory = [] } = useQuery<InventoryRow[]>({
-    queryKey: ["/api/distress-inventory", activeMonth, "province"],
+  const { data: intelligence } = useQuery<DistressMarketIntelligenceResponse>({
+    queryKey: ["/api/distress-market-intelligence", activeMonth],
     queryFn: async () => {
-      if (!activeMonth) return [];
-      const res = await fetch(`/api/distress-inventory?month=${activeMonth}&groupBy=province`);
-      if (!res.ok) throw new Error("Failed to fetch province inventory");
+      if (!activeMonth) throw new Error("Capture month is required");
+      const res = await fetch(`/api/distress-market-intelligence?month=${activeMonth}`);
+      if (!res.ok) throw new Error("Longitudinal intelligence is not available for this capture");
       return res.json();
     },
     enabled: !!activeMonth,
-  });
-
-  const { data: cityInventory = [] } = useQuery<InventoryRow[]>({
-    queryKey: ["/api/distress-inventory", activeMonth, "city"],
-    queryFn: async () => {
-      if (!activeMonth) return [];
-      const res = await fetch(`/api/distress-inventory?month=${activeMonth}&groupBy=city`);
-      if (!res.ok) throw new Error("Failed to fetch city inventory");
-      return res.json();
-    },
-    enabled: !!activeMonth,
+    retry: false,
   });
 
   const provinceSnapshots = snapshots.filter(s => !s.city);
@@ -266,22 +255,6 @@ export default function DistressReport() {
   const totalVtb = provinceSnapshots.reduce((s, p) => s + p.vtbCount, 0);
   const totalHigh = provinceSnapshots.reduce((s, p) => s + p.highConfidenceCount, 0);
 
-  const provinceInventoryMap = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const row of provinceInventory) {
-      if (row.province) map.set(row.province, row.totalListings);
-    }
-    return map;
-  }, [provinceInventory]);
-
-  const cityInventoryMap = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const row of cityInventory) {
-      if (row.province && row.city) map.set(`${row.province}::${row.city}`, row.totalListings);
-    }
-    return map;
-  }, [cityInventory]);
-
   const provinceChartData = provinceSnapshots
     .map(p => ({
       province: p.province,
@@ -290,39 +263,27 @@ export default function DistressReport() {
       motivated: p.motivatedCount,
       vtb: p.vtbCount,
       total: p.totalListings,
-      activeInventory: provinceInventoryMap.get(p.province) || 0,
-      distressRate: provinceInventoryMap.get(p.province)
-        ? (p.totalListings / (provinceInventoryMap.get(p.province) || 1)) * 100
-        : 0,
-      distressRateBps: provinceInventoryMap.get(p.province)
-        ? (p.totalListings / (provinceInventoryMap.get(p.province) || 1)) * 10000
-        : 0,
     }))
     .sort((a, b) => b.total - a.total);
 
   const categoryPieData = [
-    { name: "Foreclosure/POS", value: totalForeclosure, color: "#ef4444" },
-    { name: "Motivated Seller", value: totalMotivated, color: "#f59e0b" },
-    { name: "VTB", value: totalVtb, color: "#3b82f6" },
+    { name: "Foreclosure/POS", value: intelligence?.cohort.primaryCategoryCounts.foreclosure_pos || 0, color: "#ef4444" },
+    { name: "Motivated Seller", value: intelligence?.cohort.primaryCategoryCounts.motivated || 0, color: "#f59e0b" },
+    { name: "VTB", value: intelligence?.cohort.primaryCategoryCounts.vtb || 0, color: "#3b82f6" },
   ].filter(d => d.value > 0);
 
   const confidencePieData = [
-    { name: "High", value: totalHigh, color: "#ef4444" },
-    { name: "Medium", value: provinceSnapshots.reduce((s, p) => s + p.mediumConfidenceCount, 0), color: "#f59e0b" },
-    { name: "Low", value: provinceSnapshots.reduce((s, p) => s + p.lowConfidenceCount, 0), color: "#6b7280" },
+    { name: "High", value: intelligence?.confidenceCounts.high ?? totalHigh, color: "#ef4444" },
+    { name: "Medium", value: intelligence?.confidenceCounts.medium ?? provinceSnapshots.reduce((s, p) => s + p.mediumConfidenceCount, 0), color: "#f59e0b" },
+    { name: "Low", value: intelligence?.confidenceCounts.low ?? provinceSnapshots.reduce((s, p) => s + p.lowConfidenceCount, 0), color: "#6b7280" },
   ].filter(d => d.value > 0);
 
   const topCitiesCanada = citySnapshots
-    .map((row) => {
-      const inventory = cityInventoryMap.get(`${row.province}::${row.city}`) || 0;
-      return {
-        province: row.province,
-        city: row.city || "Unknown",
-        distressListings: row.totalListings,
-        activeInventory: inventory,
-        distressRate: inventory ? (row.totalListings / inventory) * 100 : 0,
-      };
-    })
+    .map((row) => ({
+      province: row.province,
+      city: row.city || "Unknown",
+      distressListings: row.totalListings,
+    }))
     .sort((a, b) => b.distressListings - a.distressListings)
     .slice(0, 20);
   const currentHistoryPoint = nationalHistory.find((point) => point.month === activeMonth);
@@ -358,7 +319,20 @@ export default function DistressReport() {
     <div className="min-h-screen bg-background" data-testid="motivated-report-page">
       <SEO
         title={activeMonth ? `Motivated Deals Report — ${getMonthLabel(activeMonth)} | Realist.ca` : "Motivated Deals Report | Realist.ca"}
-        description="Monthly Canadian motivated-deals report: motivated sellers, power of sale, foreclosures, and VTB opportunities across all provinces."
+        description="Monthly Canadian motivated-listing intelligence: durable power-of-sale, foreclosure, motivated-seller, and VTB language signals by province, city, and capture cohort."
+        canonicalUrl="/insights/motivated-report"
+        keywords="Canadian motivated sellers, power of sale listings Canada, foreclosure listings Canada, VTB properties, motivated real estate report"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "Dataset",
+          name: activeMonth ? `Canadian Motivated Listing Signals — ${getMonthLabel(activeMonth)}` : "Canadian Motivated Listing Signals",
+          description: "Monthly point-in-time observations of motivated-seller, power-of-sale, foreclosure, and vendor-financing language in active Canadian listings.",
+          url: "https://realist.ca/insights/motivated-report",
+          temporalCoverage: activeMonth || undefined,
+          creator: { "@type": "Organization", name: "Realist.ca", url: "https://realist.ca" },
+          isBasedOn: "https://www.crea.ca/technology/realtor-ca-for-realtors/realtor-ca-tools/realtor-ca-ddf/",
+          measurementTechnique: "Monthly point-in-time PublicRemarks query and rules-based signal classification",
+        }}
       />
       <Navigation />
 
@@ -370,7 +344,7 @@ export default function DistressReport() {
               Canadian Motivated Sellers Report
             </h1>
             <p className="text-muted-foreground mt-1">
-              Monthly snapshot of foreclosures, power of sale, motivated sellers, and VTB opportunities across Canada
+              Monthly, listing-level signals for power of sale, motivated sellers, and VTB terms across Canada
             </p>
           </div>
           <div className="flex gap-3 items-center">
@@ -454,7 +428,7 @@ export default function DistressReport() {
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Foreclosure / POS</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Foreclosure / POS Signals</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-red-500" data-testid="stat-foreclosure">{fmt(totalForeclosure)}</div>
@@ -486,7 +460,7 @@ export default function DistressReport() {
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">VTB Opportunities</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">VTB Language</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-blue-500" data-testid="stat-vtb">{fmt(totalVtb)}</div>
@@ -502,13 +476,58 @@ export default function DistressReport() {
               </Card>
             </div>
 
+            {intelligence && (
+              <Card className="mb-8 border-primary/20" data-testid="distress-cohort-intelligence">
+                <CardHeader>
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <CardTitle className="text-lg">What changed since {getMonthLabel(intelligence.previousMonth)}</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Listing-level cohort tracking separates new signals, persistent listings, and asking-price changes.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="w-fit gap-1"><Database className="h-3.5 w-3.5" /> {intelligence.coverage.methodologyVersion}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-lg border p-4">
+                      <RefreshCw className="h-5 w-5 text-primary mb-3" />
+                      <div className="text-2xl font-bold">{fmt(intelligence.cohort.newlyFlagged)}</div>
+                      <p className="text-sm font-medium">Newly flagged</p>
+                      <p className="text-xs text-muted-foreground mt-1">Not present in the immediately previous monthly capture.</p>
+                    </div>
+                    <div className="rounded-lg border p-4">
+                      <ShieldCheck className="h-5 w-5 text-emerald-600 mb-3" />
+                      <div className="text-2xl font-bold">{fmt(intelligence.cohort.persistent)}</div>
+                      <p className="text-sm font-medium">Persistent signals</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {intelligence.cohort.persistenceRatePct == null ? "No prior capture." : `${intelligence.cohort.persistenceRatePct.toFixed(1)}% of the prior cohort remained flagged.`}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-4">
+                      <CircleDollarSign className="h-5 w-5 text-amber-600 mb-3" />
+                      <div className="text-2xl font-bold">{fmt(intelligence.cohort.priceReduced)}</div>
+                      <p className="text-sm font-medium">Lower asking price</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Among persistent listings with comparable asking prices.
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-4">
+                    {fmt(intelligence.cohort.noLongerFlagged)} prior listings were no longer flagged. That may mean sold, expired, withdrawn, changed remarks, or changed query coverage—not necessarily a completed sale.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid gap-6 md:grid-cols-2 mb-8">
               <Card>
                 <CardHeader>
                   <div>
-                    <CardTitle className="text-lg">Motivated Deals by Province</CardTitle>
+                    <CardTitle className="text-lg">Listing Signals by Province</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Total flagged motivated-seller listings by province.
+                      Triggered category counts. A listing can appear in more than one series.
                     </p>
                   </div>
                 </CardHeader>
@@ -526,11 +545,9 @@ export default function DistressReport() {
                           labelFormatter={(label: string) => PROVINCE_NAMES[label] || label}
                         />
                         <Legend />
-                        <>
-                          <Bar dataKey="foreclosure" name="Foreclosure/POS" fill="#ef4444" stackId="a" />
-                          <Bar dataKey="motivated" name="Motivated" fill="#f59e0b" stackId="a" />
-                          <Bar dataKey="vtb" name="VTB" fill="#3b82f6" stackId="a" />
-                        </>
+                        <Bar dataKey="foreclosure" name="Foreclosure/POS" fill="#ef4444" />
+                        <Bar dataKey="motivated" name="Motivated" fill="#f59e0b" />
+                        <Bar dataKey="vtb" name="VTB" fill="#3b82f6" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -544,17 +561,23 @@ export default function DistressReport() {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="h-[300px]" data-testid="category-pie">
-                      <p className="text-sm text-muted-foreground text-center mb-2">By Type</p>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={categoryPieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                            {categoryPieData.map((entry, i) => (
-                              <Cell key={i} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value: number) => fmt(value)} />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      <p className="text-sm text-muted-foreground text-center mb-2">By Primary Signal</p>
+                      {categoryPieData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={categoryPieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                              {categoryPieData.map((entry, i) => (
+                                <Cell key={i} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value: number) => fmt(value)} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                          Exclusive primary-category history begins with the listing-level dataset.
+                        </div>
+                      )}
                     </div>
                     <div className="h-[300px]" data-testid="confidence-pie">
                       <p className="text-sm text-muted-foreground text-center mb-2">By Confidence</p>
@@ -723,6 +746,34 @@ export default function DistressReport() {
                 </Card>
               </div>
             )}
+
+            <Card className="mb-8 bg-muted/20" data-testid="distress-methodology">
+              <CardHeader>
+                <CardTitle className="text-lg">How to read this dataset</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted-foreground leading-6">
+                <p>
+                  Realist runs point-in-time searches against active listing content distributed through the{" "}
+                  <a
+                    href="https://www.crea.ca/technology/realtor-ca-for-realtors/realtor-ca-tools/realtor-ca-ddf/"
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    REALTOR.ca DDF®
+                  </a>{" "}
+                  and classifies explicit phrases in <code className="text-xs">PublicRemarks</code>. The longitudinal table retains the matched terms, score, categories, price, days on market, and location—not the full remarks.
+                </p>
+                <p>
+                  A language match is a screening signal, not proof of financial distress, legal status, market value, or an available discount. Categories can overlap. “No longer flagged” can mean sold, expired, withdrawn, changed remarks, or changed query coverage.
+                </p>
+                {intelligence && (
+                  <p>
+                    Capture quality for {getMonthLabel(activeMonth)}: {fmt(intelligence.coverage.queriesSucceeded)} of {fmt(intelligence.coverage.queriesAttempted)} scheduled term queries succeeded across {fmt(intelligence.coverage.provincesCaptured)} provinces. Full verification still belongs in the underwriting and legal-review process.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
             <Card className="mb-8">
               <CardHeader>

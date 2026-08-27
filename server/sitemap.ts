@@ -158,11 +158,12 @@ export async function buildReportsSitemap() {
   const urls: SitemapUrl[] = [];
   const posts = await storage.getBlogPosts({ status: "published" });
   for (const post of posts) {
+    const isResearchReport = post.category === "market-analysis" || post.category === "distress-report";
     urls.push({
       loc: post.category === "market-analysis" ? `${BASE}/reports/${post.slug}` : `${BASE}/insights/blog/${post.slug}`,
       lastmod: dateOnly(post.updatedAt || post.publishedAt),
       changefreq: "monthly",
-      priority: post.category === "market-analysis" ? 0.75 : 0.65,
+      priority: isResearchReport ? 0.75 : 0.65,
     });
   }
   // Config-driven reports (shared/reports/) live in committed files, not the

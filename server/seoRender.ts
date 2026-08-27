@@ -427,10 +427,10 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
   },
   "/insights/motivated-report": {
     h1: "Canadian Motivated Sellers Report",
-    intro: "This report summarizes motivated-seller listing signals across Canada, including power of sale, foreclosure, motivated-seller language, and related opportunity patterns.",
+    intro: "This report summarizes monthly listing-language signals across Canada, including explicit power-of-sale, foreclosure, motivated-seller, and vendor-financing terms.",
     sections: [
-      { title: "Why it exists", body: "Motivated-seller language is one of the clearest sourcing signals for investors, but it needs context and careful verification." },
-      { title: "How to use it", body: "Use this page to identify markets or patterns worth following, then inspect live listings in the Motivated Deals Browser." },
+      { title: "Why it exists", body: "A durable monthly observation table distinguishes newly flagged listings from persistent signals and asking-price changes over time." },
+      { title: "How to use it", body: "Treat a phrase match as a screening lead—not proof of seller hardship, legal status, value, or discount—then verify the property and sale process." },
     ],
     links: [
       { href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Open Motivated Deals Browser" },
@@ -644,12 +644,22 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
     const { sortedReports } = await import("@shared/reportsRegistry");
     const staticReports = sortedReports();
     let dynamicReports: Array<{ route: string; title: string; publishDate: string }> = [];
+    let generatedReports: Array<{ route: string; title: string; publishDate: string }> = [];
     try {
       const { getPublishedResearchSummaries } = await import("./researchPublishing");
       dynamicReports = await getPublishedResearchSummaries(24);
     } catch { /* static library remains useful during a DB outage */ }
+    try {
+      generatedReports = (await storage.getBlogPosts({ status: "published", category: "distress-report", limit: 12 }))
+        .map((report) => ({
+          route: `/insights/blog/${report.slug}`,
+          title: report.title,
+          publishDate: (report.publishedAt || report.updatedAt).toISOString().slice(0, 10),
+        }));
+    } catch { /* generated reports are additive */ }
     const reportLinks = [
       ...dynamicReports.map((report) => ({ href: report.route, label: report.title, date: report.publishDate })),
+      ...generatedReports.map((report) => ({ href: report.route, label: report.title, date: report.publishDate })),
       ...staticReports.map((report) => ({ href: report.route, label: report.title, date: report.date })),
     ]
       .filter((report, index, all) => all.findIndex((candidate) => candidate.href === report.href) === index)
@@ -680,6 +690,61 @@ export async function renderSeoFallback(reqPath: string): Promise<string | null>
         ${renderLinkList(reportLinks)}
       </section>
     `);
+  }
+
+  if (reqPath === "/insights/motivated-report") {
+    try {
+      const { getDistressMarketIntelligence } = await import("./distressIntelligence");
+      const intelligence = await getDistressMarketIntelligence({});
+      if (intelligence) {
+        const count = (value: number) => value.toLocaleString("en-CA");
+        const categories = intelligence.cohort.primaryCategoryCounts;
+        const latestReports = await storage.getBlogPosts({ status: "published", category: "distress-report", limit: 6 }).catch(() => []);
+        return renderShell(`
+          ${renderBreadcrumbs([{ href: "/", label: "Home" }, { href: "/insights", label: "Research" }, { href: "/insights/motivated-report", label: "Motivated Listing Report" }])}
+          <article>
+            <header>
+              <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;">Monthly listing intelligence · ${escapeHtml(intelligence.month)}</p>
+              <h1 style="font-size:40px;margin:8px 0 12px;">Canadian Motivated Listing Report</h1>
+              <p style="font-size:18px;color:#4b5563;max-width:800px;line-height:1.7;">Listing-level tracking of explicit power-of-sale, motivated-seller, and vendor-financing language distributed through REALTOR.ca DDF®.</p>
+            </header>
+            <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:28px 0;">
+              ${[
+                ["Unique flagged listings", intelligence.cohort.currentListings],
+                ["New since prior capture", intelligence.cohort.newlyFlagged],
+                ["Persistent signals", intelligence.cohort.persistent],
+                ["Lower asking price", intelligence.cohort.priceReduced],
+              ].map(([label, value]) => `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;"><div style="font-size:13px;color:#6b7280;">${escapeHtml(String(label))}</div><strong style="font-size:28px;">${count(Number(value))}</strong></div>`).join("")}
+            </section>
+            <section>
+              <h2 style="font-size:28px;margin-bottom:12px;">Primary signal mix</h2>
+              <table style="width:100%;border-collapse:collapse;max-width:680px;">
+                <thead><tr><th style="text-align:left;padding:10px;border-bottom:2px solid #e5e7eb;">Primary signal</th><th style="text-align:right;padding:10px;border-bottom:2px solid #e5e7eb;">Unique listings</th></tr></thead>
+                <tbody>
+                  <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;">Foreclosure / power of sale</td><td style="text-align:right;padding:10px;border-bottom:1px solid #e5e7eb;">${count(categories.foreclosure_pos)}</td></tr>
+                  <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;">Motivated seller</td><td style="text-align:right;padding:10px;border-bottom:1px solid #e5e7eb;">${count(categories.motivated)}</td></tr>
+                  <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;">VTB / seller financing</td><td style="text-align:right;padding:10px;border-bottom:1px solid #e5e7eb;">${count(categories.vtb)}</td></tr>
+                </tbody>
+              </table>
+            </section>
+            <section style="font-size:16px;line-height:1.8;max-width:860px;margin:32px 0;">
+              <h2 style="font-size:28px;margin-bottom:12px;">Methodology and limits</h2>
+              <p>Realist stores one observation per unique listing per monthly capture, including the matched phrases, score, categories, asking price, days on market, and location. Full listing remarks are not retained in the longitudinal table.</p>
+              <p>A language match is a screening signal, not proof of financial distress, legal status, market value, or a discount. Triggered categories can overlap; the table above uses one exclusive primary category per listing. A listing that is no longer flagged may have sold, expired, been withdrawn, changed remarks, or fallen outside query coverage.</p>
+              <p>Capture quality: ${count(intelligence.coverage.queriesSucceeded)} of ${count(intelligence.coverage.queriesAttempted)} scheduled term queries succeeded across ${count(intelligence.coverage.provincesCaptured)} provinces. Methodology version ${escapeHtml(intelligence.coverage.methodologyVersion)}.</p>
+            </section>
+            <section>
+              <h2 style="font-size:28px;margin-bottom:12px;">Monthly reports and live listings</h2>
+              ${renderLinkList([
+                ...latestReports.map((report) => ({ href: `/insights/blog/${report.slug}`, label: report.title })),
+                { href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Browse current motivated-listing signals" },
+              ])}
+            </section>
+          </article>
+          ${renderFooterLinks()}
+        `);
+      }
+    } catch { /* fall through to the static explanatory page */ }
   }
 
   if (reqPath === "/reports") {

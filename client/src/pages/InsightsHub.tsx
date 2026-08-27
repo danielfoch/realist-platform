@@ -15,6 +15,14 @@ import {
 import { sortedReports, reportDateLabel, type ReportKind } from "@shared/reportsRegistry";
 import type { PublishedResearchSummary } from "@shared/researchPublishing";
 
+type GeneratedReportSummary = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  publishedAt: string | null;
+  updatedAt: string;
+};
+
 const kindIcons: Record<ReportKind, typeof LineChart> = {
   macro: LineChart,
   market: Building2,
@@ -116,6 +124,15 @@ export default function InsightsHub() {
     queryKey: ["/api/research/articles"],
     retry: false,
   });
+  const { data: generatedDistressReports = [] } = useQuery<GeneratedReportSummary[]>({
+    queryKey: ["/api/blog/posts/db", "distress-report", 12],
+    queryFn: async () => {
+      const response = await fetch("/api/blog/posts/db?category=distress-report&limit=12");
+      if (!response.ok) throw new Error("Generated reports are unavailable");
+      return response.json();
+    },
+    retry: false,
+  });
 
   const allReports = useMemo(() => {
     const byRoute = new Map<string, (typeof staticReports)[number]>();
@@ -130,9 +147,21 @@ export default function InsightsHub() {
         kind: report.kind,
       });
     }
+    for (const report of generatedDistressReports) {
+      const route = `/insights/blog/${report.slug}`;
+      byRoute.set(route, {
+        slug: report.slug,
+        route,
+        title: report.title,
+        description: report.excerpt,
+        date: (report.publishedAt || report.updatedAt).slice(0, 10),
+        tags: ["motivated sellers", "power of sale", "VTB"],
+        kind: "market",
+      });
+    }
     for (const report of staticReports) if (!byRoute.has(report.route)) byRoute.set(report.route, report);
     return [...byRoute.values()].sort((a, b) => b.date.localeCompare(a.date));
-  }, [publishedResearch]);
+  }, [generatedDistressReports, publishedResearch]);
   const latestRelease = allReports[0] || staticReports[0];
   const yearFilters = useMemo(() => [
     { value: "all", label: "All years" },

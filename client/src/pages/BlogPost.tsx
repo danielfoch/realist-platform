@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ReportEndCta } from "@/components/ReportEndCta";
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react";
 import { format } from "date-fns";
 import type { BlogPost as BlogPostType } from "@shared/schema";
@@ -37,6 +38,7 @@ export default function BlogPost() {
     "strategy": "Strategy",
     "deal-breakdown": "Deal Breakdown",
     "news": "News",
+    "distress-report": "Motivated Market Report",
   };
 
   return (
@@ -51,10 +53,10 @@ export default function BlogPost() {
       <Navigation />
 
       <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
-        <Link href="/insights/blog">
+        <Link href={post?.category === "distress-report" ? "/insights/motivated-report" : "/insights/blog"}>
           <Button variant="ghost" size="sm" className="mb-6 gap-2" data-testid="button-back-to-blog">
             <ArrowLeft className="h-4 w-4" />
-            Back to Blog
+            {post?.category === "distress-report" ? "Back to Motivated Report" : "Back to Blog"}
           </Button>
         </Link>
 
@@ -150,6 +152,7 @@ export default function BlogPost() {
                 ))}
               </div>
             )}
+            <ReportEndCta sourcePage={`/insights/blog/${post.slug}`} />
           </article>
         )}
 
