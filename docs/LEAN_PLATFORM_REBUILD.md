@@ -228,8 +228,10 @@ their operational needs differ.
    managed Postgres plan with backups. Existing Vercel and Replit accounts are
    enough for the first phase if the Replit deployment is truly always-on.
 4. **Maps:** Mapbox token with billing alerts and URL restrictions.
-5. **AI:** Anthropic usage for multiplex narratives/concepts; enforce per-user
-   budgets and fall back to deterministic underwriting when unavailable.
+5. **AI:** Anthropic usage for underwriting narratives, Ask Realist, and
+   transcript-brief drafts; OpenAI usage for optional illustrative multiplex
+   concept images. Enforce per-user budgets and fall back to deterministic
+   underwriting when either provider is unavailable.
 6. **Email/CRM:** verified sending domain, working transactional email, and GHL
    webhook credentials for the buy/finance/offer funnels.
 7. **Konfidis:** webhook or API contract, lead consent language, referral/cash-
