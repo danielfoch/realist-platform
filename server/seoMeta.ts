@@ -1131,6 +1131,8 @@ const KNOWN_APP_ROUTES = new Set<string>([
   "/listings/us",
   "/tools/investor-os",
   "/deals",
+  "/my-deals",
+  "/research",
   "/watchlist",
   "/deal-challenge",
   "/professionals",
@@ -1176,6 +1178,7 @@ const KNOWN_APP_ROUTES = new Set<string>([
   "/admin/power-team",
   "/admin/research",
   "/tools/multiplex-feasibility",
+  "/multiplex",
   // Was missing, so the flagship multiplex tool served HTTP 404 with
   // "noindex, nofollow" and a "Page Not Found" title while rendering fine —
   // invisible to search and to every social share preview.

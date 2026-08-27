@@ -291,7 +291,7 @@ export function deriveEpisodeResources(title: string): EpisodeResource[] {
 
   if (topics.has("Multiplex") || topics.has("Development")) {
     add({
-      href: "/tools/multiplex-underwriter",
+      href: "/multiplex",
       title: "Toronto multiplex underwriter",
       description: "Screen a lot, configurations, construction costs and takeout financing.",
       kind: "tool",

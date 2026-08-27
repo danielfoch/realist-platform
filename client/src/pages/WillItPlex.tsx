@@ -69,8 +69,8 @@ export default function WillItPlex() {
       city: params.get("city") ?? ctx?.city ?? "",
       province: params.get("province") ?? ctx?.province ?? "",
       price: Number(params.get("price")) || ctx?.price || "",
-      frontage: Number(params.get("frontage")) || ctx?.lotFrontageM || "",
-      depth: Number(params.get("depth")) || ctx?.lotDepthM || "",
+      frontage: Number(params.get("frontage")) || ctx?.lotFrontageFt || ctx?.lotFrontageM || "",
+      depth: Number(params.get("depth")) || ctx?.lotDepthFt || ctx?.lotDepthM || "",
       zone: params.get("zone") ?? ctx?.zoneCode ?? "",
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -188,8 +188,8 @@ export default function WillItPlex() {
       city: manualCity,
       province: manualProvince || undefined,
       price: typeof manualPrice === "number" ? manualPrice : undefined,
-      lotFrontageM: typeof manualLotFrontage === "number" ? manualLotFrontage : undefined,
-      lotDepthM: typeof manualLotDepth === "number" ? manualLotDepth : undefined,
+      lotFrontageFt: typeof manualLotFrontage === "number" ? manualLotFrontage : undefined,
+      lotDepthFt: typeof manualLotDepth === "number" ? manualLotDepth : undefined,
     });
     toast({ title: "Property added", description: `${manualAddress}, ${manualCity}` });
   };

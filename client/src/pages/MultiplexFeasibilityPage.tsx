@@ -105,8 +105,8 @@ export default function MultiplexFeasibilityPage() {
       province: ctx.province ?? DEFAULT_FORM.province,
       postalCode: ctx.postalCode ?? "",
       zoneCode: ctx.zoneCode ?? "",
-      lotFrontage: ctx.lotFrontageM ? String(ctx.lotFrontageM) : "",
-      lotDepth: ctx.lotDepthM ? String(ctx.lotDepthM) : "",
+      lotFrontage: (ctx.lotFrontageFt ?? ctx.lotFrontageM) ? String(ctx.lotFrontageFt ?? ctx.lotFrontageM) : "",
+      lotDepth: (ctx.lotDepthFt ?? ctx.lotDepthM) ? String(ctx.lotDepthFt ?? ctx.lotDepthM) : "",
     };
   });
   const [submitted, setSubmitted] = useState<FeasibilityFormState | null>(null);
@@ -117,8 +117,8 @@ export default function MultiplexFeasibilityPage() {
     city: form.city || undefined,
     province: form.province || undefined,
     zoneCode: form.zoneCode || undefined,
-    lotFrontageM: form.lotFrontage ? Number(form.lotFrontage) : undefined,
-    lotDepthM: form.lotDepth ? Number(form.lotDepth) : undefined,
+    lotFrontageFt: form.lotFrontage ? Number(form.lotFrontage) : undefined,
+    lotDepthFt: form.lotDepth ? Number(form.lotDepth) : undefined,
   });
 
   const update = (field: keyof FeasibilityFormState, value: string | boolean) => {
@@ -135,8 +135,8 @@ export default function MultiplexFeasibilityPage() {
       province: form.province || undefined,
       postalCode: form.postalCode || undefined,
       zoneCode: form.zoneCode || undefined,
-      lotFrontageM: form.lotFrontage ? Number(form.lotFrontage) : undefined,
-      lotDepthM: form.lotDepth ? Number(form.lotDepth) : undefined,
+      lotFrontageFt: form.lotFrontage ? Number(form.lotFrontage) : undefined,
+      lotDepthFt: form.lotDepth ? Number(form.lotDepth) : undefined,
     });
 
     track({

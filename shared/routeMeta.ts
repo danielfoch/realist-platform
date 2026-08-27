@@ -97,6 +97,10 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   // The underwriter is the flagship; the other two feed it. Titles lead with the
   // question the searcher is actually typing ("can I build a fourplex on this
   // lot", "how many units can I build") rather than the product name.
+  "/multiplex": {
+    title: "Toronto Multiplex Underwriter & CMHC Pro Forma | Realist.ca",
+    description: "Pull a Toronto CREA DDF listing or enter an address to screen lot dimensions, zoning, MTSA and major-street context, buildable envelope, concept massing, rents, costs, CMHC small-rental financing, and MLI Select.",
+  },
   "/tools/multiplex-underwriter": {
     title: "Multiplex Underwriter — How Many Units Can I Build? | Realist.ca",
     description: "Enter a Toronto address and get an instant multiplex underwrite: as-of-right unit count, sixplex eligibility, buildable envelope, construction costs, rent roll, and MLI Select hold vs condo exit — with the zoning source behind every number.",

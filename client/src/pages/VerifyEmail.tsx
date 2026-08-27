@@ -108,7 +108,7 @@ export default function VerifyEmail() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
-                <Button onClick={() => setLocation("/tools/multiplex-underwriter")} className="gap-2">
+                <Button onClick={() => setLocation("/multiplex")} className="gap-2">
                   Underwrite a site <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Button>
                 <Button variant="outline" onClick={() => setLocation("/verify-phone")}>

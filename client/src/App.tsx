@@ -347,7 +347,7 @@ function Router() {
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
       <Route path="/deals" component={CapRates} />
       <Route path="/my-deals">{() => <Redirect to="/watchlist" />}</Route>
-      <Route path="/multiplex">{() => <Redirect to="/tools/multiplex-underwriter" />}</Route>
+      <Route path="/multiplex" component={MultiplexUnderwriterPage} />
       <Route path="/research">{() => <Redirect to="/insights" />}</Route>
       <Route path="/community">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/watchlist" component={Watchlist} />
@@ -360,7 +360,7 @@ function Router() {
       <Route path="/tools/distress-deals">{() => <Redirect to="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" />}</Route>
       <Route path="/tools/motivated-deals">{() => <Redirect to="/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" />}</Route>
       <Route path="/tools/multiplex-feasibility" component={MultiplexFeasibilityPage} />
-      <Route path="/tools/multiplex-underwriter" component={MultiplexUnderwriterPage} />
+      <Route path="/tools/multiplex-underwriter">{() => <Redirect to={`/multiplex${window.location.search}`} />}</Route>
       <Route path="/power-team" component={PowerTeam} />
       <Route path="/power-team/profile" component={PowerTeamProfile} />
       <Route path="/work-with-realist" component={WorkWithRealist} />

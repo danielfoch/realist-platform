@@ -13,9 +13,12 @@
 import { describe, expect, it } from "vitest";
 import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { isKnownAppRoute } from "./seoMeta";
+import { renderSeoFallback } from "./seoRender";
+import { buildPagesSitemap } from "./sitemap";
 
 /** Every route the multiplex funnel depends on. */
 const MULTIPLEX_ROUTES = [
+  "/multiplex",
   "/tools/multiplex-underwriter",
   "/tools/multiplex-feasibility",
   "/tools/will-it-plex",
@@ -58,5 +61,18 @@ describe("multiplex route SEO registry", () => {
     // which would 200 every junk URL and invite junk indexing.
     expect(isKnownAppRoute("/tools/multiplex-underwriter-typo")).toBe(false);
     expect(isKnownAppRoute("/definitely/not/a/page")).toBe(false);
+  });
+
+  it("renders the canonical address-to-concept and CMHC journey for crawlers", async () => {
+    const html = await renderSeoFallback("/multiplex");
+    expect(html).toContain("Toronto Multiplex Underwriter and CMHC Pro Forma");
+    expect(html).toContain("CREA DDF");
+    expect(html).toContain("small-rental screen");
+    expect(html).toContain("MLI Select");
+  });
+
+  it("publishes the canonical multiplex route in the sitemap", async () => {
+    const sitemap = await buildPagesSitemap();
+    expect(sitemap).toContain("https://realist.ca/multiplex");
   });
 });

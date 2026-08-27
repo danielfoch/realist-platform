@@ -1,5 +1,5 @@
 /**
- * AI Multiplex Underwriter — /tools/multiplex-underwriter
+ * AI Multiplex Underwriter — /multiplex
  *
  * Address-first flow: resolve the site (zoning polygon, tree/heritage/TRCA
  * screens) → confirm lot dimensions → full underwrite (build configurations,
@@ -10,8 +10,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
+import { BuyWithRealistCta } from "@/components/BuyWithRealistCta";
 import { NextStepBlock } from "@/components/NextStepBlock";
+import { SEO } from "@/components/SEO";
+import { SiteFooter } from "@/components/SiteFooter";
 import { MultiplexEventCta } from "@/components/events/MultiplexEventCta";
+import { MultiplexConceptPreview } from "@/components/multiplex/FeasibilityDevelopmentReport";
 import { VerdictSummary } from "@/components/multiplex/VerdictSummary";
 import { UnlockMoreUnderwrites } from "@/components/multiplex/UnlockMoreUnderwrites";
 import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
@@ -24,9 +28,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/queryClient";
 import { track } from "@/lib/analytics";
+import { SHARED_ROUTE_META } from "@shared/routeMeta";
+import type { MultiplexDevelopmentReport } from "@shared/multiplexFeasibilityReport";
 import {
   Building2, MapPin, TreeDeciduous, Landmark, Waves, AlertTriangle,
   CheckCircle2, Loader2, Share2, ArrowRight, Sparkles, Scale,
+  TrainFront, Route as RouteIcon,
 } from "lucide-react";
 
 // ─── Types (mirror the API result shape) ────────────────────────────────────
@@ -53,9 +60,27 @@ interface ConfigResult {
   varianceRisk: { level: "low" | "medium" | "high"; factors: Array<{ key: string; reason: string }> };
   costs: { totalDevCost: number; hardCosts: number; softCosts: number; developmentCharges: number; landTransferTax: number; financingCarry: number; costPerUnit: number };
   condoExit: { grossSellout: number; profit: number; marginOnCost: number };
-  rentalHold: { noi: number; stabilizedValue: number; yieldOnCost: number };
+  rentalHold: {
+    noi: number;
+    stabilizedValue: number;
+    yieldOnCost: number;
+    monthlyRentRoll: Array<{ type: string; count: number; rentEach: number }>;
+  };
   residualLandValue: { condoPath: number; rentalPath: number };
   mli: { eligible: boolean; reason?: string; premiumPct: number; maxLoan: number; actualDscr: number; amortYears: number; bindingConstraint: string };
+  smallRental?: {
+    eligible: boolean;
+    reason?: string;
+    maxLtv: number;
+    amortYears: number;
+    indicativeLoan: number;
+    indicativeEquity: number;
+    annualDebtService: number;
+    noiCoverageRatio: number | null;
+    source: string;
+    sourceUrl: string;
+    qualificationNote: string;
+  };
   comparison: { condoProfit: number; holdEquityLeft: number; holdAnnualCashFlow: number; holdCashOnCash: number | null; recommendedExit: string };
   /** Dual-takeout comparator (optional: absent on reports saved before it shipped). */
   takeout?: {
@@ -98,6 +123,21 @@ interface UnderwriteResult {
     formPreferenceApplied: boolean;
     reasons: string[];
   };
+  planning?: {
+    transit: {
+      status: "unknown" | "outside" | "likely_mtsa_inferred" | "mtsa" | "pmtsa";
+      certainty: "direct" | "inferred" | "unknown";
+      distance_m: number | null;
+      major_street: boolean;
+      parking_minimums_prohibited: boolean;
+      policy_height_storeys: number | null;
+      summary: string;
+      notes: string[];
+    };
+    majorStreet: boolean;
+    cornerLot: boolean;
+  };
+  developmentReport?: MultiplexDevelopmentReport | null;
   assumptionNotes: string[];
   report?: {
     siteSummary: string; zoningSummary: string; varianceNarrative: string; riskNarrative: string;
@@ -120,6 +160,96 @@ const FORM_LABEL: Record<string, string> = {
   condo_town: "condo towns",
   condo_apartment: "condo apartments",
 };
+
+const TORONTO_MTSA_MAP_URL =
+  "https://www.toronto.ca/city-government/planning-development/planning-studies-initiatives/zoning-for-major-transit-station-areas/";
+
+function JourneyProgress({ step }: { step: Step }) {
+  const activeIndex = step === "input" ? 0 : step === "confirm" ? 1 : 2;
+  const stages = [
+    { label: "Site", detail: "Address or DDF listing" },
+    { label: "Planning", detail: "Lot and overlays" },
+    { label: "Decision", detail: "Concept and returns" },
+  ];
+
+  return (
+    <ol className="mx-auto mb-8 grid max-w-3xl grid-cols-3 gap-2" aria-label="Multiplex underwriting progress">
+      {stages.map((stage, index) => (
+        <li
+          key={stage.label}
+          className={`rounded-lg border px-3 py-2 ${index <= activeIndex ? "border-primary/40 bg-primary/5" : "border-border bg-muted/20"}`}
+        >
+          <p className="text-xs font-bold"><span className="mr-1 text-primary">{index + 1}.</span>{stage.label}</p>
+          <p className="hidden text-[10px] text-muted-foreground sm:block">{stage.detail}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function PlanningContextFields({
+  transitAreaStatus,
+  onTransitAreaStatusChange,
+  transitDistance,
+  onTransitDistanceChange,
+  majorStreet,
+  onMajorStreetChange,
+  cornerLot,
+  onCornerLotChange,
+}: {
+  transitAreaStatus: "unknown" | "outside" | "mtsa" | "pmtsa";
+  onTransitAreaStatusChange: (value: "unknown" | "outside" | "mtsa" | "pmtsa") => void;
+  transitDistance: string;
+  onTransitDistanceChange: (value: string) => void;
+  majorStreet: boolean;
+  onMajorStreetChange: (value: boolean) => void;
+  cornerLot: boolean;
+  onCornerLotChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="space-y-4 rounded-lg border bg-muted/20 p-4" data-testid="multiplex-planning-inputs">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold"><TrainFront className="h-4 w-4" /> Planning context</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Only select a mapped MTSA status you have confirmed. A station radius is a clue, not a boundary.</p>
+        </div>
+        <a href={TORONTO_MTSA_MAP_URL} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-primary hover:underline">
+          Check City map ↗
+        </a>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="transit-status" className="text-xs">MTSA / PMTSA status</Label>
+          <select
+            id="transit-status"
+            value={transitAreaStatus}
+            onChange={(event) => onTransitAreaStatusChange(event.target.value as "unknown" | "outside" | "mtsa" | "pmtsa")}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="unknown">Not confirmed</option>
+            <option value="outside">Confirmed outside</option>
+            <option value="mtsa">Inside an MTSA</option>
+            <option value="pmtsa">Inside a protected MTSA</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="transit-distance" className="text-xs">Nearest rapid-transit station (metres)</Label>
+          <Input id="transit-distance" type="number" min="0" placeholder="e.g. 450" value={transitDistance} onChange={(event) => onTransitDistanceChange(event.target.value)} />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex items-center justify-between rounded-lg border bg-background px-3 py-2.5">
+          <Label htmlFor="major-street" className="cursor-pointer text-sm">Fronts a major street</Label>
+          <Switch id="major-street" checked={majorStreet} onCheckedChange={onMajorStreetChange} />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border bg-background px-3 py-2.5">
+          <Label htmlFor="corner-lot" className="cursor-pointer text-sm">Corner lot</Label>
+          <Switch id="corner-lot" checked={cornerLot} onCheckedChange={onCornerLotChange} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ProvenanceBadge({ kind }: { kind: string }) {
   const styles: Record<string, string> = {
@@ -204,6 +334,7 @@ function ScreenChip({ icon: Icon, label, flagged, unavailable }: { icon: any; la
 type Step = "input" | "confirm" | "report";
 
 export default function MultiplexUnderwriterPage() {
+  const initialParams = new URLSearchParams(window.location.search);
   const [step, setStep] = useState<Step>("input");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -216,18 +347,27 @@ export default function MultiplexUnderwriterPage() {
     if (params.get("share")) return "";
     return params.get("address") ?? loadPropertyContext()?.address ?? "";
   });
-  const [postalCode, setPostalCode] = useState("");
+  const [listingId] = useState(() => initialParams.get("mls") || "");
+  const [source] = useState(() => initialParams.get("source") || (initialParams.get("mls") ? "ddf_listing" : "direct"));
+  const [postalCode, setPostalCode] = useState(() => initialParams.get("postalCode") || "");
   const [site, setSite] = useState<ResolvedSite | null>(null);
 
   const [frontage, setFrontage] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("share")) return "";
-    return params.get("frontage") ?? (loadPropertyContext()?.lotFrontageM?.toString() ?? "");
+    const ctx = loadPropertyContext();
+    return params.get("frontage") ?? (ctx?.lotFrontageFt ?? ctx?.lotFrontageM)?.toString() ?? "";
   });
   const [depth, setDepth] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("share")) return "";
-    return params.get("depth") ?? (loadPropertyContext()?.lotDepthM?.toString() ?? "");
+    const ctx = loadPropertyContext();
+    return params.get("depth") ?? (ctx?.lotDepthFt ?? ctx?.lotDepthM)?.toString() ?? "";
+  });
+  const [lotArea, setLotArea] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("share")) return "";
+    return params.get("lotArea") ?? loadPropertyContext()?.lotAreaSqft?.toString() ?? "";
   });
   const [purchasePrice, setPurchasePrice] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -235,6 +375,14 @@ export default function MultiplexUnderwriterPage() {
     return params.get("price") ?? (loadPropertyContext()?.price?.toString() ?? "");
   });
   const [laneAccess, setLaneAccess] = useState(false);
+  const [cornerLot, setCornerLot] = useState(() => initialParams.get("cornerLot") === "1");
+  const [majorStreet, setMajorStreet] = useState(() => initialParams.get("majorStreet") === "1");
+  const [transitAreaStatus, setTransitAreaStatus] = useState<"unknown" | "outside" | "mtsa" | "pmtsa">(() => {
+    const value = initialParams.get("transit");
+    return value === "outside" || value === "mtsa" || value === "pmtsa" ? value : "unknown";
+  });
+  const [transitDistance, setTransitDistance] = useState(() => initialParams.get("transitDistanceM") || "");
+  const hasLotInput = (Number(frontage) > 0 && Number(depth) > 0) || Number(lotArea) > 0;
 
   // Fine-tune workflow: every takeout parameter is overridable per run.
   // Empty string = platform default; percent fields are entered as percents.
@@ -271,9 +419,10 @@ export default function MultiplexUnderwriterPage() {
 
   const [result, setResult] = useState<UnderwriteResult | null>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [underwritingId, setUnderwritingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Shared-report deep link: /tools/multiplex-underwriter?share=<token>
+  // Shared-report deep link: /multiplex?share=<token>
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("share");
     if (!token) return;
@@ -285,6 +434,7 @@ export default function MultiplexUnderwriterPage() {
         setAddress(data.address);
         setSite(data.site);
         setResult(data.underwrite);
+        setUnderwritingId(data.id || null);
         setStep("report");
       } catch { /* fall through to normal flow */ }
     })();
@@ -293,23 +443,37 @@ export default function MultiplexUnderwriterPage() {
   async function resolveSite() {
     setBusy(true);
     setError(null);
-    savePropertyContext({ address, postalCode: postalCode || undefined });
+    savePropertyContext({
+      address,
+      postalCode: postalCode || undefined,
+      mlsNumber: listingId || undefined,
+      price: purchasePrice ? Number(purchasePrice) : undefined,
+      lotFrontageFt: frontage ? Number(frontage) : undefined,
+      lotDepthFt: depth ? Number(depth) : undefined,
+      lotAreaSqft: lotArea ? Number(lotArea) : undefined,
+    });
     track({ event: "analyzer_started", address, strategy: "multiplex", source: "multiplex_underwriter" });
     try {
       // Geocode client-side first so the server isn't rate-limited or blocked by
       // Nominatim. Fall back to server-side geocoding if the client call fails.
       const geo = await geocodeAddressClient(address);
-      const hasDims = Number(frontage) > 0 && Number(depth) > 0;
+      const hasDims = hasLotInput;
       const res = await apiRequest("POST", "/api/multiplex-underwriter", {
         address: geo?.displayName || address,
+        listingId: listingId || undefined,
         postalCode: postalCode || undefined,
         ...(geo ? { lat: geo.lat, lng: geo.lng } : {}),
         ...(hasDims
           ? {
-              lotFrontageFt: Number(frontage),
-              lotDepthFt: Number(depth),
+              lotFrontageFt: Number(frontage) > 0 ? Number(frontage) : undefined,
+              lotDepthFt: Number(depth) > 0 ? Number(depth) : undefined,
+              lotAreaSqft: Number(lotArea) > 0 ? Number(lotArea) : undefined,
               purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
               laneAccess,
+              cornerLot,
+              majorStreet,
+              transitAreaStatus: transitAreaStatus === "unknown" ? undefined : transitAreaStatus,
+              transitStationDistanceM: transitDistance ? Number(transitDistance) : undefined,
             }
           : {}),
       });
@@ -321,6 +485,7 @@ export default function MultiplexUnderwriterPage() {
         setSite(data.site);
         setResult(data.underwrite);
         setShareToken(data.shareToken);
+        setUnderwritingId(data.id || null);
         setStep("report");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -345,18 +510,33 @@ export default function MultiplexUnderwriterPage() {
   async function runUnderwrite() {
     setBusy(true);
     setError(null);
+    savePropertyContext({
+      address,
+      postalCode: postalCode || undefined,
+      mlsNumber: listingId || undefined,
+      price: purchasePrice ? Number(purchasePrice) : undefined,
+      lotFrontageFt: frontage ? Number(frontage) : undefined,
+      lotDepthFt: depth ? Number(depth) : undefined,
+      lotAreaSqft: lotArea ? Number(lotArea) : undefined,
+    });
     track({ event: "calculator.started", address, strategy: "multiplex", source: "multiplex_underwriter" });
     try {
       const overrides = buildAssumptionOverrides();
       const res = await apiRequest("POST", "/api/multiplex-underwriter", {
         address,
+        listingId: listingId || undefined,
         postalCode: postalCode || undefined,
         lat: site?.lat ?? undefined,
         lng: site?.lng ?? undefined,
-        lotFrontageFt: Number(frontage),
-        lotDepthFt: Number(depth),
+        lotFrontageFt: Number(frontage) > 0 ? Number(frontage) : undefined,
+        lotDepthFt: Number(depth) > 0 ? Number(depth) : undefined,
+        lotAreaSqft: Number(lotArea) > 0 ? Number(lotArea) : undefined,
         purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
         laneAccess,
+        cornerLot,
+        majorStreet,
+        transitAreaStatus: transitAreaStatus === "unknown" ? undefined : transitAreaStatus,
+        transitStationDistanceM: transitDistance ? Number(transitDistance) : undefined,
         mliCommitments: {
           affordabilityLevel: tune.affordabilityLevel,
           energyLevel: tune.energyLevel,
@@ -369,6 +549,7 @@ export default function MultiplexUnderwriterPage() {
         setSite(data.site);
         setResult(data.underwrite);
         setShareToken(data.shareToken);
+        setUnderwritingId(data.id || null);
         setStep("report");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -392,22 +573,44 @@ export default function MultiplexUnderwriterPage() {
 
   function copyShareLink() {
     if (!shareToken) return;
-    navigator.clipboard.writeText(`${window.location.origin}/tools/multiplex-underwriter?share=${shareToken}`);
+    navigator.clipboard.writeText(`${window.location.origin}/multiplex?share=${shareToken}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     if (shareToken) track({ event: "analyzer_shared", share_token: shareToken });
   }
 
+  const pageMeta = SHARED_ROUTE_META["/multiplex"];
+  const planningResult = result?.planning ?? {
+    transit: {
+      status: "unknown" as const,
+      certainty: "unknown" as const,
+      distance_m: null,
+      major_street: majorStreet,
+      parking_minimums_prohibited: false,
+      policy_height_storeys: null,
+      summary: "This shared report predates the transit-area layer. Re-run the address to add MTSA and major-street context.",
+      notes: [],
+    },
+    majorStreet,
+    cornerLot,
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title={pageMeta.title}
+        description={pageMeta.description}
+        canonicalUrl="/multiplex"
+        keywords="Toronto multiplex underwriter, Toronto fourplex, Toronto sixplex, MLI Select calculator, multiplex pro forma"
+      />
       <Navigation />
       <main className="max-w-6xl mx-auto px-4 py-10">
         <div className="text-center mb-8">
-          <Badge variant="outline" className="mb-3"><Sparkles className="h-3 w-3 mr-1 text-ai" /> AI Multiplex Underwriter — Toronto</Badge>
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">Spec out a multiplex build in seconds</h1>
+          <Badge variant="outline" className="mb-3"><Sparkles className="h-3 w-3 mr-1 text-ai" /> Institutional-grade Toronto site screen</Badge>
+          <h1 className="text-3xl md:text-5xl font-bold mb-3 text-balance">Can this Toronto lot become a better investment?</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Zoning verdict with the by-law cited, tree and ravine screens with evidence, build configurations,
-            and the sell-as-condos vs hold-on-CMHC-MLI-Select math — every number labelled by where it came from.
+            Start with a DDF listing or address. Get a sourced planning screen, lot-matched concept, construction and rent pro forma,
+            then compare CMHC small-rental financing below five units with MLI Select at five or more.
           </p>
           {/* No CTA above the form. The only one here used to be "Browse
               pre-screened map listings", which routed the highest-intent
@@ -415,6 +618,8 @@ export default function MultiplexUnderwriterPage() {
               address. It now sits below the form as a fallback for people who
               arrived without a specific site in mind. */}
         </div>
+
+        <JourneyProgress step={step} />
 
         {error && (
           <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
@@ -436,6 +641,13 @@ export default function MultiplexUnderwriterPage() {
           <Card className="max-w-xl mx-auto">
             <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Property address</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              {listingId && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3" data-testid="multiplex-ddf-context">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">CREA DDF listing attached</p>
+                  <p className="mt-1 text-sm">MLS {listingId}{purchasePrice ? ` · ${fmtMoney(Number(purchasePrice))}` : ""}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Address, asking price, and any published lot dimensions came across from the Deals map. Confirm them against the listing and survey.</p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="address">Street address (Toronto)</Label>
                 <Input id="address" placeholder="123 Logan Ave" value={address} onChange={(e) => setAddress(e.target.value)} className="h-12" />
@@ -457,8 +669,12 @@ export default function MultiplexUnderwriterPage() {
                     <Input id="depth" type="number" placeholder="120" value={depth} onChange={(e) => setDepth(e.target.value)} className="h-12 font-mono" />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lot-area">Lot area (sqft) <span className="text-muted-foreground">(use if frontage or depth is missing)</span></Label>
+                  <Input id="lot-area" type="number" placeholder="3000" value={lotArea} onChange={(e) => setLotArea(e.target.value)} className="h-12 font-mono" />
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Enter dimensions now to skip the confirm step, or leave them blank and we'll ask after resolving the site.
+                  DDF lot dimensions are prefilled when available. Enter them now for an instant run, or leave them blank and confirm after the site screen.
                 </p>
               </div>
 
@@ -472,11 +688,27 @@ export default function MultiplexUnderwriterPage() {
                 <Switch id="lane" checked={laneAccess} onCheckedChange={setLaneAccess} />
               </div>
 
+              <details className="rounded-lg border bg-card">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Add MTSA, major-street, or corner-lot context</summary>
+                <div className="px-4 pb-4">
+                  <PlanningContextFields
+                    transitAreaStatus={transitAreaStatus}
+                    onTransitAreaStatusChange={setTransitAreaStatus}
+                    transitDistance={transitDistance}
+                    onTransitDistanceChange={setTransitDistance}
+                    majorStreet={majorStreet}
+                    onMajorStreetChange={setMajorStreet}
+                    cornerLot={cornerLot}
+                    onCornerLotChange={setCornerLot}
+                  />
+                </div>
+              </details>
+
               <Button className="w-full h-12" disabled={busy || address.trim().length < 5} onClick={resolveSite}>
                 {busy ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {Number(frontage) && Number(depth) ? "Underwriting…" : "Resolving site…"}</>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {hasLotInput ? "Underwriting…" : "Resolving site…"}</>
                 ) : (
-                  <>{Number(frontage) && Number(depth) ? "Run the underwrite" : "Resolve site"} <ArrowRight className="h-4 w-4 ml-2" /></>
+                  <>{hasLotInput ? "Run the underwrite" : "Resolve site"} <ArrowRight className="h-4 w-4 ml-2" /></>
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center">3 free underwrites per day — sign in for more.</p>
@@ -492,14 +724,14 @@ export default function MultiplexUnderwriterPage() {
             <p className="text-center text-sm text-muted-foreground">
               No address in mind?{" "}
               <Link
-                href="/tools/cap-rates?strategy=multiplex"
+                href="/deals?city=Toronto&strategy=multiplex"
                 className="font-medium text-primary hover:underline"
-                onClick={() => track({ event: "cta_clicked", cta: "multiplex_browse_map", location: "/tools/multiplex-underwriter", destination: "/tools/cap-rates" })}
+                onClick={() => track({ event: "cta_clicked", cta: "multiplex_browse_map", location: "/multiplex", destination: "/deals" })}
               >
-                Browse pre-screened listings on the map →
+                Browse Toronto listings already pre-screened for multiplex signals →
               </Link>
             </p>
-            <MultiplexEventCta placement="inline" sourcePage="/tools/multiplex-underwriter" />
+            <MultiplexEventCta placement="inline" sourcePage="/multiplex" />
           </div>
         )}
 
@@ -544,6 +776,10 @@ export default function MultiplexUnderwriterPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="confirm-lot-area">Lot area (sqft) <span className="text-muted-foreground">(accepted when a dimension is missing)</span></Label>
+                  <Input id="confirm-lot-area" type="number" placeholder="3000" value={lotArea} onChange={(e) => setLotArea(e.target.value)} className="h-12 font-mono" />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="price">Purchase / asking price <span className="text-muted-foreground">(optional — residual land value guides you without it)</span></Label>
                   <Input id="price" type="number" placeholder="1200000" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="h-12 font-mono" />
                 </div>
@@ -551,9 +787,19 @@ export default function MultiplexUnderwriterPage() {
                   <Label htmlFor="lane" className="cursor-pointer">Rear lane access (laneway suite potential)</Label>
                   <Switch id="lane" checked={laneAccess} onCheckedChange={setLaneAccess} />
                 </div>
+                <PlanningContextFields
+                  transitAreaStatus={transitAreaStatus}
+                  onTransitAreaStatusChange={setTransitAreaStatus}
+                  transitDistance={transitDistance}
+                  onTransitDistanceChange={setTransitDistance}
+                  majorStreet={majorStreet}
+                  onMajorStreetChange={setMajorStreet}
+                  cornerLot={cornerLot}
+                  onCornerLotChange={setCornerLot}
+                />
                 <div className="flex gap-3">
                   <Button variant="outline" className="h-12" onClick={() => setStep("input")}>Back</Button>
-                  <Button className="flex-1 h-12" disabled={busy || !Number(frontage) || !Number(depth)} onClick={runUnderwrite}>
+                  <Button className="flex-1 h-12" disabled={busy || !hasLotInput} onClick={runUnderwrite}>
                     {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Underwriting…</> : <>Run the underwrite <Building2 className="h-4 w-4 ml-2" /></>}
                   </Button>
                 </div>
@@ -569,6 +815,7 @@ export default function MultiplexUnderwriterPage() {
               <div>
                 <h2 className="text-2xl font-bold">{address || site.address}</h2>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  {listingId && <Badge variant="outline">MLS {listingId}</Badge>}
                   {site.zoning && <><Badge>{site.zoning.zoneCode}</Badge><ProvenanceBadge kind="verified" /></>}
                   <Badge variant="outline">up to {result.maxUnitsAsOfRight} units as-of-right</Badge>
                   {result.sixplex.eligible && <Badge className="bg-ai/10 text-ai hover:bg-ai/10 border-ai/30">sixplex ward likely</Badge>}
@@ -580,7 +827,7 @@ export default function MultiplexUnderwriterPage() {
                     <Share2 className="h-4 w-4 mr-1" /> {copied ? "Copied!" : "Share"}
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => { setStep("input"); setResult(null); setSite(null); }}>New underwrite</Button>
+                <Button variant="outline" size="sm" onClick={() => { setStep("input"); setResult(null); setSite(null); setUnderwritingId(null); setShareToken(null); }}>New underwrite</Button>
               </div>
             </div>
 
@@ -618,6 +865,32 @@ export default function MultiplexUnderwriterPage() {
               <ScreenChip icon={Waves} label="TRCA regulated" flagged={site.trca.regulated} unavailable={site.trca.status === "unavailable"} />
               <ScreenChip icon={Landmark} label="Heritage" flagged={site.heritage.listed} unavailable={site.heritage.status === "no_data"} />
             </div>
+
+            <Card className="border-blue-500/25 bg-blue-500/5" data-testid="multiplex-planning-result">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg"><RouteIcon className="h-5 w-5 text-blue-600" /> Transit and major-street layer</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">
+                    {planningResult.transit.status === "pmtsa" ? "Protected MTSA"
+                      : planningResult.transit.status === "mtsa" ? "MTSA"
+                        : planningResult.transit.status === "likely_mtsa_inferred" ? "Possible MTSA — radius only"
+                          : planningResult.transit.status === "outside" ? "Outside MTSA"
+                            : "MTSA not confirmed"}
+                  </Badge>
+                  <Badge variant="outline">{planningResult.majorStreet ? "Major street" : "Local street / unconfirmed"}</Badge>
+                  {planningResult.cornerLot && <Badge variant="outline">Corner lot</Badge>}
+                  {planningResult.transit.parking_minimums_prohibited && <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10">No parking minimum</Badge>}
+                  {planningResult.transit.policy_height_storeys && <Badge className="bg-blue-500/10 text-blue-700 hover:bg-blue-500/10">Policy support: {planningResult.transit.policy_height_storeys} storeys</Badge>}
+                </div>
+                <p className="leading-6 text-muted-foreground">{planningResult.transit.summary}</p>
+                <p className="text-xs text-muted-foreground">
+                  Transit-area policy upside is kept separate from the as-of-right envelope. Confirm the polygon and street designation on the{" "}
+                  <a href={TORONTO_MTSA_MAP_URL} target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">City of Toronto map</a> before pricing it into an offer.
+                </p>
+              </CardContent>
+            </Card>
 
             {/* AI narrative */}
             {result.report && (
@@ -703,12 +976,26 @@ export default function MultiplexUnderwriterPage() {
               </CardContent>
             </Card>
 
+            {result.developmentReport && (
+              <MultiplexConceptPreview report={result.developmentReport} />
+            )}
+
             {/* Fine-tune the takeout — every parameter is overridable per run */}
             <details className="rounded-lg border bg-card">
               <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
                 Fine-tune the takeout — pricing, financing, and MLI Select commitments
               </summary>
               <div className="px-4 pb-4 space-y-4">
+                <PlanningContextFields
+                  transitAreaStatus={transitAreaStatus}
+                  onTransitAreaStatusChange={setTransitAreaStatus}
+                  transitDistance={transitDistance}
+                  onTransitDistanceChange={setTransitDistance}
+                  majorStreet={majorStreet}
+                  onMajorStreetChange={setMajorStreet}
+                  cornerLot={cornerLot}
+                  onCornerLotChange={setCornerLot}
+                />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <TuneField label="Condo-town $/sqft" placeholder="1000" value={tune.condoTownPsf} onChange={(v) => setTune({ ...tune, condoTownPsf: v })} />
                   <TuneField label="Condo-apt $/sqft" placeholder="900" value={tune.condoAptPsf} onChange={(v) => setTune({ ...tune, condoAptPsf: v })} />
@@ -754,10 +1041,10 @@ export default function MultiplexUnderwriterPage() {
                   />
                 </div>
                 <div className="flex items-center gap-3">
-                  <Button size="sm" disabled={busy || !Number(frontage) || !Number(depth)} onClick={runUnderwrite}>
+                  <Button size="sm" disabled={busy || !hasLotInput} onClick={runUnderwrite}>
                     {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Re-running…</> : "Re-run with these assumptions"}
                   </Button>
-                  {(!Number(frontage) || !Number(depth)) && (
+                  {!hasLotInput && (
                     <span className="text-xs text-muted-foreground">Shared report — start a new underwrite to fine-tune.</span>
                   )}
                   <span className="text-xs text-muted-foreground">Blank fields keep the platform defaults.</span>
@@ -810,11 +1097,13 @@ export default function MultiplexUnderwriterPage() {
                         )}
                         <span className="text-muted-foreground">Stabilized NOI</span>
                         <span className="font-mono text-right">{fmtMoney(c.rentalHold.noi)}/yr</span>
-                        <span className="text-muted-foreground">MLI Select</span>
+                        <span className="text-muted-foreground">Hold financing</span>
                         <span className="font-mono text-right">
                           {c.mli.eligible
-                            ? `${fmtMoney(c.mli.maxLoan)} @ ${c.mli.premiumPct}% prem`
-                            : "ineligible (<5 units)"}
+                            ? `MLI Select · ${fmtMoney(c.mli.maxLoan)}`
+                            : c.smallRental?.eligible
+                              ? `CMHC small rental · ${fmtMoney(c.smallRental.indicativeLoan)}`
+                              : "Lender screen required"}
                         </span>
                         {c.mli.eligible && c.comparison.holdCashOnCash != null && (
                           <>
@@ -841,6 +1130,17 @@ export default function MultiplexUnderwriterPage() {
                           {fmtMoney(Math.max(c.residualLandValue.condoPath, c.residualLandValue.rentalPath))} <ProvenanceBadge kind="estimate" />
                         </span>
                       </div>
+                      {c.smallRental?.eligible && (
+                        <div className="rounded-lg border border-blue-500/25 bg-blue-500/5 p-3 text-xs leading-5">
+                          <p className="font-semibold">2–4 unit CMHC small-rental screen</p>
+                          <p className="mt-1 text-muted-foreground">
+                            {fmtPct(c.smallRental.maxLtv, 0)} LTV ceiling · {c.smallRental.amortYears}-year amortization · {fmtMoney(c.smallRental.indicativeEquity)} indicative equity
+                            {c.smallRental.noiCoverageRatio ? ` · ${c.smallRental.noiCoverageRatio.toFixed(2)}× NOI coverage` : ""}.
+                          </p>
+                          <p className="mt-1 text-muted-foreground">{c.smallRental.qualificationNote}</p>
+                          <a href={c.smallRental.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-primary hover:underline">CMHC source ↗</a>
+                        </div>
+                      )}
                       {c.varianceRisk.factors.length > 0 && (
                         <details className="text-xs text-muted-foreground">
                           <summary className="cursor-pointer font-medium">Risk factors ({c.varianceRisk.factors.length})</summary>
@@ -873,12 +1173,62 @@ export default function MultiplexUnderwriterPage() {
               </div>
             )}
 
+            {(() => {
+              const recommendedKey = result.recommendedTakeout?.configKey || result.winner.hold || result.winner.flip;
+              const recommended = result.configs.find((config) => config.config.key === recommendedKey) || result.configs[0];
+              if (!recommended) return null;
+              const estimatedMonthlyRent = recommended.rentalHold.monthlyRentRoll.reduce(
+                (sum, row) => sum + row.count * row.rentEach,
+                0,
+              );
+              const annualCashFlow = recommended.mli.eligible
+                ? recommended.comparison.holdAnnualCashFlow
+                : recommended.smallRental?.eligible
+                  ? recommended.rentalHold.noi - recommended.smallRental.annualDebtService
+                  : recommended.rentalHold.noi;
+              const takeout = result.recommendedTakeout?.takeout || recommended.comparison.recommendedExit;
+              const maxLandPrice = takeout === "condo_termination"
+                ? recommended.residualLandValue.condoPath
+                : recommended.residualLandValue.rentalPath;
+              const financingSignal = recommended.mli.eligible
+                ? "CMHC MLI Select screen"
+                : recommended.smallRental?.eligible
+                  ? "CMHC 2–4 unit small-rental screen"
+                  : "financing verification required";
+
+              return (
+                <BuyWithRealistCta
+                  context={{
+                    listingId: listingId || null,
+                    underwritingId,
+                    address: address || site.address,
+                    city: "Toronto",
+                    province: "ON",
+                    price: purchasePrice ? Number(purchasePrice) : null,
+                    estimatedMonthlyRent,
+                    capRate: recommended.rentalHold.yieldOnCost * 100,
+                    monthlyCashFlow: annualCashFlow / 12,
+                    recommendedUnits: recommended.config.units,
+                    maxLandPrice,
+                    recommendedTakeout: takeout,
+                    source: source === "ddf_listing" ? "multiplex_ddf_underwrite" : "multiplex_underwrite",
+                    signals: [
+                      `${result.maxUnitsAsOfRight} units as-of-right screen`,
+                      financingSignal,
+                      planningResult.transit.status === "unknown" ? "MTSA status unconfirmed" : planningResult.transit.status,
+                    ],
+                  }}
+                  className="mx-auto max-w-2xl"
+                />
+              );
+            })()}
+
             {/* Highest-intent moment on the platform: they have just been told
                 what their lot supports. Event first (cheap, dated, social),
                 then the book-a-call path. */}
-            <MultiplexEventCta placement="result" sourcePage="/tools/multiplex-underwriter" className="mt-8" />
+            <MultiplexEventCta placement="result" sourcePage="/multiplex" className="mt-8" />
 
-            <NextStepBlock sourcePage="/tools/multiplex-underwriter" className="mt-6" />
+            <NextStepBlock sourcePage="/multiplex" className="mt-6" />
 
             {/* Assumption notes */}
             {result.assumptionNotes.length > 0 && (
@@ -899,6 +1249,7 @@ export default function MultiplexUnderwriterPage() {
           </div>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }

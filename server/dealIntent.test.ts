@@ -466,7 +466,7 @@ describe("recordDealIntent", () => {
 
     expect(state.activityEvents).toHaveLength(1);
     expect(state.activityEvents[0].eventName).toBe("underwriting_completed");
-    expect(state.activityEvents[0].sourcePage).toBe("/tools/multiplex-underwriter");
+    expect(state.activityEvents[0].sourcePage).toBe("/multiplex");
     expect(state.leadNotifications).toHaveLength(0);
     expect(state.notifications).toHaveLength(0);
   });

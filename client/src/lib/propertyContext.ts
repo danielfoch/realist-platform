@@ -13,6 +13,11 @@ export interface PropertyContext {
   price?: number;
   monthlyRent?: number;
   mlsNumber?: string;
+  /** Lot dimensions are feet across the DDF and multiplex APIs. */
+  lotFrontageFt?: number;
+  lotDepthFt?: number;
+  lotAreaSqft?: number;
+  /** Legacy misnamed keys retained for one storage-migration window. */
   lotFrontageM?: number;
   lotDepthM?: number;
   zoneCode?: string;
@@ -56,8 +61,11 @@ export function propertyContextToParams(ctx: Partial<PropertyContext>): string {
   if (ctx.price) params.set("price", String(ctx.price));
   if (ctx.monthlyRent) params.set("rent", String(ctx.monthlyRent));
   if (ctx.mlsNumber) params.set("mls", ctx.mlsNumber);
-  if (ctx.lotFrontageM) params.set("frontage", String(ctx.lotFrontageM));
-  if (ctx.lotDepthM) params.set("depth", String(ctx.lotDepthM));
+  const frontageFt = ctx.lotFrontageFt ?? ctx.lotFrontageM;
+  const depthFt = ctx.lotDepthFt ?? ctx.lotDepthM;
+  if (frontageFt) params.set("frontage", String(frontageFt));
+  if (depthFt) params.set("depth", String(depthFt));
+  if (ctx.lotAreaSqft) params.set("lotArea", String(ctx.lotAreaSqft));
   if (ctx.zoneCode) params.set("zone", ctx.zoneCode);
   const s = params.toString();
   return s ? `?${s}` : "";

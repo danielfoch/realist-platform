@@ -46,6 +46,14 @@ import {
 import { TORONTO_ENVELOPE_RULES, PRACTICAL_GFA_HAIRCUT, computeEnvelope } from "@shared/multiplexEnvelope";
 import { computeMliTakeout, scoreMliPoints, type MliTakeoutResult } from "@shared/mliSelect";
 import {
+  computeSmallRentalMortgageScreen,
+  type SmallRentalMortgageResult,
+} from "@shared/multiplexFinancing";
+import {
+  buildMultiplexDevelopmentReport,
+  type MultiplexDevelopmentReport,
+} from "@shared/multiplexFeasibilityReport";
+import {
   TAKEOUT_ASSUMPTION_DEFAULTS,
   compareTakeouts,
   computeCondoTermination,
@@ -167,6 +175,7 @@ export async function getAssumptionValues(): Promise<Record<string, unknown>> {
 
 export const underwriteRequestSchema = z.object({
   address: z.string().min(5).max(200),
+  listingId: z.string().min(1).max(100).optional(),
   postalCode: z.string().max(10).optional(),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
@@ -175,6 +184,10 @@ export const underwriteRequestSchema = z.object({
   lotAreaSqft: z.number().positive().max(200000).optional(),
   purchasePrice: z.number().min(0).max(50_000_000).optional(),
   laneAccess: z.boolean().optional(),
+  cornerLot: z.boolean().optional(),
+  majorStreet: z.boolean().optional(),
+  transitAreaStatus: z.enum(["outside", "mtsa", "pmtsa"]).optional(),
+  transitStationDistanceM: z.number().min(0).max(20_000).optional(),
   goal: z.enum(["flip", "hold"]).optional(),
   mliCommitments: z
     .object({
@@ -278,6 +291,7 @@ interface ConfigUnderwrite {
   rentalHold: ReturnType<typeof computeRentalHold>;
   residualLandValue: ReturnType<typeof computeResidualLandValue>;
   mli: MliTakeoutResult;
+  smallRental: SmallRentalMortgageResult;
   comparison: {
     condoProfit: number;
     holdEquityLeft: number;
@@ -300,6 +314,12 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
   configs: ConfigUnderwrite[];
   winner: { flip: string | null; hold: string | null };
   recommendedTakeout: SiteTakeoutRecommendation;
+  planning: {
+    transit: ReturnType<typeof computeMultiplexFeasibility>["transit"];
+    majorStreet: boolean;
+    cornerLot: boolean;
+  };
+  developmentReport: MultiplexDevelopmentReport | null;
   assumptionNotes: string[];
 }> {
   const admin = await getAssumptionValues();
@@ -317,6 +337,10 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
     lotDepth: input.lotDepthFt,
     lotArea: input.lotAreaSqft,
     laneAccess: input.laneAccess,
+    cornerLot: input.cornerLot,
+    majorStreet: input.majorStreet,
+    transitAreaStatus: input.transitAreaStatus,
+    transitStationDistanceM: input.transitStationDistanceM,
     heritageFlag: site.heritage.listed,
     floodplainFlag: site.trca.regulated,
   });
@@ -418,6 +442,12 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
       purpose: "other",
       interestRate: a.mliRate,
     });
+    const smallRental = computeSmallRentalMortgageScreen({
+      units: config.units,
+      noi: rentalHold.noi,
+      lendingValue: Math.min(costs.totalDevCost, rentalHold.stabilizedValue),
+      interestRate: a.mliRate,
+    });
     const varianceRisk = assessVarianceRisk({
       config,
       heritage: site.heritage.listed,
@@ -453,6 +483,7 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
       rentalHold,
       residualLandValue,
       mli,
+      smallRental,
       comparison: { condoProfit: condoExit.profit, holdEquityLeft, holdAnnualCashFlow, holdCashOnCash, recommendedExit },
       takeout: { condo: condoTermination, hold: mliHold, decision: takeoutDecision },
     };
@@ -481,6 +512,27 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
     a.takeout,
   );
 
+  const developmentReport = buildMultiplexDevelopmentReport({
+    municipality: "City of Toronto",
+    frontageFt: input.lotFrontageFt ?? null,
+    depthFt: input.lotDepthFt ?? null,
+    lotAreaSqft: input.lotAreaSqft ?? null,
+    coverageRatio: a.lotCoverage,
+    practicalGfaSqft: envelope.practicalGfaSqft.value,
+    asOfRightStoreys: feasibility.envelope.estimated_storeys,
+    policyStoreys: feasibility.transit.policy_height_storeys,
+    effectiveBaselineUnits: maxUnitsAsOfRight,
+    sixUnitStatus: sixStatus,
+    laneAccess: !!input.laneAccess,
+    gardenSuitePossible: feasibility.permissions.garden_suite_possible,
+    lanewaySuitePossible: feasibility.permissions.laneway_suite_possible,
+    majorStreet: !!input.majorStreet,
+    transitStatus: feasibility.transit.status,
+    approvalPath: feasibility.permissions.approval_path,
+    purchasePrice: input.purchasePrice,
+    hardCostPsf: a.dev.hardCostPsf,
+  });
+
   return {
     sixplex: { eligible: sixplexEligible, status: sixStatus, certainty: sixplexCertainty },
     maxUnitsAsOfRight,
@@ -488,6 +540,12 @@ async function runUnderwrite(input: UnderwriteRequest, site: ResolvedSite): Prom
     configs: underwrites,
     winner: { flip: flipWinner?.config.key ?? null, hold: holdWinner?.config.key ?? null },
     recommendedTakeout,
+    planning: {
+      transit: feasibility.transit,
+      majorStreet: !!input.majorStreet,
+      cornerLot: !!input.cornerLot,
+    },
+    developmentReport,
     assumptionNotes,
   };
 }
@@ -645,6 +703,9 @@ function buildIntentSignal(
       recommendedExit: recommended?.comparison?.recommendedExit ?? null,
       takeoutDecision: result.recommendedTakeout?.takeout ?? null,
       lotAreaSqft: input.lotAreaSqft ?? null,
+      listingId: input.listingId ?? null,
+      transitStatus: result.planning.transit.status,
+      majorStreet: result.planning.majorStreet,
       goal: input.goal ?? null,
     },
   };

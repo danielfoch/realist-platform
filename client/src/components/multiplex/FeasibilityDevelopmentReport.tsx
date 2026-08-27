@@ -753,6 +753,70 @@ function Timeline({ report }: FeasibilityDevelopmentReportProps) {
   );
 }
 
+/**
+ * The canonical underwriter already has the stronger financial model. This
+ * focused view brings the calculated site plan and input-matched rendering
+ * into that journey without duplicating the older feasibility pro forma.
+ */
+export function MultiplexConceptPreview({ report }: FeasibilityDevelopmentReportProps) {
+  const concept = report.concept;
+
+  return (
+    <section className="space-y-5" data-testid="multiplex-concept-preview">
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-cyan-500/5 p-5">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="gap-1">
+                <Home className="h-3 w-3" />
+                Lot-matched concept
+              </Badge>
+              <Badge variant="outline">{concept.totalUnits} homes</Badge>
+              <Badge variant="outline">{concept.asOfRightStoreys} storeys modelled</Badge>
+              <Badge variant="outline">~{report.timeline.totalMonths} months to takeout</Badge>
+            </div>
+            <h2 className="mt-3 text-2xl font-bold tracking-tight">{concept.title}</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{concept.summary}</p>
+          </div>
+          <div className="grid shrink-0 grid-cols-2 gap-2 text-center">
+            <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2">
+              <Ruler className="mx-auto h-4 w-4 text-primary" />
+              <p className="mt-1 font-mono text-sm font-semibold">{concept.sitePlan.lotFrontageFt} × {concept.sitePlan.lotDepthFt}</p>
+              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">lot feet</p>
+            </div>
+            <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2">
+              <Building2 className="mx-auto h-4 w-4 text-primary" />
+              <p className="mt-1 font-mono text-sm font-semibold">{concept.sitePlan.buildings.length}</p>
+              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">building forms</p>
+            </div>
+          </div>
+        </div>
+
+        {concept.policyUpsideNote && (
+          <div className="mt-4 flex gap-2 rounded-lg border border-blue-500/25 bg-blue-500/10 p-3 text-xs leading-relaxed text-blue-950 dark:text-blue-100">
+            <TrainFront className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{concept.policyUpsideNote}</span>
+          </div>
+        )}
+      </div>
+
+      <Card className="border-border/60">
+        <CardContent className="grid gap-6 pt-6 lg:grid-cols-2">
+          <SitePlan concept={concept} />
+          <ConceptRendering concept={concept} />
+        </CardContent>
+      </Card>
+
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-950 dark:text-amber-100">
+        <p className="font-semibold">Concept limitations</p>
+        <ul className="mt-1 space-y-1">
+          {concept.caveats.map((caveat) => <li key={caveat}>• {caveat}</li>)}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 export function FeasibilityDevelopmentReport({ report }: FeasibilityDevelopmentReportProps) {
   const concept = report.concept;
 
@@ -815,4 +879,3 @@ export function FeasibilityDevelopmentReport({ report }: FeasibilityDevelopmentR
     </section>
   );
 }
-

@@ -52,7 +52,7 @@ export type DealIntentSurface =
   | "deal_desk";
 
 const SURFACE_META: Record<DealIntentSurface, { leadSource: string; sourcePage: string }> = {
-  multiplex_underwriter: { leadSource: "Multiplex Underwriter", sourcePage: "/tools/multiplex-underwriter" },
+  multiplex_underwriter: { leadSource: "Multiplex Underwriter", sourcePage: "/multiplex" },
   deal_analyzer: { leadSource: "Deal Analyzer", sourcePage: "/tools/analyzer" },
   cap_rates_map: { leadSource: "Cap Rates Map", sourcePage: "/cap-rates" },
   sale_estimator: { leadSource: "Sale Estimator", sourcePage: "/tools/sale-estimator" },

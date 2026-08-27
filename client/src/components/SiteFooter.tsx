@@ -8,7 +8,7 @@ const FOOTER_GROUPS = [
     links: [
       { label: "Browse deals", href: "/deals" },
       { label: "Analyze a property", href: "/tools/analyzer" },
-      { label: "Toronto multiplex", href: "/tools/multiplex-underwriter" },
+      { label: "Toronto multiplex", href: "/multiplex" },
       { label: "Motivated deals", href: "/deals?deals=power_of_sale,motivated,vtb&distressOnly=1" },
     ],
   },

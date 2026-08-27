@@ -192,10 +192,12 @@ export default function Offer() {
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
                 If our team represents you on an eligible purchase, 50% of the cooperating commission may be rebated after closing. We will confirm the exact amount and terms in writing before you commit.
               </p>
-              {funnelContext.listingId && (
+              {(funnelContext.listingId || funnelContext.underwritingId) && (
                 <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  MLS {funnelContext.listingId} and its Realist underwriting are attached to this request.
+                  {funnelContext.listingId
+                    ? `MLS ${funnelContext.listingId} and its Realist underwriting are attached to this request.`
+                    : `Multiplex underwrite ${funnelContext.underwritingId} is attached to this request.`}
                 </p>
               )}
             </div>

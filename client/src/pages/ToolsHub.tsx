@@ -40,7 +40,7 @@ const sections: ToolSection[] = [
         primary: true,
       },
       {
-        href: "/tools/multiplex-underwriter",
+        href: "/multiplex",
         title: "Multiplex Underwriter",
         description: "Address-first AI underwrite: zoning, envelope, risk flags, and a machine-verified narrative report for multiplex conversions.",
         icon: Sparkles,

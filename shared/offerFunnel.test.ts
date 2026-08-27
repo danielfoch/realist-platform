@@ -9,6 +9,7 @@ describe("offer funnel context", () => {
   it("preserves listing and underwriting context through the offer URL", () => {
     const href = buildOfferFunnelHref({
       listingId: "C12345",
+      underwritingId: "uw-88",
       address: "12 King St W #4, Toronto",
       city: "Toronto",
       province: "ON",
@@ -16,6 +17,9 @@ describe("offer funnel context", () => {
       estimatedMonthlyRent: 6_200,
       capRate: 5.42,
       monthlyCashFlow: 875,
+      recommendedUnits: 6,
+      maxLandPrice: 1_050_000,
+      recommendedTakeout: "mli_hold",
       source: "deals_map",
       signals: ["VTB", "power of sale"],
     });
@@ -23,6 +27,7 @@ describe("offer funnel context", () => {
     const parsed = parseOfferFunnelSearch(href.split("?")[1]);
     expect(parsed).toMatchObject({
       listingId: "C12345",
+      underwritingId: "uw-88",
       address: "12 King St W #4, Toronto",
       city: "Toronto",
       province: "ON",
@@ -30,6 +35,9 @@ describe("offer funnel context", () => {
       estimatedMonthlyRent: 6_200,
       capRate: 5.42,
       monthlyCashFlow: 875,
+      recommendedUnits: 6,
+      maxLandPrice: 1_050_000,
+      recommendedTakeout: "mli_hold",
       source: "deals_map",
       signals: ["VTB", "power of sale"],
     });
@@ -45,11 +53,15 @@ describe("offer funnel context", () => {
       address: "1 Main St",
       price: 750_000,
       capRate: 4.8,
+      underwritingId: "uw-1",
+      recommendedUnits: 4,
       source: "listing_detail",
     });
     expect(summary.schemaVersion).toBe(1);
     expect(summary.source).toBe("listing_detail");
     expect(summary.listing.listPrice).toBe(750_000);
     expect(summary.underwriting.capRate).toBe(4.8);
+    expect(summary.multiplex.underwritingId).toBe("uw-1");
+    expect(summary.multiplex.recommendedUnits).toBe(4);
   });
 });

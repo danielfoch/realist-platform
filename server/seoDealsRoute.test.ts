@@ -16,7 +16,7 @@ describe("Deals route SEO contract", () => {
     expect(html).toContain("Underwritten Canadian Investment Properties");
     expect(html).toContain("CREA DDF");
     expect(html).toContain("vendor take-back");
-    expect(html).toContain("/tools/multiplex-underwriter");
+    expect(html).toContain("/multiplex");
   });
 
   it("publishes /deals in the pages sitemap", async () => {

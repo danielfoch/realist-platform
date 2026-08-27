@@ -85,9 +85,9 @@ export async function buildPagesSitemap() {
     { loc: `${BASE}/insights/motivated-report`, lastmod: now, changefreq: "daily", priority: 0.85 },
     { loc: `${BASE}/insights/mortgage-rates`, lastmod: now, changefreq: "daily", priority: 0.85 },
     { loc: `${BASE}/tools/multiplex-feasibility`, lastmod: now, changefreq: "monthly", priority: 0.8 },
-    // Top-priority tool: the multiplex push is the Sept 2026 focus, and this is
-    // the only one of the three multiplex tools backed by live zoning data.
-    { loc: `${BASE}/tools/multiplex-underwriter`, lastmod: now, changefreq: "weekly", priority: 0.95 },
+    // Canonical flagship: DDF/address → planning → concept → CMHC pro forma.
+    { loc: `${BASE}/multiplex`, lastmod: now, changefreq: "weekly", priority: 0.95 },
+    { loc: `${BASE}/tools/multiplex-underwriter`, lastmod: now, changefreq: "monthly", priority: 0.45 },
     { loc: `${BASE}/power-team`, lastmod: now, changefreq: "monthly", priority: 0.75 },
     { loc: `${BASE}/meetups`, lastmod: now, changefreq: "weekly", priority: 0.75 },
     { loc: `${BASE}/canada-housing-market`, lastmod: now, changefreq: "weekly", priority: 0.9 },

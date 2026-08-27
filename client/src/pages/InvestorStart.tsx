@@ -64,7 +64,7 @@ const PRODUCT_LANES = [
     title: "The multiplex underwriter",
     description:
       "Start with an address. Realist checks the lot, zoning and constraints, then models unit configurations, costs, rents, and the best takeout.",
-    href: "/tools/multiplex-underwriter",
+    href: "/multiplex",
     cta: "Underwrite a Toronto lot",
     icon: Building2,
     accent: "from-primary/15 to-orange-400/5",
@@ -391,7 +391,7 @@ export default function InvestorStart() {
               </div>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg" className="gap-2">
-                  <Link href="/tools/multiplex-underwriter">
+                  <Link href="/multiplex">
                     <Building2 className="h-4 w-4" />
                     Underwrite a Toronto site
                   </Link>

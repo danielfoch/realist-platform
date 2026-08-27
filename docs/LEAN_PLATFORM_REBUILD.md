@@ -55,6 +55,31 @@ production-ready. Before launch, Realist still needs live DDF credential testing
 rent-estimate source/confidence labels, saved-search delivery verification, a
 listing-data health dashboard, and an agreed Konfidis webhook/API contract.
 
+## Phase 3 progress
+
+- Made `/multiplex` the canonical Toronto underwriter and kept the former tool
+  URL as a query-preserving compatibility redirect.
+- Connected Toronto DDF listings directly into the underwriter with MLS number,
+  asking price, frontage, depth, and normalized lot area. The browser now makes
+  the investor confirm that listing dimensions still need a survey check.
+- Combined the stronger zoning/ward/tree/heritage/TRCA underwriter with the
+  existing dimensioned site-plan and input-matched architectural concept engine,
+  so the calculated massing controls whenever a generated image differs.
+- Added explicit MTSA/PMTSA, station-distance, major-street, and corner-lot inputs.
+  Confirmed boundaries and distance heuristics remain visibly different, and
+  transit policy height never inflates the as-of-right envelope.
+- Added a qualified CMHC small-rental screen for two-to-four-unit configurations
+  while preserving MLI Select points, leverage, amortization, premium, and DSCR
+  modelling at five or more units.
+- Carries the multiplex underwriting ID, recommended units, takeout, maximum land
+  price, rent, yield, cash flow, and planning signals into the buy/offer funnel.
+
+The next calibration gate is data, not more interface: import and monitor the
+Toronto zoning/tree/heritage layers in the production database, choose whether
+to automate MTSA and major-street polygon resolution from City data, calibrate
+cost/rent/condo assumptions with practitioners, verify the DDF lot-unit feed, and
+test the concept-image budget and CRM/Konfidis destination end to end.
+
 ## Product consolidation map
 
 | Public lane | Flagship surface | Supporting features that live inside it |

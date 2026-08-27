@@ -86,9 +86,9 @@ describe("mapVideoCta", () => {
     expect(mapVideoCta("The Mortgage Renewal Shock Is Here").primary.href).toBe("/tools/analyzer");
   });
 
-  it("maps cap-rate/market videos to the cap rate map", () => {
+  it("maps cap-rate/market videos to the canonical Deals surface", () => {
     expect(mapVideoCta("Which Housing Market Has The Best Cap Rates?").primary.href).toBe(
-      "/tools/cap-rates",
+      "/deals",
     );
   });
 

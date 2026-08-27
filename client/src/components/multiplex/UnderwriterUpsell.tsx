@@ -49,11 +49,11 @@ export function UnderwriterUpsell({
             event: "cta_clicked",
             cta: `underwriter_upsell_${from}`,
             location: from,
-            destination: "/tools/multiplex-underwriter",
+            destination: "/multiplex",
           })
         }
       >
-        <Link href="/tools/multiplex-underwriter">
+        <Link href="/multiplex">
           Run the underwrite <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       </Button>

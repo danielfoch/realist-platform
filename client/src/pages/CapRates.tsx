@@ -87,6 +87,7 @@ import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
 import { authPath } from "@/lib/authReturn";
 import { detectPossiblePlex } from "@shared/plexDetection";
 import { isTorontoListingAddress } from "@shared/listingLocation";
+import { normalizeListingLot } from "@shared/listingLot";
 import { BuyWithRealistCta } from "@/components/BuyWithRealistCta";
 
 interface CanadianListing {
@@ -589,13 +590,14 @@ function parseSqft(value?: string | number | null): number | null {
 }
 
 function buildMultiplexUnderwriterHref(
-  listing: Pick<CanadianListing, "mlsNumber" | "listPrice" | "address" | "details" | "lotFrontage" | "lotDepth" | "lotArea">,
+  listing: Pick<CanadianListing, "mlsNumber" | "listPrice" | "address" | "details" | "lotFrontage" | "lotDepth" | "lotArea" | "lotAreaUnit" | "lotDimensions">,
 ): string {
   const params = new URLSearchParams();
   const address = formatAddress(listing.address);
   const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
 
   params.set("address", address);
+  params.set("source", "ddf_listing");
   if (Number.isFinite(price) && price > 0) params.set("price", String(Math.round(price)));
   if (listing.mlsNumber) params.set("mls", listing.mlsNumber);
   if (listing.address?.city) params.set("city", listing.address.city);
@@ -603,11 +605,18 @@ function buildMultiplexUnderwriterHref(
   if (listing.details?.numBedrooms) params.set("beds", String(listing.details.numBedrooms));
   if (listing.details?.numBathrooms) params.set("baths", String(listing.details.numBathrooms));
   if (listing.details?.sqft) params.set("sqft", listing.details.sqft);
-  if (listing.lotFrontage && listing.lotFrontage > 0) params.set("frontage", String(listing.lotFrontage));
-  if (listing.lotDepth && listing.lotDepth > 0) params.set("depth", String(listing.lotDepth));
-  if (listing.lotArea && listing.lotArea > 0) params.set("lotArea", String(listing.lotArea));
+  const lot = normalizeListingLot({
+    frontage: listing.lotFrontage,
+    depth: listing.lotDepth,
+    area: listing.lotArea,
+    areaUnit: listing.lotAreaUnit,
+    dimensions: listing.lotDimensions,
+  });
+  if (lot.frontageFt) params.set("frontage", String(lot.frontageFt));
+  if (lot.depthFt) params.set("depth", String(lot.depthFt));
+  if (lot.areaSqft) params.set("lotArea", String(lot.areaSqft));
 
-  return `/tools/multiplex-underwriter?${params.toString()}`;
+  return `/multiplex?${params.toString()}`;
 }
 
 function buildMultiplexListingScan(listing: ListingWithCapRate): MultiplexListingScan {

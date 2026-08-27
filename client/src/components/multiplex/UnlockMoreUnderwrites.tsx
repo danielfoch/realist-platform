@@ -46,7 +46,7 @@ export function UnlockMoreUnderwrites({
     },
     onSuccess: () => {
       setDone(true);
-      track({ event: "cta_clicked", cta: "multiplex_unlock_completed", location: "/tools/multiplex-underwriter" });
+      track({ event: "cta_clicked", cta: "multiplex_unlock_completed", location: "/multiplex" });
       onUnlocked();
     },
   });

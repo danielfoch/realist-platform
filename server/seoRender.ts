@@ -152,8 +152,31 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
     links: [
       { href: "/tools/analyzer", label: "Underwrite a property" },
       { href: "/deals?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Browse distressed and VTB deals" },
-      { href: "/tools/multiplex-underwriter", label: "Underwrite a Toronto multiplex site" },
+      { href: "/multiplex", label: "Underwrite a Toronto multiplex site" },
       { href: "/insights/motivated-report", label: "Read the motivated-seller report" },
+    ],
+  },
+  "/multiplex": {
+    h1: "Toronto Multiplex Underwriter and CMHC Pro Forma",
+    intro: "Start with a Toronto CREA DDF listing or street address and turn one lot into a transparent development screen: lot dimensions, zoning, sixplex-area status, trees, heritage, ravine risk, MTSA and major-street context, a calculated concept, project costs, rents, and financing.",
+    sections: [
+      {
+        title: "One address-to-decision workflow",
+        body: "Realist carries the listing address, asking price, MLS number, and published lot dimensions from the Canadian Deals map. The underwriter resolves the site, asks the investor to confirm missing lot and planning facts, then keeps verified facts, inferences, assumptions, and illustrative outputs visibly separate.",
+      },
+      {
+        title: "Planning context without invented certainty",
+        body: "The base result uses Toronto's current multiplex envelope and screens zoning, ward-based sixplex permissions, City trees, heritage, and TRCA regulation. MTSA or PMTSA status and major-street frontage can add policy context, but transit-area height direction is never counted as an as-of-right building envelope until implemented and verified for the lot.",
+      },
+      {
+        title: "A concept and rental pro forma that use the same lot",
+        body: "A dimensioned concept site plan controls the illustrative architectural rendering. Configuration-level pro formas show construction costs, rent rolls, stabilized NOI, residual land value, condo exit, and rental hold. Two-to-four-unit configurations receive a qualified CMHC small-rental screen; five or more units compare CMHC MLI Select commitments, leverage, amortization, premium, DSCR, and equity left in the deal.",
+      },
+    ],
+    links: [
+      { href: "/deals?city=Toronto&strategy=multiplex", label: "Browse Toronto sites on the Deals map" },
+      { href: "/work-with-realist", label: "Pressure-test a multiplex with the Realist team" },
+      { href: "/insights", label: "Read Canadian housing research" },
     ],
   },
   "/tools/cap-rates": {
