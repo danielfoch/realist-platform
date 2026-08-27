@@ -187,6 +187,13 @@ export interface EpisodeCta {
   secondary?: EpisodeCtaLink;
 }
 
+export interface EpisodeResource {
+  href: string;
+  title: string;
+  description: string;
+  kind: "dashboard" | "report" | "tool";
+}
+
 /** First recognized city in the title, or null. */
 export function detectEpisodeCity(title: string): { city: string; marketSlug: string | null } | null {
   for (const city of KNOWN_CITIES) {
@@ -237,4 +244,100 @@ export function mapEpisodeCta(title: string): EpisodeCta {
     copy: "Run the numbers on your own deal — free.",
     primary: { href: "/tools/analyzer", label: "Open the Deal Analyzer" },
   };
+}
+
+/**
+ * Attach a small, deterministic research pack to every episode. This turns
+ * the RSS archive into a useful research surface without waiting for an
+ * editor or an AI enrichment job. The links point only at durable Realist
+ * routes; the primary CTA above remains the conversion action.
+ */
+export function deriveEpisodeResources(title: string): EpisodeResource[] {
+  const topics = new Set(deriveEpisodeTopics(title));
+  const resources: EpisodeResource[] = [];
+  const add = (resource: EpisodeResource) => {
+    if (!resources.some((item) => item.href === resource.href)) resources.push(resource);
+  };
+
+  if (topics.has("Mortgages") || topics.has("Interest Rates") || topics.has("Bank of Canada") || topics.has("Financing")) {
+    add({
+      href: "/insights/mortgage-rates",
+      title: "Canadian mortgage rate dashboard",
+      description: "Compare current fixed and variable borrowing assumptions.",
+      kind: "dashboard",
+    });
+    add({
+      href: "/tools/fixed-vs-variable",
+      title: "Fixed vs. variable calculator",
+      description: "Test the payment and interest-cost trade-off on your own loan.",
+      kind: "tool",
+    });
+  }
+
+  if (topics.has("Power of Sale")) {
+    add({
+      href: "/insights/motivated-report",
+      title: "Canadian motivated-seller report",
+      description: "Track power-of-sale and distress signals over time.",
+      kind: "report",
+    });
+    add({
+      href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1",
+      title: "Live distressed-deal search",
+      description: "Browse current DDF listings with qualified distress language.",
+      kind: "tool",
+    });
+  }
+
+  if (topics.has("Multiplex") || topics.has("Development")) {
+    add({
+      href: "/tools/multiplex-underwriter",
+      title: "Toronto multiplex underwriter",
+      description: "Screen a lot, configurations, construction costs and takeout financing.",
+      kind: "tool",
+    });
+    add({
+      href: "/insights/canada-construction-costs-2026",
+      title: "Canadian construction cost report",
+      description: "Use current cost pressure as context for a development pro forma.",
+      kind: "report",
+    });
+  }
+
+  if (topics.has("Immigration")) {
+    add({
+      href: "/reports/canada-immigration-dashboard-2026",
+      title: "Canadian immigration dashboard",
+      description: "Explore population flows that shape housing demand.",
+      kind: "dashboard",
+    });
+  }
+
+  if (topics.has("Economy")) {
+    add({
+      href: "/insights/statcan-gdp-q1-2026",
+      title: "GDP and housing dashboard",
+      description: "Connect macroeconomic growth to Canadian housing conditions.",
+      kind: "dashboard",
+    });
+  }
+
+  const city = detectEpisodeCity(title);
+  if (city?.marketSlug) {
+    add({
+      href: `/markets/${city.marketSlug}`,
+      title: `${city.city} investor market page`,
+      description: `Prices, yields, risks and strategy context for ${city.city}.`,
+      kind: "dashboard",
+    });
+  }
+
+  add({
+    href: "/reports",
+    title: "Realist research library",
+    description: "Browse Canadian housing reports, dashboards and source notes.",
+    kind: "report",
+  });
+
+  return resources.slice(0, 3);
 }

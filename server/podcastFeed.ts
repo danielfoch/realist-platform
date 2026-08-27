@@ -10,12 +10,15 @@
 import { PODCAST_RSS_URL } from "@shared/brand";
 import {
   assignEpisodeSlugs,
+  deriveEpisodeResources,
   deriveEpisodeKeywords,
   deriveEpisodeTopics,
   mapEpisodeCta,
   type EpisodeCta,
+  type EpisodeResource,
 } from "@shared/podcastEpisodes";
 import { encyclopediaGuides } from "@shared/encyclopedia";
+import cron from "node-cron";
 
 export interface PodcastEpisode {
   slug: string;
@@ -42,6 +45,7 @@ export interface PodcastEpisodePayload extends PodcastEpisode {
   keywords: string;
   cta: EpisodeCta;
   related: RelatedEpisode[];
+  relatedResources: EpisodeResource[];
   /** Future enrichment seam — null today, see getEpisodeEnrichment(). */
   enrichment: PodcastEpisodeEnrichment | null;
 }
@@ -126,8 +130,7 @@ async function fetchAndParseFeed(): Promise<PodcastEpisode[]> {
  * fetch — required so the crawler fallback for an uncached episode URL still
  * renders real content. On refresh failure the stale cache is served.
  */
-export async function getPodcastEpisodes(): Promise<PodcastEpisode[]> {
-  if (cache && Date.now() - cache.fetchedAt < FEED_TTL_MS) return cache.episodes;
+async function refreshPodcastFeedFromSource(): Promise<PodcastEpisode[]> {
   if (!inflight) {
     inflight = fetchAndParseFeed()
       .then((episodes) => {
@@ -144,6 +147,35 @@ export async function getPodcastEpisodes(): Promise<PodcastEpisode[]> {
     if (cache) return cache.episodes; // stale beats broken
     throw error;
   }
+}
+
+export async function getPodcastEpisodes(): Promise<PodcastEpisode[]> {
+  if (cache && Date.now() - cache.fetchedAt < FEED_TTL_MS) return cache.episodes;
+  return refreshPodcastFeedFromSource();
+}
+
+/**
+ * Force a source refresh without discarding the last known-good feed. This is
+ * safe to call from cron and admin tooling: concurrent refreshes are deduped,
+ * and a transient Omny failure serves the stale feed rather than empty pages.
+ */
+export async function refreshPodcastFeed(): Promise<PodcastEpisode[]> {
+  return refreshPodcastFeedFromSource();
+}
+
+/**
+ * New episodes publish Tuesdays and Fridays at 5am Toronto time. Refresh ten
+ * minutes later so the homepage, episode pages and podcast sitemap see them
+ * immediately instead of waiting for the one-hour cache to expire.
+ */
+export function schedulePodcastFeedRefresh() {
+  cron.schedule("10 5 * * 2,5", () => {
+    console.log("[podcast-feed] Scheduled RSS refresh triggered");
+    refreshPodcastFeed()
+      .then((episodes) => console.log(`[podcast-feed] Refreshed ${episodes.length} episodes`))
+      .catch((error) => console.error("[podcast-feed] Scheduled refresh failed:", error));
+  }, { timezone: "America/Toronto" });
+  console.log("[podcast-feed] Scheduled: Tuesdays and Fridays at 5:10am Toronto");
 }
 
 export async function getEpisodeBySlug(slug: string): Promise<PodcastEpisode | null> {
@@ -348,6 +380,7 @@ export async function getEpisodePayload(slug: string): Promise<PodcastEpisodePay
     keywords: deriveEpisodeKeywords(episode.title),
     cta: mapEpisodeCta(episode.title),
     related: getRelatedEpisodes(episode, episodes),
+    relatedResources: deriveEpisodeResources(episode.title),
     enrichment: await getEpisodeEnrichment(slug),
   };
 }

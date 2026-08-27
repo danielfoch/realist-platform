@@ -756,6 +756,9 @@ async function ensureAppTables() {
       import("./podcastDigest").then(({ schedulePodcastDigest }) => {
         schedulePodcastDigest();
       }).catch((err) => log(`Podcast digest schedule error: ${err.message}`, "podcast-digest"));
+      import("./podcastFeed").then(({ schedulePodcastFeedRefresh }) => {
+        schedulePodcastFeedRefresh();
+      }).catch((err) => log(`Podcast feed schedule error: ${err.message}`, "podcast-feed"));
       scheduleNightlyTraining();
       import("./userActivity").then(({ scheduleUserInferenceRebuild }) => {
         scheduleUserInferenceRebuild();

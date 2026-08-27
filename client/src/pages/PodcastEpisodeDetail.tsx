@@ -6,7 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ChevronLeft, Clock, Headphones, Loader2 } from "lucide-react";
+import { BarChart3, BookOpen, Calendar, ChevronLeft, Clock, Headphones, Loader2, Wrench } from "lucide-react";
 import {
   PODCAST_APPLE_URL,
   PODCAST_NAME,
@@ -41,6 +41,12 @@ interface EpisodePayload {
   keywords: string;
   cta: { copy: string; primary: EpisodeCtaLink; secondary?: EpisodeCtaLink };
   related: Array<{ slug: string; title: string; pubDate: string }>;
+  relatedResources?: Array<{
+    href: string;
+    title: string;
+    description: string;
+    kind: "dashboard" | "report" | "tool";
+  }>;
   /** Future AI enrichment seam — null today. */
   enrichment: { summaryHtml?: string; keyTakeaways?: string[] } | null;
 }
@@ -221,6 +227,31 @@ export default function PodcastEpisodeDetail() {
             dangerouslySetInnerHTML={{ __html: episode.showNotesHtml }}
           />
         </section>
+
+        {(episode.relatedResources?.length ?? 0) > 0 && (
+          <section className="mb-10" data-testid="section-episode-research-pack">
+            <h2 className="text-2xl font-semibold mb-2">Data &amp; tools for this episode</h2>
+            <p className="text-muted-foreground mb-4">
+              Keep going with the dashboards, reports and calculators that support this conversation.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {episode.relatedResources?.map((resource) => {
+                const Icon = resource.kind === "dashboard" ? BarChart3 : resource.kind === "tool" ? Wrench : BookOpen;
+                return (
+                  <Link
+                    key={resource.href}
+                    href={resource.href}
+                    className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
+                  >
+                    <Icon className="h-5 w-5 text-primary" />
+                    <p className="mt-3 font-semibold leading-snug">{resource.title}</p>
+                    <p className="mt-1 text-sm leading-5 text-muted-foreground">{resource.description}</p>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <Card className="mb-10 border-primary/30">
           <CardContent className="p-6">

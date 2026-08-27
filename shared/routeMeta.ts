@@ -18,8 +18,8 @@ export interface SharedRouteMeta {
 
 export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   "/": {
-    title: "Realist - Canadian Real Estate Investing Platform | Deal Analyzer & Cap Rate Map",
-    description: "Find, analyze, and compare Canadian real estate deals with AI-powered underwriting, a free deal analyzer, cap rate map, and market reports. Built by investor-focused broker Daniel Foch and mortgage broker Nick Hill — work with the team when you're ready.",
+    title: "Realist.ca | Institutional-Grade Tools for Canadian Real Estate Investors",
+    description: "Browse underwritten Canadian listings, screen distressed deals, analyze Toronto multiplex sites, and use research from Canada's #1 real estate podcast.",
   },
   "/tools": {
     title: "Free Canadian Real Estate Tools - Realist.ca",

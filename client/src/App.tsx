@@ -345,7 +345,11 @@ function Router() {
       <Route path="/experts" component={Experts} />
       <Route path="/experts/:userId" component={ExpertProfile} />
       <Route path="/tools/investor-os" component={InvestorOperatingSystem} />
-      <Route path="/deals">{() => <Redirect to="/watchlist" />}</Route>
+      <Route path="/deals">{() => <Redirect to="/tools/cap-rates" />}</Route>
+      <Route path="/my-deals">{() => <Redirect to="/watchlist" />}</Route>
+      <Route path="/multiplex">{() => <Redirect to="/tools/multiplex-underwriter" />}</Route>
+      <Route path="/research">{() => <Redirect to="/insights" />}</Route>
+      <Route path="/community">{() => <Redirect to="/meetups" />}</Route>
       <Route path="/watchlist" component={Watchlist} />
       <Route path="/deal-challenge">{() => <Redirect to="/tools/investor-os" />}</Route>
       <Route path="/professionals">{() => <Redirect to="/power-team" />}</Route>

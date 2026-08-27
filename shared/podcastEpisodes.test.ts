@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assignEpisodeSlugs,
+  deriveEpisodeResources,
   deriveEpisodeTopics,
   detectEpisodeCity,
   mapEpisodeCta,
@@ -146,5 +147,25 @@ describe("mapEpisodeCta", () => {
   it("prefers the mortgage/rate mapping when both themes appear", () => {
     const cta = mapEpisodeCta("Toronto Mortgage Rates Are Breaking The Market");
     expect(cta.primary.href).toBe("/tools/analyzer");
+  });
+});
+
+describe("deriveEpisodeResources", () => {
+  it("attaches mortgage dashboards and tools to a rate episode", () => {
+    const resources = deriveEpisodeResources("The Mortgage Renewal Shock Is Here");
+    expect(resources.map((resource) => resource.href)).toContain("/insights/mortgage-rates");
+    expect(resources.map((resource) => resource.href)).toContain("/tools/fixed-vs-variable");
+  });
+
+  it("attaches the distressed inventory and report to power-of-sale episodes", () => {
+    const resources = deriveEpisodeResources("Power of Sale Listings Just Hit a Two-Year High");
+    expect(resources.map((resource) => resource.href)).toContain("/insights/motivated-report");
+    expect(resources.some((resource) => resource.href.includes("distressOnly=1"))).toBe(true);
+  });
+
+  it("always returns a useful research link", () => {
+    expect(deriveEpisodeResources("An Interview With Our Moms")).toEqual([
+      expect.objectContaining({ href: "/reports" }),
+    ]);
   });
 });
