@@ -19,24 +19,27 @@ export function SiteNav() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-hairline bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/85">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
-          <Image src="/logo.png" alt="Realist" width={30} height={30} className="rounded" />
-          <span className="font-display text-xl font-semibold tracking-tight">Realist</span>
+    <header className="sticky top-0 z-50 border-b border-hairline bg-paper/90 backdrop-blur">
+      <div className="mx-auto flex h-13 max-w-[1600px] items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
+          {/* Mark is black-on-transparent; invert onto the dark ground. */}
+          <Image src="/logo.png" alt="" width={22} height={22} className="invert" />
+          <span className="text-[15px] font-bold tracking-tight">
+            realist<span className="text-brand">.ca</span>
+          </span>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-0.5 md:flex" aria-label="Primary">
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                className={`rounded px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
                   active
-                    ? "bg-brand-wash text-brand-deep"
-                    : "text-ink-soft hover:bg-brand-wash/60 hover:text-ink"
+                    ? "bg-raised text-ink"
+                    : "text-ink-soft hover:bg-surface hover:text-ink"
                 }`}
               >
                 {item.label}
@@ -45,7 +48,7 @@ export function SiteNav() {
           })}
           <Link
             href="/work-with-us"
-            className="ml-3 rounded-md bg-brand px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-deep"
+            className="ml-3 rounded bg-brand px-3 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-brand-deep"
           >
             Work with us
           </Link>
@@ -53,12 +56,12 @@ export function SiteNav() {
 
         <button
           type="button"
-          className="md:hidden rounded-md p-2 text-ink-soft hover:bg-brand-wash"
+          className="md:hidden rounded p-2 text-ink-soft hover:bg-surface"
           aria-expanded={open}
           aria-label="Toggle menu"
           onClick={() => setOpen((v) => !v)}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             {open ? (
               <>
                 <line x1="5" y1="5" x2="19" y2="19" />
@@ -82,7 +85,7 @@ export function SiteNav() {
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
-              className="block rounded-md px-3 py-2.5 text-base font-medium text-ink-soft hover:bg-brand-wash hover:text-ink"
+              className="block rounded px-3 py-2.5 text-[15px] font-medium text-ink-soft hover:bg-raised hover:text-ink"
             >
               {item.label}
             </Link>
@@ -90,7 +93,7 @@ export function SiteNav() {
           <Link
             href="/work-with-us"
             onClick={() => setOpen(false)}
-            className="mt-2 block rounded-md bg-brand px-3 py-2.5 text-center text-base font-semibold text-white"
+            className="mt-2 block rounded bg-brand px-3 py-2.5 text-center text-[15px] font-semibold text-white"
           >
             Work with us
           </Link>

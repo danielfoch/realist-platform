@@ -165,7 +165,7 @@ export function DealsExplorer() {
       )}
 
       {error && (
-        <p className="mt-6 rounded-md bg-red-50 px-4 py-3 text-sm text-bad">{error}</p>
+        <p className="mt-6 rounded-md bg-bad/10 px-4 py-3 text-sm text-bad">{error}</p>
       )}
 
       {data?.warming && (

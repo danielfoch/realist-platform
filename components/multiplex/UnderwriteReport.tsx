@@ -213,7 +213,7 @@ function RiskBadge({ level }: { level: string }) {
       ? "bg-brand-wash text-brand-deep"
       : level === "medium"
         ? "bg-signal-wash text-signal"
-        : "bg-red-100 text-bad";
+        : "bg-bad/15 text-bad";
   return (
     <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${tone}`}>
       {level} variance risk
@@ -544,7 +544,7 @@ export function UnderwriteReport({ payload }: { payload: UnderwritePayload }) {
             )}
           </div>
           <div className="flex flex-col items-end gap-1.5">
-            <span className="tnum rounded-lg bg-ink px-3 py-1.5 text-lg font-bold text-paper">
+            <span className="tnum rounded-lg bg-brand px-3 py-1.5 text-lg font-bold text-white">
               {fmtMoney(u.recommendedTakeout.score, true)}
             </span>
             <span className="text-[11px] text-ink-faint">projected profit, recommended path</span>
@@ -689,11 +689,11 @@ export function UnderwriteReport({ payload }: { payload: UnderwritePayload }) {
       )}
 
       {/* CTA band */}
-      <section className="rounded-xl bg-ink p-6 text-paper">
+      <section className="rounded-xl border border-hairline-strong bg-raised p-6">
         <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="font-display text-xl font-semibold">Want to actually build this?</h3>
-            <p className="mt-1 max-w-xl text-sm text-paper/70">
+            <p className="mt-1 max-w-xl text-sm text-ink-soft">
               Buy the site with our partner team and get 50% of our commission back at
               closing — plus an intro to the lenders and builders who do these projects.
             </p>
@@ -714,7 +714,7 @@ export function UnderwriteReport({ payload }: { payload: UnderwritePayload }) {
                     setTimeout(() => setCopied(false), 2000);
                   });
                 }}
-                className="rounded-md border border-paper/30 px-4 py-2.5 text-sm font-semibold text-paper hover:bg-paper/10"
+                className="rounded-md border border-hairline-strong px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface"
               >
                 {copied ? "Link copied ✓" : "Share this report"}
               </button>

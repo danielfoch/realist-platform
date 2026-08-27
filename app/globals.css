@@ -7,29 +7,43 @@
 @source "../lib";
 
 /*
- * Realist design language: institutional-grade research desk for regular
- * investors. Warm paper ground, near-black ink, heritage teal, hairline
- * rules, serif display type, tabular numerals for anything that counts.
- * Deliberately single-theme (light) — data-dense pages read best on paper.
+ * Realist design language — the terminal, not the brochure.
+ *
+ * Matches the brand system in the legacy app (design_guidelines.md: "Linear's
+ * refined dark interfaces, Stripe's professional restraint"): deep blue-black
+ * ground, Realist red as the single loud color, Inter for UI, JetBrains Mono
+ * for every financial figure. Deliberately dark-only — this is a data product
+ * and the dark surface IS the brand; every color below is painted explicitly.
+ *
+ * Token names are semantic and stable (paper/surface/ink/...) — pages style
+ * through them only.
  */
 @theme {
-  --color-paper: #f7f5f0;
-  --color-surface: #fffdf9;
-  --color-ink: #131c1a;
-  --color-ink-soft: #3d4a47;
-  --color-ink-faint: #6b7673;
-  --color-hairline: #e0dcd1;
-  --color-hairline-strong: #c9c4b6;
-  --color-brand: #0f766e;
-  --color-brand-deep: #0a4f4a;
-  --color-brand-wash: #e4efec;
-  --color-signal: #b45309;
-  --color-signal-wash: #f6ead9;
-  --color-good: #15803d;
-  --color-bad: #b91c1c;
+  /* Ground + surfaces (cool 220-family navy, from the legacy tokens). */
+  --color-paper: #070b14;        /* page ground        hsl(222 47% 5%)  */
+  --color-surface: #0c1220;      /* cards, panels      hsl(222 45% 9%)  */
+  --color-raised: #121a2c;       /* hovered / elevated                  */
+  --color-ink: #f3f6fb;          /* primary text                        */
+  --color-ink-soft: #a9b3c6;     /* secondary text                      */
+  --color-ink-faint: #66718a;    /* captions, labels                    */
+  --color-hairline: #1b2438;     /* borders                             */
+  --color-hairline-strong: #2a3550;
 
-  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  /* Realist red — the one loud color. Use sparingly, always for action. */
+  --color-brand: #ff3344;        /* hsl(356 100% 60%)                   */
+  --color-brand-deep: #e01f30;
+  --color-brand-wash: #2a1018;   /* red-tinted panel ground             */
+
+  /* Secondary signal (legacy accent, orange) + semantics. */
+  --color-signal: #ff7033;       /* hsl(16 100% 60%)                    */
+  --color-signal-wash: #2a180e;
+  --color-good: #2fbf71;
+  --color-bad: #ff5d6c;
+
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+  /* Display = Inter set tight; the brand has no serif. */
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
@@ -44,10 +58,20 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Numbers that line up: apply to any stat, table, or money figure. */
+/* Financial figures: mono + tabular, per the brand system. */
 .tnum {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-brand) 35%, transparent);
 }
 
 /* Show-notes / longform HTML we don't control class-by-class. */
@@ -59,9 +83,9 @@ body {
   margin-block: 0.9em;
 }
 .prose-notes a {
-  color: var(--color-brand);
+  color: var(--color-ink);
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--color-brand) 40%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--color-brand) 55%, transparent);
   text-underline-offset: 2px;
 }
 .prose-notes a:hover {
@@ -89,7 +113,40 @@ body {
 .prose-notes h3,
 .prose-notes h4 {
   font-family: var(--font-display);
+  letter-spacing: -0.01em;
   color: var(--color-ink);
   margin-block: 1.2em 0.5em;
   line-height: 1.25;
+}
+
+/* MapLibre chrome, tuned to the terminal. */
+.maplibregl-map {
+  font: inherit;
+}
+.maplibregl-ctrl-attrib {
+  background: rgba(7, 11, 20, 0.75) !important;
+  color: var(--color-ink-faint) !important;
+  font-size: 10px !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--color-ink-faint) !important;
+}
+.maplibregl-popup-content {
+  background: var(--color-surface) !important;
+  color: var(--color-ink) !important;
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  padding: 10px 12px !important;
+  font-family: var(--font-sans);
+}
+.maplibregl-popup-tip {
+  border-top-color: var(--color-hairline-strong) !important;
+  border-bottom-color: var(--color-hairline-strong) !important;
+}
+.maplibregl-popup-close-button {
+  color: var(--color-ink-faint) !important;
+  font-size: 16px;
+  right: 4px;
+  top: 2px;
 }

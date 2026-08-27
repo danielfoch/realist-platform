@@ -210,7 +210,7 @@ export default function WorkWithUsPage() {
       </section>
 
       {/* Lead form */}
-      <section id="lead-form" className="scroll-mt-20 border-t border-hairline bg-ink text-paper">
+      <section id="lead-form" className="scroll-mt-20 border-t border-hairline border-y-0 bg-raised">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_1.2fr]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-signal">
@@ -219,12 +219,12 @@ export default function WorkWithUsPage() {
             <h2 className="font-display mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
               Tell us what you&rsquo;re buying.
             </h2>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-paper/70">
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-ink-soft">
               A human reads every one of these — usually within a business day.
               We&rsquo;ll confirm the rebate works in your province, introduce
               you to the right partner agent, and get out of the way.
             </p>
-            <p className="mt-4 text-xs leading-relaxed text-paper/50">
+            <p className="mt-4 text-xs leading-relaxed text-ink-faint">
               No obligation, no spam. Talking to us doesn&rsquo;t create an
               agency relationship — that happens with the partner brokerage,
               in writing.

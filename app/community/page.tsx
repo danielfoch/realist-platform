@@ -120,7 +120,7 @@ export default async function CommunityPage() {
       </section>
 
       {/* Sept 15 flagship callout */}
-      <section className="border-b border-hairline bg-ink text-paper">
+      <section className="border-b border-hairline border-y-0 bg-raised">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center">
           <div className="flex items-center gap-5">
             <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg bg-signal text-white">
@@ -128,13 +128,13 @@ export default async function CommunityPage() {
               <span className="tnum font-display text-3xl font-semibold leading-none">15</span>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-paper/60">
+              <p className="text-xs font-semibold uppercase tracking-widest text-ink-faint">
                 Flagship event · Toronto — September 15
               </p>
               <h2 className="font-display mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
                 The big one: our Toronto live event.
               </h2>
-              <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-paper/70">
+              <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-ink-soft">
                 The whole community in one room — live show, market debate, and
                 the people you&rsquo;ve been arguing with in the comments.
               </p>
@@ -153,7 +153,7 @@ export default async function CommunityPage() {
             )}
             <a
               href="/community#events"
-              className="rounded-md border border-paper/30 px-5 py-3 text-sm font-semibold text-paper transition-colors hover:border-paper/70"
+              className="rounded-md border border-hairline-strong px-5 py-3 text-sm font-semibold text-ink transition-colors hover:border-ink-faint"
             >
               All events
             </a>

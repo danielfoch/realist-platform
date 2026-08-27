@@ -464,13 +464,13 @@ export default async function ListingDetailPage({
         </section>
 
         {/* Work-with-us CTA */}
-        <section className="mt-12 rounded-xl bg-ink p-6 text-paper sm:p-8">
+        <section className="mt-12 rounded-xl border border-hairline-strong bg-raised p-6 sm:p-8">
           <div className="flex flex-col items-start gap-5 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl">
               <h2 className="font-display text-2xl font-semibold tracking-tight">
                 Want this property?
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-paper/70">
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
                 Buy it with our team and get 50% of our commission back at
                 closing. That&rsquo;s how the tools stay free.
               </p>

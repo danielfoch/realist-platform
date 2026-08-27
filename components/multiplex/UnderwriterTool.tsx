@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { UnderwriteReport, type UnderwritePayload } from "./UnderwriteReport";
 
@@ -40,6 +40,18 @@ export function UnderwriterTool() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UnderwritePayload | null>(null);
   const [siteConfirm, setSiteConfirm] = useState<NeedsDimsPayload | null>(null);
+
+  // ?run=1 (from the homepage terminal's "Open the full report") auto-runs the
+  // prefilled screen once on mount.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current) return;
+    if (searchParams.get("run") === "1" && (searchParams.get("address") ?? "").length >= 5) {
+      autoRan.current = true;
+      void run();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function run() {
     if (address.trim().length < 5) {
@@ -200,7 +212,7 @@ export function UnderwriterTool() {
         </button>
 
         {error && (
-          <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-bad">{error}</p>
+          <p className="mt-3 rounded-md bg-bad/10 px-3 py-2 text-sm text-bad">{error}</p>
         )}
 
         {siteConfirm && (

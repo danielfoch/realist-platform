@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { JsonLd } from "@/components/JsonLd";
@@ -13,11 +13,11 @@ const inter = Inter({
   display: "swap",
 });
 
-const fraunces = Fraunces({
+const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-fraunces",
+  variable: "--font-jetbrains",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
-  axes: ["opsz"],
 });
 
 export const metadata: Metadata = {
@@ -42,11 +42,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-CA" className={`${inter.variable} ${fraunces.variable} h-full antialiased`}>
+    <html lang="en-CA" className={`${inter.variable} ${jetbrains.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <JsonLd json={jsonLdDocument(organizationNode(), webSiteNode())} />
         <SiteNav />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 flex flex-col">{children}</main>
         <SiteFooter />
       </body>
     </html>
