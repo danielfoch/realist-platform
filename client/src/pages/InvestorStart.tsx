@@ -53,7 +53,7 @@ const PRODUCT_LANES = [
     title: "Deals, already underwritten",
     description:
       "Browse CREA DDF listings by the numbers that matter: estimated rent, cap rate, cash flow, financing pressure, and deal quality.",
-    href: "/tools/cap-rates",
+    href: "/deals",
     cta: "Browse investment deals",
     icon: Map,
     accent: "from-blue-500/15 to-cyan-400/5",
@@ -75,7 +75,7 @@ const PRODUCT_LANES = [
     title: "Distressed and creative deals",
     description:
       "A focused search for power of sale, court-ordered sale, motivated-vendor and VTB language—with history instead of a disappearing list.",
-    href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1",
+    href: "/deals?deals=power_of_sale,motivated,vtb&distressOnly=1",
     cta: "See motivated deals",
     icon: Gavel,
     accent: "from-amber-500/15 to-yellow-400/5",
@@ -165,9 +165,9 @@ export default function InvestorStart() {
                   asChild
                   size="lg"
                   className="h-12 gap-2 px-6 text-base"
-                  onClick={() => trackCta("browse_deals", "/tools/cap-rates", "hero")}
+                  onClick={() => trackCta("browse_deals", "/deals", "hero")}
                 >
-                  <Link href="/tools/cap-rates">
+                  <Link href="/deals">
                     <Map className="h-4 w-4" />
                     Find an investment property
                   </Link>

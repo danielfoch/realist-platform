@@ -33,6 +33,10 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
     title: "Canadian Listing Map - Cap Rates, Yield & Motivated Deals",
     description: "One Canadian listing map for cap rates, rental yields, power of sale, motivated sellers, vendor take-back deals, and investor underwriting signals.",
   },
+  "/deals": {
+    title: "Underwritten Canadian Investment Properties | Realist.ca",
+    description: "Browse live CREA DDF listings with estimated rent, cap rate, cash flow, financing strength, power-of-sale, motivated-seller, and VTB signals already attached.",
+  },
   "/tools/buybox": {
     title: "Build Your Real Estate Buy Box - Realist.ca",
     description: "Define your investment criteria and get matched with on-market and off-market Canadian properties that fit.",

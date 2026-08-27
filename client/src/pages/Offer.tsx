@@ -19,7 +19,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, ArrowRight, FileSignature } from "lucide-react";
+import { CheckCircle, ArrowRight, FileSignature, HandCoins, ShieldCheck } from "lucide-react";
+import { Navigation } from "@/components/Navigation";
+import { SEO } from "@/components/SEO";
+import { SiteFooter } from "@/components/SiteFooter";
+import { buildOfferDealSummary, parseOfferFunnelSearch } from "@shared/offerFunnel";
 
 const OFFER_CONDITIONS = [
   "Financing",
@@ -55,11 +59,12 @@ export default function Offer() {
   const searchString = useSearch();
 
   const params = new URLSearchParams(searchString);
-  const prefillAddress = params.get("address") || "";
-  const prefillCity = params.get("city") || "";
-  const prefillProvince = params.get("province") || "";
-  const prefillListingId = params.get("listingId") || "";
-  const prefillPrice = params.get("price") || "";
+  const funnelContext = parseOfferFunnelSearch(searchString);
+  const prefillAddress = funnelContext.address || "";
+  const prefillCity = funnelContext.city || "";
+  const prefillProvince = funnelContext.province || "";
+  const prefillListingId = funnelContext.listingId || "";
+  const prefillPrice = funnelContext.price == null ? "" : String(funnelContext.price);
   const prefillDealId = params.get("dealId") || null;
 
   const form = useForm<FormValues>({
@@ -106,6 +111,14 @@ export default function Offer() {
         notes: values.notes || null,
         consentEmail: values.consentEmail,
         analysisId: prefillDealId || null,
+        dealSummary: buildOfferDealSummary({
+          ...funnelContext,
+          listingId: values.listingId || funnelContext.listingId,
+          address: values.propertyAddress || funnelContext.address,
+          city: values.city || funnelContext.city,
+          province: values.province || funnelContext.province,
+          price: values.offerPrice ? Number(values.offerPrice) : funnelContext.price,
+        }),
       };
       const res = await apiRequest("POST", "/api/offers", payload);
       return (await res.json()) as { success: boolean; id?: string };
@@ -120,8 +133,11 @@ export default function Offer() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full text-center" data-testid="offer-success">
+      <div className="min-h-screen bg-background">
+        <SEO title="Offer request received" description="Your Realist property offer request has been received." noIndex />
+        <Navigation />
+        <main className="flex min-h-[70vh] items-center justify-center p-4">
+          <Card className="max-w-lg w-full text-center" data-testid="offer-success">
           <CardHeader>
             <div className="flex justify-center mb-4">
               <CheckCircle className="h-16 w-16 text-green-500" />
@@ -138,14 +154,23 @@ export default function Offer() {
               </Button>
             </Link>
           </CardContent>
-        </Card>
+          </Card>
+        </main>
+        <SiteFooter />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto px-4 py-12">
+      <SEO
+        title="Start an Offer on a Canadian Investment Property"
+        description="Send a property and your underwriting to the Realist team to pressure-test the deal and prepare an offer."
+        canonicalUrl="/offer"
+        noIndex
+      />
+      <Navigation />
+      <main className="max-w-2xl mx-auto px-4 py-12">
         <div className="mb-8 space-y-2">
           <div className="flex items-center gap-2 mb-1">
             <FileSignature className="h-6 w-6 text-primary" />
@@ -153,8 +178,28 @@ export default function Offer() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Start your offer</h1>
           <p className="text-muted-foreground">
-            Tell us your terms and a Realist advisor will connect you with a realtor to draft and submit your offer on this property.
+            Tell us your terms. We will pressure-test the deal, confirm representation and rebate eligibility, and connect you with the team that can draft and submit it.
           </p>
+        </div>
+
+        <div className="mb-8 rounded-xl border border-primary/30 bg-primary/5 p-5" data-testid="offer-cashback-explainer">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <HandCoins className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="font-bold">Eligible buyers may receive 50% cash back</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                If our team represents you on an eligible purchase, 50% of the cooperating commission may be rebated after closing. We will confirm the exact amount and terms in writing before you commit.
+              </p>
+              {funnelContext.listingId && (
+                <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  MLS {funnelContext.listingId} and its Realist underwriting are attached to this request.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         <Form {...form}>
@@ -417,7 +462,8 @@ export default function Offer() {
             </Button>
           </form>
         </Form>
-      </div>
+      </main>
+      <SiteFooter />
     </div>
   );
 }

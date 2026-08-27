@@ -6,10 +6,10 @@ const FOOTER_GROUPS = [
   {
     title: "Invest",
     links: [
-      { label: "Browse deals", href: "/tools/cap-rates" },
+      { label: "Browse deals", href: "/deals" },
       { label: "Analyze a property", href: "/tools/analyzer" },
       { label: "Toronto multiplex", href: "/tools/multiplex-underwriter" },
-      { label: "Motivated deals", href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1" },
+      { label: "Motivated deals", href: "/deals?deals=power_of_sale,motivated,vtb&distressOnly=1" },
     ],
   },
   {

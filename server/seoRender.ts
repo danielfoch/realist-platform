@@ -132,6 +132,30 @@ const STATIC_DATA_PAGE_CONTENT: Record<string, { h1: string; intro: string; sect
       { href: "/insights/encyclopedia/cap-rate", label: "What is a cap rate?" },
     ],
   },
+  "/deals": {
+    h1: "Underwritten Canadian Investment Properties",
+    intro: "Browse live CREA DDF listings with an investor screen already attached. Realist combines list price with estimated market rent, operating assumptions, cap rate, cash flow, financing strength, and qualified power-of-sale, motivated-seller, and vendor take-back signals.",
+    sections: [
+      {
+        title: "Browse Canada through an investor lens",
+        body: "Search by city, price, bedrooms, units, and property type, then rank listings by estimated gross yield, cap rate, cash-on-cash return, DSCR, or monthly cash flow. Every estimate exposes its rent source, confidence, and underwriting assumptions so a screening signal is never confused with verified due diligence.",
+      },
+      {
+        title: "Distressed and creative-finance signals in the same map",
+        body: "Power of sale, foreclosure, court-ordered sale, motivated-vendor, and VTB language appears as filters and listing flags rather than a separate database. Realist stores listing snapshots over time for price-change, days-on-market, relist, removal, and monthly distressed-market reporting.",
+      },
+      {
+        title: "From listing to underwriting and offer",
+        body: "Open any property to adjust rents, expenses, financing, and unit count, save the analysis, test a Toronto lot in the multiplex underwriter, or send the listing and its underwriting context to the Realist team to pressure-test and start an offer.",
+      },
+    ],
+    links: [
+      { href: "/tools/analyzer", label: "Underwrite a property" },
+      { href: "/deals?deals=power_of_sale,motivated,vtb&distressOnly=1", label: "Browse distressed and VTB deals" },
+      { href: "/tools/multiplex-underwriter", label: "Underwrite a Toronto multiplex site" },
+      { href: "/insights/motivated-report", label: "Read the motivated-seller report" },
+    ],
+  },
   "/tools/cap-rates": {
     h1: "Cap Rate Map of Canada",
     intro: "Browse live Canadian listings by cap rate and rental yield. The map estimates gross yield and cap rate on active MLS listings using market rent data, so investors can screen Toronto, Vancouver, Calgary, Edmonton, Halifax, Montreal, and dozens of other markets before underwriting a single property.",

@@ -35,6 +35,26 @@ The podcast is the trust layer across all four lanes, not a fifth product silo.
   multiplex envelope, concept image, CMHC, and pro-forma engines intact.
 - Added clean public route aliases while retaining the legacy URLs behind them.
 
+## Phase 2 progress
+
+- Made `/deals` the canonical Canadian deal-discovery surface and removed the
+  public US beta switch from that journey.
+- Brought DDF listings, rent-derived underwriting, VTB/power-of-sale/motivated
+  signals, saved searches, and listing details into one visible product flow.
+- Connected listing and distress results to the offer funnel with a structured
+  deal summary so price, rent, cap rate, cash flow, source, and signals survive
+  the handoff to a future CRM or Konfidis integration.
+- Added a prominent but qualified 50% cooperating-commission cash-back message
+  for eligible represented buyers; final eligibility still requires written
+  confirmation.
+- Added crawler content, route metadata, and sitemap priority for `/deals` while
+  preserving the existing detailed listing SEO pages.
+
+This is the product-shell consolidation, not a claim that the underlying data is
+production-ready. Before launch, Realist still needs live DDF credential testing,
+rent-estimate source/confidence labels, saved-search delivery verification, a
+listing-data health dashboard, and an agreed Konfidis webhook/API contract.
+
 ## Product consolidation map
 
 | Public lane | Flagship surface | Supporting features that live inside it |

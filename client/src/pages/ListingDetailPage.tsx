@@ -26,6 +26,7 @@ import { FieldNotes } from "@/components/experts/FieldNotes";
 import { PropertyQuestionsPanel } from "@/components/PropertyQuestionsPanel";
 import { WatchListingButton } from "@/components/WatchListingButton";
 import { ListingEngagementStrip } from "@/components/ListingEngagementStats";
+import { BuyWithRealistCta } from "@/components/BuyWithRealistCta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,8 +154,8 @@ export default function ListingDetailPage() {
           <p className="max-w-md text-muted-foreground">
             This listing may have expired, sold, or been removed from the active feed.
           </p>
-          <Link href="/tools/listing-intelligence">
-            <Button variant="outline">Browse listing intelligence</Button>
+          <Link href="/deals">
+            <Button variant="outline">Browse underwritten deals</Button>
           </Link>
         </main>
       </div>
@@ -222,8 +223,8 @@ export default function ListingDetailPage() {
       <Navigation />
 
       <main className="container mx-auto max-w-6xl px-4 py-8">
-        <Link href="/tools/listing-intelligence" className="mb-6 inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="mr-1 h-4 w-4" /> Back to listing intelligence
+        <Link href="/deals" className="mb-6 inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Deals
         </Link>
 
         <section className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
@@ -352,6 +353,19 @@ export default function ListingDetailPage() {
                   address={fullAddress}
                   city={listing.addressCity || undefined}
                   price={toNumber(listing.listPrice) ?? undefined}
+                />
+                <BuyWithRealistCta
+                  context={{
+                    listingId: listing.mlsNumber,
+                    address: fullAddress,
+                    city: listing.addressCity,
+                    province: listing.addressProvince,
+                    price: listPriceNumber,
+                    estimatedMonthlyRent: toNumber(listing.estimatedMonthlyRent),
+                    capRate: toNumber(listing.capRate),
+                    monthlyCashFlow: toNumber(listing.cashFlowMonthly),
+                    source: "listing_detail",
+                  }}
                 />
               </CardContent>
             </Card>

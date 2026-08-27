@@ -116,7 +116,7 @@ export function buildListingStructuredData(listing: ListingSeoRecord): object[] 
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
-        { "@type": "ListItem", position: 2, name: "Listings", item: `${BASE_URL}/tools/listing-intelligence` },
+        { "@type": "ListItem", position: 2, name: "Deals", item: `${BASE_URL}/deals` },
         { "@type": "ListItem", position: 3, name: address, item: canonicalUrl },
       ],
     },

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { Link, useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { SEO } from "@/components/SEO";
@@ -87,6 +87,7 @@ import { isVacantLandLikeProperty } from "@shared/propertyEligibility";
 import { authPath } from "@/lib/authReturn";
 import { detectPossiblePlex } from "@shared/plexDetection";
 import { isTorontoListingAddress } from "@shared/listingLocation";
+import { BuyWithRealistCta } from "@/components/BuyWithRealistCta";
 
 interface CanadianListing {
   mlsNumber: string;
@@ -1634,6 +1635,7 @@ function ListingSentimentControls({ listing }: { listing: ListingWithCapRate }) 
 
 export default function CapRates() {
   const search = useSearch();
+  const [location] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [minPrice, setMinPrice] = useState("");
@@ -1696,7 +1698,9 @@ export default function CapRates() {
   ));
   // Unified country filter: Canadian listings come from CREA DDF,
   // US listings from the us_listings table (HomeHarvest). "all" shows both.
-  const [countryFilter, setCountryFilter] = useState<"all" | "ca" | "us">("all");
+  // Realist.ca is deliberately Canada-first. The US beta pipeline remains in
+  // the repo for experiments, but it is no longer part of the public product.
+  const [countryFilter, setCountryFilter] = useState<"all" | "ca" | "us">("ca");
   const showUsListingsLayer = countryFilter !== "ca";
   const [savedSearches, setSavedSearches] = useState<SavedSearchSignal[]>(() => getSavedSearchSignals().slice(0, 4));
   const [savedShortlist, setSavedShortlist] = useState<SavedListingSignal[]>(() => getSavedListingSignals().slice(0, 4));
@@ -2517,14 +2521,12 @@ export default function CapRates() {
       dealCategories.length > 0,
       !showDistressOverlay,
       showDistressOnly,
-      countryFilter !== "all",
       sortMetric !== "gross_yield",
       sortDirection !== "desc",
       metricSource !== "realist_estimate",
     ].filter(Boolean).length;
   }, [
     consensusLabelFilter,
-    countryFilter,
     dealCategories.length,
     includeUnavailableMetrics,
     maxCapRate,
@@ -3529,6 +3531,19 @@ export default function CapRates() {
                     })()}
                   />
                 )}
+                <BuyWithRealistCta
+                  context={{
+                    listingId: selectedListing.mlsNumber,
+                    address: formatAddress(selectedListing.address),
+                    city: selectedListing.address?.city,
+                    province: selectedListing.address?.state,
+                    price: typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice,
+                    estimatedMonthlyRent: selectedListing.estimatedMonthlyRent,
+                    capRate: selectedListing.capRate,
+                    monthlyCashFlow: selectedListing.monthlyCashFlow,
+                    source: "deals_map_detail",
+                  }}
+                />
                 <CommunityMetricsSummary aggregate={agg} />
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
                   <div className="flex items-center justify-between gap-2">
@@ -4088,6 +4103,21 @@ export default function CapRates() {
         </div>
         {selectedListing.mlsNumber && (
           <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+            <BuyWithRealistCta
+              compact
+              className="mb-2 w-full"
+              context={{
+                listingId: selectedListing.mlsNumber,
+                address: formatAddress(selectedListing.address),
+                city: selectedListing.address?.city,
+                province: selectedListing.address?.state,
+                price: typeof selectedListing.listPrice === "string" ? parseFloat(selectedListing.listPrice) : selectedListing.listPrice,
+                estimatedMonthlyRent: selectedListing.estimatedMonthlyRent,
+                capRate: selectedListing.capRate,
+                monthlyCashFlow: selectedListing.monthlyCashFlow,
+                source: "deals_map_quick_card",
+              }}
+            />
             <PropertyQuestionWidget
               listingMlsNumber={selectedListing.mlsNumber}
               listingSnapshot={questionSnapshot}
@@ -4183,6 +4213,22 @@ export default function CapRates() {
                 />
               )}
             </div>
+
+            <BuyWithRealistCta
+              context={{
+                listingId: selectedDistressListing.mlsNumber,
+                address: formatAddress(selectedDistressListing.address as CanadianListing["address"]),
+                city: selectedDistressListing.address?.city,
+                province: selectedDistressListing.address?.state,
+                price: selectedDistressListing.listPrice,
+                source: "deals_distress_detail",
+                signals: [
+                  selectedDistressListing.distress.categoriesTriggered.foreclosure_pos ? "power of sale" : "",
+                  selectedDistressListing.distress.categoriesTriggered.vtb ? "VTB" : "",
+                  selectedDistressListing.distress.categoriesTriggered.motivated ? "motivated seller" : "",
+                ].filter(Boolean),
+              }}
+            />
 
             <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
               <p className="font-medium mb-1">Listing remarks</p>
@@ -4442,9 +4488,9 @@ export default function CapRates() {
   return (
     <div className="h-screen h-[100dvh] bg-background flex flex-col overflow-hidden">
       <SEO
-        title={SHARED_ROUTE_META["/tools/cap-rates"].title}
-        description={SHARED_ROUTE_META["/tools/cap-rates"].description}
-        canonicalUrl="/tools/cap-rates"
+        title={SHARED_ROUTE_META[location === "/deals" ? "/deals" : "/tools/cap-rates"].title}
+        description={SHARED_ROUTE_META[location === "/deals" ? "/deals" : "/tools/cap-rates"].description}
+        canonicalUrl={location === "/deals" ? "/deals" : "/tools/cap-rates"}
         keywords="cap rate map canada, cap rates by city, rental yield map, canadian real estate cap rates, investment property search"
       />
       <Navigation />
@@ -4453,9 +4499,9 @@ export default function CapRates() {
         <div className="px-3 py-3 space-y-3">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="hidden md:block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Deal sourcing</p>
-              <h1 className="text-sm font-bold tracking-tight">Yield Map of Canada</h1>
-              <p className="hidden md:block text-sm text-muted-foreground">Browse listings by cap rate and rental yield — search broadly, shortlist quickly, then hand the winner into underwriting.</p>
+              <p className="hidden md:block text-xs font-semibold uppercase tracking-[0.18em] text-primary">Institutional-grade deal sourcing</p>
+              <h1 className="text-base font-bold tracking-tight">Underwritten Canadian deals</h1>
+              <p className="hidden md:block text-sm text-muted-foreground">Browse live CREA DDF listings with estimated rent, yield, cash flow and financing strength already attached.</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="text-[10px]" data-testid="badge-results-summary">
@@ -4494,7 +4540,7 @@ export default function CapRates() {
               ) : (
                 <Target className="h-4 w-4 mr-1.5" />
               )}
-              Find Deals
+              Search Canada
             </Button>
             <Button
               variant="outline"
@@ -4545,7 +4591,7 @@ export default function CapRates() {
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-2" data-testid="deal-quick-filters">
             <div className="mr-1 min-w-[92px]">
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Quick search</p>
-              <p className="text-[10px] text-muted-foreground">One map, deal flags on top.</p>
+              <p className="text-[10px] text-muted-foreground">One map. Three useful signals.</p>
             </div>
             {DEAL_CATEGORY_CONFIG.map((category) => {
               const active = dealCategories.includes(category.id);
@@ -4844,33 +4890,6 @@ export default function CapRates() {
                 <p className="text-[10px] text-muted-foreground">Filter standard listings down to overlap with motivated matches.</p>
               </div>
             </div>
-            <div className="flex min-w-[220px] items-center gap-2 rounded-md border border-blue-200 bg-background px-3 py-2">
-              <div className="flex overflow-hidden rounded-md border border-border" data-testid="toggle-country-filter">
-                {([
-                  ["all", "All"],
-                  ["ca", "Canada"],
-                  ["us", "US"],
-                ] as const).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setCountryFilter(value)}
-                    className={`px-2 py-1 text-[11px] font-medium transition-colors ${
-                      countryFilter === value
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-muted-foreground hover:text-foreground"
-                    }`}
-                    data-testid={`button-country-${value}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div>
-                <p className="text-[11px] font-medium">Country</p>
-                <p className="text-[10px] text-muted-foreground">CREA (CA) + HomeHarvest US beta markers.</p>
-              </div>
-            </div>
             <Button
               size="sm"
               className="h-8"
@@ -4908,7 +4927,7 @@ export default function CapRates() {
                 setDealCategories([]);
                 setShowDistressOverlay(true);
                 setShowDistressOnly(false);
-                setCountryFilter("all");
+                setCountryFilter("ca");
               }}
               disabled={activeFilterCount === 0}
               data-testid="button-reset-filters"

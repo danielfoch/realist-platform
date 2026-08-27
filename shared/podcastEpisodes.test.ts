@@ -121,18 +121,18 @@ describe("mapEpisodeCta", () => {
 
   it("maps cap-rate/market episodes to the cap rate map", () => {
     const cta = mapEpisodeCta("Which Housing Market Has The Best Cap Rates?");
-    expect(cta.primary.href).toBe("/tools/cap-rates");
+    expect(cta.primary.href).toBe("/deals");
   });
 
   it("adds the /markets/:city link when a programmatic market page exists", () => {
     const cta = mapEpisodeCta("Is Toronto Still Investable?");
-    expect(cta.primary.href).toBe("/tools/cap-rates");
+    expect(cta.primary.href).toBe("/deals");
     expect(cta.secondary?.href).toBe("/markets/toronto");
   });
 
   it("recognized city without a market page still maps to cap rates, with no market link", () => {
     const cta = mapEpisodeCta("What Is Going On In Montreal?");
-    expect(cta.primary.href).toBe("/tools/cap-rates");
+    expect(cta.primary.href).toBe("/deals");
     expect(cta.secondary).toBeUndefined();
     expect(detectEpisodeCity("What Is Going On In Montreal?")?.marketSlug).toBeNull();
   });

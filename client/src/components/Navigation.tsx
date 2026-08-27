@@ -35,7 +35,7 @@ const PRIMARY_LINKS = [
   {
     label: "Deals",
     href: "/deals",
-    matches: ["/tools/cap-rates", "/listings/", "/watchlist"],
+    matches: ["/deals", "/tools/cap-rates", "/listings/", "/watchlist"],
   },
   {
     label: "Multiplex",

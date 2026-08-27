@@ -207,7 +207,7 @@ export function detectEpisodeCity(title: string): { city: string; marketSlug: st
 /**
  * Map an episode title to the contextual tool CTA shown on its page:
  * - mortgage / rate themes → /tools/analyzer (rate-sensitivity framing)
- * - cap rate / market / recognized city → /tools/cap-rates, plus the
+ * - cap rate / market / recognized city → /deals, plus the
  *   /markets/:city page as a secondary link when one exists
  * - everything else → /tools/analyzer with the default conversion copy
  */
@@ -229,7 +229,7 @@ export function mapEpisodeCta(title: string): EpisodeCta {
       copy: cityMatch
         ? `Browse live cap rates and yields in ${cityMatch.city} and across Canada — free.`
         : "Browse live cap rates and rental yields across Canadian markets — free.",
-      primary: { href: "/tools/cap-rates", label: "Explore the Cap Rate Map" },
+      primary: { href: "/deals", label: "Browse Underwritten Deals" },
     };
     if (cityMatch?.marketSlug) {
       cta.secondary = {
@@ -282,7 +282,7 @@ export function deriveEpisodeResources(title: string): EpisodeResource[] {
       kind: "report",
     });
     add({
-      href: "/tools/cap-rates?deals=power_of_sale,motivated,vtb&distressOnly=1",
+      href: "/deals?deals=power_of_sale,motivated,vtb&distressOnly=1",
       title: "Live distressed-deal search",
       description: "Browse current DDF listings with qualified distress language.",
       kind: "tool",
