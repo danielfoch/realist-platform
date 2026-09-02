@@ -51,7 +51,7 @@ Preferred communication style: Simple, everyday language.
 - **Authentication**: Custom email/password system with secure sessions and Google OAuth integration.
 - **GHL Webhooks for Activity Tracking**: Tracks user logins and deal analyses for CRM and Google Sheets backup.
 - **Leaderboard & Analytics**: Tracks user contributions and deal analyses, blending user data with DDF market insights.
-- **DDF Yield Crawler**: Monthly automated province-based crawl of CREA DDF for listing snapshots and city-level yield aggregation, refreshed daily.
+- **DDF Yield Crawler**: Nightly crawl (02:20 America/Toronto, `server/ddfYieldCrawler.ts`) of every active CREA DDF listing across all 13 provinces/territories, paging to exhaustion (5,000-page safety ceiling, flagged as truncated). Storage grain is one `ddf_listing_snapshots` row per listing per month, upserted nightly; `ddf_listing_price_history` appends a row only when a listing is new for the month or its price/status changes. Every attempt is recorded in `ddf_crawl_runs` (per-province stored/API counts, coverage ratio, truncation, errors); a Postgres advisory lock stops autoscale instances double-crawling, and a startup catch-up runs if the last completed crawl is >26h old. Health: `GET /api/ddf-crawl/health` (admin) and `GET /api/ddf/freshness` (public) in `server/ddfCrawlRoutes.ts`; manual trigger `POST /api/ddf-crawl/trigger`.
 - **Realtor Partner Network**: System for lead distribution and referral management.
 - **Monthly Market Report**: Auto-generated reports for Canadian cities.
 - **Market Report Builder**: Interactive tool for custom market reports with geographic search, metric selection, time-series charts, and export.

@@ -3751,6 +3751,86 @@ export const insertDdfListingSnapshotSchema = createInsertSchema(ddfListingSnaps
 export type InsertDdfListingSnapshot = z.infer<typeof insertDdfListingSnapshotSchema>;
 export type DdfListingSnapshot = typeof ddfListingSnapshots.$inferSelect;
 
+// Append-only price/status trail alongside the monthly snapshot grain above.
+// ddf_listing_snapshots keeps one row per listing per month (too many readers
+// depend on that to change it), so the nightly upsert overwrites yesterday's
+// price. A row lands here only when a listing first appears in a month or its
+// list_price / standard_status differs from the previous stored row — most
+// listings never change, so this stays small while preserving every cut.
+// Mirrored by migrations/0017_ddf_crawl_runs.sql.
+export const ddfListingPriceHistory = pgTable("ddf_listing_price_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  listingKey: varchar("listing_key").notNull(),
+  mlsNumber: varchar("mls_number"),
+  province: text("province"),
+  city: text("city"),
+  listPrice: real("list_price"),
+  standardStatus: text("standard_status"),
+  observedAt: timestamp("observed_at").defaultNow().notNull(),
+  snapshotMonth: varchar("snapshot_month", { length: 7 }).notNull(),
+}, () => [
+  sql`CREATE INDEX IF NOT EXISTS ddf_price_history_listing_observed_idx ON ddf_listing_price_history(listing_key, observed_at DESC)`,
+]);
+
+export const insertDdfListingPriceHistorySchema = createInsertSchema(ddfListingPriceHistory).omit({
+  id: true,
+  observedAt: true,
+});
+export type InsertDdfListingPriceHistory = z.infer<typeof insertDdfListingPriceHistorySchema>;
+export type DdfListingPriceHistory = typeof ddfListingPriceHistory.$inferSelect;
+
+// Run ledger for the nightly DDF crawl. One row per attempt (including runs
+// skipped because another instance held the advisory lock) so the health
+// endpoint can answer "when did we last finish, and how much did we get" from
+// the database instead of from whichever autoscale instance's logs survived.
+// Mirrored by migrations/0017_ddf_crawl_runs.sql.
+export type DdfCrawlRunStatus = "running" | "completed" | "failed" | "skipped";
+export type DdfCrawlRunTrigger = "cron" | "manual" | "startup" | "monthly_backstop";
+export interface DdfCrawlProvinceStat {
+  province: string;
+  stored: number;
+  apiCount: number | null;
+  ratio: number | null;
+  pages: number;
+  truncated?: boolean;
+  error?: string;
+}
+export interface DdfCoverageEntry {
+  province: string;
+  stored: number;
+  apiCount: number;
+  ratio: number;
+  alert: boolean;
+}
+
+export const ddfCrawlRuns = pgTable("ddf_crawl_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  finishedAt: timestamp("finished_at"),
+  status: text("status").$type<DdfCrawlRunStatus>().default("running").notNull(),
+  trigger: text("trigger").$type<DdfCrawlRunTrigger>().default("manual").notNull(),
+  snapshotMonth: varchar("snapshot_month", { length: 7 }).notNull(),
+  provincesCompleted: integer("provinces_completed").default(0).notNull(),
+  provincesTotal: integer("provinces_total").default(0).notNull(),
+  totalListings: integer("total_listings").default(0).notNull(),
+  truncated: boolean("truncated").default(false).notNull(),
+  perProvince: jsonb("per_province").$type<DdfCrawlProvinceStat[]>(),
+  coverage: jsonb("coverage").$type<DdfCoverageEntry[]>(),
+  error: text("error"),
+}, () => [
+  sql`CREATE INDEX IF NOT EXISTS ddf_crawl_runs_started_at_idx ON ddf_crawl_runs(started_at DESC)`,
+]);
+
+export const insertDdfCrawlRunSchema = createInsertSchema(ddfCrawlRuns).omit({
+  id: true,
+  startedAt: true,
+});
+// $inferInsert rather than z.infer: the zod schema widens the $type<>'d
+// status/trigger/jsonb columns back to string/unknown, and storage wants the
+// narrow unions so a typo'd status can't land in the ledger.
+export type InsertDdfCrawlRun = Omit<typeof ddfCrawlRuns.$inferInsert, "id" | "startedAt">;
+export type DdfCrawlRun = typeof ddfCrawlRuns.$inferSelect;
+
 export const cityYieldHistory = pgTable("city_yield_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   city: text("city").notNull(),

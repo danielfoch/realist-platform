@@ -169,6 +169,12 @@ import {
   ddfListingSnapshots,
   type DdfListingSnapshot,
   type InsertDdfListingSnapshot,
+  ddfListingPriceHistory,
+  type InsertDdfListingPriceHistory,
+  ddfCrawlRuns,
+  type DdfCrawlRun,
+  type InsertDdfCrawlRun,
+  type DdfCrawlRunStatus,
   cityYieldHistory,
   type CityYieldHistory,
   type InsertCityYieldHistory,
@@ -527,6 +533,12 @@ export interface IStorage {
   insertDdfListingSnapshot(data: InsertDdfListingSnapshot): Promise<DdfListingSnapshot>;
   insertDdfListingSnapshotsBatch(data: InsertDdfListingSnapshot[]): Promise<number>;
   getDdfSnapshotsByCity(city: string, month: string): Promise<DdfListingSnapshot[]>;
+  getDdfSnapshotFreshness(month: string): Promise<{ count: number; maxCapturedAt: Date | null; provinces: string[] }>;
+  insertDdfPriceHistoryBatch(rows: InsertDdfListingPriceHistory[]): Promise<number>;
+  startDdfCrawlRun(data: Pick<InsertDdfCrawlRun, "trigger" | "snapshotMonth" | "provincesTotal">): Promise<DdfCrawlRun>;
+  updateDdfCrawlRun(id: string, patch: Partial<InsertDdfCrawlRun>): Promise<void>;
+  getLatestDdfCrawlRun(opts?: { status?: DdfCrawlRunStatus }): Promise<DdfCrawlRun | undefined>;
+  listDdfCrawlRuns(limit?: number): Promise<DdfCrawlRun[]>;
 
   upsertCityYieldHistory(data: InsertCityYieldHistory): Promise<CityYieldHistory>;
   getCityYieldHistory(city?: string, province?: string): Promise<CityYieldHistory[]>;
@@ -2344,6 +2356,63 @@ export class DatabaseStorage implements IStorage {
       inserted += batch.length;
     }
     return inserted;
+  }
+
+  async getDdfSnapshotFreshness(month: string): Promise<{ count: number; maxCapturedAt: Date | null; provinces: string[] }> {
+    const [totals] = await db
+      .select({
+        count: sql<number>`count(*)::int`,
+        maxCapturedAt: sql<Date | null>`max(${ddfListingSnapshots.capturedAt})`,
+      })
+      .from(ddfListingSnapshots)
+      .where(eq(ddfListingSnapshots.snapshotMonth, month));
+    const provinceRows = await db
+      .selectDistinct({ province: ddfListingSnapshots.province })
+      .from(ddfListingSnapshots)
+      .where(eq(ddfListingSnapshots.snapshotMonth, month));
+    return {
+      count: totals?.count ?? 0,
+      // node-postgres hands timestamps back as Date; the sql<> tag is only a
+      // type hint, so normalize in case a driver returns the ISO string.
+      maxCapturedAt: totals?.maxCapturedAt ? new Date(totals.maxCapturedAt) : null,
+      provinces: provinceRows.map((r) => r.province).filter((p): p is string => !!p),
+    };
+  }
+
+  async insertDdfPriceHistoryBatch(rows: InsertDdfListingPriceHistory[]): Promise<number> {
+    if (rows.length === 0) return 0;
+    const batchSize = 500;
+    for (let i = 0; i < rows.length; i += batchSize) {
+      await db.insert(ddfListingPriceHistory).values(rows.slice(i, i + batchSize));
+    }
+    return rows.length;
+  }
+
+  async startDdfCrawlRun(data: Pick<InsertDdfCrawlRun, "trigger" | "snapshotMonth" | "provincesTotal">): Promise<DdfCrawlRun> {
+    const [row] = await db.insert(ddfCrawlRuns).values({ ...data, status: "running" }).returning();
+    return row;
+  }
+
+  async updateDdfCrawlRun(id: string, patch: Partial<InsertDdfCrawlRun>): Promise<void> {
+    await db.update(ddfCrawlRuns).set(patch).where(eq(ddfCrawlRuns.id, id));
+  }
+
+  async getLatestDdfCrawlRun(opts?: { status?: DdfCrawlRunStatus }): Promise<DdfCrawlRun | undefined> {
+    const [row] = await db
+      .select()
+      .from(ddfCrawlRuns)
+      .where(opts?.status ? eq(ddfCrawlRuns.status, opts.status) : undefined)
+      .orderBy(desc(ddfCrawlRuns.startedAt))
+      .limit(1);
+    return row;
+  }
+
+  async listDdfCrawlRuns(limit: number = 10): Promise<DdfCrawlRun[]> {
+    return db
+      .select()
+      .from(ddfCrawlRuns)
+      .orderBy(desc(ddfCrawlRuns.startedAt))
+      .limit(Math.max(1, Math.min(limit, 100)));
   }
 
   async getDdfSnapshotsByCity(city: string, month: string): Promise<DdfListingSnapshot[]> {
