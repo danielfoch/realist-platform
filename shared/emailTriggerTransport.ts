@@ -58,6 +58,24 @@ export function emailTriggerDedupeKey(triggerType: string, userId: string, at: D
   return `email_trigger:${triggerType}:${userId}:${at.getTime()}`;
 }
 
+/**
+ * Permanent dedupe key for legacy-table triggers that must fire once per
+ * entity, not once per pending queue generation. SLA nags are incident alerts:
+ * once the team has been notified about an opportunity, a five-minute sweep
+ * must never manufacture a fresh email merely because the previous row moved
+ * from `pending` to `sent`.
+ *
+ * Other legacy trigger types retain their historical pending-only semantics.
+ */
+export function persistentEmailTriggerDedupeKey(
+  triggerType: string,
+  opportunityId: string | null | undefined,
+): string | null {
+  return triggerType === "sla_breach_nag" && opportunityId
+    ? `email_trigger:sla_breach_nag:opportunity:${opportunityId}`
+    : null;
+}
+
 /** Trigger types the legacy worker only delivered 24h after enqueue. */
 const DELAYED_TRIGGER_TYPES: ReadonlySet<string> = new Set([
   "warm_lead_24h_followup",

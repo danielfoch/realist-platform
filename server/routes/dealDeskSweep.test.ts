@@ -16,8 +16,10 @@ const state = {
   /** Raw-SQL sweep results, drained in call order. */
   executeQueue: [] as Array<{ rows: Array<Record<string, unknown>> }>,
   executeCalls: 0,
+  enqueueResults: [] as boolean[],
   queued: [] as Array<{
     triggerType: string;
+    leadId?: string | null;
     userId?: string | null;
     opportunityId?: string | null;
     payload?: Record<string, unknown>;
@@ -51,12 +53,13 @@ vi.mock("../userActivity", () => ({ logUserActivity: async () => undefined }));
 vi.mock("../emailTriggerProducer", () => ({
   queueEmailTrigger: async (input: {
     triggerType: string;
+    leadId?: string | null;
     userId?: string | null;
     opportunityId?: string | null;
     payload?: Record<string, unknown>;
   }) => {
     state.queued.push(input);
-    return { queued: true };
+    return { transport: "legacy", enqueued: state.enqueueResults.shift() ?? true };
   },
 }));
 
@@ -66,6 +69,7 @@ beforeEach(() => {
   state.breachRows = [];
   state.executeQueue = [];
   state.executeCalls = 0;
+  state.enqueueResults = [];
   state.queued = [];
   state.selectWhereArgs = [];
 });
@@ -92,9 +96,22 @@ describe("runSlaBreachSweep", () => {
   });
 
   it("carries the assignee through so the nag says who is on the hook", async () => {
-    state.breachRows = [{ id: "opp-1", userId: "user-1", assignedTo: "nick" }];
+    state.breachRows = [{ id: "opp-1", leadId: "lead-1", userId: "user-1", assignedTo: "nick" }];
     await runSlaBreachSweep();
+    expect(state.queued[0].leadId).toBe("lead-1");
     expect(state.queued[0].payload).toEqual({ assigned_to: "nick", opportunity_id: "opp-1" });
+  });
+
+  it("counts only rows that won the permanent enqueue race", async () => {
+    state.breachRows = [
+      { id: "opp-1", userId: null, assignedTo: null },
+      { id: "opp-2", userId: null, assignedTo: null },
+    ];
+    state.enqueueResults = [true, false];
+
+    const result = await runSlaBreachSweep();
+
+    expect(result).toEqual({ breaches: 2, queued: 1 });
   });
 
   it("marks an unassigned breach as such rather than dropping it", async () => {

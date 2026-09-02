@@ -42,6 +42,7 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - `lead_submissions` — investor leads from landing pages
 - `listing_comments` — public/private listing comments; question forum extension adds `thread_type`, `question_status`, `requested_expert_categories`, and `listing_snapshot` for listing-linked property Q&A
 - `notification_preferences` — per-email-category preferences; question forum extension adds `expert_question_digest_enabled` and `expert_question_live_alerts_enabled`
+- `email_triggers` — outbound Deal Desk trigger history; `dedupe_key` is nullable and globally unique when present. SLA breach nags use `email_trigger:sla_breach_nag:opportunity:<id>` so each opportunity can alert only once across sent history and autoscaled instances (migration `0016_email_trigger_entity_dedupe.sql`)
 - `realtor_lead_notifications` — partner lead notifications; Phase 1 partner reactivation adds a `partner_type` discriminator (`realtor` | `mortgage_broker` | `lender`, default `realtor`) so financing-intent leads reuse this table instead of a parallel mortgage/lender table (migration `0015_partner_lead_routing.sql`)
 - `realtor_market_claims` — partner market claims; `partner_type` covers `realtor`, `mortgage_broker`, and `lender` (lender claims are province/`National` level and match any deal in the claimed region)
 

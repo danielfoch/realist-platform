@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // ─── Mock state ──────────────────────────────────────────────────────────────
 
 const state = {
+  schemaExecuteCount: 0,
   insertReturning: [] as Record<string, unknown>[],
   insertedValues: [] as Record<string, unknown>[],
   selectRows: [] as Record<string, unknown>[],
@@ -30,6 +31,9 @@ vi.mock("./db", () => {
   };
   return {
     db: {
+      execute: async () => {
+        state.schemaExecuteCount += 1;
+      },
       insert: () => ({
         values: (v: Record<string, unknown>) => ({
           returning: async () => {
@@ -108,6 +112,12 @@ beforeEach(() => {
 // ─── POST /api/booked-call-leads ─────────────────────────────────────────────
 
 describe("POST /api/booked-call-leads", () => {
+  it("ensures the storage schema before accepting public submissions", async () => {
+    const res = await request(makeApp()).post("/api/booked-call-leads").send(validBody);
+    expect(res.status).toBe(201);
+    expect(state.schemaExecuteCount).toBeGreaterThanOrEqual(3);
+  });
+
   it("creates a lead anonymously and returns its id", async () => {
     const res = await request(makeApp()).post("/api/booked-call-leads").send(validBody);
     expect(res.status).toBe(201);

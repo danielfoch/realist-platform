@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -22,6 +22,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { PodcastDigestSubscribe } from "@/components/PodcastDigestSubscribe";
+import {
+  trackPodcastPageView,
+  trackPodcastPlatformClick,
+  trackPodcastPlay,
+} from "@/lib/metaPixel";
 import { 
   Play, 
   Pause, 
@@ -64,6 +69,10 @@ export default function Podcast() {
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    trackPodcastPageView("podcast_hub");
+  }, []);
 
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(questionSchema),
@@ -111,6 +120,7 @@ export default function Podcast() {
       } else {
         audioRef.play();
         setIsPlaying(true);
+        trackPodcastPlay({ episodeId: episode.slug || episode.audioUrl, title: episode.title, source: "podcast_hub" });
       }
     } else {
       if (audioRef) {
@@ -121,6 +131,7 @@ export default function Podcast() {
       audio.addEventListener("loadedmetadata", () => setDuration(audio.duration));
       audio.addEventListener("ended", () => setIsPlaying(false));
       audio.play();
+      trackPodcastPlay({ episodeId: episode.slug || episode.audioUrl, title: episode.title, source: "podcast_hub" });
       setAudioRef(audio);
       setCurrentEpisode(episode);
       setIsPlaying(true);
@@ -429,6 +440,7 @@ export default function Podcast() {
                 href={PODCAST_APPLE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackPodcastPlatformClick({ platform: "apple", source: "podcast_hub" })}
                 data-testid="link-apple-podcasts"
               >
                 Apple Podcasts
@@ -439,6 +451,7 @@ export default function Podcast() {
                 href={PODCAST_SPOTIFY_URL}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackPodcastPlatformClick({ platform: "spotify", source: "podcast_hub" })}
                 data-testid="link-spotify"
               >
                 Spotify
@@ -449,6 +462,7 @@ export default function Podcast() {
                 href={PODCAST_YOUTUBE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackPodcastPlatformClick({ platform: "youtube", source: "podcast_hub" })}
                 data-testid="link-youtube"
               >
                 YouTube

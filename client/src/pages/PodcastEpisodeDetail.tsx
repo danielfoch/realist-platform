@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -13,6 +14,11 @@ import {
   PODCAST_YOUTUBE_URL,
 } from "@shared/brand";
 import { PodcastDigestSubscribe } from "@/components/PodcastDigestSubscribe";
+import {
+  trackPodcastPageView,
+  trackPodcastPlatformClick,
+  trackPodcastPlay,
+} from "@/lib/metaPixel";
 
 const BASE_URL = "https://realist.ca";
 
@@ -53,6 +59,10 @@ export default function PodcastEpisodeDetail() {
     enabled: !!slug,
     retry: false,
   });
+
+  useEffect(() => {
+    if (episode) trackPodcastPageView("episode_detail");
+  }, [episode]);
 
   if (isLoading) {
     return (
@@ -169,6 +179,11 @@ export default function PodcastEpisodeDetail() {
                 preload="none"
                 src={episode.audioUrl}
                 className="w-full"
+                onPlay={() => trackPodcastPlay({
+                  episodeId: episode.slug,
+                  title: episode.title,
+                  source: "episode_detail",
+                })}
                 data-testid="audio-episode-player"
               >
                 <a href={episode.audioUrl}>Listen to {episode.title}</a>
@@ -230,17 +245,17 @@ export default function PodcastEpisodeDetail() {
           <p className="text-muted-foreground mb-3 text-sm">Listen on your favourite platform</p>
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" size="sm" asChild>
-              <a href={PODCAST_APPLE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-episode-apple">
+              <a href={PODCAST_APPLE_URL} target="_blank" rel="noopener noreferrer" onClick={() => trackPodcastPlatformClick({ platform: "apple", source: "episode_detail", episodeId: episode.slug, title: episode.title })} data-testid="link-episode-apple">
                 Apple Podcasts
               </a>
             </Button>
             <Button variant="outline" size="sm" asChild>
-              <a href={PODCAST_SPOTIFY_URL} target="_blank" rel="noopener noreferrer" data-testid="link-episode-spotify">
+              <a href={PODCAST_SPOTIFY_URL} target="_blank" rel="noopener noreferrer" onClick={() => trackPodcastPlatformClick({ platform: "spotify", source: "episode_detail", episodeId: episode.slug, title: episode.title })} data-testid="link-episode-spotify">
                 Spotify
               </a>
             </Button>
             <Button variant="outline" size="sm" asChild>
-              <a href={PODCAST_YOUTUBE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-episode-youtube">
+              <a href={PODCAST_YOUTUBE_URL} target="_blank" rel="noopener noreferrer" onClick={() => trackPodcastPlatformClick({ platform: "youtube", source: "episode_detail", episodeId: episode.slug, title: episode.title })} data-testid="link-episode-youtube">
                 YouTube
               </a>
             </Button>

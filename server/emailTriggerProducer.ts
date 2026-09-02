@@ -35,6 +35,7 @@ import {
   emailTriggerDedupeKey,
   emailTriggerScheduledFor,
   isEmailTriggerTemplateKey,
+  persistentEmailTriggerDedupeKey,
   resolveEmailTriggerTransport,
   TEAM_AUDIENCE_TRIGGER_TYPES,
   type EmailTriggerTransport,
@@ -105,6 +106,7 @@ export async function queueEmailTrigger(input: QueueEmailTriggerInput): Promise<
       opportunityId,
       triggerType,
       payload,
+      dedupeKey: persistentEmailTriggerDedupeKey(triggerType, opportunityId),
       status: "pending",
     });
     if (input.onDuplicate === "throw") {

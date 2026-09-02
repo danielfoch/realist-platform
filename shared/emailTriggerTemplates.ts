@@ -7,7 +7,7 @@
  *     channel='email_resend' rows whose templateKey is a trigger type.
  *
  * No DB, no Resend, no side effects — the only inputs besides the payload are
- * process.env (REPLIT_DOMAINS for admin links, SESSION_SECRET for unsubscribe
+ * process.env (canonical public URL for admin links, SESSION_SECRET for unsubscribe
  * tokens), which keeps output deterministic under a fixed environment and lets
  * shared/emailTriggerTemplates.test.ts pin byte-exact parity hashes.
  */
@@ -29,8 +29,9 @@ export function verifyUnsubscribeToken(userId: string, token: string): boolean {
 }
 
 function adminDashboardUrl() {
-  const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-  return domain ? `https://${domain}/admin/deal-desk` : "https://realist.ca/admin/deal-desk";
+  const baseUrl = (process.env.PUBLIC_SITE_URL || process.env.PUBLIC_BASE_URL || "https://realist.ca")
+    .replace(/\/+$/, "");
+  return `${baseUrl}/admin/deal-desk`;
 }
 
 function emailHeader(title: string, subtitle: string, accentColor = "#22c55e") {

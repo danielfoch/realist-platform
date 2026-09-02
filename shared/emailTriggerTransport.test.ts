@@ -3,6 +3,7 @@ import {
   emailTriggerDedupeKey,
   emailTriggerScheduledFor,
   isEmailTriggerTemplateKey,
+  persistentEmailTriggerDedupeKey,
   resolveEmailTriggerTransport,
   TEAM_AUDIENCE_TRIGGER_TYPES,
 } from "./emailTriggerTransport";
@@ -11,7 +12,6 @@ import {
   EMAIL_TRIGGER_TYPES,
   getSampleTriggerPayload,
 } from "./emailTriggerTemplates";
-import { EMAIL_TRIGGER_TYPES } from "./emailTriggerTemplates";
 
 describe("resolveEmailTriggerTransport", () => {
   it("defaults to the new queue transport when unset", () => {
@@ -83,6 +83,20 @@ describe("emailTriggerDedupeKey", () => {
       .not.toBe(emailTriggerDedupeKey("financing_interest", "u2", at));
     expect(emailTriggerDedupeKey("financing_interest", "u1", at))
       .not.toBe(emailTriggerDedupeKey("saved_deal_no_submit", "u1", at));
+  });
+});
+
+describe("persistentEmailTriggerDedupeKey", () => {
+  it("is stable per SLA opportunity across queue generations", () => {
+    expect(persistentEmailTriggerDedupeKey("sla_breach_nag", "opp-1"))
+      .toBe("email_trigger:sla_breach_nag:opportunity:opp-1");
+    expect(persistentEmailTriggerDedupeKey("sla_breach_nag", "opp-1"))
+      .toBe(persistentEmailTriggerDedupeKey("sla_breach_nag", "opp-1"));
+  });
+
+  it("does not change the repeat semantics of other triggers", () => {
+    expect(persistentEmailTriggerDedupeKey("hot_lead_immediate_followup", "opp-1")).toBeNull();
+    expect(persistentEmailTriggerDedupeKey("sla_breach_nag", null)).toBeNull();
   });
 });
 

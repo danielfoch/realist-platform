@@ -218,6 +218,8 @@ const SPONSORS = [
     url: "/community/events/partners/platform-insurance",
     internal: true,
   },
+  { src: "/partners/elevate.png", alt: "Elevate Realty", url: "/community/events/partners/elevate", internal: true },
+  { src: "/partners/propcare.png", alt: "PropCare", url: "/community/events/partners/propcare", internal: true },
   { src: "/partners/storeys.png", alt: "STOREYS", url: "https://storeys.com/", internal: false },
   { src: "/partners/real-estate-magazine.png", alt: "Real Estate Magazine", url: "https://realestatemagazine.ca/", internal: false },
 ];

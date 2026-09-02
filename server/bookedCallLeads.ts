@@ -17,7 +17,7 @@
 
 import type { Express, Request, Response } from "express";
 import "express-session";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import { isAdmin } from "./auth";
 import { logUserActivity } from "./userActivity";
@@ -66,7 +66,61 @@ function bookedCallContext(input: {
   };
 }
 
+let bookedCallSchemaReady: Promise<void> | null = null;
+
+/**
+ * Production Replit deploys start the compiled server directly, so a Drizzle
+ * migration can be missed even when the matching SQL file is committed. Keep
+ * this public lead path self-healing: warm the table at route registration and
+ * await the same promise before every operation. A failed attempt is cleared so
+ * the next request can retry after a transient database outage.
+ */
+export function ensureBookedCallLeadSchema(): Promise<void> {
+  if (bookedCallSchemaReady) return bookedCallSchemaReady;
+
+  bookedCallSchemaReady = (async () => {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "booked_call_leads" (
+        "id"              varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        "user_id"         varchar REFERENCES "users"("id") ON DELETE SET NULL,
+        "full_name"       text NOT NULL,
+        "email"           text NOT NULL,
+        "phone"           text,
+        "intent"          text NOT NULL DEFAULT 'financing',
+        "source_page"     text,
+        "underwriting_id" varchar,
+        "analysis_id"     varchar REFERENCES "property_analyses"("id") ON DELETE SET NULL,
+        "deal_snapshot"   jsonb,
+        "message"         text,
+        "status"          text NOT NULL DEFAULT 'new',
+        "notes"           text,
+        "forwarded_at"    timestamp,
+        "forwarded_via"   text,
+        "created_at"      timestamp NOT NULL DEFAULT now(),
+        "updated_at"      timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS "idx_booked_call_leads_status"
+      ON "booked_call_leads" ("status", "created_at")
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS "idx_booked_call_leads_user"
+      ON "booked_call_leads" ("user_id")
+    `);
+  })().catch((error) => {
+    bookedCallSchemaReady = null;
+    throw error;
+  });
+
+  return bookedCallSchemaReady;
+}
+
 export function registerBookedCallLeadRoutes(app: Express): void {
+  ensureBookedCallLeadSchema()
+    .then(() => console.log("[booked-call-leads] schema ensured"))
+    .catch((err) => console.error("[booked-call-leads] schema ensure failed:", err instanceof Error ? err.message : err));
+
   // Startup visibility, mirroring the GHL_WEBHOOK_URL log in auth.ts.
   const dest = bldDestinationStatus();
   console.log(
@@ -90,6 +144,8 @@ export function registerBookedCallLeadRoutes(app: Express): void {
       }
       const input = parsed.data;
       const userId = req.session?.userId ?? null;
+
+      await ensureBookedCallLeadSchema();
 
       const [lead] = await db.insert(bookedCallLeads).values({
         userId,
@@ -176,6 +232,7 @@ export function registerBookedCallLeadRoutes(app: Express): void {
    */
   app.get("/api/booked-call-leads", isAdmin, async (req: Request, res: Response) => {
     try {
+      await ensureBookedCallLeadSchema();
       const status = typeof req.query.status === "string" ? req.query.status : undefined;
       if (status !== undefined && !isBookedCallLeadStatus(status)) {
         res.status(400).json({ success: false, error: `Invalid status — expected one of: ${BOOKED_CALL_LEAD_STATUSES.join(", ")}` });
@@ -200,6 +257,7 @@ export function registerBookedCallLeadRoutes(app: Express): void {
    */
   app.patch("/api/booked-call-leads/:id", isAdmin, async (req: Request, res: Response) => {
     try {
+      await ensureBookedCallLeadSchema();
       const { status, notes } = (req.body ?? {}) as { status?: unknown; notes?: unknown };
       if (status !== undefined && !isBookedCallLeadStatus(status)) {
         res.status(400).json({ success: false, error: `Invalid status — expected one of: ${BOOKED_CALL_LEAD_STATUSES.join(", ")}` });
