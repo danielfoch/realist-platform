@@ -14,7 +14,12 @@ import { NextStepBlock } from "@/components/NextStepBlock";
 import { MultiplexEventCta } from "@/components/events/MultiplexEventCta";
 import { VerdictSummary } from "@/components/multiplex/VerdictSummary";
 import { UnlockMoreUnderwrites } from "@/components/multiplex/UnlockMoreUnderwrites";
-import { loadPropertyContext, savePropertyContext } from "@/lib/propertyContext";
+import { ZoningTierBanner } from "@/components/multiplex/ZoningTierBanner";
+import { MliGradient, type MliGradientData } from "@/components/multiplex/MliGradient";
+import { MultiplexActionRail } from "@/components/multiplex/MultiplexActionRail";
+import { ListingPreview, type ListingSummary } from "@/components/multiplex/ListingPreview";
+import type { ZoningTier } from "@shared/multiplexZoningTier";
+import { loadPropertyContext, propertyContextToParams, savePropertyContext } from "@/lib/propertyContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +31,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { track } from "@/lib/analytics";
 import {
   Building2, MapPin, TreeDeciduous, Landmark, Waves, AlertTriangle,
-  CheckCircle2, Loader2, Share2, ArrowRight, Sparkles, Scale,
+  CheckCircle2, Loader2, Share2, ArrowRight, Sparkles, Scale, Search, Database,
 } from "lucide-react";
 
 // ─── Types (mirror the API result shape) ────────────────────────────────────
@@ -87,6 +92,11 @@ interface ConfigResult {
 
 interface UnderwriteResult {
   sixplex: { eligible: boolean; status: string; certainty: string };
+  /** Present on reports run after the tier/gradient shipped; absent on older shared links. */
+  ward?: { number: number; name: string | null } | null;
+  zoningTier?: ZoningTier;
+  mliGradient?: MliGradientData | null;
+  listing?: ListingSummary | null;
   maxUnitsAsOfRight: number;
   envelope: { practicalGfaSqft: { value: number; source: string; certainty: string }; theoreticalGfaSqft: { value: number }; flags: Array<{ key: string; message: string }> };
   configs: ConfigResult[];
@@ -104,6 +114,16 @@ interface UnderwriteResult {
     recommendation: { bestPath: string; dealKillers: string[]; verifyWithProfessionals: string[]; nextSteps: string[] };
   };
   reportSource?: string;
+}
+
+interface DataHealth {
+  zoningPolygons: number;
+  wards: number;
+  streetTrees: number;
+  heritageProperties: number;
+  wardDetection: "verified" | "inferred_fsa_fallback";
+  sixplexWards: number[];
+  ddfIngestion: boolean;
 }
 
 // ─── Small pieces ────────────────────────────────────────────────────────────
@@ -236,6 +256,26 @@ export default function MultiplexUnderwriterPage() {
   });
   const [laneAccess, setLaneAccess] = useState(false);
 
+  // Listing-first entry: an MLS number or realtor.ca URL pulled through the
+  // CREA DDF feed fills address, coordinates, price and lot before any
+  // underwrite is spent. ?mls= / ?listing= auto-pull on load.
+  const [listingRef, setListingRef] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("share")) return "";
+    return params.get("listing") ?? params.get("mls") ?? "";
+  });
+  const [listingPreview, setListingPreview] = useState<ListingSummary | null>(null);
+  const [listingInCoverage, setListingInCoverage] = useState(true);
+  const [listingBusy, setListingBusy] = useState(false);
+  const [listingError, setListingError] = useState<string | null>(null);
+  const [feedUnavailable, setFeedUnavailable] = useState(false);
+  const [mlsNumber, setMlsNumber] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("share") ? null : params.get("mls");
+  });
+  const [health, setHealth] = useState<DataHealth | null>(null);
+  const [underwritingId, setUnderwritingId] = useState<string | null>(null);
+
   // Fine-tune workflow: every takeout parameter is overridable per run.
   // Empty string = platform default; percent fields are entered as percents.
   const [tune, setTune] = useState({
@@ -285,10 +325,169 @@ export default function MultiplexUnderwriterPage() {
         setAddress(data.address);
         setSite(data.site);
         setResult(data.underwrite);
+        if (data.underwrite?.listing?.mlsNumber) setMlsNumber(data.underwrite.listing.mlsNumber);
+        if (data.underwrite?.listing?.listPrice && !purchasePrice) setPurchasePrice(String(data.underwrite.listing.listPrice));
         setStep("report");
       } catch { /* fall through to normal flow */ }
     })();
   }, []);
+
+  // Data coverage footnote — public, cached server-side.
+  useEffect(() => {
+    fetch("/api/multiplex-underwriter/health")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((h) => h && setHealth(h))
+      .catch(() => {});
+  }, []);
+
+  // Auto-pull when arriving with ?mls= or ?listing= (e.g. from the cap-rates map).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("listing") ?? params.get("mls");
+    if (ref && !params.get("share")) void pullListing(ref);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function feasibilityHref(listing: ListingSummary): string {
+    // The feasibility page seeds from the shared property context, so write it
+    // there too; the params make the link self-describing.
+    savePropertyContext({
+      address: listing.address,
+      city: listing.city || undefined,
+      province: listing.province || undefined,
+      postalCode: listing.postalCode || undefined,
+      price: listing.listPrice ?? undefined,
+      mlsNumber: listing.mlsNumber ?? undefined,
+      lotFrontageM: listing.lot.frontageFt ?? undefined,
+      lotDepthM: listing.lot.depthFt ?? undefined,
+    });
+    return `/tools/multiplex-feasibility${propertyContextToParams({
+      address: listing.address,
+      city: listing.city || undefined,
+      province: listing.province || undefined,
+      price: listing.listPrice ?? undefined,
+      mlsNumber: listing.mlsNumber ?? undefined,
+      lotFrontageM: listing.lot.frontageFt ?? undefined,
+      lotDepthM: listing.lot.depthFt ?? undefined,
+    })}`;
+  }
+
+  function applyListingToForm(listing: ListingSummary) {
+    setAddress(listing.address);
+    if (listing.postalCode) setPostalCode(listing.postalCode);
+    if (listing.lot.frontageFt && listing.lot.depthFt) {
+      setFrontage(String(listing.lot.frontageFt));
+      setDepth(String(listing.lot.depthFt));
+    }
+    if (listing.listPrice) setPurchasePrice(String(listing.listPrice));
+    setMlsNumber(listing.mlsNumber);
+    savePropertyContext({
+      address: listing.address,
+      city: listing.city || undefined,
+      province: listing.province || undefined,
+      postalCode: listing.postalCode || undefined,
+      price: listing.listPrice ?? undefined,
+      mlsNumber: listing.mlsNumber ?? undefined,
+    });
+  }
+
+  async function pullListing(rawRef?: string) {
+    const ref = (rawRef ?? listingRef).trim();
+    if (!ref) return;
+    setListingBusy(true);
+    setListingError(null);
+    setFeedUnavailable(false);
+    setListingPreview(null);
+    track({ event: "feature_used", feature: "multiplex_listing_pull", details: { ref: ref.slice(0, 40) } });
+    try {
+      const res = await fetch(`/api/multiplex-underwriter/listing/${encodeURIComponent(ref)}`, { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 503 || data?.code === "ListingSourceUnavailable") {
+          setFeedUnavailable(true);
+        } else {
+          setListingError(String(data?.error || "Could not pull that listing."));
+        }
+        return;
+      }
+      const listing = data.listing as ListingSummary;
+      setListingPreview(listing);
+      setListingInCoverage(!!data.inCoverage);
+      setListingRef(ref);
+      if (data.inCoverage) applyListingToForm(listing);
+    } catch {
+      setListingError("The listing feed did not respond — try again or enter the address manually.");
+    } finally {
+      setListingBusy(false);
+    }
+  }
+
+  /** Runs the underwrite straight from the previewed listing (server re-resolves the feed). */
+  async function underwriteListing() {
+    if (!listingPreview) return;
+    setBusy(true);
+    setError(null);
+    track({ event: "analyzer_started", address: listingPreview.address, strategy: "multiplex", source: "multiplex_underwriter_listing" });
+    try {
+      const isUrl = /realtor\.ca|^https?:\/\//i.test(listingRef);
+      const res = await apiRequest("POST", "/api/multiplex-underwriter", {
+        ...(isUrl ? { listingUrl: listingRef.trim() } : { mlsNumber: (listingPreview.mlsNumber ?? listingRef).trim() }),
+        // Previewed fields double as fallbacks if the feed hiccups between calls.
+        address: listingPreview.address,
+        postalCode: listingPreview.postalCode ?? undefined,
+        lat: listingPreview.lat ?? undefined,
+        lng: listingPreview.lng ?? undefined,
+        ...(Number(frontage) > 0 && Number(depth) > 0 ? { lotFrontageFt: Number(frontage), lotDepthFt: Number(depth) } : {}),
+        purchasePrice: purchasePrice ? Number(purchasePrice) : listingPreview.listPrice ?? undefined,
+        laneAccess,
+      });
+      handleUnderwriteResponse(await res.json());
+    } catch (e: any) {
+      handleUnderwriteError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleUnderwriteResponse(data: any) {
+    if (data.status === "outside_coverage") {
+      setListingPreview(data.listing);
+      setListingInCoverage(false);
+      setListingError(String(data.message));
+      return;
+    }
+    if (data.listing?.mlsNumber) setMlsNumber(data.listing.mlsNumber);
+    if (data.status === "needs_lot_dimensions") {
+      setSite(data.site);
+      if (data.listing) applyListingToForm(data.listing);
+      setStep("confirm");
+    } else if (data.status === "complete") {
+      setSite(data.site);
+      setResult(data.underwrite);
+      setShareToken(data.shareToken ?? null);
+      setUnderwritingId(data.id ?? null);
+      if (data.listing?.listPrice && !purchasePrice) setPurchasePrice(String(data.listing.listPrice));
+      setStep("report");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function handleUnderwriteError(e: any) {
+    const status = e?.status as number | undefined;
+    const message = String(e?.message || "Underwrite failed — please try again.");
+    if (status === 429) {
+      // The cap is a capture moment, not an error — hitting it means they are
+      // working real sites. Show the offer instead of a red banner.
+      setLimitReached(true);
+      setError(null);
+    } else if (status === 503 && e?.code === "ListingSourceUnavailable") {
+      setFeedUnavailable(true);
+    } else if (status === 400 || status === 404 || status === 422) {
+      setError(message);
+    } else {
+      setError("The site lookup service is temporarily unavailable. Your address was not the problem — please try again shortly.");
+    }
+  }
 
   async function resolveSite() {
     setBusy(true);
@@ -313,30 +512,9 @@ export default function MultiplexUnderwriterPage() {
             }
           : {}),
       });
-      const data = await res.json();
-      if (data.status === "needs_lot_dimensions") {
-        setSite(data.site);
-        setStep("confirm");
-      } else if (data.status === "complete") {
-        setSite(data.site);
-        setResult(data.underwrite);
-        setShareToken(data.shareToken);
-        setStep("report");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
+      handleUnderwriteResponse(await res.json());
     } catch (e: any) {
-      const status = e?.status as number | undefined;
-      const message = String(e?.message || "Underwrite failed — please try again.");
-      if (status === 429) {
-        // The cap is a capture moment, not an error — hitting it means they are
-        // working real sites. Show the offer instead of a red banner.
-        setLimitReached(true);
-        setError(null);
-      } else if (status === 400 || status === 422) {
-        setError(message);
-      } else {
-        setError("Could not resolve that address. Check the spelling and try again.");
-      }
+      handleUnderwriteError(e);
     } finally {
       setBusy(false);
     }
@@ -357,6 +535,8 @@ export default function MultiplexUnderwriterPage() {
         lotDepthFt: Number(depth),
         purchasePrice: purchasePrice ? Number(purchasePrice) : undefined,
         laneAccess,
+        // Keep the listing attached to re-runs so the report stays linked to the MLS record.
+        ...(mlsNumber ? { mlsNumber } : {}),
         mliCommitments: {
           affordabilityLevel: tune.affordabilityLevel,
           energyLevel: tune.energyLevel,
@@ -364,27 +544,9 @@ export default function MultiplexUnderwriterPage() {
         },
         ...(Object.keys(overrides).length > 0 ? { assumptionOverrides: overrides } : {}),
       });
-      const data = await res.json();
-      if (data.status === "complete") {
-        setSite(data.site);
-        setResult(data.underwrite);
-        setShareToken(data.shareToken);
-        setStep("report");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
+      handleUnderwriteResponse(await res.json());
     } catch (e: any) {
-      const status = e?.status as number | undefined;
-      const message = String(e?.message || "Underwrite failed — please try again.");
-      if (status === 429) {
-        // The cap is a capture moment, not an error — hitting it means they are
-        // working real sites. Show the offer instead of a red banner.
-        setLimitReached(true);
-        setError(null);
-      } else if (status === 400 || status === 422) {
-        setError(message);
-      } else {
-        setError("Underwrite failed — please try again.");
-      }
+      handleUnderwriteError(e);
     } finally {
       setBusy(false);
     }
@@ -417,8 +579,16 @@ export default function MultiplexUnderwriterPage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+          <div className="mb-6 flex flex-col gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400 sm:flex-row sm:items-center sm:justify-between">
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+            </span>
+            <Link
+              href="/tools/multiplex-feasibility"
+              className="shrink-0 font-semibold underline underline-offset-2"
+            >
+              Use the manual feasibility screener
+            </Link>
           </div>
         )}
 
@@ -431,11 +601,67 @@ export default function MultiplexUnderwriterPage() {
           </div>
         )}
 
-        {/* Step 1 — address */}
+        {/* Step 1 — listing or address */}
         {step === "input" && !limitReached && (
           <Card className="max-w-xl mx-auto">
-            <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Property address</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Property</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              {/* Start from a listing — the feed fills address, lot and price. */}
+              <div className="rounded-lg border border-ai/30 bg-ai/5 p-4 space-y-3" data-testid="listing-start">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-sm font-medium flex items-center gap-2"><Search className="h-4 w-4 text-ai" /> Start from a listing</p>
+                  <span className="text-xs text-muted-foreground">MLS® number or realtor.ca link</span>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="listing-ref"
+                    placeholder="C1234567 or https://www.realtor.ca/real-estate/…"
+                    value={listingRef}
+                    onChange={(e) => setListingRef(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void pullListing(); } }}
+                    className="h-11"
+                    disabled={feedUnavailable}
+                    data-testid="input-listing-ref"
+                  />
+                  <Button variant="secondary" className="h-11 shrink-0" disabled={listingBusy || feedUnavailable || listingRef.trim().length < 5} onClick={() => pullListing()} data-testid="button-pull-listing">
+                    {listingBusy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Pulling…</> : "Pull listing"}
+                  </Button>
+                </div>
+                {feedUnavailable && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    The listing feed is not connected on this server — enter the address and lot dimensions below instead.
+                  </p>
+                )}
+                {listingError && !feedUnavailable && (
+                  <p className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1.5"><AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" /> {listingError}</p>
+                )}
+                {listingPreview && (
+                  <>
+                    <ListingPreview
+                      listing={listingPreview}
+                      inCoverage={listingInCoverage}
+                      busy={busy}
+                      onUnderwrite={underwriteListing}
+                      onOutsideCoverage={() => {
+                        const href = feasibilityHref(listingPreview);
+                        track({ event: "cta_clicked", cta: "multiplex_outside_coverage_feasibility", location: "/tools/multiplex-underwriter", destination: href });
+                        window.location.assign(href);
+                      }}
+                    />
+                    {listingInCoverage && (
+                      <p className="text-xs text-muted-foreground">
+                        The fields below are filled from the listing — adjust anything the feed got wrong, then run.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="relative text-center">
+                <Separator />
+                <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-card px-2 text-xs uppercase tracking-wide text-muted-foreground">or enter it yourself</span>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="address">Street address (Toronto)</Label>
                 <Input id="address" placeholder="123 Logan Ave" value={address} onChange={(e) => setAddress(e.target.value)} className="h-12" />
@@ -480,6 +706,17 @@ export default function MultiplexUnderwriterPage() {
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center">3 free underwrites per day — sign in for more.</p>
+              {health && (
+                <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1.5 flex-wrap" data-testid="data-coverage">
+                  <Database className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span>Data coverage — Ward boundaries: {health.wardDetection === "verified" ? `verified (${health.wards} wards)` : "inferred from postal area"}</span>
+                  <span>· Zoning polygons: {health.zoningPolygons.toLocaleString()}</span>
+                  <span>· Street trees: {health.streetTrees.toLocaleString()}</span>
+                  <span>· Heritage: {health.heritageProperties.toLocaleString()}</span>
+                  <span>· Sixplex wards: {health.sixplexWards.join(", ")}</span>
+                  <span>· Listing feed: {health.ddfIngestion ? "connected" : "not connected"}</span>
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -580,11 +817,25 @@ export default function MultiplexUnderwriterPage() {
                     <Share2 className="h-4 w-4 mr-1" /> {copied ? "Copied!" : "Share"}
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => { setStep("input"); setResult(null); setSite(null); }}>New underwrite</Button>
+                <Button variant="outline" size="sm" onClick={() => { setStep("input"); setResult(null); setSite(null); setListingPreview(null); setUnderwritingId(null); setMlsNumber(null); }}>New underwrite</Button>
               </div>
             </div>
 
-            {/* The answer first. Everything below is the reasoning. */}
+            {/* The zoning answer first — "6+1" or "4+1", ward named — then the
+                money verdict, then the two things to do about it. Everything
+                below that is the reasoning. */}
+            {result.zoningTier && (
+              <ZoningTierBanner
+                tier={result.zoningTier}
+                envelopeMaxUnits={Math.max(
+                  0,
+                  ...result.configs
+                    .filter((c) => c.config.approvalPath === "as_of_right")
+                    .map((c) => c.config.units - (c.config.includesSuite ? 1 : 0)),
+                )}
+              />
+            )}
+
             {(() => {
               const rec = result.recommendedTakeout;
               const rc = rec?.configKey ? result.configs.find((c) => c.config.key === rec.configKey) : null;
@@ -594,21 +845,35 @@ export default function MultiplexUnderwriterPage() {
               // is honest to headline — quoting one path's max price would imply
               // a recommendation the model explicitly declined to make.
               const hasPath = rc != null && (isHold || isCondo);
+              const maxLandPrice = hasPath ? (isHold ? rc!.residualLandValue.rentalPath : rc!.residualLandValue.condoPath) : null;
+              const askingPrice = purchasePrice ? Number(purchasePrice) : result.listing?.listPrice ?? null;
+              const best = result.mliGradient?.bestCell ?? null;
+              const railUnits = rc?.config.units ?? result.maxUnitsAsOfRight;
               return (
-                <VerdictSummary
-                  maxUnitsAsOfRight={result.maxUnitsAsOfRight}
-                  sixplexEligible={result.sixplex.eligible}
-                  sixplexCertainty={result.sixplex.certainty}
-                  takeout={rec?.takeout ?? null}
-                  maxLandPrice={
-                    hasPath ? (isHold ? rc!.residualLandValue.rentalPath : rc!.residualLandValue.condoPath) : null
-                  }
-                  returnLabel={hasPath ? (isHold ? "Yield on cost" : "Margin on cost") : null}
-                  returnValue={
-                    hasPath ? (isHold ? rc!.rentalHold.yieldOnCost : rc!.condoExit.marginOnCost) : null
-                  }
-                  askingPrice={purchasePrice ? Number(purchasePrice) : null}
-                />
+                <>
+                  <VerdictSummary
+                    maxUnitsAsOfRight={result.maxUnitsAsOfRight}
+                    sixplexEligible={result.sixplex.eligible}
+                    sixplexCertainty={result.sixplex.certainty}
+                    takeout={rec?.takeout ?? null}
+                    maxLandPrice={maxLandPrice}
+                    returnLabel={hasPath ? (isHold ? "Yield on cost" : "Margin on cost") : null}
+                    returnValue={hasPath ? (isHold ? rc!.rentalHold.yieldOnCost : rc!.condoExit.marginOnCost) : null}
+                    askingPrice={askingPrice}
+                    tierHeadline={result.zoningTier?.headline ?? null}
+                  />
+                  <MultiplexActionRail
+                    placement="top"
+                    address={address || site.address}
+                    mlsNumber={mlsNumber ?? result.listing?.mlsNumber ?? null}
+                    underwritingId={underwritingId}
+                    maxLandPrice={maxLandPrice}
+                    askingPrice={askingPrice}
+                    units={railUnits}
+                    verdict={result.zoningTier?.headline ?? `${result.maxUnitsAsOfRight} units as-of-right`}
+                    mli={best ? { points: best.points, maxLtv: best.ltv, loan: best.loan, dscr: best.dscr, premiumPct: best.premiumPct } : null}
+                  />
+                </>
               );
             })()}
 
@@ -694,6 +959,9 @@ export default function MultiplexUnderwriterPage() {
                 </Card>
               );
             })()}
+
+            {/* MLI Select gradient — points tier × LTV, coloured by where DSCR holds */}
+            {result.mliGradient && <MliGradient gradient={result.mliGradient} />}
 
             {/* Envelope */}
             <Card>
@@ -874,8 +1142,33 @@ export default function MultiplexUnderwriterPage() {
             )}
 
             {/* Highest-intent moment on the platform: they have just been told
-                what their lot supports. Event first (cheap, dated, social),
-                then the book-a-call path. */}
+                what their lot supports and read the reasoning. The offer /
+                financing rail again, then the event, then the generic next step. */}
+            {(() => {
+              const rec = result.recommendedTakeout;
+              const rc = rec?.configKey ? result.configs.find((c) => c.config.key === rec.configKey) : null;
+              const isHold = rec?.takeout === "mli_hold";
+              const isCondo = rec?.takeout === "condo_termination";
+              const hasPath = rc != null && (isHold || isCondo);
+              const maxLandPrice = hasPath ? (isHold ? rc!.residualLandValue.rentalPath : rc!.residualLandValue.condoPath) : null;
+              const askingPrice = purchasePrice ? Number(purchasePrice) : result.listing?.listPrice ?? null;
+              const best = result.mliGradient?.bestCell ?? null;
+              return (
+                <MultiplexActionRail
+                  placement="bottom"
+                  className="mt-8"
+                  address={address || site.address}
+                  mlsNumber={mlsNumber ?? result.listing?.mlsNumber ?? null}
+                  underwritingId={underwritingId}
+                  maxLandPrice={maxLandPrice}
+                  askingPrice={askingPrice}
+                  units={rc?.config.units ?? result.maxUnitsAsOfRight}
+                  verdict={result.zoningTier?.headline ?? `${result.maxUnitsAsOfRight} units as-of-right`}
+                  mli={best ? { points: best.points, maxLtv: best.ltv, loan: best.loan, dscr: best.dscr, premiumPct: best.premiumPct } : null}
+                />
+              );
+            })()}
+
             <MultiplexEventCta placement="result" sourcePage="/tools/multiplex-underwriter" className="mt-8" />
 
             <NextStepBlock sourcePage="/tools/multiplex-underwriter" className="mt-6" />

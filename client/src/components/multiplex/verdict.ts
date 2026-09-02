@@ -55,6 +55,22 @@ export function sixplexSubLabel(eligible: boolean, certainty: string): string {
   return certainty === "verified" ? "Sixplex ward — confirmed" : "Sixplex ward — likely";
 }
 
+/**
+ * Price to seed an offer with: the residual land value on the recommended path
+ * rounded to the nearest $1k, falling back to the asking price. Null when there
+ * is nothing defensible to put in front of a seller.
+ */
+export function offerPrice(maxLandPrice: number | null, askingPrice: number | null): number | null {
+  const candidate =
+    maxLandPrice != null && Number.isFinite(maxLandPrice) && maxLandPrice > 0
+      ? maxLandPrice
+      : askingPrice != null && Number.isFinite(askingPrice) && askingPrice > 0
+        ? askingPrice
+        : null;
+  if (candidate == null) return null;
+  return Math.round(candidate / 1000) * 1000;
+}
+
 export interface AskingComparison {
   /** Positive when the land is worth more than the ask. */
   spread: number;

@@ -9,6 +9,7 @@ import { requireVerified } from "./accountVerification";
 import { storage } from "./storage";
 import { type LeadIntent } from "./referralRoutingPolicy";
 import { captureDealLead, partnerBaseUrl, recordDealIntent, routeLeadToPartnerClaims } from "./dealIntent";
+import { intentFromFormTag, notifyTeamOfLead } from "./leadRouter";
 import { buildReferralAgreement, getReferralTerms } from "@shared/partnerNetwork";
 
 // Maps the formTag/source value already present on every lead payload to a
@@ -120,7 +121,6 @@ import { exportToGoogleSheets } from "./googleSheets";
 import { calculateRenoQuotePricing, getLineItemCatalog } from "./renoQuotePricing";
 import { 
   sendPodcastQuestionNotification, 
-  sendLeadNotification, 
   sendRenoQuoteNotification,
   sendContactHostNotification,
   sendExpertApplicationNotification,
@@ -146,6 +146,7 @@ import { registerExpertRoutes } from "./experts";
 import { registerPropertyQuestionRoutes } from "./propertyQuestions";
 import { registerSocialStatsRoutes } from "./socialStats";
 import { registerTrafficAnalyticsRoutes } from "./trafficAnalytics";
+import { registerDdfCrawlRoutes } from "./ddfCrawlRoutes";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerEventsCommunityRoutes } from "./eventsCommunity";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
@@ -853,6 +854,7 @@ export async function registerRoutes(
   registerPropertyQuestionRoutes(app);
   registerSocialStatsRoutes(app);
   registerTrafficAnalyticsRoutes(app, isAdmin);
+  registerDdfCrawlRoutes(app);
   registerEventsGrowthRoutes(app);
   registerEventsCommunityRoutes(app);
   registerRentIntelligenceRoutes(app);
@@ -960,6 +962,41 @@ export async function registerRoutes(
       const parsed = investorConsultSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid consult request", details: parsed.error.issues });
       const data = parsed.data;
+
+      // The Contact page used to email only the submitter and persist
+      // nothing — a consult request could vanish entirely. Store it as a
+      // lead first, then alert the team; neither step may block the
+      // confirmation that follows.
+      let leadId: string | null = null;
+      try {
+        const lead = await storage.createLead({
+          name: data.name,
+          email: data.email,
+          phone: data.phone || null,
+          consent: false,
+          leadSource: "Contact Page",
+        });
+        leadId = lead.id;
+      } catch (err) {
+        console.error("[engagement] consult lead persist failed:", err instanceof Error ? err.message : err);
+      }
+      notifyTeamOfLead({
+        intent: "general",
+        surface: "Contact page",
+        sourcePage: "/contact",
+        name: data.name,
+        email: data.email,
+        phone: data.phone || null,
+        message: data.message || null,
+        context: {
+          market: data.market,
+          experienceLevel: data.experienceLevel,
+          budget: data.budget,
+          goal: data.goal,
+          leadId,
+        },
+      }).catch(err => console.error("[engagement] consult team alert failed:", err instanceof Error ? err.message : err));
+
       const result = await trackRealistEvent({
         eventType: "user.requested_consult",
         actor: { name: data.name, email: data.email, role: "investor" },
@@ -1716,52 +1753,6 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Multiplex feasibility error:", err);
       res.status(500).json({ error: "Failed to compute feasibility" });
-    }
-  });
-
-  // One input-matched architectural concept board per report. The dimensioned
-  // site plan remains deterministic; GPT Image 2 only visualizes the already
-  // computed massing and never decides zoning or setbacks.
-  app.post("/api/multiplex-concept-image", async (req: any, res) => {
-    try {
-      const {
-        generateMultiplexConceptImage,
-        multiplexConceptImageConfigured,
-        multiplexConceptImageSchema,
-      } = await import("./multiplexConceptImage");
-      const parsed = multiplexConceptImageSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid concept rendering request" });
-      }
-      if (!multiplexConceptImageConfigured()) {
-        return res.status(503).json({
-          error: "Concept rendering is not configured",
-          code: "image_generation_unavailable",
-        });
-      }
-
-      const { consumeDailyUsage } = await import("./usageLimits");
-      const usage = await consumeDailyUsage(
-        "multiplex_concept_image",
-        req,
-        { anonymous: 2, identified: 10 },
-      );
-      if (!usage.allowed) {
-        return res.status(429).json({
-          error: `Daily concept-render limit reached (${usage.limit}/day).`,
-          code: "image_generation_limit",
-          remaining: 0,
-        });
-      }
-
-      const image = await generateMultiplexConceptImage(parsed.data);
-      res.json({ ...image, remaining: usage.remaining });
-    } catch (err: any) {
-      console.error("Multiplex concept image error:", err?.message || err);
-      res.status(502).json({
-        error: "The architectural concept could not be rendered right now.",
-        code: "image_generation_failed",
-      });
     }
   });
 
@@ -2561,18 +2552,26 @@ export async function registerRoutes(
         tags: ["deal_analyzer", property.region || "unknown_region"],
       }).catch(err => console.error("Google Sheets backup error:", err));
 
-      // Send email notification only for the first lead from this email
-      const existingLeadCount = await storage.getLeadCountByEmail(lead.email);
-      if (existingLeadCount <= 1) {
-        sendLeadNotification({
-          name: lead.name,
-          email: lead.email,
-          phone: lead.phone ?? undefined,
+      // Every submission alerts the team (the router throttles double
+      // submits). The old first-lead-per-email gate went quiet on exactly
+      // the investors who came back with a second, more serious deal.
+      const financingIntent = (req.body as any)?.intent === "financing" || inputsData.financingIntent === true;
+      notifyTeamOfLead({
+        intent: financingIntent ? "financing" : "general",
+        surface: lead.leadSource || "Deal Analyzer",
+        sourcePage: "/tools/analyzer",
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone ?? null,
+        context: {
           address: property.formattedAddress,
+          city: property.city,
+          province: property.region,
           strategy: analysis.strategyType,
-          source: lead.leadSource || 'Deal Analyzer',
-        }).catch(err => console.error("Email notification error:", err));
-      }
+          purchasePrice: inputsData.purchasePrice != null ? Number(inputsData.purchasePrice) : undefined,
+          "Analysis": `https://realist.ca/deal-analyzer?analysisId=${analysis.id}`,
+        },
+      }).catch(err => console.error("Lead team alert error:", err));
 
       // Notify partner claims only for markets outside the Valery service lane.
       // Toronto-drive-zone Ontario leads stay with Valery; other Ontario leads
@@ -2897,17 +2896,26 @@ export async function registerRoutes(
         province,
       ).catch(err => console.error("[GHL] Direct engagement lead push failed:", err));
 
-      // Send email notification only for the first lead from this email
-      const engagementLeadCount = await storage.getLeadCountByEmail(email);
-      if (engagementLeadCount <= 1) {
-        sendLeadNotification({
-          name,
-          email,
-          phone,
-          strategy: formType,
-          source: formTag || formType || 'Deal Engagement',
-        }).catch(err => console.error("Email notification error:", err));
-      }
+      // Route by formTag: financing_consultation / mortgage_rate_request go
+      // to the mortgage lane, representation_interest to acquisition, the
+      // rest to everyone. Every submission alerts; the router throttles.
+      const deal = (dealInfo && typeof dealInfo === "object" ? dealInfo : {}) as Record<string, unknown>;
+      const scalar = (v: unknown) => (typeof v === "string" || typeof v === "number" || typeof v === "boolean" ? v : undefined);
+      notifyTeamOfLead({
+        intent: intentFromFormTag(formTag),
+        surface: formType || "Deal Engagement",
+        sourcePage: typeof req.headers.referer === "string" ? req.headers.referer : null,
+        name,
+        email,
+        phone: phone || null,
+        message: typeof req.body.message === "string" ? req.body.message : null,
+        context: {
+          formTag: formTag || undefined,
+          city,
+          province,
+          ...Object.fromEntries(Object.entries(deal).map(([k, v]) => [k, scalar(v)])),
+        },
+      }).catch(err => console.error("Engagement team alert error:", err));
 
       autoEnrollLeadAsUser({
         email,
@@ -4601,6 +4609,30 @@ export async function registerRoutes(
           status: inspectionRequest.status,
         },
       });
+
+      // Someone paying for an inspection is buying — acquisition lane.
+      if (validatedData.contactEmail) {
+        notifyTeamOfLead({
+          intent: "acquisition",
+          surface: "Inspection request",
+          sourcePage: typeof req.headers.referer === "string" ? req.headers.referer : null,
+          name: validatedData.contactName ?? null,
+          email: validatedData.contactEmail,
+          phone: validatedData.contactPhone ?? null,
+          message: validatedData.notes ?? null,
+          context: {
+            address: validatedData.propertyAddress,
+            city: validatedData.city ?? null,
+            province: validatedData.province ?? null,
+            listingId: validatedData.listingId ?? null,
+            inspectionType: validatedData.inspectionType ?? null,
+            preferredTimes: validatedData.preferredTimes ?? null,
+            amount: `$${((validatedData.amountCents || 50000) / 100).toLocaleString("en-CA")} ${(validatedData.currency || "cad").toUpperCase()}`,
+            checkoutStarted: !!checkoutUrl,
+            requestId: inspectionRequest.id,
+          },
+        }).catch(err => console.error("Inspection team alert error:", err));
+      }
 
       res.json({ success: true, data: inspectionRequest, checkoutUrl });
     } catch (error) {
@@ -10453,6 +10485,22 @@ export async function registerRoutes(
 
       appendLead("LenderApplications", { ...parsed, applicationId: application.id, source: "realist.ca" });
 
+      notifyTeamOfLead({
+        intent: "general",
+        surface: "Lender application",
+        sourcePage: "/join/lender",
+        name: parsed.name,
+        email: parsed.email,
+        phone: parsed.phone ?? null,
+        context: {
+          company: parsed.company ?? null,
+          lendingTypes: parsed.lendingTypes?.length ? parsed.lendingTypes.join(", ") : null,
+          targetMarkets: parsed.targetMarkets?.length ? parsed.targetMarkets.join(", ") : null,
+          loanSize: parsed.loanSizeMin || parsed.loanSizeMax ? `${parsed.loanSizeMin ?? "?"} – ${parsed.loanSizeMax ?? "?"}` : null,
+          applicationId: application.id,
+        },
+      }).catch(err => console.error("Lender application team alert error:", err));
+
       try {
         const webhookUrl = process.env.GHL_WEBHOOK_URL;
         if (webhookUrl) {
@@ -10534,6 +10582,36 @@ export async function registerRoutes(
       const [offer] = await db.insert(offers).values(parsed).returning();
 
       appendLead("Offers", { ...parsed, offerId: offer.id, source: "realist.ca" });
+
+      // An offer is an acquisition act — Daniel hears about every one. If
+      // the buyer also asked for financing help, Nick gets his own copy.
+      const offerAlert = {
+        surface: "Offer form",
+        sourcePage: typeof req.headers.referer === "string" ? req.headers.referer : null,
+        name: parsed.name,
+        email: parsed.email,
+        phone: parsed.phone ?? null,
+        message: parsed.notes ?? null,
+        context: {
+          address: parsed.propertyAddress,
+          city: parsed.city ?? null,
+          province: parsed.province ?? null,
+          listingId: parsed.listingId ?? null,
+          offerPrice: parsed.offerPrice ?? null,
+          deposit: parsed.depositAmount ?? null,
+          closingDate: parsed.closingDate ?? null,
+          conditions: parsed.conditions?.length ? parsed.conditions.join(", ") : null,
+          financingHelpWanted: !!parsed.financingHelpWanted,
+          representationHelpWanted: !!parsed.representationHelpWanted,
+          offerId: offer.id,
+        },
+      };
+      notifyTeamOfLead({ ...offerAlert, intent: "acquisition" })
+        .catch(err => console.error("Offer team alert error:", err));
+      if (parsed.financingHelpWanted) {
+        notifyTeamOfLead({ ...offerAlert, intent: "financing", surface: "Offer form — financing help", skipCrm: true })
+          .catch(err => console.error("Offer financing alert error:", err));
+      }
 
       try {
         const webhookUrl = process.env.GHL_WEBHOOK_URL;
@@ -10722,7 +10800,7 @@ export async function registerRoutes(
     try {
       const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
       res.json({ status: "started", message: "DDF yield crawl initiated in background" });
-      runDdfYieldCrawl().then(result => {
+      runDdfYieldCrawl(undefined, { trigger: "manual" }).then(result => {
         console.log("[ddf-crawler] Manual trigger complete:", result);
       }).catch(err => {
         console.error("[ddf-crawler] Manual trigger failed:", err);
@@ -10872,7 +10950,7 @@ export async function registerRoutes(
       if (!yieldMonths.includes(currentMonth)) {
         console.log("[ddf-crawler] Monthly cron: starting yield crawl for", currentMonth);
         const { runDdfYieldCrawl } = await import("./ddfYieldCrawler");
-        runDdfYieldCrawl(currentMonth).then(result => {
+        runDdfYieldCrawl(currentMonth, { trigger: "monthly_backstop" }).then(result => {
           console.log("[ddf-crawler] Monthly cron complete:", result);
         }).catch(err => {
           console.error("[ddf-crawler] Monthly cron failed:", err);
@@ -10883,23 +10961,9 @@ export async function registerRoutes(
     }
   }, 60 * 60 * 1000);
 
-  // DDF yield crawl: run every 24 hours to keep listing data fresh
-  setInterval(async () => {
-    try {
-      const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      console.log("[ddf-crawler] Daily refresh: starting yield crawl for", currentMonth);
-      const { runDdfYieldCrawl, checkDdfCoverage } = await import("./ddfYieldCrawler");
-      runDdfYieldCrawl(currentMonth).then(result => {
-        console.log("[ddf-crawler] Daily refresh complete:", result);
-        return checkDdfCoverage(currentMonth);
-      }).catch(err => {
-        console.error("[ddf-crawler] Daily refresh failed:", err);
-      });
-    } catch (error) {
-      console.error("[ddf-crawler] Daily refresh error:", error);
-    }
-  }, 24 * 60 * 60 * 1000);
+  // The nightly DDF crawl is scheduled by scheduleDdfYieldCrawl() in
+  // server/ddfYieldCrawler.ts (02:20 Toronto + startup catch-up). A second
+  // 24h setInterval used to live here and double-crawled every night.
 
   // Daily city report cron: check every hour, publish one city report per day
   let lastCityReportDate = "";
@@ -11952,6 +12016,16 @@ export async function registerRoutes(
       const tags = ["multiplex_masterclass", "masterclass_inquiry"];
       if (intent) tags.push(`intent_${intent}`);
 
+      notifyTeamOfLead({
+        intent: "general",
+        surface: "Multiplex Masterclass",
+        sourcePage: "/multiplex-masterclass",
+        name,
+        email,
+        phone,
+        context: { interest: intent || null, leadId: lead.id },
+      }).catch(err => console.error("Masterclass team alert error:", err));
+
       sendWebhook(lead.id, {
         email,
         firstName,
@@ -12064,6 +12138,27 @@ export async function registerRoutes(
       const nameParts = name.trim().split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
+
+      notifyTeamOfLead({
+        intent: "general",
+        surface: "Multiplex fit assessment",
+        sourcePage: "/multiplex-fit",
+        name,
+        email,
+        phone,
+        context: {
+          fitScore,
+          fitTier,
+          recommendation,
+          province: assessmentData?.province || null,
+          city: assessmentData?.city || null,
+          goal: assessmentData?.goal || null,
+          capital: assessmentData?.capital || null,
+          experience: assessmentData?.experience || null,
+          helpPreference: assessmentData?.helpPreference || null,
+          leadId: lead.id,
+        },
+      }).catch(err => console.error("Multiplex fit team alert error:", err));
 
       const tags = ["multiplexmasterclass", `fit_${fitTier}`, `rec_${recommendation}`];
       if (assessmentData?.province) tags.push(`LEAD_${assessmentData.province}`);

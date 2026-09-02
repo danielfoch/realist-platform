@@ -133,38 +133,76 @@ export interface GeocodeResult {
 export async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
   const key = normalizeAddressKey(`${address} toronto ontario`);
 
-  const cached = await db.execute(sql`
-    SELECT lat, lng, display_name, provider FROM geocode_cache WHERE address_key = ${key}
-  `);
-  if (cached.rows.length) {
-    const r = cached.rows[0] as { lat: number | null; lng: number | null; display_name: string | null; provider: string };
-    if (r.lat == null || r.lng == null) return null; // cached miss
-    return { lat: r.lat, lng: r.lng, displayName: r.display_name, provider: r.provider, fromCache: true };
+  let cacheAvailable = true;
+  try {
+    const cached = await db.execute(sql`
+      SELECT lat, lng, display_name, provider FROM geocode_cache WHERE address_key = ${key}
+    `);
+    if (cached.rows.length) {
+      const r = cached.rows[0] as { lat: number | null; lng: number | null; display_name: string | null; provider: string };
+      if (r.lat == null || r.lng == null) return null; // cached miss
+      return { lat: r.lat, lng: r.lng, displayName: r.display_name, provider: r.provider, fromCache: true };
+    }
+  } catch (err) {
+    // The cache is an optimization, not a precondition for resolving a site.
+    // Production can legitimately boot before the Toronto import tables have
+    // been initialized; continue to Nominatim and skip the cache write.
+    cacheAvailable = false;
+    console.error("[toronto-geo] geocode cache unavailable:", err instanceof Error ? err.message : err);
   }
 
   try {
-    const params = new URLSearchParams({
-      q: `${address}, Toronto, Ontario, Canada`,
-      format: "json",
-      limit: "1",
-      countrycodes: "ca",
-    });
-    const resp = await fetch(`${NOMINATIM_URL}?${params}`, {
-      headers: { "User-Agent": "realist.ca multiplex underwriter (contact: hello@realist.ca)" },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!resp.ok) return null;
-    const results = (await resp.json()) as Array<{ lat: string; lon: string; display_name: string }>;
-    const hit = results[0];
+    type NominatimHit = { lat: string; lon: string; display_name: string };
+    const relaxedAddress = address
+      .replace(
+        /\b(avenue|ave|boulevard|blvd|circle|cir|court|ct|crescent|cres|drive|dr|lane|ln|place|pl|road|rd|street|st|terrace|terr)\b\.?/i,
+        "",
+      )
+      .replace(/\s+/g, " ")
+      .trim();
+    const candidates = [
+      { query: address, provider: "nominatim" },
+      ...(relaxedAddress && relaxedAddress.toLowerCase() !== address.trim().toLowerCase()
+        ? [{ query: relaxedAddress, provider: "nominatim_relaxed" }]
+        : []),
+    ];
 
-    await db.execute(sql`
-      INSERT INTO geocode_cache (address_key, lat, lng, display_name, provider)
-      VALUES (${key}, ${hit ? Number(hit.lat) : null}, ${hit ? Number(hit.lon) : null}, ${hit?.display_name ?? null}, 'nominatim')
-      ON CONFLICT (address_key) DO NOTHING
-    `);
+    let hit: NominatimHit | undefined;
+    let provider = "nominatim";
+    for (const candidate of candidates) {
+      const params = new URLSearchParams({
+        q: `${candidate.query}, Toronto, Ontario, Canada`,
+        format: "json",
+        limit: "1",
+        countrycodes: "ca",
+      });
+      const resp = await fetch(`${NOMINATIM_URL}?${params}`, {
+        headers: { "User-Agent": "realist.ca multiplex underwriter (contact: hello@realist.ca)" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!resp.ok) return null;
+      const results = (await resp.json()) as NominatimHit[];
+      hit = results[0];
+      if (hit) {
+        provider = candidate.provider;
+        break;
+      }
+    }
+
+    if (cacheAvailable) {
+      try {
+        await db.execute(sql`
+          INSERT INTO geocode_cache (address_key, lat, lng, display_name, provider)
+          VALUES (${key}, ${hit ? Number(hit.lat) : null}, ${hit ? Number(hit.lon) : null}, ${hit?.display_name ?? null}, ${provider})
+          ON CONFLICT (address_key) DO NOTHING
+        `);
+      } catch (err) {
+        console.error("[toronto-geo] geocode cache write unavailable:", err instanceof Error ? err.message : err);
+      }
+    }
 
     if (!hit) return null;
-    return { lat: Number(hit.lat), lng: Number(hit.lon), displayName: hit.display_name, provider: "nominatim", fromCache: false };
+    return { lat: Number(hit.lat), lng: Number(hit.lon), displayName: hit.display_name, provider, fromCache: false };
   } catch (err: any) {
     console.error("[toronto-geo] geocode failed:", err.message);
     return null;
@@ -405,6 +443,11 @@ export async function resolveSite(
   }
 
   if (!geo) notes.push("Address could not be geocoded — location-based screens skipped.");
+  if (geo?.provider === "nominatim_relaxed") {
+    notes.push(
+      `The street type did not match exactly. The geocoder returned “${geo.displayName ?? address}”; verify this is the intended property.`,
+    );
+  }
 
   const noTreeData: TreeScreenResult = {
     status: "no_data", cityTreeConflict: false, treesWithinTightRadius: 0,
@@ -444,3 +487,38 @@ export async function resolveSite(
 
 // bbox helper re-export for the import script
 export { bboxOfGeometry };
+
+// ─── Layer health ────────────────────────────────────────────────────────────
+
+export interface TorontoGeoLayerCounts {
+  zoningPolygons: number;
+  wards: number;
+  streetTrees: number;
+  heritageProperties: number;
+}
+
+async function countRows(query: ReturnType<typeof sql>): Promise<number> {
+  try {
+    const r = await db.execute(query);
+    const n = Number((r.rows[0] as { n?: unknown } | undefined)?.n ?? 0);
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    // A missing table (import never run) reads as an empty layer, which is the
+    // honest answer for a coverage line — never a thrown health check.
+    return 0;
+  }
+}
+
+/**
+ * Row counts for every layer the underwriter reads, each wrapped so an absent
+ * table yields 0. Feeds the "Data coverage" line on the underwriter page.
+ */
+export async function getTorontoGeoLayerCounts(): Promise<TorontoGeoLayerCounts> {
+  const [zoningPolygons, wards, streetTrees, heritageProperties] = await Promise.all([
+    countRows(sql`SELECT count(*)::int AS n FROM toronto_zoning_polygons`),
+    countRows(sql`SELECT count(*)::int AS n FROM municipal_wards WHERE city = 'Toronto'`),
+    countRows(sql`SELECT count(*)::int AS n FROM toronto_street_trees`),
+    countRows(sql`SELECT count(*)::int AS n FROM toronto_heritage_properties`),
+  ]);
+  return { zoningPolygons, wards, streetTrees, heritageProperties };
+}

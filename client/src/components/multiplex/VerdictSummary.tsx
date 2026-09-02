@@ -40,6 +40,11 @@ export interface VerdictSummaryProps {
   returnValue: number | null;
   /** Asking price, when the user supplied one. */
   askingPrice: number | null;
+  /**
+   * Zoning tier headline ("6+1 site — Ward 14 … a laneway suite fits").
+   * Optional so reports saved before the tier shipped still render.
+   */
+  tierHeadline?: string | null;
 }
 
 export function VerdictSummary({
@@ -51,9 +56,11 @@ export function VerdictSummary({
   returnLabel,
   returnValue,
   askingPrice,
+  tierHeadline,
 }: VerdictSummaryProps) {
   const pathLabel = takeoutLabel(takeout);
   const comparison = compareToAsking(maxLandPrice, askingPrice);
+  const asOfRightSub = tierHeadline || sixplexSubLabel(sixplexEligible, sixplexCertainty);
 
   return (
     <section
@@ -66,7 +73,7 @@ export function VerdictSummary({
           icon={Building2}
           label="As-of-right"
           value={unitsLabel(maxUnitsAsOfRight)}
-          sub={sixplexSubLabel(sixplexEligible, sixplexCertainty)}
+          sub={asOfRightSub}
         />
 
         {pathLabel && (
@@ -140,7 +147,7 @@ function Tile({
         {label}
       </div>
       <p className="mt-1 truncate text-2xl font-bold tabular-nums">{value}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2" title={sub}>{sub}</p>
     </div>
   );
 }

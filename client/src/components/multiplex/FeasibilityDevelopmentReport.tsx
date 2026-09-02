@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type {
   DevelopmentConcept,
   MultiplexDevelopmentReport,
@@ -6,7 +6,6 @@ import type {
   TimelineCategory,
 } from "@shared/multiplexFeasibilityReport";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -19,10 +18,7 @@ import {
   Home,
   Image as ImageIcon,
   Layers3,
-  Loader2,
-  RefreshCw,
   Ruler,
-  Sparkles,
   TrainFront,
 } from "lucide-react";
 
@@ -221,118 +217,63 @@ function SitePlan({ concept }: { concept: DevelopmentConcept }) {
   );
 }
 
-interface ConceptImageResponse {
-  imageDataUrl?: string;
-  model?: string;
-  error?: string;
-  code?: string;
-}
-
-function ConceptRendering({ concept }: { concept: DevelopmentConcept }) {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "unavailable" | "error">("idle");
-  const requestedConcept = useRef<string | null>(null);
-
-  const generate = useCallback(async (force = false) => {
-    if (!force && requestedConcept.current === concept.conceptId) return;
-    requestedConcept.current = concept.conceptId;
-    setImageUrl(null);
-    setStatus("loading");
-    try {
-      const response = await fetch(concept.renderingRequest.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(concept.renderingRequest),
-      });
-      const payload = await response.json() as ConceptImageResponse;
-      if (response.ok && payload.imageDataUrl) {
-        setImageUrl(payload.imageDataUrl);
-        setStatus("ready");
-      } else if (payload.code === "image_generation_unavailable" || payload.code === "image_generation_limit") {
-        setStatus("unavailable");
-      } else {
-        setStatus("error");
-      }
-    } catch {
-      setStatus("error");
-    }
-  }, [concept.conceptId, concept.renderingRequest]);
-
-  useEffect(() => {
-    void generate(false);
-  }, [generate]);
-
+function SampleDrawing({ concept }: { concept: DevelopmentConcept }) {
+  const sample = concept.sampleDrawing;
+  const [imageUnavailable, setImageUnavailable] = useState(false);
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="flex items-center gap-1.5 text-sm font-semibold">
-            <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-            Input-matched architectural rendering
+            <ImageIcon className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            Sample drawing package for a similar lot
           </p>
           <p className="text-xs text-muted-foreground">
-            GPT Image 2 visualizes the calculated massing; it does not determine compliance.
+            Closest library match: {sample.similarLotLabel} · {sample.form}
           </p>
         </div>
-        {status === "ready" && <Badge variant="outline">GPT Image 2 · concept</Badge>}
+        <Badge variant="outline">Pre-generated sample · not site-specific</Badge>
       </div>
 
       <div className="relative aspect-[3/2] overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-slate-100 via-stone-50 to-emerald-50 dark:from-slate-950 dark:via-stone-950 dark:to-emerald-950">
-        {imageUrl ? (
+        {!imageUnavailable ? (
           <img
-            src={imageUrl}
-            alt={`AI-generated two-view architectural concept for a ${concept.title}`}
+            src={sample.imagePath}
+            alt={sample.alt}
             className="h-full w-full object-cover"
+            loading="lazy"
+            onError={() => setImageUnavailable(true)}
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-            {status === "loading" ? (
-              <>
-                <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
-                <p className="mt-3 text-sm font-medium">Rendering this exact lot concept…</p>
-                <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                  {concept.sitePlan.lotFrontageFt} × {concept.sitePlan.lotDepthFt} ft · {concept.totalUnits} homes · {concept.asOfRightStoreys} storeys
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="relative mb-5 flex h-28 w-52 items-end justify-center">
-                  <div className="absolute bottom-0 h-20 w-36 rounded-t-sm border-2 border-violet-500/50 bg-violet-200/60 shadow-lg dark:bg-violet-900/50">
-                    <div className="grid h-full grid-cols-3 gap-2 p-3">
-                      {Array.from({ length: 6 }).map((_, index) => (
-                        <span key={index} className="rounded-sm bg-sky-200/80 dark:bg-sky-950/80" />
-                      ))}
-                    </div>
-                  </div>
-                  {concept.includesRearSuite && (
-                    <div className="absolute bottom-0 right-0 h-12 w-16 rounded-t-sm border-2 border-cyan-500/50 bg-cyan-200/70 dark:bg-cyan-900/50" />
-                  )}
+            <div className="relative mb-5 flex h-28 w-52 items-end justify-center">
+              <div className="absolute bottom-0 h-20 w-36 rounded-t-sm border-2 border-violet-500/50 bg-violet-200/60 shadow-lg dark:bg-violet-900/50">
+                <div className="grid h-full grid-cols-3 gap-2 p-3">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <span key={index} className="rounded-sm bg-sky-200/80 dark:bg-sky-950/80" />
+                  ))}
                 </div>
-                <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                <p className="mt-2 text-sm font-medium">
-                  {status === "unavailable" ? "Live concept rendering is not configured" : "The live rendering did not complete"}
-                </p>
-                <p className="mt-1 max-w-md text-xs text-muted-foreground">
-                  The calculated site plan, massing, pro forma, and timeline remain available and control the report.
-                </p>
-                {status === "error" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => {
-                      requestedConcept.current = null;
-                      void generate(true);
-                    }}
-                  >
-                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                    Try rendering again
-                  </Button>
-                )}
-              </>
-            )}
+              </div>
+              {sample.laneAccess && (
+                <div className="absolute bottom-0 right-0 h-12 w-16 rounded-t-sm border-2 border-cyan-500/50 bg-cyan-200/70 dark:bg-cyan-900/50" />
+              )}
+            </div>
+            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+            <p className="mt-2 text-sm font-medium">Sample board is not installed in this build</p>
+            <p className="mt-1 max-w-md text-xs text-muted-foreground">
+              The calculated site plan, massing, pro forma, and timeline remain available and control the report.
+            </p>
           </div>
         )}
+        <div className="absolute inset-x-0 bottom-0 bg-slate-950/85 px-3 py-2 text-[10px] leading-relaxed text-white">
+          Visual context only. This package was not prepared for this address, is not drawn to this survey, and is not a zoning, site-plan, or permit submission.
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        <Badge variant="secondary">{sample.representativeStoreys} storeys shown</Badge>
+        <Badge variant="secondary">{sample.representativePrincipalUnits} principal units shown</Badge>
+        {sample.representativeRearSuite && <Badge variant="secondary">{sample.representativeRearSuite}</Badge>}
       </div>
     </div>
   );
@@ -798,7 +739,7 @@ export function FeasibilityDevelopmentReport({ report }: FeasibilityDevelopmentR
       <Card className="border-border/60">
         <CardContent className="grid gap-6 pt-6 lg:grid-cols-2">
           <SitePlan concept={concept} />
-          <ConceptRendering concept={concept} />
+          <SampleDrawing concept={concept} />
         </CardContent>
       </Card>
 
@@ -815,4 +756,3 @@ export function FeasibilityDevelopmentReport({ report }: FeasibilityDevelopmentR
     </section>
   );
 }
-

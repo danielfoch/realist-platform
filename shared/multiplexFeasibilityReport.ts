@@ -4,8 +4,8 @@
  * The planning engine decides what may be permitted. This module turns that
  * decision into one internally consistent sample project: a dimensioned massing
  * diagram, a deterministic pro forma, and a project schedule. It deliberately
- * keeps the site plan code-native; an image model is only asked to visualize the
- * same already-computed massing, never to invent zoning or dimensions.
+ * keeps the site plan code-native and pairs it with a pre-generated sample
+ * drawing board for the nearest common lot configuration.
  */
 
 import {
@@ -16,6 +16,10 @@ import {
   type DevAssumptions,
 } from "./multiplexProForma";
 import type { BuildConfiguration } from "./multiplexConfigs";
+import {
+  selectMultiplexConceptSample,
+  type MultiplexConceptSample,
+} from "./multiplexConceptLibrary";
 import { computeMliTakeout, scoreMliPoints } from "./mliSelect";
 import type { UnitMixEntry, UnitType } from "./multiplexTypes";
 
@@ -96,21 +100,7 @@ export interface DevelopmentConcept {
     calculatedCoverageRatio: number;
     allowedCoverageRatio: number;
   };
-  renderingRequest: {
-    model: "gpt-image-2";
-    endpoint: "/api/multiplex-concept-image";
-    frontageFt: number;
-    depthFt: number;
-    principalUnits: number;
-    totalUnits: number;
-    storeys: number;
-    mainForm: string;
-    rearSuiteType: "laneway" | "garden" | null;
-    rearSuiteStoreys: number | null;
-    laneAccess: boolean;
-    majorStreet: boolean;
-    transitStatus: ReportTransitStatus;
-  };
+  sampleDrawing: MultiplexConceptSample;
   caveats: string[];
 }
 
@@ -261,9 +251,9 @@ function widthBand(frontage: number): DevelopmentConcept["widthBand"] {
 }
 
 function depthBand(depth: number): DevelopmentConcept["depthBand"] {
-  if (depth < 100) return "shallow";
-  if (depth < 120) return "standard";
-  if (depth < 140) return "deep";
+  if (depth < 105) return "shallow";
+  if (depth < 130) return "standard";
+  if (depth < 150) return "deep";
   return "extra_deep";
 }
 
@@ -476,25 +466,15 @@ function buildConcept(input: DevelopmentReportInput): DevelopmentConcept {
       calculatedCoverageRatio: Math.round(calculatedCoverage * 1000) / 1000,
       allowedCoverageRatio: input.coverageRatio,
     },
-    renderingRequest: {
-      model: "gpt-image-2",
-      endpoint: "/api/multiplex-concept-image",
-      frontageFt: round1(frontage),
-      depthFt: round1(depth),
-      principalUnits,
-      totalUnits,
-      storeys: input.asOfRightStoreys,
-      mainForm: form,
-      rearSuiteType: suiteType,
-      rearSuiteStoreys: suiteType ? 2 : null,
+    sampleDrawing: selectMultiplexConceptSample({
+      widthBand: band,
+      depthBand: dBand,
       laneAccess: input.laneAccess,
-      majorStreet: input.majorStreet,
-      transitStatus: input.transitStatus,
-    },
+    }),
     caveats: [
       "Concept massing only — not a survey, zoning certificate, site plan approval drawing, or permit set.",
       "The diagram is calculated from screening assumptions; angular planes, tree protection zones, grading, servicing, fire access, waste storage, and easements are not modelled.",
-      "The generated architectural rendering is illustrative. The dimensioned plan and deterministic calculations control wherever the image differs.",
+      "The drawing board is a pre-generated example for a similar lot, not a rendering of this property. The dimensioned plan and deterministic calculations control wherever the sample differs.",
     ],
   };
 }
@@ -1005,4 +985,3 @@ export function buildMultiplexDevelopmentReport(
     timeline,
   };
 }
-

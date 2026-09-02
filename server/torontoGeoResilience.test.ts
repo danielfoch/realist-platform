@@ -33,11 +33,12 @@ vi.mock("./db", () => ({
 // Geocoding is network I/O and irrelevant to this regression.
 vi.mock("./enrichment", () => ({ resolveWard: async () => null }));
 
-const { resolveSite, zoningDataLoaded } = await import("./torontoGeo");
+const { geocodeAddress, resolveSite, zoningDataLoaded } = await import("./torontoGeo");
 
 beforeEach(() => {
   state.throwEverything = false;
   state.queries = [];
+  vi.unstubAllGlobals();
 });
 
 describe("zoningDataLoaded", () => {
@@ -90,5 +91,48 @@ describe("resolveSite with every geo layer unavailable", () => {
     expect(notes).toContain("Zoning layer not imported yet");
     expect(notes).toMatch(/tree inventory not imported/i);
     expect(notes).toMatch(/Heritage register not imported/i);
+  });
+});
+
+describe("geocodeAddress without the optional cache table", () => {
+  it("still resolves through Nominatim instead of turning a cache miss into a 500", async () => {
+    state.throwEverything = true;
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      json: async () => [{
+        lat: "43.68555",
+        lon: "-79.30474",
+        display_name: "204 Oakcrest Avenue, Toronto, Ontario, Canada",
+      }],
+    })));
+
+    await expect(geocodeAddress("204 Oakcrest Avenue")).resolves.toMatchObject({
+      lat: 43.68555,
+      lng: -79.30474,
+      provider: "nominatim",
+      fromCache: false,
+    });
+  });
+
+  it("retries without the submitted street type so Oakcrest Dr can resolve to Oakcrest Avenue", async () => {
+    state.throwEverything = true;
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [] })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{
+          lat: "43.68555",
+          lon: "-79.30474",
+          display_name: "204 Oakcrest Avenue, Toronto, Ontario, Canada",
+        }],
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(geocodeAddress("204 Oakcrest Dr")).resolves.toMatchObject({
+      lat: 43.68555,
+      lng: -79.30474,
+      provider: "nominatim_relaxed",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

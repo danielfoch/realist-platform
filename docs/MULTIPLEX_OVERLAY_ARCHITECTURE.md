@@ -7,14 +7,14 @@ Current integration:
 - Full standalone experience in `client/src/pages/MultiplexFeasibilityPage.tsx`
 - Core rules engine in `server/multiplexFeasibility.ts`
 - Deterministic development report model in `shared/multiplexFeasibilityReport.ts`
-- Controlled GPT Image rendering adapter in `server/multiplexConceptImage.ts`
+- Curated sample-board selector in `shared/multiplexConceptLibrary.ts`
 - Shared UI surface in `client/src/components/MultiplexFeasibilityPanel.tsx`
 
 Development report layer:
 - Selects an illustrative principal-building typology from the submitted frontage,
   depth, unit capacity, lane condition, and overlay result
 - Produces a dimensioned deterministic site plan; this plan remains the controlling
-  concept if a generated architectural rendering differs from it
+  concept if the selected sample drawing differs from it
 - Compares 25, 30, 40, and 50 foot frontage outcomes at the submitted lot depth,
   with lane and no-lane variants
 - Separates the as-of-right concept from any policy-height / rezoning upside
@@ -23,8 +23,11 @@ Development report layer:
 - Builds a complete indicative schedule from site control and acquisition through
   construction financing, construction phases, lease-up, stabilization, and CMHC
   MLI Select takeout
-- Requests an input-matched, two-view concept board from `gpt-image-2`; the endpoint
-  accepts only server-defined massing fields rather than arbitrary user prompts
+- Selects one of 24 pre-generated `gpt-image-2` sample drawing boards covering
+  25/30/40/50-foot frontage bands, shallow/standard/deep lots, and lane/no-lane
+  conditions
+- Never performs report-time image generation; every board is labelled as a
+  visual example for a similar lot, not a drawing for the submitted property
 
 Site-specific Toronto lookup:
 - A submitted Toronto address is geocoded and checked against the mapped zoning

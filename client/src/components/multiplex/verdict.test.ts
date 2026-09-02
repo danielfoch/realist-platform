@@ -118,3 +118,18 @@ describe("compareToAsking", () => {
     expect(compareToAsking(1_000_000, Number.POSITIVE_INFINITY)).toBeNull();
   });
 });
+
+describe("offerPrice", () => {
+  it("rounds the residual land value to the nearest $1k", async () => {
+    const { offerPrice } = await import("./verdict");
+    expect(offerPrice(1_234_567, 1_500_000)).toBe(1_235_000);
+    expect(offerPrice(1_234_499, null)).toBe(1_234_000);
+  });
+  it("falls back to the asking price and then to null", async () => {
+    const { offerPrice } = await import("./verdict");
+    expect(offerPrice(null, 1_450_250)).toBe(1_450_000);
+    expect(offerPrice(0, 999_999)).toBe(1_000_000);
+    expect(offerPrice(null, null)).toBeNull();
+    expect(offerPrice(Number.NaN, 0)).toBeNull();
+  });
+});

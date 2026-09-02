@@ -34,6 +34,7 @@ describe("multiplex development concept", () => {
     expect(report!.concept.sitePlan.buildings).toHaveLength(1);
     expect(report!.concept.sitePlan.lotFrontageFt).toBe(25);
     expect(report!.concept.sitePlan.lotDepthFt).toBe(120);
+    expect(report!.concept.sampleDrawing.id).toBe("25ft-standard-no-lane");
   });
 
   it("adds a lane suite on a deep, wide site and carries it into the pro forma", () => {
@@ -51,6 +52,7 @@ describe("multiplex development concept", () => {
     expect(report.concept.rearSuiteType).toBe("laneway");
     expect(report.concept.totalUnits).toBe(report.concept.principalUnits + 1);
     expect(report.concept.sitePlan.buildings.find((b) => b.id === "rear_suite")).toBeDefined();
+    expect(report.concept.sampleDrawing.id).toBe("40ft-deep-lane");
     expect(report.proForma.configuration.units).toBe(report.concept.totalUnits);
     expect(report.proForma.cmhcTakeout.eligible).toBe(true);
   });
@@ -143,4 +145,3 @@ describe("project timeline", () => {
     expect(rezoning).toBeGreaterThan(asOfRight);
   });
 });
-
