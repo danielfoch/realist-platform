@@ -8,6 +8,7 @@ import { logUserActivity } from "../userActivity";
 import { isAdmin } from "../auth";
 import { scoreLeadInput, selectEmailTriggers } from "@shared/leadScoring";
 import { queueEmailTrigger } from "../emailTriggerProducer";
+import { notifyTeamOfLead } from "../leadRouter";
 
 const HOT_SLA_MINUTES = 30;
 
@@ -156,6 +157,40 @@ export async function submitDealDesk(input: DealDeskSubmitInput, opts: {
       })
     )
   );
+
+  // Direct alert alongside the queued triggers: the queue's recipients are
+  // resolved at drain time and have historically resolved to nobody, and a
+  // Deal Desk submission is someone asking for help on a named property.
+  // Financing help gets its own email down the mortgage lane.
+  const dealContext = {
+    address: input.address,
+    market: input.market ?? null,
+    propertyType: input.propertyType ?? null,
+    purchasePrice: input.purchasePrice ?? null,
+    estimatedRent: input.estimatedRent ?? null,
+    listingUrl: input.listingUrl ?? null,
+    intentScore: scoreResult.intentScore,
+    status: scoreResult.status,
+    nextAction: scoreResult.suggestedNextAction,
+    buyingHelpWanted: input.buyingHelpWanted,
+    financingHelpWanted: input.financingHelpWanted,
+    analysisId: input.analysisId ?? null,
+  };
+  const alertBase = {
+    surface: source === "agent_api" ? "Deal Desk (agent API)" : "Deal Desk",
+    sourcePage,
+    name: input.name,
+    email: input.email,
+    phone: input.phone ?? null,
+    message: input.userNotes ?? null,
+    context: dealContext,
+  };
+  notifyTeamOfLead({ ...alertBase, intent: "acquisition" })
+    .catch(err => console.error("[deal-desk] team alert failed:", err instanceof Error ? err.message : err));
+  if (input.financingHelpWanted) {
+    notifyTeamOfLead({ ...alertBase, intent: "financing", surface: `${alertBase.surface} — financing help`, skipCrm: true })
+      .catch(err => console.error("[deal-desk] financing alert failed:", err instanceof Error ? err.message : err));
+  }
 
   return {
     ok: true,

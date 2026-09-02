@@ -14,7 +14,7 @@ import { z } from "zod";
 
 // ─── Intents & statuses ──────────────────────────────────────────────────────
 
-export const BOOKED_CALL_INTENTS = ["financing", "coaching"] as const;
+export const BOOKED_CALL_INTENTS = ["financing", "coaching", "acquisition"] as const;
 export type BookedCallIntent = (typeof BOOKED_CALL_INTENTS)[number];
 
 /** Pipeline: new → contacted → booked → flipped (handed to BLD). */

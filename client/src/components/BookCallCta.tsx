@@ -33,7 +33,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export interface BookCallCtaProps {
-  intent?: "financing" | "coaching";
+  intent?: "financing" | "coaching" | "acquisition";
   /** Page the CTA sits on — defaults to the current pathname. */
   sourcePage?: string;
   /** multiplex_underwritings.id when rendered on an underwriter result. */
@@ -71,10 +71,14 @@ export function BookCallCta({
 
   const heading = title ?? (intent === "financing"
     ? "Talk to a financing specialist about this deal"
-    : "Book a coaching call");
+    : intent === "acquisition"
+      ? "Work with Daniel Foch on this acquisition"
+      : "Book a coaching call");
   const blurb = description ?? (intent === "financing"
     ? "Realist works with commercial financing partners who specialize in multiplex and small-building deals. Tell us where to reach you and we'll set up a call to walk through financing options for this property."
-    : "Tell us where to reach you and we'll set up a call about working with the Realist coaching program.");
+    : intent === "acquisition"
+      ? "Daniel Foch (broker, Valery Real Estate) works with investors on sourcing, offers, and closing. Tell us where to reach you and he'll follow up on this property."
+      : "Tell us where to reach you and we'll set up a call about working with the Realist coaching program.");
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -104,7 +108,7 @@ export function BookCallCta({
       setSubmitted(true);
       track({
         event: "consultation_requested",
-        type: intent === "financing" ? "mortgage" : "coaching",
+        type: intent === "financing" ? "mortgage" : intent === "acquisition" ? "realtor" : "coaching",
         context: sourcePage ?? window.location.pathname,
       });
     },
@@ -128,7 +132,9 @@ export function BookCallCta({
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             {intent === "financing"
               ? "A financing specialist will reach out to book your call and walk through the deal."
-              : "We'll reach out to book your coaching call."}
+              : intent === "acquisition"
+                ? "Daniel will reach out about this property and next steps on the acquisition."
+                : "We'll reach out to book your coaching call."}
           </p>
         </CardContent>
       </Card>
@@ -214,7 +220,7 @@ export function BookCallCta({
               )}
             />
             <Button type="submit" className="w-full" disabled={mutation.isPending} data-testid="button-book-call-submit">
-              {mutation.isPending ? "Submitting..." : intent === "financing" ? "Book my financing call" : "Book my coaching call"}
+              {mutation.isPending ? "Submitting..." : intent === "financing" ? "Book my financing call" : intent === "acquisition" ? "Talk to Daniel about this deal" : "Book my coaching call"}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
               No obligation — we'll only use this to set up your call.

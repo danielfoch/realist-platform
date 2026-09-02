@@ -35,6 +35,7 @@ import { storage } from "./storage";
 import { logUserActivity } from "./userActivity";
 import { scoreLeadInput, selectEmailTriggers, type ScoringInput } from "@shared/leadScoring";
 import { queueEmailTrigger } from "./emailTriggerProducer";
+import { recipientsForIntent } from "./leadRouter";
 import {
   getLeadRoutingChannel,
   getPartnerTypesForIntent,
@@ -484,15 +485,20 @@ export async function captureDealLead(
   if (routing.notified === 0 && (await shouldAlertTeam(lead.id, score.status))) {
     try {
       const { sendLeadNotification } = await import("./resend");
-      await sendLeadNotification({
-        name: lead.name,
-        email: lead.email,
-        phone: lead.phone ?? undefined,
-        address: signal.address ?? undefined,
-        strategy: signal.strategyType ?? undefined,
-        purchasePrice: signal.purchasePrice ?? undefined,
-        source: `${meta.leadSource} — ${score.status.toUpperCase()} (${score.intentScore}) · ${score.suggestedNextAction}`,
-      });
+      // Financing intent lands with Nick (Dan copied); purchase intent is
+      // Dan's — the same split the partner network would have applied.
+      await sendLeadNotification(
+        {
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone ?? undefined,
+          address: signal.address ?? undefined,
+          strategy: signal.strategyType ?? undefined,
+          purchasePrice: signal.purchasePrice ?? undefined,
+          source: `${meta.leadSource} — ${score.status.toUpperCase()} (${score.intentScore}) · ${score.suggestedNextAction}`,
+        },
+        recipientsForIntent(intent === "financing" ? "financing" : "acquisition"),
+      );
     } catch (err) {
       console.error("[deal-intent] in-house lead notification failed:", err);
     }

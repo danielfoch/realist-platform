@@ -29,6 +29,42 @@ import {
 } from "@shared/bookedCallLeads";
 import { bldDestinationStatus, forwardLeadToBld } from "./bldLeadDestination";
 import { upsertPlatformCrmContact } from "./crmIngest";
+import { notifyTeamOfLead, type LeadIntent } from "./leadRouter";
+import type { DealSnapshot } from "@shared/bookedCallLeads";
+
+/** Coaching calls are a conversation for the whole team; the other two have a lane. */
+function routingIntent(intent: string): LeadIntent {
+  if (intent === "financing") return "financing";
+  if (intent === "acquisition") return "acquisition";
+  return "general";
+}
+
+const SITE = "https://realist.ca";
+
+/** Deal context + a link back to the underlying result, when there is one. */
+function bookedCallContext(input: {
+  intent: string;
+  underwritingId?: string | null;
+  analysisId?: string | null;
+  dealSnapshot?: DealSnapshot | null;
+}): Record<string, string | number | boolean | null | undefined> {
+  const snap = input.dealSnapshot ?? {};
+  const metrics = Object.fromEntries(
+    Object.entries(snap.keyMetrics ?? {}).map(([k, v]) => [k, v]),
+  );
+  return {
+    "Call type": input.intent,
+    address: snap.address,
+    city: snap.city,
+    purchasePrice: snap.purchasePrice,
+    units: snap.units,
+    verdict: snap.verdict,
+    tool: snap.toolName,
+    ...metrics,
+    underwritingId: input.underwritingId ?? undefined,
+    "Analysis": input.analysisId ? `${SITE}/deal-analyzer?analysisId=${input.analysisId}` : undefined,
+  };
+}
 
 export function registerBookedCallLeadRoutes(app: Express): void {
   // Startup visibility, mirroring the GHL_WEBHOOK_URL log in auth.ts.
@@ -96,6 +132,22 @@ export function registerBookedCallLeadRoutes(app: Express): void {
           underwritingId: input.underwritingId ?? null,
         },
       }).catch((err) => console.error("[booked-call-leads] CRM handoff failed:", err instanceof Error ? err.message : err));
+
+      // A booked-call request is the highest-intent action on the site — the
+      // routed human hears about it immediately, BLD forwarding or not. The
+      // CRM row above already carries the full context, so the router skips
+      // its own thinner upsert.
+      notifyTeamOfLead({
+        intent: routingIntent(input.intent),
+        surface: "Book a call",
+        sourcePage: input.sourcePage ?? null,
+        name: input.fullName,
+        email: input.email,
+        phone: input.phone ?? null,
+        message: input.message ?? null,
+        context: bookedCallContext(input),
+        skipCrm: true,
+      }).catch((err) => console.error("[booked-call-leads] team alert failed:", err instanceof Error ? err.message : err));
 
       // Best-effort forward — never blocks or fails the submission. With the
       // BLD destination unconfigured (current state) this is a no-op log.

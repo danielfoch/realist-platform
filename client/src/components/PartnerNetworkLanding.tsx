@@ -3,10 +3,10 @@ import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   Users, TrendingUp, BarChart3, CheckCircle2, ArrowRight, Building2,
-  MapPin, DollarSign, Mail, Kanban, PenTool, type LucideIcon,
+  MapPin, DollarSign, Mail, Kanban, PenTool, PhoneCall, type LucideIcon,
 } from "lucide-react";
 import { formatReferralPayee, getReferralTerms, type NetworkPartnerType } from "@shared/partnerNetwork";
 
@@ -113,10 +113,18 @@ export function PartnerNetworkLanding({ partnerType }: { partnerType: NetworkPar
           </div>
 
           <div className="text-center">
-            <Button size="lg" onClick={() => navigate(onboardingPath)} data-testid="button-partner-cta-hero">
-              Claim Your Market — Free
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Button size="lg" onClick={() => navigate(onboardingPath)} data-testid="button-partner-cta-hero">
+                Claim Your Market — Free
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button size="lg" variant="outline" asChild data-testid="button-partner-talk-to-daniel-hero">
+                <Link href="/book-a-call">
+                  <PhoneCall className="mr-2 h-4 w-4" />
+                  Talk to Daniel first
+                </Link>
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground mt-3">
               No monthly fees. {terms.feePercent}% referral only when a deal {terms.successEvent}.
             </p>
@@ -172,10 +180,15 @@ export function PartnerNetworkLanding({ partnerType }: { partnerType: NetworkPar
             <Mail className="h-4 w-4" />
             Setup takes about two minutes. Leads start flowing as soon as investors analyze deals in your market.
           </p>
-          <Button size="lg" onClick={() => navigate(onboardingPath)} data-testid="button-partner-cta-footer">
-            Join the Network
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button size="lg" onClick={() => navigate(onboardingPath)} data-testid="button-partner-cta-footer">
+              Join the Network
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            <Button size="lg" variant="ghost" asChild data-testid="button-partner-talk-to-daniel-footer">
+              <Link href="/book-a-call">Questions? Talk to Daniel</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

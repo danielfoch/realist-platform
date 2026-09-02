@@ -27,6 +27,7 @@ import {
   type NetworkPartnerType,
 } from "@shared/partnerNetwork";
 import { sendPartnerNetworkWelcomeEmail } from "./resend";
+import { notifyTeamOfLead } from "./leadRouter";
 
 const joinSchema = z.object({
   partnerType: z.enum(NETWORK_PARTNER_TYPES),
@@ -146,6 +147,26 @@ export function registerPartnerNetworkRoutes(app: Express): void {
           payeeCompany: terms.payeeCompany,
           agreementText: agreement.text,
         }).catch((err) => console.error("Partner welcome email error:", err));
+
+        // A new partner is a business-development lead for the team, not just
+        // a row in the claims table: Daniel decides who gets routed deals.
+        notifyTeamOfLead({
+          intent: "general",
+          surface: "Partner network join",
+          sourcePage: "/partner/onboarding",
+          name: data.signedName,
+          email: user.email,
+          phone: data.phone ?? null,
+          context: {
+            partnerType: data.partnerType,
+            brokerage: data.brokerageName,
+            market: `${data.marketCity}, ${data.marketRegion}`,
+            board: data.realEstateBoard ?? null,
+            licenseNumber: data.licenseNumber ?? null,
+            referralFeePercent: terms.feePercent,
+          },
+          skipCrm: true,
+        }).catch((err) => console.error("[lead-router] partner join alert failed:", err));
       }
 
       res.json({ claim, agreement: { version: agreement.version, title: agreement.title } });

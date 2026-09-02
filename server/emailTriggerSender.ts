@@ -18,7 +18,7 @@
 
 import { and, desc, eq, sql } from "drizzle-orm";
 import { storage } from "./storage";
-import { getResendClient } from "./resend";
+import { getAcquisitionNotifyEmails, getFinancingNotifyEmails, getLeadNotifyEmails, getResendClient } from "./resend";
 import { db } from "./db";
 import { governMarketingSend } from "./emailGovernor";
 import { analyses, propertyAnalyses, users } from "@shared/schema";
@@ -38,10 +38,10 @@ import {
 } from "@shared/emailTriggerTemplates";
 
 async function getTeamNotifyEmails(): Promise<string[]> {
-  // Instant per-lead admin alerts are OPT-IN now — the team gets a weekly
-  // CRM summary instead (server/adminWeeklySummary.ts). Set
-  // ADMIN_INSTANT_LEAD_ALERTS=true to restore real-time alert emails.
-  if (process.env.ADMIN_INSTANT_LEAD_ALERTS !== "true") return [];
+  // Instant per-lead alerts are on by default — a hot lead that waits for
+  // the Monday summary (server/adminWeeklySummary.ts) is a lost lead. Set
+  // ADMIN_INSTANT_LEAD_ALERTS=false to keep only the weekly digest.
+  if (process.env.ADMIN_INSTANT_LEAD_ALERTS === "false") return [];
 
   const emails: string[] = [];
 
@@ -58,18 +58,20 @@ async function getTeamNotifyEmails(): Promise<string[]> {
 
   if (process.env.PODCAST_NOTIFY_EMAIL) emails.push(process.env.PODCAST_NOTIFY_EMAIL);
   if (process.env.NOTIFY_CC_EMAIL) emails.push(process.env.NOTIFY_CC_EMAIL);
-  return emails;
+  // Nothing configured used to mean nobody — now it means the lead list.
+  return emails.length ? emails : getLeadNotifyEmails();
 }
 
 /**
- * Internal ops alerts (SLA breach nags). Unlike getTeamNotifyEmails this is
- * NOT gated behind ADMIN_INSTANT_LEAD_ALERTS — an SLA breach means a hot lead
- * is going cold right now. Mirrors adminWeeklySummary's recipients().
+ * Internal ops alerts (SLA breach nags). Never gated behind
+ * ADMIN_INSTANT_LEAD_ALERTS — an SLA breach means a hot lead is going cold
+ * right now. Mirrors adminWeeklySummary's recipients().
  */
 async function getAdminNotifyEmails(): Promise<string[]> {
   const dbEmail = await storage.getAppSetting("deal_desk_notify_email").catch(() => null);
   const raw = dbEmail || process.env.DEAL_DESK_NOTIFY_EMAIL || process.env.PODCAST_NOTIFY_EMAIL || "";
-  return raw.split(",").map(e => e.trim()).filter(Boolean);
+  const configured = raw.split(",").map(e => e.trim()).filter(Boolean);
+  return configured.length ? configured : getLeadNotifyEmails();
 }
 
 async function getDealDeskNotifyEmail(): Promise<string> {
@@ -240,12 +242,18 @@ export async function sendEmailTrigger(trigger: TriggerLike): Promise<TriggerSen
       }
 
       case "financing_interest_followup": {
-        const recipients = await getTeamNotifyEmails();
+        // Financing follow-ups go down the mortgage lane (Nick) with the
+        // acquisition side copied, not the generic team list.
+        if (process.env.ADMIN_INSTANT_LEAD_ALERTS === "false") {
+          return { status: "failed", reason: "Instant lead alerts disabled (ADMIN_INSTANT_LEAD_ALERTS=false)" };
+        }
+        const recipients = getFinancingNotifyEmails();
+        const cc = getAcquisitionNotifyEmails().filter(e => !recipients.some(r => r.toLowerCase() === e.toLowerCase()));
         if (recipients.length === 0) {
-          return { status: "failed", reason: "No team notify emails configured" };
+          return { status: "failed", reason: "No financing notify emails configured" };
         }
         const { subject, html } = buildFinancingFollowup(payload);
-        result = await client.emails.send({ from: fromEmail, to: recipients, subject, html });
+        result = await client.emails.send({ from: fromEmail, to: recipients, ...(cc.length ? { cc } : {}), subject, html });
         break;
       }
 

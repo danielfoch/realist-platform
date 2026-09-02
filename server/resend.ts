@@ -1,5 +1,14 @@
 // Resend Email Integration - using Replit Connector
 import { Resend } from 'resend';
+import {
+  getAcquisitionNotifyEmails,
+  getFinancingNotifyEmails,
+  getLeadNotifyEmails,
+} from './leadRouter';
+
+// Recipient lists live in leadRouter.ts (the module that decides who hears
+// about which inquiry); re-exported here so existing callers keep working.
+export { getAcquisitionNotifyEmails, getFinancingNotifyEmails, getLeadNotifyEmails };
 
 let connectionSettings: any;
 
@@ -43,39 +52,20 @@ export async function getResendClient() {
   };
 }
 
-// Get notification recipients from environment
+/**
+ * General form notifications (podcast questions, reno quotes, event host
+ * enquiries, expert applications, coaching waitlist). PODCAST_NOTIFY_EMAIL /
+ * NOTIFY_CC_EMAIL pick the inbox; with neither set this used to return [] and
+ * every one of those forms emailed nobody, so it now falls back to the lead
+ * list — a human always sees the submission.
+ */
 function getNotifyEmails(): string[] {
   const primary = process.env.PODCAST_NOTIFY_EMAIL;
   const cc = process.env.NOTIFY_CC_EMAIL;
   const emails: string[] = [];
   if (primary) emails.push(primary);
   if (cc) emails.push(cc);
-  return emails;
-}
-
-/**
- * Recipients for revenue events only: a new lead or a new account.
- *
- * Deliberately NOT getNotifyEmails(). That list also carries podcast questions,
- * reno quotes, event host enquiries and expert applications — piping those to a
- * mortgage broker would be noise he never asked for. It also returns [] when
- * neither env var is set, which is why lead notifications have been silently
- * going nowhere.
- *
- * Defaults are in code rather than env-only so this works on deploy without a
- * config step; LEAD_NOTIFY_EMAILS overrides (comma-separated) when the list
- * changes.
- */
-export function getLeadNotifyEmails(): string[] {
-  const configured = process.env.LEAD_NOTIFY_EMAILS;
-  if (configured) {
-    const parsed = configured
-      .split(",")
-      .map(e => e.trim())
-      .filter(e => e.includes("@"));
-    if (parsed.length) return parsed;
-  }
-  return ["danielfoch@gmail.com", "nick@bldfinancial.ca"];
+  return emails.length ? emails : getLeadNotifyEmails();
 }
 
 // Email header template
@@ -117,9 +107,11 @@ export async function sendFormNotification(params: {
   data: Record<string, any>;
   /** Overrides getNotifyEmails() — used by the lead/account revenue events. */
   recipients?: string[];
+  cc?: string[];
 }) {
   const { client, fromEmail } = await getResendClient();
   const recipients = params.recipients?.length ? params.recipients : getNotifyEmails();
+  const cc = (params.cc ?? []).filter(e => !recipients.some(r => r.toLowerCase() === e.toLowerCase()));
 
   if (recipients.length === 0) {
     console.log('No notification emails configured, skipping email send');
@@ -182,6 +174,7 @@ export async function sendFormNotification(params: {
   const { data, error } = await client.emails.send({
     from: fromEmail,
     to: recipients,
+    ...(cc.length ? { cc } : {}),
     subject: params.subject,
     html,
   });
@@ -191,24 +184,29 @@ export async function sendFormNotification(params: {
     throw error;
   }
 
-  console.log(`Form notification sent to: ${recipients.join(', ')}`);
+  console.log(`Form notification sent to: ${recipients.join(', ')}${cc.length ? ` (cc ${cc.join(', ')})` : ''}`);
   return data;
 }
 
 // Convenience wrappers for specific form types
-export async function sendLeadNotification(lead: {
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  strategy?: string;
-  purchasePrice?: number;
-  source?: string;
-}) {
+export async function sendLeadNotification(
+  lead: {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+    strategy?: string;
+    purchasePrice?: number;
+    source?: string;
+  },
+  /** Route by intent (see leadRouter.recipientsForIntent); default is everyone. */
+  recipients?: { to: string[]; cc?: string[] },
+) {
   return sendFormNotification({
     formType: 'lead',
     subject: `New Lead: ${lead.name} - ${lead.address || 'Deal Analyzer'}`,
-    recipients: getLeadNotifyEmails(),
+    recipients: recipients?.to?.length ? recipients.to : getLeadNotifyEmails(),
+    cc: recipients?.cc,
     data: {
       Name: lead.name,
       Email: lead.email,
@@ -784,9 +782,10 @@ export async function sendMLIQuoteNotification(quote: {
 }) {
   const { client, fromEmail } = await getResendClient();
   
-  const recipients = ['nick@bldfinancial.ca'];
-  
-  const ccEmails = getNotifyEmails();
+  // MLI Select is a financing product: Nick's lane, with the acquisition
+  // side copied so the request is visible even if BLD is slow to respond.
+  const recipients = getFinancingNotifyEmails();
+  const ccEmails = getAcquisitionNotifyEmails().filter(e => !recipients.some(r => r.toLowerCase() === e.toLowerCase()));
   
   let dataRows = '';
   const data: Record<string, any> = {

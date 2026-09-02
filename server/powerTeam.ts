@@ -14,6 +14,7 @@ import { z } from "zod";
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { isAdmin, isAuthenticated } from "./auth";
+import { notifyTeamOfLead } from "./leadRouter";
 import {
   POWER_TEAM_ROLES,
   claimProfileSchema,
@@ -137,6 +138,22 @@ export function registerPowerTeamRoutes(app: Express): void {
           service_areas = COALESCE(EXCLUDED.service_areas, power_team_waitlist.service_areas),
           note = COALESCE(EXCLUDED.note, power_team_waitlist.note)
       `);
+
+      // A trades/pro waitlist signup is a relationship for the whole team.
+      notifyTeamOfLead({
+        intent: "general",
+        surface: "Power Team waitlist",
+        sourcePage: "/power-team",
+        name: d.name,
+        email: d.email,
+        phone: d.phone ?? null,
+        message: d.note ?? null,
+        context: {
+          roles: d.roles.join(", "),
+          company: d.company ?? null,
+          serviceAreas: d.serviceAreas ?? null,
+        },
+      }).catch((err) => console.error("[power-team] team alert failed:", err instanceof Error ? err.message : err));
 
       res.json({ success: true });
     } catch (err: any) {

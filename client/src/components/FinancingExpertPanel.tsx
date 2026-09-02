@@ -30,14 +30,17 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { track } from "@/lib/analytics";
+import { BookCallCta } from "@/components/BookCallCta";
 import { Phone, Mail, Loader2, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 
+// Contact details are deliberately NOT here: both actions post to the server,
+// which routes financing inquiries to Nick (Daniel copied) — see
+// server/leadRouter.ts. No third-party scheduler, no placeholder inbox.
 const financingExpert = {
   name: "Nick Hill",
   title: "Financing Expert",
-  company: "Mortgage Broker",
-  calendlyUrl: "https://calendly.com",
-  email: "nick@example.com",
+  company: "BLD Financial",
 };
 
 const consultationFormSchema = z.object({
@@ -70,6 +73,7 @@ export function FinancingExpertPanel({
 }: FinancingExpertPanelProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [bookOpen, setBookOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState(false);
 
   const form = useForm<ConsultationFormValues>({
@@ -104,6 +108,7 @@ export function FinancingExpertPanel({
       });
     },
     onSuccess: () => {
+      track({ event: "lead_captured", source: "financing_expert_panel", geography: region });
       toast({ 
         title: "Consultation Request Sent!", 
         description: `${financingExpert.name} will be in touch shortly.`
@@ -134,12 +139,16 @@ export function FinancingExpertPanel({
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
-        <a href={financingExpert.calendlyUrl} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
-          <Button size="sm" variant="outline" className="gap-1 w-full sm:w-auto" data-testid="button-financing-book-call">
-            <Phone className="h-3 w-3" />
-            Book a Call
-          </Button>
-        </a>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1 flex-1 sm:flex-none"
+          onClick={() => setBookOpen(true)}
+          data-testid="button-financing-book-call"
+        >
+          <Phone className="h-3 w-3" />
+          Book a Call
+        </Button>
         <Button 
           size="sm"
           className="gap-1 flex-1 sm:flex-none" 
@@ -183,6 +192,30 @@ export function FinancingExpertPanel({
           {expertContent}
         </CardContent>
       </Card>
+
+      <Dialog open={bookOpen} onOpenChange={setBookOpen}>
+        <DialogContent className="sm:max-w-lg p-0 border-0 bg-transparent shadow-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Book a financing call with {financingExpert.name}</DialogTitle>
+            <DialogDescription>Request a call about financing this deal.</DialogDescription>
+          </DialogHeader>
+          <BookCallCta
+            intent="financing"
+            title={`Book a call with ${financingExpert.name}`}
+            description="Tell us where to reach you and we'll set up a call about financing this deal."
+            dealSnapshot={{
+              address: address || undefined,
+              city: city || undefined,
+              purchasePrice,
+              keyMetrics: {
+                "Down payment": `${downPaymentPercent}%`,
+                "Loan amount": Math.round(loanAmount),
+                "Rate modelled": `${interestRate}%`,
+              },
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-md">

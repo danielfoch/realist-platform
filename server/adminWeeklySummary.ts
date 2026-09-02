@@ -9,14 +9,16 @@
 
 import { desc, gt, sql } from "drizzle-orm";
 import { db } from "./db";
-import { sendNotificationEmail } from "./resend";
+import { getLeadNotifyEmails, sendNotificationEmail } from "./resend";
 import { storage } from "./storage";
 import { analyses, leads, opportunities, users } from "@shared/schema";
 
 async function recipients(): Promise<string[]> {
   const dbEmail = await storage.getAppSetting("deal_desk_notify_email").catch(() => null);
   const raw = dbEmail || process.env.DEAL_DESK_NOTIFY_EMAIL || process.env.PODCAST_NOTIFY_EMAIL || "";
-  return raw.split(",").map((e: string) => e.trim()).filter(Boolean);
+  const configured = raw.split(",").map((e: string) => e.trim()).filter(Boolean);
+  // With nothing configured the Monday summary used to skip itself entirely.
+  return configured.length ? configured : getLeadNotifyEmails();
 }
 
 export async function sendAdminWeeklySummary(): Promise<boolean> {
