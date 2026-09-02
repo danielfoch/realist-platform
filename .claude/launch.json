@@ -4,9 +4,34 @@
     {
       "name": "realist-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5000,
       "autoPort": true
+    },
+    {
+      "name": "realist-lean",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/danielfoch/realist-lean",
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "realist-client",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "port": 5173
     }
   ]
 }

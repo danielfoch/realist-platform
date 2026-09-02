@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { Suspense, useEffect } from "react";
 import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
 import { Loader2 } from "lucide-react";
@@ -15,13 +15,13 @@ import { TrafficAnalyticsTracker } from "@/components/TrafficAnalyticsTracker";
 
 // Eager pages — highest-traffic entry points stay in the main chunk so the
 // most common landings render with zero extra network round-trips:
-// - InvestorStart: "/" homepage
+// - Landing: "/" homepage (InvestorStart is the previous version, kept for reference)
 // - Events / EventDetail / EventSuccess: event marketing + ticket purchase
 //   funnel (incl. the post-Stripe success redirect, which must never flash a
 //   loader after payment)
 // - Login / Signup: primary auth entries
 // - NotFound: tiny, avoids a spinner flash on bad URLs
-import InvestorStart from "@/pages/InvestorStart";
+import Landing from "@/pages/Landing";
 import Events from "@/pages/Events";
 import EventDetail from "@/pages/EventDetail";
 import EventSuccess from "@/pages/EventSuccess";
@@ -303,13 +303,18 @@ function PageFallback() {
 }
 
 function Router() {
+  // The landing page forces dark styling for its own tree; the footer sits
+  // outside that tree, so re-scope it too or a light footer snaps on under
+  // the dark final CTA.
+  const [location] = useLocation();
+  const isLanding = location === "/";
   return (
     <>
     <GetAppBanner />
     <Suspense fallback={<PageFallback />}>
     <Switch>
       {/* Main entry - simplified investor homepage */}
-      <Route path="/" component={InvestorStart} />
+      <Route path="/" component={Landing} />
       <Route path="/discover">{() => <Redirect to="/tools/cap-rates" />}</Route>
       <Route path="/deal-analyzer">{() => <Redirect to="/tools/analyzer" />}</Route>
 
@@ -519,7 +524,9 @@ function Router() {
       <Route component={NotFound} />
     </Switch>
     </Suspense>
-    <SiteFooter />
+    <div className={isLanding ? "dark bg-background text-foreground" : undefined}>
+      <SiteFooter />
+    </div>
     </>
   );
 }
