@@ -5,11 +5,11 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("homepage", () => {
-  test("renders the investing hero H1", async ({ page }) => {
+  test("renders the underwriting hero H1", async ({ page }) => {
     const response = await page.goto("/");
     expect(response?.status()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: /canadian real estate investing/i }),
+      page.getByRole("heading", { level: 1, name: /canadian real estate, underwritten in seconds/i }),
     ).toBeVisible();
   });
 
