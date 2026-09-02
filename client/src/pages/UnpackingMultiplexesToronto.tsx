@@ -220,6 +220,16 @@ const SPONSORS = [
   },
   { src: "/partners/elevate.png", alt: "Elevate Realty", url: "/community/events/partners/elevate", internal: true },
   { src: "/partners/propcare.png", alt: "PropCare", url: "/community/events/partners/propcare", internal: true },
+  { src: "/partners/the-plex-group.svg", alt: "The Plex Group", url: "https://www.theplexgroup.ca/", internal: false },
+  { src: "/partners/craig-race-architecture.svg", alt: "Craig Race Architecture", url: "https://craigrace.com/", internal: false },
+  { src: "/partners/ohba.svg", alt: "Ontario Home Builders' Association", url: "https://www.ohba.ca/", internal: false },
+  { src: "/partners/liv-rent.svg", alt: "liv.rent", url: "https://liv.rent/", internal: false },
+  {
+    src: "/partners/toronto-hydro.png",
+    alt: "Toronto Hydro",
+    url: "https://www.torontohydro.com/contractors-and-developers/multiplex-powerplay-pilot-program",
+    internal: false,
+  },
   { src: "/partners/storeys.png", alt: "STOREYS", url: "https://storeys.com/", internal: false },
   { src: "/partners/real-estate-magazine.png", alt: "Real Estate Magazine", url: "https://realestatemagazine.ca/", internal: false },
 ];
