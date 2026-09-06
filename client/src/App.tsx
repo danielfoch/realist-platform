@@ -303,11 +303,6 @@ function PageFallback() {
 }
 
 function Router() {
-  // The landing page forces dark styling for its own tree; the footer sits
-  // outside that tree, so re-scope it too or a light footer snaps on under
-  // the dark final CTA.
-  const [location] = useLocation();
-  const isLanding = location === "/";
   return (
     <>
     <GetAppBanner />
@@ -524,9 +519,7 @@ function Router() {
       <Route component={NotFound} />
     </Switch>
     </Suspense>
-    <div className={isLanding ? "dark bg-background text-foreground" : undefined}>
-      <SiteFooter />
-    </div>
+    <SiteFooter />
     </>
   );
 }
