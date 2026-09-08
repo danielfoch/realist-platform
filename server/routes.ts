@@ -854,6 +854,13 @@ export async function registerRoutes(
   registerPropertyQuestionRoutes(app);
   registerSocialStatsRoutes(app);
   registerTrafficAnalyticsRoutes(app, isAdmin);
+  app.get("/api/admin/multiplex-applications", isAdmin, async (_req, res) => {
+    try {
+      const { pool } = await import("./db");
+      const result = await pool.query("SELECT id, name, email, payload, status, created_at FROM multiplex_applications ORDER BY created_at DESC LIMIT 1000");
+      res.set("Cache-Control", "no-store").json({ applications: result.rows });
+    } catch { res.status(503).json({ error: "Applications are temporarily unavailable" }); }
+  });
   registerDdfCrawlRoutes(app);
   registerEventsGrowthRoutes(app);
   registerEventsCommunityRoutes(app);

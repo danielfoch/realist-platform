@@ -69,3 +69,8 @@ If both agents need the same file:
 1. Agent A pulls and starts working
 2. Agent B pulls after Agent A pushes
 3. If conflict: check git log, adapt rather than overwrite
+
+## Multiplex event intake (2026-09-08)
+- Codex added `/build-with-us` and `POST /api/multiplex-applications`. Dedicated private `multiplex_applications` table stores id, name, email, payload JSON, status and created_at; initialized idempotently at boot.
+- Admin-only `GET /api/admin/multiplex-applications` lists latest 1,000 applications. No marketing enrollment, outbound email, or partner routing.
+- Session files: client/src/pages/BuildWithUs.tsx, App.tsx route registration, server/multiplexApplication*.ts, server/index.ts and the admin route in server/routes.ts.
