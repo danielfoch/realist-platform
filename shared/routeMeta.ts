@@ -56,6 +56,10 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   // ─── Conversion pages ──────────────────────────────────────────────────────
   // These were serving the generic fallback title (or a hard 404) despite being
   // the destinations of the nav's primary CTAs.
+  "/build-with-us": {
+    title: "Build with us — Multiplex investment applications | Realist",
+    description: "Bring us your multiplex project. Our mandate is to invest in six deals over 365 days with attendees of Unpacking Multiplexes Toronto 2026.",
+  },
   "/book-a-call": {
     title: "Book a Call with Daniel Foch & Nick Hill | Realist.ca",
     description: "Talk through a live deal, a financing structure, or a multiplex site with an investor-focused broker and a mortgage broker. No cost, no pitch — bring the numbers you already have.",
