@@ -16,6 +16,7 @@ import { isKnownAppRoute } from "./seoMeta";
 
 /** Every route the multiplex funnel depends on. */
 const MULTIPLEX_ROUTES = [
+  "/build-with-us",
   "/tools/multiplex-underwriter",
   "/tools/multiplex-feasibility",
   "/tools/will-it-plex",
