@@ -6736,27 +6736,58 @@ export async function registerRoutes(
         return;
       }
 
-      const { isDdfConfigured, getDdfToken } = await import("./creaDdf");
+      const { isDdfConfigured, getDdfToken, searchDdfListings } = await import("./creaDdf");
 
       if (!isDdfConfigured()) {
-        const result = { configured: false, authenticated: false };
+        const result = { configured: false, authenticated: false, search: null, latestCrawl: null };
         ddfStatusCache = { result, expiresAt: Date.now() + 60000 };
         res.json(result);
         return;
       }
 
+      let authenticated = false;
       try {
         await getDdfToken();
-        const result = { configured: true, authenticated: true };
-        ddfStatusCache = { result, expiresAt: Date.now() + 300000 };
-        res.json(result);
-      } catch {
-        const result = { configured: true, authenticated: false };
-        ddfStatusCache = { result, expiresAt: Date.now() + 30000 };
-        res.json(result);
+        authenticated = true;
+      } catch { /* reported below */ }
+
+      // A token that mints while every search fails is exactly the failure
+      // production had for months, and the public status said "authenticated:
+      // true" the whole time. Probe one real query and report CREA's own
+      // status code and message (no listing data) so the cause is visible
+      // without server logs.
+      let search: { ok: boolean; httpStatus: number | null; error: string | null; count: number | null } | null = null;
+      if (authenticated) {
+        try {
+          const probe = await searchDdfListings({ stateOrProvince: "Ontario", top: 1 });
+          search = { ok: true, httpStatus: 200, error: null, count: probe.count };
+        } catch (err: any) {
+          const message = String(err?.message || err);
+          const status = message.match(/failed: (\d{3})/)?.[1];
+          search = { ok: false, httpStatus: status ? Number(status) : null, error: message.slice(0, 300), count: null };
+        }
       }
+
+      let latestCrawl: { status: string; trigger: string; startedAt: Date | null; finishedAt: Date | null; totalListings: number | null; error: string | null } | null = null;
+      try {
+        const run = await storage.getLatestDdfCrawlRun();
+        if (run) {
+          latestCrawl = {
+            status: run.status,
+            trigger: run.trigger,
+            startedAt: run.startedAt,
+            finishedAt: run.finishedAt,
+            totalListings: run.totalListings,
+            error: run.error ? String(run.error).slice(0, 300) : null,
+          };
+        }
+      } catch { /* ledger table may not exist yet */ }
+
+      const result = { configured: true, authenticated, search, latestCrawl, checkedAt: new Date().toISOString() };
+      ddfStatusCache = { result, expiresAt: Date.now() + (authenticated && search?.ok ? 300000 : 60000) };
+      res.json(result);
     } catch {
-      res.json({ configured: false, authenticated: false });
+      res.json({ configured: false, authenticated: false, search: null, latestCrawl: null });
     }
   });
 

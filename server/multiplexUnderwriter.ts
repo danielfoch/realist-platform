@@ -24,6 +24,7 @@ import { isAdmin } from "./auth";
 import { users } from "@shared/models/auth";
 import { multiplexUnderwritings } from "@shared/schema";
 import { ensureTorontoGeoTables, getTorontoGeoLayerCounts, resolveSite, type ResolvedSite } from "./torontoGeo";
+import { ensureTorontoWardsLoaded, importTorontoWards } from "./torontoWards";
 import { captureDealLead, recordDealIntent, type DealIntentSignal } from "./dealIntent";
 import { consumeDailyUsage, grantDailyUnlock, hasDailyUnlock } from "./usageLimits";
 import { requireVerified } from "./accountVerification";
@@ -980,6 +981,26 @@ export function registerMultiplexUnderwriterRoutes(app: Express): void {
   // which is the honest answer until the import runs.
   ensureTorontoGeoTables()
     .catch((err) => console.error("[multiplex] failed to ensure geo tables:", err.message));
+
+  // Ward polygons are what make the 6+1 / 4+1 verdict verified rather than
+  // inferred. Production ran for months with an empty table because the
+  // importer was a script nobody ran; the server now fetches the 1 MB dataset
+  // itself when the table is empty. Skipped under test so route registration
+  // never reaches the network.
+  if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+    setTimeout(() => {
+      ensureTorontoWardsLoaded().catch(() => {});
+    }, 5000);
+  }
+
+  // Force a ward refresh (e.g. after the City changes the ward model).
+  app.post("/api/admin/toronto-geo/import-wards", isAdmin, async (_req: Request, res: Response) => {
+    try {
+      res.json(await importTorontoWards());
+    } catch (err: any) {
+      res.status(502).json({ error: err.message });
+    }
+  });
 
   seedAssumptions()
     .catch((err) => console.error("[multiplex] failed to seed assumptions:", err.message));
