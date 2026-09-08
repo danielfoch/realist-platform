@@ -1,3 +1,5 @@
+import { createMultiplexApplicationRouter } from "./multiplexApplications";
+import { initializeMultiplexApplications, saveMultiplexApplication } from "./multiplexApplicationStore";
 import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -647,6 +649,8 @@ async function ensureAppTables() {
   // /api/listings/similar as an MLS number lookup.
   const { registerSimilarListingsRoutes } = await import("./similarListings");
   registerSimilarListingsRoutes(app);
+  await initializeMultiplexApplications();
+  app.use("/api/multiplex-applications", createMultiplexApplicationRouter(saveMultiplexApplication));
   await registerRoutes(httpServer, app);
   const { registerMultiplexUnderwriterRoutes } = await import("./multiplexUnderwriter");
   registerMultiplexUnderwriterRoutes(app);
