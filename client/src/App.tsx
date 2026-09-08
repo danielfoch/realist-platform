@@ -127,6 +127,7 @@ import NotFound from "@/pages/not-found";
 
 const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
+const BuildWithUs = lazy(() => import("@/pages/BuildWithUs"));
 const Notebook = lazy(() => import("@/pages/Notebook"));
 const NotebookPrint = lazy(() => import("@/pages/NotebookPrint"));
 const DanielFoch = lazy(() => import("@/pages/DanielFoch"));
@@ -308,6 +309,7 @@ function Router() {
     <GetAppBanner />
     <Suspense fallback={<PageFallback />}>
     <Switch>
+      <Route path="/build-with-us" component={BuildWithUs} />
       {/* Main entry - simplified investor homepage */}
       <Route path="/" component={Landing} />
       <Route path="/discover">{() => <Redirect to="/tools/cap-rates" />}</Route>
