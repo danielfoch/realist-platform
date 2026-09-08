@@ -59,6 +59,7 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - `research_publish_attempts` — idempotent admin publish-attempt ledger; Phase 2 records blocked attempts only, no public article publishing
 
 ### Pending/Recent Work
+- `2026-09-06` — Unpacking Multiplexes Toronto lead-capture audit (docs only): `docs/audits/multiplex-lead-capture-2026-09-06.md`. Ticket buyers go to OvationTix, not native Stripe / GHL. Do not publish seed slug `multiplex-conference-toronto-2026` (wrong date).
 - `ef7766e` (Clyde) — /api/deals/join, user_sessions table for session→user linking
 - `486c4e5` (Clyde) — event tracking infrastructure
 - Replit Agent (in progress) — adapting session linking to Drizzle schema
