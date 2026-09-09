@@ -576,6 +576,9 @@ export default function UnpackingMultiplexesToronto() {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <Button size="lg" variant="outline" className="gap-2" asChild>
+              <Link href="/ask"><Mic className="h-5 w-5" />Ask the panelists live</Link>
+            </Button>
             <Button
               type="button"
               size="lg"

@@ -291,6 +291,9 @@ const DailyGlance = lazy(() => import("@/pages/DailyGlance"));
 const NotificationPreferences = lazy(() => import("@/pages/NotificationPreferences"));
 const PowerTeamProfile = lazy(() => import("@/pages/PowerTeamProfile"));
 const AdminPowerTeam = lazy(() => import("@/pages/AdminPowerTeam"));
+const EventQuestions = lazy(() => import("@/pages/EventQuestions"));
+const EventQuestionScreen = lazy(() => import("@/pages/EventQuestions").then(m => ({ default: m.EventQuestionScreen })));
+const EventQuestionModeration = lazy(() => import("@/pages/EventQuestions").then(m => ({ default: m.EventQuestionModeration })));
 
 // Matches the full-page loading state used across pages
 // (e.g. CoInvestingGroupDetail, TrueCost).
@@ -303,13 +306,18 @@ function PageFallback() {
 }
 
 function Router() {
+  const [path] = useLocation();
+  const eventQaPage = path === "/ask" || path.startsWith("/ask/");
   return (
     <>
-    <GetAppBanner />
+    {!eventQaPage && <GetAppBanner />}
     <Suspense fallback={<PageFallback />}>
     <Switch>
       {/* Main entry - simplified investor homepage */}
       <Route path="/" component={Landing} />
+      <Route path="/ask" component={EventQuestions} />
+      <Route path="/ask/screen" component={EventQuestionScreen} />
+      <Route path="/ask/moderate" component={EventQuestionModeration} />
       <Route path="/discover">{() => <Redirect to="/tools/cap-rates" />}</Route>
       <Route path="/deal-analyzer">{() => <Redirect to="/tools/analyzer" />}</Route>
 
@@ -519,7 +527,7 @@ function Router() {
       <Route component={NotFound} />
     </Switch>
     </Suspense>
-    <SiteFooter />
+    {!eventQaPage && <SiteFooter />}
     </>
   );
 }
