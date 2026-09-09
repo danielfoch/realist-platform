@@ -652,6 +652,15 @@ async function ensureAppTables() {
   await initializeMultiplexApplications();
   app.use("/api/multiplex-applications", createMultiplexApplicationRouter(saveMultiplexApplication));
   await registerRoutes(httpServer, app);
+  const { createEventQaStore } = await import("./eventQaStore");
+  const { registerEventQaRoutes } = await import("./eventQaRoutes");
+  const { isAuthenticated } = await import("./auth");
+  const { requireEventAdmin, isEventAdminRequest } = await import("./eventsModule");
+  const { pool: eventQaPool } = await import("./db");
+  const eventQaStore = createEventQaStore(eventQaPool);
+  // Requests also await initialization so the first visitor cannot race the migration.
+  eventQaStore.ensure().catch(error => console.error("[event-qa] schema initialization failed:", error.name));
+  registerEventQaRoutes(app, { store: eventQaStore, authenticated: isAuthenticated, moderator: requireEventAdmin, canModerate: isEventAdminRequest });
   const { registerMultiplexUnderwriterRoutes } = await import("./multiplexUnderwriter");
   registerMultiplexUnderwriterRoutes(app);
   const { registerPowerTeamRoutes } = await import("./powerTeam");
