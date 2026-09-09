@@ -63,6 +63,13 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - `486c4e5` (Clyde) — event tracking infrastructure
 - Replit Agent (in progress) — adapting session linking to Drizzle schema
 
+## Live event Q&A (2026-09-09, Codex)
+- Working from an isolated clone after pulling main and checking the idle, clean Replit checkout. Session files: `server/eventQa*.ts`, `shared/eventQa.ts`, `client/src/pages/EventQuestions.tsx`; integration in `server/index.ts`, `server/seoMeta.ts`, `shared/routeMeta.ts`, `client/src/App.tsx`, and the Toronto event page.
+- `/ask` is the audience feed; `/ask/screen` is a public projector with approved questions only; `/ask/moderate` reuses the existing event admin allowlist.
+- `event_qa_settings` stores the event slug, open/paused flag, and extra blocked words. `event_qa_questions` stores author ID privately, question, panel, review status, feature flag and moderation audit fields. `event_qa_votes` has a composite question/user primary key and +/-1 constraint. The advisory-locked boot migration in `server/eventQaStore.ts` is also awaited by requests.
+- Authentication is required on the server for submissions and votes. All submissions require host approval. Public feeds never expose account identifiers or rejected/pending questions. Votes are absolute, idempotent PUT requests. Admins can pause, reject, answer, feature, and extend the rejection dictionary.
+- Cherry-pick integration changes onto the current Replit branch to preserve other unpublished work.
+
 ## How to Break Deadlocks
 
 If both agents need the same file:
