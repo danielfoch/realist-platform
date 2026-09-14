@@ -102,7 +102,7 @@ describe("KNOWN_APP_ROUTES mirrors the SPA router", () => {
 
   it("resolves the event sponsor pages", () => {
     // Named explicitly: these go out to sponsors before the September event.
-    for (const slug of ["cmhc", "bld-financial", "valery", "alliance-reit"]) {
+    for (const slug of ["cmhc", "bld-financial", "valery", "alliance-reit", "habitaa"]) {
       expect(
         isKnownAppRoute(`/community/events/partners/${slug}`),
         `sponsor page ${slug} must not 404`,
