@@ -11,10 +11,10 @@ import {
   FileText, TrendingUp, BarChart3, Shield, Gavel,
   Map, DollarSign, Layers, Building2, Inbox,
   KeyRound, FolderOpen, Gauge, Newspaper, Globe2, Bell, PhoneCall, PenLine,
-  Youtube, MessageSquare,
-} from "lucide-react";
+  Youtube, MessageSquare, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/lib/theme";
 import { NotificationBell } from "@/components/NotificationBell";
 import { track } from "@/lib/analytics";
 import { authPath } from "@/lib/authReturn";
@@ -176,6 +176,7 @@ export function Navigation() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const canAccessEventsAdmin = user?.email ? eventAdminEmails.has(user.email.toLowerCase()) : false;
 
   const isActiveCategory = (category: NavCategory) =>
@@ -408,6 +409,20 @@ export function Navigation() {
                 )}
               </div>
             )}
+
+            {/* Light / dark. The site followed the OS setting with no way to
+                override it, so a dark-mode Mac never saw the light version. */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={toggleTheme}
+              data-testid="button-theme-toggle"
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
 
             {/* Mobile toggle */}
             <Button

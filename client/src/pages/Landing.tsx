@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -193,7 +193,7 @@ function Eyebrow({ children }: { children: ReactNode }) {
 function GlassCard({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-2xl border border-white/10 bg-white/[0.035] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] backdrop-blur-md ${className}`}
+      className={`rounded-2xl border border-border/70 bg-card/70 shadow-lg backdrop-blur-md ${className}`}
     >
       {children}
     </div>
@@ -211,18 +211,6 @@ export default function Landing() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const copyY = useTransform(scrollYProgress, [0, 1], [0, 120]);
   const copyOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
-
-  // The page forces dark styling, but the document behind it follows the
-  // user's theme. Paint the canvas dark while mounted so rubber-band
-  // overscroll and the space behind the footer never flash light.
-  useEffect(() => {
-    const root = document.documentElement;
-    const previous = root.style.backgroundColor;
-    root.style.backgroundColor = "hsl(222 47% 6%)";
-    return () => {
-      root.style.backgroundColor = previous;
-    };
-  }, []);
 
   const { data: episodes, isLoading: episodesLoading } = useQuery<PodcastEpisode[]>({
     queryKey: ["/api/podcast/episodes"],
@@ -242,7 +230,28 @@ export default function Landing() {
     // The landing page is deliberately dark in both themes: the scene, glows
     // and frosted cards are designed for it. `dark` here re-scopes every
     // design token for the nav and everything below it.
-    <div className="dark min-h-screen bg-background text-foreground">
+    <div className="rl-landing min-h-screen bg-background text-foreground">
+      {/* One scene, two times of day. Light mode is a hazy Toronto morning,
+          dark mode is the night skyline; everything else on the page uses the
+          design tokens so it follows the user's theme automatically. */}
+      <style>{`
+        .rl-landing {
+          --rl-sky: radial-gradient(ellipse 60% 50% at 50% -10%, hsl(205 90% 75% / 0.55), transparent 70%),
+                    linear-gradient(180deg, hsl(208 70% 97%) 0%, hsl(205 75% 91%) 55%, hsl(var(--background)) 100%);
+          --rl-glow: radial-gradient(ellipse 70% 60% at 50% 100%, hsl(40 100% 72% / 0.45), transparent 70%),
+                     radial-gradient(ellipse 40% 40% at 30% 100%, hsl(205 80% 78% / 0.4), transparent 70%);
+          --rl-frame-glow: radial-gradient(60% 60% at 50% 40%, hsl(205 90% 70% / 0.35), transparent 70%);
+          --rl-grain-opacity: 0.04;
+        }
+        .dark .rl-landing {
+          --rl-sky: radial-gradient(ellipse 60% 50% at 50% -10%, hsl(214 60% 30% / 0.45), transparent 70%),
+                    linear-gradient(180deg, hsl(222 47% 6%) 0%, hsl(222 45% 8%) 60%, hsl(222 47% 6%) 100%);
+          --rl-glow: radial-gradient(ellipse 70% 60% at 50% 100%, hsl(356 100% 60% / 0.22), transparent 70%),
+                     radial-gradient(ellipse 40% 40% at 30% 100%, hsl(16 100% 60% / 0.12), transparent 70%);
+          --rl-frame-glow: radial-gradient(60% 60% at 50% 40%, hsl(356 100% 62% / 0.28), transparent 70%);
+          --rl-grain-opacity: 0.07;
+        }
+      `}</style>
       <SEO
         title={SHARED_ROUTE_META["/"].title}
         description={SHARED_ROUTE_META["/"].description}
@@ -263,16 +272,14 @@ export default function Landing() {
           <div
             className="pointer-events-none absolute inset-0"
             aria-hidden="true"
-            style={{
-              background:
-                "radial-gradient(ellipse 60% 50% at 50% -10%, hsl(214 60% 30% / 0.45), transparent 70%), linear-gradient(180deg, hsl(222 47% 6%) 0%, hsl(222 45% 8%) 60%, hsl(222 47% 6%) 100%)",
-            }}
+            style={{ background: "var(--rl-sky)" }}
           />
           {/* Fine grain so the gradients don't band */}
           <div
-            className="pointer-events-none absolute inset-0 opacity-[0.07] mix-blend-overlay"
+            className="pointer-events-none absolute inset-0 mix-blend-overlay"
             aria-hidden="true"
             style={{
+              opacity: "var(--rl-grain-opacity)",
               backgroundImage:
                 "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
             }}
@@ -292,7 +299,7 @@ export default function Landing() {
               >
                 <Link
                   href="/insights/podcast"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1.5 pl-1.5 pr-3.5 text-xs font-medium text-white/75 transition-colors hover:border-primary/50 hover:text-white"
+                  className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 py-1.5 pl-1.5 pr-3.5 text-xs font-medium text-foreground/75 transition-colors hover:border-primary/50 hover:text-foreground"
                   onClick={() => track({ event: "cta_clicked", cta: "homepage_podcast_ribbon", location: "homepage_hero", destination: "/insights/podcast" })}
                   data-testid="link-landing-podcast-pill"
                 >
@@ -301,9 +308,9 @@ export default function Landing() {
                     <img src={nickImage} alt="" className="h-6 w-6 rounded-full border border-background object-cover object-top" />
                   </span>
                   <span>
-                    From the hosts of <span className="font-semibold text-white">{PODCAST_NAME}</span>
+                    From the hosts of <span className="font-semibold text-foreground">{PODCAST_NAME}</span>
                   </span>
-                  <span className="hidden text-white/45 sm:inline">· Canada&apos;s #1 real estate podcast</span>
+                  <span className="hidden text-muted-foreground sm:inline">· Canada&apos;s #1 real estate podcast</span>
                 </Link>
               </motion.div>
 
@@ -324,7 +331,7 @@ export default function Landing() {
               </motion.h1>
 
               <motion.p
-                className="mx-auto mt-5 max-w-2xl text-balance text-base text-white/65 sm:text-lg md:text-xl"
+                className="mx-auto mt-5 max-w-2xl text-balance text-base text-muted-foreground sm:text-lg md:text-xl"
                 initial={reduce ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: EASE, delay: 0.16 }}
@@ -356,7 +363,7 @@ export default function Landing() {
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="w-full gap-2 border-white/15 bg-white/[0.04] sm:w-auto">
+                <Button asChild size="lg" variant="outline" className="w-full gap-2 border-border bg-card/70 sm:w-auto">
                   <Link
                     href="/tools/cap-rates"
                     onClick={() => {
@@ -377,8 +384,8 @@ export default function Landing() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
               >
-                <AnalysesCounter className="bg-white/[0.03]" />
-                <p className="text-xs text-white/40">
+                <AnalysesCounter className="bg-card/60" />
+                <p className="text-xs text-muted-foreground">
                   Estimated metrics only. Screening signals are based on assumptions, not guaranteed returns.
                 </p>
               </motion.div>
@@ -396,7 +403,7 @@ export default function Landing() {
         </section>
 
         {/* ============================ TRUST STRIP ============================ */}
-        <section className="relative border-y border-white/[0.06] bg-white/[0.015] py-8" data-testid="section-landing-trust">
+        <section className="relative border-y border-border/60 bg-muted/30 py-8" data-testid="section-landing-trust">
           <div className="mx-auto max-w-6xl space-y-6 px-4 md:px-6">
             <Reveal>
               <div className="grid grid-cols-2 gap-4 text-center md:grid-cols-4">
@@ -430,7 +437,7 @@ export default function Landing() {
                       />
                     );
                     const pill =
-                      "group flex h-10 items-center justify-center rounded-md bg-white/85 px-3 opacity-70 transition-opacity hover:opacity-100";
+                      "group flex h-10 items-center justify-center rounded-md border border-border/60 bg-white/90 px-3 opacity-80 transition-opacity hover:opacity-100 dark:bg-white/85 dark:opacity-70";
                     return media.url ? (
                       <a key={media.name} href={media.url} target="_blank" rel="noopener noreferrer" className={pill} title={media.name}>
                         {logo}
@@ -460,10 +467,10 @@ export default function Landing() {
                 <div>
                   <Eyebrow>The platform</Eyebrow>
                   <h2 className="mt-4 text-balance text-3xl font-bold tracking-tight md:text-5xl">
-                    Find it, underwrite it, <span className="text-white/45">finance it, close it.</span>
+                    Find it, underwrite it, <span className="text-muted-foreground">finance it, close it.</span>
                   </h2>
                 </div>
-                <p className="text-base text-white/60 md:text-lg">
+                <p className="text-base text-muted-foreground md:text-lg">
                   One place for the whole deal. Free tools for Canadian investors, and the two people who built
                   them when a deal is worth acting on.
                 </p>
@@ -486,7 +493,7 @@ export default function Landing() {
                           <BarChart3 className="h-5 w-5" aria-hidden="true" />
                         </span>
                         <h3 className="mt-5 text-2xl font-bold tracking-tight">Deal analyzer</h3>
-                        <p className="mt-2 text-white/60">
+                        <p className="mt-2 text-muted-foreground">
                           Paste an address, listing, or MLS number. Cap rate, cash-on-cash, DSCR, IRR, BRRR and
                           multiplex viability, with smart defaults from your market.
                         </p>
@@ -496,8 +503,8 @@ export default function Landing() {
                         </span>
                       </div>
                       {/* Mini result strip */}
-                      <div className="rounded-xl border border-white/10 bg-black/30 p-4" aria-hidden="true">
-                        <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                      <div className="rounded-xl border border-border/70 bg-muted/50 p-4" aria-hidden="true">
+                        <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                           <span>Sample result</span>
                           <span className="text-emerald-300">score 84</span>
                         </div>
@@ -510,10 +517,10 @@ export default function Landing() {
                           ].map(([k, v, pct]) => (
                             <div key={k as string}>
                               <div className="flex justify-between">
-                                <dt className="text-white/55">{k}</dt>
-                                <dd className="font-mono tabular-nums text-white/90">{v}</dd>
+                                <dt className="text-muted-foreground">{k}</dt>
+                                <dd className="font-mono tabular-nums text-foreground">{v}</dd>
                               </div>
-                              <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
+                              <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
                                 <motion.div
                                   className="h-full rounded-full bg-gradient-to-r from-primary to-orange-300"
                                   initial={reduce ? { width: `${pct}%` } : { width: 0 }}
@@ -547,12 +554,12 @@ export default function Landing() {
                       data-testid={`link-landing-feature-${feature.href.split("/").filter(Boolean).pop()}`}
                     >
                       <GlassCard className="flex h-full flex-col p-6 transition-colors group-hover:border-primary/40">
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.06] text-primary">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/60 text-primary">
                           <Icon className="h-5 w-5" aria-hidden="true" />
                         </span>
                         <h3 className="mt-5 text-lg font-bold tracking-tight">{feature.title}</h3>
-                        <p className="mt-2 text-sm text-white/60">{feature.body}</p>
-                        <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-white/70 transition-colors group-hover:text-primary">
+                        <p className="mt-2 text-sm text-muted-foreground">{feature.body}</p>
+                        <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-foreground/70 transition-colors group-hover:text-primary">
                           Open
                           <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                         </span>
@@ -586,11 +593,11 @@ export default function Landing() {
                       The podcast behind Realist
                     </Eyebrow>
                     <h2 className="mt-4 text-balance text-3xl font-bold tracking-tight md:text-4xl">
-                      Canada&apos;s #1 real estate podcast, <span className="text-white/45">every week.</span>
+                      Canada&apos;s #1 real estate podcast, <span className="text-muted-foreground">every week.</span>
                     </h2>
-                    <p className="mt-4 text-white/60">
+                    <p className="mt-4 text-muted-foreground">
                       Every week, Daniel and Nick break down the Canadian housing market on{" "}
-                      <span className="font-semibold text-white">{PODCAST_NAME}</span>. Realist is the platform
+                      <span className="font-semibold text-foreground">{PODCAST_NAME}</span>. Realist is the platform
                       they built so listeners can run the same numbers on their own deals.
                     </p>
 
@@ -604,7 +611,7 @@ export default function Landing() {
                           />
                           <div>
                             <p className="text-sm font-semibold leading-tight">{host.name}</p>
-                            <p className="text-xs text-white/50">{host.role}</p>
+                            <p className="text-xs text-muted-foreground">{host.role}</p>
                           </div>
                         </div>
                       ))}
@@ -633,7 +640,7 @@ export default function Landing() {
                             rel="noopener noreferrer"
                             aria-label={`Listen on ${name}`}
                             title={`Listen on ${name}`}
-                            className="flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] text-white/60 transition-colors hover:border-primary/50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                            className="flex h-11 w-11 items-center justify-center rounded-md border border-border/70 bg-card/70 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                             onClick={() => track({ event: "cta_clicked", cta: `homepage_podcast_${key}`, location: "homepage_podcast", destination: href })}
                             data-testid={`link-home-podcast-${key}`}
                           >
@@ -646,7 +653,7 @@ export default function Landing() {
 
                   <div>
                     <div className="mb-4 flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Latest episodes</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Latest episodes</p>
                       <Link
                         href="/insights/podcast"
                         className="inline-flex items-center gap-1 rounded text-sm font-medium text-primary transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
@@ -661,11 +668,11 @@ export default function Landing() {
                     <div className="space-y-3">
                       {episodesLoading &&
                         Array.from({ length: 3 }).map((_, index) => (
-                          <div key={index} className="flex items-center gap-4 rounded-xl border border-white/10 bg-black/20 p-3" aria-hidden="true">
-                            <div className="h-16 w-16 shrink-0 animate-pulse rounded-lg bg-white/10" />
+                          <div key={index} className="flex items-center gap-4 rounded-xl border border-border/70 bg-muted/50 p-3" aria-hidden="true">
+                            <div className="h-16 w-16 shrink-0 animate-pulse rounded-lg bg-muted" />
                             <div className="flex-1 space-y-2">
-                              <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
-                              <div className="h-3 w-1/2 animate-pulse rounded bg-white/10" />
+                              <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                              <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
                             </div>
                           </div>
                         ))}
@@ -678,42 +685,42 @@ export default function Landing() {
                             <Link
                               key={episode.slug}
                               href={`/insights/podcast/${episode.slug}`}
-                              className="group flex items-center gap-4 rounded-xl border border-white/10 bg-black/20 p-3 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                              className="group flex items-center gap-4 rounded-xl border border-border/70 bg-muted/50 p-3 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                               onClick={() => track({ event: "cta_clicked", cta: "homepage_podcast_episode", location: "homepage_podcast", destination: `/insights/podcast/${episode.slug}` })}
                               data-testid={`link-home-podcast-episode-${episode.slug}`}
                             >
-                              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border/70 bg-muted">
                                 {episode.imageUrl ? (
                                   <img src={episode.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
                                 ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-white/50">
+                                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                                     <Mic className="h-6 w-6" aria-hidden="true" />
                                   </div>
                                 )}
-                                <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true">
+                                <span className="absolute inset-0 flex items-center justify-center bg-background/60 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true">
                                   <Play className="h-6 w-6 fill-primary text-primary" />
                                 </span>
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 text-[11px] text-white/45">
+                                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                                   {dateLabel && <span>{dateLabel}</span>}
                                   {dateLabel && episode.duration && <span aria-hidden="true">·</span>}
                                   {episode.duration && <span className="font-mono tabular-nums">{episode.duration}</span>}
                                 </div>
-                                <p className="mt-0.5 truncate text-sm font-semibold text-white group-hover:text-primary">{episode.title}</p>
-                                {summary && <p className="mt-0.5 line-clamp-1 text-xs text-white/50">{summary}</p>}
+                                <p className="mt-0.5 truncate text-sm font-semibold text-foreground group-hover:text-primary">{episode.title}</p>
+                                {summary && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{summary}</p>}
                               </div>
-                              <ArrowUpRight className="h-4 w-4 shrink-0 text-white/40 transition-colors group-hover:text-primary" aria-hidden="true" />
+                              <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden="true" />
                             </Link>
                           );
                         })}
 
                       {!episodesLoading && latestEpisodes.length === 0 && (
-                        <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-black/20 p-5">
+                        <div className="flex items-center gap-4 rounded-xl border border-border/70 bg-muted/50 p-5">
                           <Radio className="h-8 w-8 text-primary" aria-hidden="true" />
                           <div>
                             <p className="font-semibold">New episodes every week</p>
-                            <p className="text-sm text-white/55">Catch the latest on {PODCAST_NAME}.</p>
+                            <p className="text-sm text-muted-foreground">Catch the latest on {PODCAST_NAME}.</p>
                           </div>
                         </div>
                       )}
@@ -736,7 +743,7 @@ export default function Landing() {
             <Reveal>
               <Eyebrow>Two ways in</Eyebrow>
               <h2 className="mt-4 max-w-2xl text-balance text-3xl font-bold tracking-tight md:text-5xl">
-                Use the tools free. <span className="text-white/45">Bring in the team when it counts.</span>
+                Use the tools free. <span className="text-muted-foreground">Bring in the team when it counts.</span>
               </h2>
             </Reveal>
             <div className="mt-10 grid gap-4 md:grid-cols-2">
@@ -747,7 +754,7 @@ export default function Landing() {
                   </span>
                   <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Investor representation</p>
                   <h3 className="mt-2 text-2xl font-bold tracking-tight">Have a deal you want to close?</h3>
-                  <p className="mt-2 text-white/60">
+                  <p className="mt-2 text-muted-foreground">
                     Daniel and Nick work with experienced investors in select Canadian markets. Boots on the
                     ground, financing, or a second opinion before you offer.
                   </p>
@@ -762,7 +769,7 @@ export default function Landing() {
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </Link>
                     </Button>
-                    <Button asChild variant="outline" className="w-full border-white/15 bg-white/[0.04] sm:w-auto">
+                    <Button asChild variant="outline" className="w-full border-border bg-card/70 sm:w-auto">
                       <Link
                         href="/book-a-call"
                         onClick={() => track({ event: "cta_clicked", cta: "book_call", location: "homepage_funnel_band", destination: "/book-a-call" })}
@@ -776,12 +783,12 @@ export default function Landing() {
               </Reveal>
               <Reveal delay={0.08}>
                 <GlassCard className="flex h-full flex-col p-6 md:p-8">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.06] text-primary">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted/60 text-primary">
                     <Users className="h-5 w-5" aria-hidden="true" />
                   </span>
-                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">For professionals</p>
+                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">For professionals</p>
                   <h3 className="mt-2 text-2xl font-bold tracking-tight">Realtor, mortgage pro, or builder?</h3>
-                  <p className="mt-2 text-white/60">
+                  <p className="mt-2 text-muted-foreground">
                     Investors on Realist are underwriting deals in your market right now. Join the Power Team to
                     get matched with them when a deal moves forward.
                   </p>
@@ -796,7 +803,7 @@ export default function Landing() {
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </Link>
                     </Button>
-                    <Button asChild variant="outline" className="w-full border-white/15 bg-white/[0.04] sm:w-auto">
+                    <Button asChild variant="outline" className="w-full border-border bg-card/70 sm:w-auto">
                       <Link href="/join/realtors" data-testid="button-home-join-realtors">
                         I&apos;m a realtor
                       </Link>
@@ -818,7 +825,7 @@ export default function Landing() {
           <div className="relative mx-auto max-w-3xl px-4 text-center md:px-6">
             <Reveal>
               <h2 className="text-balance text-4xl font-bold tracking-tight md:text-6xl">Start with a deal.</h2>
-              <p className="mx-auto mt-4 max-w-xl text-balance text-white/60 md:text-lg">
+              <p className="mx-auto mt-4 max-w-xl text-balance text-muted-foreground md:text-lg">
                 Paste the listing you&apos;re looking at right now. It takes about ten seconds, and it&apos;s free.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -832,7 +839,7 @@ export default function Landing() {
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="ghost" className="w-full gap-2 text-white/80 sm:w-auto">
+                <Button asChild size="lg" variant="ghost" className="w-full gap-2 text-foreground/80 sm:w-auto">
                   <Link href="/tools" data-testid="button-home-final-tools">
                     Browse all tools
                   </Link>

@@ -220,6 +220,7 @@ const SPONSORS = [
   },
   { src: "/partners/elevate.png", alt: "Elevate Realty", url: "/community/events/partners/elevate", internal: true },
   { src: "/partners/propcare.png", alt: "PropCare", url: "/community/events/partners/propcare", internal: true },
+  { src: "/partners/habitaa.png", alt: "HabitAa", url: "/community/events/partners/habitaa", internal: true },
   { src: "/partners/the-plex-group.svg", alt: "The Plex Group", url: "https://www.theplexgroup.ca/", internal: false },
   { src: "/partners/craig-race-architecture.svg", alt: "Craig Race Architecture", url: "https://craigrace.com/", internal: false },
   { src: "/partners/ohba.svg", alt: "Ontario Home Builders' Association", url: "https://www.ohba.ca/", internal: false },

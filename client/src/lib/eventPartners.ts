@@ -234,6 +234,26 @@ export const EVENT_PARTNERS: EventPartner[] = [
     keywords: ["Platform Insurance Canada", "real estate investor insurance", "rental property insurance Toronto", "construction insurance Canada", "multiplex insurance Ontario", "builder's risk insurance Canada"],
     relatedTopics: ["Property Insurance", "Construction Risk", "Builder's Risk", "Landlord Insurance"],
   },
+  {
+    slug: "habitaa",
+    name: "HabitAa",
+    shortName: "HabitAa",
+    logo: "/partners/habitaa.png",
+    website: "https://habitaa.ca/",
+    category: "Multiplex Services Marketplace & Building Performance",
+    tagline: "What to know before you build — energy modelling, MLI Select support, and vetted providers for multiplex projects.",
+    description: [
+      "HabitAa is a Toronto-based platform built around a simple idea: know how a building will perform before you build it. Its tools give multiplex owners, developers, and property managers planning-grade energy modelling, electrical panel and heat-pump load calculations, and an hourly building simulator built on EnergyPlus and OpenStudio — without needing in-house modelling expertise.",
+      "Alongside the software, HabitAa runs a service marketplace for multiplex and multi-unit residential projects. Owners describe their project once, then request quotes from vetted providers across two verticals — CMHC MLI Select application services, and construction and design services — with each service flagged as core, conditional, or optional for the project at hand.",
+      "For developers pursuing MLI Select's energy-efficiency points, the combination matters: the envelope, mechanical, and controls choices that drive a building's energy score are the same ones that decide whether a project qualifies for CMHC's best financing terms. HabitAa's Multiplex All-in-One Solution sources those systems together so the design and the financing case line up.",
+      "As a sponsor of Unpacking Multiplexes Toronto, HabitAa brings the building-performance side of multiplex development into the conversation — how to model, spec, and source a project so it performs on paper, on site, and at the lender's desk.",
+    ],
+    whyPartner: "Energy performance is no longer a nice-to-have for multiplex developers — it drives MLI Select eligibility, operating costs, and long-term value. HabitAa's modelling tools and vetted provider network help investors get those decisions right before a shovel goes in the ground.",
+    event: "Unpacking Multiplexes Toronto",
+    eventPath: "/community/events/unpacking-multiplexes-toronto",
+    keywords: ["HabitAa", "habitaa.ca", "multiplex energy modelling", "CMHC MLI Select application services", "building simulator Toronto", "multiplex services marketplace"],
+    relatedTopics: ["Energy Modelling", "MLI Select", "Multiplex Construction", "Building Performance"],
+  },
 ];
 
 export function getEventPartner(slug: string): EventPartner | undefined {

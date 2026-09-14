@@ -53,7 +53,7 @@ function MidWindows({ x, w, h, index }: { x: number; w: number; h: number; index
           rx={0.5}
           className="rl-window"
           style={{ "--flicker-delay": `${hash(c, r, index) * 6}s` } as CSSProperties}
-          fill="hsl(38 90% 74% / 0.35)"
+          fill="var(--rl-mid-window)"
         />,
       );
     }
@@ -79,7 +79,7 @@ function Fourplex({ x, seed }: { x: number; seed: number }) {
           width={28}
           height={24}
           rx={1}
-          fill={lit ? "hsl(38 95% 70%)" : "hsl(222 35% 15%)"}
+          fill={lit ? "var(--rl-window-lit)" : "var(--rl-window)"}
           fillOpacity={lit ? 0.8 : 1}
           className={lit ? "rl-window" : undefined}
           style={lit ? ({ "--flicker-delay": `${hash(r, c, seed) * 7}s` } as CSSProperties) : undefined}
@@ -89,13 +89,13 @@ function Fourplex({ x, seed }: { x: number; seed: number }) {
   });
   return (
     <g>
-      <rect x={x} y={top} width={w} height={h} fill="hsl(224 38% 11%)" stroke="hsl(220 28% 30%)" strokeWidth={1} />
-      <rect x={x - 4} y={top - 5} width={w + 8} height={6} fill="hsl(222 32% 16%)" />
+      <rect x={x} y={top} width={w} height={h} fill="var(--rl-front)" stroke="var(--rl-stroke)" strokeWidth={1} />
+      <rect x={x - 4} y={top - 5} width={w + 8} height={6} fill="var(--rl-front-2)" />
       {windows}
       {/* door + stoop */}
-      <rect x={x + 50} y={GROUND - 42} width={20} height={42} rx={1} fill="hsl(222 32% 18%)" />
-      <rect x={x + 44} y={GROUND - 6} width={32} height={6} fill="hsl(222 28% 20%)" />
-      <circle cx={x + 66} cy={GROUND - 22} r={1.4} fill="hsl(38 95% 70%)" />
+      <rect x={x + 50} y={GROUND - 42} width={20} height={42} rx={1} fill="var(--rl-door)" />
+      <rect x={x + 44} y={GROUND - 6} width={32} height={6} fill="var(--rl-stoop)" />
+      <circle cx={x + 66} cy={GROUND - 22} r={1.4} fill="var(--rl-window-lit)" />
     </g>
   );
 }
@@ -118,7 +118,7 @@ function Sixplex({ x, seed }: { x: number; seed: number }) {
           width={28}
           height={24}
           rx={1}
-          fill={lit ? "hsl(38 95% 70%)" : "hsl(222 35% 15%)"}
+          fill={lit ? "var(--rl-window-lit)" : "var(--rl-window)"}
           fillOpacity={lit ? 0.8 : 1}
           className={lit ? "rl-window" : undefined}
           style={lit ? ({ "--flicker-delay": `${hash(r, seed, c) * 7}s` } as CSSProperties) : undefined}
@@ -130,17 +130,17 @@ function Sixplex({ x, seed }: { x: number; seed: number }) {
     <g>
       <polygon
         points={`${x - 6},${top} ${x + w / 2},${top - 52} ${x + w + 6},${top}`}
-        fill="hsl(223 36% 13%)"
-        stroke="hsl(220 28% 30%)"
+        fill="var(--rl-gable)"
+        stroke="var(--rl-stroke)"
         strokeWidth={1}
       />
-      <rect x={x + w / 2 - 9} y={top - 30} width={18} height={18} rx={1} fill="hsl(38 95% 70%)" fillOpacity={0.55} />
-      <rect x={x} y={top} width={w} height={h} fill="hsl(224 38% 11%)" stroke="hsl(220 28% 30%)" strokeWidth={1} />
+      <rect x={x + w / 2 - 9} y={top - 30} width={18} height={18} rx={1} fill="var(--rl-window-lit)" fillOpacity={0.55} />
+      <rect x={x} y={top} width={w} height={h} fill="var(--rl-front)" stroke="var(--rl-stroke)" strokeWidth={1} />
       {windows}
-      <rect x={x + 44} y={GROUND - 40} width={18} height={40} rx={1} fill="hsl(222 32% 18%)" />
-      <rect x={x + 108} y={GROUND - 40} width={18} height={40} rx={1} fill="hsl(222 32% 18%)" />
-      <rect x={x + 38} y={GROUND - 6} width={30} height={6} fill="hsl(222 28% 20%)" />
-      <rect x={x + 102} y={GROUND - 6} width={30} height={6} fill="hsl(222 28% 20%)" />
+      <rect x={x + 44} y={GROUND - 40} width={18} height={40} rx={1} fill="var(--rl-door)" />
+      <rect x={x + 108} y={GROUND - 40} width={18} height={40} rx={1} fill="var(--rl-door)" />
+      <rect x={x + 38} y={GROUND - 6} width={30} height={6} fill="var(--rl-stoop)" />
+      <rect x={x + 102} y={GROUND - 6} width={30} height={6} fill="var(--rl-stoop)" />
     </g>
   );
 }
@@ -153,20 +153,20 @@ function Laneway({ x, seed }: { x: number; seed: number }) {
   const lit = hash(seed, 9, 9) > 0.35;
   return (
     <g>
-      <polygon points={`${x - 3},${top} ${x + w / 2},${top - 22} ${x + w + 3},${top}`} fill="hsl(223 36% 13%)" stroke="hsl(220 28% 30%)" strokeWidth={1} />
-      <rect x={x} y={top} width={w} height={h} fill="hsl(224 38% 11%)" stroke="hsl(220 28% 30%)" strokeWidth={1} />
+      <polygon points={`${x - 3},${top} ${x + w / 2},${top - 22} ${x + w + 3},${top}`} fill="var(--rl-gable)" stroke="var(--rl-stroke)" strokeWidth={1} />
+      <rect x={x} y={top} width={w} height={h} fill="var(--rl-front)" stroke="var(--rl-stroke)" strokeWidth={1} />
       <rect
         x={x + 10}
         y={top + 10}
         width={20}
         height={18}
         rx={1}
-        fill={lit ? "hsl(38 95% 70%)" : "hsl(222 35% 15%)"}
+        fill={lit ? "var(--rl-window-lit)" : "var(--rl-window)"}
         fillOpacity={lit ? 0.8 : 1}
         className={lit ? "rl-window" : undefined}
         style={lit ? ({ "--flicker-delay": `${hash(seed, 1, 2) * 5}s` } as CSSProperties) : undefined}
       />
-      <rect x={x + 38} y={GROUND - 32} width={14} height={32} rx={1} fill="hsl(222 32% 18%)" />
+      <rect x={x + 38} y={GROUND - 32} width={14} height={32} rx={1} fill="var(--rl-door)" />
     </g>
   );
 }
@@ -174,10 +174,10 @@ function Laneway({ x, seed }: { x: number; seed: number }) {
 function Tree({ x, r }: { x: number; r: number }) {
   return (
     <g>
-      <rect x={x - 1.5} y={GROUND - r * 1.2} width={3} height={r * 1.2} fill="hsl(222 30% 12%)" />
-      <circle cx={x} cy={GROUND - r * 1.4} r={r} fill="hsl(200 30% 12%)" />
-      <circle cx={x - r * 0.6} cy={GROUND - r * 1.1} r={r * 0.8} fill="hsl(200 30% 11%)" />
-      <circle cx={x + r * 0.6} cy={GROUND - r * 1.15} r={r * 0.75} fill="hsl(200 30% 12%)" />
+      <rect x={x - 1.5} y={GROUND - r * 1.2} width={3} height={r * 1.2} fill="var(--rl-trunk)" />
+      <circle cx={x} cy={GROUND - r * 1.4} r={r} fill="var(--rl-tree)" />
+      <circle cx={x - r * 0.6} cy={GROUND - r * 1.1} r={r * 0.8} fill="var(--rl-tree-2)" />
+      <circle cx={x + r * 0.6} cy={GROUND - r * 1.15} r={r * 0.75} fill="var(--rl-tree)" />
     </g>
   );
 }
@@ -220,10 +220,29 @@ export function Skyline({ progress, reduceMotion = false, className = "" }: Skyl
   const wrap = "absolute bottom-0 left-1/2 -translate-x-1/2";
 
   return (
-    <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
+    <div className={`rl-sky pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
       <style>{`
+        .rl-sky {
+          --rl-far: hsl(212 32% 80%); --rl-far-2: hsl(212 32% 74%);
+          --rl-mid: hsl(214 30% 70%); --rl-mid-window: hsl(210 50% 94% / 0.8);
+          --rl-front: hsl(218 28% 58%); --rl-front-2: hsl(218 26% 50%); --rl-stroke: hsl(218 30% 44%);
+          --rl-window-lit: hsl(205 70% 90%); --rl-window: hsl(210 45% 84%);
+          --rl-door: hsl(218 26% 44%); --rl-stoop: hsl(218 18% 52%); --rl-gable: hsl(218 26% 52%);
+          --rl-trunk: hsl(25 30% 38%); --rl-tree: hsl(140 28% 46%); --rl-tree-2: hsl(140 30% 40%);
+          --rl-road: hsl(218 20% 52%);
+        }
+        .dark .rl-sky {
+          --rl-far: hsl(222 32% 24%); --rl-far-2: hsl(222 32% 27%);
+          --rl-mid: hsl(223 36% 15%); --rl-mid-window: hsl(38 90% 74% / 0.35);
+          --rl-front: hsl(224 38% 11%); --rl-front-2: hsl(222 32% 16%); --rl-stroke: hsl(220 28% 30%);
+          --rl-window-lit: hsl(38 95% 70%); --rl-window: hsl(222 35% 15%);
+          --rl-door: hsl(222 32% 18%); --rl-stoop: hsl(222 28% 20%); --rl-gable: hsl(223 36% 13%);
+          --rl-trunk: hsl(222 30% 12%); --rl-tree: hsl(200 30% 12%); --rl-tree-2: hsl(200 30% 11%);
+          --rl-road: hsl(220 25% 26%);
+        }
+        /* Windows only flicker at night. */
         @media (prefers-reduced-motion: no-preference) {
-          .rl-window { animation: rl-flicker 6s ease-in-out var(--flicker-delay, 0s) infinite; }
+          .dark .rl-sky .rl-window { animation: rl-flicker 6s ease-in-out var(--flicker-delay, 0s) infinite; }
         }
         @keyframes rl-flicker {
           0%, 100% { opacity: 1; }
@@ -233,14 +252,8 @@ export function Skyline({ progress, reduceMotion = false, className = "" }: Skyl
         }
       `}</style>
 
-      {/* Horizon glow — the brand red pushed way down into a sunset. */}
-      <div
-        className="absolute inset-x-0 bottom-0 h-[70%]"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 60% at 50% 100%, hsl(356 100% 60% / 0.22), transparent 70%), radial-gradient(ellipse 40% 40% at 30% 100%, hsl(16 100% 60% / 0.12), transparent 70%)",
-        }}
-      />
+      {/* Horizon glow — a warm sunrise by day, the brand red pushed into a sunset at night. */}
+      <div className="absolute inset-x-0 bottom-0 h-[70%]" style={{ background: "var(--rl-glow)" }} />
 
       {/* Far skyline */}
       <div className={`${wrap} w-[clamp(1900px,170%,2600px)] opacity-80`}>
@@ -252,12 +265,12 @@ export function Skyline({ progress, reduceMotion = false, className = "" }: Skyl
         >
           {FAR.map(([x, w, h], i) => (
             <g key={i}>
-              <rect x={x} y={GROUND - h} width={w} height={h} fill="hsl(222 32% 24%)" />
-              {h > 280 && <rect x={x + w / 2 - 1} y={GROUND - h - 26} width={2} height={26} fill="hsl(222 32% 27%)" />}
+              <rect x={x} y={GROUND - h} width={w} height={h} fill="var(--rl-far)" />
+              {h > 280 && <rect x={x + w / 2 - 1} y={GROUND - h - 26} width={2} height={26} fill="var(--rl-far-2)" />}
             </g>
           ))}
           {/* CN Tower */}
-          <g fill="hsl(222 32% 26%)">
+          <g fill="var(--rl-far-2)">
             <rect x={556} y={40} width={12} height={GROUND - 40} />
             <ellipse cx={562} cy={135} rx={30} ry={13} />
             <ellipse cx={562} cy={112} rx={18} ry={8} />
@@ -277,7 +290,7 @@ export function Skyline({ progress, reduceMotion = false, className = "" }: Skyl
         >
           {MID.map(([x, w, h], i) => (
             <g key={i}>
-              <rect x={x} y={GROUND - h} width={w} height={h} fill="hsl(223 36% 15%)" />
+              <rect x={x} y={GROUND - h} width={w} height={h} fill="var(--rl-mid)" />
               <MidWindows x={x} w={w} h={h} index={i} />
             </g>
           ))}
@@ -306,7 +319,7 @@ export function Skyline({ progress, reduceMotion = false, className = "" }: Skyl
               ),
             )}
             {/* sidewalk + road */}
-            <rect x={-200} y={GROUND - 2} width={W + 600} height={2} fill="hsl(220 25% 26%)" />
+            <rect x={-200} y={GROUND - 2} width={W + 600} height={2} fill="var(--rl-road)" />
           </g>
         </motion.svg>
       </div>
