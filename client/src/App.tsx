@@ -213,11 +213,9 @@ function PageFallback() {
 }
 
 function Router() {
-  // The landing page forces dark styling for its own tree; the footer sits
-  // outside that tree, so re-scope it too or a light footer snaps on under
-  // the dark final CTA.
+  // The live event Q&A screens (attendee, on-stage display, moderator) are
+  // full-page views, so they drop the app banner and the site footer.
   const [location] = useLocation();
-  const isLanding = location === "/";
   const eventQaPage = location === "/ask" || location.startsWith("/ask/");
   return (
     <>
@@ -439,11 +437,7 @@ function Router() {
       <Route component={NotFound} />
     </Switch>
     </Suspense>
-    {!eventQaPage && (
-    <div className={isLanding ? "dark bg-background text-foreground" : undefined}>
-      <SiteFooter />
-    </div>
-    )}
+    {!eventQaPage && <SiteFooter />}
     </>
   );
 }
