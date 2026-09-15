@@ -27,100 +27,6 @@ import EventDetail from "@/pages/EventDetail";
 import EventSuccess from "@/pages/EventSuccess";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
-/* resolved: the following pages are lazy-loaded below
-import CreateAccount from "@/pages/CreateAccount";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import SetPassword from "@/pages/SetPassword";
-import VerifyPhone from "@/pages/VerifyPhone";
-import VerifyEmail from "@/pages/VerifyEmail";
-import BuyBox from "@/pages/BuyBox";
-import BuyBoxAgreement from "@/pages/BuyBoxAgreement";
-import BuyBoxCheckout from "@/pages/BuyBoxCheckout";
-import BuyBoxConfirmation from "@/pages/BuyBoxConfirmation";
-import RealtorBuyBoxes from "@/pages/RealtorBuyBoxes";
-import CoInvesting from "@/pages/CoInvesting";
-import CoInvestingOpportunities from "@/pages/CoInvestingOpportunities";
-import CoInvestingChecklist from "@/pages/CoInvestingChecklist";
-import CoInvestingGroupNew from "@/pages/CoInvestingGroupNew";
-import CoInvestingGroupDetail from "@/pages/CoInvestingGroupDetail";
-import DealDesk from "@/pages/DealDesk";
-import Offer from "@/pages/Offer";
-import CrmHome from "@/pages/CrmHome";
-import MeetupNew from "@/pages/MeetupNew";
-import SponsorPackagePage from "@/pages/SponsorPackagePage";
-import AdminSponsors from "@/pages/AdminSponsors";
-import CrmContact from "@/pages/CrmContact";
-import TrueCost from "@/pages/TrueCost";
-import RentVsBuy from "@/pages/RentVsBuy";
-import RentToOwn from "@/pages/RentToOwn";
-import WillItPlex from "@/pages/WillItPlex";
-import Leaderboard from "@/pages/Leaderboard";
-import FullLeaderboard from "@/pages/FullLeaderboard";
-import Premium from "@/pages/Premium";
-import PremiumBranding from "@/pages/PremiumBranding";
-import CapRates from "@/pages/CapRates";
-import ListingIntelligence from "@/pages/ListingIntelligence";
-import ListingDetailPage from "@/pages/ListingDetailPage";
-import Experts from "@/pages/Experts";
-import ExpertProfile from "@/pages/ExpertProfile";
-import JoinExperts from "@/pages/JoinExperts";
-import RealtorNetwork from "@/pages/RealtorNetwork";
-import MarketReport from "@/pages/MarketReport";
-import MortgageRates from "@/pages/MortgageRates";
-import FixedVsVariable from "@/pages/FixedVsVariable";
-import LandClaimScreener from "@/pages/LandClaimScreener";
-import DistressReport from "@/pages/DistressReport";
-import MultiplexFit from "@/pages/MultiplexFit";
-import MultiplexMasterclass from "@/pages/MultiplexMasterclass";
-import MultiplexFeasibilityPage from "@/pages/MultiplexFeasibilityPage";
-import MultiplexUnderwriterPage from "@/pages/MultiplexUnderwriterPage";
-import PowerTeam from "@/pages/PowerTeam";
-import PowerTeamProfile from "@/pages/PowerTeamProfile";
-import AdminPowerTeam from "@/pages/AdminPowerTeam";
-import OntarioHstRebateCalculator from "@/pages/OntarioHstRebateCalculator";
-import Course from "@/pages/Course";
-import MarketReportBuilder from "@/pages/MarketReportBuilder";
-import BuildingPermitsReport from "@/pages/BuildingPermitsReport";
-import ProductivityGapReport from "@/pages/ProductivityGapReport";
-import NewConstructionCanadaReport from "@/pages/NewConstructionCanadaReport";
-import GtaPreconPricingReport from "@/pages/GtaPreconPricingReport";
-import CpiInflationReport from "@/pages/CpiInflationReport";
-import CreditSpreadEconomyReport from "@/pages/CreditSpreadEconomyReport";
-import SpringEconomicUpdate2026Report from "@/pages/SpringEconomicUpdate2026Report";
-import PreconResale1990sReport from "@/pages/PreconResale1990sReport";
-import BankOfCanadaApril2026Report, { BankOfCanadaApril2026ReportEmbed } from "@/pages/BankOfCanadaApril2026Report";
-import LabourForceSurveyApril2026Report from "@/pages/LabourForceSurveyApril2026Report";
-import LabourForceSurveyMay2026Report from "@/pages/LabourForceSurveyMay2026Report";
-import StatCanGdpQ12026Report from "@/pages/StatCanGdpQ12026Report";
-import HousingCorrectionLockedOut2026Report from "@/pages/HousingCorrectionLockedOut2026Report";
-import LabourMortgageStressApril2026Report from "@/pages/LabourMortgageStressApril2026Report";
-import MonthlyMarketReportMay2026 from "@/pages/MonthlyMarketReportMay2026";
-import InterprovincialMigrationCanada2026Report from "@/pages/InterprovincialMigrationCanada2026Report";
-import SeoProjectDetail from "@/pages/SeoProjectDetail";
-import {
-  TorontoHousingMarketPage,
-  TorontoCondoPricesDroppingPage,
-  BiggestPriceDropsGtaPage,
-  CanadaHousingMarketPage,
-} from "@/pages/seo/MarketPages";
-import JoinRealtors from "@/pages/JoinRealtors";
-import JoinMortgageBrokers from "@/pages/JoinMortgageBrokers";
-import PartnerOnboarding from "@/pages/PartnerOnboarding";
-import JoinLenders from "@/pages/JoinLenders";
-import MyPerformance from "@/pages/MyPerformance";
-import DailyGlance from "@/pages/DailyGlance";
-import Stats from "@/pages/Stats";
-import UsListings from "@/pages/UsListings";
-import PublicProfile from "@/pages/PublicProfile";
-import WorkWithRealist from "@/pages/WorkWithRealist";
-import PitchDeck from "@/pages/PitchDeck";
-import UnderwritingShare from "@/pages/UnderwritingShare";
-import AccountApiKeys from "@/pages/AccountApiKeys";
-import NotificationPreferences from "@/pages/NotificationPreferences";
-import ThankYouVancouver from "@/pages/ThankYouVancouver";
-import EdmontonEvent from "@/pages/EdmontonEvent";
-resolved end */
 import NotFound from "@/pages/not-found";
 
 // Lazy pages — code-split into per-route chunks, fetched on first navigation.
@@ -312,8 +218,7 @@ function Router() {
   // the dark final CTA.
   const [location] = useLocation();
   const isLanding = location === "/";
-  const path = location;
-  const eventQaPage = path === "/ask" || path.startsWith("/ask/");
+  const eventQaPage = location === "/ask" || location.startsWith("/ask/");
   return (
     <>
     {!eventQaPage && <GetAppBanner />}
