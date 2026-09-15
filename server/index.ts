@@ -1,3 +1,4 @@
+import { initializeKeyprOutbox, kickKeyprOutbox } from "./keyprStore";
 import { createMultiplexApplicationRouter } from "./multiplexApplications";
 import { initializeMultiplexApplications, saveMultiplexApplication } from "./multiplexApplicationStore";
 import express, { type Request, Response, NextFunction } from "express";
@@ -649,6 +650,9 @@ async function ensureAppTables() {
   // /api/listings/similar as an MLS number lookup.
   const { registerSimilarListingsRoutes } = await import("./similarListings");
   registerSimilarListingsRoutes(app);
+  await initializeKeyprOutbox();
+  kickKeyprOutbox();
+  setInterval(kickKeyprOutbox, 60_000).unref();
   await initializeMultiplexApplications();
   app.use("/api/multiplex-applications", createMultiplexApplicationRouter(saveMultiplexApplication));
   await registerRoutes(httpServer, app);

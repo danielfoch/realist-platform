@@ -1,3 +1,5 @@
+import { KeyprCashbackDetails, KeyprPartnership } from "./KeyprCashbackDetails";
+import { keyprContactSchema, keyprConsentText } from "@shared/keypr";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -28,11 +30,16 @@ import { getProvinceCode, isOntario } from "@/lib/provinces";
 import { DollarSign, Loader2, Gift } from "lucide-react";
 
 const engageFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(10, "Please enter a valid phone number"),
   consent: z.boolean().default(false),
 });
+
+const cashbackFormSchema = engageFormSchema.extend(keyprContactSchema.shape);
+const legacyFormSchema = engageFormSchema.extend({ name: z.string().min(2, "Name must be at least 2 characters") });
 
 type EngageFormValues = z.infer<typeof engageFormSchema>;
 
@@ -57,15 +64,15 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
   const isOntarioDeal = isOntario(region);
 
   const commissionRate = 0.025;
-  // Default to high end (Ontario 80%) when no region is selected, otherwise use actual rate
-  const hasRegionSelected = region && region.trim() !== '';
-  const cashbackPercent = (!hasRegionSelected || isOntarioDeal) ? 0.80 : 0.125;
+  const cashbackPercent = isOntarioDeal ? 0.80 : 0.125;
   const cashbackAmount = purchasePrice * commissionRate * cashbackPercent;
 
   const form = useForm<EngageFormValues>({
-    resolver: zodResolver(engageFormSchema),
+    resolver: zodResolver(isOntarioDeal ? cashbackFormSchema : legacyFormSchema),
     defaultValues: {
       name: defaultValues?.name || "",
+      firstName: defaultValues?.name?.trim().split(/\s+/)[0] || "",
+      lastName: defaultValues?.name?.trim().split(/\s+/).slice(1).join(" ") || "",
       email: defaultValues?.email || "",
       phone: defaultValues?.phone || "",
       consent: false,
@@ -78,7 +85,8 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
         ...data,
         formType: "Cashback Request",
         formTag: "cashback_request",
-        tags: ["Keypr"],
+        tags: isOntarioDeal ? ["Keypr"] : [],
+        country,
         province: provinceCode,
         city,
         dealInfo: {
@@ -141,20 +149,21 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
             Claim
           </Button>
         </div>
+        {isOntarioDeal && <KeyprPartnership />}
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Gift className="h-5 w-5 text-primary" />
-              Claim Your {formatCurrency(cashbackAmount)} Cashback
+              Explore {formatCurrency(cashbackAmount)} in Cashback
             </DialogTitle>
             <DialogDescription>
-              Get cashback when you purchase this property through our trusted partner network. 
-              Complete the form below and we'll connect you with a local expert.
+              Explore your cashback with Realist.ca. Complete the form and we’ll help you take the next step.
             </DialogDescription>
           </DialogHeader>
+          {isOntarioDeal && <KeyprCashbackDetails />}
 
           <div className="bg-primary/10 border border-primary/20 rounded-md p-3 mb-4">
             <div className="flex items-center justify-between">
@@ -169,6 +178,16 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit((data) => mutation.mutateAsync(data))} className="space-y-4">
+              {isOntarioDeal ? <div className="grid grid-cols-2 gap-3">
+                {(["firstName", "lastName"] as const).map(name => <FormField
+                  key={name} control={form.control} name={name}
+                  render={({ field }) => <FormItem>
+                    <FormLabel>{name === "firstName" ? "First Name" : "Last Name"} *</FormLabel>
+                    <FormControl><Input autoComplete={name === "firstName" ? "given-name" : "family-name"} maxLength={128} className="h-11" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>}
+                />)}
+              </div> : (
               <FormField
                 control={form.control}
                 name="name"
@@ -182,6 +201,7 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
                   </FormItem>
                 )}
               />
+              )}
 
               <FormField
                 control={form.control}
@@ -220,8 +240,9 @@ export function CashbackDisplay({ purchasePrice, region, city, country, dealInfo
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-cashback-consent" />
                     </FormControl>
                     <FormLabel className="text-sm font-normal text-muted-foreground cursor-pointer">
-                      I agree to receive communications about this cashback offer
+                      {isOntarioDeal ? keyprConsentText : "I agree to receive communications about this cashback offer"}
                     </FormLabel>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

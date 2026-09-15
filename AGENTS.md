@@ -81,3 +81,8 @@ If both agents need the same file:
 - Codex added `/build-with-us` and `POST /api/multiplex-applications`. Dedicated private `multiplex_applications` table stores id, name, email, payload JSON, status and created_at; initialized idempotently at boot.
 - Admin-only `GET /api/admin/multiplex-applications` lists latest 1,000 applications. No marketing enrollment, outbound email, or partner routing.
 - Session files: client/src/pages/BuildWithUs.tsx, App.tsx route registration, server/multiplexApplication*.ts, server/index.ts and the admin route in server/routes.ts.
+
+## Keypr cashback integration (2026-09-14, Codex)
+- Checked the idle, clean Replit checkout at dc8567a before edits. Session files: shared/keypr.ts, server/keypr*.ts, CashbackDisplay.tsx, DealPromotions.tsx, KeyprCashbackDetails.tsx; integration in server/routes.ts and server/index.ts.
+- Realist.ca remains the primary brand. Keypr is disclosed as the Ontario cashback partner; only consented Ontario cashback requests are routed to its webhook, never mortgage, recruitment, or general inquiries.
+- `keypr_lead_outbox`: private, durable delivery jobs keyed by `leads.id`, minimal payload, consent version/time, status, attempt count, due time, response code and optional partner reference. Initialized at boot; lead and job commit atomically. Server-only KEYPR_REALIST_SECRET; no secret in Git or client code.

@@ -1,3 +1,5 @@
+import { KeyprCashbackDetails, KeyprPartnership } from "./KeyprCashbackDetails";
+import { keyprContactSchema, keyprConsentText } from "@shared/keypr";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -30,11 +32,16 @@ import { isOntario, getProvinceCode, getMarketExpert } from "@/lib/provinces";
 import { HelpCircle, DollarSign, Phone, Loader2, Percent } from "lucide-react";
 
 const engageFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(10, "Please enter a valid phone number"),
   consent: z.boolean().default(false),
 });
+
+const cashbackFormSchema = engageFormSchema.extend(keyprContactSchema.shape);
+const legacyFormSchema = engageFormSchema.extend({ name: z.string().min(2, "Name must be at least 2 characters") });
 
 type EngageFormValues = z.infer<typeof engageFormSchema>;
 
@@ -63,9 +70,11 @@ export function DealPromotions({ region, city, country, dealInfo, defaultValues 
   const expert = country === "canada" ? getMarketExpert(region, city) : null;
   
   const form = useForm<EngageFormValues>({
-    resolver: zodResolver(engageFormSchema),
+    resolver: zodResolver(modalType === "cashback" ? cashbackFormSchema : legacyFormSchema),
     defaultValues: {
       name: defaultValues?.name || "",
+      firstName: defaultValues?.name?.trim().split(/\s+/)[0] || "",
+      lastName: defaultValues?.name?.trim().split(/\s+/).slice(1).join(" ") || "",
       email: defaultValues?.email || "",
       phone: defaultValues?.phone || "",
       consent: false,
@@ -76,6 +85,7 @@ export function DealPromotions({ region, city, country, dealInfo, defaultValues 
     mutationFn: async (data: EngageFormValues & { formType: string; tags: string[] }) => {
       return apiRequest("POST", "/api/leads/engage", {
         ...data,
+        country,
         province: provinceCode,
         city,
         dealInfo,
@@ -112,7 +122,7 @@ export function DealPromotions({ region, city, country, dealInfo, defaultValues 
       case "cashback":
         return {
           title: "Get Cashback on This Deal",
-          description: "Sign up to receive cashback when you purchase this property through our network.",
+          description: "Explore your cashback with Realist.ca. Complete the form and we’ll help you take the next step.",
         };
       case "expert":
         return {
@@ -148,7 +158,7 @@ export function DealPromotions({ region, city, country, dealInfo, defaultValues 
           >
             <Badge className="bg-orange-500 hover:bg-orange-600 text-white gap-1.5 py-1 px-3">
               <DollarSign className="h-3.5 w-3.5" />
-              Cashback
+              Keep 80% of the commission
             </Badge>
             <button 
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -196,17 +206,29 @@ export function DealPromotions({ region, city, country, dealInfo, defaultValues 
             </CardContent>
           </Card>
         )}
+        {isOntarioDeal && <KeyprPartnership />}
       </div>
 
       <Dialog open={modalType !== null} onOpenChange={(open) => !open && setModalType(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">{modalContent.title}</DialogTitle>
             <DialogDescription>{modalContent.description}</DialogDescription>
           </DialogHeader>
+          {modalType === "cashback" && <KeyprCashbackDetails />}
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              {modalType === "cashback" ? <div className="grid grid-cols-2 gap-3">
+                {(["firstName", "lastName"] as const).map(name => <FormField
+                  key={name} control={form.control} name={name}
+                  render={({ field }) => <FormItem>
+                    <FormLabel>{name === "firstName" ? "First Name" : "Last Name"} *</FormLabel>
+                    <FormControl><Input autoComplete={name === "firstName" ? "given-name" : "family-name"} maxLength={128} className="h-11" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>}
+                />)}
+              </div> : (
               <FormField
                 control={form.control}
                 name="name"
@@ -220,6 +242,7 @@ export function DealPromotions({ region, city, country, dealInfo, defaultValues 
                   </FormItem>
                 )}
               />
+              )}
 
               <FormField
                 control={form.control}
@@ -258,8 +281,9 @@ export function DealPromotions({ region, city, country, dealInfo, defaultValues 
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="checkbox-engage-consent" />
                     </FormControl>
                     <FormLabel className="text-sm font-normal text-muted-foreground cursor-pointer">
-                      I agree to receive communications about this inquiry
+                      {modalType === "cashback" ? keyprConsentText : "I agree to receive communications about this inquiry"}
                     </FormLabel>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -301,7 +325,7 @@ export function MortgageConsultationButton({ region, city, dealInfo, defaultValu
   const provinceCode = getProvinceCode(region);
 
   const form = useForm<EngageFormValues>({
-    resolver: zodResolver(engageFormSchema),
+    resolver: zodResolver(legacyFormSchema),
     defaultValues: {
       name: defaultValues?.name || "",
       email: defaultValues?.email || "",
@@ -345,7 +369,7 @@ export function MortgageConsultationButton({ region, city, dealInfo, defaultValu
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">Request a Mortgage Consultation</DialogTitle>
             <DialogDescription>
