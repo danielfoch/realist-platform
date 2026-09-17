@@ -86,7 +86,7 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   },
   "/meetups": {
     title: "Canadian Real Estate Investor Meetups | Realist.ca",
-    description: "Find a Realist meetup near you — local investor events hosted across Canada by the Canadian Real Estate Investor community.",
+    description: "Free monthly real estate investor meetups across Canada, hosted by the Canadian Real Estate Investor community. See every city's next date and RSVP.",
   },
 
   // ─── Multiplex ─────────────────────────────────────────────────────────────

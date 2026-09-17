@@ -408,6 +408,12 @@ export default function Events() {
               Join The Canadian Real Estate Investor Podcast community at our exclusive events, 
               workshops, and networking opportunities.
             </p>
+            <p className="mt-3 text-sm">
+              <Link href="/meetups" className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline" data-testid="link-events-to-meetups">
+                Looking for the free monthly meetups? See every city and its next date
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </p>
             {data?.lastFetched && (
               <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <span>Last updated: {format(new Date(data.lastFetched), "MMM d, yyyy h:mm a")}</span>

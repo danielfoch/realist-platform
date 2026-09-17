@@ -64,7 +64,7 @@ function slugify(value: string): string {
  * Guest RSVP = silent account creation, same pattern as paid checkout:
  * the RSVP IS the signup.
  */
-async function ensureUserByEmail(email: string, name: string | null, leadSource: string) {
+export async function ensureUserByEmail(email: string, name: string | null, leadSource: string) {
   // Lowercase + trim so RSVP-form emails can't fork identities.
   const normalized = normalizeEmail(email);
   const [existing] = await db.select().from(users).where(eq(users.email, normalized)).limit(1);

@@ -57,3 +57,12 @@ LOG_LEVEL=info
 RENT_API_URL=https://realist.ca/api/rents
 VITE_MAPBOX_TOKEN=pk.your_mapbox_key
 ```
+
+## Meetup.com member OAuth (server/meetupOAuth.ts, server/meetupRsvp.ts)
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `MEETUP_CLIENT_ID` / `MEETUP_CLIENT_SECRET` | No | Enables "Continue with Meetup" (OAuth2 server flow). Shared with the network feed's JWT flow. |
+| `MEETUP_OAUTH_REDIRECT_URI` | No | Overrides the callback URL; default is `<site>/api/meetup/oauth/callback`, which must match the consumer's registered URI exactly. |
+| `MEETUP_OAUTH_SCOPE` | No | Scope string appended to the authorize URL when Meetup requires one. |
+| `MEETUP_RSVP_MUTATION_DOCUMENT` | No | Full GraphQL mutation (one `$eventId: ID!` variable). Until set, RSVP captures the lead and deep-links to the event page instead of placing the RSVP via API. |
