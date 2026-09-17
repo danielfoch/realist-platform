@@ -149,6 +149,7 @@ import { registerTrafficAnalyticsRoutes } from "./trafficAnalytics";
 import { registerDdfCrawlRoutes } from "./ddfCrawlRoutes";
 import { registerEventsGrowthRoutes } from "./eventsGrowth";
 import { registerEventsCommunityRoutes } from "./eventsCommunity";
+import { registerMeetupNetworkRoutes } from "./meetupNetwork";
 import { registerRentIntelligenceRoutes } from "./rentIntelligence";
 import { registerRentIngestionRoutes } from "./rentIngestion";
 import { registerRentBacktestRoutes } from "./rentBacktestRunner";
@@ -857,6 +858,7 @@ export async function registerRoutes(
   registerDdfCrawlRoutes(app);
   registerEventsGrowthRoutes(app);
   registerEventsCommunityRoutes(app);
+  registerMeetupNetworkRoutes(app);
   registerRentIntelligenceRoutes(app);
   registerRentIngestionRoutes(app);
   registerRentBacktestRoutes(app);
