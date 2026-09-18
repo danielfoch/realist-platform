@@ -7,21 +7,28 @@ export function registerExtractor(extractor: ListingExtractor) {
   extra.unshift(extractor);
 }
 
-export function listExtractors(): Array<{
+export type ExtractorSummary = {
   id: string;
   hosts: string[];
   countries?: string[];
   implemented: boolean;
-}> {
-  return [...extra, ...BUILTIN_EXTRACTORS]
+};
+
+export function listExtractors(): ExtractorSummary[] {
+  const summaries: ExtractorSummary[] = [...extra, ...BUILTIN_EXTRACTORS]
     .filter((extractor) => extractor.id !== "generic-jsonld-og")
-    .concat([{ id: genericExtractor.id, hosts: ["*"], implemented: true }])
     .map((extractor) => ({
       id: extractor.id,
       hosts: extractor.hosts.length ? extractor.hosts : ["*"],
       countries: extractor.countries,
       implemented: extractor.implemented,
     }));
+  summaries.push({
+    id: genericExtractor.id,
+    hosts: ["*"],
+    implemented: true,
+  });
+  return summaries;
 }
 
 export function normalizeHost(host: string): string {
