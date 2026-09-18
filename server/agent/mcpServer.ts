@@ -5,9 +5,14 @@
  * Cursor, Grok via the xAI API, ChatGPT connectors, …) use Realist with
  * nothing to install: a URL plus an API key.
  *
- *   POST /mcp            Authorization: Bearer realist_live_…
- *   POST /mcp/u/:key     same server, key in the path — for connector UIs that
- *                        cannot send custom headers. The URL is then a secret.
+ *   POST /mcp            Authorization: Bearer <API key | OAuth access token>
+ *   POST /mcp/u/:key     same server, key in the path — a fallback for connector
+ *                        UIs that can neither send headers nor do OAuth.
+ *
+ * Two ways in. Developer tools send an API key (realist_live_…). Connector UIs
+ * (claude.ai, ChatGPT) just get the URL: the 401 below points them at the OAuth
+ * metadata, the user signs in to Realist and approves, and they come back with
+ * an access token (realist_oat_…) — see server/agent/oauth/.
  *
  * Stateless by design: every request builds a fresh Server bound to the
  * caller's key, answers with plain JSON (no long-lived SSE stream to babysit
@@ -28,7 +33,9 @@ import {
 import type { AgentViewRef } from "@shared/agentViews";
 import { bearerAuth, agentContextFromRequest } from "../agentApi";
 import { checkAgentRateLimit, recordAgentUsage } from "../services/usage";
-import { AGENT_PLATFORM_VERSION, AgentToolError, publicBaseUrl, type AgentContext } from "./context";
+import { AGENT_API_SCOPES, AGENT_PLATFORM_VERSION, AgentToolError, publicBaseUrl, type AgentApiScope, type AgentContext } from "./context";
+import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, oauthProvider } from "./oauth/provider";
+import { protectedResourceMetadataUrl } from "./oauth/routes";
 import { getAgentTool, invokeAgentTool, toolInputJsonSchema, toolsForScopes, type AgentTool } from "./tools";
 
 const MCP_INSTRUCTIONS = `Realist.ca is a Canadian real estate investing platform. These tools search live MLS® listings for deals, underwrite properties (cap rate, cash flow, DSCR, IRR, 10-year pro forma, stress test), estimate rents, model Toronto multiplex developments, and report city-level market data.
@@ -152,16 +159,45 @@ function keyFromPath(req: Request, _res: Response, next: NextFunction): void {
   next();
 }
 
-/** A 401 must say how to authenticate, or harnesses show an opaque failure. */
-function advertiseBearer(_req: Request, res: Response, next: NextFunction): void {
+/**
+ * A 401 has to say how to authenticate. `resource_metadata` (RFC 9728) is what
+ * sends an MCP client into the OAuth flow; the description covers humans and
+ * tools that use API keys.
+ */
+function advertiseAuth(_req: Request, res: Response, next: NextFunction): void {
   const status = res.status.bind(res);
   res.status = (code: number) => {
     if (code === 401) {
-      res.setHeader("WWW-Authenticate", `Bearer realm="realist", error="invalid_token", error_description="Create an API key at ${publicBaseUrl()}/account/api-keys"`);
+      res.setHeader(
+        "WWW-Authenticate",
+        `Bearer realm="realist", resource_metadata="${protectedResourceMetadataUrl()}", error_description="Sign in with OAuth, or send an API key from ${publicBaseUrl()}/account/api-keys"`,
+      );
     }
     return status(code);
   };
   next();
+}
+
+/** OAuth access tokens are verified here; anything else is treated as an API key. */
+async function mcpAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const token = String(req.headers.authorization || "").trim().replace(/^(?:bearer\s+)+/i, "").trim();
+  if (!token.startsWith(ACCESS_TOKEN_PREFIX)) return void bearerAuth(req, res, next);
+  try {
+    const auth = await oauthProvider.verifyAccessToken(token);
+    // RFC 8707: a token minted for another resource is not valid here.
+    if (auth.resource && auth.resource.href !== mcpResourceUrl().href) throw new Error("wrong audience");
+    const { userId, grantId } = auth.extra as { userId: string; grantId: string };
+    req.agentUserId = userId;
+    // Rate limits and usage metering key off this id, so each connected app gets its own budget.
+    req.agentKeyId = `oauth:${grantId}`;
+    req.agentScopes = auth.scopes.filter((scope): scope is AgentApiScope => (AGENT_API_SCOPES as readonly string[]).includes(scope));
+    // Structured usage summaries are an API-key opt-in; consent screens do not ask for it.
+    req.agentStructuredUsageAllowed = false;
+    void import("./oauth/store").then(({ getOAuthStore }) => getOAuthStore().touchGrant(grantId));
+    next();
+  } catch {
+    res.status(401).json({ error: "invalid_token", message: "The access token is invalid, expired or was revoked." });
+  }
 }
 
 export function registerMcpRoutes(app: Express): void {
@@ -177,8 +213,8 @@ export function registerMcpRoutes(app: Express): void {
   });
   app.use("/mcp", mcpCors);
 
-  app.post("/mcp", advertiseBearer, bearerAuth, handleMcpPost);
-  app.post("/mcp/u/:key", keyFromPath, advertiseBearer, bearerAuth, handleMcpPost);
+  app.post("/mcp", advertiseAuth, mcpAuth, handleMcpPost);
+  app.post("/mcp/u/:key", keyFromPath, advertiseAuth, bearerAuth, handleMcpPost);
 
   // Stateless server: there is no session to resume or end, and no
   // server-initiated stream to open.

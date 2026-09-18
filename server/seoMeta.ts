@@ -58,6 +58,11 @@ const STATIC_META: Record<string, PageMeta> = {
   // Private / utility surfaces: registered above so they resolve instead of
   // 404ing, but explicitly kept out of the index — a verification landing page
   // or a print view has no business in search results.
+  "/oauth/consent": {
+    title: "Connect an app | Realist",
+    description: "Approve an application's access to your Realist account.",
+    noindex: true,
+  },
   "/verify-email": {
     title: "Confirm your email | Realist",
     description: "Confirm your Realist.ca email address.",
@@ -1204,6 +1209,7 @@ const KNOWN_APP_ROUTES = new Set<string>([
   "/my-performance",
   "/account/api-keys",
   "/developers",
+  "/oauth/consent",
   "/insights/market-report",
   "/insights/mortgage-rates",
   "/insights/market-report-builder",

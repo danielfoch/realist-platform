@@ -27,7 +27,7 @@ interface ToolDescriptor {
 }
 
 const STEPS = [
-  { icon: KeyRound, title: "Create an API key", body: "Free with a Realist account. Pick the scopes your agent should have — read-only by default, acting on your behalf only if you allow it." },
+  { icon: KeyRound, title: "Sign in, or create an API key", body: "In the Claude and ChatGPT apps you just sign in to Realist and approve what the app may do. Developer tools use an API key — free with a Realist account, scoped to what you allow." },
   { icon: Plug, title: "Connect your harness", body: "Point Claude, Codex, Cursor, Grok or ChatGPT at one URL. Nothing to install, and the same key works over REST." },
   { icon: MousePointerClick, title: "Ask, then open the link", body: "Your agent gets structured numbers. You get a link to the interactive version — edit assumptions, read the pro forma, download the Excel model." },
 ];
@@ -192,11 +192,11 @@ export default function Developers() {
           <Card>
             <CardHeader className="pb-2">
               <Lock className="h-6 w-6 text-primary" />
-              <CardTitle className="text-base pt-2">Scoped keys</CardTitle>
+              <CardTitle className="text-base pt-2">You stay in control</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground leading-6">
-              Keys are stored hashed and can be revoked instantly. Posting to the community feed or contacting the Deal Desk needs an explicit
-              scope, and the tools tell your agent to ask you first.
+              Apps you sign in from never see your password or a key, and you can disconnect them any time. Keys and tokens are stored
+              hashed. Posting to the community feed or contacting the Deal Desk needs explicit permission, and the tools tell your agent to ask you first.
             </CardContent>
           </Card>
           <Card>

@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ConnectGuide } from "@/components/agent-views/ConnectGuide";
 
 type KeyUsage = { apiKeyId: string; calls: number; errors: number; rateLimited: number; lastCallAt: string | null };
+type ConnectedApp = { id: string; clientName: string; scopes: string[]; createdAt: string; lastUsedAt: string | null };
 type AgentViewRow = { token: string; kind: string; title: string; tool: string | null; viewCount: number; createdAt: string; url: string };
 
 type ApiKeyRow = {
@@ -34,7 +35,22 @@ export default function AccountApiKeys() {
   });
   const { data: usage } = useQuery<{ days: number; byKey: KeyUsage[] }>({ queryKey: ["/api/api-keys/usage"] });
   const { data: agentViews } = useQuery<{ views: AgentViewRow[] }>({ queryKey: ["/api/api-keys/views"] });
+  const { data: connectedApps } = useQuery<{ grants: ConnectedApp[] }>({ queryKey: ["/api/oauth/grants"] });
   const usageByKey = new Map((usage?.byKey || []).map((row) => [row.apiKeyId, row]));
+
+  const disconnectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/oauth/grants/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "App disconnected" });
+      queryClient.invalidateQueries({ queryKey: ["/api/oauth/grants"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not disconnect", description: err?.message || "Try again", variant: "destructive" });
+    },
+  });
 
   const createMutation = useMutation({
     mutationFn: async (keyName: string) => {
@@ -212,6 +228,44 @@ export default function AccountApiKeys() {
           )}
         </CardContent>
       </Card>
+
+      {(connectedApps?.grants.length ?? 0) > 0 && (
+        <Card data-testid="card-connected-apps">
+          <CardHeader>
+            <CardTitle>Connected apps</CardTitle>
+            <CardDescription>Apps you signed in to Realist from (Claude, ChatGPT and other connectors). They never see your password or an API key.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {connectedApps!.grants.map((app) => {
+              const appUsage = usageByKey.get(`oauth:${app.id}`);
+              return (
+                <div key={app.id} className="flex items-center justify-between gap-3 border rounded-md p-3" data-testid={`row-connected-app-${app.id}`}>
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{app.clientName}</span>
+                      {app.scopes.map((scope) => <Badge key={scope} variant="outline" className="font-mono text-xs font-normal">{scope}</Badge>)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Connected {new Date(app.createdAt).toLocaleDateString()} ·
+                      {" "}{app.lastUsedAt ? `Last used ${new Date(app.lastUsedAt).toLocaleString()}` : "Never used"}
+                      {appUsage ? ` · ${appUsage.calls.toLocaleString()} calls in the last ${usage?.days ?? 30} days` : ""}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => disconnectMutation.mutate(app.id)}
+                    disabled={disconnectMutation.isPending}
+                    data-testid={`button-disconnect-${app.id}`}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {(agentViews?.views.length ?? 0) > 0 && (
         <Card data-testid="card-agent-results">
