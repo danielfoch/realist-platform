@@ -33,6 +33,12 @@ import {
   getFormMap,
   listFormMaps,
 } from "@shared/forms";
+import {
+  ListingExtractError,
+  listExtractors,
+  listingExtractInputSchema,
+} from "@shared/listingExtract";
+import { extractListing } from "./listingExtract";
 import { isAuthenticated } from "./auth";
 import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
 import { getRentEstimate } from "./rentIntelligence";
@@ -158,6 +164,8 @@ export function underwriteSimple(input: {
   vacancyRate?: number;
   expenseRatio?: number;
   annualPropertyTax?: number;
+  currency?: string;
+  fxToCad?: number;
 }) {
   const price = Number(input.price);
   const units = input.units && input.units > 0 ? input.units : 1;
@@ -225,7 +233,21 @@ export function underwriteSimple(input: {
       amortizationYears: 25,
     },
     calculationVersion: metrics.calculationVersion,
-    warnings: metrics.calculationWarnings,
+    warnings: [
+      ...(metrics.calculationWarnings || []),
+      ...(input.currency && input.currency.toUpperCase() !== "CAD" && input.fxToCad == null
+        ? ["Metrics are in listing currency. Pass fxToCad to add a CAD companion price; FX is never invented."]
+        : []),
+    ],
+    currency: input.currency?.toUpperCase() || "CAD",
+    fxToCad: input.fxToCad ?? null,
+    priceCad: (() => {
+      const currency = input.currency?.toUpperCase() || "CAD";
+      if (typeof input.fxToCad === "number" && Number.isFinite(input.fxToCad)) {
+        return Math.round(price * input.fxToCad);
+      }
+      return currency === "CAD" ? Math.round(price) : null;
+    })(),
   };
 }
 
@@ -352,12 +374,60 @@ export async function executeListingUnderwrite(
   };
 }
 
-registerSpecialistExecutor("underwrite.custom", async (input) => {
-  const parsed = underwriteCustomSchema.parse(input);
-  return {
-    underwriting: underwriteSimple(parsed),
-    strategyType: parsed.strategyType,
+/** Shared custom underwrite used by POST /underwrite/custom and underwrite.custom jobs. */
+export async function executeCustomUnderwrite(
+  input: z.infer<typeof underwriteCustomSchema>,
+  userId: string,
+  options: { persist?: "required" | "optional" } = {},
+) {
+  const persist = options.persist ?? "required";
+  const result = underwriteSimple(input);
+  const payload: {
+    underwriting: ReturnType<typeof underwriteSimple>;
+    strategyType: typeof input.strategyType;
+    analysisId: string | null;
+    analysisUrl: string | null;
+  } = {
+    underwriting: result,
+    strategyType: input.strategyType,
+    analysisId: null,
+    analysisUrl: null,
   };
+  try {
+    if (typeof storage.createAnalysis === "function") {
+      const analysis = await storage.createAnalysis({
+        countryMode: input.countryMode,
+        strategyType: input.strategyType,
+        inputsJson: {
+          ...input,
+          purchasePrice: input.price,
+          source: "agent_api",
+        },
+        resultsJson: result as any,
+        userId,
+        sessionId: null,
+        address: input.address,
+        city: input.city || null,
+        province: input.province || null,
+        rentInputs: { monthlyRent: result.monthlyRent, numberOfUnits: result.units },
+        vacancyRate: result.assumptions.vacancyRate,
+        expenseAssumptions: { expenseRatio: result.assumptions.expenseRatio },
+      });
+      payload.analysisId = analysis.id;
+      payload.analysisUrl = `https://realist.ca/deal-analyzer?analysisId=${analysis.id}`;
+    } else if (persist === "required") {
+      throw new Error("createAnalysis unavailable");
+    }
+  } catch (error) {
+    if (persist === "required") throw error;
+    // Jobs still return currency-native metrics when analysis persist is unavailable.
+  }
+  return payload;
+}
+
+registerSpecialistExecutor("underwrite.custom", async (input, ctx) => {
+  const parsed = underwriteCustomSchema.parse(input);
+  return executeCustomUnderwrite(parsed, ctx.userId, { persist: "optional" });
 });
 
 registerSpecialistExecutor("underwrite.listing", async (input, ctx) => {
@@ -367,6 +437,25 @@ registerSpecialistExecutor("underwrite.listing", async (input, ctx) => {
   } catch (err: any) {
     if (err instanceof AgentCapabilityError) {
       throw new AgentJobError(err.status, err.code, err.message);
+    }
+    throw err;
+  }
+});
+
+registerSpecialistExecutor("listing.extract", async (input) => {
+  const parsed = listingExtractInputSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new AgentJobError(400, "invalid_input", parsed.error.issues.map((issue) => issue.message).join("; "));
+  }
+  try {
+    return await extractListing(parsed.data);
+  } catch (err: any) {
+    if (err instanceof ListingExtractError) {
+      throw new AgentJobError(
+        err.code === "listing_not_found" ? 404 : err.code === "blocked_or_login_wall" ? 403 : 422,
+        err.code,
+        err.message,
+      );
     }
     throw err;
   }
@@ -529,31 +618,8 @@ export function registerAgentRoutes(app: Express) {
       const parsed = underwriteCustomSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
       const input = parsed.data;
-      const result = underwriteSimple(input);
-      const analysis = await storage.createAnalysis({
-        countryMode: input.countryMode,
-        strategyType: input.strategyType,
-        inputsJson: {
-          ...input,
-          purchasePrice: input.price,
-          source: "agent_api",
-        },
-        resultsJson: result as any,
-        userId: req.agentUserId!,
-        sessionId: null,
-        address: input.address,
-        city: input.city || null,
-        province: input.province || null,
-        rentInputs: { monthlyRent: result.monthlyRent, numberOfUnits: result.units },
-        vacancyRate: result.assumptions.vacancyRate,
-        expenseAssumptions: { expenseRatio: result.assumptions.expenseRatio },
-      });
-      res.json({
-        analysisId: analysis.id,
-        analysisUrl: `https://realist.ca/deal-analyzer?analysisId=${analysis.id}`,
-        underwriting: result,
-        strategyType: input.strategyType,
-      });
+      const data = await executeCustomUnderwrite(input, req.agentUserId!);
+      res.json(data);
     } catch (err: any) {
       console.error("[agent] underwrite custom error:", err);
       res.status(500).json({ error: "underwrite_failed", message: err?.message });
@@ -890,6 +956,134 @@ export function registerAgentRoutes(app: Express) {
         apiKeyId: req.agentKeyId ?? null,
       });
       res.status(replayed ? 200 : 201).json({ job: serializeAgentJob(job), replayed });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** Registered listing URL extractors (Zillow for Earth). */
+  app.get("/api/agent/listings/extractors", requireScope("read"), (_req, res) => {
+    res.json({ extractors: listExtractors() });
+  });
+
+  /** Create a listing.extract job from a public URL, HTML, or MLS number. */
+  app.post("/api/agent/listings/extract", async (req, res) => {
+    try {
+      const needed = scopesForJobType("listing.extract");
+      if (!hasAnyScope(req, needed)) {
+        return res.status(403).json({
+          error: "scope_required",
+          requiredScope: needed[0],
+          requiredScopes: needed,
+          message: `This API key needs one of: ${needed.join(", ")}.`,
+        });
+      }
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+      const { idempotencyKey, ...input } = body;
+      const parsed = listingExtractInputSchema.safeParse(input);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const { job, replayed } = await createAgentJob({
+        request: {
+          type: "listing.extract",
+          input: parsed.data,
+          idempotencyKey: typeof idempotencyKey === "string" ? idempotencyKey : undefined,
+        },
+        userId: req.agentUserId!,
+        apiKeyId: req.agentKeyId ?? null,
+      });
+      res.status(replayed ? 200 : 201).json({
+        job: serializeAgentJob(job),
+        extract: job.result,
+        replayed,
+      });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /**
+   * Extract a listing URL then underwrite in listing currency.
+   * Does not invent FX; pass fxToCad to get a CAD companion price.
+   */
+  app.post("/api/agent/listings/underwrite-url", async (req, res) => {
+    try {
+      if (!hasAnyScope(req, ["underwrite", "jobs:write"])) {
+        return res.status(403).json({
+          error: "scope_required",
+          requiredScope: "underwrite",
+          requiredScopes: ["underwrite", "jobs:write"],
+          message: "This API key needs the underwrite scope.",
+        });
+      }
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+      const parsed = listingExtractInputSchema.and(z.object({
+        monthlyRent: z.number().positive().optional(),
+        downPaymentPercent: z.number().min(0).max(100).optional(),
+        interestRate: z.number().min(0).max(25).optional(),
+        vacancyRate: z.number().min(0).max(50).optional(),
+        expenseRatio: z.number().min(0).max(80).optional(),
+        fxToCad: z.number().positive().optional(),
+        strategyType: z.enum(["buyHold", "brrr", "flip", "airbnb", "multiplex"]).optional(),
+        idempotencyKey: z.string().optional(),
+      })).safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const { idempotencyKey, monthlyRent, downPaymentPercent, interestRate, vacancyRate, expenseRatio, fxToCad, strategyType, ...extractInput } = parsed.data;
+
+      const extracted = await createAgentJob({
+        request: {
+          type: "listing.extract",
+          input: extractInput,
+          idempotencyKey: idempotencyKey ? `${idempotencyKey}:extract` : undefined,
+        },
+        userId: req.agentUserId!,
+        apiKeyId: req.agentKeyId ?? null,
+      });
+      const extract = extracted.job.result as Record<string, any> | null;
+      const address = extract?.property?.address;
+      const price = extract?.listing?.listPrice;
+      if (!extract || extracted.job.status !== "succeeded" || !address || !Number.isFinite(price) || price <= 0) {
+        return res.status(extracted.job.status === "failed" ? 422 : 200).json({
+          extractJob: serializeAgentJob(extracted.job),
+          underwriteJob: null,
+          extract,
+          underwriting: null,
+          warning: "Extract succeeded but underwrite needs a public list price and address. Missing facts were not invented.",
+        });
+      }
+
+      const country = extract.property?.country || extractInput.country || "CA";
+      const underwritten = await createAgentJob({
+        request: {
+          type: "underwrite.custom",
+          input: {
+            address,
+            city: extract.property?.city,
+            province: extract.property?.province || extract.property?.state || extract.property?.region,
+            countryMode: typeof country === "string" && country.length === 2 ? country : "CA",
+            price,
+            currency: extract.listing?.currency || extractInput.currency,
+            fxToCad,
+            monthlyRent,
+            beds: extract.property?.beds,
+            units: extract.property?.units,
+            downPaymentPercent,
+            interestRate,
+            vacancyRate,
+            expenseRatio,
+            strategyType: strategyType || "buyHold",
+          },
+          idempotencyKey: idempotencyKey ? `${idempotencyKey}:underwrite` : undefined,
+        },
+        userId: req.agentUserId!,
+        apiKeyId: req.agentKeyId ?? null,
+      });
+
+      res.status(201).json({
+        extractJob: serializeAgentJob(extracted.job),
+        underwriteJob: serializeAgentJob(underwritten.job),
+        extract,
+        underwriting: underwritten.job.result,
+      });
     } catch (err) {
       jobErrorResponse(res, err);
     }

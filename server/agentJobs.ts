@@ -1,8 +1,8 @@
 /**
  * Agent jobs store — persist + run specialist work for /api/agent/jobs.
  *
- * Handlers are registered by type. Underwrite adapters and the forms
- * specialist are wired from agentApi.ts. Docs / CRM remain stubs.
+ * Handlers are registered by type. Underwrite adapters, forms, and
+ * listing.extract are wired from agentApi.ts. Docs / CRM remain stubs.
  */
 import { and, desc, eq } from "drizzle-orm";
 import { db, pool } from "./db";

@@ -422,6 +422,115 @@ describe("agent API jobs spine", () => {
     }));
   });
 
+  it("lists listing extractors behind read", async () => {
+    const response = await request(app())
+      .get("/api/agent/listings/extractors")
+      .set("Authorization", "Bearer realist_live_testtoken");
+
+    expect(response.status).toBe(200);
+    expect(response.body.extractors.map((item: { id: string }) => item.id)).toEqual(
+      expect.arrayContaining(["zillow", "generic-jsonld-og"]),
+    );
+  });
+
+  it("creates a listing.extract job from the convenience route", async () => {
+    mocks.createAgentJob.mockResolvedValue({
+      job: sampleJob({
+        type: "listing.extract",
+        status: "succeeded",
+        result: { property: { address: "14 Canal Street", country: "GB" }, listing: { listPrice: 450000, currency: "GBP" } },
+      }),
+      replayed: false,
+    });
+
+    const response = await request(app())
+      .post("/api/agent/listings/extract")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({ url: "https://www.example.com/listings/14-canal", html: "<html></html>" });
+
+    expect(response.status).toBe(201);
+    expect(response.body.extract.listing.currency).toBe("GBP");
+    expect(mocks.createAgentJob).toHaveBeenCalledWith(expect.objectContaining({
+      request: expect.objectContaining({ type: "listing.extract" }),
+    }));
+  });
+
+  it("underwrites a fixture-backed extract via underwrite-url", async () => {
+    mocks.createAgentJob
+      .mockResolvedValueOnce({
+        job: sampleJob({
+          type: "listing.extract",
+          status: "succeeded",
+          result: {
+            property: { address: "123 Main St", city: "Austin", country: "US", beds: 3 },
+            listing: { listPrice: 625000, currency: "USD" },
+          },
+        }),
+        replayed: false,
+      })
+      .mockResolvedValueOnce({
+        job: sampleJob({
+          type: "underwrite.custom",
+          status: "succeeded",
+          result: {
+            analysisId: "analysis-us-1",
+            analysisUrl: "https://realist.ca/deal-analyzer?analysisId=analysis-us-1",
+            underwriting: { capRate: 4.2, currency: "USD", priceCad: null },
+          },
+        }),
+        replayed: false,
+      });
+
+    const response = await request(app())
+      .post("/api/agent/listings/underwrite-url")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({
+        url: "https://www.zillow.com/homedetails/123-Main/1_zpid/",
+        html: "<html></html>",
+        country: "US",
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.extract.listing.listPrice).toBe(625000);
+    expect(response.body.underwriting.underwriting.currency).toBe("USD");
+    expect(response.body.underwriting.analysisUrl).toContain("analysisId=analysis-us-1");
+    expect(mocks.createAgentJob).toHaveBeenCalledTimes(2);
+    expect(mocks.createAgentJob.mock.calls[1][0].request.type).toBe("underwrite.custom");
+    expect(mocks.createAgentJob.mock.calls[1][0].request.input).toMatchObject({
+      address: "123 Main St",
+      price: 625000,
+      currency: "USD",
+      countryMode: "US",
+    });
+  });
+
+  it("does not invent an underwrite when extract has no price", async () => {
+    mocks.createAgentJob.mockResolvedValueOnce({
+      job: sampleJob({
+        type: "listing.extract",
+        status: "succeeded",
+        result: {
+          property: { address: "1 Rue Example", city: "Paris", country: "FR" },
+          listing: { listPrice: null, currency: null },
+          missingFields: ["listing.listPrice"],
+          warnings: ["No JSON-LD or OpenGraph listing signals found."],
+        },
+      }),
+      replayed: false,
+    });
+
+    const response = await request(app())
+      .post("/api/agent/listings/underwrite-url")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({ url: "https://www.example.fr/annonce/1", country: "FR" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.underwriteJob).toBeNull();
+    expect(response.body.underwriting).toBeNull();
+    expect(response.body.warning).toMatch(/not invented/i);
+    expect(mocks.createAgentJob).toHaveBeenCalledTimes(1);
+  });
+
   it("serves OpenAPI behind the read scope", async () => {
     const response = await request(app())
       .get("/api/agent/openapi.json")
@@ -431,5 +540,8 @@ describe("agent API jobs spine", () => {
     expect(response.body.openapi).toBe("3.0.3");
     expect(response.body.paths["/api/agent/jobs"]).toBeTruthy();
     expect(response.body.paths["/api/agent/underwrite/listing"]).toBeTruthy();
+    expect(response.body.paths["/api/agent/listings/extract"]).toBeTruthy();
+    expect(response.body.paths["/api/agent/listings/underwrite-url"]).toBeTruthy();
+    expect(response.body.info.version).toBe("1.3.0");
   });
 });

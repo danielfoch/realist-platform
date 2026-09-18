@@ -59,7 +59,22 @@ export const CANADIAN_PROVINCE_CODES = [
   "YT",
 ] as const;
 
-export const countryCodeSchema = z.enum(["CA", "US"]).default("CA");
+/** ISO 3166-1 alpha-2. Defaults to CA for existing callers. */
+export const isoCountryCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z]{2}$/, "ISO 3166-1 alpha-2 country code")
+  .transform((value) => value.toUpperCase());
+export const countryCodeSchema = isoCountryCodeSchema.default("CA");
+
+/** ISO 4217. Underwrite math is currency-native unless fxToCad is supplied. */
+export const isoCurrencySchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z]{3}$/, "ISO 4217 currency code")
+  .transform((value) => value.toUpperCase());
+
+export const areaUnitSchema = z.enum(["sqft", "sqm"]);
 
 export const geoPointSchema = z.object({
   lat: z.number().min(-90).max(90),
@@ -91,7 +106,10 @@ export const propertySchema = z.object({
   streetAddress: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
   province: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  region: z.string().optional().nullable(),
   postalCode: z.string().optional().nullable(),
+  zip: z.string().optional().nullable(),
   country: countryCodeSchema,
   geo: geoPointSchema.optional().nullable(),
   beds: z.number().int().nonnegative().optional().nullable(),
@@ -99,8 +117,15 @@ export const propertySchema = z.object({
   units: z.number().int().positive().optional().nullable(),
   annualPropertyTax: z.number().nonnegative().optional().nullable(),
   propertyType: z.string().optional().nullable(),
+  parcelId: z.string().optional().nullable(),
+  areaSqft: z.number().nonnegative().optional().nullable(),
+  areaSqm: z.number().nonnegative().optional().nullable(),
+  areaUnit: areaUnitSchema.optional().nullable(),
 });
 export type Property = z.infer<typeof propertySchema>;
+
+/** Partial property used by listing extract (address may still be missing). */
+export const extractedPropertySchema = propertySchema.partial();
 
 export const listingStatusSchema = z.enum([
   "Active",
@@ -113,16 +138,22 @@ export const listingStatusSchema = z.enum([
 
 export const listingSchema = z.object({
   id: z.string().min(1).optional(),
-  mlsNumber: z.string().min(1),
+  mlsNumber: z.string().min(1).optional().nullable(),
   status: listingStatusSchema.default("Active"),
   listPrice: z.number().nonnegative().optional().nullable(),
+  currency: isoCurrencySchema.optional().nullable(),
   property: propertySchema.optional(),
   propertyId: z.string().optional().nullable(),
   daysOnMarket: z.number().int().nonnegative().optional().nullable(),
   source: z.string().default("crea_ddf"),
+  sourceUrl: z.string().url().optional().nullable(),
+  sourceHost: z.string().optional().nullable(),
+  externalId: z.string().optional().nullable(),
   propertyType: z.string().optional().nullable(),
 });
 export type Listing = z.infer<typeof listingSchema>;
+
+export const extractedListingSchema = listingSchema.partial();
 
 /**
  * Deal / underwrite analysis — links a listing or custom property to the
@@ -295,9 +326,11 @@ export const underwriteCustomInputSchema = z.object({
   address: z.string().min(1),
   city: z.string().optional(),
   province: z.string().optional(),
-  countryMode: z.enum(["CA", "US"]).default("CA"),
+  countryMode: isoCountryCodeSchema.default("CA"),
   strategyType: agentUnderwriteStrategySchema,
   price: z.number().positive(),
+  currency: isoCurrencySchema.optional(),
+  fxToCad: z.number().positive().optional(),
   monthlyRent: z.number().positive().optional(),
   units: z.number().int().positive().optional(),
   beds: z.number().int().nonnegative().optional(),
@@ -310,9 +343,13 @@ export const underwriteCustomInputSchema = z.object({
 export const listingExtractInputSchema = z.object({
   mlsNumber: z.string().min(1).optional(),
   url: z.string().url().optional(),
-  rawText: z.string().min(1).optional(),
-}).refine((value) => Boolean(value.mlsNumber || value.url || value.rawText), {
-  message: "Provide mlsNumber, url, or rawText",
+  /** Caller-supplied public HTML (tests / agents that already fetched the page). */
+  html: z.string().min(1).max(1_500_000).optional(),
+  rawText: z.string().min(1).max(1_500_000).optional(),
+  country: isoCountryCodeSchema.optional(),
+  currency: isoCurrencySchema.optional(),
+}).refine((value) => Boolean(value.mlsNumber || value.url || value.html || value.rawText), {
+  message: "Provide url, html, rawText, or mlsNumber",
 });
 
 export const formsFillInputSchema = z.object({
@@ -391,7 +428,7 @@ export const SPECIALIST_REGISTRY: Record<AgentJobType, SpecialistHandlerMeta> = 
   "listing.extract": {
     specialistId: "realist.listing-extract",
     requiresApproval: false,
-    implemented: false,
+    implemented: true,
     scopes: ["read", "jobs:write"],
   },
   "forms.fill": {

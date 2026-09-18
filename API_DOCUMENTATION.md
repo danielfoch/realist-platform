@@ -114,3 +114,13 @@ P1 Forms specialist (Ontario / OREA field maps only — no PDF bodies):
   `needs_approval`. Approve marks succeeded; nothing is e-signed or
   submitted. Missing legal facts stay blank.
 
+P2 Listing extract (Zillow for Earth for AI agents — any geography):
+
+- `GET /api/agent/listings/extractors` — host → extractor registry (`read`)
+- `POST /api/agent/listings/extract` — create a `listing.extract` job
+  from a public URL, caller HTML, or CREA MLS # (`read` or `jobs:write`)
+- `POST /api/agent/listings/underwrite-url` — extract then
+  `underwrite.custom` in listing currency (`underwrite`). Optional
+  `fxToCad`; FX is never invented. Login-walled pages return
+  `blocked_or_login_wall`. Missing prices/beds stay null.
+

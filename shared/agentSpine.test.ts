@@ -75,6 +75,22 @@ describe("canonical resource schemas", () => {
     expect(parsed.success).toBe(true);
   });
 
+  it("accepts a non-CA property and a URL listing without MLS", () => {
+    expect(propertySchema.safeParse({
+      address: "14 Canal Street",
+      city: "Manchester",
+      country: "GB",
+    }).success).toBe(true);
+    const listing = listingSchema.safeParse({
+      listPrice: 450000,
+      currency: "GBP",
+      sourceUrl: "https://www.example.com/listings/14-canal",
+      sourceHost: "www.example.com",
+      source: "generic-jsonld-og",
+    });
+    expect(listing.success).toBe(true);
+  });
+
   it("reuses underwrite metrics on a deal", () => {
     const parsed = dealSchema.safeParse({
       mlsNumber: "X1234567",
@@ -120,6 +136,19 @@ describe("job input validation", () => {
     expect(parseJobInput("underwrite.listing", {}).success).toBe(false);
   });
 
+  it("accepts listing.extract from a worldwide URL or caller HTML", () => {
+    expect(parseJobInput("listing.extract", {}).success).toBe(false);
+    expect(parseJobInput("listing.extract", {
+      url: "https://www.zillow.com/homedetails/1_zpid/",
+      country: "US",
+      currency: "USD",
+    }).success).toBe(true);
+    expect(parseJobInput("listing.extract", {
+      html: "<html></html>",
+      country: "gb",
+    }).success).toBe(true);
+  });
+
   it("requires a create payload with a known job type", () => {
     expect(createAgentJobRequestSchema.safeParse({ type: "nope", input: {} }).success).toBe(false);
     expect(createAgentJobRequestSchema.safeParse({ type: "underwrite.custom", input: {} }).success).toBe(true);
@@ -136,6 +165,8 @@ describe("job scope + approval policy", () => {
     expect(jobRequiresApproval("forms.fill")).toBe(true);
     expect(SPECIALIST_REGISTRY["forms.fill"].implemented).toBe(true);
     expect(SPECIALIST_REGISTRY["forms.fill"].previewOnCreate).toBe(true);
+    expect(SPECIALIST_REGISTRY["listing.extract"].implemented).toBe(true);
+    expect(jobRequiresApproval("listing.extract")).toBe(false);
     expect(jobRequiresApproval("docs.route")).toBe(true);
     expect(jobRequiresApproval("crm.update")).toBe(true);
     expect(jobRequiresApproval("underwrite.custom")).toBe(false);

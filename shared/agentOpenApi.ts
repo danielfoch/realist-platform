@@ -64,17 +64,19 @@ export const AGENT_API_OPENAPI = {
   openapi: "3.0.3",
   info: {
     title: "Realist Agent API",
-    version: "1.2.0",
+    version: "1.3.0",
     description:
       "Bearer-authenticated API used by @realist/mcp and specialist tools. " +
       "Keys are `realist_live_*`, SHA-256 hashed in `api_keys`. " +
-      "P0 spine adds canonical resource schemas and a Job object. Realist-only.",
+      "P0 spine + P1 Ontario forms + P2 worldwide listing extract " +
+      "(Zillow for Earth for AI agents). Realist-only.",
   },
   servers: [{ url: "https://realist.ca", description: "Production" }],
   tags: [
     { name: "Agent", description: "Existing underwrite / search / analyses routes" },
     { name: "Jobs", description: "Specialist job spine" },
     { name: "Forms", description: "Ontario / OREA field maps + fill (maps only, no PDF bodies)" },
+    { name: "Listings", description: "Worldwide URL extract + underwrite (Zillow for Earth for AI agents)" },
     { name: "Schemas", description: "Canonical Realist domain objects" },
   ],
   paths: {
@@ -270,6 +272,30 @@ export const AGENT_API_OPENAPI = {
         responses: { "201": { description: "Draft fill job" }, "403": { description: "forms:write or jobs:write required" } },
       },
     },
+    "/api/agent/listings/extractors": {
+      get: {
+        tags: ["Listings"],
+        summary: "List registered listing URL extractors",
+        security: [{ bearerAuth: [] }],
+        responses: { "200": { description: "Extractor registry" } },
+      },
+    },
+    "/api/agent/listings/extract": {
+      post: {
+        tags: ["Listings"],
+        summary: "Extract Property + Listing from a public URL, HTML, or MLS number",
+        security: [{ bearerAuth: [] }],
+        responses: { "201": { description: "listing.extract job + extract payload" } },
+      },
+    },
+    "/api/agent/listings/underwrite-url": {
+      post: {
+        tags: ["Listings"],
+        summary: "Extract a listing URL then underwrite in listing currency",
+        security: [{ bearerAuth: [] }],
+        responses: { "201": { description: "Extract + underwrite jobs" } },
+      },
+    },
     "/api/agent/openapi.json": {
       get: {
         tags: ["Agent"],
@@ -388,7 +414,15 @@ export const AGENT_API_OPENAPI = {
           address: { type: "string" },
           city: { type: "string", nullable: true },
           province: { type: "string", nullable: true },
-          country: { type: "string", enum: ["CA", "US"], default: "CA" },
+          country: { type: "string", description: "ISO 3166-1 alpha-2", default: "CA" },
+          state: { type: "string", nullable: true },
+          region: { type: "string", nullable: true },
+          postalCode: { type: "string", nullable: true },
+          zip: { type: "string", nullable: true },
+          parcelId: { type: "string", nullable: true },
+          areaSqft: { type: "number", nullable: true },
+          areaSqm: { type: "number", nullable: true },
+          areaUnit: { type: "string", enum: ["sqft", "sqm"], nullable: true },
           geo: {
             type: "object",
             properties: { lat: { type: "number" }, lng: { type: "number" } },
@@ -401,14 +435,17 @@ export const AGENT_API_OPENAPI = {
       },
       Listing: {
         type: "object",
-        required: ["mlsNumber"],
         properties: {
-          mlsNumber: { type: "string" },
+          mlsNumber: { type: "string", nullable: true, description: "Optional outside CREA DDF" },
           status: { type: "string" },
           listPrice: { type: "number", nullable: true },
+          currency: { type: "string", description: "ISO 4217. Metrics stay in this currency unless fxToCad is supplied." },
           property: { $ref: "#/components/schemas/Property" },
           daysOnMarket: { type: "integer", nullable: true },
           source: { type: "string" },
+          sourceUrl: { type: "string" },
+          sourceHost: { type: "string" },
+          externalId: { type: "string" },
         },
       },
       Deal: {
@@ -475,9 +512,11 @@ export const AGENT_API_OPENAPI = {
           address: { type: "string" },
           city: { type: "string" },
           province: { type: "string" },
-          countryMode: { type: "string", enum: ["CA", "US"], default: "CA" },
+          countryMode: { type: "string", description: "ISO 3166-1 alpha-2", default: "CA" },
           strategyType: { type: "string", default: "buyHold" },
           price: { type: "number" },
+          currency: { type: "string", description: "ISO 4217. Defaults to CAD for existing callers." },
+          fxToCad: { type: "number", description: "Optional caller-supplied FX. Never invented." },
           monthlyRent: { type: "number" },
           units: { type: "integer" },
           beds: { type: "integer" },
@@ -486,6 +525,18 @@ export const AGENT_API_OPENAPI = {
           vacancyRate: { type: "number" },
           expenseRatio: { type: "number" },
         },
+      },
+      ListingExtractInput: {
+        type: "object",
+        properties: {
+          url: { type: "string", format: "uri" },
+          html: { type: "string", description: "Caller-supplied public HTML (offline / already-fetched)" },
+          rawText: { type: "string" },
+          mlsNumber: { type: "string", description: "CREA DDF fast path when configured" },
+          country: { type: "string", description: "ISO 3166-1 alpha-2 hint" },
+          currency: { type: "string", description: "ISO 4217 hint" },
+        },
+        description: "Provide at least one of url, html, rawText, or mlsNumber.",
       },
       CreateAgentJobRequest: {
         type: "object",
