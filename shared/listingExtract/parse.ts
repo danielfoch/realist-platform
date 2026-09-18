@@ -26,19 +26,19 @@ export interface ParsedListingSignals {
   provenance: string[];
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
+export function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
 }
 
-function asString(value: unknown): string | undefined {
+export function asString(value: unknown): string | undefined {
   if (typeof value === "string" && value.trim()) return value.trim();
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return undefined;
 }
 
-function asNumber(value: unknown): number | undefined {
+export function asNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
     const cleaned = value.replace(/[^0-9.]/g, "");
@@ -47,6 +47,40 @@ function asNumber(value: unknown): number | undefined {
     return Number.isFinite(parsed) ? parsed : undefined;
   }
   return undefined;
+}
+
+/** Map common country names to ISO 3166-1 alpha-2. Unknown names stay unset. */
+const COUNTRY_NAMES: Record<string, string> = {
+  "united kingdom": "GB",
+  "great britain": "GB",
+  "uk": "GB",
+  england: "GB",
+  scotland: "GB",
+  wales: "GB",
+  "northern ireland": "GB",
+  australia: "AU",
+  "united states": "US",
+  "united states of america": "US",
+  usa: "US",
+  canada: "CA",
+  germany: "DE",
+  deutschland: "DE",
+  france: "FR",
+  spain: "ES",
+  espana: "ES",
+  "españa": "ES",
+  italy: "IT",
+  italia: "IT",
+  portugal: "PT",
+  singapore: "SG",
+  malaysia: "MY",
+};
+
+export function normalizeCountry(value?: string): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (/^[A-Za-z]{2}$/.test(trimmed)) return trimmed.toUpperCase();
+  return COUNTRY_NAMES[trimmed.toLowerCase()];
 }
 
 function typeList(node: Record<string, unknown>): string[] {
@@ -95,7 +129,7 @@ function readAddress(value: unknown, out: ParsedListingSignals) {
   if (city) out.city ??= city;
   if (region) out.region ??= region;
   if (postal) out.postalCode ??= postal;
-  if (country) out.country ??= country.length === 2 ? country.toUpperCase() : country;
+  if (country) out.country ??= normalizeCountry(country);
   const composed = [street, city, region, postal].filter(Boolean).join(", ");
   if (composed) out.address ??= composed;
 }
@@ -187,7 +221,7 @@ export function parseOpenGraph(html: string): ParsedListingSignals {
   if (city) out.city = city;
   if (region) out.region = region;
   if (postal) out.postalCode = postal;
-  if (country) out.country = country.length === 2 ? country.toUpperCase() : country;
+  if (country) out.country = normalizeCountry(country);
   const composed = [street, city, region, postal].filter(Boolean).join(", ");
   if (composed) out.address = composed;
 

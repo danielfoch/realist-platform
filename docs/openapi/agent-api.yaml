@@ -165,10 +165,10 @@ paths:
   /api/agent/listings/extractors:
     get:
       tags: [Listings]
-      summary: List registered listing URL extractors
+      summary: List registered listing URL extractors (major portals worldwide)
       security: [{ bearerAuth: [] }]
       responses:
-        "200": { description: Extractor registry }
+        "200": { description: Extractor registry including Rightmove, Domain, REA, Zoopla, Realtor.com, Homes.com, ImmoScout, SeLoger, Idealista, PropertyGuru }
   /api/agent/listings/extract:
     post:
       tags: [Listings]

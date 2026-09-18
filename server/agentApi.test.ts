@@ -429,7 +429,19 @@ describe("agent API jobs spine", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.extractors.map((item: { id: string }) => item.id)).toEqual(
-      expect.arrayContaining(["zillow", "generic-jsonld-og"]),
+      expect.arrayContaining([
+        "zillow",
+        "generic-jsonld-og",
+        "rightmove-uk",
+        "domain-au",
+        "realestate-au",
+        "zoopla-uk",
+        "realtor-com",
+        "immoscout-de",
+        "seloger-fr",
+        "idealista",
+        "propertyguru",
+      ]),
     );
   });
 

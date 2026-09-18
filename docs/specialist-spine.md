@@ -163,26 +163,34 @@ registerExtractor({
   id: "rightmove-uk",
   hosts: ["rightmove.co.uk"],
   countries: ["GB"],
-  implemented: false,
-  extract(ctx) { /* JSON-LD/OG today; dedicated parser later */ },
+  implemented: true,
+  extract(ctx) { /* JSON-LD / OpenGraph / __NEXT_DATA__ / PAGE_MODEL */ },
 });
 ```
 
 Host router: hostname (www-stripped, suffix match) → extractor, else
-the generic JSON-LD / OpenGraph fallback. Adding `rightmove.co.uk` or
-`domain.com.au` is a new extractor file + host map entry. UK/AU stubs
-already sit in the registry and fall back to generic markup.
+the generic JSON-LD / OpenGraph / `__NEXT_DATA__` / `PAGE_MODEL`
+fallback. Adding a portal is a new file under
+`shared/listingExtract/extractors/` + a `BUILTIN_EXTRACTORS` entry.
 
-Built-in v1 extractors:
+Built-in extractors (`GET /api/agent/listings/extractors`):
 
 | Id | Hosts | Notes |
 |---|---|---|
-| `generic-jsonld-og` | `*` | Worldwide fallback |
+| `generic-jsonld-og` | `*` | Worldwide JSON-LD / OG / Next / PAGE_MODEL fallback |
 | `realtor-ca` | realtor.ca | CA public markup |
 | `zillow` | zillow.com | US public pages; fragile; degrades |
 | `redfin` | redfin.com | US public pages |
-| `rightmove-uk` | rightmove.co.uk | Stub + generic fallback |
-| `domain-au` | domain.com.au | Stub + generic fallback |
+| `realtor-com` | realtor.com | US public pages |
+| `homes-com` | homes.com | US public JSON-LD. Apartments.com skipped (rental / often gated) |
+| `rightmove-uk` | rightmove.co.uk | UK — PAGE_MODEL + structured data |
+| `zoopla-uk` | zoopla.co.uk | UK |
+| `domain-au` | domain.com.au | AU — `__NEXT_DATA__` |
+| `realestate-au` | realestate.com.au | AU / REA |
+| `immoscout-de` | immobilienscout24.de | DE |
+| `seloger-fr` | seloger.com | FR (Leboncoin skipped — often login-walled) |
+| `idealista` | idealista.com / .it / .pt | ES / IT / PT |
+| `propertyguru` | propertyguru.com.sg / .my | SG / MY (MYR on `.my`) |
 | `crea-ddf` | (MLS #) | CA fast path when DDF is configured |
 
 ### Job + convenience routes

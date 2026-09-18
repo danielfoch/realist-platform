@@ -275,9 +275,9 @@ export const AGENT_API_OPENAPI = {
     "/api/agent/listings/extractors": {
       get: {
         tags: ["Listings"],
-        summary: "List registered listing URL extractors",
+        summary: "List registered listing URL extractors (major portals worldwide)",
         security: [{ bearerAuth: [] }],
-        responses: { "200": { description: "Extractor registry" } },
+        responses: { "200": { description: "Extractor registry: realtor.ca, Zillow, Redfin, Realtor.com, Homes.com, Rightmove, Zoopla, Domain, realestate.com.au, ImmoScout, SeLoger, Idealista, PropertyGuru, plus generic JSON-LD/OG" } },
       },
     },
     "/api/agent/listings/extract": {

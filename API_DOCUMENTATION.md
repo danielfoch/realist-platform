@@ -116,7 +116,10 @@ P1 Forms specialist (Ontario / OREA field maps only — no PDF bodies):
 
 P2 Listing extract (Zillow for Earth for AI agents — any geography):
 
-- `GET /api/agent/listings/extractors` — host → extractor registry (`read`)
+- `GET /api/agent/listings/extractors` — host → extractor registry (`read`).
+  Major portals: realtor.ca, Zillow, Redfin, Realtor.com, Homes.com,
+  Rightmove, Zoopla, Domain, realestate.com.au, ImmobilienScout24,
+  SeLoger, Idealista, PropertyGuru, plus generic JSON-LD/OG.
 - `POST /api/agent/listings/extract` — create a `listing.extract` job
   from a public URL, caller HTML, or CREA MLS # (`read` or `jobs:write`)
 - `POST /api/agent/listings/underwrite-url` — extract then

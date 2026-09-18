@@ -1,4 +1,5 @@
 import { looksLikeLoginWall, mergeSignals, parseJsonLd, parseOpenGraph } from "./parse";
+import { parseNextData, parsePageModel } from "./structured";
 import { matchExtractor } from "./registry";
 import { ListingExtractError, type ExtractResult, type ListingExtractInput } from "./types";
 
@@ -31,7 +32,12 @@ export function extractFromHtml(input: {
       mlsNumber: input.mlsNumber,
     },
   };
-  const preview = mergeSignals(parseJsonLd(input.html), parseOpenGraph(input.html));
+  const preview = mergeSignals(
+    parseJsonLd(input.html),
+    parseOpenGraph(input.html),
+    parseNextData(input.html),
+    parsePageModel(input.html),
+  );
   if (looksLikeLoginWall(input.html, preview)) {
     throw new ListingExtractError(
       "blocked_or_login_wall",

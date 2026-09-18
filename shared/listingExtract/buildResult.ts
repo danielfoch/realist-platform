@@ -37,13 +37,16 @@ export function buildExtractResult(input: {
 
   const warnings = [...extraWarnings];
   if (!signals.provenance.length) {
-    warnings.push("No JSON-LD or OpenGraph listing signals found.");
+    warnings.push("No JSON-LD, OpenGraph, or embedded listing JSON found.");
   }
   warnings.push("Public markup only. Login-walled or paywalled pages are not extracted.");
 
   let confidence: ExtractResult["confidence"] = "none";
-  if (signals.provenance.includes("jsonld") && address && signals.listPrice != null) confidence = "high";
-  else if ((address && signals.listPrice != null) || signals.provenance.includes("jsonld")) confidence = "medium";
+  const structured = signals.provenance.some((item) =>
+    item === "jsonld" || item === "next_data" || item === "page_model",
+  );
+  if (structured && address && signals.listPrice != null) confidence = "high";
+  else if ((address && signals.listPrice != null) || structured) confidence = "medium";
   else if (address || signals.listPrice != null) confidence = "low";
 
   return {
