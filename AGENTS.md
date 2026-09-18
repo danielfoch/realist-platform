@@ -45,6 +45,7 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - `email_triggers` — outbound Deal Desk trigger history; `dedupe_key` is nullable and globally unique when present. SLA breach nags use `email_trigger:sla_breach_nag:opportunity:<id>` so each opportunity can alert only once across sent history and autoscaled instances (migration `0016_email_trigger_entity_dedupe.sql`)
 - `realtor_lead_notifications` — partner lead notifications; Phase 1 partner reactivation adds a `partner_type` discriminator (`realtor` | `mortgage_broker` | `lender`, default `realtor`) so financing-intent leads reuse this table instead of a parallel mortgage/lender table (migration `0015_partner_lead_routing.sql`)
 - `realtor_market_claims` — partner market claims; `partner_type` covers `realtor`, `mortgage_broker`, and `lender` (lender claims are province/`National` level and match any deal in the claimed region)
+- `agent_jobs` — Agent API specialist job queue (P0 spine). Columns: type/intent, status (`queued` | `running` | `needs_approval` | `succeeded` | `failed` | `cancelled`), input/result JSON, specialist_id, created_by_user_id + api_key_id, approval fields, idempotency_key (unique per user when set), audit_trail. Zod contract + state machine in `shared/agentSpine.ts`; boot + first-request ensure in `server/agentJobs.ts` (migration `0018_agent_jobs.sql`)
 
 ### Key API Routes
 - `POST /api/auth/signup` — investor signup
@@ -57,8 +58,10 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - `POST /api/community/questions/:id/answers` — authenticated public answer creation
 - `research_articles` — DB-backed unpublished research drafts using `ReportContent` JSON; ingest is idempotent via `source_id` + `ingest_idempotency_key`
 - `research_publish_attempts` — idempotent admin publish-attempt ledger; Phase 2 records blocked attempts only, no public article publishing
+- Agent API jobs spine (P0): `POST/GET /api/agent/jobs`, `GET /api/agent/jobs/:id`, `POST /api/agent/jobs/:id/approve`, `POST /api/agent/jobs/:id/cancel`, `GET /api/agent/openapi.json`. Existing `/api/agent/underwrite/*`, find-deals, and me routes unchanged. New opt-in scopes `jobs:write`, `forms:write`, `docs:write`, `crm:write`; defaults stay `read`/`underwrite`/`deal:submit`.
 
 ### Pending/Recent Work
+- Agent API specialist spine P0 — canonical schemas in `shared/agentSpine.ts`, `agent_jobs` persistence, OpenAPI at `docs/openapi/agent-api.yaml`, plug-in guide in `docs/specialist-spine.md`. Realist-only (no Homies).
 - `ef7766e` (Clyde) — /api/deals/join, user_sessions table for session→user linking
 - `486c4e5` (Clyde) — event tracking infrastructure
 - Replit Agent (in progress) — adapting session linking to Drizzle schema

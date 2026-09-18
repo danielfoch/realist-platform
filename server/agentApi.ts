@@ -15,6 +15,17 @@ import { db } from "./db";
 import { storage } from "./storage";
 import { apiKeys, analyses, propertyAnalyses, users } from "@shared/schema";
 import { calculateInvestmentMetrics } from "@shared/investmentMetrics";
+import {
+  AGENT_API_SCOPES,
+  AGENT_API_SCOPE_SET,
+  DEFAULT_AGENT_API_SCOPES,
+  createAgentJobRequestSchema,
+  scopesForJobType,
+  underwriteCustomInputSchema,
+  underwriteListingInputSchema,
+  type AgentApiScope,
+} from "@shared/agentSpine";
+import { AGENT_API_OPENAPI } from "@shared/agentOpenApi";
 import { isAuthenticated } from "./auth";
 import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
 import { getRentEstimate } from "./rentIntelligence";
@@ -25,19 +36,21 @@ import {
   getSafeReferralOutcomeForAgent,
   updateReferralOutcomeForAgent,
 } from "./referralOutcomes";
+import {
+  AgentJobError,
+  approveAgentJob,
+  cancelAgentJob,
+  createAgentJob,
+  getAgentJob,
+  listAgentJobs,
+  registerSpecialistExecutor,
+  serializeAgentJob,
+} from "./agentJobs";
 
 // ---------- key helpers ----------
 const KEY_PREFIX = "realist_live_";
-export const AGENT_API_SCOPES = [
-  "read",
-  "underwrite",
-  "community:write",
-  "deal:submit",
-  "partner:referrals",
-] as const;
-export type AgentApiScope = (typeof AGENT_API_SCOPES)[number];
-const AGENT_API_SCOPE_SET = new Set<string>(AGENT_API_SCOPES);
-const DEFAULT_AGENT_API_SCOPES: AgentApiScope[] = ["read", "underwrite", "deal:submit"];
+export { AGENT_API_SCOPES, DEFAULT_AGENT_API_SCOPES };
+export type { AgentApiScope };
 const STRUCTURED_USAGE_POLICY_VERSION = "agent-usage-structured-v1";
 
 function hashKey(rawKey: string): string {
@@ -64,6 +77,10 @@ const createApiKeySchema = z.object({
   scopes: z.array(z.enum(AGENT_API_SCOPES)).optional(),
   structuredUsageConsent: z.boolean().optional(),
 });
+
+function hasAnyScope(req: Request, scopes: AgentApiScope[]): boolean {
+  return scopes.some((scope) => req.agentScopes?.includes(scope));
+}
 
 function requireScope(scope: AgentApiScope) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -206,31 +223,9 @@ export function underwriteSimple(input: {
 }
 
 // ---------- request schemas ----------
-const underwriteListingSchema = z.object({
-  mlsNumber: z.string().min(1),
-  strategyType: z.enum(["buyHold", "brrr", "flip", "airbnb", "multiplex"]).default("buyHold"),
-  monthlyRent: z.number().positive().optional(),
-  downPaymentPercent: z.number().min(0).max(100).optional(),
-  interestRate: z.number().min(0).max(25).optional(),
-  vacancyRate: z.number().min(0).max(50).optional(),
-  expenseRatio: z.number().min(0).max(80).optional(),
-});
-
-const underwriteCustomSchema = z.object({
-  address: z.string().min(1),
-  city: z.string().optional(),
-  province: z.string().optional(),
-  countryMode: z.enum(["CA", "US"]).default("CA"),
-  strategyType: z.enum(["buyHold", "brrr", "flip", "airbnb", "multiplex"]).default("buyHold"),
-  price: z.number().positive(),
-  monthlyRent: z.number().positive().optional(),
-  units: z.number().int().positive().optional(),
-  beds: z.number().int().nonnegative().optional(),
-  downPaymentPercent: z.number().min(0).max(100).optional(),
-  interestRate: z.number().min(0).max(25).optional(),
-  vacancyRate: z.number().min(0).max(50).optional(),
-  expenseRatio: z.number().min(0).max(80).optional(),
-});
+// Shared spine schemas — same contract as /api/agent/underwrite/* and job inputs.
+const underwriteListingSchema = underwriteListingInputSchema;
+const underwriteCustomSchema = underwriteCustomInputSchema;
 
 const submitForReviewSchema = z.object({
   analysisId: z.string().min(1).optional(),
@@ -259,6 +254,124 @@ const estimateRentSchema = z.object({
 }).refine((value) => Boolean(value.city) || (value.lat != null && value.lng != null), {
   message: "Provide city or lat/lng",
 });
+
+export class AgentCapabilityError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message?: string,
+    public extra: Record<string, unknown> = {},
+  ) {
+    super(message || code);
+    this.name = "AgentCapabilityError";
+  }
+}
+
+/** Shared listing underwrite used by POST /underwrite/listing and underwrite.listing jobs. */
+export async function executeListingUnderwrite(
+  input: z.infer<typeof underwriteListingSchema>,
+  userId: string,
+) {
+  const { isDdfConfigured, searchDdfByMlsNumber, normalizeDdfListing } = await import("./creaDdf");
+  if (!isDdfConfigured()) {
+    throw new AgentCapabilityError(503, "ddf_not_configured", "CREA DDF feed is unavailable");
+  }
+  const ddfListing = await searchDdfByMlsNumber(input.mlsNumber.replace(/[^a-zA-Z0-9]/g, ""));
+  if (!ddfListing) {
+    throw new AgentCapabilityError(404, "listing_not_found", undefined, { mlsNumber: input.mlsNumber });
+  }
+  const listing: any = normalizeDdfListing(ddfListing);
+  const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
+  if (!Number.isFinite(price) || price <= 1) {
+    throw new AgentCapabilityError(422, "listing_has_no_price", undefined, { mlsNumber: input.mlsNumber });
+  }
+
+  const beds = listing.details?.numBedrooms || 2;
+  const units = listing.numberOfUnitsTotal || 1;
+  const monthlyRent = input.monthlyRent
+    || (listing.totalActualRent && listing.totalActualRent > 0 ? listing.totalActualRent / 12 : undefined);
+
+  const result = underwriteSimple({
+    price,
+    monthlyRent,
+    units,
+    beds,
+    city: listing.address?.city,
+    province: listing.address?.state,
+    downPaymentPercent: input.downPaymentPercent,
+    interestRate: input.interestRate,
+    vacancyRate: input.vacancyRate,
+    expenseRatio: input.expenseRatio,
+  });
+
+  const inputsJson = {
+    mlsNumber: input.mlsNumber,
+    strategyType: input.strategyType,
+    ...result.assumptions,
+    monthlyRent: result.monthlyRent,
+    numberOfUnits: result.units,
+    purchasePrice: price,
+    source: "agent_api",
+  };
+  const analysis = await storage.createAnalysis({
+    countryMode: "CA",
+    strategyType: input.strategyType,
+    inputsJson,
+    resultsJson: result as any,
+    userId,
+    sessionId: null,
+    address: listing.address?.streetAddress || listing.address?.address || null,
+    city: listing.address?.city || null,
+    province: listing.address?.state || null,
+    rentInputs: { monthlyRent: result.monthlyRent, numberOfUnits: result.units },
+    vacancyRate: result.assumptions.vacancyRate,
+    expenseAssumptions: { expenseRatio: result.assumptions.expenseRatio },
+  });
+
+  return {
+    analysisId: analysis.id,
+    analysisUrl: `https://realist.ca/deal-analyzer?analysisId=${analysis.id}`,
+    listing: {
+      mlsNumber: input.mlsNumber,
+      address: listing.address,
+      listPrice: price,
+      beds,
+      units,
+      daysOnMarket: listing.daysOnMarket,
+      propertyType: listing.details?.propertyType,
+    },
+    underwriting: result,
+    strategyType: input.strategyType,
+  };
+}
+
+registerSpecialistExecutor("underwrite.custom", async (input) => {
+  const parsed = underwriteCustomSchema.parse(input);
+  return {
+    underwriting: underwriteSimple(parsed),
+    strategyType: parsed.strategyType,
+  };
+});
+
+registerSpecialistExecutor("underwrite.listing", async (input, ctx) => {
+  const parsed = underwriteListingSchema.parse(input);
+  try {
+    return await executeListingUnderwrite(parsed, ctx.userId);
+  } catch (err: any) {
+    if (err instanceof AgentCapabilityError) {
+      throw new AgentJobError(err.status, err.code, err.message);
+    }
+    throw err;
+  }
+});
+
+function jobErrorResponse(res: Response, err: unknown) {
+  if (err instanceof AgentJobError) {
+    return res.status(err.status).json({ error: err.code, message: err.message });
+  }
+  console.error("[agent] jobs error:", err);
+  return res.status(500).json({ error: "job_failed", message: (err as any)?.message });
+}
 
 // ---------- API key management (session-authenticated) ----------
 export function registerApiKeyManagementRoutes(app: Express) {
@@ -377,79 +490,12 @@ export function registerAgentRoutes(app: Express) {
     try {
       const parsed = underwriteListingSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
-      const input = parsed.data;
-
-      const { isDdfConfigured, searchDdfByMlsNumber, normalizeDdfListing } = await import("./creaDdf");
-      if (!isDdfConfigured()) {
-        return res.status(503).json({ error: "ddf_not_configured", message: "CREA DDF feed is unavailable" });
-      }
-      const ddfListing = await searchDdfByMlsNumber(input.mlsNumber.replace(/[^a-zA-Z0-9]/g, ""));
-      if (!ddfListing) return res.status(404).json({ error: "listing_not_found", mlsNumber: input.mlsNumber });
-      const listing: any = normalizeDdfListing(ddfListing);
-      const price = typeof listing.listPrice === "string" ? parseFloat(listing.listPrice) : listing.listPrice;
-      if (!Number.isFinite(price) || price <= 1) {
-        return res.status(422).json({ error: "listing_has_no_price", mlsNumber: input.mlsNumber });
-      }
-
-      const beds = listing.details?.numBedrooms || 2;
-      const units = listing.numberOfUnitsTotal || 1;
-      const monthlyRent = input.monthlyRent
-        || (listing.totalActualRent && listing.totalActualRent > 0 ? listing.totalActualRent / 12 : undefined);
-
-      const result = underwriteSimple({
-        price,
-        monthlyRent,
-        units,
-        beds,
-        city: listing.address?.city,
-        province: listing.address?.state,
-        downPaymentPercent: input.downPaymentPercent,
-        interestRate: input.interestRate,
-        vacancyRate: input.vacancyRate,
-        expenseRatio: input.expenseRatio,
-      });
-
-      // Save analysis owned by the API key's user
-      const inputsJson = {
-        mlsNumber: input.mlsNumber,
-        strategyType: input.strategyType,
-        ...result.assumptions,
-        monthlyRent: result.monthlyRent,
-        numberOfUnits: result.units,
-        purchasePrice: price,
-        source: "agent_api",
-      };
-      const analysis = await storage.createAnalysis({
-        countryMode: "CA",
-        strategyType: input.strategyType,
-        inputsJson,
-        resultsJson: result as any,
-        userId: req.agentUserId!,
-        sessionId: null,
-        address: listing.address?.streetAddress || listing.address?.address || null,
-        city: listing.address?.city || null,
-        province: listing.address?.state || null,
-        rentInputs: { monthlyRent: result.monthlyRent, numberOfUnits: result.units },
-        vacancyRate: result.assumptions.vacancyRate,
-        expenseAssumptions: { expenseRatio: result.assumptions.expenseRatio },
-      });
-
-      res.json({
-        analysisId: analysis.id,
-        analysisUrl: `https://realist.ca/deal-analyzer?analysisId=${analysis.id}`,
-        listing: {
-          mlsNumber: input.mlsNumber,
-          address: listing.address,
-          listPrice: price,
-          beds,
-          units,
-          daysOnMarket: listing.daysOnMarket,
-          propertyType: listing.details?.propertyType,
-        },
-        underwriting: result,
-        strategyType: input.strategyType,
-      });
+      const data = await executeListingUnderwrite(parsed.data, req.agentUserId!);
+      res.json(data);
     } catch (err: any) {
+      if (err instanceof AgentCapabilityError) {
+        return res.status(err.status).json({ error: err.code, message: err.message, ...err.extra });
+      }
       console.error("[agent] underwrite listing error:", err);
       res.status(500).json({ error: "underwrite_failed", message: err?.message });
     }
@@ -776,6 +822,97 @@ export function registerAgentRoutes(app: Express) {
         error: status === 400 ? "invalid_referral_update" : "referral_update_failed",
         message: err?.message,
       });
+    }
+  });
+
+  /** OpenAPI 3 document for the Agent API + jobs spine. */
+  app.get("/api/agent/openapi.json", requireScope("read"), (_req, res) => {
+    res.json(AGENT_API_OPENAPI);
+  });
+
+  /** Create a specialist job. Idempotent on idempotencyKey per calling user. */
+  app.post("/api/agent/jobs", async (req, res) => {
+    try {
+      const parsed = createAgentJobRequestSchema.safeParse(req.body || {});
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const needed = scopesForJobType(parsed.data.type);
+      if (!hasAnyScope(req, needed)) {
+        return res.status(403).json({
+          error: "scope_required",
+          requiredScope: needed[0],
+          requiredScopes: needed,
+          message: `This API key needs one of: ${needed.join(", ")}.`,
+        });
+      }
+      const { job, replayed } = await createAgentJob({
+        request: parsed.data,
+        userId: req.agentUserId!,
+        apiKeyId: req.agentKeyId ?? null,
+      });
+      res.status(replayed ? 200 : 201).json({ job: serializeAgentJob(job), replayed });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** List the calling user's jobs. */
+  app.get("/api/agent/jobs", requireScope("read"), async (req, res) => {
+    try {
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || "25"), 10) || 25, 1), 100);
+      const jobs = await listAgentJobs(req.agentUserId!, limit);
+      res.json({ count: jobs.length, jobs: jobs.map(serializeAgentJob) });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** Fetch one job the caller owns. */
+  app.get("/api/agent/jobs/:id", requireScope("read"), async (req, res) => {
+    try {
+      const job = await getAgentJob(req.params.id, req.agentUserId!);
+      res.json({ job: serializeAgentJob(job) });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** Human approval gate — only valid from needs_approval. */
+  app.post("/api/agent/jobs/:id/approve", async (req, res) => {
+    try {
+      const existing = await getAgentJob(req.params.id, req.agentUserId!);
+      const needed = scopesForJobType(existing.type);
+      if (!hasAnyScope(req, needed)) {
+        return res.status(403).json({
+          error: "scope_required",
+          requiredScope: needed[0],
+          requiredScopes: needed,
+          message: `This API key needs one of: ${needed.join(", ")}.`,
+        });
+      }
+      const job = await approveAgentJob(req.params.id, req.agentUserId!);
+      res.json({ job: serializeAgentJob(job) });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** Cancel a queued, running, or needs_approval job. */
+  app.post("/api/agent/jobs/:id/cancel", async (req, res) => {
+    try {
+      const existing = await getAgentJob(req.params.id, req.agentUserId!);
+      const needed = scopesForJobType(existing.type);
+      if (!hasAnyScope(req, needed)) {
+        return res.status(403).json({
+          error: "scope_required",
+          requiredScope: needed[0],
+          requiredScopes: needed,
+          message: `This API key needs one of: ${needed.join(", ")}.`,
+        });
+      }
+      const job = await cancelAgentJob(req.params.id, req.agentUserId!);
+      res.json({ job: serializeAgentJob(job) });
+    } catch (err) {
+      jobErrorResponse(res, err);
     }
   });
 }

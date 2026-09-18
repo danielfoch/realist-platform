@@ -79,3 +79,29 @@ Returns:
   "error": "message"
 }
 ```
+
+## Agent API spine / Jobs
+
+Bearer-authenticated specialist contract at `/api/agent/*`. Existing
+underwrite / find-deals / analyses / community / referral routes are
+unchanged. Auth is still `Authorization: Bearer realist_live_*`
+(SHA-256 hashed in `api_keys`).
+
+New P0 pieces:
+
+- Canonical Zod schemas: `shared/agentSpine.ts` (`Property`, `Listing`,
+  `Deal`, `Contact`, `TransactionFile`, `AgentOrg`, `Job`)
+- Job store + routes:
+  - `POST /api/agent/jobs` — create (idempotent on `idempotencyKey`)
+  - `GET /api/agent/jobs` — list the caller's jobs
+  - `GET /api/agent/jobs/:id`
+  - `POST /api/agent/jobs/:id/approve` — only from `needs_approval`
+  - `POST /api/agent/jobs/:id/cancel` — queued / running / needs_approval
+- OpenAPI 3: `docs/openapi/agent-api.yaml` (served as
+  `GET /api/agent/openapi.json` behind `read`)
+- Specialist plug-in guide: `docs/specialist-spine.md`
+
+New opt-in scopes (`jobs:write`, `forms:write`, `docs:write`,
+`crm:write`) do not change default key scopes. Underwrite jobs still
+accept the existing `underwrite` scope.
+
