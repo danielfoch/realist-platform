@@ -12,6 +12,7 @@ import {
   createAgentJobRequestSchema,
   dealSchema,
   jobRequiresApproval,
+  SPECIALIST_REGISTRY,
   listingSchema,
   parseJobInput,
   propertySchema,
@@ -133,6 +134,8 @@ describe("job scope + approval policy", () => {
 
   it("requires human approval for anything that leaves the building", () => {
     expect(jobRequiresApproval("forms.fill")).toBe(true);
+    expect(SPECIALIST_REGISTRY["forms.fill"].implemented).toBe(true);
+    expect(SPECIALIST_REGISTRY["forms.fill"].previewOnCreate).toBe(true);
     expect(jobRequiresApproval("docs.route")).toBe(true);
     expect(jobRequiresApproval("crm.update")).toBe(true);
     expect(jobRequiresApproval("underwrite.custom")).toBe(false);

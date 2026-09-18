@@ -316,10 +316,18 @@ export const listingExtractInputSchema = z.object({
 });
 
 export const formsFillInputSchema = z.object({
-  formId: z.string().min(1).optional(),
+  formId: z.string().trim().min(1),
   dealId: z.string().min(1).optional(),
+  deal: z.record(z.unknown()).optional(),
+  property: z.record(z.unknown()).optional(),
+  listing: z.record(z.unknown()).optional(),
+  contacts: z.array(z.unknown()).optional(),
+  parties: z.record(z.unknown()).optional(),
+  facts: z.record(z.unknown()).optional(),
+  overrides: z.record(z.unknown()).optional(),
   fields: z.record(z.unknown()).optional(),
-});
+  locale: z.string().optional(),
+}).passthrough();
 
 export const docsRouteInputSchema = z.object({
   dealId: z.string().min(1).optional(),
@@ -355,6 +363,11 @@ export interface SpecialistHandlerMeta {
   requiresApproval: boolean;
   /** Declared but unused until the specialist ships. */
   implemented: boolean;
+  /**
+   * Run the handler on create, attach `result`, but stay in needs_approval
+   * so a human can review the draft before approve marks succeeded.
+   */
+  previewOnCreate?: boolean;
   scopes: AgentApiScope[];
 }
 
@@ -384,7 +397,8 @@ export const SPECIALIST_REGISTRY: Record<AgentJobType, SpecialistHandlerMeta> = 
   "forms.fill": {
     specialistId: "realist.forms",
     requiresApproval: true,
-    implemented: false,
+    implemented: true,
+    previewOnCreate: true,
     scopes: ["forms:write", "jobs:write"],
   },
   "docs.route": {

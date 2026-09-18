@@ -26,6 +26,13 @@ import {
   type AgentApiScope,
 } from "@shared/agentSpine";
 import { AGENT_API_OPENAPI } from "@shared/agentOpenApi";
+import {
+  FormFillError,
+  fillForm,
+  formsFillInputSchema,
+  getFormMap,
+  listFormMaps,
+} from "@shared/forms";
 import { isAuthenticated } from "./auth";
 import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
 import { getRentEstimate } from "./rentIntelligence";
@@ -360,6 +367,21 @@ registerSpecialistExecutor("underwrite.listing", async (input, ctx) => {
   } catch (err: any) {
     if (err instanceof AgentCapabilityError) {
       throw new AgentJobError(err.status, err.code, err.message);
+    }
+    throw err;
+  }
+});
+
+registerSpecialistExecutor("forms.fill", async (input) => {
+  const parsed = formsFillInputSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new AgentJobError(400, "invalid_input", parsed.error.issues.map((issue) => issue.message).join("; "));
+  }
+  try {
+    return fillForm(parsed.data);
+  } catch (err: any) {
+    if (err instanceof FormFillError) {
+      throw new AgentJobError(400, err.code, err.message);
     }
     throw err;
   }
@@ -828,6 +850,49 @@ export function registerAgentRoutes(app: Express) {
   /** OpenAPI 3 document for the Agent API + jobs spine. */
   app.get("/api/agent/openapi.json", requireScope("read"), (_req, res) => {
     res.json(AGENT_API_OPENAPI);
+  });
+
+  /** List registered Ontario / OREA field maps (maps only, no PDF bodies). */
+  app.get("/api/agent/forms", requireScope("read"), (_req, res) => {
+    res.json({ forms: listFormMaps() });
+  });
+
+  /** Field map metadata for one form id. */
+  app.get("/api/agent/forms/:formId", requireScope("read"), (req, res) => {
+    const map = getFormMap(req.params.formId);
+    if (!map) return res.status(404).json({ error: "form_not_found", formId: req.params.formId });
+    res.json({ form: map });
+  });
+
+  /** Convenience wrapper: create a forms.fill job (always needs_approval). */
+  app.post("/api/agent/forms/fill", async (req, res) => {
+    try {
+      const needed = scopesForJobType("forms.fill");
+      if (!hasAnyScope(req, needed)) {
+        return res.status(403).json({
+          error: "scope_required",
+          requiredScope: needed[0],
+          requiredScopes: needed,
+          message: `This API key needs one of: ${needed.join(", ")}.`,
+        });
+      }
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+      const { idempotencyKey, ...input } = body;
+      const parsed = formsFillInputSchema.safeParse(input);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const { job, replayed } = await createAgentJob({
+        request: {
+          type: "forms.fill",
+          input: parsed.data,
+          idempotencyKey: typeof idempotencyKey === "string" ? idempotencyKey : undefined,
+        },
+        userId: req.agentUserId!,
+        apiKeyId: req.agentKeyId ?? null,
+      });
+      res.status(replayed ? 200 : 201).json({ job: serializeAgentJob(job), replayed });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
   });
 
   /** Create a specialist job. Idempotent on idempotencyKey per calling user. */

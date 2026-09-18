@@ -1,4 +1,4 @@
-# Realist specialist spine (P0)
+# Realist specialist spine (P0 + P1 Forms)
 
 The Agent API is the contract layer every Realist specialist calls. One
 router agent will eventually dispatch tiny specialists (forms, listing
@@ -18,7 +18,7 @@ Existing bearer keys (`realist_live_*`) stay the only auth system.
 - Default key scopes remain `read`, `underwrite`, `deal:submit`.
 - New opt-in scopes (existing keys keep working):
   - `jobs:write` — create / approve / cancel any job type
-  - `forms:write` — `forms.fill` jobs (declared, unused)
+  - `forms:write` — `forms.fill` jobs (P1 implemented)
   - `docs:write` — `docs.route` jobs (declared, unused)
   - `crm:write` — `crm.update` jobs (declared, unused)
 
@@ -51,15 +51,11 @@ TypeScript + Zod live in `shared/agentSpine.ts`:
 4. Register an executor in `server/agentApi.ts` (or `server/agentJobs.ts`):
 
 ```ts
-registerSpecialistExecutor("forms.fill", async (input, ctx) => {
-  // TODO: OREA fill. Must not run until the job is approved.
-  return { filledPdfUrl: "..." };
-});
+registerSpecialistExecutor("forms.fill", async (input) => fillForm(input));
 ```
 
 Unregistered types run the built-in stub (`{ stub: true, todo: "..." }`).
-That is intentional for P0: the job object and approval gate exist before
-the specialist does.
+`forms.fill` is implemented (P1). Docs and CRM remain stubs.
 
 ## Job lifecycle
 
@@ -83,9 +79,54 @@ CRM writes) must set `requiresApproval: true`. The job stays in
 `needs_approval` until `POST /api/agent/jobs/:id/approve`. Cancel is
 allowed from `queued`, `running`, and `needs_approval`.
 
-P0 does **not** implement OREA form filling, browser automation, or CRM
-writes. Those job types exist so later PRs can attach a handler without
-changing the contract.
+P1 implements Ontario / OREA **field maps + fill** only. P0 still does
+not implement browser automation or CRM writes.
+
+## Forms specialist (P1)
+
+`shared/forms/` is the Cua-style specialist: map structured deal /
+property / contact data onto board field maps, score completeness, and
+leave the job in `needs_approval` until a human approves.
+
+**Copyright:** maps only (field key, label, type, party, required, page
+hint). Official blank PDFs stay with the licensed user. We produce a
+JSON `values` payload they can apply in WEBForms / TransactionDesk.
+Do not commit or reproduce full form boilerplate.
+
+**Never invent** legal names, prices, deposits, closing dates, or
+clauses. `listing.listPrice` never becomes `purchase_price`. Signature
+and initials stay blank unless the caller sends an override.
+
+### Registered form ids
+
+| Id | Title | Confidence |
+|---|---|---|
+| `orea-100` | Agreement of Purchase and Sale | draft |
+| `orea-101` | Amendment to Agreement | draft |
+| `orea-105` | Notice / waiver | draft |
+| `orea-200` | Seller Representation Agreement | draft |
+| `orea-300` | Buyer Representation Agreement | draft |
+| `orea-320` | Confirmation of Co-operation | draft |
+| `orea-400` | Schedule A (generic attachment) | draft |
+
+All v1 maps are `mapConfidence: "draft"` because we do not ship licensed
+blanks. Non-Ontario boards can hook the same registry later.
+
+### Job behaviour
+
+1. `POST /api/agent/jobs` with `type=forms.fill` (or `POST /api/agent/forms/fill`)
+   runs the fill engine immediately and stores the draft on `job.result`.
+2. Status stays `needs_approval` even at 100% completeness.
+3. `POST /api/agent/jobs/:id/approve` marks `succeeded` and does **not**
+   e-sign, email, or submit to a board. A `TransactionFile` stub is
+   attached on the job result only.
+4. `GET /api/agent/forms` and `GET /api/agent/forms/:formId` are `read`.
+
+### Eval
+
+`shared/forms/eval.ts` + fixtures in `shared/forms/fill.test.ts`:
+`fieldAccuracy`, `requiredCompletion`, `rejectIfInvented`. Pass/fail
+only — no claimed 99.7% accuracy.
 
 ## OpenAPI
 

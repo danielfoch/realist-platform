@@ -105,3 +105,12 @@ New opt-in scopes (`jobs:write`, `forms:write`, `docs:write`,
 `crm:write`) do not change default key scopes. Underwrite jobs still
 accept the existing `underwrite` scope.
 
+P1 Forms specialist (Ontario / OREA field maps only — no PDF bodies):
+
+- `GET /api/agent/forms` — list registered maps (`read`)
+- `GET /api/agent/forms/:formId` — field map metadata (`read`)
+- `POST /api/agent/forms/fill` — create a `forms.fill` job (`forms:write`)
+- `forms.fill` jobs preview the JSON fill on create and stay
+  `needs_approval`. Approve marks succeeded; nothing is e-signed or
+  submitted. Missing legal facts stay blank.
+

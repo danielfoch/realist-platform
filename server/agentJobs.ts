@@ -1,9 +1,8 @@
 /**
  * Agent jobs store — persist + run specialist work for /api/agent/jobs.
  *
- * Handlers are registered by type. Underwrite adapters are wired from
- * agentApi.ts so this module does not import route code. Future specialists
- * (forms, docs, CRM) ship as stub executors marked TODO until implemented.
+ * Handlers are registered by type. Underwrite adapters and the forms
+ * specialist are wired from agentApi.ts. Docs / CRM remain stubs.
  */
 import { and, desc, eq } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -189,6 +188,55 @@ async function executeSpecialist(job: AgentJob): Promise<Record<string, unknown>
   });
 }
 
+function withFormsTransactionFile(job: AgentJob, result: Record<string, unknown>): Record<string, unknown> {
+  if (job.type !== "forms.fill") return result;
+  const formId = String(job.input.formId || "");
+  const deal = job.input.deal && typeof job.input.deal === "object" ? job.input.deal as Record<string, unknown> : {};
+  const docClass = formId === "orea-101" ? "amendment"
+    : formId === "orea-105" ? "waiver"
+      : formId === "orea-100" ? "offer"
+        : "other";
+  return {
+    ...result,
+    transactionFile: {
+      id: `tf_${job.id}`,
+      dealId: job.input.dealId || deal.id || job.id,
+      docClass,
+      status: "ready",
+      label: formId,
+    },
+  };
+}
+
+/** Run the handler and store a draft result without leaving needs_approval. */
+export async function previewAgentJob(jobId: string, userId: string): Promise<AgentJob> {
+  await ensureAgentJobs();
+  const job = await loadOwnedJob(jobId, userId);
+  if (job.status !== "needs_approval") return job;
+  try {
+    const result = await executeSpecialist(job);
+    const note = "preview_for_human_approval";
+    const entry = {
+      at: new Date().toISOString(),
+      action: "preview",
+      actorUserId: userId,
+      fromStatus: job.status,
+      toStatus: job.status,
+      note,
+    };
+    return persistJob({
+      ...job,
+      result: withFormsTransactionFile(job, result),
+      error: null,
+      auditTrail: [...job.auditTrail, entry],
+      updatedAt: new Date(),
+    });
+  } catch (err: any) {
+    if (err instanceof AgentJobError) throw err;
+    throw new AgentJobError(400, err?.code || "fill_failed", err?.message || "form fill failed");
+  }
+}
+
 export async function runAgentJob(jobId: string, userId: string): Promise<AgentJob> {
   await ensureAgentJobs();
   let job = await loadOwnedJob(jobId, userId);
@@ -270,6 +318,8 @@ export async function createAgentJob(input: {
   let job = rowToAgentJob(row);
   if (!approvalRequired) {
     job = await runAgentJob(job.id, userId);
+  } else if (SPECIALIST_REGISTRY[request.type].previewOnCreate) {
+    job = await previewAgentJob(job.id, userId);
   }
   return { job, replayed: false };
 }
@@ -294,7 +344,16 @@ export async function approveAgentJob(id: string, userId: string): Promise<Agent
   const job = await loadOwnedJob(id, userId);
   const approved = applyJobTransition(job, "approve", userId, { note: "human_approved" });
   if (!approved.ok) throw new AgentJobError(409, approved.error, approved.message);
-  await persistJob(approved.job);
+  const running = await persistJob(approved.job);
+  // Previewed forms: succeed the stored draft. Do not e-sign, email, or submit.
+  if (SPECIALIST_REGISTRY[running.type].previewOnCreate && running.result) {
+    const done = applyJobTransition(running, "succeed", userId, {
+      result: running.result,
+      note: "approved_without_submit",
+    });
+    if (!done.ok) throw new AgentJobError(409, done.error, done.message);
+    return persistJob(done.job);
+  }
   return runAgentJob(id, userId);
 }
 

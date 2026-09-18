@@ -355,6 +355,73 @@ describe("agent API jobs spine", () => {
     expect(response.body.job.status).toBe("cancelled");
   });
 
+  it("lists registered forms behind read", async () => {
+    const response = await request(app())
+      .get("/api/agent/forms")
+      .set("Authorization", "Bearer realist_live_testtoken");
+
+    expect(response.status).toBe(200);
+    expect(response.body.forms.map((form: { formId: string }) => form.formId)).toContain("orea-100");
+  });
+
+  it("returns a field map by id", async () => {
+    const response = await request(app())
+      .get("/api/agent/forms/orea-100")
+      .set("Authorization", "Bearer realist_live_testtoken");
+
+    expect(response.status).toBe(200);
+    expect(response.body.form.formId).toBe("orea-100");
+    expect(response.body.form.fields.some((field: { key: string }) => field.key === "purchase_price")).toBe(true);
+    expect(response.body.form.copyrightNote).toMatch(/Field map only/);
+  });
+
+  it("404s an unknown form id", async () => {
+    const response = await request(app())
+      .get("/api/agent/forms/orea-999")
+      .set("Authorization", "Bearer realist_live_testtoken");
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe("form_not_found");
+  });
+
+  it("blocks forms/fill without forms:write", async () => {
+    const response = await request(app())
+      .post("/api/agent/forms/fill")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({ formId: "orea-100", property: { address: "1 Main" } });
+
+    expect(response.status).toBe(403);
+    expect(mocks.createAgentJob).not.toHaveBeenCalled();
+  });
+
+  it("creates a forms.fill job from the convenience route", async () => {
+    mocks.createAgentJob.mockResolvedValue({
+      job: sampleJob({ type: "forms.fill", status: "needs_approval", result: { draft: true, formId: "orea-100" } }),
+      replayed: false,
+    });
+    mockDbAuth(["forms:write"]);
+
+    const response = await request(app())
+      .post("/api/agent/forms/fill")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({
+        formId: "orea-100",
+        property: { address: "123 King St W" },
+        idempotencyKey: "form-1",
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.job.status).toBe("needs_approval");
+    expect(mocks.createAgentJob).toHaveBeenCalledWith(expect.objectContaining({
+      userId: "user-1",
+      request: expect.objectContaining({
+        type: "forms.fill",
+        idempotencyKey: "form-1",
+        input: expect.objectContaining({ formId: "orea-100" }),
+      }),
+    }));
+  });
+
   it("serves OpenAPI behind the read scope", async () => {
     const response = await request(app())
       .get("/api/agent/openapi.json")

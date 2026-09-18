@@ -61,7 +61,7 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - Agent API jobs spine (P0): `POST/GET /api/agent/jobs`, `GET /api/agent/jobs/:id`, `POST /api/agent/jobs/:id/approve`, `POST /api/agent/jobs/:id/cancel`, `GET /api/agent/openapi.json`. Existing `/api/agent/underwrite/*`, find-deals, and me routes unchanged. New opt-in scopes `jobs:write`, `forms:write`, `docs:write`, `crm:write`; defaults stay `read`/`underwrite`/`deal:submit`.
 
 ### Pending/Recent Work
-- Agent API specialist spine P0 — canonical schemas in `shared/agentSpine.ts`, `agent_jobs` persistence, OpenAPI at `docs/openapi/agent-api.yaml`, plug-in guide in `docs/specialist-spine.md`. Realist-only (no Homies).
+- Agent API specialist spine P0 + P1 Forms — canonical schemas in `shared/agentSpine.ts`, `agent_jobs` persistence, Ontario/OREA field maps + fill in `shared/forms/` (maps only, no PDF bodies). OpenAPI at `docs/openapi/agent-api.yaml`, plug-in guide in `docs/specialist-spine.md`. Realist-only (no Homies).
 - `ef7766e` (Clyde) — /api/deals/join, user_sessions table for session→user linking
 - `486c4e5` (Clyde) — event tracking infrastructure
 - Replit Agent (in progress) — adapting session linking to Drizzle schema

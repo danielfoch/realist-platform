@@ -64,7 +64,7 @@ export const AGENT_API_OPENAPI = {
   openapi: "3.0.3",
   info: {
     title: "Realist Agent API",
-    version: "1.1.0",
+    version: "1.2.0",
     description:
       "Bearer-authenticated API used by @realist/mcp and specialist tools. " +
       "Keys are `realist_live_*`, SHA-256 hashed in `api_keys`. " +
@@ -74,6 +74,7 @@ export const AGENT_API_OPENAPI = {
   tags: [
     { name: "Agent", description: "Existing underwrite / search / analyses routes" },
     { name: "Jobs", description: "Specialist job spine" },
+    { name: "Forms", description: "Ontario / OREA field maps + fill (maps only, no PDF bodies)" },
     { name: "Schemas", description: "Canonical Realist domain objects" },
   ],
   paths: {
@@ -242,6 +243,31 @@ export const AGENT_API_OPENAPI = {
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "outcomeId", in: "path", required: true, schema: { type: "string" } }],
         responses: { "200": { description: "Updated outcome" } },
+      },
+    },
+    "/api/agent/forms": {
+      get: {
+        tags: ["Forms"],
+        summary: "List registered OREA field maps",
+        security: [{ bearerAuth: [] }],
+        responses: { "200": { description: "Form summaries (no PDF bodies)" } },
+      },
+    },
+    "/api/agent/forms/{formId}": {
+      get: {
+        tags: ["Forms"],
+        summary: "Get one field map",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "formId", in: "path", required: true, schema: { type: "string" } }],
+        responses: { "200": { description: "Field map metadata" }, "404": { description: "Unknown form id" } },
+      },
+    },
+    "/api/agent/forms/fill": {
+      post: {
+        tags: ["Forms"],
+        summary: "Create a forms.fill job (always needs_approval)",
+        security: [{ bearerAuth: [] }],
+        responses: { "201": { description: "Draft fill job" }, "403": { description: "forms:write or jobs:write required" } },
       },
     },
     "/api/agent/openapi.json": {
