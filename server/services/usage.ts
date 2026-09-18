@@ -13,7 +13,7 @@ import crypto from "crypto";
 import { and, eq, gte, sql as dsql } from "drizzle-orm";
 import { db } from "../db";
 import { apiUsageEvents } from "@shared/schema";
-import { createKeyRateLimiter } from "./rateLimiter";
+import { createKeyRateLimiter, type RateLimitDecision } from "./rateLimiter";
 import { summarizeToolInput } from "../demandLedger";
 
 const INPUT_SUMMARY_POLICY_VERSION = "agent-usage-structured-v1";
@@ -29,6 +29,15 @@ const limiter = createKeyRateLimiter({
   perDay: intFromEnv("AGENT_RATE_LIMIT_PER_DAY", 2000),
 });
 setInterval(() => limiter.evictIdle(), 60 * 60 * 1000).unref();
+
+/**
+ * Function-level limiter check for transports that multiplex many tool calls
+ * over one HTTP endpoint (the hosted MCP server). Same counters as the
+ * middleware below, so a key's quota is shared across REST and MCP.
+ */
+export function checkAgentRateLimit(keyId: string): RateLimitDecision {
+  return limiter.check(keyId);
+}
 
 export function agentRateLimit(req: Request, res: Response, next: NextFunction) {
   const keyId = req.agentKeyId;
@@ -62,25 +71,51 @@ function hashInput(body: unknown): string | null {
   }
 }
 
+export interface AgentUsageEvent {
+  keyId: string;
+  userId: string;
+  method: string;
+  /** REST path, or `mcp:<tool>` for calls arriving over the hosted MCP endpoint. */
+  endpoint: string;
+  status: number;
+  latencyMs: number;
+  input: unknown;
+  structuredUsageAllowed: boolean;
+}
+
+/** Fire-and-forget api_usage_events write. Never throws, never stores raw input. */
+export function recordAgentUsage(event: AgentUsageEvent): void {
+  const inputSummary = event.structuredUsageAllowed ? summarizeToolInput(event.input) : null;
+  db.insert(apiUsageEvents).values({
+    apiKeyId: event.keyId,
+    userId: event.userId,
+    method: event.method.slice(0, 8),
+    endpoint: event.endpoint,
+    status: event.status,
+    latencyMs: event.latencyMs,
+    inputHash: hashInput(event.input),
+    inputSummary: inputSummary as any,
+    inputSummaryPolicyVersion: inputSummary ? INPUT_SUMMARY_POLICY_VERSION : null,
+  }).catch((err) => {
+    console.error("[agent-usage] failed to record usage event:", err?.message || err);
+  });
+}
+
 export function usageMeter(req: Request, res: Response, next: NextFunction) {
   const start = Date.now();
   res.on("finish", () => {
     const keyId = req.agentKeyId;
     const userId = req.agentUserId;
     if (!keyId || !userId) return;
-    const inputSummary = req.agentStructuredUsageAllowed ? summarizeToolInput(req.body) : null;
-    db.insert(apiUsageEvents).values({
-      apiKeyId: keyId,
+    recordAgentUsage({
+      keyId,
       userId,
-      method: req.method.slice(0, 8),
+      method: req.method,
       endpoint: req.baseUrl + req.path,
       status: res.statusCode,
       latencyMs: Date.now() - start,
-      inputHash: hashInput(req.body),
-      inputSummary: inputSummary as any,
-      inputSummaryPolicyVersion: inputSummary ? INPUT_SUMMARY_POLICY_VERSION : null,
-    }).catch((err) => {
-      console.error("[agent-usage] failed to record usage event:", err?.message || err);
+      input: req.body,
+      structuredUsageAllowed: Boolean(req.agentStructuredUsageAllowed),
     });
   });
   next();

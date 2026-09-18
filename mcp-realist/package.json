@@ -1,6 +1,6 @@
 {
   "name": "@realist/mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Model Context Protocol server + CLI for Realist.ca — underwrite Canadian real estate deals from Claude Desktop, Codex CLI, Cursor, or any MCP-compatible AI agent.",
   "type": "module",
   "bin": {
@@ -34,7 +34,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

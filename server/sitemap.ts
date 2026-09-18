@@ -61,6 +61,7 @@ export async function buildPagesSitemap() {
     { loc: `${BASE}/about`, lastmod: now, changefreq: "monthly", priority: 0.9 },
     { loc: `${BASE}/about/contact`, lastmod: now, changefreq: "monthly", priority: 0.6 },
     { loc: `${BASE}/about/shop`, lastmod: now, changefreq: "weekly", priority: 0.6 },
+    { loc: `${BASE}/developers`, lastmod: now, changefreq: "monthly", priority: 0.7 },
     { loc: `${BASE}/tools`, lastmod: now, changefreq: "weekly", priority: 0.9 },
     { loc: `${BASE}/tools/analyzer`, lastmod: now, changefreq: "weekly", priority: 0.95 },
     { loc: `${BASE}/tools/buybox`, lastmod: now, changefreq: "weekly", priority: 0.7 },

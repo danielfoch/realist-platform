@@ -24,6 +24,10 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
     title: "Realist - Canadian Real Estate Investing Platform | Deal Analyzer & Cap Rate Map",
     description: "Find, analyze, and compare Canadian real estate deals with AI-powered underwriting, a free deal analyzer, cap rate map, and market reports. Built by investor-focused broker Daniel Foch and mortgage broker Nick Hill — work with the team when you're ready.",
   },
+  "/developers": {
+    title: "Realist API & MCP Server - Canadian Real Estate Tools for AI Agents",
+    description: "Connect Claude, Codex, Cursor, Grok, ChatGPT or your own code to Realist: search Canadian MLS deals, underwrite properties, estimate rents and pull market data — with hosted interactive spreadsheets and models for every result.",
+  },
   "/tools": {
     title: "Free Canadian Real Estate Tools - Realist.ca",
     description: "Free tools for Canadian real estate investors: deal analyzer, cap rate calculator, rent vs buy, true cost calculator, fixed vs variable mortgage, and more.",

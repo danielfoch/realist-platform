@@ -133,7 +133,8 @@ function Callout({ block }: { block: CalloutBlock }) {
   );
 }
 
-function Section({ section }: { section: ReportSection }) {
+/** One report block. Exported so the hosted agent views (/v/:token) render the same blocks. */
+export function ReportSectionBlock({ section }: { section: ReportSection }) {
   switch (section.type) {
     case "narrative":
       return (
@@ -223,7 +224,7 @@ export function ReportRenderer({ report }: { report: ReportContent }) {
         {/* Body sections */}
         <div className="max-w-3xl xl:max-w-none">
           {report.sections.map((section, i) => (
-            <Section key={i} section={section} />
+            <ReportSectionBlock key={i} section={section} />
           ))}
         </div>
 

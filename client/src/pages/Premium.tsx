@@ -216,19 +216,23 @@ export default function Premium() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <KeyRound className="h-5 w-5" />
-                Use Realist inside Claude
+                Use Realist inside your own AI
               </CardTitle>
               <CardDescription>
-                Realist runs as an MCP server. Mint an API key and Claude can underwrite
-                listings, find deals, and pull market reports with your Realist account.
+                Realist runs as a hosted MCP server and REST API. Connect Claude, Codex, Cursor, Grok or
+                ChatGPT with an API key and your agent can underwrite listings, find deals and pull market
+                reports — each result comes with a link to an interactive spreadsheet or report.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
               <Button asChild variant="outline" className="w-full" data-testid="button-mint-api-key">
                 <Link href="/account/api-keys">
                   Mint an API key
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
+              </Button>
+              <Button asChild variant="ghost" className="w-full" data-testid="button-developer-guide">
+                <Link href="/developers">Read the developer guide</Link>
               </Button>
             </CardContent>
           </Card>
