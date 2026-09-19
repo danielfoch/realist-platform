@@ -1059,7 +1059,7 @@ export default function KnowledgeScene({
               fontSize="8.7"
               letterSpacing="1.2"
             >
-              FIND YOUR NEXT INVESTMENT
+              CALCULATE. COMPARE. ASK AI.
             </text>
             <path
               d="M361 356C460 356 466 205 519 205"
@@ -1202,7 +1202,7 @@ export default function KnowledgeScene({
                 fontSize="10.5"
                 fontWeight="700"
               >
-                Analyze deals instantly.
+                AI explains your deal.
               </text>
               <text
                 x="12"
