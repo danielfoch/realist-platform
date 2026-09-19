@@ -218,3 +218,46 @@ describe("cityFromLocation", () => {
     expect(cityFromLocation("")).toBeNull();
   });
 });
+
+describe("graphqlGroupToEvents", () => {
+  it("maps the gql-ext group payload: group timezone, RSVP yes count, featured photo, venue", async () => {
+    const { graphqlGroupToEvents } = await import("./meetup");
+    const events = graphqlGroupToEvents({
+      timezone: "America/Halifax",
+      events: {
+        edges: [
+          {
+            node: {
+              id: "313399836",
+              title: "Real Estate Investing - meet up",
+              dateTime: "2026-12-01T18:00:00-04:00",
+              endTime: "2026-12-01T20:00:00-04:00",
+              eventUrl: "https://www.meetup.com/example-group/events/313399836/",
+              featuredEventPhoto: { highResUrl: "https://secure.meetupstatic.com/photos/event/highres_1.jpeg" },
+              rsvps: { yesCount: 2 },
+              venue: { name: "Gahan house", address: "55 queen st Moncton,", city: "Moncton", state: "NB" },
+            },
+          },
+          { node: { id: "no-date" } },
+          {},
+        ],
+      },
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      uid: "313399836",
+      startsAt: "2026-12-01T22:00:00.000Z",
+      endsAt: "2026-12-02T00:00:00.000Z",
+      timezone: "America/Halifax",
+      rsvpCount: 2,
+      imageUrl: "https://secure.meetupstatic.com/photos/event/highres_1.jpeg",
+      // The address already names the city; it is not repeated.
+      location: "Gahan house, 55 queen st Moncton, NB",
+    });
+  });
+
+  it("throws when the payload has no events connection so the caller falls back to iCal", async () => {
+    const { graphqlGroupToEvents } = await import("./meetup");
+    expect(() => graphqlGroupToEvents(null)).toThrow(/no events/);
+  });
+});

@@ -345,11 +345,17 @@ async function fetchEventsFromIcal(urlname: string): Promise<MeetupEvent[]> {
   return parseIcsEvents(await response.text(), urlname);
 }
 
-/** Kept deliberately thin: any failure here falls back to the iCal feed. */
+/**
+ * Kept deliberately thin: any failure here falls back to the iCal feed.
+ * Field names verified by introspection against gql-ext (2026-09): events hang
+ * off Group.events with a status filter, the timezone lives on the group, RSVP
+ * totals on the rsvps connection, and photos on featuredEventPhoto.
+ */
 const MEETUP_GQL_QUERY = `
   query realistUpcomingEvents($urlname: String!) {
     groupByUrlname(urlname: $urlname) {
-      upcomingEvents(input: { first: 20 }) {
+      timezone
+      events(first: 20, status: ACTIVE, sort: ASC) {
         edges {
           node {
             id
@@ -357,11 +363,10 @@ const MEETUP_GQL_QUERY = `
             description
             dateTime
             endTime
-            timezone
             eventUrl
-            going
-            imageUrl
-            venue { name address city }
+            featuredEventPhoto { highResUrl }
+            rsvps(first: 1) { yesCount }
+            venue { name address city state }
           }
         }
       }
@@ -391,16 +396,27 @@ async function fetchEventsFromGraphql(
   if (!response.ok) throw new Error(`Meetup GraphQL failed: ${response.status}`);
 
   const json = (await response.json()) as {
-    errors?: unknown[];
+    errors?: Array<{ message?: string }>;
     data?: {
       groupByUrlname?: {
-        upcomingEvents?: { edges?: Array<{ node?: Record<string, unknown> }> };
+        timezone?: unknown;
+        events?: { edges?: Array<{ node?: Record<string, unknown> }> };
       } | null;
     };
   };
-  if (json.errors?.length) throw new Error("Meetup GraphQL returned errors");
-  const edges = json.data?.groupByUrlname?.upcomingEvents?.edges;
+  if (json.errors?.length) {
+    throw new Error(`Meetup GraphQL returned errors: ${json.errors[0]?.message ?? "unknown"}`);
+  }
+  return graphqlGroupToEvents(json.data?.groupByUrlname ?? null);
+}
+
+/** Exported for tests: the GraphQL group payload → MeetupEvent[]. */
+export function graphqlGroupToEvents(
+  group: { timezone?: unknown; events?: { edges?: Array<{ node?: Record<string, unknown> }> } } | null,
+): MeetupEvent[] {
+  const edges = group?.events?.edges;
   if (!Array.isArray(edges)) throw new Error("Meetup GraphQL returned no events");
+  const timezone = typeof group?.timezone === "string" ? group.timezone : null;
 
   const events: MeetupEvent[] = [];
   for (const edge of edges) {
@@ -409,25 +425,28 @@ async function fetchEventsFromGraphql(
     const startsAt = toIsoOrNull(node.dateTime);
     if (!startsAt) continue;
     const venue = (node.venue ?? null) as
-      | { name?: unknown; address?: unknown; city?: unknown }
+      | { name?: unknown; address?: unknown; city?: unknown; state?: unknown }
       | null;
     const location =
       venue
-        ? [venue.name, venue.address, venue.city]
-            .filter((part): part is string => typeof part === "string" && part.length > 0)
+        ? [venue.name, venue.address, venue.city, venue.state]
+            .map((part) => (typeof part === "string" ? part.trim().replace(/,+$/, "") : ""))
+            .filter((part, index, all) => part.length > 0 && !all.slice(0, index).some((prev) => prev.includes(part)))
             .join(", ") || null
         : null;
+    const photo = (node.featuredEventPhoto ?? null) as { highResUrl?: unknown } | null;
+    const rsvps = (node.rsvps ?? null) as { yesCount?: unknown } | null;
     events.push({
       uid: typeof node.id === "string" ? node.id : startsAt,
       title: typeof node.title === "string" ? node.title : "Meetup event",
       startsAt,
       endsAt: toIsoOrNull(node.endTime),
-      timezone: typeof node.timezone === "string" ? node.timezone : null,
+      timezone,
       location,
       description: typeof node.description === "string" ? node.description : null,
       url: typeof node.eventUrl === "string" ? node.eventUrl : null,
-      rsvpCount: typeof node.going === "number" ? node.going : null,
-      imageUrl: typeof node.imageUrl === "string" ? node.imageUrl : null,
+      rsvpCount: typeof rsvps?.yesCount === "number" ? rsvps.yesCount : null,
+      imageUrl: typeof photo?.highResUrl === "string" ? photo.highResUrl : null,
     });
   }
   return events;
