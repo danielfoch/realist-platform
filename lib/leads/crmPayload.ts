@@ -130,6 +130,7 @@ export function leadSummaryLines(lead: Lead): string[] {
       typeof numbers.monthlyCashFlow === "number" ? `cash flow ${money(numbers.monthlyCashFlow)}/mo` : null,
       typeof numbers.dscr === "number" ? `DSCR ${numbers.dscr.toFixed(2)}` : null,
       typeof numbers.offerPrice === "number" ? `target offer ${money(numbers.offerPrice)}` : null,
+      typeof numbers.downPaymentPercent === "number" ? `${numbers.downPaymentPercent}% down` : null,
     ].filter(Boolean);
     if (parts.length) lines.push(`Their numbers: ${parts.join(" · ")}`);
   }

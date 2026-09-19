@@ -95,6 +95,8 @@ Every underwrite feeds the member's history, the leaderboard and the learned mar
   (GoHighLevel, team email, Keypr) and retried until it lands. New kind of hand-raise =
   new entry in `LEAD_KINDS` + its tags in `lib/leads/crmPayload.ts`, not a new endpoint.
   GHL's upsert REPLACES tags, so tags only ever go through the additive tags endpoint.
+  `/admin/leads` (role admin, or a VERIFIED address in `ADMIN_EMAILS`) shows what is
+  connected, the outbox by destination, recent leads, and retries failures.
 - **Legacy members** arrive via `scripts/migrate-users.ts` (rules + tests in
   `lib/migration/`). It is re-runnable until cutover and never overwrites what a member
   has changed here. Most legacy accounts have no password: the emailed link is their

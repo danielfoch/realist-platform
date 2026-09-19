@@ -554,6 +554,11 @@ export function Underwriter({
       ),
     ),
   );
+  if (result.capRate != null) offerParams.set("cap", String(result.capRate));
+  if (result.monthlyCashFlow != null) offerParams.set("cf", String(Math.round(result.monthlyCashFlow)));
+  if (result.dscr != null) offerParams.set("dscr", String(result.dscr));
+  if (offerPrice != null) offerParams.set("offer", String(offerPrice));
+  offerParams.set("down", String(inputs.downPaymentPercent));
   const loginNext = returnPath ?? "/account";
 
   return (
@@ -819,6 +824,12 @@ export function Underwriter({
               Book one showing
             </Link>
           </div>
+          <Link
+            href={`/work-with-us?${offerParams.toString()}&want=financing#lead-form`}
+            className="mt-2 block text-center text-xs font-medium text-ink-soft underline-offset-2 hover:text-brand hover:underline"
+          >
+            Or talk to a mortgage broker about financing this deal →
+          </Link>
           <p className="mt-2 text-[11px] leading-relaxed text-ink-faint">
             Estimates for ranking deals, not advice. Mortgage payments use
             Canadian semi-annual compounding.

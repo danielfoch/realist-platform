@@ -258,9 +258,11 @@ export default async function ListingDetailPage({
         )
       : null;
   const isOntario = listing.province === "ON" || listing.province === "Ontario";
-  const workWithUsHref = `/work-with-us?property=${encodeURIComponent(
-    `${listing.fullAddress} (MLS® ${listing.mlsNumber})`,
-  )}`;
+  const offerQuery = new URLSearchParams({ mls: listing.mlsNumber, address: listing.fullAddress });
+  if (listing.price) offerQuery.set("price", String(listing.price));
+  if (listing.city) offerQuery.set("city", listing.city);
+  if (listing.province) offerQuery.set("province", listing.province);
+  const workWithUsHref = `/work-with-us?${offerQuery.toString()}#lead-form`;
   const multiplexHref = `/multiplex?address=${encodeURIComponent(
     [listing.streetLine, listing.city].filter(Boolean).join(", "),
   )}`;

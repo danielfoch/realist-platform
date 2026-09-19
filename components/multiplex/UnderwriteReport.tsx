@@ -702,10 +702,22 @@ export function UnderwriteReport({ payload }: { payload: UnderwritePayload }) {
           </div>
           <div className="flex shrink-0 flex-wrap gap-3">
             <Link
-              href={`/work-with-us?property=${encodeURIComponent(site.address ?? "")}`}
+              href={`/work-with-us?address=${encodeURIComponent(site.address ?? "")}&city=Toronto&province=ON#lead-form`}
               className="rounded-md bg-signal px-4 py-2.5 text-sm font-semibold text-white hover:brightness-110"
             >
               Buy this with {CASHBACK_LABEL} cash-back
+            </Link>
+            <Link
+              href={`/work-with-us?address=${encodeURIComponent(site.address ?? "")}&city=Toronto&province=ON&want=financing#lead-form`}
+              className="rounded-md border border-hairline-strong px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface"
+            >
+              Talk CMHC MLI Select financing
+            </Link>
+            <Link
+              href="/team?roles=architect,contractor&city=Toronto&province=ON#request"
+              className="rounded-md border border-hairline-strong px-4 py-2.5 text-sm font-semibold text-ink hover:bg-surface"
+            >
+              Meet an architect and a builder
             </Link>
             {shareUrl && (
               <button

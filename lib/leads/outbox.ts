@@ -137,3 +137,13 @@ export async function requeueFailed(destination?: LeadDestination): Promise<numb
     .returning({ id: leadDeliveries.id });
   return rows.length;
 }
+
+/** Make everything still pending due right now — for just after a credential has been added. */
+export async function expeditePending(): Promise<number> {
+  const rows = await getDb()
+    .update(leadDeliveries)
+    .set({ nextAttemptAt: new Date(Date.now() - 1000) })
+    .where(eq(leadDeliveries.status, "pending"))
+    .returning({ id: leadDeliveries.id });
+  return rows.length;
+}
