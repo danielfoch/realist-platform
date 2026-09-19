@@ -19,12 +19,12 @@ function UnderwriteStat({
   tone?: "good" | "bad";
 }) {
   return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+    <div className="min-w-0">
+      <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
         {label}
       </p>
       <p
-        className={`tnum text-sm font-semibold ${
+        className={`tnum whitespace-nowrap text-sm font-semibold ${
           tone === "good" ? "text-good" : tone === "bad" ? "text-bad" : "text-ink"
         }`}
       >
@@ -72,7 +72,9 @@ export function ListingCard({ listing }: { listing: ListingSearchResult }) {
           </div>
         )}
 
-        <div className="flex flex-1 flex-col p-4">
+        {/* A container, because how many numbers fit depends on the CARD's width (three to a row on a
+            laptop is a narrow card), not the window's. */}
+        <div className="@container flex flex-1 flex-col p-4">
           <div className="flex items-baseline justify-between gap-3">
             <p className="tnum font-display text-xl font-semibold">
               {fmtMoney(listing.listPrice)}
@@ -94,7 +96,7 @@ export function ListingCard({ listing }: { listing: ListingSearchResult }) {
           )}
 
           {/* Pre-underwrite strip */}
-          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-hairline pt-3 sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-hairline pt-3 @[23rem]:grid-cols-4">
             <UnderwriteStat
               label="Est. rent"
               value={uw ? `${fmtMoney(uw.estimatedRent)}/mo` : "—"}
