@@ -503,6 +503,10 @@ export async function searchDdfListings(params: {
     // DDF dropped TransactionType (For sale/For rent); lease listings are now
     // the ones carrying a LeaseAmount.
     filters.push("LeaseAmount ne null");
+  } else {
+    // …and for-sale listings are the ones carrying a price. Without this, rentals ($0 "price",
+    // nothing to underwrite) made up ~40% of a Toronto results page.
+    filters.push("ListPrice gt 0");
   }
 
   if (params.city) {
@@ -590,6 +594,7 @@ export async function searchDdfListings(params: {
 
   const data: DdfSearchResponse = await response.json();
   let listings = await attachOfficeNames((data.value || []).map(coerceDdfListing), token);
+  if (!params.forLease) listings = listings.filter((listing) => (listing.ListPrice ?? 0) > 0);
   // If CREA ever refuses part of that group the whole group is dropped, so the rule is enforced here too.
   if (params.minUnits === 2) listings = listings.filter(isMultiUnit);
   if (params.city && cityMatch === "contains") {
@@ -655,6 +660,8 @@ export async function searchDdfByRemarks(params: {
 
   const filters: string[] = [];
   filters.push("StandardStatus eq 'Active'");
+  // Motivated-seller search is about purchases: leave the rentals out.
+  filters.push("ListPrice gt 0");
 
   if (params.stateOrProvince) {
     filters.push(`StateOrProvince eq '${params.stateOrProvince.replace(/'/g, "''")}'`);

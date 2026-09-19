@@ -343,6 +343,29 @@ describe("the listing brokerage", () => {
   });
 });
 
+describe("for sale means for sale", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
+  it("asks CREA for priced listings only, and drops a rental that slips through", async () => {
+    forgetDdfSchemaRejections();
+    vi.stubEnv("CREA_DDF_USERNAME", "u");
+    vi.stubEnv("CREA_DDF_PASSWORD", "p");
+    let asked = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        const target = String(input);
+        if (target.includes("/connect/token")) return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
+        asked = new URL(target).searchParams.get("$filter") ?? "";
+        return new Response(JSON.stringify({ "@odata.count": 2, value: [{ ListingKey: "sale", ListPrice: 899000 }, { ListingKey: "rental", LeaseAmount: 2600 }] }), { status: 200 });
+      }),
+    );
+    const result = await searchDdfListings({ top: 2 });
+    expect(asked).toContain("ListPrice gt 0");
+    expect(result.listings.map((listing) => listing.ListingKey)).toEqual(["sale"]);
+  });
+});
+
 describe("units, where a board leaves the count empty", () => {
   it("reads them from the building type, and guesses nothing vaguer", () => {
     expect(unitsFromBuildingType("Duplex")).toBe(2);
