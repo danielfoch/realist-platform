@@ -298,6 +298,18 @@ export function unitsFromBuildingType(text: string): number | null {
   return null;
 }
 
+/** Nobody sells a unit of a rental building for less than this; below it, the count belongs to a building the listing is merely in. */
+const MIN_PRICE_PER_UNIT = 40_000;
+
+export function plausibleUnitCount(units: number, price: unknown, subType: unknown): boolean {
+  if (!(units >= 1)) return false;
+  if (units === 1) return true;
+  // A single dwelling (house, condo apartment) can hold a suite or two — not a dozen.
+  if (typeof subType === "string" && /single family/i.test(subType) && units > 4) return false;
+  if (typeof price === "number" && price > 0 && price / units < MIN_PRICE_PER_UNIT) return false;
+  return true;
+}
+
 /** Two or more units, by count or by class. */
 export function isMultiUnit(listing: { NumberOfUnitsTotal?: number; PropertySubType?: string; StructureType?: string }): boolean {
   return (listing.NumberOfUnitsTotal ?? 0) >= 2 || /multi-?\s?family|multiplex|duplex|triplex|fourplex/i.test(`${listing.PropertySubType ?? ""} ${listing.StructureType ?? ""}`);
@@ -311,6 +323,12 @@ export function coerceDdfListing<T extends object>(raw: T): T {
     if (Array.isArray(value)) listing[field] = value.filter((item) => typeof item === "string" || typeof item === "number").join(", ");
     else if (typeof value === "number" || typeof value === "boolean") listing[field] = String(value);
     else listing[field] = "";
+  }
+  // Some boards (Calgary's, for one) put the whole BUILDING's unit count on a single condo: a $340K
+  // one-bedroom "with 483 units". Multiply a rent by that and the card shows an 1,884% yield. A count
+  // is only believed when it could describe what is actually for sale.
+  if (typeof listing.NumberOfUnitsTotal === "number" && !plausibleUnitCount(listing.NumberOfUnitsTotal, listing.ListPrice, listing.PropertySubType)) {
+    delete listing.NumberOfUnitsTotal;
   }
   // The Toronto-area board never fills in NumberOfUnitsTotal; the building type says it instead.
   // Without this a triplex is underwritten as one unit and never shows up under "multi-unit".

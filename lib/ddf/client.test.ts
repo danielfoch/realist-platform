@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { adaptDdfUrl, assumeDdfCityPrefixSupport, attachOfficeNames, cityFilter, coerceDdfListing, forgetDdfOffices, forgetDdfSchemaRejections, isMultiUnit, isSameCity, learnFromDdfError, searchDdfListings, unitsFromBuildingType } from "./client";
+import { adaptDdfUrl, assumeDdfCityPrefixSupport, attachOfficeNames, cityFilter, coerceDdfListing, forgetDdfOffices, forgetDdfSchemaRejections, isMultiUnit, isSameCity, learnFromDdfError, plausibleUnitCount, searchDdfListings, unitsFromBuildingType } from "./client";
 
 describe("searchDdfListings", () => {
   afterEach(() => {
@@ -355,6 +355,14 @@ describe("units, where a board leaves the count empty", () => {
   it("fills the count in at the door, never over a count the listing states", () => {
     expect(coerceDdfListing({ StructureType: ["Triplex"] as unknown as string })).toMatchObject({ NumberOfUnitsTotal: 3 });
     expect(coerceDdfListing({ StructureType: ["Duplex"] as unknown as string, NumberOfUnitsTotal: 5 })).toMatchObject({ NumberOfUnitsTotal: 5 });
+  });
+
+  it("doesn't believe a condo that reports its whole building's unit count", () => {
+    expect(plausibleUnitCount(483, 340_000, "Single Family")).toBe(false); // a Calgary one-bedroom: 1,884% "yield"
+    expect(plausibleUnitCount(50, 228_800, "Multi-family")).toBe(false); // $4,576 a door
+    expect(plausibleUnitCount(3, 899_000, "Single Family")).toBe(true); // a house with two suites
+    expect(plausibleUnitCount(50, 8_000_000, "Multi-family")).toBe(true);
+    expect(coerceDdfListing({ NumberOfUnitsTotal: 483, ListPrice: 340_000, PropertySubType: "Single Family", BedroomsTotal: 1 })).not.toHaveProperty("NumberOfUnitsTotal");
   });
 
   it("calls a listing multi-unit by count or by class", () => {
