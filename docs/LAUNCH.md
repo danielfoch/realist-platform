@@ -28,22 +28,15 @@ ids. Enter skips anything; it ends by offering to deploy. `-- --dry-run` tests w
 `-- --redo` asks again for keys already set. Steps 2, 3 and 5 below are the long way of doing
 the same thing in the Vercel dashboard.
 
-### …and one more for the listings crawl
+### The listings crawl runs by itself
 
-Yield-sorted browse, buy-box matches, market aggregates and the Monday note's listings all read
-the nightly crawl's snapshots. The crawl is too long for a serverless function, so it runs on
-GitHub Actions — and GitHub only schedules workflows found on the **default branch**. Merge
-[the "Lean nightly data sync" pull request](https://github.com/danielfoch/realist-platform/pull/195)
-(one workflow file; it checks out `lean`), then:
-
-```bash
-npm run setup:crawl
-```
-
-You paste the CREA pair once more (tested first — and it counts the feed's listings, because a
-"Member Website Feed" authenticates fine and carries only your own office's listings; the site
-needs the **National Shared Pool**, the feed the Replit app uses). The database URL is read from
-Vercel. All three go to GitHub as repository secrets over stdin, and the first crawl starts.
+Yield-sorted browse, buy-box matches, market aggregates, the rent database and the Monday
+note's listings all read a nightly crawl of CREA's feed. It runs on Vercel, where the feed
+credentials already are: `/api/cron/crawl` fires every ten minutes, works about four minutes from
+a cursor saved in `crawl_state` (rents first, then listings province by province), and rests a
+day once it finishes. Nothing to set up. A first full pass takes a few hours; until it reaches a
+market, "highest yield" there ranks the 100 newest live listings instead and says so.
+`crawl_state.last_error` is the first thing to read if the numbers look wrong.
 
 ## 1. A database (nothing persists without it)
 
@@ -105,7 +98,7 @@ After it, run the learning job once: `GET /api/cron/learn` with the cron bearer 
 
 | Variable | What |
 |---|---|
-| `CREA_DDF_USERNAME`, `CREA_DDF_PASSWORD` | the live MLS® feed (also add to GitHub Actions secrets for the nightly sync) |
+| `CREA_DDF_USERNAME`, `CREA_DDF_PASSWORD` | the live MLS® feed — it must be a **National Shared Pool** feed; a "Member Website Feed" authenticates fine and carries only your own office's listings. The nightly crawl uses the same pair |
 | `ANTHROPIC_API_KEY` | AI-written deal memos and multiplex reports. Without it both fall back to the rules-based versions, which are complete on their own |
 | `AI_MODEL_MEMO`, `AI_MODEL_ASK`, `AI_MODEL_REPORT`, `AI_MODEL` | *(optional)* which model each paid feature uses. Defaults: memo on Haiku 4.5 (about a third the price; it re-narrates a memo the rules engine already wrote), Ask Realist and the multiplex report on Sonnet. Measured size of a call: memo ≈ 2k tokens in / 0.8k out; an Ask Realist question ≈ 8k in / 0.9k out across its tool rounds; a multiplex report ≈ 7k in / 2k out |
 | `AI_DAILY_BUDGET` | *(optional, default 2000)* the most model calls the whole site makes in a day, so a bad night costs a known amount. Members get 60 a day (15 per 15 min); an account that hasn't confirmed its email gets 3. `0` turns the paid AI off |
@@ -166,7 +159,7 @@ in, and is honoured by mail providers' own unsubscribe button.
 
 ## Crons (vercel.json)
 
-`/api/cron/leads` every 10 min (outbox retries) · `/api/cron/learn` nightly (market defaults) ·
+`/api/cron/leads` every 10 min (outbox retries) · `/api/cron/crawl` every 10 min (the data sync, in slices) · `/api/cron/learn` nightly (market defaults) ·
 `/api/cron/digest` Mondays 8:30 ET ·
 podcast Tue/Fri · distress scan twice daily · distress report monthly. All require
 `CRON_SECRET` (already set).

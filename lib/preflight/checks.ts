@@ -201,7 +201,7 @@ export function checkDatabase(url: string, facts: DbFacts | Error): CheckResult[
       : { name: "v1 members", status: "warn", required: false, detail: "No v1 members here yet.", fix: "`npm run migrate:users` (dry run), then `-- --commit`. Safe to re-run until cutover." },
     facts.freshListings > 0
       ? { name: "Listings crawl", status: "ok", required: false, detail: `${facts.freshListings.toLocaleString("en-CA")} listings seen in the last 7 days — yield browse, buy-box matches and the fallback all have data.` }
-      : { name: "Listings crawl", status: "warn", required: false, detail: "No listings crawled in the last 7 days — yield-sorted browse and buy-box matches will be empty.", fix: "`npm run sync:ddf` (and add the CREA credentials to GitHub Actions for the nightly run)." },
+      : { name: "Listings crawl", status: "warn", required: false, detail: "No listings crawled in the last 7 days — yield-sorted browse and buy-box matches will be empty.", fix: "It fills in by itself: /api/cron/crawl runs every ten minutes once the CREA credentials are set. A first full pass takes a few hours." },
     ...(facts.waitingDeliveries > 0 ? [{ name: "Outbox", status: "warn" as const, required: false, detail: `${facts.waitingDeliveries} lead deliveries are waiting — they go out on the next cron run, or press "Retry failed and deliver now" on /admin/leads.` }] : []),
   ];
 }
