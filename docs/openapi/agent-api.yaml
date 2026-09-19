@@ -1,0 +1,405 @@
+openapi: 3.0.3
+info:
+  title: Realist Agent API
+  version: 1.4.0
+  description: |
+    Bearer-authenticated API used by @realist/mcp and specialist tools.
+    Keys are `realist_live_*`, SHA-256 hashed in `api_keys`.
+    P0 spine + P1 Ontario forms + P2 worldwide listing extract
+    + P3 Realist CRM writes.
+    Realist-only — Homies is out of scope.
+    JSON copy is served at GET /api/agent/openapi.json (read scope).
+    Source object: shared/agentOpenApi.ts
+servers:
+  - url: https://realist.ca
+    description: Production
+tags:
+  - name: Agent
+  - name: Jobs
+  - name: Forms
+  - name: Listings
+  - name: CRM
+  - name: Schemas
+paths:
+  /api/agent/me:
+    get:
+      tags: [Agent]
+      summary: Verify the key and return the owning user
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Key is valid }
+        "401": { description: Missing or invalid bearer token }
+  /api/agent/underwrite/listing:
+    post:
+      tags: [Agent]
+      summary: Underwrite a CREA-listed property by MLS number
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UnderwriteListingInput" }
+      responses:
+        "200": { description: Underwriting result + saved analysis }
+        "403": { description: underwrite scope required }
+  /api/agent/underwrite/custom:
+    post:
+      tags: [Agent]
+      summary: Underwrite a custom address with caller-provided price
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UnderwriteCustomInput" }
+      responses:
+        "200": { description: Underwriting result + saved analysis }
+  /api/agent/find-deals:
+    post:
+      tags: [Agent]
+      summary: Natural-language deal search over CREA DDF
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Matching listings }
+  /api/agent/estimate-rent:
+    post:
+      tags: [Agent]
+      summary: Rent estimate from the prediction-ledger engine
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Estimate or no_data_for_market }
+  /api/agent/underwrite-multiplex:
+    post:
+      tags: [Agent]
+      summary: Multiplex underwriter
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Multiplex underwrite result }
+  /api/agent/deal-desk-submit:
+    post:
+      tags: [Agent]
+      summary: Submit a deal to Deal Desk
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Opportunity created }
+  /api/agent/analyses:
+    get:
+      tags: [Agent]
+      summary: List the calling user's saved underwritings
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Analyses list }
+  /api/agent/analyses/{id}:
+    get:
+      tags: [Agent]
+      summary: Fetch one analysis the caller owns
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Analysis }
+        "404": { description: Not found }
+  /api/agent/community/submit:
+    post:
+      tags: [Agent]
+      summary: Submit an underwriting to the community feed
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Published }
+        "403": { description: community:write required }
+  /api/agent/mortgage-rates:
+    get:
+      tags: [Agent]
+      summary: Current mortgage rates
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Rates payload }
+  /api/agent/market-report:
+    get:
+      tags: [Agent]
+      summary: City-level market report
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Report or city list }
+  /api/agent/referrals/{outcomeId}:
+    get:
+      tags: [Agent]
+      summary: Partner-owned referral outcome
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: outcomeId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Outcome }
+    post:
+      tags: [Agent]
+      summary: Update a partner-owned referral outcome
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: outcomeId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Updated outcome }
+  /api/agent/forms:
+    get:
+      tags: [Forms]
+      summary: List registered OREA field maps
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Form summaries (no PDF bodies) }
+  /api/agent/forms/{formId}:
+    get:
+      tags: [Forms]
+      summary: Get one field map
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: formId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Field map metadata }
+        "404": { description: Unknown form id }
+  /api/agent/forms/fill:
+    post:
+      tags: [Forms]
+      summary: Create a forms.fill job (always needs_approval)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Draft fill job }
+        "403": { description: forms:write or jobs:write required }
+  /api/agent/listings/extractors:
+    get:
+      tags: [Listings]
+      summary: List registered listing URL extractors (major portals worldwide)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Extractor registry including Rightmove, Domain, REA, Zoopla, Realtor.com, Homes.com, ImmoScout, SeLoger, Idealista, PropertyGuru }
+  /api/agent/listings/extract:
+    post:
+      tags: [Listings]
+      summary: Extract Property + Listing from a public URL, HTML, or MLS number
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: listing.extract job + extract payload }
+  /api/agent/crm/contacts:
+    get:
+      tags: [CRM]
+      summary: Search the calling user's Realist CRM contacts
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Owned contacts }
+  /api/agent/crm/contacts/upsert:
+    post:
+      tags: [CRM]
+      summary: Create a crm.update upsert job (needs_approval + proposed diff)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Draft CRM write job }
+        "403": { description: crm:write or jobs:write required }
+  /api/agent/crm/contacts/{id}:
+    get:
+      tags: [CRM]
+      summary: Get one owned Realist CRM contact
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Contact }
+        "404": { description: Not found }
+  /api/agent/listings/underwrite-url:
+    post:
+      tags: [Listings]
+      summary: Extract a listing URL then underwrite in listing currency
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Extract + underwrite jobs }
+  /api/agent/openapi.json:
+    get:
+      tags: [Agent]
+      summary: This OpenAPI document (JSON)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OpenAPI 3 JSON }
+  /api/agent/jobs:
+    get:
+      tags: [Jobs]
+      summary: List the calling user's jobs
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        "200": { description: Caller's jobs }
+    post:
+      tags: [Jobs]
+      summary: Create a specialist job (idempotent on idempotencyKey)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAgentJobRequest" }
+      responses:
+        "201": { description: Job created }
+        "200": { description: Idempotent replay }
+        "403": { description: Scope required for this job type }
+  /api/agent/jobs/{id}:
+    get:
+      tags: [Jobs]
+      summary: Get one job the caller owns
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Job }
+        "404": { description: Not found }
+  /api/agent/jobs/{id}/approve:
+    post:
+      tags: [Jobs]
+      summary: Approve a job in needs_approval, then run the specialist
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Approved and executed }
+        "409": { description: Job is not awaiting approval }
+  /api/agent/jobs/{id}/cancel:
+    post:
+      tags: [Jobs]
+      summary: Cancel a queued, running, or needs_approval job
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Cancelled }
+        "409": { description: Job is not cancellable }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: realist_live_*
+      description: API keys minted at /account/api-keys. Stored as SHA-256 hashes; plaintext returned once.
+  schemas:
+    Property:
+      type: object
+      required: [address]
+      properties:
+        address: { type: string }
+        city: { type: string, nullable: true }
+        province: { type: string, nullable: true }
+        country: { type: string, description: ISO 3166-1 alpha-2, default: CA }
+        state: { type: string, nullable: true }
+        region: { type: string, nullable: true }
+        postalCode: { type: string, nullable: true }
+        zip: { type: string, nullable: true }
+        parcelId: { type: string, nullable: true }
+        areaSqft: { type: number, nullable: true }
+        areaSqm: { type: number, nullable: true }
+        areaUnit: { type: string, enum: [sqft, sqm], nullable: true }
+        geo:
+          type: object
+          properties:
+            lat: { type: number }
+            lng: { type: number }
+        beds: { type: integer, nullable: true }
+        baths: { type: number, nullable: true }
+        units: { type: integer, nullable: true }
+        annualPropertyTax: { type: number, nullable: true }
+    Listing:
+      type: object
+      properties:
+        mlsNumber: { type: string, nullable: true }
+        status: { type: string }
+        listPrice: { type: number, nullable: true }
+        currency: { type: string, description: ISO 4217 }
+        property: { $ref: "#/components/schemas/Property" }
+        daysOnMarket: { type: integer, nullable: true }
+        source: { type: string }
+        sourceUrl: { type: string }
+        sourceHost: { type: string }
+        externalId: { type: string }
+    Deal:
+      type: object
+      properties:
+        analysisId: { type: string, nullable: true }
+        mlsNumber: { type: string, nullable: true }
+        property: { $ref: "#/components/schemas/Property" }
+        strategy: { type: string }
+        assumptions: { type: object }
+        metrics: { type: object }
+    Contact:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+        name: { type: string, nullable: true }
+        firstName: { type: string, nullable: true }
+        lastName: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        userId: { type: string, nullable: true }
+    TransactionFile:
+      type: object
+      required: [id, dealId, docClass]
+      properties:
+        id: { type: string }
+        dealId: { type: string }
+        docClass: { type: string }
+        status: { type: string }
+    AgentOrg:
+      type: object
+      required: [id, userId]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string, nullable: true }
+    AgentJob:
+      type: object
+      required: [id, type, status]
+      properties:
+        id: { type: string }
+        type:
+          type: string
+          enum: [underwrite.listing, underwrite.custom, forms.fill, listing.extract, docs.route, crm.update]
+        status:
+          type: string
+          enum: [queued, running, needs_approval, succeeded, failed, cancelled]
+        input: { type: object, additionalProperties: true }
+        result: { type: object, nullable: true }
+        error: { type: string, nullable: true }
+        specialistId: { type: string, nullable: true }
+        createdByUserId: { type: string }
+        approvalRequired: { type: boolean }
+        idempotencyKey: { type: string, nullable: true }
+        auditTrail: { type: array, items: { type: object } }
+    UnderwriteListingInput:
+      type: object
+      required: [mlsNumber]
+      properties:
+        mlsNumber: { type: string }
+        strategyType: { type: string, default: buyHold }
+        monthlyRent: { type: number }
+        downPaymentPercent: { type: number }
+        interestRate: { type: number }
+        vacancyRate: { type: number }
+        expenseRatio: { type: number }
+    UnderwriteCustomInput:
+      type: object
+      required: [address, price]
+      properties:
+        address: { type: string }
+        city: { type: string }
+        province: { type: string }
+        countryMode: { type: string, description: ISO 3166-1 alpha-2, default: CA }
+        strategyType: { type: string, default: buyHold }
+        price: { type: number }
+        currency: { type: string }
+        fxToCad: { type: number }
+        monthlyRent: { type: number }
+        units: { type: integer }
+        beds: { type: integer }
+    CreateAgentJobRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [underwrite.listing, underwrite.custom, forms.fill, listing.extract, docs.route, crm.update]
+        input: { type: object, additionalProperties: true }
+        idempotencyKey: { type: string }
+        approvalRequired: { type: boolean }

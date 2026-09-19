@@ -79,3 +79,60 @@ Returns:
   "error": "message"
 }
 ```
+
+## Agent API spine / Jobs
+
+Bearer-authenticated specialist contract at `/api/agent/*`. Existing
+underwrite / find-deals / analyses / community / referral routes are
+unchanged. Auth is still `Authorization: Bearer realist_live_*`
+(SHA-256 hashed in `api_keys`).
+
+New P0 pieces:
+
+- Canonical Zod schemas: `shared/agentSpine.ts` (`Property`, `Listing`,
+  `Deal`, `Contact`, `TransactionFile`, `AgentOrg`, `Job`)
+- Job store + routes:
+  - `POST /api/agent/jobs` — create (idempotent on `idempotencyKey`)
+  - `GET /api/agent/jobs` — list the caller's jobs
+  - `GET /api/agent/jobs/:id`
+  - `POST /api/agent/jobs/:id/approve` — only from `needs_approval`
+  - `POST /api/agent/jobs/:id/cancel` — queued / running / needs_approval
+- OpenAPI 3: `docs/openapi/agent-api.yaml` (served as
+  `GET /api/agent/openapi.json` behind `read`)
+- Specialist plug-in guide: `docs/specialist-spine.md`
+
+New opt-in scopes (`jobs:write`, `forms:write`, `docs:write`,
+`crm:write`) do not change default key scopes. Underwrite jobs still
+accept the existing `underwrite` scope.
+
+P1 Forms specialist (Ontario / OREA field maps only — no PDF bodies):
+
+- `GET /api/agent/forms` — list registered maps (`read`)
+- `GET /api/agent/forms/:formId` — field map metadata (`read`)
+- `POST /api/agent/forms/fill` — create a `forms.fill` job (`forms:write`)
+- `forms.fill` jobs preview the JSON fill on create and stay
+  `needs_approval`. Approve marks succeeded; nothing is e-signed or
+  submitted. Missing legal facts stay blank.
+
+P2 Listing extract (Zillow for Earth for AI agents — any geography):
+
+- `GET /api/agent/listings/extractors` — host → extractor registry (`read`).
+  Major portals: realtor.ca, Zillow, Redfin, Realtor.com, Homes.com,
+  Rightmove, Zoopla, Domain, realestate.com.au, ImmobilienScout24,
+  SeLoger, Idealista, PropertyGuru, plus generic JSON-LD/OG.
+- `POST /api/agent/listings/extract` — create a `listing.extract` job
+  from a public URL, caller HTML, or CREA MLS # (`read` or `jobs:write`)
+- `POST /api/agent/listings/underwrite-url` — extract then
+  `underwrite.custom` in listing currency (`underwrite`). Optional
+  `fxToCad`; FX is never invented. Login-walled pages return
+  `blocked_or_login_wall`. Missing prices/beds stay null.
+
+P3 Realist CRM (no external CRM):
+
+- `GET /api/agent/crm/contacts?query=` — owned contacts (`read`)
+- `GET /api/agent/crm/contacts/:id` — one owned contact (`read`)
+- `POST /api/agent/crm/contacts/upsert` — `crm.update` job
+  (`crm:write` or `jobs:write`). Create stays `needs_approval` with a
+  proposed diff. Approve applies the write; cancel does not. Names /
+  emails / phones are never invented.
+
