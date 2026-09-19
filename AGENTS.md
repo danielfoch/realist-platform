@@ -81,7 +81,12 @@ Every underwrite feeds the member's history, the leaderboard and the learned mar
   value comes ONLY from analyses where the person changed that field (an untouched default
   is inertia, not evidence), needs ≥5 different MEMBERS who are ≥25% of those who worked a
   deal in that market, city → province → national. Anonymous sessions are free to mint, so
-  they never count toward learned values, listing medians or the leaderboard. Never weaken these to "get more data".
+  they never count toward learned values, listing medians or the leaderboard.
+  Two rules keep the loop honest AND stable: (1) someone who worked a deal and KEPT a value
+  we offered because the market taught it (`learned_applied`) is confirming it — without
+  that a good default starves itself of evidence and oscillates; (2) rent is learned as a
+  ratio against our RAW estimate (`rent_estimate`), never the adjusted one, and only from
+  listings whose offered rent was an estimate — a reported rent is a fact, not a guess. Never weaken these to "get more data".
 - **Community numbers** (`lib/analyses/community.ts`): medians on a deal appear only once
   3+ people have underwritten it; the leaderboard ranks members by quality-weighted unique
   deals; names are "First L."; off-market addresses are never shown to other people.

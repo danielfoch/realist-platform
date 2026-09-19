@@ -6,6 +6,7 @@ import { fmtMoney } from "@/components/multiplex/format";
 import { DealMemoPanel } from "./DealMemoPanel";
 import {
   LEARNABLE_FIELDS,
+  RENT_RATIO_FIELD,
   editedFields,
   readTheDeal,
   solveOfferPrice,
@@ -362,6 +363,7 @@ export function Underwriter({
   taxFromListing,
   aiAvailable = false,
   returnPath,
+  rentEstimate = null,
 }: {
   deal: UnderwriterDeal;
   defaults: UnderwriterInputs;
@@ -376,6 +378,8 @@ export function Underwriter({
   aiAvailable?: boolean;
   /** Where signing in should bring the person back to: this deal, as they left it. */
   returnPath?: string;
+  /** Our raw rent estimate, before any learned adjustment (listings with an estimated rent only). */
+  rentEstimate?: number | null;
 }) {
   const [inputs, setInputs] = useState<UnderwriterInputs>(
     saved?.inputs ?? defaults,
@@ -462,6 +466,9 @@ export function Underwriter({
             defaults,
             offerPrice,
             verdict,
+            rentSource: rentSourceLabel ?? null,
+            rentEstimate: rentEstimate ?? null,
+            learnedApplied: Object.keys(learned),
           }),
         });
         const body = (await response.json().catch(() => null)) as {
@@ -512,6 +519,11 @@ export function Underwriter({
     return `${entry.scopeLabel} investors use ${entry.value}${field.endsWith("Years") ? " yrs" : "%"} · median of ${entry.sampleSize} analyses`;
   }
 
+  const rentRatio = learned[RENT_RATIO_FIELD];
+  const rentMoved = rentEstimate != null && rentRatio != null && Math.abs(defaults.monthlyRent - rentEstimate) >= 5;
+  const rentNote = rentMoved
+    ? `Our estimate was ${fmtMoney(rentEstimate)}. ${rentRatio.scopeLabel} investors underwrite ${Math.abs(Math.round((1 - rentRatio.value) * 100))}% ${rentRatio.value < 1 ? "under" : "over"} it (median of ${rentRatio.sampleSize}), so you start there.`
+    : `Starting point: ${(rentSourceLabel ?? "estimate").toLowerCase()}. Use what you know.`;
   const rentEdited = edited.has("monthlyRent");
   const memoDeal = useMemo(
     () => ({
@@ -593,7 +605,7 @@ export function Underwriter({
                       spec.field === "monthlyRent" &&
                       rentSourceLabel &&
                       !edited.has("monthlyRent")
-                        ? `Starting point: ${rentSourceLabel.toLowerCase()}. Use what you know.`
+                        ? rentNote
                         : learnedNote(spec.field)
                     }
                     onChange={(value) => change(spec.field, value)}

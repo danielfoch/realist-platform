@@ -2,7 +2,14 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { learnedAssumptions } from "@/lib/db/schema";
 import { provinceCode } from "@/lib/leads/routing";
-import { LEARNABLE_BOUNDS, LEARNABLE_FIELDS, type LearnableField, type LearnedDefaults } from "@/lib/underwriting/underwriter";
+import {
+  LEARNABLE_BOUNDS,
+  LEARNABLE_FIELDS,
+  RENT_RATIO_BOUNDS,
+  RENT_RATIO_FIELD,
+  type LearnableField,
+  type LearnedDefaults,
+} from "@/lib/underwriting/underwriter";
 
 /**
  * The flywheel. Every worked analysis records what we offered and what the
@@ -11,7 +18,15 @@ import { LEARNABLE_BOUNDS, LEARNABLE_FIELDS, type LearnableField, type LearnedDe
  *
  * What counts as evidence: a field teaches only through analyses where the
  * person changed THAT field — a default left alone is inertia, not judgement,
- * and counting it would just teach us our own defaults back. A learned value
+ * and counting it would just teach us our own defaults back. One exception,
+ * and it is what keeps the loop stable: someone who worked a deal and KEPT a
+ * value we offered because the market taught it is confirming it. Without
+ * that, a good learned default would starve itself of evidence (nobody edits
+ * what's already right), revert, get edited again, and oscillate.
+ *
+ * Rent is learned as a ratio — their rent ÷ our RAW estimate, never the
+ * adjusted one, or the ratio would chase its own tail toward 1.0 — and only
+ * from listings whose offered rent was an estimate, not a reported rent. A learned value
  * needs MIN_CONTRIBUTORS different people, and those people must be at least
  * MIN_SHARE of everyone who worked a deal in that market: a vocal few don't
  * get to move the starting point for everybody. Members only — an anonymous
@@ -45,7 +60,8 @@ export async function rebuildLearnedAssumptions(): Promise<{ written: number }> 
 
     const result = await db.execute(sql`
       WITH base AS (
-        SELECT ${k1} AS k1, ${k2} AS k2, a.actor_key, a.edited, a.inputs
+        SELECT ${k1} AS k1, ${k2} AS k2, a.actor_key, a.edited, a.inputs,
+          coalesce(a.learned_applied, '[]'::jsonb) AS kept, a.source, a.rent_source, a.rent_estimate
         FROM deal_analyses a
         WHERE a.eligible AND a.user_id IS NOT NULL AND a.updated_at > (now() AT TIME ZONE 'utc') - ${WINDOW} ${present}
       ),
@@ -62,19 +78,38 @@ export async function rebuildLearnedAssumptions(): Promise<{ written: number }> 
           count(*)::int AS sample_size,
           count(DISTINCT b.actor_key)::int AS contributors
         FROM base b
-        JOIN unnest(ARRAY[${fields}]::text[]) AS f(field) ON jsonb_exists(b.edited, f.field)
+        JOIN unnest(ARRAY[${fields}]::text[]) AS f(field)
+          ON jsonb_exists(b.edited, f.field) OR (jsonb_exists(b.kept, f.field) AND jsonb_array_length(b.edited) > 0)
         WHERE (b.inputs ->> f.field) ~ '^-?[0-9]+([.][0-9]+)?$'
         GROUP BY b.k1, b.k2, f.field
         HAVING count(DISTINCT b.actor_key) >= ${MIN_CONTRIBUTORS}
+      ),
+      rent AS (
+        SELECT b.k1, b.k2, ${RENT_RATIO_FIELD}::text AS field,
+          percentile_cont(0.25) WITHIN GROUP (ORDER BY r.ratio) AS p25,
+          percentile_cont(0.5) WITHIN GROUP (ORDER BY r.ratio) AS median,
+          percentile_cont(0.75) WITHIN GROUP (ORDER BY r.ratio) AS p75,
+          count(*)::int AS sample_size,
+          count(DISTINCT b.actor_key)::int AS contributors
+        FROM base b
+        CROSS JOIN LATERAL (SELECT (b.inputs ->> 'monthlyRent')::float / b.rent_estimate AS ratio) r
+        WHERE b.source = 'listing' AND b.rent_estimate > 0
+          AND b.rent_source IS DISTINCT FROM 'Actual rent'
+          AND (b.inputs ->> 'monthlyRent') ~ '^[0-9]+([.][0-9]+)?$'
+          AND (jsonb_exists(b.edited, 'monthlyRent') OR (jsonb_exists(b.kept, ${RENT_RATIO_FIELD}) AND jsonb_array_length(b.edited) > 0))
+          AND r.ratio BETWEEN 0.4 AND 2.5
+        GROUP BY b.k1, b.k2
+        HAVING count(DISTINCT b.actor_key) >= ${MIN_CONTRIBUTORS}
       )
       SELECT m.k1 AS province, m.k2 AS city, m.field, m.p25, m.median, m.p75, m.sample_size, m.contributors, e.engaged
-      FROM moved m JOIN engaged e ON e.k1 = m.k1 AND e.k2 = m.k2
+      FROM (SELECT * FROM moved UNION ALL SELECT * FROM rent) m
+      JOIN engaged e ON e.k1 = m.k1 AND e.k2 = m.k2
     `);
 
     for (const row of result.rows as Array<Record<string, unknown>>) {
-      const field = String(row.field) as LearnableField;
+      const field = String(row.field) as LearnableField | typeof RENT_RATIO_FIELD;
       const median = Number(row.median);
-      const [low, high] = LEARNABLE_BOUNDS[field] ?? [-Infinity, Infinity];
+      const [low, high] = field === RENT_RATIO_FIELD ? RENT_RATIO_BOUNDS : (LEARNABLE_BOUNDS[field] ?? [-Infinity, Infinity]);
       if (!isFinite(median) || median < low || median > high) continue;
       const contributors = Number(row.contributors);
       const engaged = Math.max(Number(row.engaged), contributors);
@@ -117,8 +152,8 @@ export async function getLearnedDefaults(city: string | null | undefined, provin
   const rank = { city: 0, province: 1, national: 2 } as const;
   const learned: LearnedDefaults = {};
   for (const row of [...rows].sort((a, b) => rank[a.scope] - rank[b.scope])) {
-    const field = row.field as LearnableField;
-    if (!LEARNABLE_FIELDS.includes(field) || learned[field]) continue;
+    const field = row.field as LearnableField | typeof RENT_RATIO_FIELD;
+    if ((field !== RENT_RATIO_FIELD && !LEARNABLE_FIELDS.includes(field)) || learned[field]) continue;
     learned[field] = {
       value: row.median,
       sampleSize: row.sampleSize,

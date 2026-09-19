@@ -244,6 +244,8 @@ export default async function ListingDetailPage({
     getLearnedDefaults(listing.city, listing.province),
     getDealConsensus(`mls:${listing.mlsNumber.toUpperCase()}`).catch(() => null),
   ]);
+  // A reported rent is a fact; only our own estimates get moved by what the market has taught.
+  const rentIsEstimate = Boolean(uw) && uw?.rentSource !== "ddf_actual";
   const defaults =
     listing.price && listing.price > 0
       ? houseDefaults(
@@ -253,6 +255,7 @@ export default async function ListingDetailPage({
             monthlyRent: uw?.estimatedRent ?? null,
             annualPropertyTax: listing.taxAnnual,
             monthlyCondoFees: uw?.condoFeesMonthly ?? null,
+            rentIsEstimate: rentIsEstimate,
           },
           learned,
         )
@@ -407,6 +410,7 @@ export default async function ListingDetailPage({
                 taxFromListing={listing.taxAnnual != null && listing.taxAnnual > 0}
                 aiAvailable={memoWriterConfigured()}
                 returnPath={`/listings/${encodeURIComponent(listing.mlsNumber)}#underwrite`}
+                rentEstimate={rentIsEstimate ? (uw?.estimatedRent ?? null) : null}
               />
             ) : (
               <p className="rounded-lg border border-dashed border-hairline-strong bg-surface p-5 text-sm text-ink-soft">

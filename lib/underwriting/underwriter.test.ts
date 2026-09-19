@@ -102,3 +102,22 @@ describe("clampInputs", () => {
     expect(clampInputs(missing)).toBeNull();
   });
 });
+
+describe("learned rent adjustment", () => {
+  const learned = { rentVsEstimate: { value: 0.93, sampleSize: 23, scopeLabel: "Hamilton" } };
+
+  it("moves OUR estimate to where the market's investors land", () => {
+    const inputs = houseDefaults({ price: 700_000, monthlyRent: 5000, rentIsEstimate: true }, learned);
+    expect(inputs.monthlyRent).toBe(4650);
+  });
+
+  it("never touches a rent the building actually reports", () => {
+    expect(houseDefaults({ price: 700_000, monthlyRent: 5000, rentIsEstimate: false }, learned).monthlyRent).toBe(5000);
+    expect(houseDefaults({ price: 700_000, monthlyRent: 5000 }, learned).monthlyRent).toBe(5000);
+  });
+
+  it("ignores a ratio outside sane bounds", () => {
+    const wild = { rentVsEstimate: { value: 0.3, sampleSize: 9, scopeLabel: "Nowhere" } };
+    expect(houseDefaults({ price: 700_000, monthlyRent: 5000, rentIsEstimate: true }, wild).monthlyRent).toBe(5000);
+  });
+});

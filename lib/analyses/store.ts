@@ -2,10 +2,12 @@ import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { dealAnalyses, type DealAnalysis } from "@/lib/db/schema";
 import { INVESTMENT_METRIC_DEFAULTS } from "@/lib/underwriting/investmentMetrics";
-import { analysisQuality, editedFields, underwrite, type UnderwriterInputs } from "@/lib/underwriting/underwriter";
+import { LEARNABLE_FIELDS, RENT_RATIO_FIELD, analysisQuality, editedFields, underwrite, type UnderwriterInputs } from "@/lib/underwriting/underwriter";
 import { provinceCode } from "@/lib/leads/routing";
 import type { Actor } from "./actor";
 import { fsaOf } from "./dealKey";
+
+const KNOWN_LEARNED = new Set<string>([...LEARNABLE_FIELDS, RENT_RATIO_FIELD]);
 
 /** More new deals than this in a day is a script, not a person. */
 export const DAILY_NEW_ANALYSIS_CAP = 80;
@@ -19,6 +21,9 @@ export interface AnalysisPayload {
   province?: string | null;
   postalCode?: string | null;
   propertyType?: string | null;
+  rentSource?: string | null;
+  rentEstimate?: number | null;
+  learnedApplied?: string[];
   inputs: UnderwriterInputs;
   defaults: UnderwriterInputs;
   offerPrice?: number | null;
@@ -62,6 +67,9 @@ export async function saveAnalysis(actor: Actor, payload: AnalysisPayload): Prom
     province: provinceCode(payload.province),
     fsa: fsaOf(payload.postalCode),
     propertyType: payload.propertyType?.slice(0, 80) ?? null,
+    rentSource: payload.rentSource?.slice(0, 40) ?? null,
+    rentEstimate: payload.rentEstimate && payload.rentEstimate > 0 ? payload.rentEstimate : null,
+    learnedApplied: (payload.learnedApplied ?? []).filter((field) => KNOWN_LEARNED.has(field)),
     units: Math.round(payload.inputs.units),
     price: payload.inputs.price,
     inputs: payload.inputs as unknown as Record<string, number>,

@@ -45,6 +45,8 @@ export interface DealFacts {
   monthlyRent?: number | null;
   annualPropertyTax?: number | null;
   monthlyCondoFees?: number | null;
+  /** True when monthlyRent is our estimate rather than the building's reported rent. */
+  rentIsEstimate?: boolean;
 }
 
 /** A market's learned value for one field, and how much evidence is behind it. */
@@ -70,7 +72,14 @@ export const LEARNABLE_FIELDS = [
   "annualRentGrowthPercent",
 ] as const satisfies readonly UnderwriterField[];
 export type LearnableField = (typeof LEARNABLE_FIELDS)[number];
-export type LearnedDefaults = Partial<Record<LearnableField, LearnedValue>>;
+/**
+ * The one property-level thing a market CAN teach: how far investors move our
+ * rent estimate. Stored as a ratio (their rent ÷ the rent we offered), learned
+ * only from listings whose offered rent was an estimate.
+ */
+export const RENT_RATIO_FIELD = "rentVsEstimate";
+export const RENT_RATIO_BOUNDS: [number, number] = [0.6, 1.4];
+export type LearnedDefaults = Partial<Record<LearnableField | typeof RENT_RATIO_FIELD, LearnedValue>>;
 
 /** Sane edges for each learnable field — a median outside them is noise, not knowledge. */
 export const LEARNABLE_BOUNDS: Record<LearnableField, [number, number]> = {
@@ -84,13 +93,21 @@ export const LEARNABLE_BOUNDS: Record<LearnableField, [number, number]> = {
   annualRentGrowthPercent: [-5, 10],
 };
 
+/** Our estimate, moved to where this market's investors actually land — never applied to a reported rent. */
+export function adjustedRent(facts: DealFacts, learned: LearnedDefaults = {}): number {
+  const rent = Math.max(0, facts.monthlyRent || 0);
+  const ratio = learned[RENT_RATIO_FIELD]?.value;
+  if (!facts.rentIsEstimate || !ratio || ratio < RENT_RATIO_BOUNDS[0] || ratio > RENT_RATIO_BOUNDS[1]) return Math.round(rent);
+  return Math.round((rent * ratio) / 5) * 5;
+}
+
 export function houseDefaults(facts: DealFacts, learned: LearnedDefaults = {}): UnderwriterInputs {
   const price = Math.max(0, facts.price || 0);
   const units = Math.max(1, Math.round(facts.units || 1));
   const learnedValue = (field: LearnableField, fallback: number) => learned[field]?.value ?? fallback;
   return {
     price,
-    monthlyRent: Math.max(0, Math.round(facts.monthlyRent || 0)),
+    monthlyRent: adjustedRent(facts, learned),
     units,
     downPaymentPercent: learnedValue("downPaymentPercent", 20),
     interestRate: learnedValue("interestRate", 5.5),

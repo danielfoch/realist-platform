@@ -29,6 +29,12 @@ export const dealAnalyses = pgTable(
     /** First three characters of the postal code: fine-grained, never identifying. */
     fsa: varchar("fsa", { length: 3 }),
     propertyType: text("property_type"),
+    /** Where the rent we OFFERED came from ("Actual rent", "Rent comps", "CMHC average"…). */
+    rentSource: text("rent_source"),
+    /** Our RAW rent estimate, before any learned adjustment — what a rent correction is measured against. */
+    rentEstimate: real("rent_estimate"),
+    /** Fields whose offered value was a learned one. Keeping such a value confirms it; see learn.ts. */
+    learnedApplied: jsonb("learned_applied").$type<string[]>(),
     units: integer("units"),
     price: real("price").notNull(),
     inputs: jsonb("inputs").$type<Record<string, number>>().notNull(),
