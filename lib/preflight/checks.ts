@@ -22,6 +22,12 @@ type Fetch = typeof fetch;
 
 const has = (env: Env, ...names: string[]) => names.some((name) => Boolean(env[name]?.trim()));
 const value = (env: Env, ...names: string[]) => names.map((name) => env[name]?.trim()).find(Boolean) ?? "";
+/**
+ * `vercel env pull` writes a variable marked Sensitive as an empty string: it exists in
+ * Vercel, but its value never leaves. That is "set, and we can't look" — not "missing".
+ */
+const hidden = (env: Env, ...names: string[]) => !has(env, ...names) && names.some((name) => env[name] !== undefined);
+const HIDDEN = "is set in Vercel as a sensitive value, which can't be downloaded — so it can't be tested from here";
 
 async function getJson(fetcher: Fetch, url: string, headers: Record<string, string>): Promise<{ status: number; body: Record<string, unknown> }> {
   const response = await fetcher(url, { headers: { Accept: "application/json", ...headers }, signal: AbortSignal.timeout(10_000) });
@@ -30,6 +36,7 @@ async function getJson(fetcher: Fetch, url: string, headers: Record<string, stri
 
 export function checkSite(env: Env): CheckResult {
   const url = value(env, "NEXT_PUBLIC_SITE_URL");
+  if (!url && hidden(env, "NEXT_PUBLIC_SITE_URL")) return { name: "Site URL", status: "ok", required: false, detail: `NEXT_PUBLIC_SITE_URL ${HIDDEN}.` };
   if (!url) return { name: "Site URL", status: "warn", required: false, detail: "NEXT_PUBLIC_SITE_URL is not set — links in emails and share cards default to https://realist.ca." };
   return /^https:\/\//.test(url)
     ? { name: "Site URL", status: "ok", required: false, detail: url }
@@ -40,7 +47,7 @@ export function checkSecrets(env: Env): CheckResult[] {
   const emails = (name: string) => value(env, name).split(",").map((part) => part.trim()).filter(Boolean);
   const valid = (list: string[]) => list.length > 0 && list.every((email) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email));
   const results: CheckResult[] = [
-    has(env, "CRON_SECRET")
+    has(env, "CRON_SECRET") || hidden(env, "CRON_SECRET")
       ? { name: "Cron secret", status: "ok", required: true, detail: "CRON_SECRET is set (retries, learning and the Monday note can run)." }
       : { name: "Cron secret", status: "missing", required: true, detail: "CRON_SECRET is not set.", fix: "Add CRON_SECRET in Vercel — without it no lead is ever retried." },
   ];
@@ -49,6 +56,10 @@ export function checkSecrets(env: Env): CheckResult[] {
     ["FINANCING_LEAD_EMAILS", "Financing inbox", "financing requests"],
   ] as const) {
     const list = emails(name);
+    if (!list.length && hidden(env, name)) {
+      results.push({ name: label, status: "warn", required: true, detail: `${name} ${HIDDEN}. It's an address list, not a secret: un-mark it Sensitive and this can check it.` });
+      continue;
+    }
     results.push(
       valid(list)
         ? { name: label, status: "ok", required: true, detail: `${list.length} address${list.length === 1 ? "" : "es"} will be emailed for ${who}.` }
@@ -56,13 +67,13 @@ export function checkSecrets(env: Env): CheckResult[] {
     );
   }
   results.push(
-    valid(emails("ADMIN_EMAILS"))
+    valid(emails("ADMIN_EMAILS")) || hidden(env, "ADMIN_EMAILS")
       ? { name: "Admin access", status: "ok", required: false, detail: "ADMIN_EMAILS is set — sign in once with a link or Google so the address is verified, then open /admin/leads." }
       : { name: "Admin access", status: "warn", required: false, detail: "ADMIN_EMAILS is not set — nobody can open /admin/leads.", fix: "Set ADMIN_EMAILS to your address." },
-    has(env, "GOOGLE_CLIENT_ID") && has(env, "GOOGLE_CLIENT_SECRET")
+    (has(env, "GOOGLE_CLIENT_ID") || hidden(env, "GOOGLE_CLIENT_ID")) && (has(env, "GOOGLE_CLIENT_SECRET") || hidden(env, "GOOGLE_CLIENT_SECRET"))
       ? { name: "Google sign-in", status: "ok", required: false, detail: "Keys are set. Make sure <site>/api/auth/google/callback is an authorised redirect URI in Google Cloud." }
       : { name: "Google sign-in", status: "warn", required: false, detail: "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set — the Google button stays hidden; email links and passwords still work." },
-    has(env, "KEYPR_REALIST_SECRET")
+    has(env, "KEYPR_REALIST_SECRET") || hidden(env, "KEYPR_REALIST_SECRET")
       ? { name: "Keypr cash-back handoff", status: "ok", required: false, detail: "KEYPR_REALIST_SECRET is set." }
       : { name: "Keypr cash-back handoff", status: "warn", required: false, detail: "KEYPR_REALIST_SECRET is not set — consented Ontario requests wait in the outbox until it is.", fix: "Copy the value from the Replit app's Secrets." },
   );
@@ -76,6 +87,9 @@ export async function checkGhl(env: Env, fetcher: Fetch = fetch): Promise<CheckR
   const token = value(env, "GHL_API_KEY", "HIGHLEVEL_TOKEN");
   const locationId = value(env, "GHL_LOCATION_ID", "HIGHLEVEL_LOCATION_ID");
   const webhook = value(env, "GHL_WEBHOOK_URL");
+  if ((!token && hidden(env, "GHL_API_KEY", "HIGHLEVEL_TOKEN")) || (!locationId && hidden(env, "GHL_LOCATION_ID", "HIGHLEVEL_LOCATION_ID"))) {
+    return [{ name: "GoHighLevel", status: "warn", required: true, detail: `The GHL token ${HIDDEN}.`, fix: "After deploying, /admin/leads shows whether it's connected, and the first lead proves it." }];
+  }
   if (!token || !locationId) {
     return [
       webhook.startsWith("https://")
@@ -117,6 +131,7 @@ export async function checkGhl(env: Env, fetcher: Fetch = fetch): Promise<CheckR
 
 export async function checkResend(env: Env, fetcher: Fetch = fetch): Promise<CheckResult> {
   const key = value(env, "RESEND_API_KEY");
+  if (!key && hidden(env, "RESEND_API_KEY")) return { name: "Email (Resend)", status: "warn", required: true, detail: `RESEND_API_KEY ${HIDDEN}.`, fix: "Confirm realist.ca shows as Verified in Resend; after deploying, ask for a sign-in link to prove it." };
   if (!key) return { name: "Email (Resend)", status: "missing", required: true, detail: "RESEND_API_KEY is not set.", fix: "Most v1 members have no password — without email they cannot sign in, and nobody gets a receipt." };
   const from = value(env, "EMAIL_FROM") || "Realist <hello@realist.ca>";
   const domain = (from.match(/@([^>\s]+)/)?.[1] ?? "").toLowerCase();
@@ -139,6 +154,7 @@ export async function checkResend(env: Env, fetcher: Fetch = fetch): Promise<Che
 
 export async function checkAnthropic(env: Env, fetcher: Fetch = fetch): Promise<CheckResult> {
   const key = value(env, "ANTHROPIC_API_KEY");
+  if (!key && hidden(env, "ANTHROPIC_API_KEY")) return { name: "AI (Anthropic)", status: "warn", required: false, detail: `ANTHROPIC_API_KEY ${HIDDEN}.` };
   if (!key) return { name: "AI (Anthropic)", status: "warn", required: false, detail: "ANTHROPIC_API_KEY is not set — memos and multiplex reports use the rules-based versions; Ask Realist stays hidden." };
   try {
     const { status } = await getJson(fetcher, "https://api.anthropic.com/v1/models?limit=1", { "x-api-key": key, "anthropic-version": "2023-06-01" });
@@ -182,7 +198,7 @@ export function checkDatabase(url: string, facts: DbFacts | Error): CheckResult[
 }
 
 export function checkDdf(env: Env): CheckResult {
-  return has(env, "CREA_DDF_USERNAME") && has(env, "CREA_DDF_PASSWORD")
+  return (has(env, "CREA_DDF_USERNAME") || hidden(env, "CREA_DDF_USERNAME")) && (has(env, "CREA_DDF_PASSWORD") || hidden(env, "CREA_DDF_PASSWORD"))
     ? { name: "Live MLS® feed", status: "ok", required: false, detail: "CREA DDF credentials are set." }
     : { name: "Live MLS® feed", status: "warn", required: false, detail: "CREA_DDF_USERNAME / CREA_DDF_PASSWORD are not set — listings come from the last crawl only, and new listing pages can't be fetched live.", fix: "Add the DDF credentials (same ones the Replit app uses)." };
 }

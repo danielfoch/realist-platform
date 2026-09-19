@@ -57,6 +57,14 @@ describe("go-live preflight", () => {
     expect(printed).not.toContain("zq9hidden");
   });
 
+  it("knows 'set in Vercel but not downloadable' from 'missing' — a Sensitive value pulls down as an empty string", async () => {
+    const pulled = { CRON_SECRET: "", GHL_API_KEY: "", GHL_LOCATION_ID: "loc-1", RESEND_API_KEY: "" };
+    expect(checkSecrets(pulled)[0]).toMatchObject({ name: "Cron secret", status: "ok" });
+    expect((await checkGhl(pulled))[0]).toMatchObject({ status: "warn" });
+    expect(await checkResend(pulled)).toMatchObject({ status: "warn" });
+    expect(checkSecrets({})[0]).toMatchObject({ name: "Cron secret", status: "missing" });
+  });
+
   it("is ready only when everything launch depends on is in place", () => {
     expect(summarize([{ name: "Database", status: "ok", required: true, detail: "" }, { name: "AI", status: "warn", required: false, detail: "" }])).toMatchObject({ ready: true });
     expect(summarize([{ name: "Database", status: "missing", required: true, detail: "" }]).ready).toBe(false);
