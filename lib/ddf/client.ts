@@ -150,14 +150,20 @@ async function ddfRateLimitedFetch(url: string, init: RequestInit): Promise<Resp
 
 const rejectedSelectFields = new Set<string>();
 const rejectedFilterProperties = new Set<string>();
-let cityPrefixRejected = false;
+/** How a city is matched. Degrades when CREA refuses a function: prefix → contains → exact. */
+let cityMatch: "prefix" | "contains" | "exact" = "prefix";
 const MAX_SCHEMA_RETRIES = 8;
+
+/** What the feed has forced us to give up, for the people running the site. Nothing secret. */
+export function ddfAdaptations(): { droppedFields: string[]; droppedFilters: string[]; cityMatch: string } {
+  return { droppedFields: [...rejectedSelectFields], droppedFilters: [...rejectedFilterProperties], cityMatch };
+}
 
 /** For tests. */
 export function forgetDdfSchemaRejections(): void {
   rejectedSelectFields.clear();
   rejectedFilterProperties.clear();
-  cityPrefixRejected = false;
+  cityMatch = "prefix";
 }
 
 /** Record what a 400 says CREA no longer accepts. True when it taught us something new. */
@@ -177,9 +183,14 @@ export function learnFromDdfError(body: string): boolean {
     console.warn(`[ddf] CREA no longer has a Property field named ${unknown[1]}; dropped from queries`);
     return true;
   }
-  if (/startswith/i.test(details) && !cityPrefixRejected) {
-    cityPrefixRejected = true;
-    console.warn("[ddf] CREA won't evaluate startswith(); city searches fall back to exact names");
+  if (/startswith/i.test(details) && cityMatch === "prefix") {
+    cityMatch = "contains";
+    console.warn("[ddf] CREA won't evaluate startswith(); city searches use contains()");
+    return true;
+  }
+  if (/contains/i.test(details) && cityMatch === "contains") {
+    cityMatch = "exact";
+    console.warn("[ddf] CREA won't evaluate contains() on City; city searches fall back to exact names");
     return true;
   }
   const unfilterable = details.match(/The property '([A-Za-z0-9_]+)' cannot be used in the \$filter/);
@@ -214,11 +225,12 @@ function topLevelClauses(filter: string): string[] {
 
 /** The same query, minus whatever CREA has told us it rejects. */
 export function adaptDdfUrl(url: string): string {
-  if (rejectedSelectFields.size === 0 && rejectedFilterProperties.size === 0 && !cityPrefixRejected) return url;
+  if (rejectedSelectFields.size === 0 && rejectedFilterProperties.size === 0 && cityMatch === "prefix") return url;
   const parsed = new URL(url);
-  if (cityPrefixRejected) {
+  if (cityMatch !== "prefix") {
     const current = parsed.searchParams.get("$filter");
-    if (current) parsed.searchParams.set("$filter", current.replace(/\(City eq '((?:[^']|'')*)' or startswith\(City,'(?:[^']|'')*'\)\)/g, "City eq '$1'"));
+    const replacement = cityMatch === "contains" ? "contains(City,'$1')" : "City eq '$1'";
+    if (current) parsed.searchParams.set("$filter", current.replace(/\(City eq '((?:[^']|'')*)' or startswith\(City,'(?:[^']|'')*'\)\)/g, replacement));
   }
   const select = parsed.searchParams.get("$select");
   if (select) {
@@ -285,7 +297,7 @@ export function coerceDdfListing<T extends object>(raw: T): T {
 
 const officeNames = new Map<string, { name: string | null; at: number }>();
 const OFFICE_TTL_MS = 24 * 60 * 60 * 1000;
-const OFFICE_BATCH = 20;
+const OFFICE_BATCH = 40;
 
 /** For tests. */
 export function forgetDdfOffices(): void {
@@ -303,7 +315,8 @@ export async function attachOfficeNames<T extends { ListOfficeKey?: string; List
     const batch = unknown.slice(i, i + OFFICE_BATCH);
     try {
       const query = new URLSearchParams({
-        $filter: batch.map((key) => `OfficeKey eq '${key.replace(/'/g, "''")}'`).join(" or "),
+        // CREA caps a $filter at 100 nodes; a chain of `or`s blows through it at ~20 keys. Its docs show `in (…)`.
+        $filter: `OfficeKey in (${batch.map((key) => `'${key.replace(/'/g, "''")}'`).join(",")})`,
         $select: "OfficeKey,OfficeName",
         $top: String(OFFICE_BATCH),
       });
@@ -518,6 +531,10 @@ export async function searchDdfListings(params: {
 
   const data: DdfSearchResponse = await response.json();
   let listings = await attachOfficeNames((data.value || []).map(coerceDdfListing), token);
+  if (params.city && cityMatch === "contains") {
+    const wanted = params.city.trim().toLowerCase();
+    listings = listings.filter((listing) => (listing.City ?? "").toLowerCase() === wanted);
+  }
   // When CREA won't filter on status for us, do it here: a listing that states a different status is dropped.
   const wantedStatus = (params.standardStatus || "Active").toLowerCase();
   listings = listings.filter((listing) => !listing.StandardStatus || listing.StandardStatus.toLowerCase() === wantedStatus);

@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  isDdfConfigured,
-  normalizeDdfListing,
-  searchDdfListings,
-} from "@/lib/ddf/client";
+import { ddfAdaptations, isDdfConfigured, normalizeDdfListing, searchDdfListings } from "@/lib/ddf/client";
 import {
   underwriteDdfListing,
   type RentMemo,
@@ -134,6 +130,8 @@ export async function POST(request: NextRequest) {
       count: result.count,
       page: params.page,
       pageSize: PAGE_SIZE,
+      // What CREA's feed has made us give up (field and filter names only) — shows up on /admin too.
+      feed: ddfAdaptations(),
     });
   } catch (error) {
     console.error("[api/listings/search]", error);

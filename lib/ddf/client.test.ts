@@ -301,6 +301,8 @@ describe("cities, as the Toronto-area board publishes them", () => {
   it("falls back to exact names if CREA ever refuses startswith()", () => {
     const url = `https://ddfapi.realtor.ca/odata/v1/Property?${new URLSearchParams({ $filter: `${cityFilter("Toronto")} and ListPrice ge 500000` })}`;
     expect(learnFromDdfError(JSON.stringify({ error: { details: "Unknown function 'startswith'.", message: "invalid query" } }))).toBe(true);
+    expect(new URL(adaptDdfUrl(url)).searchParams.get("$filter")).toBe("contains(City,'Toronto') and ListPrice ge 500000");
+    expect(learnFromDdfError(JSON.stringify({ error: { details: "Unknown function 'contains'.", message: "invalid query" } }))).toBe(true);
     expect(new URL(adaptDdfUrl(url)).searchParams.get("$filter")).toBe("City eq 'Toronto' and ListPrice ge 500000");
   });
 });
@@ -320,7 +322,7 @@ describe("the listing brokerage", () => {
     );
     const listings = await attachOfficeNames([{ ListOfficeKey: "100" }, { ListOfficeKey: "100" }, { ListOfficeKey: "200" }, {}], "token");
     expect(listings.map((listing) => (listing as { ListOfficeName?: string }).ListOfficeName)).toEqual(["Steel City Realty, Brokerage", "Steel City Realty, Brokerage", undefined, undefined]);
-    expect(asked).toEqual(["OfficeKey eq '100' or OfficeKey eq '200'"]);
+    expect(asked).toEqual(["OfficeKey in ('100','200')"]);
     await attachOfficeNames([{ ListOfficeKey: "100" }, { ListOfficeKey: "200" }], "token");
     expect(asked).toHaveLength(1); // both answers remembered — including "this office has no name"
   });
