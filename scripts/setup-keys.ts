@@ -44,23 +44,32 @@ async function save(spec: Pick<KeySpec, "name" | "secret">, value: string): Prom
 const show = (result: CheckResult) =>
   console.log(`    ${result.status === "ok" ? "✓" : result.status === "warn" ? "!" : "✗"} ${result.detail}${result.fix && result.status !== "ok" ? `\n      → ${result.fix}` : ""}`);
 
+/**
+ * A check that couldn't be REACHED says nothing about the key. Don't strand the person over a
+ * network blip: say so, and let them decide — the live site proves the key either way.
+ */
+async function unreachable(result: CheckResult): Promise<boolean | null> {
+  if (!/^Couldn't reach/.test(result.detail)) return null;
+  return /^y/i.test(await ask("    That's a connection problem, not a verdict on the key. Save it anyway? [y/N] "));
+}
+
 /** Test the group's values against the real service. True = worth saving. */
 async function proves(title: string, values: Record<string, string>): Promise<boolean> {
   if (title === "GoHighLevel") {
     const [result] = await checkGhl(values);
     show(result);
-    return result.status === "ok";
+    return (await unreachable(result)) ?? result.status === "ok";
   }
   if (title === "Email (Resend)") {
     const result = await checkResend(values);
     show(result);
     // An unverified domain is worth fixing, but the key itself is good: save it. Only a rejected key is not.
-    return !/rejected the key|Couldn't reach/.test(result.detail);
+    return (await unreachable(result)) ?? !/rejected the key/.test(result.detail);
   }
   if (title === "AI (Anthropic)") {
     const result = await checkAnthropic(values);
     show(result);
-    return result.status === "ok";
+    return (await unreachable(result)) ?? result.status === "ok";
   }
   if (title.startsWith("Live MLS")) {
     const result = await checkDdfCredentials(values.CREA_DDF_USERNAME ?? "", values.CREA_DDF_PASSWORD ?? "");

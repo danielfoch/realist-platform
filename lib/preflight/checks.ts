@@ -29,6 +29,13 @@ const value = (env: Env, ...names: string[]) => names.map((name) => env[name]?.t
 const hidden = (env: Env, ...names: string[]) => !has(env, ...names) && names.some((name) => env[name] !== undefined);
 const HIDDEN = "is set in Vercel as a sensitive value, which can't be downloaded — so it can't be tested from here";
 
+/** "fetch failed" says nothing; the cause underneath it (ENOTFOUND, ECONNRESET, an invalid header…) says what to fix. */
+export function describeError(error: unknown): string {
+  const failure = error as Error & { cause?: { code?: string; message?: string } };
+  const cause = failure.cause?.code ?? failure.cause?.message;
+  return cause ? `${failure.message} (${cause})` : failure.message;
+}
+
 async function getJson(fetcher: Fetch, url: string, headers: Record<string, string>): Promise<{ status: number; body: Record<string, unknown> }> {
   const response = await fetcher(url, { headers: { Accept: "application/json", ...headers }, signal: AbortSignal.timeout(10_000) });
   return { status: response.status, body: (await response.json().catch(() => ({}))) as Record<string, unknown> };
@@ -109,7 +116,7 @@ export async function checkGhl(env: Env, fetcher: Fetch = fetch): Promise<CheckR
         : { name: "GoHighLevel", status: "broken", required: true, detail: `GHL answered HTTP ${probe.status} to a contact lookup.`, fix: probe.status === 401 || probe.status === 403 ? "The token is wrong, expired, or lacks the contacts scopes — or GHL_LOCATION_ID isn't the sub-account it belongs to." : "Check GHL_LOCATION_ID." },
     );
   } catch (error) {
-    results.push({ name: "GoHighLevel", status: "broken", required: true, detail: `Couldn't reach GHL: ${(error as Error).message}` });
+    results.push({ name: "GoHighLevel", status: "broken", required: true, detail: `Couldn't reach GHL: ${describeError(error)}` });
   }
   const pipelineId = value(env, "GHL_PIPELINE_ID");
   if (pipelineId) {
@@ -123,7 +130,7 @@ export async function checkGhl(env: Env, fetcher: Fetch = fetch): Promise<CheckR
       else if (stageId && !pipeline.stages?.some((stage) => stage.id === stageId)) results.push({ name: "GHL pipeline", status: "broken", required: false, detail: `GHL_PIPELINE_STAGE_ID isn't a stage of "${pipeline.name}".`, fix: `Stages: ${(pipeline.stages ?? []).map((stage) => `${stage.name} (${stage.id})`).join(", ")}` });
       else results.push({ name: "GHL pipeline", status: "ok", required: false, detail: `Showing, offer and financing requests open opportunities on "${pipeline.name}".` });
     } catch (error) {
-      results.push({ name: "GHL pipeline", status: "broken", required: false, detail: `Couldn't list pipelines: ${(error as Error).message}` });
+      results.push({ name: "GHL pipeline", status: "broken", required: false, detail: `Couldn't list pipelines: ${describeError(error)}` });
     }
   }
   return results;
@@ -150,7 +157,7 @@ export async function checkResend(env: Env, fetcher: Fetch = fetch): Promise<Che
     if (match?.status === "verified") return { name: "Email (Resend)", status: "ok", required: true, detail: `${domain} is verified; mail sends as ${from}.` };
     return { name: "Email (Resend)", status: "broken", required: true, detail: match ? `${domain} is "${match.status}" in Resend, not verified.` : `${domain} isn't a domain on this Resend account.`, fix: `Add and verify ${domain} in Resend (DNS records), or set EMAIL_FROM to a verified domain.` };
   } catch (error) {
-    return { name: "Email (Resend)", status: "broken", required: true, detail: `Couldn't reach Resend: ${(error as Error).message}` };
+    return { name: "Email (Resend)", status: "broken", required: true, detail: `Couldn't reach Resend: ${describeError(error)}` };
   }
 }
 
@@ -164,7 +171,7 @@ export async function checkAnthropic(env: Env, fetcher: Fetch = fetch): Promise<
       ? { name: "AI (Anthropic)", status: "ok", required: false, detail: `Key works. Site-wide ceiling: ${value(env, "AI_DAILY_BUDGET") || "2000 (default)"} calls a day.` }
       : { name: "AI (Anthropic)", status: "broken", required: false, detail: `Anthropic answered HTTP ${status}.`, fix: "Check ANTHROPIC_API_KEY." };
   } catch (error) {
-    return { name: "AI (Anthropic)", status: "broken", required: false, detail: `Couldn't reach Anthropic: ${(error as Error).message}` };
+    return { name: "AI (Anthropic)", status: "broken", required: false, detail: `Couldn't reach Anthropic: ${describeError(error)}` };
   }
 }
 

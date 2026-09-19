@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { EXPECTED_TABLES, checkDatabase, checkGhl, checkResend, checkSecrets, summarize, type DbFacts } from "./checks";
+import { EXPECTED_TABLES, checkAnthropic, checkDatabase, checkGhl, checkResend, checkSecrets, summarize, type DbFacts } from "./checks";
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
 const facts = (over: Partial<DbFacts> = {}): DbFacts => ({ tables: [...EXPECTED_TABLES], hasNewestColumn: true, members: 4200, legacyMembers: 4100, freshListings: 90_000, waitingDeliveries: 0, ...over });
@@ -66,6 +66,12 @@ describe("go-live preflight", () => {
     expect((await checkGhl(pulled))[0]).toMatchObject({ status: "warn" });
     expect(await checkResend(pulled)).toMatchObject({ status: "warn" });
     expect(checkSecrets({})[0]).toMatchObject({ name: "Cron secret", status: "missing" });
+  });
+
+  it("says WHY a service couldn't be reached — 'fetch failed' alone tells nobody what to fix", async () => {
+    const failing = (async () => { throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ENOTFOUND" } }); }) as unknown as typeof fetch;
+    const result = await checkAnthropic({ ANTHROPIC_API_KEY: "sk-ant-x" }, failing);
+    expect(result.detail).toBe("Couldn't reach Anthropic: fetch failed (ENOTFOUND)");
   });
 
   it("is ready only when everything launch depends on is in place", () => {
