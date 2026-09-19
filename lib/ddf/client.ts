@@ -499,6 +499,11 @@ export async function searchDdfListings(params: {
   skip?: number;
   /** Server-provided continuation URL; when set it takes precedence over skip. */
   nextLink?: string;
+  /**
+   * Default is newest-first, right for browsing. A crawl that takes hours needs an order that
+   * doesn't move under it (a listing edited mid-crawl jumps to the front): pass "ListingKey".
+   */
+  orderBy?: string;
 }): Promise<{ listings: DdfListing[]; count: number; numPages: number; page: number; rawPageSize: number; nextLink: string | null }> {
   const token = await getDdfToken();
 
@@ -555,7 +560,7 @@ export async function searchDdfListings(params: {
   queryParams.set("$count", "true");
   queryParams.set("$top", String(top));
   if (skip > 0) queryParams.set("$skip", String(skip));
-  queryParams.set("$orderby", "ModificationTimestamp desc,ListingKey");
+  queryParams.set("$orderby", params.orderBy || "ModificationTimestamp desc,ListingKey");
   queryParams.set("$select", DDF_SELECT_FIELDS);
 
   const url = params.nextLink || `${DDF_API_BASE}/Property?${queryParams.toString()}`;

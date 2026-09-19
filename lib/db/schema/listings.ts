@@ -125,6 +125,29 @@ export type AreaYieldHistory = typeof areaYieldHistory.$inferSelect;
 export type InsertAreaYieldHistory = Omit<typeof areaYieldHistory.$inferInsert, "id" | "computedAt">;
 
 // ============================================
+// Crawl state — the cursor of the resumable data sync (lib/ddf/resumableCrawl.ts)
+// ============================================
+export const crawlState = pgTable("crawl_state", {
+  job: varchar("job").primaryKey(),
+  /** "rents" → "listings" → "done". */
+  stage: text("stage").notNull().default("rents"),
+  month: varchar("month", { length: 7 }),
+  provinceIndex: integer("province_index").notNull().default(0),
+  page: integer("page").notNull().default(0),
+  nextLink: text("next_link"),
+  rentsSeen: integer("rents_seen").notNull().default(0),
+  listingsStored: integer("listings_stored").notNull().default(0),
+  skippedPages: integer("skipped_pages").notNull().default(0),
+  /** Held while a run is working, so two invocations never advance the same cursor. */
+  leaseUntil: timestamp("lease_until"),
+  startedAt: timestamp("started_at"),
+  finishedAt: timestamp("finished_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type CrawlState = typeof crawlState.$inferSelect;
+
+// ============================================
 // Rent Pulse — aggregated median rents per city
 // ============================================
 export const rentPulse = pgTable("rent_pulse", {

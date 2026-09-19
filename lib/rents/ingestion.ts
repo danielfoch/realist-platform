@@ -21,7 +21,7 @@ import { rentListings } from "@/lib/db/schema";
 import { searchDdfListings, isDdfConfigured } from "@/lib/ddf/client";
 import { ddfLeaseToRentObservation, type RentObservationRow } from "./observations";
 
-const DEFAULT_PROVINCES = [
+export const DEFAULT_PROVINCES = [
   "Ontario",
   "British Columbia",
   "Quebec",
@@ -50,7 +50,7 @@ export interface IngestionCounts {
   refreshed: number;
 }
 
-async function upsertObservations(rows: RentObservationRow[], dryRun: boolean): Promise<{ inserted: number; refreshed: number }> {
+export async function upsertObservations(rows: RentObservationRow[], dryRun: boolean): Promise<{ inserted: number; refreshed: number }> {
   const db = getDb();
   let inserted = 0;
   let refreshed = 0;

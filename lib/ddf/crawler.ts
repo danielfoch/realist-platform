@@ -22,7 +22,7 @@ import { getRentEstimate } from "@/lib/rents/estimator";
 import { getCmhcRent } from "@/lib/rents/cmhcRents";
 import { calculateListingYield } from "@/lib/underwriting/investmentMetrics";
 
-const PROVINCE_TO_ABBREV: Record<string, string> = {
+export const PROVINCE_TO_ABBREV: Record<string, string> = {
   "Ontario": "ON",
   "British Columbia": "BC",
   "Quebec": "QC",
@@ -35,7 +35,7 @@ const PROVINCE_TO_ABBREV: Record<string, string> = {
   "Newfoundland and Labrador": "NL",
 };
 
-const CRAWL_PROVINCES = Object.keys(PROVINCE_TO_ABBREV);
+export const CRAWL_PROVINCES = Object.keys(PROVINCE_TO_ABBREV);
 
 /**
  * Rent ladder for a snapshot, best data wins:
@@ -96,13 +96,19 @@ function avg(values: number[]): number | null {
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
-function normalizePostalArea(postalCode: string | null | undefined): string | null {
+export function normalizePostalArea(postalCode: string | null | undefined): string | null {
   if (!postalCode) return null;
   const normalized = postalCode.replace(/\s+/g, "").toUpperCase();
   return normalized.length >= 3 ? normalized.slice(0, 3) : null;
 }
 
-function aggregateYieldMetrics(snapshots: InsertDdfListingSnapshot[]) {
+/** The columns the aggregates read — a subset, so a whole province can be loaded back from the database cheaply. */
+export type YieldMetricInput = Pick<
+  InsertDdfListingSnapshot,
+  "grossYield" | "netYield" | "listPrice" | "estimatedMonthlyRent" | "daysOnMarket" | "bedroomsTotal" | "livingArea" | "propertySubType" | "structureType"
+> & { publicRemarks?: string | null };
+
+export function aggregateYieldMetrics(snapshots: YieldMetricInput[]) {
   const rentableSnapshots = snapshots.filter((s) => !isVacantLandLikeProperty(s));
   const grossYields = rentableSnapshots.map(s => s.grossYield).filter((v): v is number => v != null && v > 0 && v < 20);
   const netYields = rentableSnapshots.map(s => s.netYield).filter((v): v is number => v != null && v > -10 && v < 15);
@@ -142,7 +148,7 @@ const PROVINCE_DELAY_MS = 2000;
 type DdfSearchResult = Awaited<ReturnType<typeof searchDdfListings>>;
 
 /** Fetch one results page with exponential backoff; null means every attempt failed. */
-async function fetchDdfPageWithRetry(
+export async function fetchDdfPageWithRetry(
   params: Parameters<typeof searchDdfListings>[0],
   label: string,
 ): Promise<DdfSearchResult | null> {
@@ -160,7 +166,7 @@ async function fetchDdfPageWithRetry(
   return null;
 }
 
-async function buildSnapshot(
+export async function buildSnapshot(
   listing: DdfListing,
   ddfProvince: string,
   month: string,
@@ -291,7 +297,7 @@ const snapshotConflictSet = Object.fromEntries(
     .map(([key, column]) => [key, sql.raw(`excluded."${column.name}"`)]),
 );
 
-async function insertSnapshotsBatch(rows: InsertDdfListingSnapshot[]): Promise<number> {
+export async function insertSnapshotsBatch(rows: InsertDdfListingSnapshot[]): Promise<number> {
   const db = getDb();
   let written = 0;
   for (let i = 0; i < rows.length; i += SNAPSHOT_BATCH_SIZE) {
@@ -319,14 +325,14 @@ function groupSnapshots(
   return groups;
 }
 
-async function upsertCityYieldHistory(row: InsertCityYieldHistory): Promise<void> {
+export async function upsertCityYieldHistory(row: InsertCityYieldHistory): Promise<void> {
   await getDb().insert(cityYieldHistory).values(row).onConflictDoUpdate({
     target: [cityYieldHistory.city, cityYieldHistory.province, cityYieldHistory.month],
     set: { ...row, computedAt: sql`now()` },
   });
 }
 
-async function upsertAreaYieldHistory(row: InsertAreaYieldHistory): Promise<void> {
+export async function upsertAreaYieldHistory(row: InsertAreaYieldHistory): Promise<void> {
   await getDb().insert(areaYieldHistory).values(row).onConflictDoUpdate({
     target: [areaYieldHistory.areaType, areaYieldHistory.areaKey, areaYieldHistory.province, areaYieldHistory.month],
     set: { ...row, computedAt: sql`now()` },
