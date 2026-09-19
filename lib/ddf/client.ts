@@ -289,6 +289,20 @@ const TEXT_FIELDS = [
   "LeaseAmountFrequency", "AssociationFeeFrequency", "ListingId", "ListingKey",
 ] as const;
 
+/** "Duplex" → 2, "Triplex" → 3, "Fourplex" → 4. Anything vaguer ("Multi-family") stays unknown rather than guessed. */
+export function unitsFromBuildingType(text: string): number | null {
+  const type = text.toLowerCase();
+  if (/four-?plex|4-?plex|quadruplex|quadplex/.test(type)) return 4;
+  if (/tri-?plex|3-?plex/.test(type)) return 3;
+  if (/du-?plex|2-?plex/.test(type)) return 2;
+  return null;
+}
+
+/** Two or more units, by count or by class. */
+export function isMultiUnit(listing: { NumberOfUnitsTotal?: number; PropertySubType?: string; StructureType?: string }): boolean {
+  return (listing.NumberOfUnitsTotal ?? 0) >= 2 || /multi-?\s?family|multiplex|duplex|triplex|fourplex/i.test(`${listing.PropertySubType ?? ""} ${listing.StructureType ?? ""}`);
+}
+
 export function coerceDdfListing<T extends object>(raw: T): T {
   const listing = raw as Record<string, unknown>;
   for (const field of TEXT_FIELDS) {
@@ -297,6 +311,12 @@ export function coerceDdfListing<T extends object>(raw: T): T {
     if (Array.isArray(value)) listing[field] = value.filter((item) => typeof item === "string" || typeof item === "number").join(", ");
     else if (typeof value === "number" || typeof value === "boolean") listing[field] = String(value);
     else listing[field] = "";
+  }
+  // The Toronto-area board never fills in NumberOfUnitsTotal; the building type says it instead.
+  // Without this a triplex is underwritten as one unit and never shows up under "multi-unit".
+  if (!(typeof listing.NumberOfUnitsTotal === "number" && listing.NumberOfUnitsTotal > 0)) {
+    const inferred = unitsFromBuildingType(`${listing.StructureType ?? ""} ${listing.PropertySubType ?? ""}`);
+    if (inferred) listing.NumberOfUnitsTotal = inferred;
   }
   // The Toronto-area board publishes the community inside the city: "Toronto (Regent Park)",
   // "Markham (Greensborough)". Rents, learned defaults, buy boxes and meetups are all keyed by
@@ -486,7 +506,8 @@ export async function searchDdfListings(params: {
     filters.push(`BedroomsTotal le ${params.maxBeds}`);
   }
   if (params.minUnits && params.minUnits > 1) {
-    filters.push(`NumberOfUnitsTotal ge ${params.minUnits}`);
+    // "Multi-unit" by count OR by class: whole boards leave the count empty and say "Multi-family" instead.
+    filters.push(params.minUnits === 2 ? "(NumberOfUnitsTotal ge 2 or PropertySubType eq 'Multi-family')" : `NumberOfUnitsTotal ge ${params.minUnits}`);
   }
   if (params.propertySubType) {
     filters.push(`PropertySubType eq '${params.propertySubType.replace(/'/g, "''")}'`);
@@ -551,6 +572,8 @@ export async function searchDdfListings(params: {
 
   const data: DdfSearchResponse = await response.json();
   let listings = await attachOfficeNames((data.value || []).map(coerceDdfListing), token);
+  // If CREA ever refuses part of that group the whole group is dropped, so the rule is enforced here too.
+  if (params.minUnits === 2) listings = listings.filter(isMultiUnit);
   if (params.city && cityMatch === "contains") {
     const wanted = params.city;
     listings = listings.filter((listing) => isSameCity(listing.City, wanted));

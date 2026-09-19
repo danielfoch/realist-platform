@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { adaptDdfUrl, assumeDdfCityPrefixSupport, attachOfficeNames, cityFilter, coerceDdfListing, forgetDdfOffices, forgetDdfSchemaRejections, isSameCity, learnFromDdfError, searchDdfListings } from "./client";
+import { adaptDdfUrl, assumeDdfCityPrefixSupport, attachOfficeNames, cityFilter, coerceDdfListing, forgetDdfOffices, forgetDdfSchemaRejections, isMultiUnit, isSameCity, learnFromDdfError, searchDdfListings, unitsFromBuildingType } from "./client";
 
 describe("searchDdfListings", () => {
   afterEach(() => {
@@ -274,8 +274,8 @@ describe("adapting to CREA's schema", () => {
 describe("the shape of what CREA sends", () => {
   it("turns list-valued and numeric fields into the text everything downstream expects", async () => {
     const { coerceDdfListing } = await import("./client");
-    const listing = coerceDdfListing({ ListingKey: 123, StructureType: ["House", "Duplex"], PropertySubType: "Single Family", City: null, PublicRemarks: { odd: true }, ListPrice: 899000 } as Record<string, unknown>);
-    expect(listing).toEqual({ ListingKey: "123", StructureType: "House, Duplex", PropertySubType: "Single Family", City: null, PublicRemarks: "", ListPrice: 899000 });
+    const listing = coerceDdfListing({ ListingKey: 123, StructureType: ["House", "Detached"], PropertySubType: "Single Family", City: null, PublicRemarks: { odd: true }, ListPrice: 899000 } as Record<string, unknown>);
+    expect(listing).toEqual({ ListingKey: "123", StructureType: "House, Detached", PropertySubType: "Single Family", City: null, PublicRemarks: "", ListPrice: 899000 });
   });
 
   it("classifies vacant land without assuming a field is text", async () => {
@@ -340,5 +340,26 @@ describe("the listing brokerage", () => {
   it("never costs a search its results when the lookup fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 500 })));
     await expect(attachOfficeNames([{ ListOfficeKey: "300" }], "token")).resolves.toEqual([{ ListOfficeKey: "300" }]);
+  });
+});
+
+describe("units, where a board leaves the count empty", () => {
+  it("reads them from the building type, and guesses nothing vaguer", () => {
+    expect(unitsFromBuildingType("Duplex")).toBe(2);
+    expect(unitsFromBuildingType("Triplex, House")).toBe(3);
+    expect(unitsFromBuildingType("Fourplex")).toBe(4);
+    expect(unitsFromBuildingType("Multi-family")).toBeNull();
+    expect(unitsFromBuildingType("House")).toBeNull();
+  });
+
+  it("fills the count in at the door, never over a count the listing states", () => {
+    expect(coerceDdfListing({ StructureType: ["Triplex"] as unknown as string })).toMatchObject({ NumberOfUnitsTotal: 3 });
+    expect(coerceDdfListing({ StructureType: ["Duplex"] as unknown as string, NumberOfUnitsTotal: 5 })).toMatchObject({ NumberOfUnitsTotal: 5 });
+  });
+
+  it("calls a listing multi-unit by count or by class", () => {
+    expect(isMultiUnit({ NumberOfUnitsTotal: 3 })).toBe(true);
+    expect(isMultiUnit({ PropertySubType: "Multi-family" })).toBe(true);
+    expect(isMultiUnit({ PropertySubType: "Single Family", StructureType: "House" })).toBe(false);
   });
 });
