@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BadgeProgress, StatTiles, VerdictChip, focusRing, textLinkClass, type BadgeProgressValue, type TrackRecordStats } from "@/components/community/TrackRecord";
+import { ShareLinkButton } from "@/components/community/ShareLinkButton";
 import { DdfAttribution } from "@/components/listings/DdfAttribution";
 import { fmtMoney } from "@/components/multiplex/format";
 import { reopenHref } from "@/lib/analyses/history";
@@ -36,6 +37,15 @@ export function TrackRecordBlock({
           <Link href={profilePath} className={textLinkClass}>
             Your public profile →
           </Link>
+        )}
+        {profilePath && (
+          <ShareLinkButton
+            path={profilePath}
+            title="My track record on Realist"
+            text={`${stats.deals.toLocaleString("en-CA")} deals underwritten on Realist. Where do you stand?`}
+            label="Share my track record"
+            className={textLinkClass}
+          />
         )}
       </div>
     </div>
