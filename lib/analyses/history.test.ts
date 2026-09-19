@@ -46,3 +46,15 @@ describe("reopenHref", () => {
     expect(reopenHref({ ...manual, address: "n/a" })).toBeNull();
   });
 });
+
+describe("reopenHref for a multiplex underwrite", () => {
+  const lot = { mlsNumber: null, address: "270 Indian Rd, Toronto", city: "Toronto", province: "ON", price: 1_900_000, monthlyRent: null, units: 4 };
+
+  it("reopens the full report, not the rental underwriter", () => {
+    expect(reopenHref({ ...lot, source: "multiplex", reportToken: "abc123" })).toBe("/multiplex/r/abc123");
+  });
+
+  it("falls back to the tool when the report link is gone", () => {
+    expect(reopenHref({ ...lot, source: "multiplex", reportToken: null })).toBe("/multiplex");
+  });
+});

@@ -21,7 +21,10 @@ export const dealAnalyses = pgTable(
     sessionId: varchar("session_id"),
     /** "mls:<number>" for a listing, "addr:<normalised address>" for anything else. */
     dealKey: text("deal_key").notNull(),
-    source: text("source").$type<"listing" | "manual">().notNull(),
+    /** 'multiplex' = a Toronto multiplex underwrite, logged here so it counts; its report lives at reportToken. */
+    source: text("source").$type<"listing" | "manual" | "multiplex">().notNull(),
+    /** For source 'multiplex': the share token of the full report (/multiplex/r/<token>). */
+    reportToken: varchar("report_token"),
     mlsNumber: varchar("mls_number"),
     address: text("address"),
     city: text("city"),

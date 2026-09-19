@@ -5,7 +5,7 @@ import { INVESTMENT_METRIC_DEFAULTS } from "@/lib/underwriting/investmentMetrics
 import { LEARNABLE_FIELDS, RENT_RATIO_FIELD, analysisQuality, editedFields, underwrite, type UnderwriterInputs } from "@/lib/underwriting/underwriter";
 import { provinceCode } from "@/lib/leads/routing";
 import type { Actor } from "./actor";
-import { fsaOf } from "./dealKey";
+import { dealKeyFor, fsaOf } from "./dealKey";
 
 const KNOWN_LEARNED = new Set<string>([...LEARNABLE_FIELDS, RENT_RATIO_FIELD]);
 
@@ -127,4 +127,41 @@ export async function getAnalysis(actorKey: string, dealKey: string): Promise<De
     .where(and(eq(dealAnalyses.actorKey, actorKey), eq(dealAnalyses.dealKey, dealKey)))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * A multiplex underwrite is the deepest analysis on the site, so it earns its
+ * place in the person's history and on the board: one row per person per lot,
+ * full marks for quality (the engine did the work; there are no defaults to
+ * have accepted or changed, so it teaches the market-defaults job nothing).
+ */
+export async function logMultiplexAnalysis(
+  actor: Actor,
+  lot: { address: string; postalCode?: string | null; price?: number | null; units?: number | null; reportToken: string },
+): Promise<void> {
+  const dealKey = dealKeyFor({ address: lot.address });
+  if (!dealKey) return;
+  const values = {
+    userId: actor.user?.id ?? null,
+    sessionId: actor.sessionId,
+    source: "multiplex" as const,
+    reportToken: lot.reportToken,
+    address: lot.address.slice(0, 300),
+    city: "Toronto",
+    province: "ON",
+    fsa: fsaOf(lot.postalCode),
+    propertyType: "Multiplex site",
+    units: lot.units ? Math.round(lot.units) : null,
+    price: lot.price && lot.price > 0 ? lot.price : 0,
+    inputs: {},
+    defaults: {},
+    edited: [],
+    quality: 1,
+    eligible: true,
+    engineVersion: "multiplex",
+  };
+  await getDb()
+    .insert(dealAnalyses)
+    .values({ actorKey: actor.key, dealKey, ...values })
+    .onConflictDoUpdate({ target: [dealAnalyses.actorKey, dealAnalyses.dealKey], set: { ...values, updatedAt: new Date() } });
 }

@@ -68,12 +68,18 @@ function AnalysisRow({ row }: { row: DealAnalysis }) {
         </p>
         <p className="tnum mt-1 flex flex-wrap gap-x-1.5 text-xs leading-relaxed text-ink-soft">
           {city && <span>{city} ·</span>}
-          <span>{fmtMoney(row.price)} ·</span>
-          {cashFlow != null && <span className={cashFlow < 0 ? "font-medium text-bad" : undefined}>{signedMoney(cashFlow)}/mo ·</span>}
-          <span>{row.capRate == null ? "— cap" : `${row.capRate.toFixed(1)}% cap`}</span>
+          {row.source === "multiplex" ? (
+            <span>{row.price > 0 ? `${fmtMoney(row.price)} · ` : ""}zoning, massing and CMHC proforma</span>
+          ) : (
+            <>
+              <span>{fmtMoney(row.price)} ·</span>
+              {cashFlow != null && <span className={cashFlow < 0 ? "font-medium text-bad" : undefined}>{signedMoney(cashFlow)}/mo ·</span>}
+              <span>{row.capRate == null ? "— cap" : `${row.capRate.toFixed(1)}% cap`}</span>
+            </>
+          )}
         </p>
         <p className="mt-1 text-[11px] text-ink-faint">
-          {row.mlsNumber ? "Listing" : "Off-market"} · Updated {formatDay(row.updatedAt)}
+          {row.source === "multiplex" ? "Multiplex underwrite" : row.mlsNumber ? "Listing" : "Off-market"} · Updated {formatDay(row.updatedAt)}
           {!row.eligible && " · Not counted: the results fall outside what a real rental produces"}
         </p>
       </div>

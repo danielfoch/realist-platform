@@ -147,6 +147,39 @@ export async function getLeaderboard(period: LeaderboardPeriod, options: { city?
   }));
 }
 
+/**
+ * One member's place on each board, without fetching the boards. Same ordering
+ * as getLeaderboard (score, then deals, then who got there first). Null when
+ * they have no eligible deal in that period or have stepped off the board.
+ */
+export async function getRanks(userId: string): Promise<Record<LeaderboardPeriod, number | null>> {
+  const result = await getDb().execute(sql`
+    WITH periods(period, since) AS (
+      VALUES ('week', date_trunc('week', now() AT TIME ZONE 'utc')),
+             ('month', date_trunc('month', now() AT TIME ZONE 'utc')),
+             ('all', 'epoch'::timestamp)
+    ),
+    scored AS (
+      SELECT p.period, a.user_id, sum(a.quality) AS score, count(*) AS deals, min(a.created_at) AS first_at
+      FROM periods p
+      JOIN deal_analyses a ON a.created_at >= p.since AND a.eligible
+      JOIN users u ON u.id = a.user_id AND u.show_on_leaderboard
+      GROUP BY p.period, a.user_id
+    ),
+    ranked AS (
+      SELECT period, user_id, row_number() OVER (PARTITION BY period ORDER BY round(score * 10) DESC, deals DESC, first_at ASC) AS rank
+      FROM scored
+    )
+    SELECT period, rank::int AS rank FROM ranked WHERE user_id = ${userId}
+  `);
+  const ranks: Record<LeaderboardPeriod, number | null> = { week: null, month: null, all: null };
+  for (const row of result.rows as Array<Record<string, unknown>>) {
+    const period = String(row.period) as LeaderboardPeriod;
+    if (period in ranks) ranks[period] = Number(row.rank);
+  }
+  return ranks;
+}
+
 /** One ladder. Thresholds are deals underwritten. */
 export const BADGES = [
   { at: 500, name: "Legend" },

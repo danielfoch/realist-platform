@@ -5,6 +5,8 @@ import {
   executeMultiplexUnderwriter,
   underwriteRequestSchema,
 } from "@/lib/multiplex/underwriter";
+import { logMultiplexAnalysis } from "@/lib/analyses/store";
+import { getCurrentUser } from "@/lib/auth/current";
 
 export const maxDuration = 120;
 
@@ -33,7 +35,21 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await executeMultiplexUnderwriter(parsed.data, { sessionId });
+    // A member's underwrite belongs to them from the start, not only after their next sign-in.
+    const user = await getCurrentUser();
+    const result = await executeMultiplexUnderwriter(parsed.data, { sessionId, userId: user?.id ?? null });
+    if (result.status === "complete" && "shareToken" in result && result.shareToken) {
+      await logMultiplexAnalysis(
+        { key: user ? `user:${user.id}` : `sid:${sessionId}`, user, sessionId },
+        {
+          address: parsed.data.address,
+          postalCode: parsed.data.postalCode ?? null,
+          price: parsed.data.purchasePrice ?? null,
+          units: result.underwrite?.maxUnitsAsOfRight ?? null,
+          reportToken: result.shareToken,
+        },
+      ).catch((error) => console.error("[multiplex] analysis not logged:", (error as Error).message));
+    }
     const response = NextResponse.json(result);
     response.cookies.set("realist_sid", sessionId, {
       httpOnly: true,

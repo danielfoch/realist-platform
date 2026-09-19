@@ -5,7 +5,8 @@ import type { DealAnalysis } from "@/lib/db/schema";
  * the deal back up.
  */
 
-type Reopenable = Pick<DealAnalysis, "mlsNumber" | "address" | "city" | "province" | "price" | "monthlyRent" | "units">;
+type Reopenable = Pick<DealAnalysis, "mlsNumber" | "address" | "city" | "province" | "price" | "monthlyRent" | "units"> &
+  Partial<Pick<DealAnalysis, "source" | "reportToken">>;
 
 /**
  * A listing reopens on its listing page. Anything else reopens in the
@@ -15,6 +16,7 @@ type Reopenable = Pick<DealAnalysis, "mlsNumber" | "address" | "city" | "provinc
  * and log a second deal instead of reopening this one.
  */
 export function reopenHref(row: Reopenable): string | null {
+  if (row.source === "multiplex") return row.reportToken ? `/multiplex/r/${encodeURIComponent(row.reportToken)}` : "/multiplex";
   const mls = row.mlsNumber?.trim();
   if (mls) return `/listings/${encodeURIComponent(mls)}`;
 
